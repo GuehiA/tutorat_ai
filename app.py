@@ -237,52 +237,6 @@ def eleve_remediations():
         lang=lang
     )
 
-@app.route("/creer-admin-auto")
-def creer_admin_auto():
-    """Crée un admin automatiquement - À SUPPRIMER APRÈS"""
-    try:
-        with app.app_context():
-            email = "admin@tutorat.ai"
-            
-            # Vérifier si admin existe déjà
-            admin_existant = User.query.filter_by(email=email).first()
-            if admin_existant:
-                return f"""
-                <h1>✅ Admin existe déjà</h1>
-                <p>Email: {admin_existant.email}</p>
-                <p>Vous pouvez vous connecter.</p>
-                <a href="/login-admin">Se connecter</a>
-                """
-            
-            # Créer l'admin AVEC LE SETTER
-            from datetime import datetime
-            
-            admin = User(
-                username="admin",
-                nom_complet="Administrateur Principal",
-                email=email,
-                role="admin",
-                est_actif=True,
-                date_inscription=datetime.utcnow()
-            )
-            
-            # Utilise le setter qui hash automatiquement
-            admin.mot_de_passe = "Admin123!"
-            
-            db.session.add(admin)
-            db.session.commit()
-            
-            return f"""
-            <h1>✅ Admin créé avec succès !</h1>
-            <p><strong>Email:</strong> {email}</p>
-            <p><strong>Mot de passe:</strong> Admin123!</p>
-            <p><strong>⚠️ IMPORTANT:</strong> Supprimez cette route après usage !</p>
-            <a href="/login-admin">Se connecter maintenant</a>
-            """
-            
-    except Exception as e:
-        return f"<h1>❌ Erreur:</h1><p>{str(e)}</p>"
-    
 
 # chatbot_routes.py
 @app.route("/enseignant-virtuel", methods=["GET", "POST"])
