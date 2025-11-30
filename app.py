@@ -1766,31 +1766,34 @@ def inscription():
     return render_template("inscription.html")
 
 @app.route("/inscription-enseignant", methods=["GET", "POST"])
+@admin_required  # ⬅️ Utilisez le décorateur admin_required au lieu de vérifier session
 def inscription_enseignant():
-    if "admin_auth" not in session:
-        return redirect("/admin-auth")
-
     if request.method == "POST":
         nom = request.form.get("nom")
         email = request.form.get("email")
         mot_de_passe = request.form.get("mot_de_passe")
 
         if not all([nom, email, mot_de_passe]):
-            return "Tous les champs sont requis", 400
+            flash("Tous les champs sont requis", "error")
+            return render_template("inscription_enseignant.html")
 
+        # Vérifier si l'email existe déjà
         if Enseignant.query.filter_by(email=email.strip()).first():
-            return "Un enseignant avec cet email existe déjà.", 409
+            flash("Un enseignant avec cet email existe déjà.", "error")
+            return render_template("inscription_enseignant.html")
 
+        # Créer l'enseignant
         enseignant = Enseignant(
             nom=nom.strip(),
             email=email.strip()
         )
-        enseignant.mot_de_passe = mot_de_passe  # Utilisez le setter pour hacher le mot de passe
+        enseignant.mot_de_passe = mot_de_passe  # Utilise le setter pour hacher le mot de passe
 
         db.session.add(enseignant)
         db.session.commit()
 
-        return render_template("confirmation_enseignant.html")
+        flash("Enseignant inscrit avec succès !", "success")
+        return redirect(url_for("liste_enseignants"))  # Ou vers le dashboard
 
     return render_template("inscription_enseignant.html")
 
