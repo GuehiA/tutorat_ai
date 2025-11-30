@@ -18,3 +18,4 @@ requests==2.32.3
 tenacity==9.1.2
 langdetect==1.0.9
 stripe==9.6.0
+pdfkit==1.0.0        # ⬅️ AJOUTEZ CETTE LIGNE
