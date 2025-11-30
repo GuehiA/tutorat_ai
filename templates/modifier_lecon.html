@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Edit Lesson{% else %}Modifier la leçon{% endif %}</title>
+  <style>
+    body { font-family: Arial; background: #f4f4f4; padding: 40px; }
+    .container {
+      max-width: 650px; margin: auto; background: white;
+      padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, textarea {
+      width: 100%; padding: 10px; margin-top: 5px;
+      border-radius: 5px; border: 1px solid #ccc;
+    }
+    textarea { resize: vertical; }
+    button {
+      width: 100%; margin-top: 25px;
+      background-color: #27ae60; color: white;
+      padding: 12px; border: none; border-radius: 5px;
+      font-size: 16px;
+    }
+    button:hover { background-color: #219150; }
+    a {
+      display: block; text-align: center;
+      margin-top: 20px; color: #3498db;
+      text-decoration: none; font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>📒 {% if lang == 'en' %}Edit Lesson{% else %}Modifier la Leçon{% endif %}</h2>
+
+    <form method="POST">
+      <label>{% if lang == 'en' %}Title (FR){% else %}Titre (FR){% endif %} :</label>
+      <input type="text" name="titre_fr" value="{{ lecon.titre_fr }}" required>
+
+      <label>{% if lang == 'en' %}Title (EN){% else %}Titre (EN){% endif %} :</label>
+      <input type="text" name="titre_en" value="{{ lecon.titre_en }}" required>
+
+      <label>{% if lang == 'en' %}Objective (FR){% else %}Objectif (FR){% endif %} :</label>
+      <textarea name="objectif_fr">{{ lecon.objectif_fr }}</textarea>
+
+      <label>{% if lang == 'en' %}Objective (EN){% else %}Objectif (EN){% endif %} :</label>
+      <textarea name="objectif_en">{{ lecon.objectif_en }}</textarea>
+
+      <button type="submit">💾 {% if lang == 'en' %}Save{% else %}Enregistrer{% endif %}</button>
+    </form>
+
+    <a href="/admin/dashboard">← {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}</a>
+  </div>
+
+</body>
+</html>

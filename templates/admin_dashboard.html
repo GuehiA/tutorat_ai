@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Admin Dashboard{% else %}Tableau de Bord Admin{% endif %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --primary-light: #e0e7ff;
+      --success: #3fba83;
+      --success-dark: #38a873;
+      --success-light: #e0f7ed;
+      --warning: #fcc419;
+      --warning-dark: #e6b017;
+      --warning-light: #fff9e6;
+      --danger: #e85959;
+      --danger-dark: #d14f4f;
+      --danger-light: #fdeaea;
+      --info: #17a2b8;
+      --info-dark: #148ea1;
+      --info-light: #e3f4f7;
+      --light: #f8f9ff;
+      --dark: #121826;
+      --card-bg: rgba(255, 255, 255, 0.9);
+      --text: #2d3748;
+      --text-light: #718096;
+      --border: #e2e8f0;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+      --radius: 12px;
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    [data-theme="dark"] {
+      --light: #121826;
+      --dark: #f8f9ff;
+      --card-bg: rgba(30, 30, 46, 0.8);
+      --text: #e2e8f0;
+      --text-light: #a0aec0;
+      --border: #2d3748;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, var(--light) 0%, #e8eaff 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+      transition: var(--transition);
+      line-height: 1.6;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+    }
+
+    .dashboard-header {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 25px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      animation: fadeInDown 0.6s ease-out;
+    }
+
+    .dashboard-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 25px;
+      transition: var(--transition);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeInUp 0.6s ease-out forwards;
+    }
+
+    .dashboard-card:nth-child(1) { animation-delay: 0.1s; }
+    .dashboard-card:nth-child(2) { animation-delay: 0.2s; }
+    .dashboard-card:nth-child(3) { animation-delay: 0.3s; }
+    .dashboard-card:nth-child(4) { animation-delay: 0.4s; }
+
+    .dashboard-card:hover {
+      transform: translateY(-8px) scale(1.01);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .dashboard-card .card-header {
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      padding: 20px 25px;
+      font-size: 1.1rem;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .dashboard-card .card-body {
+      padding: 25px;
+    }
+
+    .nav-tabs {
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 25px;
+    }
+
+    .nav-tabs .nav-link {
+      border: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      font-weight: 500;
+      padding: 15px 25px;
+      color: var(--text-light);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .nav-tabs .nav-link::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--primary);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: transparent;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-tabs .nav-link.active::before {
+      transform: scaleX(1);
+    }
+
+    .content-section {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 25px;
+      margin-top: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    .action-btn {
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: var(--transition);
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      border: none;
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .action-btn::after {
+      content: "";
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform 0.3s ease;
+    }
+
+    .action-btn:hover::after {
+      transform: scaleX(1);
+      transform-origin: left;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+
+    .action-links a, .action-links button {
+      font-size: 13px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      margin-left: 5px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .edit { background: var(--success); color: white; }
+    .edit:hover { background: var(--success-dark); transform: translateY(-2px); }
+    .delete { background: var(--danger); color: white; }
+    .delete:hover { background: var(--danger-dark); transform: translateY(-2px); }
+
+    /* User Management */
+    .user-management .card-header { 
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+    .user-management .btn { 
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      border: none;
+      color: white;
+    }
+    .user-management .btn:hover { 
+      background: linear-gradient(135deg, var(--primary-dark) 0%, #2d44c9 100%);
+    }
+
+    /* Content Management */
+    .content-management .card-header { 
+      background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+      color: white;
+    }
+    .content-management .btn { 
+      background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+      border: none;
+      color: white;
+    }
+    .content-management .btn:hover { 
+      background: linear-gradient(135deg, var(--success-dark) 0%, #2e9c68 100%);
+    }
+
+    /* Evaluations */
+    .evaluations .card-header { 
+      background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
+      color: white;
+    }
+    .evaluations .btn { 
+      background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
+      border: none;
+      color: white;
+    }
+    .evaluations .btn:hover { 
+      background: linear-gradient(135deg, var(--warning-dark) 0%, #d9a215 100%);
+    }
+
+    /* Administration */
+    .administration .card-header { 
+      background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
+      color: white;
+    }
+    .administration .btn { 
+      background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
+      border: none;
+      color: white;
+    }
+    .administration .btn:hover { 
+      background: linear-gradient(135deg, var(--danger-dark) 0%, #c44545 100%);
+    }
+
+    .stats-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      text-align: center;
+      margin-bottom: 20px;
+      transition: var(--transition);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stats-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--success));
+    }
+
+    .stats-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .stats-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 5px;
+    }
+
+    .stats-label {
+      font-size: 0.9rem;
+      color: var(--text-light);
+      font-weight: 500;
+    }
+
+    .lang-selector {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      padding: 10px 15px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .theme-toggle {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: var(--transition);
+      margin-left: 10px;
+    }
+
+    .theme-toggle:hover {
+      transform: rotate(15deg);
+    }
+
+    .content-item {
+      padding: 15px;
+      border-left: 4px solid var(--primary);
+      background: rgba(67, 97, 238, 0.05);
+      margin-bottom: 10px;
+      border-radius: 0 8px 8px 0;
+      transition: var(--transition);
+    }
+
+    .content-item:hover {
+      background: rgba(67, 97, 238, 0.1);
+      transform: translateX(5px);
+    }
+
+    .accordion-button:not(.collapsed) { 
+      background-color: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+      box-shadow: none;
+    }
+
+    .accordion-button { 
+      font-weight: 600;
+      padding: 15px 20px;
+    }
+
+    .accordion-button:focus {
+      box-shadow: none;
+      border-color: var(--primary);
+    }
+
+    .badge-pill {
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .search-box {
+      position: relative;
+      margin-bottom: 25px;
+    }
+
+    .search-box input {
+      border-radius: 30px;
+      padding: 12px 20px 12px 45px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .search-box input:focus {
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+      border-color: var(--primary);
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 15px;
+      }
+      
+      .dashboard-header {
+        padding: 20px;
+      }
+      
+      .stats-number {
+        font-size: 2rem;
+      }
+      
+      .nav-tabs .nav-link {
+        padding: 12px 15px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header avec sélecteur de langue et thème -->
+  <div class="dashboard-header">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <h1 class="h3 mb-1">{% if lang == 'en' %}🛠️ Admin Dashboard{% else %}🛠️ Tableau de Bord Administrateur{% endif %}</h1>
+        <p class="text-muted mb-0">{% if lang == 'en' %}Manage your educational platform{% else %}Gérez votre plateforme éducative{% endif %}</p>
+      </div>
+      <div class="col-md-6 text-end">
+        <div class="d-flex justify-content-end align-items-center">
+          <div class="search-box me-3">
+            <i class="fas fa-search"></i>
+            <input type="text" class="form-control" placeholder="{% if lang == 'en' %}Search...{% else %}Rechercher...{% endif %}" id="searchInput">
+          </div>
+          <div class="lang-selector d-inline-block me-2">
+            <form method="POST" action="/changer-langue" class="d-flex align-items-center">
+              <label for="lang" class="me-2">🌍</label>
+              <select name="lang" id="lang" onchange="this.form.submit()" class="form-select form-select-sm border-0 bg-transparent">
+                <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+                <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+              </select>
+              <input type="hidden" name="redirect_page" value="admin_dashboard">
+            </form>
+          </div>
+          <div class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cartes de statistiques rapides -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="stats-card">
+        <div class="stats-number">{{ stats.enseignants_count if stats else '24' }}</div>
+        <div class="stats-label">{% if lang == 'en' %}Teachers{% else %}Enseignants{% endif %}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stats-card">
+        <div class="stats-number">{{ stats.eleves_count if stats else '156' }}</div>
+        <div class="stats-label">{% if lang == 'en' %}Students{% else %}Élèves{% endif %}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stats-card">
+        <div class="stats-number">{{ stats.lecons_count if stats else '42' }}</div>
+        <div class="stats-label">{% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stats-card">
+        <div class="stats-number">{{ stats.tests_count if stats else '18' }}</div>
+        <div class="stats-label">{% if lang == 'en' %}Tests{% else %}Tests{% endif %}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation par onglets -->
+  <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="actions-tab" data-bs-toggle="tab" data-bs-target="#actions" type="button" role="tab">
+        <i class="fas fa-tachometer-alt me-2"></i>{% if lang == 'en' %}Quick Actions{% else %}Actions Rapides{% endif %}
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab">
+        <i class="fas fa-sitemap me-2"></i>{% if lang == 'en' %}Content Structure{% else %}Structure du Contenu{% endif %}
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+        <i class="fas fa-chart-bar me-2"></i>{% if lang == 'en' %}Analytics{% else %}Analytiques{% endif %}
+      </button>
+    </li>
+  </ul>
+
+  <!-- Contenu des onglets -->
+  <div class="tab-content" id="adminTabsContent">
+    <!-- Onglet Actions Rapides -->
+    <div class="tab-pane fade show active" id="actions" role="tabpanel">
+      <div class="row mt-4">
+        <!-- Gestion des Utilisateurs -->
+        <div class="col-md-6">
+          <div class="dashboard-card user-management">
+            <div class="card-header d-flex align-items-center">
+              <i class="fas fa-users me-2"></i>
+              {% if lang == 'en' %}User Management{% else %}Gestion des Utilisateurs{% endif %}
+            </div>
+            <div class="card-body d-grid gap-2">
+              <a href="/inscription-enseignant" class="btn action-btn">
+                <i class="fas fa-plus-circle"></i>
+                {% if lang == 'en' %}Add Teacher{% else %}Ajouter un Enseignant{% endif %}
+              </a>
+              <a href="/admin/creer-eleve" class="btn action-btn">
+                <i class="fas fa-plus-circle"></i>
+                {% if lang == 'en' %}Add Student{% else %}Ajouter un Élève{% endif %}
+              </a>
+              <a href="/admin-enseignants" class="btn action-btn">
+                <i class="fas fa-user-edit"></i>
+                {% if lang == 'en' %}Manage Teachers{% else %}Gérer les Enseignants{% endif %}
+              </a>
+              <a href="/admin/eleves" class="btn action-btn">
+                <i class="fas fa-user-graduate"></i>
+                {% if lang == 'en' %}Manage Students{% else %}Gérer les Élèves{% endif %}
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gestion des Contenus -->
+        <div class="col-md-6">
+          <div class="dashboard-card content-management">
+            <div class="card-header d-flex align-items-center">
+              <i class="fas fa-book me-2"></i>
+              {% if lang == 'en' %}Content Management{% else %}Gestion des Contenus{% endif %}
+            </div>
+            <div class="card-body d-grid gap-2">
+              <a href="/admin/ajouter-niveau" class="btn action-btn">
+                <i class="fas fa-layer-group"></i>
+                {% if lang == 'en' %}Add Level{% else %}Ajouter un Niveau{% endif %}
+              </a>
+              <a href="/admin/ajouter-matiere" class="btn action-btn">
+                <i class="fas fa-book-open"></i>
+                {% if lang == 'en' %}Add Subject{% else %}Ajouter une Matière{% endif %}
+              </a>
+              <a href="/admin/ajouter-unite" class="btn action-btn">
+                <i class="fas fa-cube"></i>
+                {% if lang == 'en' %}Add Unit{% else %}Ajouter une Unité{% endif %}
+              </a>
+              <a href="/admin/ajouter-lecon" class="btn action-btn">
+                <i class="fas fa-file-alt"></i>
+                {% if lang == 'en' %}Add Lesson{% else %}Ajouter une Leçon{% endif %}
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Évaluations -->
+        <div class="col-md-6">
+          <div class="dashboard-card evaluations">
+            <div class="card-header d-flex align-items-center">
+              <i class="fas fa-clipboard-check me-2"></i>
+              {% if lang == 'en' %}Evaluations{% else %}Évaluations{% endif %}
+            </div>
+            <div class="card-body d-grid gap-2">
+              <a href="/admin/ajouter-exercice" class="btn action-btn">
+                <i class="fas fa-edit"></i>
+                {% if lang == 'en' %}Add Exercise{% else %}Ajouter un Exercice{% endif %}
+              </a>
+              <a href="/admin/exercices" class="btn action-btn">
+                <i class="fas fa-list"></i>
+                {% if lang == 'en' %}Manage Exercises{% else %}Gérer les Exercices{% endif %}
+              </a>
+              <a href="/admin/creer-exercice-ia" class="btn action-btn">
+                <i class="fas fa-robot"></i>
+                {% if lang == 'en' %}Generate Exercises (AI){% else %}Générer des Exercices (IA){% endif %}
+              </a>
+              <a href="/admin/ajouter-test" class="btn action-btn">
+                <i class="fas fa-vial"></i>
+                {% if lang == 'en' %}Add Summative Test{% else %}Ajouter un Test Sommatif{% endif %}
+              </a>
+              <a href="/admin/creer-test-sommatif-ia" class="btn action-btn">
+                <i class="fas fa-magic"></i>
+                {% if lang == 'en' %}Generate Summative Test (AI){% else %}Générer un Test Sommatif (IA){% endif %}
+              </a>
+              <a href="/admin/tests" class="btn action-btn">
+                <i class="fas fa-list"></i>
+                {% if lang == 'en' %}View All Tests{% else %}Voir tous les Tests{% endif %}
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Administration -->
+        <div class="col-md-6">
+          <div class="dashboard-card administration">
+            <div class="card-header d-flex align-items-center">
+              <i class="fas fa-cogs me-2"></i>
+              {% if lang == 'en' %}Administration{% else %}Administration{% endif %}
+            </div>
+            <div class="card-body d-grid gap-2">
+              <a href="/logout" class="btn action-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                {% if lang == 'en' %}Logout{% else %}Déconnexion{% endif %}
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Onglet Structure du Contenu -->
+    <div class="tab-pane fade" id="content" role="tabpanel">
+      <div class="content-section mt-4">
+        <h4 class="mb-3">{% if lang == 'en' %}Content Hierarchy{% else %}Hiérarchie du Contenu{% endif %}</h4>
+        
+        <div class="accordion" id="contentAccordion">
+          {% for niveau in niveaux %}
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingNiveau{{ niveau.id }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau{{ niveau.id }}">
+                  <i class="fas fa-layer-group me-2 text-primary"></i>
+                  {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
+                  <span class="badge bg-primary badge-pill ms-2">{{ niveau.matieres|length }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}</span>
+                </button>
+              </h2>
+              <div id="collapseNiveau{{ niveau.id }}" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  {% for matiere in niveau.matieres %}
+                    <div class="mb-3">
+                      <h5 class="text-success d-flex align-items-center">
+                        <i class="fas fa-book me-2"></i>
+                        {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
+                        <span class="badge bg-success badge-pill ms-2">{{ matiere.unites|length }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
+                      </h5>
+                      
+                      {% for unite in matiere.unites %}
+                        <div class="ms-3 mb-2">
+                          <div class="content-item d-flex justify-content-between align-items-center">
+                            <div>
+                              <i class="fas fa-cube me-2 text-info"></i>
+                              <strong class="text-info">{{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}</strong>
+                            </div>
+                            <span class="action-links">
+                              <form method="POST" action="/admin/supprimer-unite/{{ unite.id }}" style="display:inline;" onsubmit="return confirm('Supprimer cette unité ?')">
+                                <button type="submit" class="delete"><i class="fas fa-trash"></i></button>
+                              </form>
+                            </span>
+                          </div>
+                          
+                          {% if unite.tests %}
+                            {% for test in unite.tests %}
+                              <div class="ms-3 mb-1">
+                                <div class="content-item d-flex justify-content-between align-items-center">
+                                  <div>
+                                    <i class="fas fa-vial me-2 text-warning"></i>
+                                    {% if lang == 'en' %}Summative Test #{{ test.id }}{% else %}Test Sommatif #{{ test.id }}{% endif %}
+                                  </div>
+                                  <span class="action-links">
+                                    <a class="edit" href="/admin/visualiser-test-sommatif/{{ test.id }}">
+                                      <i class="fas fa-eye"></i> {% if lang == 'en' %}View{% else %}Voir{% endif %}
+                                    </a>
+                                    <a class="edit" href="/admin/modifier-test/{{ test.id }}">
+                                      <i class="fas fa-edit"></i> {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
+                                    </a>
+                                  </span>
+                                </div>
+                              </div>
+                            {% endfor %}
+                          {% endif %}
+                          
+                          {% for lecon in unite.lecons %}
+                            <div class="ms-3 mb-1">
+                              <div class="content-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                  <div>
+                                    <i class="fas fa-file-alt me-2 text-secondary"></i>
+                                    {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                                    <span class="badge bg-secondary badge-pill ms-2">{{ lecon.exercices|length }} {% if lang == 'en' %}exercises{% else %}exercices{% endif %}</span>
+                                  </div>
+                                </div>
+                                
+                                {% for exercice in lecon.exercices %}
+                                  <div class="ms-4 mt-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                      <div>
+                                        <i class="fas fa-edit me-2 text-muted"></i>
+                                        {{ exercice.question_en[:60] if lang == 'en' else exercice.question_fr[:60] }}...
+                                      </div>
+                                      <span class="action-links">
+                                        <a class="edit" href="/admin/modifier-exercice/{{ exercice.id }}">
+                                          <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button class="delete" onclick="confirmDelete('{{ exercice.id }}')">
+                                          <i class="fas fa-trash"></i>
+                                        </button>
+                                      </span>
+                                    </div>
+                                  </div>
+                                {% endfor %}
+                              </div>
+                            </div>
+                          {% endfor %}
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Onglet Analytics -->
+    <div class="tab-pane fade" id="analytics" role="tabpanel">
+      <div class="content-section mt-4">
+        <h4 class="mb-3">{% if lang == 'en' %}Platform Analytics{% else %}Analytiques de la Plateforme{% endif %}</h4>
+        <div class="row">
+          <div class="col-md-8">
+            <div class="dashboard-card">
+              <div class="card-header d-flex align-items-center">
+                <i class="fas fa-chart-line me-2"></i>
+                {% if lang == 'en' %}Usage Statistics{% else %}Statistiques d'Utilisation{% endif %}
+              </div>
+              <div class="card-body">
+                <!-- Graphique dynamique des élèves par niveau -->
+                <canvas id="chartElevesParNiveau" height="120"></canvas>
+
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <script>
+                  const ctx = document.getElementById('chartElevesParNiveau');
+
+                  const data = {
+                    labels: {{ eleves_par_niveau|map(attribute=0)|list|tojson }},
+                    datasets: [{
+                      label: '{{ "Nombre d\'élèves par niveau" if lang == "fr" else "Students per level" }}',
+                      data: {{ eleves_par_niveau|map(attribute=1)|list|tojson }},
+                      backgroundColor: [
+                        '#4361ee', '#3fba83', '#fcc419', '#e85959', '#17a2b8', '#9b59b6', '#ff6b6b'
+                      ],
+                      borderWidth: 1
+                    }]
+                  };
+
+                  new Chart(ctx, {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          display: false
+                        },
+                        title: {
+                          display: true,
+                          text: '{{ "Répartition des élèves par niveau" if lang == "fr" else "Students per level" }}',
+                          font: { size: 18 }
+                        }
+                      },
+                      scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                      }
+                    }
+                  });
+                </script>
+
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="dashboard-card">
+              <div class="card-header d-flex align-items-center">
+                <i class="fas fa-bell me-2"></i>
+                {% if lang == 'en' %}Recent Activity{% else %}Activité Récente{% endif %}
+              </div>
+              <div class="card-body">
+                <div class="activity-list">
+                  <div class="activity-item d-flex mb-3">
+                    <div class="activity-icon bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                      <i class="fas fa-user-plus text-white"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0">{% if lang == 'en' %}New teacher registered{% else %}Nouvel enseignant inscrit{% endif %}</p>
+                      <small class="text-muted">2 hours ago</small>
+                    </div>
+                  </div>
+                  <div class="activity-item d-flex mb-3">
+                    <div class="activity-icon bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                      <i class="fas fa-book text-white"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0">{% if lang == 'en' %}New lesson added{% else %}Nouvelle leçon ajoutée{% endif %}</p>
+                      <small class="text-muted">5 hours ago</small>
+                    </div>
+                  </div>
+                  <div class="activity-item d-flex mb-3">
+                    <div class="activity-icon bg-warning rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                      <i class="fas fa-vial text-white"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0">{% if lang == 'en' %}New test created{% else %}Nouveau test créé{% endif %}</p>
+                      <small class="text-muted">Yesterday</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function confirmDelete(exerciceId) {
+      Swal.fire({
+        title: '{{ "Supprimer ?" if lang != "en" else "Delete?" }}',
+        text: '{{ "Cette action est irréversible." if lang != "en" else "This action cannot be undone." }}',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e74c3c',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '{{ "Oui, supprimer" if lang != "en" else "Yes, delete" }}',
+        cancelButtonText: '{{ "Annuler" if lang != "en" else "Cancel" }}'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          fetch('/admin/supprimer-exercice/' + exerciceId, { method: 'POST' })
+            .then(response => {
+              if (response.redirected) {
+                window.location.href = response.url;
+              } else {
+                Swal.fire('Erreur', 'Une erreur est survenue.', 'error');
+              }
+            });
+        }
+      });
+    }
+    
+    // Gestion du thème
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = themeToggle.querySelector('i');
+    
+    // Vérifier le thème sauvegardé ou la préférence système
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+    
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateThemeIcon(newTheme);
+    });
+    
+    function updateThemeIcon(theme) {
+      if (theme === 'dark') {
+        themeIcon.className = 'fas fa-sun';
+      } else {
+        themeIcon.className = 'fas fa-moon';
+      }
+    }
+    
+    // Recherche dans le contenu
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', function() {
+      const searchTerm = this.value.toLowerCase();
+      
+      // Implémentation basique de recherche - à améliorer selon les besoins
+      if (searchTerm.length > 2) {
+        // Logique de recherche à implémenter
+        console.log('Recherche:', searchTerm);
+      }
+    });
+    
+    // Initialisation des tooltips Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Animation au chargement
+    document.addEventListener('DOMContentLoaded', function() {
+      // Ajouter une classe pour déclencher les animations
+      document.body.classList.add('loaded');
+    });
+  </script>
+</body>
+</html>

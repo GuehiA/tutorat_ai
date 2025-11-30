@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <!-- Favicon VirtuEduc -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+    <meta name="msapplication-TileColor" content="#4361ee">
+    <meta name="theme-color" content="#4361ee">
+    <title>Changer le mot de passe</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 40px; }
+        .form-container {
+            background: #fff; padding: 30px; max-width: 500px; margin: auto;
+            border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2 { text-align: center; color: #333; }
+        label { display: block; margin-top: 15px; font-weight: bold; }
+        input[type="password"] {
+            width: 100%; padding: 10px; margin-top: 5px;
+            border: 1px solid #ccc; border-radius: 5px;
+        }
+        button {
+            margin-top: 20px; width: 100%; padding: 12px;
+            background: #3498db; color: white; border: none;
+            border-radius: 5px; font-size: 16px; cursor: pointer;
+        }
+        button:hover { background: #2980b9; }
+        .back-link {
+            display: block; text-align: center; margin-top: 20px;
+        }
+        .flash-message {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        .succès { background-color: #2ecc71; }
+        .erreur { background-color: #e74c3c; }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>🔒 Changer votre mot de passe</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <label for="ancien_mdp">Mot de passe actuel</label>
+        <input type="password" id="ancien_mdp" name="ancien_mdp" required>
+
+        <label for="nouveau_mdp">Nouveau mot de passe</label>
+        <input type="password" id="nouveau_mdp" name="nouveau_mdp" required>
+
+        <label for="confirmation_mdp">Confirmez le nouveau mot de passe</label>
+        <input type="password" id="confirmation_mdp" name="confirmation_mdp" required>
+
+        <button type="submit">Mettre à jour</button>
+    </form>
+
+    <div class="back-link">
+        <a href="/dashboard-enseignant">← Retour au tableau de bord</a>
+    </div>
+</div>
+
+</body>
+</html>

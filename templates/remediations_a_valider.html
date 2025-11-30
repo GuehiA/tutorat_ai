@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{{ 'Remédiations à valider' if lang == 'fr' else 'Remediations to validate' }}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --border-radius: 12px;
+      --box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 40px;
+      max-width: 1000px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--warning), var(--success));
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      color: var(--secondary);
+      font-size: 2.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 10px;
+    }
+
+    h2 i {
+      color: var(--warning);
+      font-size: 2.5rem;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+    }
+
+    .stats-card {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border-radius: var(--border-radius);
+      padding: 20px;
+      margin-bottom: 30px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .stats-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stats-label {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    .remediations-grid {
+      display: grid;
+      gap: 25px;
+      margin-bottom: 40px;
+    }
+
+    .remediation-card {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      border: 1px solid #e9ecef;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .remediation-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .remediation-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 5px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--primary), var(--warning));
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      gap: 15px;
+    }
+
+    .student-info {
+      flex: 1;
+    }
+
+    .student-name {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--secondary);
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .student-name i {
+      color: var(--primary);
+    }
+
+    .meta-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    .meta-tag {
+      background: var(--light);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--gray);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .meta-tag i {
+      color: var(--primary);
+    }
+
+    .card-content {
+      margin: 20px 0;
+    }
+
+    .content-section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--secondary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title i {
+      color: var(--primary);
+      width: 16px;
+    }
+
+    .message-content, .exercise-content {
+      background: var(--light);
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .exercise-content {
+      background: #fff9e6;
+      border-left-color: var(--warning);
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #219150);
+      color: white;
+    }
+
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(39, 174, 96, 0.3);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray);
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      color: #e9ecef;
+      margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+      color: var(--secondary);
+      margin-bottom: 10px;
+      font-size: 1.5rem;
+    }
+
+    .empty-state p {
+      font-size: 1.1rem;
+      margin-bottom: 25px;
+    }
+
+    .navigation {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 30px;
+      border-top: 2px solid #e9ecef;
+    }
+
+    .btn-back {
+      background: linear-gradient(135deg, var(--secondary), #1a252f);
+      color: white;
+      padding: 12px 30px;
+      font-size: 1rem;
+    }
+
+    .btn-back:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(44, 62, 80, 0.3);
+    }
+
+    .priority-badge {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: linear-gradient(135deg, var(--warning), #e67e22);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .remediation-card {
+      animation: fadeIn 0.6s ease;
+    }
+
+    .remediation-card:nth-child(even) {
+      animation-delay: 0.1s;
+    }
+
+    .remediation-card:nth-child(odd) {
+      animation-delay: 0.2s;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 10px;
+      }
+
+      .container {
+        padding: 25px 20px;
+      }
+
+      h2 {
+        font-size: 1.8rem;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .meta-info {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .card-actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h2 {
+        font-size: 1.5rem;
+      }
+
+      .stats-number {
+        font-size: 2rem;
+      }
+
+      .remediation-card {
+        padding: 20px 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h2>
+      <i class="fas fa-tools"></i>
+      {{ 'Remédiations à valider' if lang == 'fr' else 'Remediations to validate' }}
+    </h2>
+    <p class="subtitle">
+      {{ 'Gérez et validez les suggestions de remédiation de vos élèves' if lang == 'fr' else 'Manage and validate remediation suggestions from your students' }}
+    </p>
+  </div>
+
+  {% if remediations %}
+    <div class="stats-card">
+      <div class="stats-number">{{ remediations|length }}</div>
+      <div class="stats-label">
+        {{ 'remédiation(s) en attente' if lang == 'fr' else 'remediation(s) pending' }}
+      </div>
+    </div>
+
+    <div class="remediations-grid">
+      {% for r in remediations %}
+        <div class="remediation-card">
+          <div class="priority-badge">
+            <i class="fas fa-clock"></i>
+            {{ 'À traiter' if lang == 'fr' else 'Pending' }}
+          </div>
+
+          <div class="card-header">
+            <div class="student-info">
+              <div class="student-name">
+                <i class="fas fa-user-graduate"></i>
+                {{ r.user.nom_complet }}
+              </div>
+              <div class="meta-info">
+                <div class="meta-tag">
+                  <i class="fas fa-tag"></i>
+                  {{ r.theme }}
+                </div>
+                <div class="meta-tag">
+                  <i class="fas fa-book"></i>
+                  {{ r.lecon }}
+                </div>
+                {% if r.date_soumission %}
+                <div class="meta-tag">
+                  <i class="fas fa-calendar"></i>
+                  {{ r.date_soumission.strftime('%d/%m/%Y') if lang == 'fr' else r.date_soumission.strftime('%m/%d/%Y') }}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="card-content">
+            <div class="content-section">
+              <div class="section-title">
+                <i class="fas fa-comment-dots"></i>
+                {{ 'Message' if lang == 'fr' else 'Message' }}
+              </div>
+              <div class="message-content">
+                {{ r.message }}
+              </div>
+            </div>
+
+            <div class="content-section">
+              <div class="section-title">
+                <i class="fas fa-lightbulb"></i>
+                {{ 'Exercice suggéré' if lang == 'fr' else 'Suggested exercise' }}
+              </div>
+              <div class="exercise-content">
+                {{ r.exercice_suggere }}
+              </div>
+            </div>
+          </div>
+
+          <div class="card-actions">
+            <a href="{{ url_for('valider_remediation', remediation_id=r.id) }}" class="btn btn-success">
+              <i class="fas fa-check-circle"></i>
+              {{ 'Valider et répondre' if lang == 'fr' else 'Validate and reply' }}
+            </a>
+            <a href="{{ url_for('valider_remediation', remediation_id=r.id) }}?action=view" class="btn btn-primary">
+              <i class="fas fa-eye"></i>
+              {{ 'Voir les détails' if lang == 'fr' else 'View details' }}
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <i class="fas fa-inbox"></i>
+      <h3>{{ 'Aucune remédiation en attente' if lang == 'fr' else 'No pending remediations' }}</h3>
+      <p>
+        {{ 'Toutes les remédiations ont été traitées. Vous serez notifié lorsque de nouvelles suggestions arriveront.' if lang == 'fr' else 'All remediations have been processed. You will be notified when new suggestions arrive.' }}
+      </p>
+      <div class="card-actions" style="justify-content: center; border-top: none; padding-top: 0;">
+        <a href="{{ url_for('dashboard_enseignant') }}" class="btn btn-primary">
+          <i class="fas fa-sync"></i>
+          {{ 'Actualiser' if lang == 'fr' else 'Refresh' }}
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="navigation">
+    <a href="{{ url_for('dashboard_enseignant') }}" class="btn btn-back">
+      <i class="fas fa-arrow-left"></i>
+      {{ 'Retour au tableau de bord' if lang == 'fr' else 'Back to dashboard' }}
+    </a>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Animation d'apparition progressive
+    const cards = document.querySelectorAll('.remediation-card');
+    cards.forEach((card, index) => {
+      card.style.animationDelay = `${index * 0.1}s`;
+    });
+
+    // Effet de survol amélioré
+    cards.forEach(card => {
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-3px)';
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

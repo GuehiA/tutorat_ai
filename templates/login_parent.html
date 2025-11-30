@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon VirtuEduc -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon-ico') }}">
+    <meta name="msapplication-TileColor" content="#4361ee">
+    <meta name="theme-color" content="#4361ee">
+    <title>{% if lang == 'en' %}Parent Login{% else %}Connexion Parent{% endif %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #2c3e50;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --border-radius: 16px;
+            --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .lang-switch {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            z-index: 100;
+        }
+
+        .lang-switch form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lang-switch label {
+            margin: 0;
+            font-size: 1.4rem;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .lang-switch select {
+            padding: 10px 14px;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.9);
+            cursor: pointer;
+            transition: var(--transition);
+            width: auto;
+            backdrop-filter: blur(10px);
+        }
+
+        .lang-switch select:focus {
+            outline: none;
+            border-color: white;
+            background: white;
+            box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
+        }
+        
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: var(--border-radius);
+            padding: 50px 40px;
+            box-shadow: var(--box-shadow);
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary), #764ba2);
+        }
+        
+        h1 {
+            color: var(--secondary);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        
+        h1 i {
+            background: linear-gradient(135deg, var(--primary), #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+            text-align: left;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--secondary);
+            font-size: 0.95rem;
+        }
+
+        .input-container {
+            position: relative;
+        }
+        
+        input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid rgba(52, 152, 219, 0.1);
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            transition: var(--transition);
+            background: rgba(255, 255, 255, 0.8);
+            font-family: inherit;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 8px 24px rgba(52, 152, 219, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            transition: var(--transition);
+        }
+
+        input:focus + .input-icon {
+            color: var(--primary);
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 8px 24px rgba(52, 152, 219, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(52, 152, 219, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .info-box {
+            background: #e8f4fc;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-top: 25px;
+            text-align: left;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .info-box h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1rem;
+        }
+
+        .info-box p {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: var(--secondary);
+        }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 25px;
+            text-decoration: none;
+            color: #6c757d;
+            font-weight: 500;
+            transition: var(--transition);
+            padding: 10px;
+            border-radius: var(--border-radius);
+        }
+
+        .back-link:hover {
+            color: var(--primary);
+            background: rgba(52, 152, 219, 0.05);
+        }
+
+        @media (max-width: 576px) {
+            .login-container {
+                padding: 40px 25px;
+            }
+            
+            .lang-switch {
+                position: relative;
+                top: 0;
+                right: 0;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            
+            h1 {
+                font-size: 1.7rem;
+            }
+            
+            h1 i {
+                font-size: 2rem;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-container {
+            animation: fadeInUp 0.6s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sélecteur de langue -->
+    <div class="lang-switch">
+        <form method="POST" action="/changer-langue">
+            <label for="lang">🌍</label>
+            <select name="lang" id="lang" onchange="this.form.submit()">
+                <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+                <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+            </select>
+            <input type="hidden" name="redirect_page" value="login_parent">
+        </form>
+    </div>
+
+    <div class="container">
+        <div class="login-container">
+            <h1>
+                <i class="fas fa-user-friends"></i>
+                {% if lang == 'en' %}Parent Login{% else %}Connexion Parent{% endif %}
+            </h1>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="
+                            padding: 16px;
+                            margin-bottom: 24px;
+                            border-radius: var(--border-radius);
+                            background: {% if category == 'success' %}#d4edda{% elif category == 'warning' %}#fff3cd{% else %}#f8d7da{% endif %};
+                            color: {% if category == 'success' %}#155724{% elif category == 'warning' %}#856404{% else %}#721c24{% endif %};
+                            border: 1px solid {% if category == 'success' %}#c3e6cb{% elif category == 'warning' %}#ffeaa7{% else %}#f5c6cb{% endif %};
+                            font-weight: 500;
+                        ">
+                            <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'warning' %}fa-exclamation-triangle{% else %}fa-exclamation-circle{% endif %}"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i>
+                        {% if lang == 'en' %}Email Address{% else %}Adresse email{% endif %}
+                    </label>
+                    <div class="input-container">
+                        <input type="email" id="email" name="email" required placeholder="{% if lang == 'en' %}your@email.com{% else %}votre@email.com{% endif %}">
+                        <div class="input-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit">
+                    <i class="fas fa-sign-in-alt"></i>
+                    {% if lang == 'en' %}Sign In{% else %}Se connecter{% endif %}
+                </button>
+            </form>
+            
+            <div class="info-box">
+                <h3>
+                    <i class="fas fa-info-circle"></i>
+                    {% if lang == 'en' %}How it works?{% else %}Comment ça marche ?{% endif %}
+                </h3>
+                <p>
+                    {% if lang == 'en' %}
+                        Use the email address you provided during your child's registration.
+                    {% else %}
+                        Utilisez l'adresse email que vous avez fournie lors de l'inscription de votre enfant.
+                    {% endif %}
+                </p>
+                <p>
+                    {% if lang == 'en' %}
+                        You will then be able to track the progress of all your children.
+                    {% else %}
+                        Vous pourrez ensuite suivre la progression de tous vos enfants.
+                    {% endif %}
+                </p>
+            </div>
+
+            <a class="back-link" href="{{ url_for('index') }}">
+                ← {% if lang == 'en' %}Back to Home{% else %}Retour à l'accueil{% endif %}
+            </a>
+        </div>
+    </div>
+</body>
+</html>

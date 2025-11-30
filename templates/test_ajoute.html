@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Test Added{% else %}Test ajouté{% endif %}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 50px;
+      text-align: center;
+    }
+    .confirmation {
+      background: white;
+      padding: 30px;
+      max-width: 500px;
+      margin: auto;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #2ecc71;
+    }
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 25px;
+    }
+    a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      text-decoration: none;
+      background-color: #3498db;
+      color: white;
+      border-radius: 5px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    a:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+    .btn-add {
+      background-color: #27ae60;
+    }
+    .btn-add:hover {
+      background-color: #219150;
+    }
+    .btn-dashboard {
+      background-color: #3498db;
+    }
+    .btn-dashboard:hover {
+      background-color: #2980b9;
+    }
+    .btn-view {
+      background-color: #9b59b6;
+    }
+    .btn-view:hover {
+      background-color: #8e44ad;
+    }
+    .test-info {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+      border-left: 4px solid #3498db;
+    }
+    .test-info p {
+      margin: 8px 0;
+      color: #2c3e50;
+    }
+  </style>
+</head>
+<body>
+  <div class="confirmation">
+    <h2>👌 {% if lang == 'en' %}Final test successfully saved!{% else %}Test sommatif enregistré avec succès !{% endif %}</h2>
+    
+    <!-- Informations sur le test créé -->
+    {% if test %}
+    <div class="test-info">
+      <p><strong>{% if lang == 'en' %}Test:{% else %}Test :{% endif %}</strong> {{ test.titre_fr }}</p>
+      <p><strong>{% if lang == 'en' %}Unit:{% else %}Unité :{% endif %}</strong> {{ test.unite.nom }}</p>
+      <p><strong>{% if lang == 'en' %}Duration:{% else %}Durée :{% endif %}</strong> {{ test.temps // 60 }} {% if lang == 'en' %}minutes{% else %}minutes{% endif %}</p>
+    </div>
+    {% endif %}
+
+    <div class="buttons">
+      {% if test %}
+      <a href="/admin/visualiser-test/{{ test.id }}" class="btn-view">
+        <i class="fas fa-eye"></i> 
+        {% if lang == 'en' %}View Test{% else %}Voir le test{% endif %}
+      </a>
+      {% endif %}
+      
+      <a href="/admin/ajouter-test" class="btn-add">
+        <i class="fas fa-plus"></i> 
+        {% if lang == 'en' %}Add another test{% else %}Ajouter un autre test{% endif %}
+      </a>
+      
+      <a href="{{ dashboard_url }}" class="btn-dashboard">
+        <i class="fas fa-home"></i> 
+        {% if lang == 'en' %}Back to dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Font Awesome pour les icônes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+</body>
+</html>

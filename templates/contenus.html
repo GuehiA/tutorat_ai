@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}📚 Educational Content{% else %}📚 Contenus pédagogiques{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- MathJax pour le rendu des formules mathématiques dans les exercices -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        ignoreHtmlClass: 'no-mathjax'
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
+
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --border-radius: 16px;
+      --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    h1 {
+      color: white;
+      font-size: 3rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    h1 i {
+      color: #f1c40f;
+      font-size: 3.5rem;
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.3rem;
+    }
+
+    .levels-grid {
+      display: grid;
+      gap: 30px;
+    }
+
+    .level-card {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 35px;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .level-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    }
+
+    .level-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
+    }
+
+    .level-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--light);
+    }
+
+    .level-icon {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    .level-title {
+      font-size: 1.8rem;
+      color: var(--secondary);
+      font-weight: 700;
+    }
+
+    .subjects-grid {
+      display: grid;
+      gap: 25px;
+    }
+
+    .subject-card {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 12px;
+      padding: 25px;
+      border-left: 4px solid var(--primary);
+      transition: var(--transition);
+    }
+
+    .subject-card:hover {
+      transform: translateX(5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .subject-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .subject-icon {
+      color: var(--primary);
+      font-size: 1.3rem;
+      width: 24px;
+    }
+
+    .subject-title {
+      font-size: 1.4rem;
+      color: var(--secondary);
+      font-weight: 600;
+    }
+
+    .units-grid {
+      display: grid;
+      gap: 20px;
+      margin-left: 20px;
+    }
+
+    .unit-card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      border-left: 4px solid var(--success);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+
+    .unit-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .unit-icon {
+      color: var(--success);
+      font-size: 1.1rem;
+    }
+
+    .unit-title {
+      font-size: 1.2rem;
+      color: var(--secondary);
+      font-weight: 600;
+    }
+
+    .lessons-list {
+      display: grid;
+      gap: 15px;
+      margin-left: 20px;
+    }
+
+    .lesson-card {
+      background: linear-gradient(135deg, #fff9e6, #ffeaa7);
+      border-radius: 8px;
+      padding: 18px;
+      border-left: 4px solid var(--warning);
+      transition: var(--transition);
+    }
+
+    .lesson-card:hover {
+      transform: translateX(3px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .lesson-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .lesson-icon {
+      color: var(--warning);
+      font-size: 1rem;
+    }
+
+    .lesson-title {
+      font-size: 1.1rem;
+      color: var(--secondary);
+      font-weight: 600;
+    }
+
+    .exercises-list {
+      display: grid;
+      gap: 10px;
+      margin-left: 20px;
+    }
+
+    .exercise-item {
+      background: white;
+      border-radius: 6px;
+      padding: 12px 15px;
+      border-left: 3px solid var(--danger);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      transition: var(--transition);
+    }
+
+    .exercise-item:hover {
+      transform: translateX(2px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .exercise-icon {
+      color: var(--danger);
+      font-size: 0.9rem;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .exercise-content {
+      flex: 1;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    /* Styles pour le rendu MathJax dans les exercices */
+    .math-content mjx-container {
+      display: inline-block !important;
+      margin: 2px 0 !important;
+    }
+
+    .math-content {
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .stats-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(52, 152, 219, 0.1);
+      color: var(--primary);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px;
+      color: var(--gray);
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+
+    .empty-state i {
+      font-size: 2rem;
+      color: #e9ecef;
+      margin-bottom: 10px;
+    }
+
+    .navigation {
+      text-align: center;
+      margin-top: 50px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+    }
+
+    /* Nouveau : Boutons d'action pour les leçons */
+    .lesson-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      border-radius: 8px;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-outline:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .level-card {
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .level-card:nth-child(even) {
+      animation-delay: 0.1s;
+    }
+
+    .level-card:nth-child(odd) {
+      animation-delay: 0.2s;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 15px;
+      }
+
+      h1 {
+        font-size: 2.2rem;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .level-card {
+        padding: 25px 20px;
+      }
+
+      .level-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+      }
+
+      .level-title {
+        font-size: 1.5rem;
+      }
+
+      .units-grid,
+      .lessons-list,
+      .exercises-list {
+        margin-left: 0;
+      }
+
+      .subject-card,
+      .unit-card,
+      .lesson-card {
+        padding: 20px;
+      }
+
+      .lesson-actions {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .level-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+      }
+
+      .subject-title {
+        font-size: 1.2rem;
+      }
+
+      .unit-title {
+        font-size: 1.1rem;
+      }
+
+      .lesson-title {
+        font-size: 1rem;
+      }
+    }
+
+    /* Indicateurs de progression */
+    .progress-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+
+    .progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .progress-dot.inactive {
+      background: #e9ecef;
+    }
+
+    /* État de chargement pour MathJax */
+    .math-loading {
+      opacity: 0.7;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- En-tête -->
+  <div class="header">
+    <h1>
+      <i class="fas fa-graduation-cap"></i>
+      {% if lang == 'en' %}Educational Content{% else %}Contenus pédagogiques{% endif %}
+    </h1>
+    <p class="subtitle">
+      {% if lang == 'en' %}
+        Explore our comprehensive learning resources
+      {% else %}
+        Explorez nos ressources d'apprentissage complètes
+      {% endif %}
+    </p>
+  </div>
+
+  <!-- Grille des niveaux -->
+  <div class="levels-grid">
+    {% for niveau in niveaux %}
+      <div class="level-card">
+        <!-- En-tête du niveau -->
+        <div class="level-header">
+          <div class="level-icon">
+            <i class="fas fa-layer-group"></i>
+          </div>
+          <div>
+            <h2 class="level-title">
+              {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
+            </h2>
+            <div class="progress-indicator">
+              <span class="progress-dot"></span>
+              <span>
+                {% set total_matieres = niveau.matieres|length %}
+                {% set total_unites = namespace(count=0) %}
+                {% set total_lecons = namespace(count=0) %}
+                {% set total_exercices = namespace(count=0) %}
+                
+                {% for matiere in niveau.matieres %}
+                  {% for unite in matiere.unites %}
+                    {% set total_unites.count = total_unites.count + 1 %}
+                    {% for lecon in unite.lecons %}
+                      {% set total_lecons.count = total_lecons.count + 1 %}
+                      {% set total_exercices.count = total_exercices.count + lecon.exercices|length %}
+                    {% endfor %}
+                  {% endfor %}
+                {% endfor %}
+
+                {{ total_matieres }} {{ 'subjects' if lang == 'en' else 'matières' }} • 
+                {{ total_unites.count }} {{ 'units' if lang == 'en' else 'unités' }} • 
+                {{ total_lecons.count }} {{ 'lessons' if lang == 'en' else 'leçons' }} • 
+                {{ total_exercices.count }} {{ 'exercises' if lang == 'en' else 'exercices' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Matières -->
+        <div class="subjects-grid">
+          {% for matiere in niveau.matieres %}
+            <div class="subject-card">
+              <!-- En-tête matière -->
+              <div class="subject-header">
+                <i class="fas fa-book subject-icon"></i>
+                <h3 class="subject-title">
+                  {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
+                </h3>
+              </div>
+
+              <!-- Unités -->
+              <div class="units-grid">
+                {% for unite in matiere.unites %}
+                  <div class="unit-card">
+                    <!-- En-tête unité -->
+                    <div class="unit-header">
+                      <i class="fas fa-cube unit-icon"></i>
+                      <h4 class="unit-title">
+                        {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
+                      </h4>
+                      <span class="stats-badge">
+                        <i class="fas fa-list-ol"></i>
+                        {{ unite.lecons|length }} {{ 'lessons' if lang == 'en' else 'leçons' }}
+                      </span>
+                    </div>
+
+                    <!-- Leçons -->
+                    <div class="lessons-list">
+                      {% for lecon in unite.lecons %}
+                        <div class="lesson-card">
+                          <!-- En-tête leçon -->
+                          <div class="lesson-header">
+                            <i class="fas fa-file-alt lesson-icon"></i>
+                            <h5 class="lesson-title">
+                              {{ lecon.titre_en if lang == 'en' else lecon.titre_fr }}
+                            </h5>
+                            {% if lecon.exercices %}
+                              <span class="stats-badge">
+                                <i class="fas fa-pencil-alt"></i>
+                                {{ lecon.exercices|length }}
+                              </span>
+                            {% endif %}
+                          </div>
+
+                          <!-- Actions pour la leçon -->
+                          <div class="lesson-actions">
+                            <a href="{{ url_for('exercices_lecon', lecon_id=lecon.id, username=eleve.username, lang=lang) }}" 
+                               class="btn btn-small btn-outline">
+                              <i class="fas fa-play-circle"></i>
+                              {% if lang == 'en' %}Start Exercises{% else %}Commencer les exercices{% endif %}
+                            </a>
+                            {% if lecon.chemin_fichier %}
+                              <a href="{{ url_for('static', filename=lecon.chemin_fichier) }}" 
+                                 class="btn btn-small btn-outline" target="_blank">
+                                <i class="fas fa-file-pdf"></i>
+                                {% if lang == 'en' %}View PDF{% else %}Voir le PDF{% endif %}
+                              </a>
+                            {% endif %}
+                          </div>
+
+                          <!-- Exercices -->
+                          {% if lecon.exercices %}
+                            <div class="exercises-list">
+                              {% for ex in lecon.exercices %}
+                                <div class="exercise-item">
+                                  <i class="fas fa-question-circle exercise-icon"></i>
+                                  <div class="exercise-content math-content">
+                                    {{ (ex.question_en if lang == 'en' else ex.question_fr) | safe }}
+                                  </div>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          {% else %}
+                            <div class="empty-state">
+                              <i class="fas fa-inbox"></i>
+                              <p>
+                                {% if lang == 'en' %}
+                                  No exercises available
+                                {% else %}
+                                  Aucun exercice disponible
+                                {% endif %}
+                              </p>
+                            </div>
+                          {% endif %}
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Navigation -->
+  <div class="navigation">
+    <a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}" class="btn">
+      <i class="fas fa-arrow-left"></i>
+      {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+    </a>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    console.log('Page des contenus pédagogiques chargée');
+
+    // Animation d'apparition progressive
+    const levelCards = document.querySelectorAll('.level-card');
+    levelCards.forEach((card, index) => {
+      card.style.animationDelay = `${index * 0.2}s`;
+    });
+
+    // Traitement du contenu mathématique
+    function processMathContent() {
+      const mathElements = document.querySelectorAll('.math-content');
+      mathElements.forEach(element => {
+        let content = element.innerHTML;
+        
+        // Conversion des expressions mathématiques simples en LaTeX
+        content = content.replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}');
+        content = content.replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}');
+        content = content.replace(/(\w+)\^(\d+)/g, '$1^{$2}');
+        content = content.replace(/(\d+)%/g, '$1\\%');
+        
+        element.innerHTML = content;
+      });
+
+      // Redémarrer MathJax pour traiter le nouveau contenu
+      if (window.MathJax) {
+        MathJax.typesetPromise().catch(error => {
+          console.warn('MathJax typeset error:', error);
+        });
+      }
+    }
+
+    // Traiter le contenu mathématique après chargement
+    setTimeout(() => {
+      processMathContent();
+    }, 500);
+
+    // Effet de défilement doux pour les ancres
+    const links = document.querySelectorAll('a[href^="#"]');
+    links.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

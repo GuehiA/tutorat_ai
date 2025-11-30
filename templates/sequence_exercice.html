@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>
+    {% if lang == 'fr' %}
+      Exercice {{ index + 1 }} sur {{ total }}
+    {% else %}
+      Exercise {{ index + 1 }} of {{ total }}
+    {% endif %}
+  </title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- MathJax avec configuration robuste -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true,
+        tags: 'ams'
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        ignoreHtmlClass: 'tex-ignore',
+        processHtmlClass: 'math-content'
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            console.log('MathJax is ready');
+            // Traiter le contenu mathématique après le chargement
+            processMathContent();
+          }).catch(error => {
+            console.warn('MathJax initialization warning:', error);
+          });
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
+  
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2ecc71;
+      --secondary-dark: #27ae60;
+      --accent: #9b59b6;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #ecf0f1;
+      --dark: #2c3e50;
+      --gray: #95a5a6;
+      --white: #ffffff;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 15px 20px;
+      background: var(--white);
+      border-radius: 15px;
+      box-shadow: var(--shadow);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .logo i {
+      font-size: 2rem;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .lang-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-selector select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--gray);
+      background: var(--white);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .lang-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    .exercise-container {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: var(--shadow);
+      margin-bottom: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .exercise-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+    }
+
+    .progress-section {
+      margin-bottom: 30px;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .progress-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .progress-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--light);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--secondary), var(--primary));
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+
+    .exercise-header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--light);
+    }
+
+    .exercise-title {
+      font-size: 2rem;
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .exercise-meta {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray);
+      font-weight: 500;
+    }
+
+    .meta-item i {
+      color: var(--primary);
+    }
+
+    .question-section {
+      margin-bottom: 30px;
+    }
+
+    .question-label {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .question-text {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 12px;
+      padding: 25px;
+      line-height: 1.6;
+      font-size: 1.1rem;
+      border-left: 4px solid var(--primary);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Styles pour le rendu MathJax */
+    .math-content mjx-container {
+      display: inline-block;
+      margin: 0 2px;
+    }
+
+    .math-display {
+      text-align: center;
+      margin: 15px 0;
+      padding: 10px;
+    }
+
+    .math-inline {
+      display: inline;
+    }
+
+    .image-illustration {
+      margin: 25px 0;
+      text-align: center;
+    }
+
+    .image-illustration img {
+      max-width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border: 3px solid var(--white);
+    }
+
+    .answer-section {
+      margin-top: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    .answer-label {
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--dark);
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Zone de texte principale */
+    .text-input-section {
+      margin-bottom: 25px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 15px;
+      border: 2px solid var(--light);
+      border-radius: 10px;
+      resize: vertical;
+      font-size: 1rem;
+      font-family: inherit;
+      line-height: 1.5;
+      transition: var(--transition);
+      margin-bottom: 20px;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    /* Éditeur mathématique simplifié */
+    .math-input-section {
+      background: var(--light);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .math-input-label {
+      font-weight: 600;
+      margin-bottom: 15px;
+      display: block;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .math-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 15px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    .math-btn {
+      padding: 10px 15px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.1em;
+      font-weight: 600;
+    }
+
+    .math-btn:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .visual-editor {
+      min-height: 100px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      background: white;
+      line-height: 1.6;
+      font-size: 1.1rem;
+      font-family: inherit;
+    }
+
+    .visual-editor:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .help-text {
+      color: #6c757d;
+      font-size: 0.9em;
+      margin-top: 15px;
+      line-height: 1.4;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 30px;
+      background: var(--primary);
+      color: var(--white);
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-secondary {
+      background: var(--secondary);
+    }
+
+    .btn-secondary:hover {
+      background: var(--secondary-dark);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      margin-top: 25px;
+      flex-wrap: wrap;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px auto 0;
+      padding: 12px 25px;
+      background: transparent;
+      color: var(--dark);
+      border: 2px solid var(--dark);
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      width: fit-content;
+    }
+
+    .back-btn:hover {
+      background: var(--dark);
+      color: var(--white);
+    }
+
+    /* Styles pour le message d'attente */
+    .waiting-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .waiting-overlay.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .waiting-card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      transform: translateY(20px);
+      animation: slideUp 0.5s ease forwards;
+    }
+
+    .teacher-avatar {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+
+    .teacher-image {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 3rem;
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .thinking-animation {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      animation: pulse 2s infinite;
+    }
+
+    .waiting-title {
+      font-size: 1.8rem;
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .waiting-message {
+      font-size: 1.1rem;
+      color: var(--gray);
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    .loading-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+
+    .processing-steps {
+      text-align: left;
+      margin: 25px 0;
+      padding: 20px;
+      background: var(--light);
+      border-radius: 10px;
+    }
+
+    .processing-step {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .processing-step.active {
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .step-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    .processing-step.active .step-icon {
+      background: var(--primary);
+      color: white;
+    }
+
+    .step-text {
+      flex: 1;
+      color: var(--gray);
+    }
+
+    .processing-step.active .step-text {
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { 
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        transform: scale(0);
+      }
+      40% {
+        transform: scale(1);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .exercise-container {
+        padding: 25px;
+      }
+      
+      .exercise-title {
+        font-size: 1.6rem;
+      }
+      
+      .exercise-meta {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+      }
+      
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      
+      .progress-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+
+      .waiting-card {
+        padding: 30px 20px;
+        margin: 20px;
+      }
+
+      .teacher-avatar {
+        width: 100px;
+        height: 100px;
+      }
+
+      .teacher-image {
+        font-size: 2.5rem;
+      }
+
+      .math-toolbar {
+        justify-content: center;
+      }
+
+      .math-btn {
+        padding: 8px 12px;
+        font-size: 1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Overlay d'attente -->
+  <div class="waiting-overlay" id="waitingOverlay">
+    <div class="waiting-card">
+      <div class="teacher-avatar">
+        <div class="teacher-image">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div class="thinking-animation">
+          <i class="fas fa-brain"></i>
+        </div>
+      </div>
+      
+      <h2 class="waiting-title">
+        <i class="fas fa-hourglass-half"></i>
+        {% if lang == 'fr' %}
+          Enseignant Virtuel en train de réfléchir...
+        {% else %}
+          Virtual Teacher is thinking...
+        {% endif %}
+      </h2>
+      
+      <p class="waiting-message">
+        {% if lang == 'fr' %}
+          Notre enseignant virtuel analyse votre réponse et prépare une rétroaction personnalisée.
+        {% else %}
+          Our virtual teacher is analyzing your answer and preparing personalized feedback.
+        {% endif %}
+      </p>
+
+      <div class="loading-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+
+      <div class="processing-steps">
+        <div class="processing-step active" id="step1">
+          <div class="step-icon">1</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Analyse de votre réponse...
+            {% else %}
+              Analyzing your answer...
+            {% endif %}
+          </div>
+        </div>
+        <div class="processing-step" id="step2">
+          <div class="step-icon">2</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Vérification des étapes de résolution...
+            {% else %}
+              Checking solution steps...
+            {% endif %}
+          </div>
+        </div>
+        <div class="processing-step" id="step3">
+          <div class="step-icon">3</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Préparation de la rétroaction...
+            {% else %}
+              Preparing feedback...
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; font-size: 0.9rem; color: var(--gray);">
+        <i class="fas fa-clock"></i>
+        {% if lang == 'fr' %}
+          Cela peut prendre quelques secondes...
+        {% else %}
+          This may take a few seconds...
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <i class="fas fa-graduation-cap"></i>
+        <span>{% if lang == 'en' %}Learning Platform{% else %}Plateforme d'Apprentissage{% endif %}</span>
+      </div>
+      <div class="user-info">
+        <div class="avatar">
+          {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+        </div>
+        <div>
+          <strong>{{ eleve.nom_complet }}</strong>
+        </div>
+        <div class="lang-selector">
+          <form method="POST" action="/changer-langue">
+            <select name="lang" id="lang" onchange="this.form.submit()">
+              <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+              <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+            </select>
+            <input type="hidden" name="redirect_page" value="exercice_sequentiel_progressif">
+            <input type="hidden" name="username" value="{{ eleve.username }}">
+            <input type="hidden" name="lecon_id" value="{{ exercice.lecon.id }}">
+            <input type="hidden" name="index" value="{{ index }}">
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <!-- Conteneur de l'exercice -->
+    <div class="exercise-container">
+      <!-- Section de progression -->
+      <div class="progress-section">
+        <div class="progress-header">
+          <div class="progress-title">
+            {% if lang == 'fr' %}
+              Exercice {{ index + 1 }} sur {{ total }}
+            {% else %}
+              Exercise {{ index + 1 }} of {{ total }}
+            {% endif %}
+          </div>
+          <div class="progress-text">
+            {{ ((index + 1) / total * 100) | round | int }}%
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: {{ ((index + 1) / total * 100) | round | int }}%"></div>
+        </div>
+      </div>
+
+      <!-- En-tête de l'exercice -->
+      <div class="exercise-header">
+        <h1 class="exercise-title">
+          {% if lang == 'fr' %}
+            Exercice {{ index + 1 }}
+          {% else %}
+            Exercise {{ index + 1 }}
+          {% endif %}
+        </h1>
+        
+        <div class="exercise-meta">
+          {% if exercice.lecon and exercice.lecon.unite %}
+            <div class="meta-item">
+              <i class="fas fa-book"></i>
+              <span><strong>{% if lang == 'fr' %}Unité :{% else %}Unit:{% endif %}</strong> {{ exercice.lecon.unite.nom }}</span>
+            </div>
+          {% endif %}
+          
+          {% if exercice.lecon %}
+            <div class="meta-item">
+              <i class="fas fa-file-alt"></i>
+              <span><strong>{% if lang == 'fr' %}Leçon :{% else %}Lesson:{% endif %}</strong> 
+                {{ exercice.lecon.titre_fr if lang == 'fr' else exercice.lecon.titre_en or exercice.lecon.titre_fr }}
+              </span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Section de la question -->
+      <div class="question-section">
+        <div class="question-label">
+          <i class="fas fa-question-circle"></i>
+          {% if lang == 'fr' %}Énoncé :{% else %}Prompt:{% endif %}
+        </div>
+        <div class="question-text math-content" id="question-content">
+          {{ (exercice.question_fr if lang == 'fr' else exercice.question_en) | safe }}
+        </div>
+
+        {% if exercice.chemin_image %}
+          <div class="image-illustration">
+            <img src="{{ url_for('static', filename=exercice.chemin_image) }}" alt="Illustration">
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Formulaire de réponse -->
+      <form method="POST" action="/soumettre-sequentiel" id="answerForm">
+        <!-- Champs requis pour la route /soumettre-sequentiel -->
+        <input type="hidden" name="username" value="{{ eleve.username }}">
+        <input type="hidden" name="lang" value="{{ lang }}">
+        <input type="hidden" name="lecon_id" value="{{ exercice.lecon.id }}">
+        <input type="hidden" name="exercice_id" value="{{ exercice.id }}">
+        <input type="hidden" name="index" value="{{ index }}">
+
+        <div class="answer-section">
+          <div class="form-group">
+            <div class="answer-label">
+              <i class="fas fa-edit"></i>
+              {% if lang == 'fr' %}Votre réponse :{% else %}Your answer:{% endif %}
+            </div>
+            
+            <!-- Zone de texte principale -->
+            <div class="text-input-section">
+              <textarea 
+                name="reponse_eleve" 
+                id="reponse_eleve" 
+                placeholder="{% if lang == 'fr' %}Tapez votre réponse ici...{% else %}Type your answer here...{% endif %}"
+                required></textarea>
+            </div>
+
+            <!-- Éditeur mathématique simplifié -->
+            <div class="math-input-section">
+              <label class="math-input-label">
+                <i class="fas fa-square-root-variable"></i>
+                {% if lang == 'fr' %}Éditeur Mathématique{% else %}Mathematical Editor{% endif %}
+              </label>
+              
+              <!-- Barre d'outils mathématiques -->
+              <div class="math-toolbar">
+                <button type="button" class="math-btn" onclick="insertSymbol('²')">x²</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('³')">x³</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('√')">√</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('π')">π</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('∞')">∞</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('≠')">≠</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('≈')">≈</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('≤')">≤</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('≥')">≥</button>
+                <button type="button" class="math-btn" onclick="insertFraction()">½</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('α')">α</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('β')">β</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('θ')">θ</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
+              </div>
+
+              <!-- Éditeur visuel -->
+              <div 
+                class="visual-editor" 
+                contenteditable="true"
+                id="visualMathEditor"
+                placeholder="{% if lang == 'fr' %}Écrivez votre réponse ici... Utilisez les boutons pour les symboles mathématiques.{% else %}Write your answer here... Use the buttons for math symbols.{% endif %}"
+              ></div>
+
+              <div class="help-text">
+                💡 <strong>{% if lang == 'fr' %}Conseil :{% else %}Tip:{% endif %}</strong> 
+                {% if lang == 'fr' %}
+                  Écrivez normalement et utilisez les boutons pour les symboles mathématiques. Votre réponse s'affiche automatiquement dans la zone de texte ci-dessus.
+                {% else %}
+                  Write normally and use the buttons for math symbols. Your answer appears automatically in the text area above.
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Bouton de soumission -->
+          <div class="action-buttons">
+            <button type="submit" class="btn" id="submitBtn">
+              <i class="fas fa-paper-plane"></i>
+              {% if lang == 'fr' %}Soumettre ma réponse{% else %}Submit answer{% endif %}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Bouton de retour -->
+    <a class="back-btn" href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}">
+      <i class="fas fa-arrow-left"></i>
+      {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to dashboard{% endif %}
+    </a>
+  </div>
+
+  <script>
+    let currentAnswer = '';
+
+    // Fonction pour traiter le contenu mathématique avec MathJax
+    function processMathContent() {
+      if (window.MathJax) {
+        MathJax.typesetPromise().then(() => {
+          console.log('MathJax content processed successfully');
+        }).catch((error) => {
+          console.warn('MathJax processing warning:', error);
+        });
+      }
+    }
+
+    // Fonctions pour l'éditeur mathématique simplifié
+    function insertSymbol(symbol) {
+      const editor = document.getElementById('visualMathEditor');
+      const selection = window.getSelection();
+      
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(symbol));
+      } else {
+        // Ajouter à la fin
+        editor.focus();
+        document.execCommand('insertText', false, symbol);
+      }
+      
+      // Mettre à jour la zone de texte
+      updateTextarea();
+    }
+
+    function insertFraction() {
+      const numerator = prompt('{% if lang == "fr" %}Numérateur :{% else %}Numerator:{% endif %}', '1');
+      const denominator = prompt('{% if lang == "fr" %}Dénominateur :{% else %}Denominator:{% endif %}', '2');
+      
+      if (numerator && denominator) {
+        insertSymbol(`${numerator}∕${denominator}`);
+      }
+    }
+
+    function updateTextarea() {
+      const editor = document.getElementById('visualMathEditor');
+      const textarea = document.getElementById('reponse_eleve');
+      
+      if (editor && textarea) {
+        const content = editor.innerHTML
+          .replace(/<div>/g, '\n')
+          .replace(/<\/div>/g, '')
+          .replace(/<br>/g, '\n')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/<[^>]*>/g, '');
+        
+        textarea.value = content;
+        currentAnswer = content;
+        
+        // Ajuster la hauteur du textarea
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+      }
+    }
+
+    // Gestion de la soumission du formulaire
+    function setupFormSubmission() {
+      const form = document.getElementById('answerForm');
+      const submitBtn = document.getElementById('submitBtn');
+      const waitingOverlay = document.getElementById('waitingOverlay');
+
+      if (form && submitBtn && waitingOverlay) {
+        form.addEventListener('submit', function(e) {
+          // Vérifier qu'une réponse a été saisie
+          if (!currentAnswer.trim()) {
+            e.preventDefault();
+            alert('{% if lang == "fr" %}Veuillez écrire votre réponse avant de soumettre !{% else %}Please write your answer before submitting!{% endif %}');
+            return;
+          }
+
+          // Empêcher la soumission normale
+          e.preventDefault();
+          
+          // Afficher l'overlay d'attente
+          waitingOverlay.classList.add('active');
+          
+          // Désactiver le bouton de soumission
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "fr" %}Soumission en cours...{% else %}Submitting...{% endif %}';
+          
+          // Animation des étapes de traitement
+          let currentStep = 1;
+          const stepInterval = setInterval(() => {
+            document.getElementById('step' + currentStep).classList.remove('active');
+            currentStep++;
+            if (currentStep <= 3) {
+              document.getElementById('step' + currentStep).classList.add('active');
+            } else {
+              clearInterval(stepInterval);
+            }
+          }, 1500);
+          
+          // Soumettre le formulaire après un court délai pour l'effet visuel
+          setTimeout(() => {
+            form.submit();
+          }, 2000);
+        });
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log('DOM loaded, initializing MathJax...');
+      
+      // Traiter le contenu mathématique après le chargement
+      setTimeout(processMathContent, 1000);
+
+      // Animation d'apparition
+      const elements = document.querySelectorAll('.exercise-container > *');
+      elements.forEach((element, index) => {
+        element.style.opacity = '0';
+        element.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+          element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+          element.style.opacity = '1';
+          element.style.transform = 'translateY(0)';
+        }, 100 * index);
+      });
+
+      // Mise à jour en temps réel de l'éditeur
+      const visualEditor = document.getElementById('visualMathEditor');
+      if (visualEditor) {
+        visualEditor.addEventListener('input', updateTextarea);
+        
+        // Focus sur l'éditeur
+        setTimeout(() => {
+          visualEditor.focus();
+        }, 500);
+      }
+
+      // Configurer la soumission du formulaire
+      setupFormSubmission();
+
+      // Retraiter MathJax après un délai supplémentaire pour s'assurer que tout est chargé
+      setTimeout(processMathContent, 2000);
+    });
+
+    // Réessayer MathJax si le contenu change
+    new MutationObserver(() => {
+      setTimeout(processMathContent, 100);
+    }).observe(document.body, { subtree: true, childList: true });
+  </script>
+</body>
+</html>

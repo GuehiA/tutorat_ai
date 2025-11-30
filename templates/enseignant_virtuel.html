@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{{ 'Enseignant virtuel' if lang == 'fr' else 'Virtual Teacher' }}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- MathJax pour l'affichage des formules mathématiques -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2ecc71;
+      --secondary-dark: #27ae60;
+      --accent: #9b59b6;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #ecf0f1;
+      --dark: #2c3e50;
+      --gray: #95a5a6;
+      --white: #ffffff;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 15px 20px;
+      background: var(--white);
+      border-radius: 15px;
+      box-shadow: var(--shadow);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .logo i {
+      font-size: 2rem;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .lang-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-selector select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--gray);
+      background: var(--white);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .lang-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    .chat-container {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: var(--shadow);
+      margin-bottom: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chat-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+    }
+
+    .chat-header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--light);
+    }
+
+    .teacher-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin: 0 auto 20px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      border: 4px solid var(--white);
+      position: relative;
+    }
+
+    .status-indicator {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--secondary);
+      border: 3px solid var(--white);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.7; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .chat-title {
+      font-size: 2.2rem;
+      color: var(--dark);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .chat-subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .question-form {
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .question-label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--dark);
+      font-size: 1.1rem;
+    }
+
+    .question-textarea {
+      width: 100%;
+      padding: 20px;
+      font-size: 1rem;
+      border: 2px solid var(--light);
+      border-radius: 12px;
+      resize: vertical;
+      min-height: 120px;
+      transition: var(--transition);
+      font-family: inherit;
+      line-height: 1.5;
+    }
+
+    .question-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .question-textarea::placeholder {
+      color: var(--gray);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 30px;
+      background: var(--primary);
+      color: var(--white);
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-block {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .response-section {
+      margin-top: 40px;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .response-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--light);
+    }
+
+    .response-icon {
+      font-size: 1.8rem;
+      color: var(--accent);
+    }
+
+    .response-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--dark);
+    }
+
+    .response-box {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 15px;
+      padding: 25px;
+      border-left: 5px solid var(--accent);
+      line-height: 1.7;
+      font-size: 1.05rem;
+      white-space: pre-wrap;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Style spécial pour les formules mathématiques */
+    .math-formula {
+      background: var(--white);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border: 1px solid var(--light);
+      text-align: center;
+      font-family: 'Times New Roman', serif;
+    }
+
+    .math-inline {
+      background: rgba(52, 152, 219, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Times New Roman', serif;
+    }
+
+    .teacher-signature {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #dee2e6;
+      color: var(--gray);
+      font-style: italic;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 30px auto 0;
+      padding: 12px 25px;
+      background: transparent;
+      color: var(--dark);
+      border: 2px solid var(--dark);
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      width: fit-content;
+    }
+
+    .back-btn:hover {
+      background: var(--dark);
+      color: var(--white);
+    }
+
+    .suggestions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 25px 0;
+    }
+
+    .suggestion-btn {
+      background: var(--light);
+      border: 2px solid transparent;
+      border-radius: 10px;
+      padding: 12px 15px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition);
+      text-align: left;
+      border: 1px solid var(--light);
+    }
+
+    .suggestion-btn:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+      border-color: var(--primary);
+    }
+
+    .conversation-history {
+      margin: 30px 0;
+      padding: 20px;
+      background: var(--light);
+      border-radius: 12px;
+    }
+
+    .history-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--dark);
+    }
+
+    .message {
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+      animation: slideIn 0.3s ease;
+    }
+
+    .user-message {
+      background: var(--primary);
+      color: white;
+      margin-left: 50px;
+      border-bottom-right-radius: 3px;
+    }
+
+    .teacher-message {
+      background: var(--white);
+      border: 1px solid var(--light);
+      margin-right: 50px;
+      border-bottom-left-radius: 3px;
+    }
+
+    .message-content {
+      line-height: 1.5;
+    }
+
+    .message-time {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 5px;
+      text-align: right;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .chat-container {
+        padding: 25px;
+      }
+      
+      .chat-title {
+        font-size: 1.8rem;
+      }
+      
+      .teacher-avatar {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+      }
+      
+      .suggestions {
+        grid-template-columns: 1fr;
+      }
+      
+      header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+      
+      .user-message {
+        margin-left: 20px;
+      }
+      
+      .teacher-message {
+        margin-right: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <i class="fas fa-graduation-cap"></i>
+        <span>{% if lang == 'en' %}Learning Platform{% else %}Plateforme d'Apprentissage{% endif %}</span>
+      </div>
+      <div class="user-info">
+        <div class="avatar">
+          {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+        </div>
+        <div>
+          <strong>{{ eleve.nom_complet }}</strong>
+        </div>
+        <div class="lang-selector">
+          <form method="POST" action="/changer-langue">
+            <select name="lang" id="lang" onchange="this.form.submit()">
+              <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+              <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+            </select>
+            <input type="hidden" name="redirect_page" value="enseignant_virtuel">
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <!-- Interface de chat -->
+    <div class="chat-container">
+      <!-- En-tête du chat -->
+      <div class="chat-header">
+        <div class="teacher-avatar">
+          <i class="fas fa-robot"></i>
+          <div class="status-indicator"></div>
+        </div>
+        <h1 class="chat-title">
+          {{ 'Enseignant Virtuel' if lang == 'fr' else 'Virtual Teacher' }}
+        </h1>
+        <p class="chat-subtitle">
+          {% if lang == 'fr' %}
+            Posez-moi toutes vos questions sur les concepts mathématiques, je suis là pour vous aider avec des explications claires et détaillées !
+          {% else %}
+            Ask me all your questions about mathematical concepts, I'm here to help you with clear and detailed explanations!
+          {% endif %}
+        </p>
+      </div>
+
+      <!-- Historique de conversation -->
+      {% if question and reponse %}
+      <div class="conversation-history">
+        <div class="history-title">
+          <i class="fas fa-history"></i>
+          {{ 'Conversation récente' if lang == 'fr' else 'Recent conversation' }}
+        </div>
+        
+        <div class="message user-message">
+          <div class="message-content">{{ question }}</div>
+          <div class="message-time">{{ 'Maintenant' if lang == 'fr' else 'Just now' }}</div>
+        </div>
+        
+        <div class="message teacher-message">
+          <div class="message-content" id="teacherResponse">
+            {{ reponse }}
+          </div>
+          <div class="message-time">{{ 'Maintenant' if lang == 'fr' else 'Just now' }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Suggestions de questions -->
+      <div class="suggestions">
+        <button type="button" class="suggestion-btn" onclick="setSuggestion(this)">
+          {% if lang == 'fr' %}💡 Explique-moi le théorème de Pythagore{% else %}💡 Explain the Pythagorean theorem to me{% endif %}
+        </button>
+        <button type="button" class="suggestion-btn" onclick="setSuggestion(this)">
+          {% if lang == 'fr' %}🔍 Comment résoudre une équation du second degré ?{% else %}🔍 How to solve a quadratic equation?{% endif %}
+        </button>
+        <button type="button" class="suggestion-btn" onclick="setSuggestion(this)">
+          {% if lang == 'fr' %}📐 Quelle est la différence entre périmètre et aire ?{% else %}📐 What's the difference between perimeter and area?{% endif %}
+        </button>
+      </div>
+
+      <!-- Formulaire de question -->
+      <form method="POST" class="question-form">
+        <div class="form-group">
+          <label for="question" class="question-label">
+            <i class="fas fa-question-circle"></i>
+            {{ 'Votre question' if lang == 'fr' else 'Your question' }}
+          </label>
+          <textarea 
+            name="question" 
+            id="question" 
+            class="question-textarea" 
+            placeholder="{% if lang == 'fr' %}Tapez votre question ici... Par exemple : Comment calculer la dérivée d'une fonction ?{% else %}Type your question here... For example: How to calculate the derivative of a function?{% endif %}"
+            required>{{ question or '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-block">
+          <i class="fas fa-paper-plane"></i>
+          {{ 'Envoyer ma question' if lang == 'fr' else 'Send my question' }}
+        </button>
+      </form>
+    </div>
+
+    <!-- Bouton de retour -->
+    <a class="back-btn" href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}">
+      <i class="fas fa-arrow-left"></i>
+      {{ 'Retour au tableau de bord' if lang == 'fr' else 'Back to dashboard' }}
+    </a>
+  </div>
+
+  <script>
+    // Fonction pour remplir les suggestions
+    function setSuggestion(button) {
+      const questionText = button.textContent.replace(/[💡🔍📐]/g, '').trim();
+      document.getElementById('question').value = questionText;
+      document.getElementById('question').focus();
+      
+      // Animation de feedback
+      button.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        button.style.transform = '';
+      }, 150);
+    }
+
+    // Animation d'apparition pour les messages
+    document.addEventListener('DOMContentLoaded', function() {
+      const messages = document.querySelectorAll('.message');
+      messages.forEach((message, index) => {
+        message.style.opacity = '0';
+        message.style.transform = 'translateX(-20px)';
+        
+        setTimeout(() => {
+          message.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+          message.style.opacity = '1';
+          message.style.transform = 'translateX(0)';
+        }, 100 * index);
+      });
+
+      // Auto-focus sur la zone de texte
+      document.getElementById('question').focus();
+
+      // Traitement des formules mathématiques dans la réponse
+      processMathFormulas();
+    });
+
+    // Auto-resize du textarea
+    document.getElementById('question').addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+
+// Fonction pour traiter et formater le Markdown et les formules mathématiques
+function processMathFormulas() {
+    const teacherResponse = document.getElementById('teacherResponse');
+    if (teacherResponse) {
+        let content = teacherResponse.innerHTML;
+        
+        // Échapper les caractères HTML pour éviter les conflits
+        content = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        // Traitement Markdown de base
+        content = processMarkdown(content);
+        
+        // Traitement des formules LaTeX
+        content = processLatex(content);
+        
+        teacherResponse.innerHTML = content;
+        
+        // Forcer MathJax à re-rendre
+        if (window.MathJax) {
+            MathJax.typesetPromise([teacherResponse]).catch((err) => console.log('MathJax error:', err));
+        }
+    }
+}
+
+// Fonction pour traiter le Markdown
+function processMarkdown(content) {
+    // Titres
+    content = content.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    content = content.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    content = content.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+    
+    // Gras
+    content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    content = content.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    
+    // Italique
+    content = content.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    content = content.replace(/_(.*?)_/g, '<em>$1</em>');
+    
+    // Code inline
+    content = content.replace(/`(.*?)`/g, '<code>$1</code>');
+    
+    // Listes non ordonnées
+    content = content.replace(/^\s*\- (.*$)/gim, '<li>$1</li>');
+    content = content.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    
+    // Listes ordonnées
+    content = content.replace(/^\s*\d+\. (.*$)/gim, '<li>$1</li>');
+    content = content.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
+    
+    // Citations
+    content = content.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
+    
+    // Lignes horizontales
+    content = content.replace(/^\-\-\-$/gim, '<hr>');
+    
+    // Retour à la ligne (2 espaces ou plus à la fin de la ligne)
+    content = content.replace(/  \n/g, '<br>');
+    
+    // Paragraphes (lignes vides)
+    content = content.replace(/\n\n/g, '</p><p>');
+    content = content.replace(/(.+)(?:\n|$)/g, '<p>$1</p>');
+    
+    return content;
+}
+
+// Fonction pour traiter LaTeX
+    function processLatex(content) {
+        // Formules en ligne avec \( ... \) - version échappée
+        content = content.replace(/\\\(([\s\S]*?)\\\)/g, '<span class="math-inline">\\($1\\)</span>');
+        
+        // Formules en ligne avec $ ... $ 
+        content = content.replace(/\$([^\$]+?)\$/g, '<span class="math-inline">\\($1\\)</span>');
+        
+        // Formules centrées avec \[ ... \] - version échappée
+        content = content.replace(/\\\[([\s\S]*?)\\\]/g, '<div class="math-formula">\\[$1\\]</div>');
+        
+        // Formules centrées avec $$ ... $$
+        content = content.replace(/\$\$([^\$]+?)\$\$/g, '<div class="math-formula">\\[$1\\]</div>');
+        
+        // Fractions simples format x/y
+        content = content.replace(/(\w+)\/(\w+)/g, function(match, num, den) {
+            return '<span class="math-inline">\\(\\\\frac{' + num + '}{' + den + '}\\)</span>';
+        });
+        
+        // Exposants et indices basiques
+        content = content.replace(/(\w+)\^(\d+)/g, '<span class="math-inline">\\($1^{$2}\\)</span>');
+        content = content.replace(/(\w+)_(\d+)/g, '<span class="math-inline">\\($1_{$2}\\)</span>');
+        
+        return content;
+    }
+
+    // Fonction utilitaire pour échapper les caractères spéciaux regex
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    }
+    // Re-process math formulas when MathJax is loaded
+    if (window.MathJax) {
+      MathJax.startup.promise.then(() => {
+        processMathFormulas();
+      });
+    }
+  </script>
+</body>
+</html>

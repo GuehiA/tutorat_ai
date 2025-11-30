@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon-ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{{ 'Exercice' if lang == 'en' else 'Exercice séquentiel' }}</title>
+  
+  <!-- ✅ Mathlive CSS et JS complets -->
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.css">
+  <script defer src="https://unpkg.com/mathlive/dist/mathlive.min.js"></script>
+  
+  <!-- MathJax avec configuration robuste -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\(', '\)']],
+        displayMath: [['$$', '$$'], ['\[', '\]']],
+        processEscapes: true,
+        processEnvironments: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        ignoreHtmlClass: 'no-mathjax'
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            console.log('MathJax configuration loaded successfully');
+          }).catch((error) => {
+            console.error('MathJax initialization error:', error);
+          });
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
+  
+  <style>
+    :root {
+      --primary: #4361ee;
+      --secondary: #3a0ca3;
+      --accent: #f72585;
+      --success: #4cc9f0;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --warning: #f9c74f;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--dark);
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+    }
+    
+    h2 {
+      text-align: center;
+      color: var(--secondary);
+      margin-bottom: 25px;
+      font-size: 2.2rem;
+      position: relative;
+      padding-bottom: 15px;
+    }
+    
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    
+    .header-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      background: var(--light);
+      padding: 15px 20px;
+      border-radius: 12px;
+      border-left: 4px solid var(--primary);
+    }
+    
+    .student-name {
+      font-weight: 600;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+    }
+    
+    .student-name i {
+      margin-right: 8px;
+      color: var(--primary);
+    }
+    
+    .lesson-title {
+      font-weight: 500;
+      color: var(--gray);
+    }
+    
+    .progress-container {
+      margin-bottom: 30px;
+    }
+    
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+    
+    .progress-bar {
+      background: var(--light-gray);
+      border-radius: 30px;
+      height: 16px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .progress-bar-fill {
+      background: linear-gradient(90deg, var(--primary), var(--success));
+      height: 100%;
+      width: 0%;
+      border-radius: 30px;
+      transition: width 0.5s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .progress-bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background-image: linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.2) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.2) 75%,
+        transparent 75%,
+        transparent
+      );
+      background-size: 20px 20px;
+      animation: move 1s linear infinite;
+    }
+    
+    @keyframes move {
+      0% { background-position: 0 0; }
+      100% { background-position: 20px 0; }
+    }
+    
+    .question-card {
+      background: var(--light);
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 25px;
+      border-left: 4px solid var(--accent);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    
+    .question-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .question-number {
+      background: var(--accent);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 15px;
+      box-shadow: 0 3px 8px rgba(247, 37, 133, 0.3);
+    }
+    
+    .question-text {
+      font-size: 1.2rem;
+      line-height: 1.5;
+      color: var(--dark);
+    }
+
+    /* Styles pour le rendu MathJax */
+    .math-content mjx-container {
+      display: inline-block;
+      margin: 0 2px;
+    }
+
+    .math-display {
+      text-align: center;
+      margin: 15px 0;
+      padding: 10px;
+    }
+
+    .math-inline {
+      display: inline;
+    }
+
+    /* Éditeur mathématique simplifié */
+    .unified-math-editor {
+      background: var(--light);
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      border: 2px solid #e9ecef;
+    }
+
+    .current-content {
+      background: white;
+      border: 2px solid var(--success);
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      font-size: 1rem;
+      line-height: 1.5;
+      min-height: 60px;
+      flex-grow: 1;
+    }
+
+    .current-content:empty::before {
+      content: "{{ 'Votre réponse apparaîtra ici...' if lang == 'fr' else 'Your answer will appear here...' }}";
+      color: var(--gray);
+      font-style: italic;
+    }
+
+    .current-content.has-content {
+      border-color: var(--primary);
+      background: #f8fff9;
+    }
+
+    .math-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    .math-btn {
+      padding: 10px 15px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.1em;
+      font-weight: 600;
+    }
+
+    .math-btn:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .visual-editor {
+      min-height: 200px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      background: white;
+      line-height: 1.6;
+      font-size: 1.1rem;
+      font-family: inherit;
+    }
+
+    .visual-editor:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .help-text {
+      color: #6c757d;
+      font-size: 0.9em;
+      margin-top: 15px;
+      line-height: 1.4;
+    }
+    
+    .input-section {
+      margin-bottom: 20px;
+    }
+    
+    .answer-label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+    }
+    
+    .answer-label i {
+      margin-right: 8px;
+      color: var(--primary);
+    }
+    
+    .navigation {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+      gap: 15px;
+    }
+    
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 25px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      flex: 1;
+      justify-content: center;
+    }
+    
+    .nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    }
+    
+    .nav-btn.submit {
+      background: var(--success);
+    }
+    
+    .nav-btn.edit {
+      background: var(--accent);
+    }
+    
+    .nav-btn i {
+      margin-right: 8px;
+    }
+
+    /* Styles pour la rétroaction */
+    .feedback-section {
+      margin-top: 40px;
+      padding: 30px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 15px;
+      border-left: 5px solid var(--primary);
+      display: none;
+    }
+
+    .feedback-section.active {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .feedback-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--light-gray);
+    }
+
+    .feedback-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--success);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      color: white;
+      font-size: 1.3rem;
+    }
+
+    .feedback-icon.warning {
+      background: var(--warning);
+    }
+
+    .feedback-content h3 {
+      color: var(--secondary);
+      margin: 0 0 5px 0;
+    }
+
+    .stars {
+      color: var(--warning);
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .answer-review, .ai-analysis {
+      margin-bottom: 25px;
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      color: var(--secondary);
+      font-weight: 600;
+    }
+
+    .section-label i {
+      margin-right: 10px;
+      color: var(--accent);
+    }
+
+    .answer-content, .analysis-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid var(--accent);
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+
+    .analysis-content {
+      border-left: 4px solid var(--primary);
+    }
+
+    .feedback-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 25px;
+      background: var(--success);
+      color: white;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(76, 201, 240, 0.4);
+    }
+
+    .action-btn.secondary {
+      background: var(--primary);
+    }
+
+    .action-btn i {
+      margin-right: 8px;
+    }
+
+    /* Styles pour le message d'attente */
+    .waiting-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .waiting-overlay.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .waiting-card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      transform: translateY(20px);
+      animation: slideUp 0.5s ease forwards;
+    }
+
+    .teacher-avatar {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+
+    .teacher-image {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 3rem;
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .thinking-animation {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      animation: pulse 2s infinite;
+    }
+
+    .waiting-title {
+      font-size: 1.8rem;
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .waiting-message {
+      font-size: 1.1rem;
+      color: var(--gray);
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    .loading-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+
+    .processing-steps {
+      text-align: left;
+      margin: 25px 0;
+      padding: 20px;
+      background: var(--light);
+      border-radius: 10px;
+    }
+
+    .processing-step {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .processing-step.active {
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .step-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--light-gray);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    .processing-step.active .step-icon {
+      background: var(--primary);
+      color: white;
+    }
+
+    .step-text {
+      flex: 1;
+      color: var(--gray);
+    }
+
+    .processing-step.active .step-text {
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { 
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        transform: scale(0);
+      }
+      40% {
+        transform: scale(1);
+      }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .container {
+        padding: 20px;
+      }
+      
+      h2 {
+        font-size: 1.8rem;
+      }
+      
+      .header-info {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .lesson-title {
+        margin-top: 10px;
+      }
+      
+      .navigation {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .nav-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .feedback-actions {
+        flex-direction: column;
+      }
+
+      .action-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .waiting-card {
+        padding: 30px 20px;
+        margin: 20px;
+      }
+
+      .teacher-avatar {
+        width: 100px;
+        height: 100px;
+      }
+
+      .teacher-image {
+        font-size: 2.5rem;
+      }
+
+      .math-toolbar {
+        justify-content: center;
+      }
+
+      .math-btn {
+        padding: 8px 12px;
+        font-size: 1em;
+      }
+    }
+  </style>
+  
+  <!-- Font Awesome pour les icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Overlay d'attente -->
+  <div class="waiting-overlay" id="waitingOverlay">
+    <div class="waiting-card">
+      <div class="teacher-avatar">
+        <div class="teacher-image">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div class="thinking-animation">
+          <i class="fas fa-brain"></i>
+        </div>
+      </div>
+      
+      <h2 class="waiting-title">
+        <i class="fas fa-hourglass-half"></i>
+        {% if lang == 'fr' %}
+          Enseignant Virtuel en train de réfléchir...
+        {% else %}
+          Virtual Teacher is thinking...
+        {% endif %}
+      </h2>
+      
+      <p class="waiting-message">
+        {% if lang == 'fr' %}
+          Notre enseignant virtuel analyse votre réponse et prépare une rétroaction personnalisée.
+        {% else %}
+          Our virtual teacher is analyzing your answer and preparing personalized feedback.
+        {% endif %}
+      </p>
+
+      <div class="loading-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+
+      <div class="processing-steps">
+        <div class="processing-step active" id="step1">
+          <div class="step-icon">1</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Analyse de votre réponse...
+            {% else %}
+              Analyzing your answer...
+            {% endif %}
+          </div>
+        </div>
+        <div class="processing-step" id="step2">
+          <div class="step-icon">2</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Vérification des étapes de résolution...
+            {% else %}
+              Checking solution steps...
+            {% endif %}
+          </div>
+        </div>
+        <div class="processing-step" id="step3">
+          <div class="step-icon">3</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Préparation de la rétroaction...
+            {% else %}
+              Preparing feedback...
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; font-size: 0.9rem; color: var(--gray);">
+        <i class="fas fa-clock"></i>
+        {% if lang == 'fr' %}
+          Cela peut prendre quelques secondes...
+        {% else %}
+          This may take a few seconds...
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+<div class="container">
+  <h2>
+    <i class="fas fa-tasks"></i> {{ 'Séquence d\'exercices' if lang == 'fr' else 'Exercise Sequence' }}
+  </h2>
+  
+  <div class="header-info">
+    <div class="student-name">
+      <i class="fas fa-user-graduate"></i> {{ eleve.username }}
+    </div>
+    <div class="lesson-title">
+      <i class="fas fa-book"></i> {{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }}
+    </div>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-header">
+      <span>{{ 'Progression' if lang == 'fr' else 'Progress' }}</span>
+      <span id="progressText">{{ index + 1 }}/{{ total }}</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <!-- Formulaire principal -->
+  <form method="POST" action="/soumettre-sequentiel" id="mainForm" {% if show_feedback %}style="display: none;"{% endif %}>
+    <input type="hidden" name="username" value="{{ eleve.username }}">
+    <input type="hidden" name="lang" value="{{ lang }}">
+    <input type="hidden" name="lecon_id" value="{{ lecon.id }}">
+    <input type="hidden" name="exercice_id" value="{{ exercice.id }}">
+    <input type="hidden" name="index" value="{{ index }}">
+    <input type="hidden" name="reponse_eleve" id="reponse_eleve_hidden" value="">
+
+    <div class="question-card">
+      <div class="question-header">
+        <div class="question-number">{{ index + 1 }}</div>
+        <h3>{{ 'Question' if lang == 'fr' else 'Question' }} {{ index + 1 }}</h3>
+      </div>
+      <div class="question-text math-content" id="questionContent">
+        {{ exercice.question_fr if lang == 'fr' else exercice.question_en }}
+      </div>
+    </div>
+    
+    <div class="input-section">
+      <div class="answer-label">
+        <i class="fas fa-edit"></i> {{ 'Votre réponse' if lang == 'fr' else 'Your answer' }}
+      </div>
+      
+      <!-- Éditeur mathématique simplifié -->
+      <div class="unified-math-editor">
+        <div class="current-content" id="currentContent">
+          {{ 'Votre réponse apparaîtra ici...' if lang == 'fr' else 'Your answer will appear here...' }}
+        </div>
+
+        <div class="math-toolbar">
+          <!-- Symboles mathématiques de base -->
+          <button type="button" class="math-btn" onclick="insertSymbol('²')">x²</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('³')">x³</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('√')">√</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('π')">π</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('∞')">∞</button>
+          
+          <!-- Opérateurs -->
+          <button type="button" class="math-btn" onclick="insertSymbol('≠')">≠</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('≈')">≈</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('≤')">≤</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('≥')">≥</button>
+          
+          <!-- Fractions et lettres grecques -->
+          <button type="button" class="math-btn" onclick="insertFraction()">½</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('α')">α</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('β')">β</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('θ')">θ</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
+        </div>
+
+        <div 
+          class="visual-editor" 
+          contenteditable="true"
+          id="visualMathEditor"
+          placeholder="{{ 'Écrivez votre réponse complète ici... Utilisez les boutons pour les symboles mathématiques.' if lang == 'fr' else 'Write your complete answer here... Use the buttons for math symbols.' }}"
+        ></div>
+
+        <div class="help-text">
+          💡 <strong>{{ 'Conseil :' if lang == 'fr' else 'Tip:' }}</strong> 
+          {{ 'Écrivez normalement et utilisez les boutons pour les symboles mathématiques. Votre réponse s\'affiche en temps réel ci-dessus.' if lang == 'fr' else 'Write normally and use the buttons for math symbols. Your answer appears in real-time above.' }}
+        </div>
+      </div>
+    </div>
+
+    <div class="navigation">
+      {% if not show_feedback %}
+      <button type="submit" class="nav-btn submit" id="submitBtn">
+        <i class="fas fa-paper-plane"></i> {{ 'Soumettre la réponse' if lang == 'fr' else 'Submit answer' }}
+      </button>
+      {% else %}
+      <button type="submit" class="nav-btn submit" id="submitBtn">
+        <i class="fas fa-redo"></i> {{ 'Soumettre à nouveau' if lang == 'fr' else 'Submit again' }}
+      </button>
+      <button type="button" class="nav-btn edit" onclick="showFeedback()">
+        <i class="fas fa-eye"></i> {{ 'Voir la rétroaction' if lang == 'fr' else 'View feedback' }}
+      </button>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Section de rétroaction -->
+  {% if reponse %}
+  <div class="feedback-section {% if show_feedback %}active{% endif %}" id="feedbackSection">
+    <div class="feedback-header">
+      <div class="feedback-icon {% if reponse.etoiles < 2 %}warning{% endif %}">
+        <i class="fas fa-{% if reponse.etoiles >= 2 %}check-circle{% else %}lightbulb{% endif %}"></i>
+      </div>
+      <div class="feedback-content">
+        <h3>{{ 'Rétroaction de l\'IA' if lang == 'fr' else 'AI Feedback' }}</h3>
+        <div class="stars">
+          {% if reponse.etoiles is not none %}
+            {{ reponse.etoiles }}/5 ⭐
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="answer-review">
+      <div class="section-label">
+        <i class="fas fa-edit"></i>
+        {{ 'Votre réponse' if lang == 'fr' else 'Your Answer' }}
+      </div>
+      <div class="answer-content math-content" id="studentAnswerContent">
+        {{ reponse.reponse_eleve }}
+      </div>
+    </div>
+
+    <div class="ai-analysis">
+      <div class="section-label">
+        <i class="fas fa-robot"></i>
+        {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
+      </div>
+      <div class="analysis-content math-content" id="aiAnalysisContent">
+        {{ reponse.analyse_ia }}
+      </div>
+    </div>
+
+    <div class="feedback-actions">
+      {% if has_next %}
+      <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ next_index }}" 
+         class="action-btn">
+        <i class="fas fa-arrow-right"></i>
+        {{ 'Exercice suivant' if lang == 'fr' else 'Next Exercise' }}
+      </a>
+      {% else %}
+      <a href="/tableau-de-bord?username={{ eleve.username }}&lang={{ lang }}&message=sequence_complete" 
+         class="action-btn">
+        <i class="fas fa-trophy"></i>
+        {{ 'Terminer la séquence' if lang == 'fr' else 'Finish Sequence' }}
+      </a>
+      {% endif %}
+      
+      <button type="button" class="action-btn secondary" onclick="showForm()">
+        <i class="fas fa-edit"></i>
+        {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
+      </button>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  // Variables globales pour l'éditeur
+  let currentAnswer = '';
+
+  // Configuration initiale
+  const total = {{ total }};
+  const currentIndex = {{ index }};
+  
+  function updateProgress() {
+    const percent = ((currentIndex + 1) / total) * 100;
+    document.getElementById('progressFill').style.width = percent + '%';
+    document.getElementById('progressText').textContent = `${currentIndex + 1}/${total}`;
+  }
+
+  function insertSymbol(symbol) {
+    const editor = document.getElementById('visualMathEditor');
+    const selection = window.getSelection();
+    
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(symbol));
+    } else {
+      // Ajouter à la fin
+      editor.focus();
+      document.execCommand('insertText', false, symbol);
+    }
+    
+    // Mettre à jour l'aperçu
+    updatePreview();
+  }
+
+  function insertFraction() {
+    const numerator = prompt('{{ "Numérateur :" if lang == "fr" else "Numerator:" }}', '1');
+    const denominator = prompt('{{ "Dénominateur :" if lang == "fr" else "Denominator:" }}', '2');
+    
+    if (numerator && denominator) {
+      insertSymbol(`${numerator}∕${denominator}`);
+    }
+  }
+
+  function updatePreview() {
+    const content = document.getElementById('visualMathEditor').innerHTML
+      .replace(/<div>/g, '\n')
+      .replace(/<\/div>/g, '')
+      .replace(/<br>/g, '\n')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/<[^>]*>/g, '');
+    
+    document.getElementById('currentContent').textContent = content || '{{ "Votre réponse apparaîtra ici..." if lang == "fr" else "Your answer will appear here..." }}';
+    
+    // Mettre à jour le style
+    const currentContent = document.getElementById('currentContent');
+    if (content.trim()) {
+      currentContent.classList.add('has-content');
+    } else {
+      currentContent.classList.remove('has-content');
+    }
+    
+    // Mettre à jour la réponse cachée
+    currentAnswer = content;
+    document.getElementById('reponse_eleve_hidden').value = content;
+  }
+
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    const bgColor = type === 'success' ? 'var(--success)' : 'var(--primary)';
+    
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${bgColor};
+      color: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      max-width: 300px;
+    `;
+    notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'info'}"></i> ${message}`;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  function showForm() {
+    // Masquer la rétroaction et afficher le formulaire
+    document.getElementById('feedbackSection').classList.remove('active');
+    document.getElementById('mainForm').style.display = 'block';
+    
+    // Faire défiler vers le formulaire
+    document.getElementById('mainForm').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function showFeedback() {
+    // Masquer le formulaire et afficher la rétroaction
+    document.getElementById('mainForm').style.display = 'none';
+    document.getElementById('feedbackSection').classList.add('active');
+    
+    // Faire défiler vers la rétroaction
+    document.getElementById('feedbackSection').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Fonction pour traiter le contenu mathématique
+  function processMathContent() {
+    if (window.MathJax) {
+      MathJax.typesetPromise().then(() => {
+        console.log('MathJax content processed successfully');
+      }).catch((error) => {
+        console.warn('MathJax processing warning:', error);
+      });
+    }
+  }
+
+  // Gestion de la soumission du formulaire
+  function setupFormSubmission() {
+    const form = document.getElementById('mainForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const waitingOverlay = document.getElementById('waitingOverlay');
+
+    if (form && submitBtn && waitingOverlay) {
+      form.addEventListener('submit', function(e) {
+        // Vérifier qu'une réponse a été saisie
+        if (!currentAnswer.trim()) {
+          e.preventDefault();
+          showNotification('{{ "Veuillez écrire votre réponse avant de soumettre !" if lang == "fr" else "Please write your answer before submitting!" }}', 'error');
+          return;
+        }
+
+        // Empêcher la soumission normale
+        e.preventDefault();
+        
+        // Afficher l'overlay d'attente
+        waitingOverlay.classList.add('active');
+        
+        // Désactiver le bouton de soumission
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Soumission en cours..." if lang == "fr" else "Submitting..." }}';
+        
+        // Animation des étapes de traitement
+        let currentStep = 1;
+        const stepInterval = setInterval(() => {
+          document.getElementById('step' + currentStep).classList.remove('active');
+          currentStep++;
+          if (currentStep <= 3) {
+            document.getElementById('step' + currentStep).classList.add('active');
+          } else {
+            clearInterval(stepInterval);
+          }
+        }, 1500);
+        
+        // Soumettre le formulaire après un court délai pour l'effet visuel
+        setTimeout(() => {
+          form.submit();
+        }, 2000);
+      });
+    }
+  }
+
+  // Initialisation
+  document.addEventListener("DOMContentLoaded", function() {
+    updateProgress();
+    
+    // Traiter le contenu mathématique
+    processMathContent();
+    
+    // Mise à jour en temps réel de l'éditeur
+    const visualEditor = document.getElementById('visualMathEditor');
+    if (visualEditor) {
+      visualEditor.addEventListener('input', updatePreview);
+      
+      // Focus sur l'éditeur
+      setTimeout(() => {
+        visualEditor.focus();
+      }, 500);
+    }
+
+    // Configurer la soumission du formulaire
+    setupFormSubmission();
+    
+    // Si on affiche la rétroaction, faire défiler vers elle
+    {% if show_feedback %}
+    setTimeout(() => {
+      const feedbackSection = document.getElementById('feedbackSection');
+      if (feedbackSection) {
+        feedbackSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 500);
+    {% endif %}
+  });
+
+  // Styles d'animation pour les notifications
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from { 
+        opacity: 0;
+        transform: translateX(100px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    @keyframes slideOut {
+      from { 
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to { 
+        opacity: 0;
+        transform: translateX(100px);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+</script>
+
+</body>
+</html>

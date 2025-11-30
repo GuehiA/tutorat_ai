@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Exercises of the Lesson{% else %}Exercices de la leçon{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- MathJax avec configuration robuste -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true,
+        tags: 'ams'
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        ignoreHtmlClass: 'no-mathjax',
+        renderActions: {
+          find_script: [10, function (doc) {
+            for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+              const text = node.textContent.replace(/%.*/g, '');
+              if (node.type === 'math/tex; mode=display') {
+                node.outerHTML = `\\[${text}\\]`;
+              } else {
+                node.outerHTML = `\\(${text}\\)`;
+              }
+            }
+          }, '']
+        }
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            console.log('MathJax configuration loaded successfully');
+          }).catch((error) => {
+            console.error('MathJax initialization error:', error);
+            document.querySelectorAll('.math-content').forEach(el => {
+              el.classList.add('mathjax-error');
+            });
+          });
+        }
+      },
+      loader: {
+        load: ['[tex]/ams']
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
+
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --secondary-dark: #1a252f;
+      --success: #27ae60;
+      --success-dark: #219150;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 10px;
+      --box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 25px;
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+    }
+
+    .header h2 {
+      color: var(--secondary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .lesson-info {
+      color: var(--gray);
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 15px;
+      background: var(--light);
+      border-radius: var(--border-radius);
+      min-width: 120px;
+    }
+
+    .stat-number {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+
+    .exercise-grid {
+      display: grid;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .exercise-card {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .exercise-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+
+    .exercise-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .exercise-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .exercise-meta {
+      display: flex;
+      gap: 15px;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .exercise-body {
+      padding: 25px;
+    }
+
+    .language-tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .tab {
+      padding: 12px 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: var(--transition);
+      border-bottom: 3px solid transparent;
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom: 3px solid var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .exercise-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: var(--light);
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .exercise-section h4 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: var(--secondary);
+    }
+
+    .math-content {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid var(--light-gray);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    /* Styles pour le rendu MathJax */
+    .math-content mjx-container {
+      display: inline-block;
+      margin: 0 2px;
+    }
+
+    .math-display {
+      text-align: center;
+      margin: 15px 0;
+      padding: 10px;
+    }
+
+    .math-inline {
+      display: inline;
+    }
+
+    .mathjax-error {
+      color: var(--danger);
+      font-style: italic;
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      border-left: 3px solid var(--danger);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      color: var(--light-gray);
+      margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+      color: var(--secondary);
+      margin-bottom: 10px;
+    }
+
+    .empty-state p {
+      color: var(--gray);
+      margin-bottom: 25px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--border-radius);
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+      color: white;
+    }
+
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, var(--warning) 0%, #e67e22 100%);
+      color: white;
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+      color: white;
+    }
+
+    .btn-ai:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(155, 89, 182, 0.3);
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .back-link a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--secondary);
+      color: white;
+      padding: 12px 25px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    .back-link a:hover {
+      background: var(--secondary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+
+    .difficulty-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .difficulty-easy {
+      background: rgba(39, 174, 96, 0.1);
+      color: var(--success);
+    }
+
+    .difficulty-medium {
+      background: rgba(243, 156, 18, 0.1);
+      color: var(--warning);
+    }
+
+    .difficulty-hard {
+      background: rgba(231, 76, 60, 0.1);
+      color: var(--danger);
+    }
+
+    .exercise-footer {
+      padding: 15px 25px;
+      background: var(--light);
+      border-top: 1px solid var(--light-gray);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .exercise-card {
+      animation: fadeIn 0.6s ease;
+    }
+
+    .exercise-card:nth-child(even) {
+      animation-delay: 0.1s;
+    }
+
+    .exercise-card:nth-child(odd) {
+      animation-delay: 0.2s;
+    }
+
+    @media (max-width: 768px) {
+      .exercise-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .exercise-meta {
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      .actions {
+        flex-direction: column;
+      }
+      
+      .stats {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .language-tabs {
+        flex-direction: column;
+      }
+      
+      .header-actions {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- En-tête de la page -->
+    <div class="header">
+      <h2>
+        <i class="fas fa-tasks"></i>
+        {% if lang == 'en' %}
+          Exercises for the lesson
+        {% else %}
+          Exercices de la leçon
+        {% endif %}
+      </h2>
+      
+      <div class="lesson-info">
+        <strong>{% if lang == 'en' %}Lesson:{% else %}Leçon :{% endif %}</strong> 
+        {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+      </div>
+
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-number">{{ exercices|length }}</span>
+          <span class="stat-label">{% if lang == 'en' %}Total Exercises{% else %}Exercices totaux{% endif %}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ (exercices|selectattr('difficulte')|list|length) if exercices else 0 }}</span>
+          <span class="stat-label">{% if lang == 'en' %}With Difficulty{% else %}Avec difficulté{% endif %}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ (exercices|selectattr('image_exercice')|list|length) if exercices else 0 }}</span>
+          <span class="stat-label">{% if lang == 'en' %}With Images{% else %}Avec images{% endif %}</span>
+        </div>
+      </div>
+
+      <!-- Actions principales -->
+      <div class="header-actions">
+        <a href="/admin/creer-exercice-ia" class="btn btn-ai">
+          <i class="fas fa-robot"></i> 
+          {% if lang == 'en' %}Create with AI{% else %}Créer avec IA{% endif %}
+        </a>
+        <a href="/admin/ajouter-exercice?lecon_id={{ lecon.id }}" class="btn btn-success">
+          <i class="fas fa-plus"></i> 
+          {% if lang == 'en' %}Add Manual Exercise{% else %}Ajouter exercice manuel{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Liste des exercices -->
+    {% if exercices %}
+      <div class="exercise-grid">
+        {% for ex in exercices %}
+          <div class="exercise-card">
+            <!-- En-tête de l'exercice -->
+            <div class="exercise-header">
+              <div class="exercise-title">
+                <i class="fas fa-pencil-alt"></i>
+                {% if lang == 'en' %}Exercise {{ loop.index }}{% else %}Exercice {{ loop.index }}{% endif %}
+              </div>
+              <div class="exercise-meta">
+                {% if ex.difficulte %}
+                  <span class="difficulty-badge difficulty-{{ ex.difficulte }}">
+                    <i class="fas fa-{% if ex.difficulte == 'facile' %}smile{% elif ex.difficulte == 'moyen' %}meh{% else %}frown{% endif %}"></i>
+                    {{ ex.difficulte }}
+                  </span>
+                {% endif %}
+                {% if ex.temps %}
+                  <span><i class="fas fa-clock"></i> {{ ex.temps }}s</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Corps de l'exercice -->
+            <div class="exercise-body">
+              <!-- Onglets de langue -->
+              <div class="language-tabs">
+                <div class="tab active" data-tab="french-{{ ex.id }}">🇫🇷 Français</div>
+                <div class="tab" data-tab="english-{{ ex.id }}">🇬🇧 English</div>
+              </div>
+
+              <!-- Contenu français -->
+              <div class="tab-content active" id="french-{{ ex.id }}">
+                {% if ex.question_fr %}
+                  <div class="exercise-section">
+                    <h4><i class="fas fa-question-circle"></i> {% if lang == 'en' %}Question (FR){% else %}Question (FR){% endif %}</h4>
+                    <div class="math-content">{{ ex.question_fr | safe }}</div>
+                  </div>
+                {% endif %}
+
+                {% if ex.reponse_fr %}
+                  <div class="exercise-section">
+                    <h4><i class="fas fa-check-circle"></i> {% if lang == 'en' %}Answer (FR){% else %}Réponse (FR){% endif %}</h4>
+                    <div class="math-content">{{ ex.reponse_fr | safe }}</div>
+                  </div>
+                {% endif %}
+
+                {% if ex.explication_fr %}
+                  <div class="exercise-section">
+                    <h4><i class="fas fa-lightbulb"></i> {% if lang == 'en' %}Explanation (FR){% else %}Explication (FR){% endif %}</h4>
+                    <div class="math-content">{{ ex.explication_fr | safe }}</div>
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Contenu anglais -->
+              <div class="tab-content" id="english-{{ ex.id }}">
+                {% if ex.question_en %}
+                  <div class="exercise-section">
+                    <h4><i class="fas fa-question-circle"></i> {% if lang == 'en' %}Question (EN){% else %}Question (EN){% endif %}</h4>
+                    <div class="math-content">{{ ex.question_en | safe }}</div>
+                  </div>
+                {% endif %}
+
+                {% if ex.reponse_en %}
+                  <div class="exercise-section">
+                    <h4><i class="fas fa-check-circle"></i> {% if lang == 'en' %}Answer (EN){% else %}Réponse (EN){% endif %}</h4>
+                    <div class="math-content">{{ ex.reponse_en | safe }}</div>
+                  </div>
+                {% endif %}
+
+                {% if ex.explication_en %}
+                  <div class="exercise-section">
+                    <h4><i class="fas fa-lightbulb"></i> {% if lang == 'en' %}Explanation (EN){% else %}Explication (EN){% endif %}</h4>
+                    <div class="math-content">{{ ex.explication_en | safe }}</div>
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Actions -->
+              <div class="actions">
+                <a href="/admin/modifier-exercice/{{ ex.id }}" class="btn btn-warning">
+                  <i class="fas fa-edit"></i> {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
+                </a>
+                {% if ex.image_exercice %}
+                  <a href="{{ url_for('static', filename='uploads/' + ex.image_exercice) }}" class="btn btn-primary" target="_blank">
+                    <i class="fas fa-image"></i> {% if lang == 'en' %}View Image{% else %}Voir l'image{% endif %}
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Pied de l'exercice -->
+            <div class="exercise-footer">
+              <small>ID: {{ ex.id }}</small>
+              <small>{% if lang == 'en' %}Created{% else %}Créé{% endif %}: {{ ex.date_creation.strftime('%d/%m/%Y') if ex.date_creation }}</small>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- État vide -->
+      <div class="empty-state">
+        <i class="fas fa-tasks"></i>
+        <h3>{% if lang == 'en' %}No exercises found{% else %}Aucun exercice trouvé{% endif %}</h3>
+        <p>
+          {% if lang == 'en' %}
+            This lesson doesn't have any exercises yet. Start by creating the first exercise!
+          {% else %}
+            Cette leçon n'a pas encore d'exercices. Commencez par créer le premier exercice !
+          {% endif %}
+        </p>
+        <div class="header-actions">
+          <a href="/admin/creer-exercice-ia" class="btn btn-ai">
+            <i class="fas fa-robot"></i> 
+            {% if lang == 'en' %}Create with AI{% else %}Créer avec IA{% endif %}
+          </a>
+          <a href="/admin/ajouter-exercice?lecon_id={{ lecon.id }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> 
+            {% if lang == 'en' %}Add Manual Exercise{% else %}Ajouter exercice manuel{% endif %}
+          </a>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Lien de retour -->
+    <div class="back-link">
+      <a href="{{ dashboard_url }}">
+        <i class="fas fa-arrow-left"></i> {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Fonction pour traiter le contenu mathématique
+    function processMathContent() {
+      const mathElements = document.querySelectorAll('.math-content');
+      mathElements.forEach(element => {
+        let content = element.innerHTML;
+        
+        // Conversion des expressions mathématiques simples en LaTeX
+        content = content.replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}');
+        content = content.replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}');
+        content = content.replace(/(\w+)\^(\d+)/g, '$1^{$2}');
+        content = content.replace(/(\d+)%/g, '$1\\%');
+        
+        element.innerHTML = content;
+      });
+
+      // Redémarrer MathJax pour traiter le nouveau contenu
+      if (window.MathJax) {
+        MathJax.typesetPromise().catch(error => {
+          console.warn('MathJax typeset error:', error);
+          document.querySelectorAll('.math-content').forEach(el => {
+            if (!el.classList.contains('mathjax-error')) {
+              el.classList.add('mathjax-error');
+            }
+          });
+        });
+      }
+    }
+
+    // Gestion des onglets de langue
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Page des exercices chargée, initialisation...');
+      
+      // Initialiser tous les onglets
+      const allTabs = document.querySelectorAll('.tab');
+      
+      allTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          const tabId = this.getAttribute('data-tab');
+          const exerciseId = tabId.split('-')[1];
+          
+          // Désactiver tous les onglets de cet exercice
+          document.querySelectorAll(`[data-tab^="french-${exerciseId}"], [data-tab^="english-${exerciseId}"]`).forEach(t => {
+            t.classList.remove('active');
+          });
+          
+          // Activer l'onglet cliqué
+          this.classList.add('active');
+          
+          // Masquer tous les contenus de cet exercice
+          document.querySelectorAll(`#french-${exerciseId}, #english-${exerciseId}`).forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Afficher le contenu correspondant
+          document.getElementById(tabId).classList.add('active');
+          
+          // Re-trigger MathJax après le changement d'onglet
+          setTimeout(() => {
+            processMathContent();
+          }, 100);
+        });
+      });
+
+      // Animation d'apparition progressive
+      const cards = document.querySelectorAll('.exercise-card');
+      cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+      });
+
+      // Traiter le contenu mathématique initial
+      setTimeout(() => {
+        processMathContent();
+      }, 500);
+    });
+
+    // Réinitialiser MathJax quand le contenu change
+    document.addEventListener('DOMNodeInserted', function() {
+      setTimeout(processMathContent, 100);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Add Subject{% else %}Ajouter une Matière{% endif %}</title>
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --primary-light: #eef2ff;
+      --secondary: #7209b7;
+      --accent: #4cc9f0;
+      --success: #27ae60;
+      --success-dark: #219150;
+      --light: #f8f9fa;
+      --dark: #2c3e50;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 12px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      color: white;
+    }
+
+    .logo {
+      font-size: 3.5rem;
+      margin-bottom: 15px;
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.2);
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 15px;
+      backdrop-filter: blur(10px);
+    }
+
+    .header h1 {
+      font-weight: 600;
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .form-box {
+      background: white;
+      padding: 40px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .form-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--dark);
+      transition: var(--transition);
+      font-size: 0.95rem;
+    }
+
+    .input-container {
+      position: relative;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--light-gray);
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      transition: var(--transition);
+      background-color: var(--light);
+      font-family: inherit;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      background-color: white;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 16px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--success), #2ecc71);
+      border: none;
+      color: white;
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+      background: linear-gradient(135deg, var(--success-dark), #27ae60);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .lang-switch {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+    }
+
+    .lang-switch form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lang-switch label {
+      margin: 0;
+      font-size: 1.2rem;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .lang-switch select {
+      padding: 8px 12px;
+      border-radius: var(--border-radius);
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background-color: rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+      transition: var(--transition);
+      width: auto;
+    }
+
+    .lang-switch select:focus {
+      outline: none;
+      border-color: white;
+      background-color: white;
+    }
+
+    .subject-icon {
+      text-align: center;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+
+    .subject-icon svg {
+      width: 60px;
+      height: 60px;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 25px;
+      text-decoration: none;
+      color: var(--gray);
+      font-weight: 500;
+      transition: var(--transition);
+      padding: 10px;
+      border-radius: var(--border-radius);
+    }
+
+    .back-link:hover {
+      color: var(--primary);
+      background-color: rgba(67, 97, 238, 0.05);
+    }
+
+    .form-note {
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 5px;
+      font-style: italic;
+    }
+
+    @media (max-width: 576px) {
+      .form-box {
+        padding: 30px 20px;
+      }
+      
+      .header h1 {
+        font-size: 1.8rem;
+      }
+      
+      .logo {
+        font-size: 2.5rem;
+        width: 60px;
+        height: 60px;
+      }
+      
+      .subject-icon svg {
+        width: 50px;
+        height: 50px;
+      }
+    }
+
+    /* Animation d'entrée */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .form-box {
+      animation: fadeInUp 0.6s ease-out;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Sélecteur de langue -->
+    <div class="lang-switch">
+      <form method="POST" action="/changer-langue">
+        <label for="lang">🌍</label>
+        <select name="lang" id="lang" onchange="this.form.submit()">
+          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+          <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+        </select>
+        <input type="hidden" name="redirect_page" value="ajouter_unite">
+      </form>
+    </div>
+
+    <!-- En-tête avec logo et titre -->
+    <div class="header">
+      <div class="logo">📚</div>
+      <h1>{% if lang == 'en' %}Add Subject{% else %}Ajouter une Matière{% endif %}</h1>
+      <p>{% if lang == 'en' %}Create a new subject for your educational platform{% else %}Créez une nouvelle matière pour votre plateforme éducative{% endif %}</p>
+    </div>
+
+    <!-- Icône de matière -->
+    <div class="subject-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+    </div>
+
+    <div class="form-box">
+      <form method="POST">
+        <div class="form-group">
+          <label for="nom_fr">{% if lang == 'en' %}Name (French){% else %}Nom (Français){% endif %} :</label>
+          <div class="input-container">
+            <input type="text" id="nom_fr" name="nom_fr" required placeholder="{% if lang == 'en' %}e.g. Mathématiques{% else %}ex: Mathématiques{% endif %}">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm10.5 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h10zM3 2.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-1z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="form-note">{% if lang == 'en' %}Required field{% else %}Champ obligatoire{% endif %}</div>
+        </div>
+
+        <div class="form-group">
+          <label for="nom_en">{% if lang == 'en' %}Name (English){% else %}Nom (Anglais){% endif %} :</label>
+          <div class="input-container">
+            <input type="text" id="nom_en" name="nom_en" placeholder="{% if lang == 'en' %}e.g. Mathematics{% else %}ex: Mathematics{% endif %}">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm10.5 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h10zM3 2.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-1z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="form-note">{% if lang == 'en' %}Optional field{% else %}Champ optionnel{% endif %}</div>
+        </div>
+
+        <div class="form-group">
+          <label for="niveau_id">{% if lang == 'en' %}Associated Level{% else %}Niveau associé{% endif %} :</label>
+          <select name="niveau_id" id="niveau_id" required>
+            <option value="">{% if lang == 'en' %}-- Choose level --{% else %}-- Choisir un niveau --{% endif %}</option>
+            {% for niveau in niveaux %}
+              <option value="{{ niveau.id }}">{{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-note">{% if lang == 'en' %}Select the educational level{% else %}Sélectionnez le niveau éducatif{% endif %}</div>
+        </div>
+
+        <button type="submit">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm12-1a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h12z"/>
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          </svg>
+          ✅ {% if lang == 'en' %}Save Subject{% else %}Enregistrer la matière{% endif %}
+        </button>
+      </form>
+
+      <a class="back-link" href="{{ url_for('admin_dashboard') }}">
+        ← {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Animation douce pour les interactions
+    document.addEventListener('DOMContentLoaded', function() {
+      const inputs = document.querySelectorAll('input, select');
+      
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          this.parentElement.style.transform = 'translateY(-2px)';
+        });
+        
+        input.addEventListener('blur', function() {
+          this.parentElement.style.transform = 'translateY(0)';
+        });
+      });
+    });
+  </script>
+
+</body>
+</html>

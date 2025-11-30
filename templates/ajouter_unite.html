@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Add Unit{% else %}Ajouter une Unité{% endif %}</title>
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --primary-light: #eef2ff;
+      --secondary: #7209b7;
+      --accent: #4cc9f0;
+      --success: #27ae60;
+      --success-dark: #219150;
+      --warning: #f39c12;
+      --light: #f8f9fa;
+      --dark: #2c3e50;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 16px;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      --transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      color: white;
+    }
+
+    .logo {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      display: inline-block;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      backdrop-filter: blur(20px);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .header h1 {
+      font-weight: 700;
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      background: linear-gradient(135deg, #fff, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    .form-box {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 50px 40px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .form-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), #f093fb);
+    }
+
+    .form-group {
+      margin-bottom: 28px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--dark);
+      transition: var(--transition);
+      font-size: 0.95rem;
+      letter-spacing: -0.2px;
+    }
+
+    .input-container {
+      position: relative;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 16px 20px;
+      border: 2px solid rgba(67, 97, 238, 0.1);
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      transition: var(--transition);
+      background: rgba(255, 255, 255, 0.8);
+      font-family: inherit;
+      backdrop-filter: blur(10px);
+      appearance: none;
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236c757d'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      background-size: 16px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 8px 24px rgba(67, 97, 238, 0.15);
+      transform: translateY(-2px);
+    }
+
+    select:disabled {
+      background-color: rgba(248, 249, 250, 0.6);
+      color: var(--gray);
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+      transition: var(--transition);
+      pointer-events: none;
+    }
+
+    input:focus + .input-icon, select:focus + .input-icon {
+      color: var(--primary);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 18px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--success), #2ecc71);
+      border: none;
+      color: white;
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 8px 24px rgba(39, 174, 96, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: var(--transition);
+    }
+
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(39, 174, 96, 0.4);
+      background: linear-gradient(135deg, var(--success-dark), #27ae60);
+    }
+
+    button:hover::before {
+      left: 100%;
+    }
+
+    button:active {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: var(--gray);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button:disabled:hover::before {
+      left: -100%;
+    }
+
+    .lang-switch {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      z-index: 100;
+    }
+
+    .lang-switch form {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-switch label {
+      margin: 0;
+      font-size: 1.4rem;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .lang-switch select {
+      padding: 10px 14px;
+      border-radius: var(--border-radius);
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+      transition: var(--transition);
+      width: auto;
+      backdrop-filter: blur(10px);
+    }
+
+    .lang-switch select:focus {
+      outline: none;
+      border-color: white;
+      background: white;
+      box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
+    }
+
+    .unit-icon {
+      text-align: center;
+      margin-bottom: 30px;
+      color: var(--primary);
+    }
+
+    .unit-icon svg {
+      width: 70px;
+      height: 70px;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 30px;
+      text-decoration: none;
+      color: var(--gray);
+      font-weight: 500;
+      transition: var(--transition);
+      padding: 12px;
+      border-radius: var(--border-radius);
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(10px);
+    }
+
+    .back-link:hover {
+      color: var(--primary);
+      background: rgba(67, 97, 238, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .form-note {
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 6px;
+      font-style: italic;
+      padding-left: 8px;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      color: var(--primary);
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(67, 97, 238, 0.3);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .dependency-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--warning);
+      margin-top: 8px;
+    }
+
+    @media (max-width: 576px) {
+      .form-box {
+        padding: 40px 25px;
+      }
+      
+      .header h1 {
+        font-size: 2rem;
+      }
+      
+      .logo {
+        font-size: 3rem;
+        width: 80px;
+        height: 80px;
+      }
+      
+      .unit-icon svg {
+        width: 60px;
+        height: 60px;
+      }
+      
+      body {
+        padding: 15px;
+      }
+    }
+
+    /* Animation d'entrée */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .form-box {
+      animation: fadeInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    /* Effet de particules */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      animation: float 6s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(180deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Effet de particules -->
+  <div class="particles" id="particles"></div>
+
+  <div class="container">
+    <!-- Sélecteur de langue -->
+    <div class="lang-switch">
+      <form method="POST" action="/changer-langue">
+        <label for="lang">🌍</label>
+        <select name="lang" id="lang" onchange="this.form.submit()">
+          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+          <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+        </select>
+        <input type="hidden" name="redirect_page" value="ajouter_unite">
+      </form>
+    </div>
+
+    <!-- En-tête avec logo et titre -->
+    <div class="header">
+      <div class="logo">📚</div>
+      <h1>{% if lang == 'en' %}Add Unit{% else %}Ajouter une Unité{% endif %}</h1>
+      <p>{% if lang == 'en' %}Create a new learning unit{% else %}Créez une nouvelle unité d'apprentissage{% endif %}</p>
+    </div>
+
+    <!-- Icône d'unité -->
+    <div class="unit-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+      </svg>
+    </div>
+
+    <div class="form-box">
+      <form method="POST" id="unitForm">
+        <div class="form-group">
+          <label for="nom_fr">{% if lang == 'en' %}Name (French){% else %}Nom (Français){% endif %} :</label>
+          <div class="input-container">
+            <input type="text" id="nom_fr" name="nom_fr" required placeholder="{% if lang == 'en' %}e.g. Algèbre de base{% else %}ex: Algèbre de base{% endif %}">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm10.5 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h10zM3 2.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-1z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="form-note">{% if lang == 'en' %}Required field{% else %}Champ obligatoire{% endif %}</div>
+        </div>
+
+        <div class="form-group">
+          <label for="nom_en">{% if lang == 'en' %}Name (English){% else %}Nom (Anglais){% endif %} :</label>
+          <div class="input-container">
+            <input type="text" id="nom_en" name="nom_en" placeholder="{% if lang == 'en' %}e.g. Basic Algebra{% else %}ex: Basic Algebra{% endif %}">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm10.5 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h10zM3 2.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-1z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="form-note">{% if lang == 'en' %}Optional field{% else %}Champ optionnel{% endif %}</div>
+        </div>
+
+        <div class="form-group">
+          <label for="niveau">{% if lang == 'en' %}Level{% else %}Niveau{% endif %} :</label>
+          <select id="niveau" required>
+            <option value="">{% if lang == 'en' %}-- Choose level --{% else %}-- Choisir un niveau --{% endif %}</option>
+            {% for niveau in niveaux %}
+              <option value="{{ niveau.id }}">{{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}</option>
+            {% endfor %}
+          </select>
+          <div class="dependency-indicator">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+            </svg>
+            {% if lang == 'en' %}Required to select subject{% else %}Nécessaire pour sélectionner la matière{% endif %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="matiere">{% if lang == 'en' %}Subject{% else %}Matière{% endif %} :</label>
+          <select name="matiere_id" id="matiere" required disabled>
+            <option value="">{% if lang == 'en' %}-- Choose subject --{% else %}-- Choisir une matière --{% endif %}</option>
+          </select>
+          <div class="loading" id="matiereLoading">
+            <span class="loading-spinner"></span>
+            {% if lang == 'en' %}Loading subjects...{% else %}Chargement des matières...{% endif %}
+          </div>
+        </div>
+
+        <button type="submit" id="submitBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm12-1a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h12z"/>
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          </svg>
+          📚 {% if lang == 'en' %}Create Unit{% else %}Créer l'Unité{% endif %}
+        </button>
+      </form>
+
+      <a class="back-link" href="{{ url_for('admin_dashboard') }}">
+        ← {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Animation des particules
+    document.addEventListener('DOMContentLoaded', function() {
+      const particlesContainer = document.getElementById('particles');
+      const particleCount = 15;
+      
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        
+        const size = Math.random() * 6 + 2;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${Math.random() * 6}s`;
+        
+        particlesContainer.appendChild(particle);
+      }
+      
+      // Gestion du formulaire
+      const niveau = document.getElementById("niveau");
+      const matiere = document.getElementById("matiere");
+      const matiereLoading = document.getElementById("matiereLoading");
+      const submitBtn = document.getElementById("submitBtn");
+      const form = document.getElementById("unitForm");
+
+      // Vérifier l'état du formulaire
+      function checkFormValidity() {
+        const isNiveauSelected = niveau.value !== "";
+        const isMatiereSelected = matiere.value !== "" && !matiere.disabled;
+        submitBtn.disabled = !(isNiveauSelected && isMatiereSelected);
+      }
+
+      niveau.addEventListener("change", async function () {
+        matiere.innerHTML = '<option value="">{% if lang == 'en' %}-- Choose subject --{% else %}-- Choisir une matière --{% endif %}</option>';
+        matiere.disabled = true;
+        matiereLoading.style.display = 'block';
+        
+        checkFormValidity();
+
+        if (!this.value) {
+          matiereLoading.style.display = 'none';
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/matieres?niveau_id=${this.value}`);
+          const matieres = await res.json();
+          
+          matiere.innerHTML = '<option value="">{% if lang == 'en' %}-- Choose subject --{% else %}-- Choisir une matière --{% endif %}</option>';
+          matieres.forEach(m => {
+            matiere.innerHTML += `<option value="${m.id}">${m.nom_en || m.nom}</option>`;
+          });
+          
+          matiere.disabled = false;
+        } catch (error) {
+          console.error('Error loading subjects:', error);
+          matiere.innerHTML = '<option value="">{% if lang == 'en' %}Error loading subjects{% else %}Erreur de chargement{% endif %}</option>';
+        } finally {
+          matiereLoading.style.display = 'none';
+        }
+      });
+
+      matiere.addEventListener("change", checkFormValidity);
+
+      // Animation des interactions
+      const inputs = document.querySelectorAll('input, select');
+      
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          this.style.transform = 'translateY(-2px)';
+          this.style.boxShadow = '0 12px 28px rgba(67, 97, 238, 0.2)';
+        });
+        
+        input.addEventListener('blur', function() {
+          this.style.transform = 'translateY(0)';
+          this.style.boxShadow = '0 8px 24px rgba(67, 97, 238, 0.15)';
+        });
+      });
+
+      // Validation initiale
+      checkFormValidity();
+    });
+  </script>
+
+</body>
+</html>

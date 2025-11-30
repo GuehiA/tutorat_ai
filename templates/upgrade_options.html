@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if lang == 'en' %}Upgrade Options{% else %}Options d'Amélioration{% endif %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #2ecc71;
+            --secondary-dark: #27ae60;
+            --accent: #9b59b6;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --white: #ffffff;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .plans-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .plan-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .plan-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+        }
+        
+        .plan-card.popular {
+            border: 3px solid var(--secondary);
+            transform: scale(1.05);
+        }
+        
+        .plan-card.popular::before {
+            content: '{% if lang == "en" %}MOST POPULAR{% else %}PLUS POPULAIRE{% endif %}';
+            position: absolute;
+            top: 20px;
+            right: -30px;
+            background: var(--secondary);
+            color: white;
+            padding: 8px 40px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            transform: rotate(45deg);
+        }
+        
+        .plan-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 2rem;
+        }
+        
+        .plan-name {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+        
+        .plan-price {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: var(--primary);
+        }
+        
+        .plan-period {
+            font-size: 1rem;
+            color: var(--dark);
+            opacity: 0.7;
+        }
+        
+        .plan-features {
+            list-style: none;
+            margin: 30px 0;
+            text-align: left;
+        }
+        
+        .plan-features li {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .plan-features li:last-child {
+            border-bottom: none;
+        }
+        
+        .plan-features li i {
+            color: var(--secondary);
+        }
+        
+        .upgrade-btn {
+            display: inline-block;
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .upgrade-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .upgrade-btn.popular {
+            background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+        }
+        
+        .back-btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .back-btn:hover {
+            background: white;
+            color: var(--dark);
+            text-decoration: none;
+        }
+        
+        .trial-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        .feature-included {
+            color: var(--secondary);
+        }
+        
+        .feature-excluded {
+            color: var(--danger);
+        }
+        
+        @media (max-width: 768px) {
+            .plan-card.popular {
+                transform: none;
+            }
+            
+            .plans-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{% if lang == 'en' %}Upgrade Your Account{% else %}Améliorez Votre Compte{% endif %}</h1>
+            <p>{% if lang == 'en' %}Choose the plan that's right for you{% else %}Choisissez le forfait qui vous convient{% endif %}</p>
+        </div>
+        
+        {% if eleve.est_en_essai_gratuit() %}
+        <div class="trial-info">
+            <h3><i class="fas fa-clock"></i> 
+                {% if lang == 'en' %}
+                    Your free trial ends in {{ (eleve.temps_restant_essai().seconds // 3600) + (eleve.temps_restant_essai().days * 24) }} hours
+                {% else %}
+                    Votre essai gratuit se termine dans {{ (eleve.temps_restant_essai().seconds // 3600) + (eleve.temps_restant_essai().days * 24) }} heures
+                {% endif %}
+            </h3>
+        </div>
+        {% endif %}
+        
+        <div class="plans-container">
+            <!-- Plan Annuel -->
+            <div class="plan-card popular">
+                <div class="plan-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <h2 class="plan-name">{% if lang == 'en' %}Annual Plan{% else %}Forfait Annuel{% endif %}</h2>
+                <div class="plan-price">129$<span class="plan-period">{% if lang == 'en' %}/year{% else %}/an{% endif %}</span></div>
+                <ul class="plan-features">
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Full platform access{% else %}Accès complet à la plateforme{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}All subjects and levels{% else %}Toutes les matières et niveaux{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Virtual teacher 24/7{% else %}Enseignant virtuel 24h/24{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Progress tracking{% else %}Suivi de progression{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Personalized remediations{% else %}Remédiations personnalisées{% endif %}</li>
+                </ul>
+                <a href="/paiement-direct?type=annuel" class="upgrade-btn popular">
+                    <i class="fas fa-bolt"></i>
+                    {% if lang == 'en' %}Get Annual Plan{% else %}Choisir le Forfait Annuel{% endif %}
+                </a>
+            </div>
+            
+            <!-- Plan Mensuel -->
+            <div class="plan-card">
+                <div class="plan-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h2 class="plan-name">{% if lang == 'en' %}Monthly Plan{% else %}Forfait Mensuel{% endif %}</h2>
+                <div class="plan-price">15$<span class="plan-period">{% if lang == 'en' %}/month{% else %}/mois{% endif %}</span></div>
+                <ul class="plan-features">
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Full platform access{% else %}Accès complet à la plateforme{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}All subjects and levels{% else %}Toutes les matières et niveaux{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Virtual teacher 24/7{% else %}Enseignant virtuel 24h/24{% endif %}</li>
+                    <li><i class="fas fa-times feature-excluded"></i> {% if lang == 'en' %}Progress tracking{% else %}Suivi de progression{% endif %}</li>
+                    <li><i class="fas fa-times feature-excluded"></i> {% if lang == 'en' %}Personalized remediations{% else %}Remédiations personnalisées{% endif %}</li>
+                </ul>
+                <a href="/paiement-direct?type=mensuel" class="upgrade-btn">
+                    <i class="fas fa-calendar"></i>
+                    {% if lang == 'en' %}Get Monthly Plan{% else %}Choisir le Forfait Mensuel{% endif %}
+                </a>
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="/dashboard-eleve" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Animation au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.plan-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(30px)';
+                
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 200 * index);
+            });
+        });
+    </script>
+</body>
+</html>

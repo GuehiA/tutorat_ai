@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Test Created{% else %}Test créé{% endif %}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 40px;
+    }
+    .box {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    p {
+      font-size: 18px;
+      margin-top: 20px;
+    }
+    .buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 30px;
+    }
+    a {
+      background: #3498db;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-size: 16px;
+      transition: background 0.3s ease;
+    }
+    a:hover {
+      transform: translateY(-2px);
+    }
+    .btn-view {
+      background: #27ae60;
+    }
+    .btn-view:hover {
+      background: #219150;
+    }
+    .btn-dashboard {
+      background: #3498db;
+    }
+    .btn-dashboard:hover {
+      background: #2980b9;
+    }
+    .btn-create {
+      background: #9b59b6;
+    }
+    .btn-create:hover {
+      background: #8e44ad;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>✅ {% if lang == 'en' %}Test Created{% else %}Test créé{% endif %}</h2>
+    <p>
+      {% if lang == 'en' %}
+        {{ nombre }} question(s) have been generated successfully for the test.
+      {% else %}
+        {{ nombre }} question(s) ont été générées avec succès pour le test.
+      {% endif %}
+    </p>
+    <div class="buttons">
+      <!-- CORRECTION ICI : Changer l'URL pour correspondre à votre route -->
+      <a href="/admin/visualiser-test-sommatif/{{ test.id }}" class="btn-view">👁️ {% if lang == 'en' %}View Test{% else %}Voir le test{% endif %}</a>
+      <a href="{{ dashboard_url }}" class="btn-dashboard">🏠 {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}</a>
+      <a href="/admin/creer-test-sommatif-ia" class="btn-create">🆕 {% if lang == 'en' %}Create More{% else %}Créer d'autres{% endif %}</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>Remédiations en attente</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 40px;
+    }
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    table {
+      width: 100%;
+      background: #fff;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #3498db;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    .button {
+      display: inline-block;
+      padding: 8px 15px;
+      background-color: #3498db;
+      color: white;
+      border-radius: 5px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: #2980b9;
+    }
+    .danger {
+      background-color: #e74c3c;
+    }
+    .danger:hover {
+      background-color: #c0392b;
+    }
+    .message {
+      max-width: 900px;
+      margin: 0 auto 20px;
+      padding: 10px;
+      text-align: center;
+      border-radius: 5px;
+    }
+    .success {
+      background-color: #2ecc71;
+      color: white;
+    }
+    .error {
+      background-color: #e74c3c;
+      color: white;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="message {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <h2>Remédiations en attente de validation</h2>
+
+  {% if suggestions %}
+    <table>
+      <thead>
+        <tr>
+          <th>Élève</th>
+          <th>Thème</th>
+          <th>Leçon</th>
+          <th>Message proposé</th>
+          <th>Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in suggestions %}
+        <tr>
+          <td>{{ s.user.nom_complet }}</td>
+          <td>{{ s.theme }}</td>
+          <td>{{ s.lecon }}</td>
+          <td>{{ s.message }}</td>
+          <td>{{ s.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td class="actions">
+            <a class="button" href="/enseignant/valider-remediation/{{ s.id }}">✍️ Modifier / Valider</a>
+            <form action="/enseignant/supprimer-remediation/{{ s.id }}" method="POST" onsubmit="return confirm('Confirmer la suppression ?')">
+              <input type="hidden" name="provenance" value="en_attente">
+              <button class="button danger" type="submit">🗑 Supprimer</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="text-align:center;">Aucune remédiation en attente.</p>
+  {% endif %}
+
+  <div style="text-align:center; margin-top: 30px;">
+    <a href="/dashboard-enseignant" class="button">← Retour au tableau de bord</a>
+  </div>
+
+</body>
+</html>

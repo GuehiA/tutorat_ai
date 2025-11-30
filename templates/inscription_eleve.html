@@ -1,0 +1,647 @@
+<!-- Dans templates/inscription_eleve.html -->
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if lang == 'en' %}Student Registration{% else %}Inscription Élève{% endif %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Votre CSS existant reste inchangé */
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --success: #06d6a0;
+            --warning: #ffd166;
+            --danger: #ef476f;
+            --dark: #2b2d42;
+            --light: #f8f9fa;
+            --border: #e9ecef;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .registration-box {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .logo i {
+            font-size: 32px;
+            color: white;
+        }
+
+        h2 {
+            color: var(--dark);
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        label::after {
+            content: " *";
+            color: var(--danger);
+        }
+
+        .optional label::after {
+            content: " (optionnel)";
+            color: #6c757d;
+        }
+
+        .form-control, .form-select {
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 0.85rem;
+            margin-top: 5px;
+            padding: 5px 10px;
+            background: #fee;
+            border-radius: 5px;
+            border-left: 3px solid var(--danger);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3);
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid var(--border);
+        }
+
+        .login-link a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-link a:hover {
+            color: var(--primary-dark);
+        }
+
+        /* NOUVEAUX STYLES POUR LES OPTIONS DE PAIEMENT */
+        .payment-options {
+            margin: 30px 0;
+        }
+
+        .payment-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--dark);
+            text-align: center;
+        }
+
+        .plan-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .plan-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .plan-card {
+            border: 2px solid var(--border);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .plan-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+        }
+
+        .plan-card.selected {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #f8f9ff, #e8f2ff);
+        }
+
+        .plan-card.popular {
+            border-color: var(--success);
+        }
+
+        .plan-card.popular::before {
+            content: '{% if lang == "en" %}POPULAR{% else %}POPULAIRE{% endif %}';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--success);
+            color: white;
+            padding: 4px 15px;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .plan-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+
+        .plan-price {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .plan-period {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+
+        .plan-features {
+            list-style: none;
+            text-align: left;
+            font-size: 0.85rem;
+            color: #495057;
+        }
+
+        .plan-features li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .plan-features li i {
+            color: var(--success);
+            font-size: 0.8rem;
+        }
+
+        .trial-info {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 1px solid var(--warning);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .trial-info i {
+            color: var(--warning);
+            margin-right: 8px;
+        }
+
+        /* STYLES POUR LES COORDONNÉES DU PARENT */
+        .parent-section {
+            background: linear-gradient(135deg, #f8f9ff, #f0f4ff);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            border: 2px solid var(--border);
+        }
+
+        .parent-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .parent-header i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .parent-header h3 {
+            color: var(--dark);
+            font-size: 1.3rem;
+            margin: 0;
+        }
+
+        .parent-optional {
+            background: var(--warning);
+            color: var(--dark);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="registration-box">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-user-graduate"></i>
+            </div>
+            <h2>{% if lang == 'en' %}Student Registration{% else %}Inscription Élève{% endif %}</h2>
+            <p style="color: #6c757d; margin-top: 10px;">
+                {% if lang == 'en' %}
+                    Create your student account to access our tutoring platform
+                {% else %}
+                    Créez votre compte élève pour accéder à notre plateforme de tutorat
+                {% endif %}
+            </p>
+        </div>
+
+        <form method="POST" id="studentForm">
+            {{ form.hidden_tag() }}
+
+            <!-- SECTION INFORMATIONS ÉLÈVE -->
+            <div class="parent-header">
+                <i class="fas fa-user"></i>
+                <h3>{% if lang == 'en' %}Student Information{% else %}Informations de l'Élève{% endif %}</h3>
+            </div>
+
+            <div class="form-group">
+                {{ form.username.label }}
+                {{ form.username(class="form-control", placeholder="john_doe") }}
+                {% if form.username.errors %}
+                    <div class="error-message">
+                        {% for error in form.username.errors %}
+                            <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.email.label }}
+                {{ form.email(class="form-control", placeholder="email@example.com") }}
+                {% if form.email.errors %}
+                    <div class="error-message">
+                        {% for error in form.email.errors %}
+                            <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.nom_complet.label }}
+                {{ form.nom_complet(class="form-control", placeholder="John Doe") }}
+                {% if form.nom_complet.errors %}
+                    <div class="error-message">
+                        {% for error in form.nom_complet.errors %}
+                            <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.mot_de_passe.label }}
+                    {{ form.mot_de_passe(class="form-control", placeholder="••••••") }}
+                    {% if form.mot_de_passe.errors %}
+                        <div class="error-message">
+                            {% for error in form.mot_de_passe.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.confirmer_mot_de_passe.label }}
+                    {{ form.confirmer_mot_de_passe(class="form-control", placeholder="••••••") }}
+                    {% if form.confirmer_mot_de_passe.errors %}
+                        <div class="error-message">
+                            {% for error in form.confirmer_mot_de_passe.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.niveau.label }}
+                    {{ form.niveau(class="form-select") }}
+                    {% if form.niveau.errors %}
+                        <div class="error-message">
+                            {% for error in form.niveau.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group optional">
+                    {{ form.telephone.label }}
+                    {{ form.telephone(class="form-control", placeholder="+1 (555) 123-4567") }}
+                </div>
+            </div>
+
+            <!-- SECTION COORDONNÉES DU PARENT -->
+            <div class="parent-section">
+                <div class="parent-header">
+                    <i class="fas fa-users"></i>
+                    <h3>{% if lang == 'en' %}Parent Information{% else %}Informations du Parent{% endif %}</h3>
+                    <span class="parent-optional">{% if lang == 'en' %}OPTIONAL{% else %}OPTIONNEL{% endif %}</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="parent_nom_complet">{% if lang == 'en' %}Parent Full Name{% else %}Nom Complet du Parent{% endif %}</label>
+                    <input type="text" class="form-control" id="parent_nom_complet" name="parent_nom_complet" 
+                           placeholder="{% if lang == 'en' %}Jane Doe{% else %}Jane Doe{% endif %}">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="parent_email">{% if lang == 'en' %}Parent Email{% else %}Email du Parent{% endif %}</label>
+                        <input type="email" class="form-control" id="parent_email" name="parent_email" 
+                               placeholder="parent@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="parent_telephone">{% if lang == 'en' %}Parent Phone{% else %}Téléphone du Parent{% endif %}</label>
+                        <input type="tel" class="form-control" id="parent_telephone" name="parent_telephone" 
+                               placeholder="+1 (555) 123-4567">
+                    </div>
+                </div>
+
+                <div class="form-group optional">
+                    <label for="parent_telephone2">{% if lang == 'en' %}Secondary Phone (Optional){% else %}Téléphone Secondaire (Optionnel){% endif %}</label>
+                    <input type="tel" class="form-control" id="parent_telephone2" name="parent_telephone2" 
+                           placeholder="+1 (555) 987-6543">
+                </div>
+            </div>
+
+            <!-- SECTION OPTIONS DE PAIEMENT -->
+            <div class="payment-options">
+                <div class="payment-title">
+                    {% if lang == 'en' %}
+                        Choose Your Plan
+                    {% else %}
+                        Choisissez Votre Forfait
+                    {% endif %}
+                </div>
+
+                <div class="trial-info">
+                    <i class="fas fa-gift"></i>
+                    <strong>
+                        {% if lang == 'en' %}
+                            🎁 48-hour FREE trial included with both plans!
+                        {% else %}
+                            🎁 Essai GRATUIT de 48h inclus avec les deux forfaits !
+                        {% endif %}
+                    </strong>
+                </div>
+
+                <div class="plan-cards">
+                    <!-- Plan Mensuel -->
+                    <div class="plan-card" onclick="selectPlan('monthly')" id="monthlyPlan">
+                        <div class="plan-name">
+                            {% if lang == 'en' %}Monthly Plan{% else %}Forfait Mensuel{% endif %}
+                        </div>
+                        <div class="plan-price">15$</div>
+                        <div class="plan-period">
+                            {% if lang == 'en' %}per month{% else %}par mois{% endif %}
+                        </div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> {% if lang == 'en' %}Full access{% else %}Accès complet{% endif %}</li>
+                            <li><i class="fas fa-check"></i> {% if lang == 'en' %}All subjects{% else %}Toutes les matières{% endif %}</li>
+                            <li><i class="fas fa-check"></i> {% if lang == 'en' %}Virtual teacher{% else %}Enseignant virtuel{% endif %}</li>
+                            <li><i class="fas fa-check"></i> {% if lang == 'en' %}Cancel anytime{% else %}Annulation à tout moment{% endif %}</li>
+                        </ul>
+                    </div>
+
+                    <!-- Plan Annuel (Populaire) -->
+                    <div class="plan-card popular selected" onclick="selectPlan('annual')" id="annualPlan">
+                        <div class="plan-name">
+                            {% if lang == 'en' %}Annual Plan{% else %}Forfait Annuel{% endif %}
+                        </div>
+                        <div class="plan-price">129$</div>
+                        <div class="plan-period">
+                            {% if lang == 'en' %}per year{% else %}par an{% endif %}
+                        </div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> {% if lang == 'en' %}Full access{% else %}Accès complet{% endif %}</li>
+                            <li><i class="fas fa-check"></i> {% if lang == 'en' %}All subjects{% else %}Toutes les matières{% endif %}</li>
+                            <li><i class="fas fa-check"></i> {% if lang == 'en' %}Virtual teacher{% else %}Enseignant virtuel{% endif %}</li>
+                            <li><i class="fas fa-check"></i> {% if lang == 'en' %}Save 33%{% else %}Économisez 33%{% endif %}</li>
+                            <li><i class="fas fa-crown"></i> {% if lang == 'en' %}Best value{% else %}Meilleur rapport{% endif %}</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Champ caché pour le type de plan -->
+                <input type="hidden" name="plan_type" id="planType" value="annual">
+            </div>
+
+            <div class="form-group">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {{ form.accepte_cgu(class="form-control", style="width: auto;") }}
+                    {{ form.accepte_cgu.label }}
+                </div>
+                {% if form.accepte_cgu.errors %}
+                    <div class="error-message">
+                        {% for error in form.accepte_cgu.errors %}
+                            <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-user-plus"></i>
+                {% if lang == 'en' %}Continue to Payment{% else %}Continuer vers le Paiement{% endif %}
+            </button>
+        </form>
+
+        <div class="login-link">
+            <p>
+                {% if lang == 'en' %}
+                    Already have an account? <a href="{{ url_for('login_eleve') }}">Login here</a>
+                {% else %}
+                    Déjà un compte? <a href="{{ url_for('login_eleve') }}">Connectez-vous ici</a>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Gestion de la sélection du plan
+        function selectPlan(planType) {
+            // Retirer la classe selected de tous les plans
+            document.querySelectorAll('.plan-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Ajouter la classe selected au plan choisi
+            document.getElementById(planType + 'Plan').classList.add('selected');
+            
+            // Mettre à jour le champ caché
+            document.getElementById('planType').value = planType;
+            
+            // Mettre à jour le texte du bouton
+            const button = document.querySelector('.btn-submit');
+            if (planType === 'annual') {
+                button.innerHTML = '<i class="fas fa-crown"></i> {% if lang == "en" %}Continue to Payment - 129$/year{% else %}Continuer vers le Paiement - 129$/an{% endif %}';
+            } else {
+                button.innerHTML = '<i class="fas fa-calendar"></i> {% if lang == "en" %}Continue to Payment - 15$/month{% else %}Continuer vers le Paiement - 15$/mois{% endif %}';
+            }
+        }
+
+        // Animation de soumission
+        document.getElementById('studentForm').addEventListener('submit', function(e) {
+            const btn = this.querySelector('.btn-submit');
+            const planType = document.getElementById('planType').value;
+            
+            if (planType === 'annual') {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "en" %}Processing Annual Plan...{% else %}Traitement du forfait annuel...{% endif %}';
+            } else {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "en" %}Processing Monthly Plan...{% else %}Traitement du forfait mensuel...{% endif %}';
+            }
+            
+            btn.disabled = true;
+        });
+
+        // Animation au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            const planCards = document.querySelectorAll('.plan-card');
+            planCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 300 + (index * 100));
+            });
+        });
+
+        // Gestion optionnelle des coordonnées du parent
+        document.getElementById('parent_nom_complet').addEventListener('input', function() {
+            const parentSection = document.querySelector('.parent-section');
+            if (this.value.trim() !== '') {
+                parentSection.style.background = 'linear-gradient(135deg, #e8f5e8, #d4edda)';
+                parentSection.style.borderColor = 'var(--success)';
+            } else {
+                parentSection.style.background = 'linear-gradient(135deg, #f8f9ff, #f0f4ff)';
+                parentSection.style.borderColor = 'var(--border)';
+            }
+        });
+    </script>
+</body>
+</html>

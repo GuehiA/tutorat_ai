@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>
+    {% if lang == 'en' %}
+      {% if is_remediation %}Remediation Result{% else %}Exercise Result{% endif %}
+    {% else %}
+      {% if is_remediation %}Résultat de la remédiation{% else %}Résultat de l'exercice{% endif %}
+    {% endif %}
+  </title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --success: #3fba83;
+      --warning: #fcc419;
+      --danger: #e85959;
+      --light: #f8f9ff;
+      --dark: #121826;
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --text: #2d3748;
+      --text-light: #718096;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+      --radius: 16px;
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+    }
+
+    .main-container {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      max-width: 900px;
+      margin: 0 auto;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .header-section {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: float 6s ease-in-out infinite;
+    }
+
+    .result-icon {
+      font-size: 4rem;
+      margin-bottom: 15px;
+      display: block;
+      animation: bounce 2s ease-in-out infinite;
+    }
+
+    .stars-container {
+      font-size: 2.5rem;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .star-filled {
+      color: #FFD700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    .star-empty {
+      color: #e0e0e0;
+    }
+
+    .content-section {
+      padding: 30px;
+    }
+
+    .feedback-card {
+      background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+      border-radius: var(--radius);
+      padding: 25px;
+      margin-bottom: 25px;
+      border-left: 4px solid var(--primary);
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .feedback-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .section-title {
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+    }
+
+    .feedback-content {
+      background: rgba(255, 255, 255, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      line-height: 1.7;
+      font-size: 1rem;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Styles pour le contenu mathématique */
+    .math-content {
+      font-size: 1.1rem;
+      line-height: 1.8;
+    }
+
+    .math-content p {
+      margin-bottom: 1rem;
+    }
+
+    .math-content ul, .math-content ol {
+      margin-bottom: 1rem;
+      padding-left: 2rem;
+    }
+
+    .math-content li {
+      margin-bottom: 0.5rem;
+    }
+
+    .math-content code {
+      background: #f1f3f4;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      color: #d32f2f;
+    }
+
+    .btn-continue {
+      background: linear-gradient(135deg, var(--success) 0%, #38a873 100%);
+      border: none;
+      border-radius: 10px;
+      padding: 12px 30px;
+      color: white;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: var(--transition);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 15px rgba(63, 186, 131, 0.3);
+    }
+
+    .btn-continue:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(63, 186, 131, 0.4);
+      color: white;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+    }
+
+    .badge-success {
+      background: linear-gradient(135deg, var(--success) 0%, #38a873 100%);
+      color: white;
+    }
+
+    .badge-warning {
+      background: linear-gradient(135deg, var(--warning) 0%, #e6b017 100%);
+      color: white;
+    }
+
+    .badge-danger {
+      background: linear-gradient(135deg, var(--danger) 0%, #d14f4f 100%);
+      color: white;
+    }
+
+    .ai-icon {
+      color: var(--primary);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes glow {
+      0% { text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+      100% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(5deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Styles spécifiques pour MathJax */
+    .MathJax {
+      font-size: 1.1em !important;
+    }
+
+    mjx-container[jax="CHTML"] {
+      outline: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .content-section {
+        padding: 20px;
+      }
+      
+      .header-section {
+        padding: 20px;
+      }
+      
+      .result-icon {
+        font-size: 3rem;
+      }
+      
+      .stars-container {
+        font-size: 2rem;
+      }
+      
+      .feedback-content {
+        padding: 15px;
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+  <!-- Configuration MathJax pour supporter toutes les syntaxes -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\(', '\)']],
+        displayMath: [['$$', '$$'], ['\[', '\]']],
+        processEscapes: true,
+        processEnvironments: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        renderActions: {
+          addMenu: [0, '', '']
+        }
+      },
+      svg: {
+        fontCache: 'global'
+      },
+      startup: {
+        pageReady: function() {
+          return MathJax.startup.defaultPageReady().then(function() {
+            console.log('MathJax is ready');
+          });
+        }
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<div class="main-container">
+  <!-- Header Section -->
+  <div class="header-section">
+    {% if is_remediation %}
+      <i class="fas fa-clipboard-check result-icon"></i>
+      <h1>
+        {% if lang == 'en' %}Remediation Submitted{% else %}Remédiation Soumise{% endif %}
+      </h1>
+      <p class="mb-0">
+        {% if lang == 'en' %}Your work has been analyzed by AI{% else %}Votre travail a été analysé par l'IA{% endif %}
+      </p>
+    {% else %}
+      {% if etoiles == 3 %}
+        <i class="fas fa-trophy result-icon"></i>
+        <h1>
+          {% if lang == 'en' %}Excellent Work!{% else %}Excellent Travail !{% endif %}
+        </h1>
+        <p class="mb-0">
+          {% if lang == 'en' %}Outstanding performance!{% else %}Performance exceptionnelle !{% endif %}
+        </p>
+      {% elif etoiles == 2 %}
+        <i class="fas fa-star result-icon"></i>
+        <h1>
+          {% if lang == 'en' %}Good Effort!{% else %}Bon Effort !{% endif %}
+        </h1>
+        <p class="mb-0">
+          {% if lang == 'en' %}Well done with room for improvement{% else %}Bien joué avec une marge de progression{% endif %}
+        </p>
+      {% else %}
+        <i class="fas fa-redo result-icon"></i>
+        <h1>
+          {% if lang == 'en' %}Let's Improve!{% else %}On peut mieux faire !{% endif %}
+        </h1>
+        <p class="mb-0">
+          {% if lang == 'en' %}Learning opportunity identified{% else %}Opportunité d'apprentissage identifiée{% endif %}
+        </p>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- Content Section -->
+  <div class="content-section">
+    <!-- Stars Rating -->
+    {% if etoiles is not none %}
+      <div class="stars-container">
+        {% for i in range(1, 4) %}
+          {% if i <= etoiles %}
+            <span class="star-filled">⭐</span>
+          {% else %}
+            <span class="star-empty">☆</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+      
+      <!-- Status Badge -->
+      <div class="text-center mb-4">
+        {% if etoiles == 3 %}
+          <span class="status-badge badge-success">
+            <i class="fas fa-check-circle me-2"></i>
+            {% if lang == 'en' %}Mastered{% else %}Maîtrisé{% endif %}
+          </span>
+        {% elif etoiles == 2 %}
+          <span class="status-badge badge-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            {% if lang == 'en' %}Good Progress{% else %}Bon Progrès{% endif %}
+          </span>
+        {% else %}
+          <span class="status-badge badge-danger">
+            <i class="fas fa-redo me-2"></i>
+            {% if lang == 'en' %}Needs Practice{% else %}Pratique Nécessaire{% endif %}
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <!-- AI Feedback -->
+    <div class="feedback-card">
+      <div class="section-title">
+        <i class="fas fa-robot ai-icon"></i>
+        {% if lang == 'en' %}AI Analysis & Feedback{% else %}Analyse et Retour de l'IA{% endif %}
+      </div>
+      
+      <div class="feedback-content math-content">
+        {{ analyse | safe }}
+      </div>
+    </div>
+
+    <!-- Continue Button -->
+    <div class="text-center mt-4">
+      <a href="{{ redirect_url }}" class="btn-continue">
+        <i class="fas fa-arrow-right me-2"></i>
+        {% if lang == 'en' %}Continue Learning{% else %}Continuer l'Apprentissage{% endif %}
+      </a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Admin Login{% else %}Connexion administrateur{% endif %}</title>
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --border-radius: 16px;
+      --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--gradient);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--dark);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .lang-switch {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      z-index: 100;
+    }
+
+    .lang-switch form {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-switch label {
+      margin: 0;
+      font-size: 1.4rem;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .lang-switch select {
+      padding: 10px 14px;
+      border-radius: var(--border-radius);
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+      transition: var(--transition);
+      width: auto;
+      backdrop-filter: blur(10px);
+    }
+
+    .login-box {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 50px 40px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .login-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), #764ba2);
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .logo i {
+      font-size: 3.5rem;
+      background: linear-gradient(135deg, var(--primary), #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h2 {
+      text-align: center;
+      color: var(--secondary);
+      margin-bottom: 30px;
+      font-size: 2rem;
+      font-weight: 600;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--secondary);
+      font-size: 0.95rem;
+    }
+
+    .input-container {
+      position: relative;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px 20px;
+      border: 2px solid rgba(52, 152, 219, 0.1);
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      transition: var(--transition);
+      background: rgba(255, 255, 255, 0.8);
+      font-family: inherit;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 8px 24px rgba(52, 152, 219, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6c757d;
+      transition: var(--transition);
+    }
+
+    input:focus + .input-icon {
+      color: var(--primary);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 16px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border: none;
+      color: white;
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 8px 24px rgba(52, 152, 219, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(52, 152, 219, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 25px;
+      text-decoration: none;
+      color: #6c757d;
+      font-weight: 500;
+      transition: var(--transition);
+      padding: 10px;
+      border-radius: var(--border-radius);
+    }
+
+    .back-link:hover {
+      color: var(--primary);
+      background: rgba(52, 152, 219, 0.05);
+    }
+
+    @media (max-width: 576px) {
+      .login-box {
+        padding: 40px 25px;
+      }
+      
+      .lang-switch {
+        position: relative;
+        top: 0;
+        right: 0;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .login-box {
+      animation: fadeInUp 0.6s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sélecteur de langue -->
+  <div class="lang-switch">
+    <form method="POST" action="/changer-langue">
+      <label for="lang">🌍</label>
+      <select name="lang" id="lang" onchange="this.form.submit()">
+        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+        <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+      </select>
+      <input type="hidden" name="redirect_page" value="login_admin">
+    </form>
+  </div>
+
+  <div class="container">
+    <div class="login-box">
+      <div class="logo">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      
+      <h2>{% if lang == 'en' %}Admin Login{% else %}Connexion Admin{% endif %}</h2>
+
+      <form method="POST" action="/login-admin">
+        <div class="form-group">
+          <label for="email">{% if lang == 'en' %}Email{% else %}Email{% endif %} :</label>
+          <div class="input-container">
+            <input type="email" id="email" name="email" required placeholder="{% if lang == 'en' %}Enter your email{% else %}Saisissez votre email{% endif %}">
+            <div class="input-icon">
+              <i class="fas fa-envelope"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="mot_de_passe">{% if lang == 'en' %}Password{% else %}Mot de passe{% endif %} :</label>
+          <div class="input-container">
+            <input type="password" id="mot_de_passe" name="mot_de_passe" required placeholder="{% if lang == 'en' %}Enter your password{% else %}Saisissez votre mot de passe{% endif %}">
+            <div class="input-icon">
+              <i class="fas fa-lock"></i>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit">
+          <i class="fas fa-sign-in-alt"></i>
+          {% if lang == 'en' %}Sign In{% else %}Se connecter{% endif %}
+        </button>
+      </form>
+
+      <a class="back-link" href="{{ url_for('index') }}">
+        ← {% if lang == 'en' %}Back to Home{% else %}Retour à l'accueil{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+</body>
+</html>

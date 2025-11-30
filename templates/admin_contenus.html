@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>🧩 Contenus pédagogiques</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f0f0; padding: 40px; }
+    .container {
+      max-width: 900px; margin: auto; background: white;
+      padding: 30px; border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2, h3 { text-align: center; color: #2c3e50; }
+    form { margin-top: 30px; }
+    label { font-weight: bold; display: block; margin-top: 15px; }
+    input, select, textarea {
+      width: 100%; padding: 10px;
+      border: 1px solid #ccc; border-radius: 5px; margin-top: 5px;
+    }
+    button {
+      margin-top: 20px;
+      background-color: #27ae60; color: white;
+      border: none; border-radius: 5px; padding: 12px 20px;
+      font-size: 16px; cursor: pointer; width: 100%;
+    }
+    button:hover { background-color: #1f8b4c; }
+
+    .section {
+      margin-bottom: 50px;
+      border-top: 2px solid #eee;
+      padding-top: 30px;
+    }
+
+    .lien-action {
+      text-align: center; margin-top: 25px;
+    }
+
+    .lien-action a {
+      text-decoration: none;
+      color: #3498db;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>📚 Gestion des contenus pédagogiques</h2>
+
+  <!-- Ajouter un niveau -->
+  <div class="section">
+    <h3>Ajouter un niveau</h3>
+    <form method="POST" action="/admin/ajouter-niveau">
+      <label>Nom du niveau</label>
+      <input type="text" name="nom" required>
+      <button type="submit">➕ Ajouter</button>
+    </form>
+  </div>
+
+  <!-- Ajouter une matière -->
+  <div class="section">
+    <h3>Ajouter une matière</h3>
+    <form method="POST" action="/admin/ajouter-matiere">
+      <label>Niveau concerné</label>
+      <select name="niveau_id" required>
+        {% for niveau in niveaux %}
+          <option value="{{ niveau.id }}">{{ niveau.nom }}</option>
+        {% endfor %}
+      </select>
+      <label>Nom de la matière</label>
+      <input type="text" name="nom" required>
+      <button type="submit">➕ Ajouter</button>
+    </form>
+  </div>
+
+  <!-- Ajouter une unité -->
+  <div class="section">
+    <h3>Ajouter une unité</h3>
+    <form method="POST" action="/admin/ajouter-unite">
+      <label>Matière concernée</label>
+      <select name="matiere_id" required>
+        {% for niveau in niveaux %}
+          {% for matiere in niveau.matieres %}
+            <option value="{{ matiere.id }}">{{ niveau.nom }} > {{ matiere.nom }}</option>
+          {% endfor %}
+        {% endfor %}
+      </select>
+      <label>Nom de l’unité</label>
+      <input type="text" name="nom" required>
+      <button type="submit">➕ Ajouter</button>
+    </form>
+  </div>
+
+  <!-- Ajouter une leçon avec chaînage dynamique -->
+  <div class="section">
+    <h3>Ajouter une leçon</h3>
+    <form method="POST" action="/admin/ajouter-lecon">
+      <label>Niveau</label>
+      <select id="niveau-select" required>
+        <option value="">-- Choisir un niveau --</option>
+        {% for niveau in niveaux %}
+          <option value="{{ niveau.id }}">{{ niveau.nom }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Matière</label>
+      <select id="matiere-select" required disabled></select>
+
+      <label>Unité</label>
+      <select name="unite_id" id="unite-select" required disabled></select>
+
+      <label>Titre FR</label>
+      <input type="text" name="titre_fr" required>
+      <label>Titre EN</label>
+      <input type="text" name="titre_en" required>
+      <label>Objectif FR</label>
+      <textarea name="objectif_fr" required></textarea>
+      <label>Objectif EN</label>
+      <textarea name="objectif_en" required></textarea>
+
+      <button type="submit">➕ Ajouter</button>
+    </form>
+  </div>
+
+  <!-- Liens vers les formulaires complets -->
+  <div class="section">
+    <h3>Ajouter des exercices ou tests</h3>
+    <div class="lien-action">
+      <a href="/admin/ajouter-exercice">➕ Ajouter un exercice</a><br><br>
+      <a href="/admin/ajouter-test">🧪 Ajouter un test sommatif</a>
+    </div>
+  </div>
+</div>
+
+<!-- Script de chaînage dynamique -->
+<script>
+  const niveau = document.getElementById("niveau-select");
+  const matiere = document.getElementById("matiere-select");
+  const unite = document.getElementById("unite-select");
+
+  niveau.addEventListener("change", async function () {
+    matiere.innerHTML = "";
+    unite.innerHTML = "";
+    matiere.disabled = unite.disabled = true;
+
+    if (!this.value) return;
+    const res = await fetch(`/api/matieres?niveau_id=${this.value}`);
+    const matieres = await res.json();
+    matiere.innerHTML = `<option value="">-- Choisir une matière --</option>`;
+    matieres.forEach(m => {
+      matiere.innerHTML += `<option value="${m.id}">${m.nom}</option>`;
+    });
+    matiere.disabled = false;
+  });
+
+  matiere.addEventListener("change", async function () {
+    unite.innerHTML = "";
+    unite.disabled = true;
+
+    if (!this.value) return;
+    const res = await fetch(`/api/unites?matiere_id=${this.value}`);
+    const unites = await res.json();
+    unite.innerHTML = `<option value="">-- Choisir une unité --</option>`;
+    unites.forEach(u => {
+      unite.innerHTML += `<option value="${u.id}">${u.nom}</option>`;
+    });
+    unite.disabled = false;
+  });
+</script>
+</body>
+</html>

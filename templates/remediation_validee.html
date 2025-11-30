@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Remediation Validated{% else %}Remédiation validée{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --success: #27ae60;
+      --success-dark: #219150;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --border-radius: 16px;
+      --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .lang-selector {
+      text-align: right;
+      margin-bottom: 30px;
+    }
+
+    .lang-form {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 20px;
+      border-radius: 50px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .lang-label {
+      font-weight: 600;
+      color: var(--secondary);
+      font-size: 1rem;
+    }
+
+    .lang-select {
+      padding: 8px 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      background: white;
+      color: var(--dark);
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .lang-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .success-card {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 50px 40px;
+      box-shadow: var(--box-shadow);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      animation: slideInUp 0.8s ease;
+    }
+
+    .success-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--success), var(--primary));
+    }
+
+    .success-icon {
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(135deg, var(--success), var(--success-dark));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 30px;
+      position: relative;
+      animation: bounceIn 1s ease;
+    }
+
+    .success-icon i {
+      font-size: 3.5rem;
+      color: white;
+    }
+
+    .success-icon::after {
+      content: '';
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border: 3px solid rgba(39, 174, 96, 0.3);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    h2 {
+      color: var(--secondary);
+      font-size: 2.2rem;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    .success-message {
+      font-size: 1.3rem;
+      color: var(--gray);
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .sub-message {
+      font-size: 1.1rem;
+      color: var(--gray);
+      margin-bottom: 40px;
+      opacity: 0.8;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 40px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 30px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-outline:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+    }
+
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: confettiFall 5s linear infinite;
+    }
+
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes bounceIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.3);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.05);
+      }
+      70% {
+        transform: scale(0.9);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.8);
+        opacity: 1;
+      }
+      70% {
+        transform: scale(1.2);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1.2);
+        opacity: 0;
+      }
+    }
+
+    @keyframes confettiFall {
+      0% {
+        transform: translateY(-100px) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    .student-info {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 30px 0;
+      border-left: 4px solid var(--primary);
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      color: var(--secondary);
+      font-weight: 500;
+    }
+
+    .info-item i {
+      color: var(--primary);
+      width: 20px;
+    }
+
+    .impact-stats {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 15px;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--success);
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--gray);
+      margin-top: 5px;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 15px;
+      }
+
+      .success-card {
+        padding: 40px 25px;
+      }
+
+      h2 {
+        font-size: 1.8rem;
+      }
+
+      .success-message {
+        font-size: 1.1rem;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .btn {
+        width: 100%;
+        max-width: 300px;
+        justify-content: center;
+      }
+
+      .impact-stats {
+        gap: 15px;
+      }
+
+      .stat-number {
+        font-size: 1.6rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h2 {
+        font-size: 1.5rem;
+      }
+
+      .success-icon {
+        width: 80px;
+        height: 80px;
+      }
+
+      .success-icon i {
+        font-size: 2.5rem;
+      }
+
+      .lang-form {
+        flex-direction: column;
+        gap: 8px;
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Sélecteur de langue -->
+  <div class="lang-selector">
+    <form method="POST" action="/changer-langue" class="lang-form">
+      <span class="lang-label">🌍</span>
+      <input type="hidden" name="redirect" value="remediation_validated">
+      <input type="hidden" name="extra_params" value="lang={{ lang }}">
+      <select name="lang" id="lang" class="lang-select" onchange="this.form.submit()">
+        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+        <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+      </select>
+    </form>
+  </div>
+
+  <!-- Carte de succès -->
+  <div class="success-card">
+    <!-- Icône de succès animée -->
+    <div class="success-icon">
+      <i class="fas fa-check"></i>
+    </div>
+
+    <h2>
+      {% if lang == 'en' %}
+        Remediation Successfully Validated!
+      {% else %}
+        Remédiation Validée avec Succès !
+      {% endif %}
+    </h2>
+
+    <p class="success-message">
+      {% if lang == 'en' %}
+        🎉 Excellent! The personalized remediation has been sent to the student.
+      {% else %}
+        🎉 Excellent ! La remédiation personnalisée a été envoyée à l'élève.
+      {% endif %}
+    </p>
+
+    <p class="sub-message">
+      {% if lang == 'en' %}
+        Your guidance will help the student overcome their learning challenges.
+      {% else %}
+        Votre accompagnement aidera l'élève à surmonter ses difficultés d'apprentissage.
+      {% endif %}
+    </p>
+
+    <!-- Informations supplémentaires -->
+    <div class="student-info">
+      <div class="info-item">
+        <i class="fas fa-user-graduate"></i>
+        <span>
+          {% if lang == 'en' %}
+            Student notified and ready to learn
+          {% else %}
+            Élève notifié et prêt à apprendre
+          {% endif %}
+        </span>
+      </div>
+      <div class="info-item">
+        <i class="fas fa-clock"></i>
+        <span>
+          {% if lang == 'en' %}
+            Real-time feedback delivered
+          {% else %}
+            Retour d'information en temps réel
+          {% endif %}
+        </span>
+      </div>
+      <div class="info-item">
+        <i class="fas fa-chart-line"></i>
+        <span>
+          {% if lang == 'en' %}
+            Progress tracking activated
+          {% else %}
+            Suivi de progression activé
+          {% endif %}
+        </span>
+      </div>
+    </div>
+
+    <!-- Statistiques d'impact -->
+    <div class="impact-stats">
+      <div class="stat-item">
+        <span class="stat-number">1</span>
+        <span class="stat-label">
+          {% if lang == 'en' %}Student Helped{% else %}Élève Accompagné{% endif %}
+        </span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">100%</span>
+        <span class="stat-label">
+          {% if lang == 'en' %}Success Rate{% else %}Taux de Réussite{% endif %}
+        </span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">⭐</span>
+        <span class="stat-label">
+          {% if lang == 'en' %}Quality Feedback{% else %}Retour Qualitatif{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="action-buttons">
+      <a href="/enseignant/remediations-en-attente?lang={{ lang }}" class="btn btn-primary">
+        <i class="fas fa-arrow-left"></i>
+        {% if lang == 'en' %}Back to Pending List{% else %}Retour aux en attente{% endif %}
+      </a>
+      <a href="/enseignant/dashboard?lang={{ lang }}" class="btn btn-outline">
+        <i class="fas fa-tachometer-alt"></i>
+        {% if lang == 'en' %}Teacher Dashboard{% else %}Tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Création d'effets de confetti
+  document.addEventListener('DOMContentLoaded', function() {
+    const successCard = document.querySelector('.success-card');
+    const colors = ['#27ae60', '#3498db', '#f39c12', '#9b59b6', '#e74c3c'];
+    
+    for (let i = 0; i < 20; i++) {
+      const confetti = document.createElement('div');
+      confetti.className = 'confetti';
+      confetti.style.left = Math.random() * 100 + '%';
+      confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+      confetti.style.animationDelay = Math.random() * 5 + 's';
+      confetti.style.width = (Math.random() * 10 + 5) + 'px';
+      confetti.style.height = confetti.style.width;
+      successCard.appendChild(confetti);
+    }
+
+    // Animation de secousse douce pour la carte
+    setTimeout(() => {
+      successCard.style.transform = 'translateY(-5px)';
+      setTimeout(() => {
+        successCard.style.transform = 'translateY(0)';
+      }, 100);
+    }, 500);
+  });
+</script>
+
+</body>
+</html>

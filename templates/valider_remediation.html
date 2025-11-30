@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --border-radius: 12px;
+      --box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
+    }
+
+    h2 {
+      color: var(--secondary);
+      text-align: center;
+      margin-bottom: 35px;
+      font-size: 2.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    h2 i {
+      color: var(--primary);
+      font-size: 2.5rem;
+    }
+
+    .form-section {
+      margin-bottom: 30px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 15px;
+      color: var(--secondary);
+    }
+
+    .section-header i {
+      color: var(--primary);
+      font-size: 1.3rem;
+      width: 24px;
+      text-align: center;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--secondary);
+      font-size: 1rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 15px;
+      font-size: 1rem;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      resize: vertical;
+      transition: var(--transition);
+      font-family: inherit;
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    math-field {
+      width: 100%;
+      min-height: 60px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      font-size: 16px;
+      margin-top: 10px;
+      transition: var(--transition);
+    }
+
+    math-field:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .btn-insert {
+      background: linear-gradient(135deg, var(--warning), #e67e22);
+      color: white;
+      margin-top: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-insert:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-submit {
+      background: linear-gradient(135deg, var(--success), #219150);
+      color: white;
+      padding: 15px 30px;
+      font-size: 1.1rem;
+      margin-top: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-delete {
+      background: linear-gradient(135deg, var(--danger), #c0392b);
+      color: white;
+      padding: 15px 30px;
+      font-size: 1.1rem;
+      margin-top: 15px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-delete:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-back {
+      background: linear-gradient(135deg, var(--secondary), #1a252f);
+      color: white;
+      margin-top: 20px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-back:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(44, 62, 80, 0.3);
+    }
+
+    .actions-container {
+      margin-top: 40px;
+      border-top: 2px solid #e9ecef;
+      padding-top: 30px;
+    }
+
+    .action-group {
+      margin-bottom: 20px;
+    }
+
+    .confirmation-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 30px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: var(--box-shadow);
+      text-align: center;
+    }
+
+    .modal-icon {
+      font-size: 3rem;
+      color: var(--danger);
+      margin-bottom: 15px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 25px;
+      justify-content: center;
+    }
+
+    .btn-cancel {
+      background: var(--gray);
+      color: white;
+    }
+
+    .btn-cancel:hover {
+      background: #5a6268;
+      transform: translateY(-2px);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .form-section {
+      animation: slideIn 0.5s ease;
+    }
+
+    .form-section:nth-child(1) { animation-delay: 0.1s; }
+    .form-section:nth-child(2) { animation-delay: 0.2s; }
+    .form-section:nth-child(3) { animation-delay: 0.3s; }
+    .form-section:nth-child(4) { animation-delay: 0.4s; }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 10px;
+      }
+
+      .container {
+        padding: 25px 20px;
+      }
+
+      h2 {
+        font-size: 1.8rem;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .modal-actions {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h2 {
+        font-size: 1.5rem;
+      }
+
+      .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+    }
+
+    /* Style pour le rendu MathJax amélioré */
+    math-field {
+      --caret-color: var(--primary);
+      --selection-background-color: rgba(52, 152, 219, 0.2);
+    }
+
+    .character-count {
+      text-align: right;
+      font-size: 0.8rem;
+      color: var(--gray);
+      margin-top: 5px;
+    }
+  </style>
+
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css">
+  <script defer src="https://unpkg.com/mathlive"></script>
+</head>
+<body>
+
+<div class="container">
+  <h2>
+    <i class="fas fa-check-circle"></i>
+    {% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}
+  </h2>
+
+  <form method="POST" id="remediationForm">
+    <!-- Message Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <i class="fas fa-comment-dots"></i>
+        <div class="section-title">
+          {% if lang == 'en' %}Message to Student{% else %}Message à l'élève{% endif %}
+        </div>
+      </div>
+      <div class="form-group">
+        <textarea 
+          name="message" 
+          id="message_text" 
+          placeholder="{% if lang == 'en' %}Write your feedback message...{% else %}Rédigez votre message de feedback...{% endif %}"
+          required
+          oninput="updateCharacterCount('message_text', 'message_count')"
+        >{{ suggestion.message }}</textarea>
+        <div class="character-count">
+          <span id="message_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
+        </div>
+      </div>
+      <math-field 
+        id="math_message" 
+        virtual-keyboard-mode="onfocus" 
+        class="math-editor"
+        placeholder="{% if lang == 'en' %}Type math formula here...{% else %}Tapez la formule mathématique ici...{% endif %}"
+      ></math-field>
+      <button type="button" class="btn btn-insert" onclick="insertMath('math_message', 'message_text')">
+        <i class="fas fa-plus"></i>
+        {% if lang == 'en' %}Insert into Message{% else %}Insérer dans le message{% endif %}
+      </button>
+    </div>
+
+    <!-- Question Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <i class="fas fa-question-circle"></i>
+        <div class="section-title">
+          {% if lang == 'en' %}Remediation Question{% else %}Question de remédiation{% endif %}
+        </div>
+      </div>
+      <div class="form-group">
+        <textarea 
+          name="question" 
+          id="question_text" 
+          placeholder="{% if lang == 'en' %}Enter the remediation question...{% else %}Saisissez la question de remédiation...{% endif %}"
+          required
+          oninput="updateCharacterCount('question_text', 'question_count')"
+        >{{ question or '' }}</textarea>
+        <div class="character-count">
+          <span id="question_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
+        </div>
+      </div>
+      <math-field 
+        id="math_question" 
+        virtual-keyboard-mode="onfocus" 
+        class="math-editor"
+        placeholder="{% if lang == 'en' %}Type math formula here...{% else %}Tapez la formule mathématique ici...{% endif %}"
+      ></math-field>
+      <button type="button" class="btn btn-insert" onclick="insertMath('math_question', 'question_text')">
+        <i class="fas fa-plus"></i>
+        {% if lang == 'en' %}Insert into Question{% else %}Insérer dans la question{% endif %}
+      </button>
+    </div>
+
+    <!-- Answer Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <i class="fas fa-check-square"></i>
+        <div class="section-title">
+          {% if lang == 'en' %}Expected Answer{% else %}Réponse attendue{% endif %}
+        </div>
+      </div>
+      <div class="form-group">
+        <textarea 
+          name="reponse" 
+          id="reponse_text" 
+          placeholder="{% if lang == 'en' %}Enter the expected answer...{% else %}Saisissez la réponse attendue...{% endif %}"
+          required
+          oninput="updateCharacterCount('reponse_text', 'reponse_count')"
+        >{{ reponse or '' }}</textarea>
+        <div class="character-count">
+          <span id="reponse_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
+        </div>
+      </div>
+      <math-field 
+        id="math_reponse" 
+        virtual-keyboard-mode="onfocus" 
+        class="math-editor"
+        placeholder="{% if lang == 'en' %}Type math formula here...{% else %}Tapez la formule mathématique ici...{% endif %}"
+      ></math-field>
+      <button type="button" class="btn btn-insert" onclick="insertMath('math_reponse', 'reponse_text')">
+        <i class="fas fa-plus"></i>
+        {% if lang == 'en' %}Insert into Answer{% else %}Insérer dans la réponse{% endif %}
+      </button>
+    </div>
+
+    <!-- Explanation Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <i class="fas fa-lightbulb"></i>
+        <div class="section-title">
+          {% if lang == 'en' %}Explanation{% else %}Explication{% endif %}
+        </div>
+      </div>
+      <div class="form-group">
+        <textarea 
+          name="explication" 
+          id="explication_text" 
+          placeholder="{% if lang == 'en' %}Provide detailed explanation...{% else %}Fournissez une explication détaillée...{% endif %}"
+          required
+          oninput="updateCharacterCount('explication_text', 'explication_count')"
+        >{{ explication or '' }}</textarea>
+        <div class="character-count">
+          <span id="explication_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
+        </div>
+      </div>
+      <math-field 
+        id="math_explication" 
+        virtual-keyboard-mode="onfocus" 
+        class="math-editor"
+        placeholder="{% if lang == 'en' %}Type math formula here...{% else %}Tapez la formule mathématique ici...{% endif %}"
+      ></math-field>
+      <button type="button" class="btn btn-insert" onclick="insertMath('math_explication', 'explication_text')">
+        <i class="fas fa-plus"></i>
+        {% if lang == 'en' %}Insert into Explanation{% else %}Insérer dans l'explication{% endif %}
+      </button>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions-container">
+      <div class="action-group">
+        <button type="submit" class="btn btn-submit">
+          <i class="fas fa-check-circle"></i>
+          {% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}
+        </button>
+      </div>
+
+      <div class="action-group">
+        <button type="button" class="btn btn-delete" onclick="showDeleteModal()">
+          <i class="fas fa-trash"></i>
+          {% if lang == 'en' %}Delete Remediation{% else %}Supprimer la remédiation{% endif %}
+        </button>
+      </div>
+
+      <div class="action-group">
+        <a href="{{ url_for('remediations_a_valider', lang=lang) }}" class="btn btn-back">
+          <i class="fas fa-arrow-left"></i>
+          {% if lang == 'en' %}Back to List{% else %}Retour à la liste{% endif %}
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="confirmation-modal" id="deleteModal">
+  <div class="modal-content">
+    <div class="modal-icon">
+      <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <h3>{% if lang == 'en' %}Confirm Deletion{% else %}Confirmer la suppression{% endif %}</h3>
+    <p>{% if lang == 'en' %}Are you sure you want to delete this remediation? This action cannot be undone.{% else %}Êtes-vous sûr de vouloir supprimer cette remédiation ? Cette action ne peut pas être annulée.{% endif %}</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-cancel" onclick="hideDeleteModal()">
+        <i class="fas fa-times"></i>
+        {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
+      </button>
+      <form method="POST" action="{{ url_for('supprimer_remediation', id=suggestion.id) }}" style="display: inline;">
+        <button type="submit" class="btn btn-delete">
+          <i class="fas fa-trash"></i>
+          {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function insertMath(mathId, inputId) {
+    const mathField = document.getElementById(mathId);
+    const input = document.getElementById(inputId);
+    const formula = mathField.value;
+
+    if (!formula || !input) return;
+
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+
+    const before = input.value.substring(0, start);
+    const after = input.value.substring(end);
+
+    input.value = before + formula + after;
+    input.focus();
+    input.selectionStart = input.selectionEnd = start + formula.length;
+
+    mathField.value = '';
+    
+    // Update character count
+    updateCharacterCount(inputId, inputId.replace('_text', '_count'));
+    
+    // Visual feedback
+    mathField.style.borderColor = '#27ae60';
+    setTimeout(() => {
+      mathField.style.borderColor = '#e9ecef';
+    }, 1000);
+  }
+
+  function updateCharacterCount(textareaId, countId) {
+    const textarea = document.getElementById(textareaId);
+    const countElement = document.getElementById(countId);
+    if (textarea && countElement) {
+      countElement.textContent = textarea.value.length;
+    }
+  }
+
+  function showDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'flex';
+  }
+
+  function hideDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    // Initialize character counts
+    updateCharacterCount('message_text', 'message_count');
+    updateCharacterCount('question_text', 'question_count');
+    updateCharacterCount('reponse_text', 'reponse_count');
+    updateCharacterCount('explication_text', 'explication_count');
+
+    // Close modal when clicking outside
+    document.getElementById('deleteModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        hideDeleteModal();
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

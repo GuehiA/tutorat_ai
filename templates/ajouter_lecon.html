@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Add Lesson{% else %}Ajouter une Leçon{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #9b59b6;
+      --primary-dark: #8e44ad;
+      --secondary: #2c3e50;
+      --secondary-dark: #1a252f;
+      --accent: #3498db;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 12px;
+      --box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .lang-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 12px 18px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .lang-selector label {
+      margin: 0;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+
+    .lang-selector select {
+      border: 1px solid var(--light-gray);
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: white;
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 500;
+    }
+
+    .lang-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(155, 89, 182, 0.2);
+    }
+
+    .form-box {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      overflow: hidden;
+      margin-bottom: 30px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .form-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .form-header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(180deg); }
+    }
+
+    .form-header h2 {
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .form-header p {
+      opacity: 0.9;
+      font-size: 1.1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .form-body {
+      padding: 40px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--secondary);
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .required::after {
+      content: " *";
+      color: #e74c3c;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--light-gray);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 1rem;
+      transition: var(--transition);
+      background: white;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(155, 89, 182, 0.1);
+      transform: translateY(-2px);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+      line-height: 1.5;
+    }
+
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236c757d' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      background-size: 12px;
+    }
+
+    .submit-button {
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 18px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .submit-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .submit-button:hover::before {
+      left: 100%;
+    }
+
+    .submit-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(155, 89, 182, 0.3);
+    }
+
+    .submit-button:active {
+      transform: translateY(-1px);
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .back-link a {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--secondary);
+      color: white;
+      padding: 14px 28px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      border: 2px solid transparent;
+    }
+
+    .back-link a:hover {
+      background: transparent;
+      color: var(--secondary);
+      border-color: var(--secondary);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(44, 62, 80, 0.2);
+    }
+
+    .form-section {
+      margin-bottom: 35px;
+      padding-bottom: 25px;
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .form-section-title {
+      font-size: 1.4rem;
+      color: var(--primary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 15px 0;
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 16px;
+      top: 42px;
+      color: var(--gray);
+      pointer-events: none;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 20px;
+      border-radius: 10px;
+      color: white;
+      font-weight: 600;
+      box-shadow: var(--box-shadow);
+      z-index: 1000;
+      transform: translateX(150%);
+      transition: transform 0.4s ease;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success {
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+    }
+
+    .notification.error {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .lang-selector {
+        justify-content: center;
+      }
+      
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .form-body {
+        padding: 25px;
+      }
+      
+      .form-header h2 {
+        font-size: 1.8rem;
+      }
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: var(--light-gray);
+      border-radius: 2px;
+      margin-bottom: 30px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .character-count {
+      text-align: right;
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 5px;
+    }
+
+    .character-count.warning {
+      color: #e74c3c;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header avec sélecteur de langue -->
+    <div class="header">
+      <div class="lang-selector">
+        <label for="lang"><i class="fas fa-globe"></i></label>
+        <form method="POST" action="/changer-langue" id="langForm">
+          <select name="lang" id="lang" onchange="document.getElementById('langForm').submit()">
+            <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+            <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+          </select>
+          <input type="hidden" name="redirect_page" value="ajouter_lecon">
+        </form>
+      </div>
+    </div>
+
+    <!-- Formulaire principal -->
+    <div class="form-box">
+      <div class="form-header">
+        <h2><i class="fas fa-book-open"></i> {% if lang == 'en' %}Add New Lesson{% else %}Nouvelle Leçon{% endif %}</h2>
+        <p>{% if lang == 'en' %}Create an engaging lesson for your students{% else %}Créez une leçon engageante pour vos étudiants{% endif %}</p>
+      </div>
+
+      <div class="form-body">
+        <!-- Barre de progression -->
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <form method="POST" id="lessonForm">
+          <!-- Section Catégorisation -->
+          <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-folder-tree"></i> {% if lang == 'en' %}Categorization{% else %}Catégorisation{% endif %}</h3>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="niveau" class="required"><i class="fas fa-layer-group"></i> {% if lang == 'en' %}Level{% else %}Niveau{% endif %}</label>
+                <select id="niveau" required>
+                  <option value="">{% if lang == 'en' %}-- Choose level --{% else %}-- Choisir un niveau --{% endif %}</option>
+                  {% for niveau in niveaux %}
+                    <option value="{{ niveau.id }}">{{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}</option>
+                  {% endfor %}
+                </select>
+                <i class="fas fa-chevron-down input-icon"></i>
+              </div>
+
+              <div class="form-group">
+                <label for="matiere" class="required"><i class="fas fa-graduation-cap"></i> {% if lang == 'en' %}Subject{% else %}Matière{% endif %}</label>
+                <select id="matiere" required disabled>
+                  <option value="">{% if lang == 'en' %}-- Choose subject --{% else %}-- Choisir une matière --{% endif %}</option>
+                </select>
+                <i class="fas fa-chevron-down input-icon"></i>
+              </div>
+
+              <div class="form-group">
+                <label for="unite" class="required"><i class="fas fa-cube"></i> {% if lang == 'en' %}Unit{% else %}Unité{% endif %}</label>
+                <select name="unite_id" id="unite" required disabled>
+                  <option value="">{% if lang == 'en' %}-- Choose unit --{% else %}-- Choisir une unité --{% endif %}</option>
+                </select>
+                <i class="fas fa-chevron-down input-icon"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section Informations de la leçon -->
+          <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-info-circle"></i> {% if lang == 'en' %}Lesson Information{% else %}Informations de la leçon{% endif %}</h3>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="titre_fr" class="required"><i class="fas fa-heading"></i> {% if lang == 'en' %}Title (French){% else %}Titre Français{% endif %}</label>
+                <input type="text" name="titre_fr" id="titre_fr" required placeholder="{% if lang == 'en' %}Enter lesson title in French{% else %}Saisissez le titre de la leçon{% endif %}">
+                <div class="character-count" id="count-titre_fr">0/100</div>
+              </div>
+
+              <div class="form-group">
+                <label for="titre_en" class="required"><i class="fas fa-heading"></i> {% if lang == 'en' %}Title (English){% else %}Titre Anglais{% endif %}</label>
+                <input type="text" name="titre_en" id="titre_en" required placeholder="{% if lang == 'en' %}Enter lesson title in English{% else %}Enter lesson title in English{% endif %}">
+                <div class="character-count" id="count-titre_en">0/100</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="objectif_fr" class="required"><i class="fas fa-bullseye"></i> {% if lang == 'en' %}Objective (French){% else %}Objectif Français{% endif %}</label>
+              <textarea name="objectif_fr" id="objectif_fr" required placeholder="{% if lang == 'en' %}Describe the learning objectives in French{% else %}Décrivez les objectifs d'apprentissage{% endif %}"></textarea>
+              <div class="character-count" id="count-objectif_fr">0/500</div>
+            </div>
+
+            <div class="form-group">
+              <label for="objectif_en" class="required"><i class="fas fa-bullseye"></i> {% if lang == 'en' %}Objective (English){% else %}Objectif Anglais{% endif %}</label>
+              <textarea name="objectif_en" id="objectif_en" required placeholder="{% if lang == 'en' %}Describe the learning objectives in English{% else %}Describe the learning objectives in English{% endif %}"></textarea>
+              <div class="character-count" id="count-objectif_en">0/500</div>
+            </div>
+          </div>
+
+          <button type="submit" class="submit-button" id="submitBtn">
+            <i class="fas fa-plus-circle"></i> {% if lang == 'en' %}Create Lesson{% else %}Créer la Leçon{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Lien de retour -->
+    <div class="back-link">
+      <a href="{{ dashboard_url }}">
+        <i class="fas fa-arrow-left"></i> {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+
+  <script>
+    // Variables globales
+    const langJs = "{{ lang }}";
+    const niveau = document.getElementById("niveau");
+    const matiere = document.getElementById("matiere");
+    const unite = document.getElementById("unite");
+    const submitBtn = document.getElementById("submitBtn");
+    const notification = document.getElementById("notification");
+    const progressFill = document.getElementById("progressFill");
+
+    // Initialisation au chargement de la page
+    document.addEventListener("DOMContentLoaded", () => {
+      initCharacterCounters();
+      updateProgress();
+    });
+
+    // Compteurs de caractères
+    function initCharacterCounters() {
+      const fields = {
+        'titre_fr': 100,
+        'titre_en': 100,
+        'objectif_fr': 500,
+        'objectif_en': 500
+      };
+
+      Object.keys(fields).forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        const counter = document.getElementById(`count-${fieldId}`);
+        const maxLength = fields[fieldId];
+
+        field.addEventListener('input', function() {
+          const length = this.value.length;
+          counter.textContent = `${length}/${maxLength}`;
+          
+          if (length > maxLength * 0.8) {
+            counter.classList.add('warning');
+          } else {
+            counter.classList.remove('warning');
+          }
+          
+          updateProgress();
+        });
+      });
+    }
+
+    // Mise à jour de la barre de progression
+    function updateProgress() {
+      const requiredFields = ['niveau', 'matiere', 'unite', 'titre_fr', 'titre_en', 'objectif_fr', 'objectif_en'];
+      let filledCount = 0;
+
+      requiredFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field && field.value.trim()) {
+          filledCount++;
+        }
+      });
+
+      const progress = (filledCount / requiredFields.length) * 100;
+      progressFill.style.width = `${progress}%`;
+    }
+
+    // Gestion des changements de niveau
+    niveau.addEventListener("change", async function () {
+      matiere.innerHTML = ""; 
+      unite.innerHTML = "";
+      matiere.disabled = unite.disabled = true;
+
+      if (!this.value) {
+        updateProgress();
+        return;
+      }
+      
+      // Afficher un indicateur de chargement
+      matiere.innerHTML = `<option value="">${langJs === 'en' ? 'Loading...' : 'Chargement...'}</option>`;
+      
+      try {
+        const res = await fetch(`/api/matieres?niveau_id=${this.value}&lang=${langJs}`);
+        const matieresData = await res.json();
+        
+        matiere.innerHTML = `<option value="">${langJs === 'en' ? '-- Choose subject --' : '-- Choisir une matière --'}</option>`;
+        matieresData.forEach(m => {
+          matiere.innerHTML += `<option value="${m.id}">${m.nom}</option>`;
+        });
+        matiere.disabled = false;
+        updateProgress();
+      } catch (error) {
+        console.error('Error loading subjects:', error);
+        matiere.innerHTML = `<option value="">${langJs === 'en' ? 'Error loading subjects' : 'Erreur lors du chargement des matières'}</option>`;
+      }
+    });
+
+    // Gestion des changements de matière
+    matiere.addEventListener("change", async function () {
+      unite.innerHTML = "";
+      unite.disabled = true;
+
+      if (!this.value) {
+        updateProgress();
+        return;
+      }
+
+      // Afficher un indicateur de chargement
+      unite.innerHTML = `<option value="">${langJs === 'en' ? 'Loading...' : 'Chargement...'}</option>`;
+      
+      try {
+        const res = await fetch(`/api/unites?matiere_id=${this.value}&lang=${langJs}`);
+        const unitesData = await res.json();
+        
+        unite.innerHTML = `<option value="">${langJs === 'en' ? '-- Choose unit --' : '-- Choisir une unité --'}</option>`;
+        unitesData.forEach(u => {
+          unite.innerHTML += `<option value="${u.id}">${u.nom}</option>`;
+        });
+        unite.disabled = false;
+        updateProgress();
+      } catch (error) {
+        console.error('Error loading units:', error);
+        unite.innerHTML = `<option value="">${langJs === 'en' ? 'Error loading units' : 'Erreur lors du chargement des unités'}</option>`;
+      }
+    });
+
+    // Écouter les changements sur tous les champs pour la progression
+    document.querySelectorAll('input, select, textarea').forEach(field => {
+      field.addEventListener('change', updateProgress);
+      field.addEventListener('input', updateProgress);
+    });
+
+    // Afficher une notification
+    function showNotification(message, type) {
+      notification.textContent = message;
+      notification.className = `notification ${type} show`;
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 4000);
+    }
+
+    // Gestion de la soumission du formulaire
+    document.getElementById('lessonForm').addEventListener('submit', function(e) {
+      // Validation basique
+      const requiredFields = this.querySelectorAll('[required]');
+      let isValid = true;
+      
+      requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+          isValid = false;
+          field.style.borderColor = '#e74c3c';
+        } else {
+          field.style.borderColor = '';
+        }
+      });
+      
+      if (!isValid) {
+        e.preventDefault();
+        showNotification(
+          langJs === 'en' ? 'Please fill in all required fields' : 'Veuillez remplir tous les champs obligatoires', 
+          'error'
+        );
+        return;
+      }
+      
+      // Afficher un indicateur de chargement
+      submitBtn.innerHTML = `<span class="loading"></span> ${langJs === 'en' ? 'Creating...' : 'Création en cours...'}`;
+      submitBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>

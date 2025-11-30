@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Test Successfully Added{% else %}Test sommatif ajouté{% endif %}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 50px;
+      text-align: center;
+    }
+    .box {
+      background: #fff;
+      max-width: 600px;
+      margin: auto;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #27ae60;
+    }
+    p {
+      font-size: 16px;
+      color: #333;
+      margin: 15px 0;
+    }
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 25px;
+      flex-wrap: wrap;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+    .btn-add {
+      background: #27ae60;
+    }
+    .btn-add:hover {
+      background: #219150;
+    }
+    .btn-dashboard {
+      background: #3498db;
+    }
+    .btn-dashboard:hover {
+      background: #2980b9;
+    }
+    .btn-view {
+      background: #9b59b6;
+    }
+    .btn-view:hover {
+      background: #8e44ad;
+    }
+    .test-info {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+      border-left: 4px solid #3498db;
+    }
+    .test-info strong {
+      color: #2c3e50;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>
+      {% if lang == 'en' %}
+        ✅ Final test successfully added
+      {% else %}
+        ✅ Test sommatif ajouté avec succès
+      {% endif %}
+    </h2>
+
+    <p>
+      {% if lang == 'en' %}
+        Your test has been saved in the database.
+      {% else %}
+        Votre test a bien été enregistré dans la base de données.
+      {% endif %}
+    </p>
+
+    <!-- Informations sur le test créé -->
+    <div class="test-info">
+      <p><strong>{% if lang == 'en' %}Test:{% else %}Test :{% endif %}</strong> {{ test.titre_fr }}</p>
+      <p><strong>{% if lang == 'en' %}Unit:{% else %}Unité :{% endif %}</strong> {{ test.unite.nom }}</p>
+      <p><strong>{% if lang == 'en' %}Duration:{% else %}Durée :{% endif %}</strong> {{ test.temps // 60 }} {% if lang == 'en' %}minutes{% else %}minutes{% endif %}</p>
+    </div>
+
+    <div class="buttons">
+      <a class="button btn-view" href="/admin/visualiser-test/{{ test.id }}">
+        <i class="fas fa-eye"></i> 
+        {% if lang == 'en' %}View Test{% else %}Voir le test{% endif %}
+      </a>
+      <a class="button btn-add" href="/admin/ajouter-test">
+        <i class="fas fa-plus"></i> 
+        {% if lang == 'en' %}Add Another Test{% else %}Ajouter un autre test{% endif %}
+      </a>
+      <a class="button btn-dashboard" href="{{ dashboard_url }}">
+        <i class="fas fa-home"></i> 
+        {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Font Awesome pour les icônes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+</body>
+</html>

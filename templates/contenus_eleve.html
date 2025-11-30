@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Browse Lessons{% else %}Explorer les Leçons{% endif %}</title>
+  
+  <!-- MathJax avec configuration améliorée -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        renderActions: {
+          find_script: [10, function (doc) {
+            for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+              const text = node.textContent.replace(/%.*/g, '');
+              if (node.type === 'math/tex; mode=display') {
+                node.outerHTML = `\\[${text}\\]`;
+              } else {
+                node.outerHTML = `\\(${text}\\)`;
+              }
+            }
+          }, '']
+        }
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            console.log('MathJax is ready');
+          });
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
+  
+  <style>
+    :root {
+      --primary: #4361ee;
+      --secondary: #3a0ca3;
+      --accent: #f72585;
+      --success: #4cc9f0;
+      --warning: #f9c74f;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --math-color: #8e44ad;
+      --science-color: #e74c3c;
+      --language-color: #3498db;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--dark);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      position: relative;
+    }
+    
+    h1 {
+      color: var(--secondary);
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      display: inline-block;
+      position: relative;
+    }
+    
+    h1::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+      margin-top: 20px;
+    }
+    
+    .student-card {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      border-left: 5px solid var(--primary);
+    }
+    
+    .student-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 20px;
+      color: white;
+      font-size: 1.5rem;
+    }
+    
+    .student-info h2 {
+      color: var(--secondary);
+      margin-bottom: 5px;
+    }
+    
+    .student-info p {
+      color: var(--gray);
+    }
+    
+    .niveau-bloc {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+      border-top: 5px solid var(--primary);
+    }
+    
+    .niveau-bloc:hover {
+      transform: translateY(-5px);
+    }
+    
+    .niveau-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--light-gray);
+    }
+    
+    .niveau-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      color: white;
+      font-size: 1.3rem;
+    }
+    
+    .niveau-title {
+      color: var(--secondary);
+      font-size: 1.8rem;
+    }
+    
+    .matiere-section {
+      margin-bottom: 25px;
+    }
+    
+    .matiere-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      padding: 15px;
+      background: var(--light);
+      border-radius: 10px;
+      border-left: 4px solid var(--math-color);
+    }
+    
+    .matiere-icon {
+      margin-right: 12px;
+      color: var(--math-color);
+      font-size: 1.3rem;
+    }
+    
+    .matiere-title {
+      color: var(--dark);
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+    
+    .unite-card {
+      background: var(--light);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--success);
+    }
+    
+    .unite-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .unite-icon {
+      margin-right: 10px;
+      color: var(--success);
+    }
+    
+    .unite-title {
+      color: var(--secondary);
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+    
+    .lecon-item {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+    }
+    
+    .lecon-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .lecon-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: block;
+      margin-bottom: 10px;
+    }
+    
+    .lecon-link:hover {
+      color: var(--secondary);
+    }
+    
+    .exercice-list {
+      margin-left: 20px;
+    }
+    
+    .exercice-item {
+      padding: 12px;
+      margin-bottom: 10px;
+      background: var(--light);
+      border-radius: 8px;
+      border-left: 3px solid var(--warning);
+    }
+    
+    .exercice-question {
+      margin-bottom: 8px;
+      line-height: 1.4;
+      font-size: 0.95rem;
+    }
+
+    /* Styles pour le rendu MathJax */
+    .math-content mjx-container {
+      display: inline-block;
+      margin: 0 2px;
+    }
+
+    .math-display {
+      text-align: center;
+      margin: 15px 0;
+      padding: 10px;
+    }
+
+    .math-inline {
+      display: inline;
+    }
+
+    /* Styles pour les expressions mathématiques formatées */
+    .math-preview {
+      background: rgba(142, 68, 173, 0.1);
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin: 5px 0;
+      border-left: 3px solid var(--math-color);
+      font-style: italic;
+    }
+
+    .fraction {
+      display: inline-block;
+      text-align: center;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+
+    .fraction span {
+      display: block;
+      padding: 0 4px;
+    }
+
+    .fraction .numerator {
+      border-bottom: 1px solid var(--dark);
+    }
+
+    .fraction .denominator {
+      padding-top: 2px;
+    }
+
+    .sqrt {
+      display: inline-block;
+      position: relative;
+      vertical-align: middle;
+    }
+
+    .sqrt-symbol {
+      font-size: 1.2em;
+      vertical-align: middle;
+    }
+
+    .sqrt-content {
+      border-top: 1px solid var(--dark);
+      padding: 0 4px;
+      display: inline-block;
+    }
+
+    .exponent {
+      font-size: 0.8em;
+      vertical-align: super;
+      margin-left: 1px;
+    }
+
+    .subscript {
+      font-size: 0.8em;
+      vertical-align: sub;
+      margin-left: 1px;
+    }
+    
+    .exercice-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+    }
+    
+    .status-done {
+      background: rgba(76, 201, 240, 0.2);
+      color: var(--success);
+    }
+    
+    .status-pending {
+      background: rgba(249, 199, 79, 0.2);
+      color: var(--warning);
+    }
+    
+    .action-btn {
+      padding: 6px 15px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+    }
+    
+    .action-btn i {
+      margin-right: 5px;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--secondary);
+      transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+      background: var(--light-gray);
+      color: var(--dark);
+    }
+    
+    .btn-secondary:hover {
+      background: var(--gray);
+      color: white;
+    }
+    
+    .batch-section {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    
+    .batch-btn {
+      background: white;
+      color: var(--primary);
+      border: none;
+      padding: 12px 25px;
+      border-radius: 50px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      font-size: 1rem;
+    }
+    
+    .batch-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .batch-btn i {
+      margin-right: 8px;
+    }
+    
+    .tests-section {
+      background: var(--light);
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 25px;
+      border-left: 4px solid var(--accent);
+    }
+    
+    .tests-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .tests-icon {
+      margin-right: 10px;
+      color: var(--accent);
+      font-size: 1.3rem;
+    }
+    
+    .tests-title {
+      color: var(--secondary);
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+    
+    .test-item {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .test-link {
+      background: var(--accent);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+    
+    .test-link:hover {
+      background: #d1147c;
+      transform: translateY(-2px);
+    }
+    
+    .test-link i {
+      margin-right: 8px;
+    }
+    
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 40px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: bold;
+      padding: 12px 25px;
+      border-radius: 50px;
+      background: white;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .back-link:hover {
+      background: var(--accent);
+      color: white;
+      transform: translateY(-2px);
+    }
+    
+    .back-link i {
+      margin-right: 8px;
+    }
+    
+    .progress-indicator {
+      height: 6px;
+      background: var(--light-gray);
+      border-radius: 3px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: var(--success);
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .student-card {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .student-avatar {
+        margin-right: 0;
+        margin-bottom: 15px;
+      }
+      
+      .niveau-header {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .niveau-icon {
+        margin-right: 0;
+        margin-bottom: 10px;
+      }
+      
+      .exercice-status {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .action-btn {
+        margin-top: 8px;
+      }
+      
+      .test-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .test-link {
+        align-self: flex-end;
+      }
+    }
+  </style>
+  
+  <!-- Font Awesome pour les icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>
+        <i class="fas fa-book-open"></i> 
+        {% if lang == 'en' %}Browse Lessons{% else %}Explorer les Leçons{% endif %}
+      </h1>
+      <p class="subtitle">
+        {% if lang == 'en' %}Your personalized learning journey{% else %}Votre parcours d'apprentissage personnalisé{% endif %}
+      </p>
+    </header>
+    
+    <div class="student-card">
+      <div class="student-avatar">
+        <i class="fas fa-user-graduate"></i>
+      </div>
+      <div class="student-info">
+        <h2>{{ eleve.nom_complet }}</h2>
+        <p>
+          {% if lang == 'en' %}Progress in all subjects{% else %}Progression dans toutes les matières{% endif %}
+        </p>
+      </div>
+    </div>
+
+    {% for niveau in niveaux %}
+      <div class="niveau-bloc">
+        <div class="niveau-header">
+          <div class="niveau-icon">
+            <i class="fas fa-graduation-cap"></i>
+          </div>
+          <h2 class="niveau-title">{{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}</h2>
+        </div>
+
+        {% for matiere in niveau.matieres %}
+          <div class="matiere-section">
+            <div class="matiere-header">
+              <i class="fas fa-atom matiere-icon"></i>
+              <h3 class="matiere-title">{{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}</h3>
+            </div>
+
+            {% for unite in matiere.unites %}
+              <div class="unite-card">
+                <div class="unite-header">
+                  <i class="fas fa-cube unite-icon"></i>
+                  <h4 class="unite-title">
+                    {% if lang == 'en' %}Unit:{% else %}Unité:{% endif %} 
+                    {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
+                  </h4>
+                </div>
+
+                {% set exercices_non_faits = [] %}
+                {% set total_exercices = 0 %}
+                {% set completed_exercices = 0 %}
+
+                {% for lecon in unite.lecons %}
+                  <div class="lecon-item">
+                    <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" class="lecon-link">
+                      <i class="fas fa-file-alt"></i> 
+                      {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                    </a>
+                    
+                    <div class="exercice-list">
+                      {% for ex in lecon.exercices %}
+                        {% set total_exercices = total_exercices + 1 %}
+                        <div class="exercice-item">
+                          <div class="exercice-question">
+                            <!-- AFFICHAGE CONVIVIAL DES EXPRESSIONS MATHÉMATIQUES -->
+                            {% set question_text = ex.question_en if lang == 'en' and ex.question_en else ex.question_fr %}
+                            {{ question_text[:80] | replace_latex | safe }}...
+                          </div>
+                          <div class="exercice-status">
+                            {% if ex.id in exercices_faits %}
+                              {% set completed_exercices = completed_exercices + 1 %}
+                              <span class="status-badge status-done">
+                                <i class="fas fa-check-circle"></i> 
+                                {% if lang == 'fr' %}Fait{% else %}Done{% endif %}
+                              </span>
+                              <a class="action-btn btn-secondary" href="/historique?username={{ eleve.username }}&exercice_id={{ ex.id }}&lang={{ lang }}">
+                                <i class="fas fa-chart-bar"></i> 
+                                {% if lang == 'fr' %}Voir l'analyse{% else %}See feedback{% endif %}
+                              </a>
+                            {% else %}
+                              {% set _ = exercices_non_faits.append(ex.id) %}
+                              <span class="status-badge status-pending">
+                                <i class="fas fa-clock"></i> 
+                                {% if lang == 'fr' %}À faire{% else %}Pending{% endif %}
+                              </span>
+                              <a class="action-btn btn-primary" href="/exercice/{{ ex.id }}?username={{ eleve.username }}&lang={{ lang }}">
+                                <i class="fas fa-play-circle"></i> 
+                                {% if lang == 'fr' %}Commencer{% else %}Start{% endif %}
+                              </a>
+                            {% endif %}
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endfor %}
+
+                <!-- Barre de progression de l'unité -->
+                {% if total_exercices > 0 %}
+                  <div style="margin: 15px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--gray);">
+                      <span>{% if lang == 'fr' %}Progression de l'unité{% else %}Unit progress{% endif %}</span>
+                      <span>{{ completed_exercices }}/{{ total_exercices }}</span>
+                    </div>
+                    <div class="progress-indicator">
+                      <div class="progress-fill" style="width: {{ (completed_exercices / total_exercices) * 100 }}%"></div>
+                    </div>
+                  </div>
+                {% endif %}
+
+                <!-- Bouton pour commencer les exercices non faits -->
+                {% if exercices_non_faits %}
+                  <form action="/sequence-unite" method="GET">
+                    <input type="hidden" name="ids" value="{{ exercices_non_faits | join(',') }}">
+                    <input type="hidden" name="username" value="{{ eleve.username }}">
+                    <input type="hidden" name="lang" value="{{ lang }}">
+                    <div class="batch-section">
+                      <p style="margin-bottom: 15px;">
+                        <i class="fas fa-bolt"></i> 
+                        {% if lang == 'fr' %}
+                          {{ exercices_non_faits | length }} exercice(s) en attente
+                        {% else %}
+                          {{ exercices_non_faits | length }} exercise(s) pending
+                        {% endif %}
+                      </p>
+                      <button type="submit" class="batch-btn">
+                        <i class="fas fa-play"></i> 
+                        {% if lang == 'fr' %}
+                          Commencer la séquence
+                        {% else %}
+                          Start sequence
+                        {% endif %}
+                      </button>
+                    </div>
+                  </form>
+                {% endif %}
+
+                <!-- Section des tests sommatifs -->
+                {% if unite.tests %}
+                  <div class="tests-section">
+                    <div class="tests-header">
+                      <i class="fas fa-vial tests-icon"></i>
+                      <h4 class="tests-title">
+                        {% if lang == 'en' %}Summative Tests{% else %}Tests Sommatifs{% endif %}
+                      </h4>
+                    </div>
+                    {% for test in unite.tests %}
+                      <div class="test-item">
+                        <div>
+                          <strong>{% if lang == 'en' %}Test #{{ test.id }}{% else %}Test #{{ test.id }}{% endif %}</strong>
+                          <p style="color: var(--gray); font-size: 0.9rem; margin-top: 5px;">
+                            {% if lang == 'en' %}Evaluate your knowledge{% else %}Évaluez vos connaissances{% endif %}
+                          </p>
+                        </div>
+                        <a class="test-link" href="/test/{{ test.id }}?username={{ eleve.username }}&lang={{ lang }}">
+                          <i class="fas fa-rocket"></i> 
+                          {% if lang == 'en' %}Start Test{% else %}Commencer{% endif %}
+                        </a>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+    <div style="text-align: center;">
+      <a href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}" class="back-link">
+        <i class="fas fa-arrow-left"></i> 
+        {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to dashboard{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Fonction pour formater les expressions mathématiques simples
+    function formatMathExpressions() {
+      const questionElements = document.querySelectorAll('.exercice-question');
+      
+      questionElements.forEach(element => {
+        let content = element.innerHTML;
+        
+        // Remplacer les fractions LaTeX \frac{a}{b} par un format visuel
+        content = content.replace(/\\frac{([^}]+)}{([^}]+)}/g, 
+          '<span class="fraction"><span class="numerator">$1</span><span class="denominator">$2</span></span>');
+        
+        // Remplacer les racines carrées \sqrt{x}
+        content = content.replace(/\\sqrt{([^}]+)}/g, 
+          '<span class="sqrt"><span class="sqrt-symbol">√</span><span class="sqrt-content">$1</span></span>');
+        
+        // Remplacer les exposants x^{2}
+        content = content.replace(/(\w+)\^{([^}]+)}/g, 
+          '$1<span class="exponent">$2</span>');
+        
+        // Remplacer les indices x_{2}
+        content = content.replace(/(\w+)_{([^}]+)}/g, 
+          '$1<span class="subscript">$2</span>');
+        
+        // Remplacer les symboles grecs
+        content = content.replace(/\\alpha/g, 'α');
+        content = content.replace(/\\beta/g, 'β');
+        content = content.replace(/\\gamma/g, 'γ');
+        content = content.replace(/\\pi/g, 'π');
+        content = content.replace(/\\theta/g, 'θ');
+        
+        element.innerHTML = content;
+      });
+    }
+
+    // Traiter au chargement
+    document.addEventListener('DOMContentLoaded', function() {
+      formatMathExpressions();
+    });
+  </script>
+</body>
+</html>

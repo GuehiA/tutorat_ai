@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if lang == 'en' %}Login{% else %}Connexion{% endif %}</title>
+    <style>
+        body { font-family: Arial; max-width: 400px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .login-options { margin-top: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <h2>{% if lang == 'en' %}Login{% else %}Connexion{% endif %}</h2>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" name="email" required>
+        </div>
+        
+        <div class="form-group">
+            <label>{% if lang == 'en' %}Password{% else %}Mot de passe{% endif %}:</label>
+            <input type="password" name="mot_de_passe" required>
+        </div>
+        
+        <button type="submit">{% if lang == 'en' %}Login{% else %}Se connecter{% endif %}</button>
+    </form>
+
+    <div class="login-options">
+        <p>
+            {% if lang == 'en' %}
+                Special access: 
+                <a href="{{ url_for('login_eleve') }}">Student</a> | 
+                <a href="{{ url_for('login_enseignant') }}">Teacher</a> | 
+                <a href="{{ url_for('login_admin') }}">Admin</a>
+            {% else %}
+                Accès spéciaux : 
+                <a href="{{ url_for('login_eleve') }}">Élève</a> | 
+                <a href="{{ url_for('login_enseignant') }}">Enseignant</a> | 
+                <a href="{{ url_for('login_admin') }}">Admin</a>
+            {% endif %}
+        </p>
+        
+        <p>
+            {% if lang == 'en' %}
+                Don't have an account? <a href="{{ url_for('inscription_eleve') }}">Register here</a>
+            {% else %}
+                Pas de compte? <a href="{{ url_for('inscription_eleve') }}">Inscrivez-vous ici</a>
+            {% endif %}
+        </p>
+    </div>
+</body>
+</html>

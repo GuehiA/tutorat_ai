@@ -1,0 +1,19 @@
+Flask==2.2.5
+Flask-Babel==4.0.0
+Flask-Login==0.6.3
+Flask-Migrate==4.1.0
+Flask-SQLAlchemy==3.0.5
+Flask-WTF==1.2.2
+psycopg2-binary  # Pour la connexion à PostgreSQL
+gunicorn==21.2.0       # Serveur WSGI pour le déploiement
+python-dotenv==1.1.0   # Pour gérer les variables d'environnement
+SQLAlchemy==2.0.40
+alembic==1.16.2        # Pour les migrations de base de données
+Werkzeug==3.1.3
+WTForms==3.2.1
+openai==1.99.9         # Si vous utilisez l'API OpenAI
+bleach==6.1.0          # Si vous utilisez cette bibliothèque pour le nettoyage de texte
+Markdown==3.8.2        # Si vous utilisez cette bibliothèque pour le rendu Markdown
+requests==2.32.3        # Si vous faites des requêtes HTTP
+tenacity>=8.0.0
+langdetect>=1.0.9

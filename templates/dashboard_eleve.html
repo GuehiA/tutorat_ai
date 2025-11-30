@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Welcome {{ eleve.nom_complet }}{% else %}Bienvenue {{ eleve.nom_complet }}{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2ecc71;
+      --secondary-dark: #27ae60;
+      --accent: #9b59b6;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #ecf0f1;
+      --dark: #2c3e50;
+      --gray: #95a5a6;
+      --white: #ffffff;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--dark);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 15px 20px;
+      background: var(--white);
+      border-radius: 15px;
+      box-shadow: var(--shadow);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    .logo i {
+      font-size: 2rem;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    .lang-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .lang-selector select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--gray);
+      background: var(--white);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .lang-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+    .welcome-card {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: var(--white);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .welcome-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: rotate(45deg);
+      animation: shine 3s infinite;
+    }
+    @keyframes shine {
+      0% { transform: translateX(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) rotate(45deg); }
+    }
+    .welcome-text h2 {
+      font-size: 2.2rem;
+      margin-bottom: 10px;
+    }
+    .welcome-text p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+    .level-badge {
+      background: rgba(255, 255, 255, 0.3);
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      animation: glow 2s infinite alternate;
+    }
+    @keyframes glow {
+      from { box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+      to { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
+    }
+    .card {
+      background: var(--white);
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+    .card h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      color: var(--dark);
+      font-size: 1.4rem;
+    }
+    .card h3 i {
+      color: var(--primary);
+    }
+    .notif-card {
+      background: linear-gradient(135deg, #fff9e6 0%, #fcf3cf 100%);
+      border-left: 5px solid var(--warning);
+    }
+    .notif-card h3 {
+      color: #7d6608;
+    }
+    .notif-content {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .notif-content p {
+      line-height: 1.6;
+    }
+    .notif-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 10px;
+    }
+    .stats-card {
+      grid-column: 1 / -1;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 20px;
+      background: var(--light);
+      border-radius: 12px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+    .stat-item:hover {
+      background: var(--primary);
+      color: var(--white);
+      transform: translateY(-3px);
+    }
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .stat-label {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+    .chart-container {
+      background: var(--white);
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+    /* DESIGN OPTIMISÉ POUR LE COMPTEUR D'ESSAI */
+    .trial-counter-card {
+      background: linear-gradient(135deg, #fff9e6 0%, #fef5e7 100%);
+      border-left: 4px solid var(--warning);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .trial-counter-card.expired {
+      background: linear-gradient(135deg, #ffdede 0%, #ffb3b3 100%);
+      border-left: 4px solid var(--danger);
+    }
+    .trial-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .trial-header h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.2rem;
+      color: var(--danger);
+      margin: 0;
+    }
+    .trial-timer-container {
+      text-align: center;
+      margin: 10px 0;
+    }
+    .trial-timer {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: var(--danger);
+      font-family: 'Courier New', monospace;
+      margin-bottom: 8px;
+      animation: pulse 1.5s infinite;
+    }
+    .trial-progress {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    .trial-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--secondary), var(--warning), var(--danger));
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    .trial-message {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--dark);
+      margin: 15px 0;
+      line-height: 1.4;
+    }
+    .upgrade-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .upgrade-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    /* Styles pour l'activité récente */
+    .recent-activity {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 12px;
+      background: var(--light);
+      border-radius: 10px;
+      transition: var(--transition);
+    }
+    .activity-item:hover {
+      background: var(--primary);
+      color: var(--white);
+    }
+    .activity-icon {
+      font-size: 1.2rem;
+      width: 30px;
+      text-align: center;
+    }
+    .activity-details {
+      flex: 1;
+    }
+    .activity-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .activity-meta {
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .no-activity {
+      text-align: center;
+      padding: 30px;
+      color: var(--gray);
+    }
+    /* Styles pour les objectifs */
+    .goals-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .goal-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: var(--light);
+      border-radius: 10px;
+      transition: var(--transition);
+    }
+    .goal-item:hover {
+      transform: translateX(5px);
+      background: #e8f4fd;
+    }
+    .goal-checkbox {
+      position: relative;
+    }
+    .goal-checkbox input[type="checkbox"] {
+      display: none;
+    }
+    .goal-checkbox label {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--primary);
+      border-radius: 4px;
+      display: block;
+      cursor: pointer;
+      position: relative;
+      transition: var(--transition);
+    }
+    .goal-checkbox input[type="checkbox"]:checked + label {
+      background: var(--primary);
+    }
+    .goal-checkbox input[type="checkbox"]:checked + label::after {
+      content: '✓';
+      position: absolute;
+      color: white;
+      font-size: 14px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .goal-content {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .goal-text {
+      font-weight: 500;
+    }
+    .goal-completed {
+      background: var(--secondary);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    /* Section 3 cartes côte à côte */
+    .three-cards-section {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 25px;
+      margin-bottom: 25px;
+    }
+    @media (max-width: 1024px) {
+      .three-cards-section {
+        grid-template-columns: 1fr;
+      }
+    }
+    .teacher-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .teacher-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+    .teacher-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .teacher-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      flex-shrink: 0;
+    }
+    .teacher-info h3 {
+      font-size: 1.4rem;
+      margin-bottom: 5px;
+      color: white;
+    }
+    .teacher-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4ade80;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    .teacher-description {
+      margin-bottom: 20px;
+      line-height: 1.5;
+      opacity: 0.9;
+    }
+    .teacher-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      transition: var(--transition);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      width: 100%;
+      justify-content: center;
+    }
+    .teacher-cta:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .action-card {
+      background: var(--white);
+      border-radius: 15px;
+      padding: 25px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+    .action-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: var(--transition);
+    }
+    .action-card:hover::before {
+      left: 100%;
+    }
+    .action-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+      background: var(--primary);
+      color: var(--white);
+    }
+    .action-card:hover .action-icon {
+      background: var(--white);
+      color: var(--primary);
+      transform: scale(1.1);
+    }
+    .action-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      transition: var(--transition);
+    }
+    .action-card h4 {
+      font-size: 1.3rem;
+    }
+    .action-card p {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 25px;
+      background: var(--primary);
+      color: var(--white);
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: var(--secondary);
+    }
+    .btn-secondary:hover {
+      background: var(--secondary-dark);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+    }
+    .btn-outline:hover {
+      background: var(--primary);
+      color: var(--white);
+    }
+    .logout-btn {
+      display: block;
+      margin: 30px auto 0;
+      padding: 10px 20px;
+      background: transparent;
+      color: var(--danger);
+      border: 2px solid var(--danger);
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      width: fit-content;
+    }
+    .logout-btn:hover {
+      background: var(--danger);
+      color: var(--white);
+    }
+    .motivational-quote {
+      text-align: center;
+      margin: 30px 0;
+      padding: 20px;
+      font-style: italic;
+      color: var(--dark);
+      opacity: 0.8;
+      font-size: 1.1rem;
+      background: var(--white);
+      border-radius: 15px;
+      box-shadow: var(--shadow);
+    }
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .badge-new {
+      background: var(--danger);
+      color: white;
+    }
+    /* NOUVEAUX STYLES POUR LES ÉTOILES SUR 5 */
+    .stars-container {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+    .star {
+      color: #ddd;
+      font-size: 0.9rem;
+    }
+    .star.filled {
+      color: #f39c12;
+    }
+    .star.half {
+      position: relative;
+      color: #ddd;
+    }
+    .star.half::before {
+      content: '★';
+      position: absolute;
+      left: 0;
+      width: 50%;
+      overflow: hidden;
+      color: #f39c12;
+    }
+    .score-text {
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-left: 5px;
+      color: #2c3e50;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header avec sélecteur de langue -->
+    <header>
+      <div class="logo">
+        <i class="fas fa-graduation-cap"></i>
+        <span>{% if lang == 'en' %}Learning Platform{% else %}Plateforme d'Apprentissage{% endif %}</span>
+      </div>
+      <div class="user-info">
+        <div class="avatar">
+          {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+        </div>
+        <div>
+          <strong>{{ eleve.nom_complet }}</strong>
+        </div>
+        <div class="lang-selector">
+          <form method="POST" action="/changer-langue">
+            <label for="lang"><i class="fas fa-globe"></i></label>
+            <select name="lang" id="lang" onchange="this.form.submit()">
+              <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+              <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+            </select>
+            <input type="hidden" name="redirect_page" value="dashboard_eleve">
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <!-- Carte de bienvenue -->
+    <div class="welcome-card">
+      <div class="welcome-text">
+        <h2>
+          {% if lang == 'en' %}
+            Welcome back, {{ eleve.nom_complet.split(' ')[0] }}!
+          {% else %}
+            Bon retour, {{ eleve.nom_complet.split(' ')[0] }} !
+          {% endif %}
+        </h2>
+        <p>
+          {% if lang == 'en' %}
+            Ready for today's learning adventure?
+          {% else %}
+            Prêt pour l'aventure d'apprentissage d'aujourd'hui ?
+          {% endif %}
+        </p>
+      </div>
+      <div class="level-badge">
+        {% if lang == 'en' %}
+          Level: {{ eleve.niveau.nom_en if eleve.niveau.nom_en else eleve.niveau.nom }}
+        {% else %}
+          Niveau : {{ eleve.niveau.nom }}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Section principale du tableau de bord -->
+    <div class="dashboard">
+      <!-- Compteur d'essai gratuit - DESIGN OPTIMISÉ -->
+      {% if eleve.est_en_essai_gratuit() and total_seconds > 0 %}
+      <div class="card trial-counter-card">
+        <div class="trial-header">
+          <h3>
+            <i class="fas fa-clock"></i>
+            {% if lang == 'en' %}
+              Free Trial
+            {% else %}
+              Essai Gratuit
+            {% endif %}
+          </h3>
+        </div>
+        <div class="trial-timer-container">
+          <div class="trial-timer" id="trialTimer">
+            {{ "{:02d}:{:02d}:{:02d}".format(total_seconds // 3600, (total_seconds % 3600) // 60, total_seconds % 60) }}
+          </div>
+          <div class="trial-progress">
+            <div class="trial-progress-bar" id="trialProgressBar" style="width: {{ pourcentage_temps_restant }}%"></div>
+          </div>
+        </div>
+        <div class="trial-message">
+          {% if lang == 'en' %}
+            Your free trial expires soon. Upgrade now for full access!
+          {% else %}
+            Votre essai gratuit expire bientôt. Passez à la version complète dès maintenant !
+          {% endif %}
+        </div>
+        <button class="upgrade-btn" onclick="showUpgradeOptions()">
+          <i class="fas fa-crown"></i>
+          {% if lang == 'en' %}
+            Upgrade Now
+          {% else %}
+            Améliorer Maintenant
+          {% endif %}
+        </button>
+      </div>
+      {% elif eleve.essai_est_expire() %}
+      <div class="card trial-counter-card expired">
+        <div class="trial-header">
+          <h3>
+            <i class="fas fa-exclamation-triangle"></i>
+            {% if lang == 'en' %}
+              Trial Expired
+            {% else %}
+              Essai Expiré
+            {% endif %}
+          </h3>
+        </div>
+        <div class="trial-timer-container">
+          <div class="trial-timer urgent">
+            {% if lang == 'en' %}
+              ❌ ACCESS EXPIRED
+            {% else %}
+              ❌ ACCÈS EXPIRÉ
+            {% endif %}
+          </div>
+        </div>
+        <div class="trial-message">
+          {% if lang == 'en' %}
+            Your free trial has ended. Upgrade to continue learning.
+          {% else %}
+            Votre essai gratuit est terminé. Améliorez votre compte pour continuer.
+          {% endif %}
+        </div>
+        <button class="upgrade-btn" onclick="showUpgradeOptions()">
+          <i class="fas fa-crown"></i>
+          {% if lang == 'en' %}
+            Upgrade to Continue
+          {% else %}
+            Améliorer pour Continuer
+          {% endif %}
+        </button>
+      </div>
+      {% endif %}
+
+      <!-- Notification de remédiation -->
+      {% if remediations_non_lues %}
+      <div class="card notif-card">
+        <h3><i class="fas fa-bell"></i>
+          {% if lang == 'en' %}
+            New Remediation Available
+          {% else %}
+            Nouvelle Remédiation Disponible
+          {% endif %}
+        </h3>
+        <div class="notif-content">
+          <p>
+            {% if lang == 'en' %}
+              A new remediation was added to help you with <strong>{{ remediations_non_lues[0].lecon }}</strong>.
+            {% else %}
+              Un nouvel exercice de remédiation a été ajouté pour t'aider sur <strong>{{ remediations_non_lues[0].lecon }}</strong>.
+            {% endif %}
+          </p>
+          <div class="notif-actions">
+            <a href="/eleve/remediations?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-secondary">
+              <i class="fas fa-tools"></i>
+              {% if lang == 'en' %}View Remediation{% else %}Voir la Remédiation{% endif %}
+            </a>
+            <form method="POST" action="/eleve/remediation/{{ remediations_non_lues[0].id }}/lu">
+              <button type="submit" class="btn btn-outline">
+                <i class="fas fa-check"></i>
+                {% if lang == 'en' %}Mark as Read{% else %}Marquer comme Lu{% endif %}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Statistiques de progression -->
+      <div class="card stats-card">
+        <h3><i class="fas fa-chart-line"></i>
+          {% if lang == 'en' %}
+            Your Progress
+          {% else %}
+            Votre Progression
+          {% endif %}
+        </h3>
+
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-label">
+              {% if lang == 'en' %}
+                Completed Exercises
+              {% else %}
+                Exercices Complétés
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <div class="stat-value">{{ stats.average }}/5</div>
+            <div class="stat-label">
+              {% if lang == 'en' %}
+                Average Score
+              {% else %}
+                Score Moyen
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <div class="stat-value">{{ stats.success }}%</div>
+            <div class="stat-label">
+              {% if lang == 'en' %}
+                Success Rate
+              {% else %}
+                Taux de Réussite
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {% if courbe_progression %}
+        <div class="chart-container">
+          <img src="data:image/png;base64,{{ courbe_progression }}" alt="Courbe de progression" style="width: 100%; border-radius: 8px;">
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Section des 3 cartes côte à côte -->
+      <div class="three-cards-section">
+        <!-- Carte Enseignant Virtuel -->
+        <div class="teacher-card">
+          <div class="teacher-header">
+            <div class="teacher-avatar">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="teacher-info">
+              <h3>
+                {% if lang == 'en' %}
+                  Virtual Teacher
+                {% else %}
+                  Enseignant Virtuel
+                {% endif %}
+              </h3>
+              <div class="teacher-status">
+                <div class="status-dot"></div>
+                <span>
+                  {% if lang == 'en' %}
+                    Online
+                  {% else %}
+                    En ligne
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="teacher-description">
+            {% if lang == 'en' %}
+              Ask me anything about your lessons! I'm here to help you understand difficult topics.
+            {% else %}
+              Demandez-moi tout sur vos leçons ! Je suis là pour vous aider à comprendre les sujets difficiles.
+            {% endif %}
+          </div>
+          <a href="/enseignant-virtuel?username={{ eleve.username }}&lang={{ lang }}" class="teacher-cta">
+            <i class="fas fa-comments"></i>
+            {% if lang == 'en' %}
+              Start Conversation
+            {% else %}
+              Démarrer la Conversation
+            {% endif %}
+          </a>
+        </div>
+        <!-- Carte Objectifs du Jour -->
+<div class="card">
+  <h3><i class="fas fa-bullseye"></i>
+    {% if lang == 'en' %}
+      Today's Goals
+    {% else %}
+      Objectifs du Jour
+    {% endif %}
+    <span style="font-size: 0.8em; color: var(--primary); margin-left: 10px;">
+      {{ date_du_jour.strftime('%d/%m') if date_du_jour }}
+    </span>
+  </h3>
+  
+  <div class="goals-container">
+    <!-- Objectif 1: Compléter 1 exercice -->
+    <div class="goal-item {% if objectifs_du_jour[0].completed %}goal-completed{% endif %}">
+      <div class="goal-checkbox">
+        <input type="checkbox" id="goal1" 
+               {% if objectifs_du_jour[0].completed %}checked{% endif %} disabled>
+        <label for="goal1"></label>
+      </div>
+      <div class="goal-content">
+        <span class="goal-text">
+          {{ objectifs_du_jour[0].text }}
+          <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
+            {{ objectifs_du_jour[0].progress }}
+          </small>
+        </span>
+        {% if objectifs_du_jour[0].completed %}
+        <span class="goal-completed">
+          <i class="fas fa-check"></i>
+          {% if lang == 'en' %}Done{% else %}Fait{% endif %}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Objectif 2: Moyenne 3+ étoiles -->
+    <div class="goal-item {% if objectifs_du_jour[1].completed %}goal-completed{% endif %}">
+      <div class="goal-checkbox">
+        <input type="checkbox" id="goal2" 
+               {% if objectifs_du_jour[1].completed %}checked{% endif %} disabled>
+        <label for="goal2"></label>
+      </div>
+      <div class="goal-content">
+        <span class="goal-text">
+          {{ objectifs_du_jour[1].text }}
+          <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
+            {{ objectifs_du_jour[1].progress }}
+          </small>
+        </span>
+        {% if objectifs_du_jour[1].completed %}
+        <span class="goal-completed">
+          <i class="fas fa-check"></i>
+          {% if lang == 'en' %}Done{% else %}Fait{% endif %}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Objectif 3: Compléter une remédiation -->
+    <div class="goal-item {% if objectifs_du_jour[2].completed %}goal-completed{% endif %}">
+      <div class="goal-checkbox">
+        <input type="checkbox" id="goal3" 
+               {% if objectifs_du_jour[2].completed %}checked{% endif %} disabled>
+        <label for="goal3"></label>
+      </div>
+      <div class="goal-content">
+        <span class="goal-text">
+          {{ objectifs_du_jour[2].text }}
+          <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
+            {{ objectifs_du_jour[2].progress }}
+          </small>
+        </span>
+        {% if objectifs_du_jour[2].completed %}
+        <span class="goal-completed">
+          <i class="fas fa-check"></i>
+          {% if lang == 'en' %}Done{% else %}Fait{% endif %}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Barre de progression -->
+  <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--light);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+      <small style="color: var(--gray);">
+        {% if lang == 'en' %}
+          Daily progress
+        {% else %}
+          Progression quotidienne
+        {% endif %}
+      </small>
+      <small style="color: var(--primary); font-weight: bold;">
+        {{ progression_quotidienne.percent }}%
+      </small>
+    </div>
+    <div style="height: 6px; background: var(--light); border-radius: 3px; overflow: hidden;">
+      <div style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); 
+                  border-radius: 3px; width: {{ progression_quotidienne.percent }}%; 
+                  transition: width 0.5s ease;"></div>
+    </div>
+    <div style="text-align: center; margin-top: 5px;">
+      <small style="color: var(--gray);">
+        {% if lang == 'en' %}
+          {{ progression_quotidienne.completed }}/{{ progression_quotidienne.total }} goals completed
+        {% else %}
+          {{ progression_quotidienne.completed }}/{{ progression_quotidienne.total }} objectifs complétés
+        {% endif %}
+      </small>
+    </div>
+  </div>
+</div>
+        <!-- Carte Activité Récente -->
+        <div class="card">
+          <h3><i class="fas fa-clock"></i>
+            {% if lang == 'en' %}
+              Recent Activity
+            {% else %}
+              Activité Récente
+            {% endif %}
+          </h3>
+          <div class="recent-activity">
+            {% if reponses_eleve and reponses_eleve|length > 0 %}
+              {% for reponse in reponses_eleve[-3:] | reverse %}
+              <div class="activity-item">
+                <div class="activity-icon">
+                  <!-- NOUVEAU SYSTÈME D'ÉTOILES SUR 5 -->
+                  <div class="stars-container">
+                    {% for i in range(5) %}
+                      {% if i < reponse.etoiles %}
+                        <span class="star filled">★</span>
+                      {% else %}
+                        <span class="star">★</span>
+                      {% endif %}
+                    {% endfor %}
+                    <span class="score-text">{{ reponse.etoiles }}/5</span>
+                  </div>
+                </div>
+                <div class="activity-details">
+                  <div class="activity-title">
+                    {% if lang == 'en' %}
+                      Exercise completed
+                    {% else %}
+                      Exercice complété
+                    {% endif %}
+                  </div>
+                  <div class="activity-meta">
+                    {{ reponse.timestamp.strftime('%d/%m %H:%M') if reponse.timestamp else 'N/A' }}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="no-activity">
+                <i class="fas fa-book-open" style="font-size: 1.5rem; color: #bdc3c7; margin-bottom: 10px;"></i>
+                <p>
+                  {% if lang == 'en' %}
+                    No recent activity
+                  {% else %}
+                    Aucune activité récente
+                  {% endif %}
+                </p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Citation motivante -->
+    <div class="motivational-quote">
+      <i class="fas fa-quote-left"></i>
+      {% if lang == 'en' %}
+        "The beautiful thing about learning is that no one can take it away from you." - B.B. King
+      {% else %}
+        "La beauté de l'apprentissage est que personne ne peut vous l'enlever." - B.B. King
+      {% endif %}
+      <i class="fas fa-quote-right"></i>
+    </div>
+
+    <!-- Actions principales -->
+    <div class="actions-grid">
+      <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="action-card">
+        <div class="action-icon">
+          <i class="fas fa-bullseye"></i>
+        </div>
+        <h4>
+          {% if lang == 'en' %}
+            Guided Sequence
+          {% else %}
+            Séquence Guidée
+          {% endif %}
+        </h4>
+        <p>
+          {% if lang == 'en' %}
+            Follow a personalized learning path
+          {% else %}
+            Suis un parcours d'apprentissage personnalisé
+          {% endif %}
+        </p>
+      </a>
+      <a href="/historique?username={{ eleve.username }}&lang={{ lang }}" class="action-card">
+        <div class="action-icon">
+          <i class="fas fa-history"></i>
+        </div>
+        <h4>
+          {% if lang == 'en' %}
+            History
+          {% else %}
+            Historique
+          {% endif %}
+        </h4>
+        <p>
+          {% if lang == 'en' %}
+            Review your past activities and progress
+          {% else %}
+            Consulte tes activités passées et ta progression
+          {% endif %}
+        </p>
+      </a>
+      <a href="/eleve/remediations?username={{ eleve.username }}&lang={{ lang }}" class="action-card">
+        <div class="action-icon">
+          <i class="fas fa-tools"></i>
+        </div>
+        <h4>
+          {% if lang == 'en' %}
+            Remediations
+          {% else %}
+            Remédiations
+          {% endif %}
+        </h4>
+        <p>
+          {% if lang == 'en' %}
+            Practice with targeted exercises
+          {% else %}
+            Pratique avec des exercices ciblés
+          {% endif %}
+        </p>
+        {% if remediations_non_lues %}
+          <span class="badge badge-new">
+            {% if lang == 'en' %}New{% else %}Nouveau{% endif %}
+          </span>
+        {% endif %}
+      </a>
+      <a href="/contenus-eleve?username={{ eleve.username }}&lang={{ lang }}" class="action-card">
+        <div class="action-icon">
+          <i class="fas fa-compass"></i>
+        </div>
+        <h4>
+          {% if lang == 'en' %}
+            Explore Lessons
+          {% else %}
+            Explorer les Leçons
+          {% endif %}
+        </h4>
+        <p>
+          {% if lang == 'en' %}
+            Discover new topics and concepts
+          {% else %}
+            Découvre de nouveaux sujets et concepts
+          {% endif %}
+        </p>
+      </a>
+    </div>
+
+    <!-- Déconnexion -->
+    <a class="logout-btn" href="/logout">
+      <i class="fas fa-sign-out-alt"></i>
+      {% if lang == 'en' %}Log out{% else %}Se déconnecter{% endif %}
+    </a>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const cards = document.querySelectorAll('.card, .action-card, .teacher-card');
+      cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, 100 * index);
+      });
+
+      {% if eleve.est_en_essai_gratuit() and total_seconds > 0 %}
+      startTrialCountdown({{ total_seconds }}, {{ pourcentage_temps_restant }});
+      {% endif %}
+    });
+
+    function startTrialCountdown(totalSeconds, initialPercentage) {
+      const timerElement = document.getElementById('trialTimer');
+      const progressBar = document.getElementById('trialProgressBar');
+      if (!timerElement) return;
+
+      const initialSeconds = totalSeconds;
+
+      function updateTimer() {
+        if (totalSeconds <= 0) {
+          timerElement.textContent = "00:00:00";
+          if (progressBar) progressBar.style.width = '0%';
+          timerElement.classList.add('urgent');
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          return;
+        }
+
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        timerElement.textContent =
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        if (progressBar) {
+          const progressPercentage = (totalSeconds / initialSeconds) * 100;
+          progressBar.style.width = `${progressPercentage}%`;
+        }
+
+        if (hours < 1) {
+          timerElement.style.color = '#e74c3c';
+          if (progressBar) progressBar.style.background = 'linear-gradient(90deg, #f1c40f, #e74c3c)';
+        } else if (hours < 12) {
+          timerElement.style.color = '#f39c12';
+          if (progressBar) progressBar.style.background = 'linear-gradient(90deg, #2ecc71, #f1c40f)';
+        }
+
+        totalSeconds--;
+        setTimeout(updateTimer, 1000);
+      }
+
+      updateTimer();
+    }
+
+    function showUpgradeOptions() {
+      window.location.href = "/upgrade-options?username={{ eleve.username }}&lang={{ lang }}";
+    }
+  </script>
+</body>
+</html>

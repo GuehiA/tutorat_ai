@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>Progression de {{ eleve.nom_complet }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h2 { color: #2c3e50; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; vertical-align: top; }
+    th { background-color: #f2f2f2; }
+    .empty { color: #888; font-style: italic; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Progression de {{ eleve.nom_complet }}</h2>
+  <p>Total d'activités : {{ exercices|length }}</p>
+
+  {% if exercices %}
+    <table>
+      <thead>
+        <tr>
+          <th>Niveau</th>
+          <th>Thème</th>
+          <th>Énoncé</th>
+          <th>Réponse de l'élève</th>
+          <th>Analyse de l'erreur</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in exercices %}
+        <tr>
+          <td>{{ e.niveau }}</td>
+          <td>{{ e.theme }}</td>
+          <td>{{ e.enonce }}</td>
+          <td>{{ e.reponse_eleve }}</td>
+          <td>{{ e.analyse_ia }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">Aucune activité enregistrée pour cet élève.</p>
+  {% endif %}
+</body>
+</html>

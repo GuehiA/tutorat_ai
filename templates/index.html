@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Home - AI Tutoring{% else %}Accueil - Tutorat IA{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --gradient-primary: linear-gradient(135deg, #3498db, #2980b9);
+      --gradient-success: linear-gradient(135deg, #27ae60, #219150);
+      --gradient-warning: linear-gradient(135deg, #f39c12, #e67e22);
+      --border-radius: 16px;
+      --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--gradient);
+      min-height: 100vh;
+      color: white;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    /* Sélecteur de langue */
+    .lang-switch {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      z-index: 100;
+    }
+
+    .lang-switch form {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-switch label {
+      margin: 0;
+      font-size: 1.4rem;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .lang-switch select {
+      padding: 10px 14px;
+      border-radius: var(--border-radius);
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+      transition: var(--transition);
+      width: auto;
+      backdrop-filter: blur(10px);
+    }
+
+    .lang-switch select:focus {
+      outline: none;
+      border-color: white;
+      background: white;
+      box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
+    }
+
+    .hero-section {
+      text-align: center;
+      padding: 60px 0 40px;
+    }
+
+    .logo {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      display: inline-block;
+      background: linear-gradient(135deg, #fff, #e3f2fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .subtitle {
+      font-size: 1.4rem;
+      margin-bottom: 40px;
+      opacity: 0.9;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .highlight {
+      background: linear-gradient(135deg, #ffeaa7, #fab1a0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+    }
+
+    .cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-top: 50px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: var(--border-radius);
+      padding: 40px 30px;
+      text-align: center;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--gradient);
+    }
+
+    .card:hover {
+      transform: translateY(-10px);
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: var(--box-shadow);
+    }
+
+    .card-icon {
+      font-size: 3.5rem;
+      margin-bottom: 20px;
+      display: inline-block;
+      background: linear-gradient(135deg, #fff, #e3f2fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .card-title {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+    }
+
+    .card-description {
+      font-size: 1rem;
+      opacity: 0.8;
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: var(--transition);
+      border: 2px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: white;
+    }
+
+    .btn-success {
+      background: var(--gradient-success);
+      color: white;
+    }
+
+    .btn-warning {
+      background: var(--gradient-warning);
+      color: white;
+    }
+
+    .btn-light {
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--secondary);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .btn i {
+      font-size: 1.2rem;
+    }
+
+    .features-section {
+      margin-top: 80px;
+      text-align: center;
+    }
+
+    .section-title {
+      font-size: 2.5rem;
+      margin-bottom: 50px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 30px;
+      margin-bottom: 50px;
+    }
+
+    .feature-item {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 30px 20px;
+      border-radius: 12px;
+      transition: var(--transition);
+    }
+
+    .feature-item:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateY(-5px);
+    }
+
+    .feature-icon {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      opacity: 0.9;
+    }
+
+    .feature-title {
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .feature-description {
+      font-size: 0.95rem;
+      opacity: 0.8;
+    }
+
+    .parent-access {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius);
+      padding: 40px;
+      margin-top: 40px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .parent-access h3 {
+      font-size: 1.8rem;
+      margin-bottom: 15px;
+    }
+
+    .parent-access p {
+      margin-bottom: 20px;
+      opacity: 0.9;
+    }
+
+    .footer {
+      margin-top: 60px;
+      text-align: center;
+      padding-top: 30px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      opacity: 0.7;
+      font-size: 0.9rem;
+    }
+
+    /* Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .logo {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .card {
+      animation: fadeInUp 0.6s ease;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card:nth-child(1) { animation-delay: 0.1s; }
+    .card:nth-child(2) { animation-delay: 0.2s; }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 15px;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+      }
+
+      .subtitle {
+        font-size: 1.1rem;
+      }
+
+      .cards-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .card {
+        padding: 30px 20px;
+      }
+
+      .logo {
+        font-size: 3rem;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .lang-switch {
+        position: relative;
+        top: 0;
+        right: 0;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 2rem;
+      }
+
+      .section-title {
+        font-size: 1.8rem;
+      }
+
+      .card-title {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sélecteur de langue -->
+    <div class="lang-switch">
+      <form method="POST" action="/changer-langue">
+        <label for="lang">🌍</label>
+        <select name="lang" id="lang" onchange="this.form.submit()">
+          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+          <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+        </select>
+        <input type="hidden" name="redirect_page" value="index">
+      </form>
+    </div>
+
+    <!-- Section Hero -->
+    <div class="hero-section">
+      <div class="logo">
+        <i class="fas fa-robot"></i>
+      </div>
+      <h1>
+        {% if lang == 'en' %}
+          AI Tutoring <span class="highlight">Platform</span>
+        {% else %}
+          Plateforme de <span class="highlight">Tutorat IA</span>
+        {% endif %}
+      </h1>
+      <p class="subtitle">
+        {% if lang == 'en' %}
+          A revolution in personalized learning. Our artificial intelligence adapts teaching to each learner's unique needs.
+        {% else %}
+          Une révolution dans l'apprentissage personnalisé. Notre intelligence artificielle adapte l'enseignement aux besoins uniques de chaque apprenant.
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- Cartes de connexion -->
+    <div class="cards-container">
+      <!-- Carte Enseignant -->
+      <div class="card">
+        <div class="card-icon">
+          <i class="fas fa-chalkboard-teacher"></i>
+        </div>
+        <h3 class="card-title">
+          {% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}
+        </h3>
+        <p class="card-description">
+          {% if lang == 'en' %}
+            Create exercises, track student progress and personalize learning paths.
+          {% else %}
+            Créez des exercices, suivez la progression de vos élèves et personnalisez les parcours d'apprentissage.
+          {% endif %}
+        </p>
+        <a href="/login-enseignant" class="btn btn-success">
+          <i class="fas fa-sign-in-alt"></i>
+          {% if lang == 'en' %}Teacher Login{% else %}Connexion Enseignant{% endif %}
+        </a>
+      </div>
+
+      <!-- Carte Élève -->
+      <div class="card">
+        <div class="card-icon">
+          <i class="fas fa-user-graduate"></i>
+        </div>
+        <h3 class="card-title">
+          {% if lang == 'en' %}Student{% else %}Élève{% endif %}
+        </h3>
+        <p class="card-description">
+          {% if lang == 'en' %}
+            Access tailored exercises, progress at your own pace and receive personalized feedback.
+          {% else %}
+            Accédez à des exercices adaptés, progressez à votre rythme et recevez un feedback personnalisé.
+          {% endif %}
+        </p>
+        <a href="/login-eleve" class="btn btn-warning">
+          <i class="fas fa-sign-in-alt"></i>
+          {% if lang == 'en' %}Student Login{% else %}Connexion Élève{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Accès Parent -->
+    <div class="parent-access">
+      <h3>
+        {% if lang == 'en' %}👨‍👩‍👧‍👦 Are you a parent?{% else %}👨‍👩‍👧‍👦 Vous êtes parent ?{% endif %}
+      </h3>
+      <p>
+        {% if lang == 'en' %}
+          Track your children's progress, check their results and stay informed about their learning.
+        {% else %}
+          Suivez la progression de vos enfants, consultez leurs résultats et restez informé de leur apprentissage.
+        {% endif %}
+      </p>
+      <a href="/login-parent" class="btn btn-light">
+        <i class="fas fa-user-friends"></i>
+        {% if lang == 'en' %}Parent Access{% else %}Accès Parent{% endif %}
+      </a>
+    </div>
+
+    <!-- Section Features -->
+    <div class="features-section">
+      <h2 class="section-title">
+        {% if lang == 'en' %}Why choose our platform?{% else %}Pourquoi choisir notre plateforme ?{% endif %}
+      </h2>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">
+            <i class="fas fa-brain"></i>
+          </div>
+          <h4 class="feature-title">
+            {% if lang == 'en' %}Adaptive AI{% else %}IA Adaptative{% endif %}
+          </h4>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Algorithm that adjusts to each student's level and pace
+            {% else %}
+              Algorithme qui s'ajuste au niveau et au rythme de chaque élève
+            {% endif %}
+          </p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h4 class="feature-title">
+            {% if lang == 'en' %}Detailed Tracking{% else %}Suivi Détaillé{% endif %}
+          </h4>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              In-depth analysis of progress and improvement points
+            {% else %}
+              Analyses approfondies des progrès et des points d'amélioration
+            {% endif %}
+          </p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">
+            <i class="fas fa-gamepad"></i>
+          </div>
+          <h4 class="feature-title">
+            {% if lang == 'en' %}Engaging Learning{% else %}Apprentissage Ludique{% endif %}
+          </h4>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Engaging exercises with reward and progression system
+            {% else %}
+              Exercices engageants avec système de récompenses et de progression
+            {% endif %}
+          </p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <h4 class="feature-title">
+            {% if lang == 'en' %}Available 24/7{% else %}Disponible 24h/24{% endif %}
+          </h4>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Access the platform whenever you want, wherever you are
+            {% else %}
+              Accédez à la plateforme quand vous voulez, où vous voulez
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>
+        {% if lang == 'en' %}
+          © 2024 AI Tutoring Platform. All rights reserved.
+        {% else %}
+          © 2024 Plateforme de Tutorat IA. Tous droits réservés.
+        {% endif %}
+      </p>
+      <p>
+        {% if lang == 'en' %}
+          Revolutionize learning with artificial intelligence
+        {% else %}
+          Révolutionnez l'apprentissage avec l'intelligence artificielle
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Animation au chargement de la page
+    document.addEventListener('DOMContentLoaded', function() {
+      const cards = document.querySelectorAll('.card');
+      cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+      });
+    });
+
+    // Effet de particules simples
+    function createParticle() {
+      const particle = document.createElement('div');
+      particle.style.position = 'fixed';
+      particle.style.width = '4px';
+      particle.style.height = '4px';
+      particle.style.background = 'rgba(255, 255, 255, 0.5)';
+      particle.style.borderRadius = '50%';
+      particle.style.pointerEvents = 'none';
+      particle.style.left = Math.random() * 100 + 'vw';
+      particle.style.top = '-10px';
+      particle.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
+      
+      document.body.appendChild(particle);
+      
+      setTimeout(() => {
+        particle.remove();
+      }, 5000);
+    }
+
+    // Ajouter l'animation de chute
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fall {
+        to {
+          transform: translateY(100vh) rotate(360deg);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Créer quelques particules
+    setInterval(createParticle, 300);
+  </script>
+</body>
+</html>

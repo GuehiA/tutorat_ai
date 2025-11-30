@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{{ 'Correction' if lang == 'en' else 'Rétroaction complète' }}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --border-radius: 16px;
+      --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .feedback-container {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feedback-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 25px;
+      border-bottom: 2px solid var(--light);
+    }
+
+    h1 {
+      color: var(--secondary);
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    h1 i {
+      color: var(--primary);
+      font-size: 2.8rem;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.2rem;
+    }
+
+    .stats-overview {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, var(--light), #e9ecef);
+      border-radius: var(--border-radius);
+      padding: 25px;
+      text-align: center;
+      transition: var(--transition);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--primary);
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 1rem;
+      color: var(--gray);
+      margin-top: 8px;
+    }
+
+    .exercises-grid {
+      display: grid;
+      gap: 30px;
+    }
+
+    .exercise-card {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      border: 1px solid #e9ecef;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .exercise-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .exercise-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 5px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--primary), var(--success));
+    }
+
+    .exercise-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      gap: 15px;
+    }
+
+    .exercise-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .exercise-number {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .rating-badge {
+      background: linear-gradient(135deg, var(--success), #219150);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .no-response-badge {
+      background: linear-gradient(135deg, var(--danger), #c0392b);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .question-section {
+      margin-bottom: 25px;
+    }
+
+    .section-label {
+      font-weight: 600;
+      color: var(--secondary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .question-content {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 8px;
+      padding: 20px;
+      border-left: 4px solid var(--primary);
+      line-height: 1.6;
+    }
+
+    .exercise-image {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .exercise-image img {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      border: 2px solid white;
+    }
+
+    .response-section {
+      margin: 25px 0;
+    }
+
+    .student-answer {
+      background: linear-gradient(135deg, #fff9e6, #ffeaa7);
+      border-radius: 8px;
+      padding: 20px;
+      border-left: 4px solid var(--warning);
+      line-height: 1.6;
+    }
+
+    .ai-feedback {
+      background: linear-gradient(135deg, #e8f6ef, #d5f5e3);
+      border-radius: 8px;
+      padding: 25px;
+      margin: 25px 0;
+      border-left: 4px solid var(--success);
+    }
+
+    .feedback-content {
+      background: white;
+      padding: 20px;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      font-family: inherit;
+    }
+
+    .stars-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 15px 0;
+      padding: 12px 20px;
+      background: rgba(52, 152, 219, 0.1);
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .stars {
+      display: flex;
+      gap: 5px;
+    }
+
+    .star {
+      font-size: 1.5rem;
+    }
+
+    .star.filled {
+      color: var(--warning);
+    }
+
+    .star.empty {
+      color: #ddd;
+    }
+
+    .stars-text {
+      font-weight: 600;
+      color: var(--secondary);
+      margin-left: 10px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      color: #e9ecef;
+      margin-bottom: 15px;
+    }
+
+    .navigation {
+      text-align: center;
+      margin-top: 50px;
+      padding-top: 30px;
+      border-top: 2px solid var(--light);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+      margin-left: 15px;
+    }
+
+    .btn-outline:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .exercise-card {
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .exercise-card:nth-child(even) {
+      animation-delay: 0.1s;
+    }
+
+    .exercise-card:nth-child(odd) {
+      animation-delay: 0.2s;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 15px;
+      }
+
+      .feedback-container {
+        padding: 30px 20px;
+      }
+
+      h1 {
+        font-size: 2rem;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .stats-overview {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .exercise-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .exercise-title {
+        font-size: 1.2rem;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .btn-outline {
+        margin-left: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.6rem;
+      }
+
+      .exercise-card {
+        padding: 20px;
+      }
+
+      .stat-number {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="feedback-container">
+    <!-- En-tête -->
+    <div class="header">
+      <h1>
+        <i class="fas fa-chart-line"></i>
+        {{ 'Rétroaction complète' if lang == 'fr' else 'Full Feedback' }}
+      </h1>
+      <p class="subtitle">
+        {{ 'Analyse détaillée de votre progression' if lang == 'fr' else 'Detailed analysis of your progress' }}
+      </p>
+    </div>
+
+    <!-- Statistiques globales -->
+    <div class="stats-overview">
+      <div class="stat-card">
+        <span class="stat-number">{{ exercices|length }}</span>
+        <span class="stat-label">
+          {{ 'Exercices' if lang == 'fr' else 'Exercises' }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number">{{ corrections|length }}</span>
+        <span class="stat-label">
+          {{ 'Corrigés' if lang == 'fr' else 'Corrected' }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number">
+          {% set total_stars = corrections.values()|sum(attribute='etoiles') %}
+          {% if corrections %}
+            {{ (total_stars / corrections|length)|round(1) }}
+          {% else %}
+            0
+          {% endif %}
+        </span>
+        <span class="stat-label">
+          {{ 'Moyenne /5' if lang == 'fr' else 'Average /5' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Grille des exercices -->
+    <div class="exercises-grid">
+      {% for exercice in exercices %}
+        {% set r = corrections.get(exercice.id) %}
+        <div class="exercise-card">
+          <div class="exercise-header">
+            <div class="exercise-title">
+              <div class="exercise-number">{{ loop.index }}</div>
+              <span>{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ loop.index }}</span>
+            </div>
+            
+            {% if r %}
+              <div class="rating-badge">
+                <i class="fas fa-star"></i>
+                {{ r.etoiles }}/5
+              </div>
+            {% else %}
+              <div class="no-response-badge">
+                <i class="fas fa-clock"></i>
+                {{ 'En attente' if lang == 'fr' else 'Pending' }}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Question -->
+          <div class="question-section">
+            <div class="section-label">
+              <i class="fas fa-question-circle"></i>
+              {{ 'Énoncé' if lang == 'fr' else 'Question' }}
+            </div>
+            <div class="question-content">
+              {{ exercice.question_fr if lang == 'fr' else exercice.question_en }}
+            </div>
+          </div>
+
+          <!-- Image si disponible -->
+          {% if exercice.chemin_image %}
+            <div class="exercise-image">
+              <img src="{{ url_for('static', filename=exercice.chemin_image) }}" 
+                   alt="{{ 'Illustration' if lang == 'fr' else 'Illustration' }}">
+            </div>
+          {% endif %}
+
+          <!-- Réponse et feedback -->
+          {% if r %}
+            <!-- Réponse de l'élève -->
+            <div class="response-section">
+              <div class="section-label">
+                <i class="fas fa-edit"></i>
+                {{ 'Votre réponse' if lang == 'fr' else 'Your answer' }}
+              </div>
+              <div class="student-answer">
+                {{ r.reponse_eleve }}
+              </div>
+            </div>
+
+            <!-- Évaluation -->
+            <div class="stars-display">
+              <div class="stars">
+                {% for i in range(r.etoiles) %}
+                  <div class="star filled">★</div>
+                {% endfor %}
+                {% for i in range(3 - r.etoiles) %}
+                  <div class="star empty">☆</div>
+                {% endfor %}
+              </div>
+              <div class="stars-text">
+                {{ r.etoiles }} {{ 'étoile(s) sur 3' if lang == 'fr' else 'star(s) out of 3' }}
+              </div>
+            </div>
+
+            <!-- Feedback IA -->
+            <div class="ai-feedback">
+              <div class="section-label">
+                <i class="fas fa-robot"></i>
+                {{ 'Analyse détaillée' if lang == 'fr' else 'Detailed analysis' }}
+              </div>
+              <div class="feedback-content">
+                {{ r.analyse_ia }}
+              </div>
+            </div>
+          {% else %}
+            <!-- État vide si pas de réponse -->
+            <div class="empty-state">
+              <i class="fas fa-inbox"></i>
+              <p>{{ 'Aucune réponse enregistrée pour cet exercice.' if lang == 'fr' else 'No response recorded for this exercise.' }}</p>
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Navigation -->
+    <div class="navigation">
+      <a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}" class="btn">
+        <i class="fas fa-arrow-left"></i>
+        {{ 'Retour au tableau de bord' if lang == 'fr' else 'Back to dashboard' }}
+      </a>
+      <a href="/exercices?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-outline">
+        <i class="fas fa-redo"></i>
+        {{ 'Nouveaux exercices' if lang == 'fr' else 'New exercises' }}
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Animation d'apparition progressive
+    const cards = document.querySelectorAll('.exercise-card');
+    cards.forEach((card, index) => {
+      card.style.animationDelay = `${index * 0.1}s`;
+    });
+
+    // Animation des étoiles pour les exercices corrigés
+    const filledStars = document.querySelectorAll('.star.filled');
+    filledStars.forEach((star, index) => {
+      star.style.animationDelay = `${index * 0.2}s`;
+    });
+  });
+</script>
+
+</body>
+</html>

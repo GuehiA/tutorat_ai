@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>Ajouter un exercice bilingue</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 40px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+      white-space: pre-wrap;
+    }
+    math-field {
+      width: 100%;
+      min-height: 3em;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 5px;
+    }
+    button {
+      margin-top: 25px;
+      width: 100%;
+      padding: 12px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    .insert-btn {
+      background-color: #2ecc71;
+      margin-top: 10px;
+      font-size: 14px;
+      padding: 8px;
+    }
+    .insert-btn:hover {
+      background-color: #27ae60;
+    }
+    small {
+      font-size: 0.85em;
+      color: #666;
+    }
+  </style>
+
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css">
+  <script defer src="https://unpkg.com/mathlive"></script>
+  <script>
+    function verifierCorrespondanceOptionsReponse(langue) {
+      const options = document.querySelector(`[name="options_${langue}"]`).value.split(",").map(o => o.trim());
+      const reponse = document.querySelector(`[name="reponse_${langue}"]`).value.trim();
+      if (reponse && !options.includes(reponse)) {
+        alert(`La réponse ${langue.toUpperCase()} n’est pas présente parmi les options. Veuillez corriger.`);
+      }
+    }
+
+    function insererLatex(mathId, textId) {
+      const mathInput = document.getElementById(mathId);
+      const textarea = document.getElementById(textId);
+      if (mathInput && textarea && mathInput.value.trim()) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const before = textarea.value.substring(0, start);
+        const after = textarea.value.substring(end);
+        textarea.value = before + mathInput.value + after;
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + mathInput.value.length;
+        mathInput.value = "";
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <div class="container">
+    <h2>📝 Ajouter un exercice bilingue</h2>
+    <form method="POST" action="/admin/ajouter-exercice">
+      <label for="lecon_id">Leçon liée</label>
+      <select name="lecon_id" required>
+        {% for lecon in lecons %}
+          <option value="{{ lecon.id }}">{{ lecon.titre_fr }} / {{ lecon.titre_en }}</option>
+        {% endfor %}
+      </select>
+
+      <input type="hidden" name="type_exercice" value="exercice">
+
+      <!-- FR -->
+      <label>Question (FR)</label>
+      <textarea name="question_fr" id="question_fr_field" required></textarea>
+      <math-field id="question_fr_math" virtual-keyboard-mode="onfocus"></math-field>
+      <button type="button" class="insert-btn" onclick="insererLatex('question_fr_math', 'question_fr_field')">➕ Insérer dans la question FR</button>
+
+      <label>Options (FR)</label>
+      <textarea name="options_fr" placeholder="Option1, Option2, Option3..." required onblur="verifierCorrespondanceOptionsReponse('fr')"></textarea>
+      <small>⚠️ Séparez par des virgules</small>
+
+      <label>Bonne réponse (FR)</label>
+      <input type="text" name="reponse_fr" required>
+
+      <label>Explication (FR)</label>
+      <textarea name="explication_fr" id="explication_fr_field"></textarea>
+      <math-field id="explication_fr_math" virtual-keyboard-mode="onfocus"></math-field>
+      <button type="button" class="insert-btn" onclick="insererLatex('explication_fr_math', 'explication_fr_field')">➕ Insérer dans l'explication FR</button>
+
+      <!-- EN -->
+      <label>Question (EN)</label>
+      <textarea name="question_en" id="question_en_field" required></textarea>
+      <math-field id="question_en_math" virtual-keyboard-mode="onfocus"></math-field>
+      <button type="button" class="insert-btn" onclick="insererLatex('question_en_math', 'question_en_field')">➕ Insert into Question EN</button>
+
+      <label>Options (EN)</label>
+      <textarea name="options_en" placeholder="Option1, Option2, Option3..." required onblur="verifierCorrespondanceOptionsReponse('en')"></textarea>
+
+      <label>Correct answer (EN)</label>
+      <input type="text" name="reponse_en" required>
+
+      <label>Explanation (EN)</label>
+      <textarea name="explication_en" id="explication_en_field"></textarea>
+      <math-field id="explication_en_math" virtual-keyboard-mode="onfocus"></math-field>
+      <button type="button" class="insert-btn" onclick="insererLatex('explication_en_math', 'explication_en_field')">➕ Insert into Explanation EN</button>
+
+      <label>Temps (en secondes)</label>
+      <input type="number" name="temps" value="60" required>
+
+      <button type="submit">💾 Enregistrer l'exercice</button>
+    </form>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Summative Test{% else %}Test Sommatif{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #9b59b6;
+      --primary-dark: #8e44ad;
+      --secondary: #2c3e50;
+      --secondary-dark: #1a252f;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 10px;
+      --box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .test-header {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 30px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .test-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      color: var(--secondary);
+      margin-bottom: 15px;
+    }
+
+    .test-title i {
+      color: var(--primary);
+      font-size: 2rem;
+    }
+
+    .test-title h2 {
+      font-size: 2rem;
+    }
+
+    .test-meta {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      text-align: center;
+      padding: 15px;
+      background: var(--light);
+      border-radius: var(--border-radius);
+      min-width: 120px;
+    }
+
+    .meta-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: block;
+    }
+
+    .meta-label {
+      font-size: 0.9rem;
+      color: var(--gray);
+      margin-top: 5px;
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 25px 0 10px 0;
+      flex-wrap: wrap;
+    }
+
+    .exercises-container {
+      display: grid;
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+
+    .exercise-card {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .exercise-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .exercise-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .exercise-number {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .exercise-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .exercise-body {
+      padding: 25px;
+    }
+
+    .language-tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .tab {
+      padding: 12px 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: var(--transition);
+      border-bottom: 3px solid transparent;
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom: 3px solid var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .exercise-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: var(--light);
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .exercise-section h4 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: var(--secondary);
+    }
+
+    .math-content {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid var(--light-gray);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .answer-section {
+      background: rgba(39, 174, 96, 0.05) !important;
+      border-left-color: var(--success) !important;
+    }
+
+    .explanation-section {
+      background: rgba(52, 152, 219, 0.05) !important;
+      border-left-color: var(--primary) !important;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--border-radius);
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, var(--warning) 0%, #e67e22 100%);
+      color: white;
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger) 0%, #c0392b 100%);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(231, 76, 60, 0.3);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      color: var(--light-gray);
+      margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+      color: var(--secondary);
+      margin-bottom: 10px;
+    }
+
+    .empty-state p {
+      color: var(--gray);
+      margin-bottom: 25px;
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .back-link a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--secondary);
+      color: white;
+      padding: 12px 25px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    .back-link a:hover {
+      background: var(--secondary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+
+    .pdf-section {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 25px;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+
+    .pdf-section h3 {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--secondary);
+      margin-bottom: 20px;
+    }
+
+    .pdf-actions {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(155, 89, 182, 0.3);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success) 0%, #219150 100%);
+      color: white;
+    }
+
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+      color: white;
+    }
+
+    .btn-ai:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(52, 152, 219, 0.3);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: var(--box-shadow);
+      text-align: center;
+    }
+
+    .modal h3 {
+      color: var(--secondary);
+      margin-bottom: 15px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .test-meta {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .exercise-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+      
+      .exercise-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      
+      .language-tabs {
+        flex-direction: column;
+      }
+      
+      .pdf-actions {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .header-actions {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* Styles pour le rendu MathJax */
+    .math-content mjx-container {
+      display: inline-block !important;
+      margin: 5px 0 !important;
+    }
+
+    .math-content mjx-container[jax="CHTML"] {
+      text-align: center;
+      margin: 10px 0;
+    }
+  </style>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- En-tête du test -->
+    <div class="test-header">
+      <div class="test-title">
+        <i class="fas fa-vial"></i>
+        <h2>{% if lang == 'en' %}Summative Test{% else %}Test Sommatif{% endif %}</h2>
+      </div>
+      
+      <div class="test-meta">
+        <div class="meta-item">
+          <span class="meta-value">{{ exercices|length }}</span>
+          <span class="meta-label">{% if lang == 'en' %}Questions{% else %}Questions{% endif %}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-value">{{ test.temps // 60 }}</span>
+          <span class="meta-label">{% if lang == 'en' %}Minutes{% else %}Minutes{% endif %}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-value">{{ test.unite.nom }}</span>
+          <span class="meta-label">{% if lang == 'en' %}Unit{% else %}Unité{% endif %}</span>
+        </div>
+      </div>
+
+      <!-- Actions principales -->
+      <div class="header-actions">
+        <a href="/admin/creer-test-sommatif-ia" class="btn btn-ai">
+          <i class="fas fa-robot"></i> 
+          {% if lang == 'en' %}Generate with AI{% else %}Générer avec IA{% endif %}
+        </a>
+        <a href="/admin/ajouter-test-exercice/{{ test.id }}" class="btn btn-success">
+          <i class="fas fa-plus"></i> 
+          {% if lang == 'en' %}Add Manual Question{% else %}Ajouter question manuelle{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Section PDF -->
+    {% if test.fichier_pdf %}
+    <div class="pdf-section">
+      <h3><i class="fas fa-file-pdf"></i> {% if lang == 'en' %}Test Documents{% else %}Documents du test{% endif %}</h3>
+      <div class="pdf-actions">
+        <a href="{{ url_for('static', filename='uploads/' + test.fichier_pdf) }}" class="btn btn-primary" target="_blank">
+          <i class="fas fa-eye"></i> {% if lang == 'en' %}View Test PDF{% else %}Voir le PDF du test{% endif %}
+        </a>
+        {% if test.fichier_corrige %}
+        <a href="{{ url_for('static', filename='uploads/' + test.fichier_corrige) }}" class="btn btn-success" target="_blank">
+          <i class="fas fa-check-circle"></i> {% if lang == 'en' %}View Correction PDF{% else %}Voir le corrigé PDF{% endif %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Liste des exercices -->
+    {% if exercices %}
+      <div class="exercises-container">
+        {% for ex in exercices %}
+          <div class="exercise-card">
+            <!-- En-tête de l'exercice -->
+            <div class="exercise-header">
+              <div class="exercise-number">
+                <i class="fas fa-question-circle"></i>
+                {% if lang == 'en' %}Question {{ loop.index }}{% else %}Question {{ loop.index }}{% endif %}
+              </div>
+              <div class="exercise-actions">
+                <a href="/admin/modifier-test-exercice/{{ ex.id }}" class="btn btn-warning">
+                  <i class="fas fa-edit"></i> {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
+                </a>
+                <button class="btn btn-danger delete-btn" data-exercise-id="{{ ex.id }}">
+                  <i class="fas fa-trash"></i> {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
+                </button>
+              </div>
+            </div>
+
+            <!-- Corps de l'exercice -->
+            <div class="exercise-body">
+              <!-- Onglets de langue -->
+              <div class="language-tabs">
+                <div class="tab active" data-tab="french-{{ ex.id }}">🇫🇷 Français</div>
+                <div class="tab" data-tab="english-{{ ex.id }}">🇬🇧 English</div>
+              </div>
+
+              <!-- Contenu français -->
+              <div class="tab-content active" id="french-{{ ex.id }}">
+                {% if ex.question_fr %}
+                  <div class="exercise-section">
+                    <h4><i class="fas fa-question"></i> {% if lang == 'en' %}Question{% else %}Question{% endif %}</h4>
+                    <div class="math-content">{{ ex.question_fr | safe }}</div>
+                  </div>
+                {% endif %}
+
+                {% if ex.reponse_fr %}
+                  <div class="exercise-section answer-section">
+                    <h4><i class="fas fa-check"></i> {% if lang == 'en' %}Answer{% else %}Réponse{% endif %}</h4>
+                    <div class="math-content">{{ ex.reponse_fr | safe }}</div>
+                  </div>
+                {% endif %}
+
+                {% if ex.explication_fr %}
+                  <div class="exercise-section explanation-section">
+                    <h4><i class="fas fa-lightbulb"></i> {% if lang == 'en' %}Explanation{% else %}Explication{% endif %}</h4>
+                    <div class="math-content">{{ ex.explication_fr | safe }}</div>
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Contenu anglais -->
+              <div class="tab-content" id="english-{{ ex.id }}">
+                {% if ex.question_en %}
+                  <div class="exercise-section">
+                    <h4><i class="fas fa-question"></i> {% if lang == 'en' %}Question{% else %}Question{% endif %}</h4>
+                    <div class="math-content">{{ ex.question_en | safe }}</div>
+                  </div>
+                {% endif %}
+
+                {% if ex.reponse_en %}
+                  <div class="exercise-section answer-section">
+                    <h4><i class="fas fa-check"></i> {% if lang == 'en' %}Answer{% else %}Réponse{% endif %}</h4>
+                    <div class="math-content">{{ ex.reponse_en | safe }}</div>
+                  </div>
+                {% endif %}
+
+                {% if ex.explication_en %}
+                  <div class="exercise-section explanation-section">
+                    <h4><i class="fas fa-lightbulb"></i> {% if lang == 'en' %}Explanation{% else %}Explication{% endif %}</h4>
+                    <div class="math-content">{{ ex.explication_en | safe }}</div>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- État vide -->
+      <div class="empty-state">
+        <i class="fas fa-vial"></i>
+        <h3>{% if lang == 'en' %}No questions found{% else %}Aucune question trouvée{% endif %}</h3>
+        <p>
+          {% if lang == 'en' %}
+            This test doesn't have any questions yet. Start by adding the first question!
+          {% else %}
+            Ce test n'a pas encore de questions. Commencez par ajouter la première question !
+          {% endif %}
+        </p>
+        <div class="header-actions">
+          <a href="/admin/creer-test-sommatif-ia" class="btn btn-ai">
+            <i class="fas fa-robot"></i> 
+            {% if lang == 'en' %}Generate with AI{% else %}Générer avec IA{% endif %}
+          </a>
+          <a href="/admin/ajouter-test-exercice/{{ test.id }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> 
+            {% if lang == 'en' %}Add Manual Question{% else %}Ajouter question manuelle{% endif %}
+          </a>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Lien de retour -->
+    <div class="back-link">
+      <a href="{{ dashboard_url }}">
+        <i class="fas fa-arrow-left"></i> {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Modal de confirmation de suppression -->
+  <div class="modal" id="deleteModal">
+    <div class="modal-content">
+      <h3>{% if lang == 'en' %}Confirm Deletion{% else %}Confirmer la suppression{% endif %}</h3>
+      <p>{% if lang == 'en' %}Are you sure you want to delete this question?{% else %}Êtes-vous sûr de vouloir supprimer cette question ?{% endif %}</p>
+      <p><small>{% if lang == 'en' %}This action cannot be undone.{% else %}Cette action ne peut pas être annulée.{% endif %}</small></p>
+      <div class="modal-actions">
+        <button class="btn" id="cancelDelete">{% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}</button>
+        <form method="POST" action="" id="deleteForm" style="display: inline;">
+          <button type="submit" class="btn btn-danger">{% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Gestion des onglets de langue
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialiser tous les onglets
+      const allTabs = document.querySelectorAll('.tab');
+      
+      allTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          const tabId = this.getAttribute('data-tab');
+          const exerciseId = tabId.split('-')[1];
+          
+          // Désactiver tous les onglets de cet exercice
+          document.querySelectorAll(`[data-tab^="french-${exerciseId}"], [data-tab^="english-${exerciseId}"]`).forEach(t => {
+            t.classList.remove('active');
+          });
+          
+          // Activer l'onglet cliqué
+          this.classList.add('active');
+          
+          // Masquer tous les contenus de cet exercice
+          document.querySelectorAll(`#french-${exerciseId}, #english-${exerciseId}`).forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Afficher le contenu correspondant
+          document.getElementById(tabId).classList.add('active');
+          
+          // Re-trigger MathJax
+          if (window.MathJax) {
+            window.MathJax.typesetPromise();
+          }
+        });
+      });
+
+      // Gestion de la suppression avec modal
+      const deleteButtons = document.querySelectorAll('.delete-btn');
+      const deleteModal = document.getElementById('deleteModal');
+      const cancelDelete = document.getElementById('cancelDelete');
+      const deleteForm = document.getElementById('deleteForm');
+      
+      deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const exerciseId = this.getAttribute('data-exercise-id');
+          deleteForm.action = `/admin/supprimer-test-exercice/${exerciseId}`;
+          deleteModal.style.display = 'flex';
+        });
+      });
+      
+      // Fermer la modal
+      cancelDelete.addEventListener('click', function() {
+        deleteModal.style.display = 'none';
+      });
+      
+      // Fermer la modal en cliquant à l'extérieur
+      window.addEventListener('click', function(event) {
+        if (event.target === deleteModal) {
+          deleteModal.style.display = 'none';
+        }
+      });
+
+      // Re-trigger MathJax pour s'assurer que tout le contenu est rendu
+      if (window.MathJax) {
+        window.MathJax.typesetPromise();
+      }
+    });
+  </script>
+</body>
+</html>

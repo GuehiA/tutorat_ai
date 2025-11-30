@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'fr' %}Historique des réponses{% else %}Answer History{% endif %}</title>
+  <style>
+    :root {
+      --primary: #4361ee;
+      --secondary: #3a0ca3;
+      --accent: #f72585;
+      --light: #f8f9fa;
+      --success: #4cc9f0;
+      --warning: #f9c74f;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--dark);
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 20px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+    }
+    
+    h2 {
+      text-align: center;
+      color: var(--secondary);
+      margin-bottom: 30px;
+      font-size: 2.2rem;
+      position: relative;
+      padding-bottom: 15px;
+    }
+    
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    
+    .student-info {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+    }
+    
+    .student-info .avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      font-size: 1.8rem;
+      color: var(--primary);
+    }
+    
+    .student-info h3 {
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+    }
+    
+    .student-info p {
+      opacity: 0.9;
+      font-size: 0.95rem;
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      margin: 30px 0 20px;
+      color: var(--secondary);
+      font-size: 1.5rem;
+    }
+    
+    .section-title i {
+      margin-right: 10px;
+      font-size: 1.8rem;
+    }
+    
+    .reponse {
+      border-left: 4px solid var(--primary);
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      background: var(--light);
+      border-radius: 0 10px 10px 0;
+      transition: all 0.3s ease;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    }
+    
+    .reponse:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .reponse-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .theme {
+      font-weight: bold;
+      color: var(--secondary);
+      font-size: 1.1rem;
+    }
+    
+    .etoiles {
+      color: var(--warning);
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+    }
+    
+    .etoiles span {
+      margin-left: 5px;
+    }
+    
+    .reponse-content {
+      margin-top: 15px;
+    }
+    
+    .reponse-content p {
+      margin-bottom: 10px;
+    }
+    
+    .reponse-content strong {
+      color: var(--primary);
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .mathjax-block {
+      white-space: pre-wrap;
+      background: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: 1px solid var(--light-gray);
+      margin-bottom: 15px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    /* ✅ BOUTON UNIQUE INTELLIGENT */
+    .smart-back-link {
+      display: inline-flex;
+      align-items: center;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 12px 24px;
+      border-radius: 50px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      box-shadow: 0 3px 10px rgba(67, 97, 238, 0.3);
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      margin-top: 30px;
+    }
+    
+    .smart-back-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+    }
+    
+    .smart-back-link i {
+      margin-right: 8px;
+    }
+    
+    hr {
+      margin: 40px 0;
+      border: none;
+      border-top: 2px dashed var(--light-gray);
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray);
+    }
+    
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      color: var(--light-gray);
+    }
+    
+    .empty-state p {
+      font-size: 1.1rem;
+    }
+    
+    details {
+      margin-bottom: 15px;
+    }
+    
+    summary {
+      cursor: pointer;
+      padding: 15px 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+      font-weight: 600;
+      color: var(--secondary);
+      border-left: 4px solid var(--success);
+    }
+    
+    summary:hover {
+      background: var(--light);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    summary::-webkit-details-marker {
+      color: var(--primary);
+    }
+
+    /* Styles pour les formules mathématiques */
+    .math-inline {
+      display: inline;
+    }
+    
+    .math-display {
+      display: block;
+      text-align: center;
+      margin: 15px 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .container {
+        padding: 20px;
+      }
+      
+      h2 {
+        font-size: 1.8rem;
+      }
+      
+      .student-info {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .student-info .avatar {
+        margin-right: 0;
+        margin-bottom: 10px;
+      }
+      
+      .reponse-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .etoiles {
+        margin-top: 10px;
+      }
+    }
+  </style>
+
+  <!-- MathJax Configuration pour toutes les syntaxes LaTeX -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        renderActions: {
+          addMenu: [0, '', '']
+        }
+      },
+      svg: {
+        fontCache: 'global'
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            console.log('MathJax est prêt à interpréter les formules LaTeX');
+          });
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
+  
+  <!-- Font Awesome pour les icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <h2>
+      {% if lang == 'fr' %}
+        <i class="fas fa-history"></i> Historique des réponses
+      {% else %}
+        <i class="fas fa-history"></i> Answer History
+      {% endif %}
+    </h2>
+    
+    <div class="student-info">
+      <div class="avatar">
+        <i class="fas fa-user-graduate"></i>
+      </div>
+      <div>
+        <h3>{{ eleve.nom_complet }}</h3>
+        <p>
+          {% if lang == 'fr' %}
+            Progression académique et résultats
+          {% else %}
+            Academic progress and results
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <!-- ✅ Réponses aux exercices -->
+    <div class="section-title">
+      <i class="fas fa-book-open"></i>
+      <span>{% if lang == 'fr' %}Exercices complétés{% else %}Completed Exercises{% endif %}</span>
+    </div>
+    
+    {% if reponses %}
+      {% for r in reponses %}
+        <details>
+          <summary>
+            <span class="theme">{{ r.theme }}</span> – {{ r.enonce[:70] }}...
+            <span class="etoiles">{{ r.etoiles or 0 }} <i class="fas fa-star"></i></span>
+          </summary>
+          <div class="reponse">
+            <div class="reponse-content">
+              <p><strong>{{ 'Énoncé :' if lang == 'fr' else 'Prompt:' }}</strong></p>
+              <div class="mathjax-block">{{ r.enonce | e }}</div>
+
+              <p><strong>{{ 'Réponse de l\'élève :' if lang == 'fr' else "Student's Answer:" }}</strong></p>
+              <div class="mathjax-block">{{ r.reponse_eleve | e }}</div>
+
+              <p><strong>{{ 'Analyse IA :' if lang == 'fr' else 'AI Feedback:' }}</strong></p>
+              <div class="mathjax-block">{{ r.analyse_ia | e }}</div>
+
+              <p><strong>{{ 'Note :' if lang == 'fr' else 'Score:' }}</strong>
+                <span class="etoiles">{{ r.etoiles }} <i class="fas fa-star"></i></span>
+              </p>
+            </div>
+          </div>
+        </details>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-clipboard-list"></i>
+        <p>
+          {% if lang == 'fr' %}
+            Aucune réponse d'exercice enregistrée.
+          {% else %}
+            No exercise responses recorded.
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+
+    <hr>
+
+    <!-- ✅ Réponses aux tests sommatifs -->
+    <div class="section-title">
+      <i class="fas fa-file-alt"></i>
+      <span>{% if lang == 'fr' %}Tests sommatifs complétés{% else %}Completed Final Tests{% endif %}</span>
+    </div>
+    
+    {% if tests %}
+      {% for t in tests %}
+        <details>
+          <summary>
+            <span class="theme">{{ t.unite }}</span> – {{ (t.question[:70] if t.question else '...') }}
+            <span class="etoiles">{{ t.etoiles or 0 }} <i class="fas fa-star"></i></span>
+          </summary>
+          <div class="reponse">
+            <div class="reponse-content">
+              <p><strong>{{ 'Question :' if lang == 'fr' else 'Question:' }}</strong></p>
+              <div class="mathjax-block">{{ t.question | e }}</div>
+
+              <p><strong>{{ 'Réponse :' if lang == 'fr' else 'Answer:' }}</strong></p>
+              <div class="mathjax-block">{{ t.reponse_eleve | e }}</div>
+
+              <p><strong>{{ 'Analyse IA :' if lang == 'fr' else 'AI Feedback:' }}</strong></p>
+              <div class="mathjax-block">
+                {% for line in t.analyse_ia.split('\n') %}
+                  {% set l = line.strip() %}
+                  {% if l.lower().startswith("analyse") %}
+                    <p><strong><i class="fas fa-brain"></i> {{ 'Analyse' if lang == 'fr' else 'Analysis' }}</strong></p>
+                  {% elif l.lower().startswith("note") or l.lower().startswith("score") %}
+                    {% set note = l[-1]|int %}
+                    <p class="etoiles"><i class="fas fa-star"></i> {{ 'Note' if lang == 'fr' else 'Score' }} : {{ note }}</p>
+                  {% elif "résolution experte" in l.lower() or "expert resolution" in l.lower() %}
+                    <p><strong><i class="fas fa-user-tie"></i> {{ 'Méthode de l\'expert' if lang == 'fr' else "Expert's method" }}</strong></p>
+                  {% elif "résultat final" in l.lower() or "final answer" in l.lower() %}
+                    <p><strong><i class="fas fa-check-circle"></i> {{ 'Résultat final' if lang == 'fr' else "Final Answer" }}</strong></p>
+                  {% elif '\\' in l or 'frac' in l or 'sqrt' in l or '^' in l or 'tan' in l or 'cos' in l or 'sin' in l %}
+                    <p>$$ {{ l }} $$</p>
+                  {% endif %}
+                {% endfor %}
+              </div>
+
+              <p><strong>{{ 'Note :' if lang == 'fr' else 'Score:' }}</strong>
+                <span class="etoiles">{{ t.etoiles }} <i class="fas fa-star"></i></span>
+              </p>
+            </div>
+          </div>
+        </details>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-file-alt"></i>
+        <p>
+          {% if lang == 'fr' %}
+            Aucun test sommatif complété.
+          {% else %}
+            No final test completed yet.
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+
+    <!-- ✅ BOUTON UNIQUE INTELLIGENT -->
+    {% if is_parent_access %}
+      {# ✅ CONTEXTE PARENT : Retour au dashboard parent #}
+      <a class="smart-back-link" href="/parent-dashboard">
+        <i class="fas fa-arrow-left"></i> 
+        {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to dashboard{% endif %}
+      </a>
+    {% else %}
+      {# ✅ CONTEXTE ÉLÈVE : Retour au dashboard élève #}
+      <a class="smart-back-link" href="/dashboard-eleve?username={{ eleve.username }}">
+        <i class="fas fa-arrow-left"></i> 
+        {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to dashboard{% endif %}
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- Script pour traiter le contenu MathJax après le chargement -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Réinitialiser MathJax pour traiter le contenu dynamique
+      if (window.MathJax) {
+        MathJax.typesetPromise && MathJax.typesetPromise();
+      }
+      
+      // Réappliquer MathJax quand on ouvre les détails
+      document.querySelectorAll('details').forEach(detail => {
+        detail.addEventListener('toggle', function() {
+          if (this.open && window.MathJax) {
+            setTimeout(() => {
+              MathJax.typesetPromise && MathJax.typesetPromise([this]);
+            }, 100);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

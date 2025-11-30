@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      border-radius: 10px;
+      padding: 30px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #2c3e50;
+    }
+
+    .objectif, .exercices {
+      margin-top: 20px;
+    }
+
+    .objectif p, .exercices ul {
+      font-size: 16px;
+      color: #333;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 10px;
+    }
+
+    .button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-size: 15px;
+      margin-top: 20px;
+    }
+
+    .button:hover {
+      background-color: #2980b9;
+    }
+
+    .navigation {
+      margin-top: 40px;
+      text-align: center;
+    }
+
+    .navigation a {
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>{{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }}</h2>
+
+    <div class="objectif">
+      <h4>{% if lang == 'fr' %}🎯 Objectif pédagogique{% else %}🎯 Learning Objective{% endif %}</h4>
+      <p>{{ lecon.objectif_fr if lang == 'fr' else lecon.objectif_en }}</p>
+    </div>
+
+    <div class="exercices">
+      <h4>{% if lang == 'fr' %}📚 Exercices liés{% else %}📚 Linked Exercises{% endif %}</h4>
+      {% if lecon.exercices %}
+        <ul>
+          {% for ex in lecon.exercices %}
+            <li>
+              {{ ex.question_fr[:100] }}...
+              <a class="button" href="/exercice/{{ ex.id }}?username={{ username }}&lang={{ lang }}">
+                {% if lang == 'fr' %}Faire l'exercice{% else %}Do exercise{% endif %}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>{% if lang == 'fr' %}Aucun exercice lié pour le moment.{% else %}No linked exercise yet.{% endif %}</p>
+      {% endif %}
+    </div>
+
+    <div class="navigation">
+      <a href="/contenus-eleve?username={{ username }}&lang={{ lang }}" class="button">
+        ← {% if lang == 'fr' %}Retour aux leçons{% else %}Back to lessons{% endif %}
+      </a>
+      <a href="/dashboard-eleve?username={{ username }}&lang={{ lang }}" class="button" style="background-color: #e67e22;">
+        ⬅ {% if lang == 'fr' %}Tableau de bord{% else %}Dashboard{% endif %}
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>

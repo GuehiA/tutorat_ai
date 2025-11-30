@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>Modifier un Élève</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f4f4f4; 
+      padding: 30px; 
+    }
+    .form-container {
+      background: #fff; 
+      padding: 25px; 
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+      max-width: 500px; 
+      margin: auto;
+    }
+    h2 { 
+      text-align: center; 
+      color: #333; 
+      margin-bottom: 20px;
+    }
+    label { 
+      display: block; 
+      margin-top: 15px; 
+      font-weight: bold; 
+      color: #555;
+    }
+    input, select {
+      width: 100%; 
+      padding: 10px; 
+      margin-top: 5px;
+      border: 1px solid #ccc; 
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    input:focus, select:focus {
+      border-color: #3498db;
+      outline: none;
+      box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+    }
+    button {
+      margin-top: 20px; 
+      width: 100%; 
+      padding: 12px;
+      background: #3498db; 
+      color: white; 
+      border: none;
+      border-radius: 5px; 
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover { 
+      background: #2980b9; 
+    }
+    .top-links {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .top-links a {
+      margin: 0 10px;
+      color: white;
+      background: #2ecc71;
+      padding: 8px 12px;
+      border-radius: 5px;
+      text-decoration: none;
+      transition: background 0.3s;
+    }
+    .top-links a:hover {
+      background: #27ae60;
+    }
+    .danger { 
+      background: #e74c3c !important; 
+    }
+    .danger:hover { 
+      background: #c0392b !important; 
+    }
+    .password-section {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+      border-left: 4px solid #3498db;
+    }
+    .password-toggle {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .password-toggle input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
+    .password-fields {
+      display: none;
+      margin-top: 10px;
+    }
+    .password-fields.show {
+      display: block;
+    }
+    .info-text {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+      font-style: italic;
+    }
+    .current-password {
+      background: #e8f4fc;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-top: 5px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-links">
+  <a href="/admin/dashboard">🏠 Tableau de bord</a>
+  <a href="/admin/eleves">📋 Liste des élèves</a>
+  <a href="/logout" class="danger">🚪 Déconnexion</a>
+</div>
+
+<div class="form-container">
+  <h2>Modifier un Élève</h2>
+  
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" style="
+          padding: 10px;
+          margin-bottom: 15px;
+          border-radius: 5px;
+          background: {{ '#d4edda' if category == 'success' else '#f8d7da' }};
+          color: {{ '#155724' if category == 'success' else '#721c24' }};
+          border: 1px solid {{ '#c3e6cb' if category == 'success' else '#f5c6cb' }};
+        ">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST">
+    <!-- Informations de base -->
+    <label for="nom">Nom complet</label>
+    <input type="text" id="nom" name="nom" value="{{ eleve.nom_complet }}" required>
+
+    <label for="email">Adresse e-mail</label>
+    <input type="email" id="email" name="email" value="{{ eleve.email }}" required>
+
+    <label for="username">Nom d'utilisateur</label>
+    <input type="text" id="username" name="username" value="{{ eleve.username }}" required>
+    <div class="info-text">Utilisé pour la connexion de l'élève</div>
+
+    <label for="niveau_id">Niveau</label>
+    <select id="niveau_id" name="niveau_id" required>
+      <option value="">-- Choisir un niveau --</option>
+      {% for niveau in niveaux %}
+      <option value="{{ niveau.id }}" {% if eleve.niveau_id == niveau.id %}selected{% endif %}>
+        {{ niveau.nom }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <label for="enseignant_id">Enseignant référent</label>
+    <select id="enseignant_id" name="enseignant_id" required>
+      <option value="">-- Choisir un enseignant --</option>
+      {% for enseignant in enseignants %}
+      <option value="{{ enseignant.id }}" {% if eleve.enseignant_id == enseignant.id %}selected{% endif %}>
+        {{ enseignant.nom }} ({{ enseignant.email }})
+      </option>
+      {% endfor %}
+    </select>
+
+    <!-- Section mot de passe -->
+    <div class="password-section">
+      <h3 style="margin-top: 0; color: #2c3e50;">🔐 Mot de passe</h3>
+      
+      <div class="password-toggle">
+        <input type="checkbox" id="changer_mdp" name="changer_mdp" onchange="togglePasswordFields()">
+        <label for="changer_mdp" style="display: inline; margin-top: 0;">Modifier le mot de passe</label>
+      </div>
+
+      <div class="info-text">
+        Si vous ne modifiez pas le mot de passe, l'ancien restera inchangé.
+      </div>
+
+      <div id="password-fields" class="password-fields">
+        <label for="nouveau_mot_de_passe">Nouveau mot de passe</label>
+        <input type="password" id="nouveau_mot_de_passe" name="nouveau_mot_de_passe" placeholder="Laisser vide pour garder l'actuel">
+        
+        <label for="confirmation_mot_de_passe">Confirmation du mot de passe</label>
+        <input type="password" id="confirmation_mot_de_passe" name="confirmation_mot_de_passe" placeholder="Répétez le nouveau mot de passe">
+        
+        <div class="info-text">
+          💡 Conseil : Utilisez un mot de passe facile à retenir pour l'élève
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" onclick="return validateForm()">💾 Enregistrer les modifications</button>
+  </form>
+</div>
+
+<script>
+  function togglePasswordFields() {
+    const checkbox = document.getElementById('changer_mdp');
+    const passwordFields = document.getElementById('password-fields');
+    
+    if (checkbox.checked) {
+      passwordFields.classList.add('show');
+    } else {
+      passwordFields.classList.remove('show');
+      // Réinitialiser les champs de mot de passe
+      document.getElementById('nouveau_mot_de_passe').value = '';
+      document.getElementById('confirmation_mot_de_passe').value = '';
+    }
+  }
+
+  function validateForm() {
+    const changerMdp = document.getElementById('changer_mdp').checked;
+    const nouveauMdp = document.getElementById('nouveau_mot_de_passe').value;
+    const confirmationMdp = document.getElementById('confirmation_mot_de_passe').value;
+    
+    if (changerMdp) {
+      if (nouveauMdp.length < 3) {
+        alert('Le mot de passe doit contenir au moins 3 caractères');
+        return false;
+      }
+      
+      if (nouveauMdp !== confirmationMdp) {
+        alert('Les mots de passe ne correspondent pas');
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  // Initialiser l'état des champs de mot de passe au chargement
+  document.addEventListener('DOMContentLoaded', function() {
+    togglePasswordFields();
+  });
+</script>
+
+</body>
+</html>

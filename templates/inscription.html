@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>Inscription Élève</title>
+</head>
+<body>
+  <h2>Formulaire d'inscription</h2>
+  <form id="signupForm">
+    <label>Nom complet de l'élève :</label><br>
+    <input type="text" name="nom_complet" required><br>
+
+    <label>Niveau scolaire :</label><br>
+    <input type="text" name="niveau" required><br>
+
+    <label>Email de l'élève :</label><br>
+    <input type="email" name="email" required><br>
+
+    <label>Nom du parent :</label><br>
+    <input type="text" name="parent_nom" required><br>
+
+    <label>Email du parent :</label><br>
+    <input type="email" name="parent_email" required><br><br>
+
+    <button type="submit">Créer le profil</button>
+  </form>
+
+  <div id="resultat"></div>
+
+  <script>
+    document.getElementById("signupForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const body = {};
+      formData.forEach((value, key) => body[key] = value);
+
+      const res = await fetch("/create-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      document.getElementById("resultat").textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

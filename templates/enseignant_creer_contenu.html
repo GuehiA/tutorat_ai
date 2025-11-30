@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <!-- Favicon VirtuEduc -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+    <meta name="msapplication-TileColor" content="#4361ee">
+    <meta name="theme-color" content="#4361ee">
+    <title>{% if lang == 'en' %}Create Content{% else %}Créer du Contenu{% endif %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .content-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            margin-bottom: 25px;
+            height: 100%;
+        }
+        .content-card:hover {
+            transform: translateY(-5px);
+        }
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        .btn-content {
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <!-- Header -->
+        <div class="row mb-5">
+            <div class="col-12 text-center">
+                <h1 class="display-5 fw-bold text-primary">
+                    <i class="fas fa-plus-circle me-3"></i>
+                    {% if lang == 'en' %}Create Educational Content{% else %}Créer du Contenu Pédagogique{% endif %}
+                </h1>
+                <p class="lead text-muted">
+                    {% if lang == 'en' %}Choose the type of content you want to create{% else %}Choisissez le type de contenu que vous souhaitez créer{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Content Creation Options -->
+        <div class="row g-4">
+            <!-- Add Exercise -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card content-card text-center p-4">
+                    <div class="card-body">
+                        <div class="card-icon text-primary">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        <h4 class="card-title">{% if lang == 'en' %}Add Exercise{% else %}Ajouter un Exercice{% endif %}</h4>
+                        <p class="card-text text-muted">
+                            {% if lang == 'en' %}Create a new exercise with questions and solutions{% else %}Créez un nouvel exercice avec questions et solutions{% endif %}
+                        </p>
+                        <a href="/admin/ajouter-exercice" class="btn btn-primary btn-content">
+                            <i class="fas fa-plus me-2"></i>
+                            {% if lang == 'en' %}Create{% else %}Créer{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Lesson -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card content-card text-center p-4">
+                    <div class="card-body">
+                        <div class="card-icon text-success">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <h4 class="card-title">{% if lang == 'en' %}Add Lesson{% else %}Ajouter une Leçon{% endif %}</h4>
+                        <p class="card-text text-muted">
+                            {% if lang == 'en' %}Create a new lesson with educational objectives{% else %}Créez une nouvelle leçon avec des objectifs pédagogiques{% endif %}
+                        </p>
+                        <a href="/admin/ajouter-lecon" class="btn btn-success btn-content">
+                            <i class="fas fa-plus me-2"></i>
+                            {% if lang == 'en' %}Create{% else %}Créer{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Test -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card content-card text-center p-4">
+                    <div class="card-body">
+                        <div class="card-icon text-warning">
+                            <i class="fas fa-vial"></i>
+                        </div>
+                        <h4 class="card-title">{% if lang == 'en' %}Add Test{% else %}Ajouter un Test{% endif %}</h4>
+                        <p class="card-text text-muted">
+                            {% if lang == 'en' %}Create a summative test with multiple exercises{% else %}Créez un test sommatif avec plusieurs exercices{% endif %}
+                        </p>
+                        <a href="/admin/ajouter-test" class="btn btn-warning text-white btn-content">
+                            <i class="fas fa-plus me-2"></i>
+                            {% if lang == 'en' %}Create{% else %}Créer{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Exercise Generation -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card content-card text-center p-4">
+                    <div class="card-body">
+                        <div class="card-icon text-info">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4 class="card-title">{% if lang == 'en' %}Generate Exercises (AI){% else %}Générer des Exercices (IA){% endif %}</h4>
+                        <p class="card-text text-muted">
+                            {% if lang == 'en' %}Use AI to generate exercises automatically{% else %}Utilisez l'IA pour générer des exercices automatiquement{% endif %}
+                        </p>
+                        <a href="/admin/creer-exercice-ia" class="btn btn-info text-white btn-content">
+                            <i class="fas fa-magic me-2"></i>
+                            {% if lang == 'en' %}Generate{% else %}Générer{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Test Generation -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card content-card text-center p-4">
+                    <div class="card-body">
+                        <div class="card-icon text-danger">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <h4 class="card-title">{% if lang == 'en' %}Generate Test (AI){% else %}Générer un Test (IA){% endif %}</h4>
+                        <p class="card-text text-muted">
+                            {% if lang == 'en' %}Use AI to create complete tests automatically{% else %}Utilisez l'IA pour créer des tests complets automatiquement{% endif %}
+                        </p>
+                        <a href="/admin/creer-test-sommatif-ia" class="btn btn-danger btn-content">
+                            <i class="fas fa-bolt me-2"></i>
+                            {% if lang == 'en' %}Generate{% else %}Générer{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back to Dashboard -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card content-card text-center p-4">
+                    <div class="card-body">
+                        <div class="card-icon text-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                        </div>
+                        <h4 class="card-title">{% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}</h4>
+                        <p class="card-text text-muted">
+                            {% if lang == 'en' %}Return to your main dashboard{% else %}Retournez à votre tableau de bord principal{% endif %}
+                        </p>
+                        <!-- 🔥 CORRECTION : Lien vers le dashboard enseignant -->
+                        <a href="/dashboard-enseignant" class="btn btn-secondary btn-content">
+                            <i class="fas fa-tachometer-alt me-2"></i>
+                            {% if lang == 'en' %}Dashboard{% else %}Tableau de Bord{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

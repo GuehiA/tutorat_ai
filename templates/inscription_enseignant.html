@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Teacher Registration{% else %}Inscription Enseignant{% endif %}</title>
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --primary-light: #eef2ff;
+      --secondary: #7209b7;
+      --accent: #4cc9f0;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 12px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .logo {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      color: var(--primary);
+    }
+
+    .header h1 {
+      color: var(--dark);
+      font-weight: 600;
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: var(--gray);
+      font-size: 1rem;
+    }
+
+    .form-container {
+      background: white;
+      padding: 40px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .form-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--dark);
+      transition: var(--transition);
+    }
+
+    .input-container {
+      position: relative;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--light-gray);
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      transition: var(--transition);
+      background-color: var(--light);
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background-color: white;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 16px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: none;
+      color: white;
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 25px;
+      text-decoration: none;
+      color: var(--gray);
+      font-weight: 500;
+      transition: var(--transition);
+      padding: 10px;
+      border-radius: var(--border-radius);
+    }
+
+    .back-link:hover {
+      color: var(--primary);
+      background-color: rgba(67, 97, 238, 0.05);
+    }
+
+    .lang-switch {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+    }
+
+    .lang-switch form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lang-switch label {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .lang-switch select {
+      padding: 8px 12px;
+      border-radius: var(--border-radius);
+      font-size: 14px;
+      border: 1px solid var(--light-gray);
+      background-color: white;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .lang-switch select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .teacher-icon {
+      text-align: center;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+
+    .teacher-icon svg {
+      width: 64px;
+      height: 64px;
+    }
+
+    @media (max-width: 576px) {
+      .form-container {
+        padding: 30px 20px;
+      }
+      
+      .header h1 {
+        font-size: 1.5rem;
+      }
+      
+      .teacher-icon svg {
+        width: 48px;
+        height: 48px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Sélecteur de langue -->
+    <div class="lang-switch">
+      <form method="POST" action="/changer-langue">
+        <label for="lang">🌍</label>
+        <select name="lang" id="lang" onchange="this.form.submit()">
+          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+          <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+        </select>
+        <input type="hidden" name="redirect_page" value="ajouter_unite">
+      </form>
+    </div>
+
+    <!-- En-tête avec logo et titre -->
+    <div class="header">
+      <div class="logo">📚</div>
+      <h1>{% if lang == 'en' %}Teacher Registration{% else %}Inscription Enseignant{% endif %}</h1>
+      <p>{% if lang == 'en' %}Add a new teacher to the platform{% else %}Ajouter un nouvel enseignant à la plateforme{% endif %}</p>
+    </div>
+
+    <!-- Icône d'enseignant -->
+    <div class="teacher-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v6m0 0l-3-3m3 3l3-3m-9-5v6m0 0l-3-3m3 3l3-3" />
+      </svg>
+    </div>
+
+    <div class="form-container">
+      <form method="POST" action="/inscription-enseignant">
+        <div class="form-group">
+          <label for="nom">{% if lang == 'en' %}Full Name:{% else %}Nom :{% endif %}</label>
+          <div class="input-container">
+            <input type="text" id="nom" name="nom" required>
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email :</label>
+          <div class="input-container">
+            <input type="email" id="email" name="email" required>
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="mot_de_passe">{% if lang == 'en' %}Password:{% else %}Mot de passe :{% endif %}</label>
+          <div class="input-container">
+            <input type="password" id="mot_de_passe" name="mot_de_passe" required>
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          </svg>
+          {% if lang == 'en' %}Register Teacher{% else %}Inscrire l'enseignant{% endif %}
+        </button>
+      </form>
+
+      <a class="back-link" href="/admin/dashboard">
+        ← {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'fr' %}Remédiation en attente{% else %}Remediation Pending{% endif %}</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 60px; background: #f4f4f4; }
+    .box {
+      max-width: 500px; margin: auto;
+      background: white; padding: 40px;
+      border-radius: 12px; box-shadow: 0 0 10px #ccc;
+    }
+    h2 { color: #e67e22; }
+    p { font-size: 1.1em; margin-top: 20px; }
+    a {
+      display: inline-block; margin-top: 20px;
+      padding: 10px 20px; background: #3498db;
+      color: white; border-radius: 6px;
+      text-decoration: none;
+    }
+    a:hover { background: #2980b9; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>⏳ {% if lang == 'fr' %}Remédiation en attente{% else %}Remediation Not Yet Validated{% endif %}</h2>
+    <p>
+      {% if lang == 'fr' %}
+        Cette remédiation n’a pas encore été validée par votre enseignant.
+      {% else %}
+        This remediation has not been approved by your teacher yet.
+      {% endif %}
+    </p>
+    <a href="/dashboard-eleve?lang={{ lang }}">← {% if lang == 'fr' %}Retour{% else %}Back{% endif %}</a>
+  </div>
+</body>
+</html>

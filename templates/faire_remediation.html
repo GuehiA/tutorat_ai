@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Remediation{% else %}Remédiation{% endif %}</title>
+  
+  <!-- MathJax avec configuration robuste identique -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\(', '\)']],
+        displayMath: [['$$', '$$'], ['\[', '\]']],
+        processEscapes: true,
+        processEnvironments: true,
+        tags: 'ams'
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        ignoreHtmlClass: 'no-mathjax'
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            console.log('MathJax configuration loaded successfully');
+          }).catch((error) => {
+            console.error('MathJax initialization error:', error);
+          });
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
+  
+  <!-- Markdown-it pour le rendu Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --primary: #4361ee;
+      --secondary: #3a0ca3;
+      --accent: #f72585;
+      --success: #4cc9f0;
+      --warning: #f9c74f;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 15px 20px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .logo i {
+      font-size: 2rem;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .lang-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-selector select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--gray);
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .lang-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+    }
+
+    .remediation-container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .remediation-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+    }
+
+    .remediation-header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--light-gray);
+    }
+
+    .remediation-title {
+      font-size: 2rem;
+      color: var(--secondary);
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .remediation-meta {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray);
+      font-weight: 500;
+    }
+
+    .meta-item i {
+      color: var(--primary);
+    }
+
+    .teacher-message {
+      background: linear-gradient(135deg, #fff9e6 0%, #fcf3cf 100%);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      border-left: 4px solid var(--warning);
+      line-height: 1.6;
+    }
+
+    .exercise-section {
+      margin: 25px 0;
+    }
+
+    .section-label {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .exercise-content {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 12px;
+      padding: 25px;
+      line-height: 1.6;
+      font-size: 1.1rem;
+      border-left: 4px solid var(--primary);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Styles pour le rendu Markdown - IDENTIQUES AUX AUTRES TEMPLATES */
+    .markdown-rendered h1, .markdown-rendered h2, .markdown-rendered h3 {
+      color: var(--secondary);
+      margin: 20px 0 10px 0;
+    }
+
+    .markdown-rendered p {
+      margin-bottom: 15px;
+    }
+
+    .markdown-rendered ul, .markdown-rendered ol {
+      margin: 10px 0 10px 20px;
+    }
+
+    .markdown-rendered code {
+      background: var(--light-gray);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .markdown-rendered pre {
+      background: var(--dark);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+
+    .markdown-rendered blockquote {
+      border-left: 4px solid var(--primary);
+      padding-left: 15px;
+      margin: 15px 0;
+      color: var(--gray);
+      font-style: italic;
+    }
+
+    /* Styles pour le rendu MathJax - IDENTIQUES AUX AUTRES TEMPLATES */
+    .math-content mjx-container {
+      display: inline-block;
+      margin: 0 2px;
+    }
+
+    .math-display {
+      text-align: center;
+      margin: 15px 0;
+      padding: 10px;
+    }
+
+    .math-inline {
+      display: inline;
+    }
+
+    .mathjax-error {
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    .answer-section {
+      margin-top: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    .answer-label {
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--dark);
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Éditeur mathématique unifié - IDENTIQUE AUX AUTRES TEMPLATES */
+    .unified-math-editor {
+      background: var(--light);
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      border: 2px solid #e9ecef;
+    }
+
+    .current-content {
+      background: white;
+      border: 2px solid var(--success);
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      font-size: 1rem;
+      line-height: 1.5;
+      min-height: 60px;
+      flex-grow: 1;
+    }
+
+    .current-content:empty::before {
+      content: "{% if lang == 'fr' %}Votre réponse apparaîtra ici...{% else %}Your answer will appear here...{% endif %}";
+      color: var(--gray);
+      font-style: italic;
+    }
+
+    .current-content.has-content {
+      border-color: var(--primary);
+      background: #f8fff9;
+    }
+
+    .math-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    .math-btn {
+      padding: 10px 15px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.1em;
+      font-weight: 600;
+    }
+
+    .math-btn:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .visual-editor {
+      min-height: 200px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      background: white;
+      line-height: 1.6;
+      font-size: 1.1rem;
+      font-family: inherit;
+    }
+
+    .visual-editor:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .help-text {
+      color: #6c757d;
+      font-size: 0.9em;
+      margin-top: 15px;
+      line-height: 1.4;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .btn:hover {
+      background: var(--secondary);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      margin-top: 25px;
+      flex-wrap: wrap;
+    }
+
+    /* Feedback Styles */
+    .student-answer {
+      background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      border-left: 4px solid var(--success);
+    }
+
+    .feedback-box {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border-radius: 12px;
+      padding: 25px;
+      margin: 25px 0;
+      border-left: 4px solid var(--primary);
+    }
+
+    .stars {
+      font-size: 28px;
+      color: #f9c74f;
+      margin: 15px 0;
+      text-align: center;
+    }
+
+    .feedback-content {
+      line-height: 1.6;
+      margin-top: 15px;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px auto 0;
+      padding: 12px 25px;
+      background: transparent;
+      color: var(--dark);
+      border: 2px solid var(--dark);
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      width: fit-content;
+    }
+
+    .back-btn:hover {
+      background: var(--dark);
+      color: white;
+    }
+
+    /* Overlay d'attente identique aux autres templates */
+    .waiting-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .waiting-overlay.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .waiting-card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      transform: translateY(20px);
+      animation: slideUp 0.5s ease forwards;
+    }
+
+    .teacher-avatar {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+
+    .teacher-image {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 3rem;
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .thinking-animation {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      animation: pulse 2s infinite;
+    }
+
+    .waiting-title {
+      font-size: 1.8rem;
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .waiting-message {
+      font-size: 1.1rem;
+      color: var(--gray);
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    .loading-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+
+    .processing-steps {
+      text-align: left;
+      margin: 25px 0;
+      padding: 20px;
+      background: var(--light);
+      border-radius: 10px;
+    }
+
+    .processing-step {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .processing-step.active {
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .step-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--light-gray);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    .processing-step.active .step-icon {
+      background: var(--primary);
+      color: white;
+    }
+
+    .step-text {
+      flex: 1;
+      color: var(--gray);
+    }
+
+    .processing-step.active .step-text {
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { 
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        transform: scale(0);
+      }
+      40% {
+        transform: scale(1);
+      }
+    }
+
+    .success-animation {
+      animation: pulse 2s infinite;
+    }
+
+    @media (max-width: 768px) {
+      .remediation-container {
+        padding: 25px;
+      }
+      
+      .remediation-title {
+        font-size: 1.6rem;
+      }
+      
+      .remediation-meta {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+      }
+      
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .waiting-card {
+        padding: 30px 20px;
+        margin: 20px;
+      }
+
+      .teacher-avatar {
+        width: 100px;
+        height: 100px;
+      }
+
+      .teacher-image {
+        font-size: 2.5rem;
+      }
+
+      .math-toolbar {
+        justify-content: center;
+      }
+
+      .math-btn {
+        padding: 8px 12px;
+        font-size: 1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Overlay d'attente identique aux autres templates -->
+  <div class="waiting-overlay" id="waitingOverlay">
+    <div class="waiting-card">
+      <div class="teacher-avatar">
+        <div class="teacher-image">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div class="thinking-animation">
+          <i class="fas fa-brain"></i>
+        </div>
+      </div>
+      
+      <h2 class="waiting-title">
+        <i class="fas fa-hourglass-half"></i>
+        {% if lang == 'fr' %}
+          Enseignant Virtuel en train de réfléchir...
+        {% else %}
+          Virtual Teacher is thinking...
+        {% endif %}
+      </h2>
+      
+      <p class="waiting-message">
+        {% if lang == 'fr' %}
+          Notre enseignant virtuel analyse votre réponse et prépare une rétroaction personnalisée.
+        {% else %}
+          Our virtual teacher is analyzing your answer and preparing personalized feedback.
+        {% endif %}
+      </p>
+
+      <div class="loading-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+
+      <div class="processing-steps">
+        <div class="processing-step active" id="step1">
+          <div class="step-icon">1</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Analyse de votre réponse...
+            {% else %}
+              Analyzing your answer...
+            {% endif %}
+          </div>
+        </div>
+        <div class="processing-step" id="step2">
+          <div class="step-icon">2</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Vérification des étapes de résolution...
+            {% else %}
+              Checking solution steps...
+            {% endif %}
+          </div>
+        </div>
+        <div class="processing-step" id="step3">
+          <div class="step-icon">3</div>
+          <div class="step-text">
+            {% if lang == 'fr' %}
+              Préparation de la rétroaction...
+            {% else %}
+              Preparing feedback...
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; font-size: 0.9rem; color: var(--gray);">
+        <i class="fas fa-clock"></i>
+        {% if lang == 'fr' %}
+          Cela peut prendre quelques secondes...
+        {% else %}
+          This may take a few seconds...
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <i class="fas fa-graduation-cap"></i>
+        <span>{% if lang == 'en' %}Learning Platform{% else %}Plateforme d'Apprentissage{% endif %}</span>
+      </div>
+      <div class="user-info">
+        <div class="avatar">
+          {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+        </div>
+        <div>
+          <strong>{{ eleve.nom_complet }}</strong>
+        </div>
+        <div class="lang-selector">
+          <form method="POST" action="/changer-langue">
+            <select name="lang" id="lang" onchange="this.form.submit()">
+              <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+              <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+            </select>
+            <input type="hidden" name="redirect_page" value="faire_remediation">
+            <input type="hidden" name="username" value="{{ eleve.username }}">
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <!-- Conteneur de remédiation -->
+    <div class="remediation-container">
+      <!-- En-tête -->
+      <div class="remediation-header">
+        <h1 class="remediation-title">
+          <i class="fas fa-tools"></i>
+          {% if lang == 'en' %}Remediation{% else %}Remédiation{% endif %}
+        </h1>
+        
+        <div class="remediation-meta">
+          <div class="meta-item">
+            <i class="fas fa-palette"></i>
+            <span><strong>{% if lang == 'fr' %}Thème :{% else %}Theme:{% endif %}</strong> {{ remediation.theme }}</span>
+          </div>
+          
+          <div class="meta-item">
+            <i class="fas fa-book"></i>
+            <span><strong>{% if lang == 'fr' %}Leçon :{% else %}Lesson:{% endif %}</strong> {{ remediation.lecon }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message de l'enseignant -->
+      {% if remediation.message %}
+      <div class="teacher-message markdown-rendered math-content">
+        <div class="section-label">
+          <i class="fas fa-comment-dots"></i>
+          {% if lang == 'fr' %}Message de l'enseignant{% else %}Teacher's Message{% endif %}
+        </div>
+        <!-- APPLICATION DU FILTRE replace_latex POUR LE MESSAGE -->
+        {{ remediation.message | replace_latex | safe }}
+      </div>
+      {% endif %}
+
+      <!-- Exercice suggéré -->
+      {% if remediation.exercice_suggere %}
+      <div class="exercise-section">
+        <div class="section-label">
+          <i class="fas fa-question-circle"></i>
+          {% if lang == 'fr' %}Exercice de remédiation{% else %}Remediation Exercise{% endif %}
+        </div>
+        <div class="exercise-content markdown-rendered math-content" id="exercise-content">
+          <!-- APPLICATION DU FILTRE replace_latex POUR L'EXERCICE -->
+          {% if not feedback %}
+            {{ remediation.exercice_suggere.split('Réponse')[0].split('Expected')[0].strip() | replace_latex | safe }}
+          {% else %}
+            {{ remediation.exercice_suggere | replace_latex | safe }}
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Réponse de l'élève (si feedback existe) -->
+      {% if feedback %}
+      <div class="student-answer markdown-rendered math-content">
+        <div class="section-label">
+          <i class="fas fa-edit"></i>
+          {% if lang == 'fr' %}Ta réponse{% else %}Your Answer{% endif %}
+        </div>
+        <div class="feedback-content">
+          <!-- APPLICATION DU FILTRE replace_latex POUR LA RÉPONSE DE L'ÉLÈVE -->
+          {{ remediation.reponse_eleve | replace_latex | safe }}
+        </div>
+      </div>
+
+      <!-- Feedback de l'IA -->
+      <div class="feedback-box markdown-rendered math-content">
+        <div class="section-label">
+          <i class="fas fa-robot"></i>
+          {% if lang == 'fr' %}Analyse de l'IA{% else %}AI Feedback{% endif %}
+        </div>
+        <div class="feedback-content">
+          <!-- APPLICATION DU FILTRE replace_latex POUR LE FEEDBACK -->
+          {{ feedback | replace_latex | safe }}
+        </div>
+        
+        <!-- Étoiles -->
+        <div class="stars">
+          {% for i in range(etoiles) %} ⭐ {% endfor %}
+          {% for i in range(3 - etoiles) %} ☆ {% endfor %}
+        </div>
+      </div>
+
+      {% else %}
+      <!-- Formulaire de réponse -->
+      <form method="POST" id="remediationForm">
+        <input type="hidden" name="remediation_id" value="{{ remediation.id }}">
+        <input type="hidden" name="reponse_eleve" id="reponse_eleve_hidden" value="">
+
+        <div class="answer-section">
+          <div class="form-group">
+            <div class="answer-label">
+              <i class="fas fa-edit"></i>
+              {% if lang == 'fr' %}Ta réponse{% else %}Your Answer{% endif %}
+            </div>
+            
+            <!-- Éditeur mathématique unifié - IDENTIQUE AUX AUTRES TEMPLATES -->
+            <div class="unified-math-editor">
+              <div class="current-content" id="currentContent">
+                {% if lang == 'fr' %}Votre réponse apparaîtra ici...{% else %}Your answer will appear here...{% endif %}
+              </div>
+
+              <div class="math-toolbar">
+                <!-- Symboles mathématiques identiques -->
+                <button type="button" class="math-btn" onclick="insertSymbol('²')">x²</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('³')">x³</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('√')">√</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('π')">π</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('∞')">∞</button>
+                
+                <!-- Opérateurs -->
+                <button type="button" class="math-btn" onclick="insertSymbol('≠')">≠</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('≈')">≈</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('≤')">≤</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('≥')">≥</button>
+                
+                <!-- Fractions et lettres grecques -->
+                <button type="button" class="math-btn" onclick="insertFraction()">½</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('α')">α</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('β')">β</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('θ')">θ</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
+              </div>
+
+              <div 
+                class="visual-editor" 
+                contenteditable="true"
+                id="visualMathEditor"
+                placeholder="{% if lang == 'fr' %}Écrivez votre réponse complète ici... Utilisez les boutons pour les symboles mathématiques.{% else %}Write your complete answer here... Use the buttons for math symbols.{% endif %}"
+              ></div>
+
+              <div class="help-text">
+                💡 <strong>{% if lang == 'fr' %}Conseil :{% else %}Tip:{% endif %}</strong> 
+                {% if lang == 'fr' %}
+                  Écrivez normalement et utilisez les boutons pour les symboles mathématiques. Votre réponse s'affiche en temps réel ci-dessus.
+                {% else %}
+                  Write normally and use the buttons for math symbols. Your answer appears in real-time above.
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Bouton de soumission -->
+          <div class="action-buttons">
+            <button type="submit" class="btn success-animation" id="submitBtn">
+              <i class="fas fa-paper-plane"></i>
+              {% if lang == 'fr' %}Soumettre ma réponse{% else %}Submit Answer{% endif %}
+            </button>
+          </div>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+
+    <!-- Bouton de retour -->
+    <a class="back-btn" href="/eleve/remediations?username={{ eleve.username }}&lang={{ lang }}">
+      <i class="fas fa-arrow-left"></i>
+      {% if lang == 'fr' %}Retour aux remédiations{% else %}Back to Remediations{% endif %}
+    </a>
+  </div>
+
+  <script>
+    // Initialiser markdown-it avec support HTML - IDENTIQUE AUX AUTRES TEMPLATES
+    const md = window.markdownit({
+      html: true,
+      linkify: true,
+      typographer: true,
+      breaks: true
+    });
+
+    // Variables globales pour l'éditeur
+    let currentAnswer = '';
+
+    // Fonction pour traiter le contenu mathématique avec MathJax - IDENTIQUE AUX AUTRES TEMPLATES
+    function processMathContent() {
+      if (window.MathJax) {
+        MathJax.typesetPromise().then(() => {
+          console.log('MathJax content processed successfully');
+        }).catch((error) => {
+          console.warn('MathJax processing warning:', error);
+        });
+      }
+    }
+
+    function insertSymbol(symbol) {
+      const editor = document.getElementById('visualMathEditor');
+      const selection = window.getSelection();
+      
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(symbol));
+      } else {
+        // Ajouter à la fin
+        editor.focus();
+        document.execCommand('insertText', false, symbol);
+      }
+      
+      // Mettre à jour l'aperçu
+      updatePreview();
+    }
+
+    function insertFraction() {
+      const numerator = prompt('{% if lang == "fr" %}Numérateur :{% else %}Numerator:{% endif %}', '1');
+      const denominator = prompt('{% if lang == "fr" %}Dénominateur :{% else %}Denominator:{% endif %}', '2');
+      
+      if (numerator && denominator) {
+        insertSymbol(`${numerator}∕${denominator}`);
+      }
+    }
+
+    function updatePreview() {
+      const content = document.getElementById('visualMathEditor').innerHTML
+        .replace(/<div>/g, '\n')
+        .replace(/<\/div>/g, '')
+        .replace(/<br>/g, '\n')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/<[^>]*>/g, '');
+      
+      document.getElementById('currentContent').textContent = content || '{% if lang == "fr" %}Votre réponse apparaîtra ici...{% else %}Your answer will appear here...{% endif %}';
+      
+      // Mettre à jour le style
+      const currentContent = document.getElementById('currentContent');
+      if (content.trim()) {
+        currentContent.classList.add('has-content');
+      } else {
+        currentContent.classList.remove('has-content');
+      }
+      
+      // Mettre à jour la réponse cachée
+      currentAnswer = content;
+      document.getElementById('reponse_eleve_hidden').value = content;
+    }
+
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      const bgColor = type === 'success' ? 'var(--success)' : 'var(--primary)';
+      
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${bgColor};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+        max-width: 300px;
+      `;
+      notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'info'}"></i> ${message}`;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
+      }, 3000);
+    }
+
+    // Gestion de la soumission du formulaire avec animation identique
+    function setupFormSubmission() {
+      const form = document.getElementById('remediationForm');
+      const submitBtn = document.getElementById('submitBtn');
+      const waitingOverlay = document.getElementById('waitingOverlay');
+
+      if (form && submitBtn && waitingOverlay) {
+        form.addEventListener('submit', function(e) {
+          // Vérifier qu'une réponse a été saisie
+          if (!currentAnswer.trim()) {
+            e.preventDefault();
+            showNotification('{% if lang == "fr" %}Veuillez écrire votre réponse avant de soumettre !{% else %}Please write your answer before submitting!{% endif %}', 'error');
+            return;
+          }
+
+          // Empêcher la soumission normale
+          e.preventDefault();
+          
+          // Afficher l'overlay d'attente
+          waitingOverlay.classList.add('active');
+          
+          // Désactiver le bouton de soumission
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "fr" %}Soumission en cours...{% else %}Submitting...{% endif %}';
+          
+          // Animation des étapes de traitement
+          let currentStep = 1;
+          const stepInterval = setInterval(() => {
+            document.getElementById('step' + currentStep).classList.remove('active');
+            currentStep++;
+            if (currentStep <= 3) {
+              document.getElementById('step' + currentStep).classList.add('active');
+            } else {
+              clearInterval(stepInterval);
+            }
+          }, 1500);
+          
+          // Soumettre le formulaire après un court délai pour l'effet visuel
+          setTimeout(() => {
+            form.submit();
+          }, 2000);
+        });
+      }
+    }
+
+    // Initialisation au chargement de la page - IDENTIQUE AUX AUTRES TEMPLATES
+    document.addEventListener('DOMContentLoaded', function() {
+      // Traiter le contenu mathématique après un court délai
+      setTimeout(processMathContent, 500);
+      
+      // Mise à jour en temps réel de l'éditeur
+      const visualEditor = document.getElementById('visualMathEditor');
+      if (visualEditor) {
+        visualEditor.addEventListener('input', updatePreview);
+        
+        // Focus sur l'éditeur
+        setTimeout(() => {
+          visualEditor.focus();
+        }, 500);
+      }
+
+      // Configurer la soumission du formulaire
+      setupFormSubmission();
+
+      // Retraiter MathJax après un délai supplémentaire
+      setTimeout(processMathContent, 1000);
+    });
+
+    // Styles d'animation pour les notifications
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { 
+          opacity: 0;
+          transform: translateX(100px);
+        }
+        to { 
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      
+      @keyframes slideOut {
+        from { 
+          opacity: 1;
+          transform: translateX(0);
+        }
+        to { 
+          opacity: 0;
+          transform: translateX(100px);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>

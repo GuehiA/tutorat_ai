@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>Modifier une matière</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; background: #f4f4f4; }
+    .box {
+      max-width: 500px; margin: auto; background: white;
+      padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label, input, button {
+      display: block; width: 100%; margin-top: 15px;
+    }
+    input { padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+    button {
+      padding: 12px; background-color: #27ae60; color: white;
+      border: none; border-radius: 5px; font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>✏️ Modifier une matière</h2>
+    <form method="POST">
+      <label>Nom de la matière</label>
+      <input type="text" name="nom" value="{{ matiere.nom }}" required>
+      <button type="submit">💾 Enregistrer</button>
+    </form>
+  </div>
+</body>
+</html>

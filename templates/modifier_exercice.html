@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Edit Exercise{% else %}Modifier l'exercice{% endif %} - VirtuEduc</title>
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- MathJax -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+  <!-- MathLive -->
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css">
+  <script defer src="https://unpkg.com/mathlive"></script>
+  
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --secondary: #2c3e50;
+      --accent: #f72585;
+      --success: #4cc9f0;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 12px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .form-card {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .form-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--accent), var(--success));
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      position: relative;
+    }
+
+    .header-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      color: white;
+      font-size: 2rem;
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+    }
+
+    h1 {
+      color: var(--secondary);
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .language-section {
+      background: linear-gradient(135deg, var(--light), #f1f3f9);
+      border-radius: var(--border-radius);
+      padding: 25px;
+      border: 2px solid transparent;
+      transition: var(--transition);
+    }
+
+    .language-section:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .language-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--light-gray);
+    }
+
+    .language-flag {
+      font-size: 1.5rem;
+    }
+
+    .language-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label i {
+      color: var(--primary);
+    }
+
+    textarea, input, select {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid var(--light-gray);
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: var(--transition);
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    textarea {
+      min-height: 120px;
+    }
+
+    textarea:focus, input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      padding: 15px;
+      background: var(--light);
+      border-top: 1px solid #dee2e6;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      border-radius: 8px;
+    }
+
+    .tool-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 12px;
+      background: var(--white);
+      border: 1px solid var(--gray);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: var(--transition);
+    }
+
+    .tool-btn:hover {
+      background: var(--primary);
+      color: var(--white);
+      border-color: var(--primary);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 0.95rem;
+    }
+
+    .btn-preview {
+      background: linear-gradient(135deg, var(--success), #3aa8d4);
+      color: white;
+      margin-top: 10px;
+    }
+
+    .btn-preview:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(76, 201, 240, 0.3);
+    }
+
+    .preview-box {
+      margin-top: 15px;
+      padding: 20px;
+      border: 2px dashed var(--light-gray);
+      border-radius: 8px;
+      background: var(--light);
+      min-height: 80px;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .preview-box.math-content {
+      font-family: 'Times New Roman', serif;
+      background: white;
+    }
+
+    /* ✅ NOUVEAU : Section image avec description IA */
+    .image-section {
+      background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+      border-radius: var(--border-radius);
+      padding: 25px;
+      margin: 30px 0;
+      border-left: 4px solid #ffc107;
+    }
+
+    .image-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .image-header i {
+      color: #e67e22;
+      font-size: 1.5rem;
+    }
+
+    .image-header h3 {
+      color: var(--secondary);
+      font-size: 1.3rem;
+    }
+
+    .current-image {
+      margin: 15px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 2px solid var(--light-gray);
+    }
+
+    .current-image img {
+      max-width: 300px;
+      max-height: 200px;
+      border-radius: 8px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .image-description {
+      background: linear-gradient(135deg, #e8f4fc, #d1ecf1);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      border-left: 4px solid var(--success);
+    }
+
+    .description-item {
+      margin-bottom: 10px;
+      padding: 8px;
+      background: white;
+      border-radius: 6px;
+    }
+
+    .description-label {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 5px;
+    }
+
+    /* Éditeur global */
+    .global-math-editor {
+      background: linear-gradient(135deg, #e8f4fc, #d1ecf1);
+      border-radius: var(--border-radius);
+      padding: 25px;
+      margin: 30px 0;
+      border-left: 4px solid var(--primary);
+    }
+
+    .math-editor-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .math-editor-header i {
+      color: var(--primary);
+      font-size: 1.5rem;
+    }
+
+    .math-editor-header h3 {
+      color: var(--secondary);
+      font-size: 1.3rem;
+    }
+
+    .math-field-container {
+      border: 2px solid var(--light-gray);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .math-field-container:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .math-field {
+      width: 100%;
+      min-height: 80px;
+      border: none;
+      padding: 20px;
+      font-family: 'Cambria Math', serif;
+      font-size: 1.2rem;
+    }
+
+    .insert-math-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 25px;
+      background: var(--accent);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: var(--transition);
+      font-size: 1rem;
+    }
+
+    .insert-math-btn:hover {
+      background: #8e44ad;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(247, 37, 133, 0.3);
+    }
+
+    .current-field-indicator {
+      background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: var(--dark);
+      border-left: 4px solid #ffc107;
+    }
+
+    .time-section {
+      background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+      border-radius: var(--border-radius);
+      padding: 25px;
+      margin: 30px 0;
+      border-left: 4px solid var(--warning, #ffc107);
+    }
+
+    .time-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .time-header i {
+      color: #e67e22;
+      font-size: 1.3rem;
+    }
+
+    .time-header h3 {
+      color: var(--secondary);
+      font-size: 1.2rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      padding: 15px 30px;
+      font-size: 1.1rem;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--gray), #5a6268);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+    }
+
+    .latex-tips {
+      background: linear-gradient(135deg, #e8f4fc, #d1ecf1);
+      border-radius: var(--border-radius);
+      padding: 20px;
+      margin-top: 30px;
+      border-left: 4px solid var(--success);
+    }
+
+    .latex-tips h4 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      color: var(--secondary);
+    }
+
+    .latex-tips ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .latex-tips li {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .latex-tips code {
+      background: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+    }
+
+    .success-message {
+      background: linear-gradient(135deg, #d4edda, #c3e6cb);
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .language-section {
+      animation: fadeIn 0.6s ease;
+    }
+
+    .language-section:nth-child(odd) {
+      animation-delay: 0.1s;
+    }
+
+    .language-section:nth-child(even) {
+      animation-delay: 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="form-card">
+      <!-- En-tête -->
+      <div class="header">
+        <div class="header-icon">
+          <i class="fas fa-edit"></i>
+        </div>
+        <h1>{% if lang == 'en' %}Edit Exercise{% else %}Modifier l'exercice{% endif %}</h1>
+        <p class="subtitle">VirtuEduc - {% if lang == 'en' %}Virtual Education Platform{% else %}Plateforme d'Éducation Virtuelle{% endif %}</p>
+      </div>
+
+      <!-- Messages de succès -->
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="success-message">
+            <i class="fas fa-check-circle"></i>
+            {{ messages[0] }}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" enctype="multipart/form-data">
+        <!-- ✅ NOUVELLE SECTION : Gestion de l'image -->
+        <div class="image-section">
+          <div class="image-header">
+            <i class="fas fa-image"></i>
+            <h3>{% if lang == 'en' %}Exercise Image{% else %}Image de l'exercice{% endif %}</h3>
+          </div>
+          
+          <div class="form-group">
+            <label for="image_exercice">
+              <i class="fas fa-upload"></i>
+              {% if lang == 'en' %}Upload new image{% else %}Télécharger une nouvelle image{% endif %}
+            </label>
+            <input type="file" id="image_exercice" name="image_exercice" accept="image/*">
+            <small style="color: var(--gray); margin-top: 5px; display: block;">
+              <i class="fas fa-info-circle"></i>
+              {% if lang == 'en' %}Leave empty to keep current image. A description for AI will be automatically generated.{% else %}Laisser vide pour conserver l'image actuelle. Une description pour l'IA sera générée automatiquement.{% endif %}
+            </small>
+          </div>
+
+          <!-- Affichage de l'image actuelle -->
+          {% if exercice.chemin_image %}
+          <div class="current-image">
+            <strong>{% if lang == 'en' %}Current image:{% else %}Image actuelle :{% endif %}</strong>
+            <img src="{{ url_for('static', filename=exercice.chemin_image) }}" alt="Image de l'exercice">
+            <div style="margin-top: 10px;">
+              <small style="color: var(--gray);">
+                <i class="fas fa-file-image"></i>
+                {{ exercice.chemin_image }}
+              </small>
+            </div>
+          </div>
+
+          <!-- Affichage des descriptions IA générées -->
+          {% if exercice.image_description_fr or exercice.image_description_en %}
+          <div class="image-description">
+            <h4 style="margin-bottom: 15px; color: var(--primary);">
+              <i class="fas fa-robot"></i>
+              {% if lang == 'en' %}AI-Generated Descriptions{% else %}Descriptions générées par l'IA{% endif %}
+            </h4>
+            
+            {% if exercice.image_description_fr %}
+            <div class="description-item">
+              <div class="description-label">🇫🇷 Français:</div>
+              <div>{{ exercice.image_description_fr }}</div>
+            </div>
+            {% endif %}
+            
+            {% if exercice.image_description_en %}
+            <div class="description-item">
+              <div class="description-label">🇬🇧 English:</div>
+              <div>{{ exercice.image_description_en }}</div>
+            </div>
+            {% endif %}
+            
+            {% if exercice.image_keywords %}
+            <div class="description-item">
+              <div class="description-label">
+                <i class="fas fa-tags"></i>
+                {% if lang == 'en' %}Keywords:{% else %}Mots-clés :{% endif %}
+              </div>
+              <div>{{ exercice.image_keywords }}</div>
+            </div>
+            {% endif %}
+            
+            <small style="color: var(--gray); margin-top: 10px; display: block;">
+              <i class="fas fa-lightbulb"></i>
+              {% if lang == 'en' %}These descriptions help the AI understand visual elements for better feedback.{% else %}Ces descriptions aident l'IA à comprendre les éléments visuels pour une meilleure rétroaction.{% endif %}
+            </small>
+          </div>
+          {% endif %}
+          {% endif %}
+        </div>
+
+        <!-- Sections français et anglais côte à côte -->
+        <div class="form-grid">
+          <!-- Français -->
+          <div class="language-section">
+            <div class="language-header">
+              <span class="language-flag">🇫🇷</span>
+              <h3 class="language-title">Français</h3>
+            </div>
+            
+            <!-- Question FR -->
+            <div class="form-group">
+              <label for="question_fr">
+                <i class="fas fa-question-circle"></i>
+                Question
+              </label>
+              <textarea id="question_fr" name="question_fr" placeholder="Entrez la question en français..." 
+                        onfocus="setCurrentField('question_fr', 'Question FR')">{{ exercice.question_fr or '' }}</textarea>
+              
+              <div class="toolbar">
+                <button type="button" class="tool-btn" onclick="insertText('**texte gras**')">
+                  <i class="fas fa-bold"></i> Gras
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('*texte italique*')">
+                  <i class="fas fa-italic"></i> Italique
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('$$ formule $$')">
+                  <i class="fas fa-square-root-alt"></i> Formule
+                </button>
+              </div>
+              
+              <button type="button" class="btn btn-preview" onclick="previewLatex('question_fr')">
+                <i class="fas fa-eye"></i>
+                Prévisualiser
+              </button>
+              <div id="preview_question_fr" class="preview-box math-content"></div>
+            </div>
+
+            <!-- Réponse FR -->
+            <div class="form-group">
+              <label for="reponse_fr">
+                <i class="fas fa-lightbulb"></i>
+                Réponse
+              </label>
+              <textarea id="reponse_fr" name="reponse_fr" placeholder="Entrez la réponse en français..." 
+                        onfocus="setCurrentField('reponse_fr', 'Réponse FR')">{{ exercice.reponse_fr or '' }}</textarea>
+              
+              <div class="toolbar">
+                <button type="button" class="tool-btn" onclick="insertText('**texte gras**')">
+                  <i class="fas fa-bold"></i> Gras
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('*texte italique*')">
+                  <i class="fas fa-italic"></i> Italique
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('$$ formule $$')">
+                  <i class="fas fa-square-root-alt"></i> Formule
+                </button>
+              </div>
+              
+              <button type="button" class="btn btn-preview" onclick="previewLatex('reponse_fr')">
+                <i class="fas fa-eye"></i>
+                Prévisualiser
+              </button>
+              <div id="preview_reponse_fr" class="preview-box math-content"></div>
+            </div>
+
+            <!-- Explication FR -->
+            <div class="form-group">
+              <label for="explication_fr">
+                <i class="fas fa-graduation-cap"></i>
+                Explication
+              </label>
+              <textarea id="explication_fr" name="explication_fr" placeholder="Entrez l'explication en français..." 
+                        onfocus="setCurrentField('explication_fr', 'Explication FR')">{{ exercice.explication_fr or '' }}</textarea>
+              
+              <div class="toolbar">
+                <button type="button" class="tool-btn" onclick="insertText('**texte gras**')">
+                  <i class="fas fa-bold"></i> Gras
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('*texte italique*')">
+                  <i class="fas fa-italic"></i> Italique
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('$$ formule $$')">
+                  <i class="fas fa-square-root-alt"></i> Formule
+                </button>
+              </div>
+              
+              <button type="button" class="btn btn-preview" onclick="previewLatex('explication_fr')">
+                <i class="fas fa-eye"></i>
+                Prévisualiser
+              </button>
+              <div id="preview_explication_fr" class="preview-box math-content"></div>
+            </div>
+          </div>
+
+          <!-- Anglais -->
+          <div class="language-section">
+            <div class="language-header">
+              <span class="language-flag">🇬🇧</span>
+              <h3 class="language-title">English</h3>
+            </div>
+            
+            <!-- Question EN -->
+            <div class="form-group">
+              <label for="question_en">
+                <i class="fas fa-question-circle"></i>
+                Question
+              </label>
+              <textarea id="question_en" name="question_en" placeholder="Enter the question in English..." 
+                        onfocus="setCurrentField('question_en', 'Question EN')">{{ exercice.question_en or '' }}</textarea>
+              
+              <div class="toolbar">
+                <button type="button" class="tool-btn" onclick="insertText('**bold text**')">
+                  <i class="fas fa-bold"></i> Bold
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('*italic text*')">
+                  <i class="fas fa-italic"></i> Italic
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('$$ formula $$')">
+                  <i class="fas fa-square-root-alt"></i> Formula
+                </button>
+              </div>
+              
+              <button type="button" class="btn btn-preview" onclick="previewLatex('question_en')">
+                <i class="fas fa-eye"></i>
+                Preview
+              </button>
+              <div id="preview_question_en" class="preview-box math-content"></div>
+            </div>
+
+            <!-- Réponse EN -->
+            <div class="form-group">
+              <label for="reponse_en">
+                <i class="fas fa-lightbulb"></i>
+                Answer
+              </label>
+              <textarea id="reponse_en" name="reponse_en" placeholder="Enter the answer in English..." 
+                        onfocus="setCurrentField('reponse_en', 'Answer EN')">{{ exercice.reponse_en or '' }}</textarea>
+              
+              <div class="toolbar">
+                <button type="button" class="tool-btn" onclick="insertText('**bold text**')">
+                  <i class="fas fa-bold"></i> Bold
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('*italic text*')">
+                  <i class="fas fa-italic"></i> Italic
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('$$ formula $$')">
+                  <i class="fas fa-square-root-alt"></i> Formula
+                </button>
+              </div>
+              
+              <button type="button" class="btn btn-preview" onclick="previewLatex('reponse_en')">
+                <i class="fas fa-eye"></i>
+                Preview
+              </button>
+              <div id="preview_reponse_en" class="preview-box math-content"></div>
+            </div>
+
+            <!-- Explication EN -->
+            <div class="form-group">
+              <label for="explication_en">
+                <i class="fas fa-graduation-cap"></i>
+                Explanation
+              </label>
+              <textarea id="explication_en" name="explication_en" placeholder="Enter the explanation in English..." 
+                        onfocus="setCurrentField('explication_en', 'Explanation EN')">{{ exercice.explication_en or '' }}</textarea>
+              
+              <div class="toolbar">
+                <button type="button" class="tool-btn" onclick="insertText('**bold text**')">
+                  <i class="fas fa-bold"></i> Bold
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('*italic text*')">
+                  <i class="fas fa-italic"></i> Italic
+                </button>
+                <button type="button" class="tool-btn" onclick="insertText('$$ formula $$')">
+                  <i class="fas fa-square-root-alt"></i> Formula
+                </button>
+              </div>
+              
+              <button type="button" class="btn btn-preview" onclick="previewLatex('explication_en')">
+                <i class="fas fa-eye"></i>
+                Preview
+              </button>
+              <div id="preview_explication_en" class="preview-box math-content"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paramètres de temps -->
+        <div class="time-section">
+          <div class="time-header">
+            <i class="fas fa-clock"></i>
+            <h3>{% if lang == 'en' %}Time Settings{% else %}Paramètres de temps{% endif %}</h3>
+          </div>
+          <div class="form-group">
+            <label for="temps">
+              <i class="fas fa-stopwatch"></i>
+              {% if lang == 'en' %}Time limit (seconds){% else %}Temps limite (secondes){% endif %}
+            </label>
+            <input type="number" id="temps" name="temps" value="{{ exercice.temps or 60 }}" min="10" max="3600">
+            <small style="color: var(--gray); margin-top: 5px; display: block;">
+              {% if lang == 'en' %}Recommended: 60-300 seconds{% else %}Recommandé : 60-300 secondes{% endif %}
+            </small>
+          </div>
+        </div>
+
+        <!-- Éditeur mathématique global -->
+        <div class="global-math-editor">
+          <div class="math-editor-header">
+            <i class="fas fa-square-root-alt"></i>
+            <h3>{% if lang == 'en' %}Math Formula Editor{% else %}Éditeur de formules mathématiques{% endif %}</h3>
+          </div>
+          
+          <p style="margin-bottom: 15px; color: var(--gray);">
+            <i class="fas fa-info-circle"></i>
+            {% if lang == 'en' %}Write your formula below and click "Insert" to add it to the currently selected field{% else %}Écrivez votre formule ci-dessous et cliquez sur "Insérer" pour l'ajouter au champ actuellement sélectionné{% endif %}
+          </p>
+          
+          <div class="math-field-container">
+            <math-field 
+              id="global_math_editor" 
+              virtual-keyboard-mode="onfocus" 
+              class="math-field"
+              placeholder="{% if lang == 'en' %}Type your mathematical formula here...{% else %}Tapez votre formule mathématique ici...{% endif %}">
+            </math-field>
+          </div>
+          
+          <button type="button" class="insert-math-btn" onclick="insertGlobalMath()">
+            <i class="fas fa-plus"></i>
+            {% if lang == 'en' %}Insert Formula{% else %}Insérer la formule{% endif %}
+          </button>
+          
+          <div id="currentFieldIndicator" class="current-field-indicator">
+            <i class="fas fa-mouse-pointer"></i>
+            {% if lang == 'en' %}No field selected. Click on any text field above.{% else %}Aucun champ sélectionné. Cliquez sur un champ de texte ci-dessus.{% endif %}
+          </div>
+        </div>
+
+        <!-- Aide LaTeX -->
+        <div class="latex-tips">
+          <h4>
+            <i class="fas fa-code"></i>
+            {% if lang == 'en' %}Quick Math Tips{% else %}Astuces mathématiques rapides{% endif %}
+          </h4>
+          <ul>
+            <li><i class="fas fa-square-root-alt"></i> <code>$$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$</code> - {% if lang == 'en' %}Quadratic formula{% else %}Formule quadratique{% endif %}</li>
+            <li><i class="fas fa-infinity"></i> <code>$$\int_a^b f(x)dx$$</code> - {% if lang == 'en' %}Integral{% else %}Intégrale{% endif %}</li>
+            <li><i class="fas fa-sigma"></i> <code>$$\sum_{i=1}^n i$$</code> - {% if lang == 'en' %}Sum{% else %}Somme{% endif %}</li>
+            <li><i class="fas fa-angle-left"></i> <code>$$\alpha, \beta, \gamma$$</code> - {% if lang == 'en' %}Greek letters{% else %}Lettres grecques{% endif %}</li>
+          </ul>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            {% if lang == 'en' %}Save Changes{% else %}Enregistrer les modifications{% endif %}
+          </button>
+          <a href="/admin/dashboard" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i>
+            {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Variable pour suivre le champ actuel
+    let currentFieldId = null;
+    let currentFieldName = '';
+
+    // Fonction pour définir le champ actuel
+    function setCurrentField(fieldId, fieldName) {
+      currentFieldId = fieldId;
+      currentFieldName = fieldName;
+      
+      // Mettre à jour l'indicateur
+      const indicator = document.getElementById('currentFieldIndicator');
+      indicator.innerHTML = `<i class="fas fa-mouse-pointer"></i> ${fieldName} - {% if lang == 'en' %}Ready to insert formula{% else %}Prêt à insérer la formule{% endif %}`;
+      indicator.style.background = 'linear-gradient(135deg, #d4edda, #c3e6cb)';
+      indicator.style.borderLeftColor = '#28a745';
+    }
+
+    // Fonction pour insérer du texte dans le champ actuel
+    function insertText(text) {
+      if (!currentFieldId) {
+        alert('{% if lang == "en" %}Please select a field first by clicking on it{% else %}Veuillez d\'abord sélectionner un champ en cliquant dessus{% endif %}');
+        return;
+      }
+      
+      const textarea = document.getElementById(currentFieldId);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      
+      textarea.value = before + text + after;
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      
+      // Prévisualiser automatiquement
+      previewLatex(currentFieldId);
+    }
+
+    // Fonction pour insérer la formule mathématique globale
+    function insertGlobalMath() {
+      if (!currentFieldId) {
+        alert('{% if lang == "en" %}Please select a field first by clicking on any text area above{% else %}Veuillez d\'abord sélectionner un champ en cliquant sur une zone de texte ci-dessus{% endif %}');
+        return;
+      }
+      
+      const mathField = document.getElementById('global_math_editor');
+      const textarea = document.getElementById(currentFieldId);
+      const formula = mathField.value;
+      
+      if (!formula) {
+        alert('{% if lang == "en" %}Please write a formula in the math editor first{% else %}Veuillez d\'abord écrire une formule dans l\'éditeur mathématique{% endif %}');
+        return;
+      }
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+
+      // Encadrer la formule avec $$ pour LaTeX
+      const formattedFormula = `$$${formula}$$`;
+      
+      textarea.value = before + formattedFormula + after;
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + formattedFormula.length;
+      mathField.value = '';
+      
+      // Prévisualiser automatiquement
+      previewLatex(currentFieldId);
+    }
+
+    // Fonction de prévisualisation LaTeX
+    function previewLatex(fieldId) {
+      const content = document.getElementById(fieldId).value;
+      const previewDiv = document.getElementById('preview_' + fieldId);
+      
+      if (!content.trim()) {
+        previewDiv.innerHTML = '<em style="color: var(--gray);">{% if lang == "en" %}No content to preview{% else %}Aucun contenu à prévisualiser{% endif %}</em>';
+        return;
+      }
+      
+      previewDiv.innerHTML = content;
+      
+      if (window.MathJax) {
+        MathJax.typesetPromise([previewDiv]).catch((error) => {
+          console.error('MathJax error:', error);
+          previewDiv.innerHTML = content + '<br><small style="color: red;">{% if lang == "en" %}LaTeX rendering error{% else %}Erreur de rendu LaTeX{% endif %}</small>';
+        });
+      }
+    }
+
+    // Auto-prévisualisation lors de la frappe (avec délai)
+    let previewTimeout;
+    document.querySelectorAll('textarea').forEach(textarea => {
+      textarea.addEventListener('input', function() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(() => {
+          const fieldId = this.id;
+          previewLatex(fieldId);
+        }, 1000);
+      });
+    });
+
+    // Prévisualisation initiale
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('textarea').forEach(textarea => {
+        if (textarea.value.trim()) {
+          previewLatex(textarea.id);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

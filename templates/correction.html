@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>Correction de l'exercice</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --border-radius: 16px;
+      --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .correction-card {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+      animation: slideInUp 0.8s ease;
+    }
+
+    .correction-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 25px;
+      border-bottom: 2px solid var(--light);
+    }
+
+    h1 {
+      color: var(--secondary);
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    h1 i {
+      color: var(--primary);
+      font-size: 2.8rem;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.2rem;
+    }
+
+    .content-grid {
+      display: grid;
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+
+    .section {
+      background: var(--light);
+      border-radius: 12px;
+      padding: 25px;
+      border-left: 4px solid var(--primary);
+      transition: var(--transition);
+    }
+
+    .section:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .section.enonce {
+      border-left-color: var(--primary);
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    }
+
+    .section.reponse {
+      border-left-color: var(--warning);
+      background: linear-gradient(135deg, #fff9e6, #ffeaa7);
+    }
+
+    .section.analyse {
+      border-left-color: var(--success);
+      background: linear-gradient(135deg, #e8f6ef, #d5f5e3);
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--secondary);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title i {
+      width: 24px;
+      text-align: center;
+    }
+
+    .content {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      line-height: 1.7;
+      font-size: 1.05rem;
+    }
+
+    .rating-section {
+      text-align: center;
+      padding: 30px;
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: var(--border-radius);
+      margin: 30px 0;
+    }
+
+    .rating-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--secondary);
+      margin-bottom: 20px;
+    }
+
+    .stars {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .star {
+      font-size: 3rem;
+      transition: var(--transition);
+    }
+
+    .star.filled {
+      color: var(--warning);
+      animation: bounce 0.6s ease;
+    }
+
+    .star.empty {
+      color: #ddd;
+    }
+
+    .rating-text {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .rating-excellent { color: var(--success); }
+    .rating-good { color: var(--warning); }
+    .rating-needs-work { color: var(--danger); }
+
+    .progress-container {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: between;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 12px;
+      background: #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--success), var(--primary));
+      border-radius: 10px;
+      transition: width 1s ease;
+    }
+
+    .feedback-tips {
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      border-radius: 12px;
+      padding: 25px;
+      margin: 30px 0;
+      border-left: 4px solid var(--primary);
+    }
+
+    .tips-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--secondary);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tip-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 8px;
+    }
+
+    .tip-item i {
+      color: var(--success);
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .navigation {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 30px;
+      border-top: 2px solid var(--light);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+      margin-left: 15px;
+    }
+
+    .btn-outline:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+      }
+      40% {
+        transform: translateY(-10px);
+      }
+      60% {
+        transform: translateY(-5px);
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .confetti {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--warning);
+      border-radius: 50%;
+      animation: confettiFall 5s linear infinite;
+    }
+
+    @keyframes confettiFall {
+      0% {
+        transform: translateY(-100px) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 15px;
+      }
+
+      .correction-card {
+        padding: 30px 20px;
+      }
+
+      h1 {
+        font-size: 2rem;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .section {
+        padding: 20px;
+      }
+
+      .stars {
+        gap: 5px;
+      }
+
+      .star {
+        font-size: 2.5rem;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .btn-outline {
+        margin-left: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.6rem;
+      }
+
+      .section-title {
+        font-size: 1.1rem;
+      }
+
+      .star {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="correction-card">
+    <!-- En-tête -->
+    <div class="header">
+      <h1>
+        <i class="fas fa-check-circle"></i>
+        Correction de l'exercice
+      </h1>
+      <p class="subtitle">Analyse détaillée de votre travail</p>
+    </div>
+
+    <!-- Grille de contenu -->
+    <div class="content-grid">
+      <!-- Énoncé -->
+      <div class="section enonce">
+        <div class="section-title">
+          <i class="fas fa-question-circle"></i>
+          Énoncé de l'exercice
+        </div>
+        <div class="content">
+          {{ enonce }}
+        </div>
+      </div>
+
+      <!-- Réponse de l'élève -->
+      <div class="section reponse">
+        <div class="section-title">
+          <i class="fas fa-edit"></i>
+          Votre réponse
+        </div>
+        <div class="content">
+          {{ reponse_eleve }}
+        </div>
+      </div>
+
+      <!-- Analyse IA -->
+      <div class="section analyse">
+        <div class="section-title">
+          <i class="fas fa-robot"></i>
+          Analyse détaillée
+        </div>
+        <div class="content">
+          {{ analyse_ia }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Section de notation -->
+    <div class="rating-section">
+      <div class="rating-title">Évaluation de votre performance</div>
+      
+      <div class="stars">
+        {% for i in range(etoiles) %}
+          <div class="star filled" style="animation-delay: {{ i * 0.2 }}s">★</div>
+        {% endfor %}
+        {% for i in range(3 - etoiles) %}
+          <div class="star empty">☆</div>
+        {% endfor %}
+      </div>
+
+      <div class="rating-text 
+        {% if etoiles == 3 %}rating-excellent
+        {% elif etoiles == 2 %}rating-good
+        {% else %}rating-needs-work{% endif %}">
+        {% if etoiles == 3 %}
+          🎉 Excellent travail ! 
+        {% elif etoiles == 2 %}
+          👍 Bon effort !
+        {% else %}
+          💪 Continuez à progresser !
+        {% endif %}
+        ({{ etoiles }}/5)
+      </div>
+
+      <!-- Barre de progression -->
+      <div class="progress-container">
+        <div class="progress-label">
+          <span>Niveau de maîtrise</span>
+          <span>{{ (etoiles / 3 * 100)|round|int }}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: {{ (etoiles / 3 * 100)|round|int }}%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conseils personnalisés -->
+    <div class="feedback-tips">
+      <div class="tips-title">
+        <i class="fas fa-lightbulb"></i>
+        Conseils pour progresser
+      </div>
+      {% if etoiles == 3 %}
+        <div class="tip-item">
+          <i class="fas fa-check"></i>
+          <span>Continuez à maintenir ce niveau d'excellence ! Votre compréhension est solide.</span>
+        </div>
+        <div class="tip-item">
+          <i class="fas fa-rocket"></i>
+          <span>Essayez des exercices plus complexes pour continuer à vous challenger.</span>
+        </div>
+      {% elif etoiles == 2 %}
+        <div class="tip-item">
+          <i class="fas fa-search"></i>
+          <span>Revoyez les points où vous avez fait des erreurs mineures.</span>
+        </div>
+        <div class="tip-item">
+          <i class="fas fa-book"></i>
+          <span>Pratiquez davantage pour consolider vos acquis.</span>
+        </div>
+      {% else %}
+        <div class="tip-item">
+          <i class="fas fa-redo"></i>
+          <span>Reprenez les bases du chapitre pour mieux comprendre les concepts.</span>
+        </div>
+        <div class="tip-item">
+          <i class="fas fa-hands-helping"></i>
+          <span>N'hésitez pas à demander de l'aide à votre enseignant.</span>
+        </div>
+      {% endif %}
+      <div class="tip-item">
+        <i class="fas fa-clock"></i>
+        <span>Prenez le temps de bien relire l'analyse détaillée ci-dessus.</span>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="navigation">
+      <a href="/exercices?username={{ username }}" class="btn">
+        <i class="fas fa-arrow-left"></i>
+        Revenir à mes exercices
+      </a>
+      <a href="/dashboard-eleve?username={{ username }}" class="btn btn-outline">
+        <i class="fas fa-tachometer-alt"></i>
+        Tableau de bord
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Effets de confetti pour les bonnes notes
+  document.addEventListener('DOMContentLoaded', function() {
+    const etoiles = {{ etoiles }};
+    const correctionCard = document.querySelector('.correction-card');
+    
+    if (etoiles >= 2) {
+      // Créer des confettis pour les bonnes notes
+      const colors = ['#27ae60', '#3498db', '#f39c12', '#9b59b6', '#e74c3c'];
+      for (let i = 0; i < 15; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 3 + 's';
+        confetti.style.width = (Math.random() * 8 + 6) + 'px';
+        confetti.style.height = confetti.style.width;
+        correctionCard.appendChild(confetti);
+      }
+    }
+
+    // Animation de la barre de progression
+    const progressFill = document.querySelector('.progress-fill');
+    setTimeout(() => {
+      progressFill.style.width = '{{ (etoiles / 3 * 100)|round|int }}%';
+    }, 500);
+
+    // Animation des étoiles remplies
+    const filledStars = document.querySelectorAll('.star.filled');
+    filledStars.forEach((star, index) => {
+      star.style.animationDelay = `${index * 0.2}s`;
+    });
+  });
+</script>
+
+</body>
+</html>

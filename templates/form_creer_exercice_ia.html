@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Generate Exercises with AI{% else %}Générer des exercices avec l'IA{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --secondary-dark: #1a252f;
+      --accent: #9b59b6;
+      --accent-dark: #8e44ad;
+      --ai-color: #2ecc71;
+      --ai-dark: #27ae60;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 10px;
+      --box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .lang-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: white;
+      padding: 10px 15px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+    }
+
+    .lang-selector label {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .lang-selector select {
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      padding: 8px 12px;
+      background: white;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .lang-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+
+    .form-box {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      overflow: hidden;
+      margin-bottom: 30px;
+    }
+
+    .form-header {
+      background: linear-gradient(135deg, var(--ai-color) 0%, var(--ai-dark) 100%);
+      color: white;
+      padding: 25px 30px;
+      text-align: center;
+    }
+
+    .form-header h2 {
+      font-size: 1.8rem;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .form-header p {
+      opacity: 0.9;
+      font-size: 1rem;
+    }
+
+    .form-body {
+      padding: 30px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+
+    .required::after {
+      content: " *";
+      color: #e74c3c;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--light-gray);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      transition: var(--transition);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+
+    textarea {
+      resize: vertical;
+      white-space: pre-wrap;
+      min-height: 100px;
+    }
+
+    .submit-button {
+      width: 100%;
+      background: linear-gradient(135deg, var(--ai-color) 0%, var(--ai-dark) 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 15px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .submit-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 7px 15px rgba(46, 204, 113, 0.4);
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: 25px;
+    }
+
+    .back-link a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--secondary);
+      color: white;
+      padding: 12px 25px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    .back-link a:hover {
+      background: var(--secondary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .form-section-title {
+      font-size: 1.3rem;
+      color: var(--primary);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ai-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .ai-feature {
+      background: var(--light);
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      transition: var(--transition);
+    }
+
+    .ai-feature:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+
+    .ai-feature i {
+      font-size: 1.5rem;
+      color: var(--ai-color);
+      margin-bottom: 10px;
+    }
+
+    .ai-feature h4 {
+      font-size: 1rem;
+      margin-bottom: 5px;
+      color: var(--secondary);
+    }
+
+    .ai-feature p {
+      font-size: 0.85rem;
+      color: var(--gray);
+    }
+
+    .difficulty-selector {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .difficulty-option {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      border: 2px solid var(--light-gray);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 600;
+    }
+
+    .difficulty-option:hover {
+      border-color: var(--primary);
+    }
+
+    .difficulty-option.selected {
+      border-color: var(--ai-color);
+      background: rgba(46, 204, 113, 0.1);
+      color: var(--ai-dark);
+    }
+
+    .difficulty-option.easy {
+      color: #2ecc71;
+    }
+
+    .difficulty-option.medium {
+      color: #f39c12;
+    }
+
+    .difficulty-option.hard {
+      color: #e74c3c;
+    }
+
+    .number-selector {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    .number-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--light-gray);
+      background: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .number-btn:hover {
+      border-color: var(--primary);
+    }
+
+    .number-display {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      box-shadow: var(--box-shadow);
+      z-index: 1000;
+      transform: translateX(150%);
+      transition: transform 0.4s ease;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success {
+      background: var(--ai-color);
+    }
+
+    .notification.error {
+      background: #e74c3c;
+    }
+
+    .example-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+
+    .example-toggle input {
+      width: auto;
+    }
+
+    .example-content {
+      display: none;
+      margin-top: 15px;
+      padding: 15px;
+      background: var(--light);
+      border-radius: 8px;
+      border-left: 4px solid var(--ai-color);
+    }
+
+    .example-content.show {
+      display: block;
+    }
+
+    .ai-prompt-preview {
+      margin-top: 25px;
+      padding: 20px;
+      background: var(--light);
+      border-radius: 8px;
+      border-left: 4px solid var(--accent);
+    }
+
+    .ai-prompt-preview h4 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      color: var(--accent);
+    }
+
+    .prompt-text {
+      font-family: monospace;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid var(--light-gray);
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .lang-selector {
+        justify-content: center;
+      }
+      
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .form-body {
+        padding: 20px;
+      }
+      
+      .difficulty-selector {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header avec sélecteur de langue -->
+    <div class="header">
+      <div class="lang-selector">
+        <label for="lang">🌍</label>
+        <form method="POST" action="/changer-langue" id="langForm">
+          <select name="lang" id="lang" onchange="document.getElementById('langForm').submit()">
+            <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+            <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+          </select>
+          <input type="hidden" name="redirect_page" value="creer_exercice_ia">
+        </form>
+      </div>
+    </div>
+
+    <!-- Formulaire principal -->
+    <div class="form-box">
+      <div class="form-header">
+        <h2><i class="fas fa-robot"></i> {% if lang == 'en' %}Generate Exercises with AI{% else %}Générer des exercices avec l'IA{% endif %}</h2>
+        <p>{% if lang == 'en' %}Create personalized exercises in seconds using artificial intelligence{% else %}Créez des exercices personnalisés en quelques secondes grâce à l'intelligence artificielle{% endif %}</p>
+      </div>
+
+      <div class="form-body">
+        <form method="POST" id="aiForm">
+          <!-- Section Catégorisation -->
+          <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-folder-open"></i> {% if lang == 'en' %}Categorization{% else %}Catégorisation{% endif %}</h3>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="niveau" class="required">{% if lang == 'en' %}Level{% else %}Niveau{% endif %} :</label>
+                <select name="niveau_id" id="niveau" required>
+                  <option value="">{% if lang == 'en' %}-- Choose level --{% else %}-- Choisir un niveau --{% endif %}</option>
+                  {% for niveau in niveaux %}
+                    <option value="{{ niveau.id }}">{{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="matiere" class="required">{% if lang == 'en' %}Subject{% else %}Matière{% endif %} :</label>
+                <select id="matiere" name="matiere_id" required disabled>
+                  <option value="">{% if lang == 'en' %}-- Choose subject --{% else %}-- Choisir une matière --{% endif %}</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="unite" class="required">{% if lang == 'en' %}Unit{% else %}Unité{% endif %} :</label>
+                <select id="unite" name="unite_id" required disabled>
+                  <option value="">{% if lang == 'en' %}-- Choose unit --{% else %}-- Choisir une unité --{% endif %}</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="lecon" class="required">{% if lang == 'en' %}Lesson{% else %}Leçon{% endif %} :</label>
+                <select id="lecon" name="lecon_id" required disabled>
+                  <option value="">{% if lang == 'en' %}-- Choose lesson --{% else %}-- Choisir une leçon --{% endif %}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section Paramètres des exercices -->
+          <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-sliders-h"></i> {% if lang == 'en' %}Exercise Settings{% else %}Paramètres des exercices{% endif %}</h3>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="required">{% if lang == 'en' %}Learning Objective{% else %}Objectif pédagogique{% endif %} :</label>
+                <textarea name="objectif" id="objectif" required placeholder="{% if lang == 'en' %}Describe what students should learn from these exercises...{% else %}Décrivez ce que les étudiants doivent apprendre de ces exercices...{% endif %}"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="required">{% if lang == 'en' %}Difficulty Level{% else %}Niveau de difficulté{% endif %} :</label>
+                <div class="difficulty-selector">
+                  <div class="difficulty-option easy" data-value="facile">
+                    <i class="fas fa-smile"></i><br>
+                    {% if lang == 'en' %}Easy{% else %}Facile{% endif %}
+                  </div>
+                  <div class="difficulty-option medium" data-value="moyen">
+                    <i class="fas fa-meh"></i><br>
+                    {% if lang == 'en' %}Medium{% else %}Moyen{% endif %}
+                  </div>
+                  <div class="difficulty-option hard" data-value="difficile">
+                    <i class="fas fa-frown"></i><br>
+                    {% if lang == 'en' %}Hard{% else %}Difficile{% endif %}
+                  </div>
+                </div>
+                <input type="hidden" name="difficulte" id="difficulte" value="moyen" required>
+              </div>
+
+              <div class="form-group">
+                <label class="required">{% if lang == 'en' %}Number of Exercises{% else %}Nombre d'exercices{% endif %} :</label>
+                <div class="number-selector">
+                  <button type="button" class="number-btn" id="decrease-btn">-</button>
+                  <div class="number-display" id="number-display">1</div>
+                  <button type="button" class="number-btn" id="increase-btn">+</button>
+                </div>
+                <input type="hidden" name="nb_exercices" id="nb_exercices" value="1" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section Exemple (optionnel) -->
+          <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-lightbulb"></i> {% if lang == 'en' %}Customization (Optional){% else %}Personnalisation (Facultatif){% endif %}</h3>
+            
+            <div class="example-toggle">
+              <input type="checkbox" id="show-example">
+              <label for="show-example" style="display: inline; margin: 0;">{% if lang == 'en' %}Provide an example exercise{% else %}Fournir un exemple d'exercice{% endif %}</label>
+            </div>
+            
+            <div class="example-content" id="example-content">
+              <label for="exemple">{% if lang == 'en' %}Example Exercise{% else %}Exemple d'exercice{% endif %} :</label>
+              <textarea name="exemple" id="exemple" placeholder="{% if lang == 'en' %}Paste a sample exercise here to guide the AI...{% else %}Collez ici un exemple d'exercice pour guider l'IA...{% endif %}"></textarea>
+            </div>
+          </div>
+
+          <!-- Aperçu du prompt IA -->
+          <div class="ai-prompt-preview">
+            <h4><i class="fas fa-eye"></i> {% if lang == 'en' %}AI Prompt Preview{% else %}Aperçu de la requête IA{% endif %}</h4>
+            <div class="prompt-text" id="prompt-preview">
+              {% if lang == 'en' %}Select parameters to see the AI prompt preview...{% else %}Sélectionnez des paramètres pour voir l'aperçu de la requête IA...{% endif %}
+            </div>
+          </div>
+
+          <!-- Fonctionnalités IA -->
+          <div class="ai-features">
+            <div class="ai-feature">
+              <i class="fas fa-bolt"></i>
+              <h4>{% if lang == 'en' %}Fast Generation{% else %}Génération rapide{% endif %}</h4>
+              <p>{% if lang == 'en' %}Create exercises in seconds{% else %}Créez des exercices en quelques secondes{% endif %}</p>
+            </div>
+            <div class="ai-feature">
+              <i class="fas fa-graduation-cap"></i>
+              <h4>{% if lang == 'en' %}Educational{% else %}Pédagogique{% endif %}</h4>
+              <p>{% if lang == 'en' %}Aligned with learning objectives{% else %}Aligné sur les objectifs pédagogiques{% endif %}</p>
+            </div>
+            <div class="ai-feature">
+              <i class="fas fa-palette"></i>
+              <h4>{% if lang == 'en' %}Customizable{% else %}Personnalisable{% endif %}</h4>
+              <p>{% if lang == 'en' %}Adapt to your specific needs{% else %}Adapté à vos besoins spécifiques{% endif %}</p>
+            </div>
+          </div>
+
+          <button type="submit" class="submit-button" id="submitBtn">
+            <i class="fas fa-robot"></i> {% if lang == 'en' %}Generate Exercises{% else %}Générer les exercices{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="back-link">
+      <a href="{{ dashboard_url }}">
+        <i class="fas fa-arrow-left"></i> {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+
+  <script>
+    // Variables globales
+    const langJs = "{{ lang }}";
+    const niveau = document.getElementById("niveau");
+    const matiere = document.getElementById("matiere");
+    const unite = document.getElementById("unite");
+    const lecon = document.getElementById("lecon");
+    const submitBtn = document.getElementById("submitBtn");
+    const notification = document.getElementById("notification");
+
+    // Initialisation au chargement de la page
+    document.addEventListener("DOMContentLoaded", () => {
+      // Initialiser les sélecteurs de difficulté
+      initDifficultySelector();
+      
+      // Initialiser le sélecteur de nombre
+      initNumberSelector();
+      
+      // Initialiser le toggle d'exemple
+      initExampleToggle();
+      
+      // Initialiser la mise à jour de l'aperçu
+      initPromptPreview();
+    });
+
+    // Initialiser le sélecteur de difficulté
+    function initDifficultySelector() {
+      const options = document.querySelectorAll('.difficulty-option');
+      const hiddenInput = document.getElementById('difficulte');
+      
+      options.forEach(option => {
+        option.addEventListener('click', () => {
+          // Retirer la classe selected de toutes les options
+          options.forEach(opt => opt.classList.remove('selected'));
+          
+          // Ajouter la classe selected à l'option cliquée
+          option.classList.add('selected');
+          
+          // Mettre à jour la valeur cachée
+          hiddenInput.value = option.getAttribute('data-value');
+          
+          // Mettre à jour l'aperçu
+          updatePromptPreview();
+        });
+      });
+      
+      // Sélectionner "moyen" par défaut
+      document.querySelector('.difficulty-option[data-value="moyen"]').classList.add('selected');
+    }
+
+    // Initialiser le sélecteur de nombre
+    function initNumberSelector() {
+      const decreaseBtn = document.getElementById('decrease-btn');
+      const increaseBtn = document.getElementById('increase-btn');
+      const numberDisplay = document.getElementById('number-display');
+      const hiddenInput = document.getElementById('nb_exercices');
+      
+      let count = 1;
+      
+      decreaseBtn.addEventListener('click', () => {
+        if (count > 1) {
+          count--;
+          updateNumberDisplay();
+        }
+      });
+      
+      increaseBtn.addEventListener('click', () => {
+        if (count < 20) {
+          count++;
+          updateNumberDisplay();
+        }
+      });
+      
+      function updateNumberDisplay() {
+        numberDisplay.textContent = count;
+        hiddenInput.value = count;
+        updatePromptPreview();
+      }
+    }
+
+    // Initialiser le toggle d'exemple
+    function initExampleToggle() {
+      const toggle = document.getElementById('show-example');
+      const content = document.getElementById('example-content');
+      
+      toggle.addEventListener('change', () => {
+        if (toggle.checked) {
+          content.classList.add('show');
+        } else {
+          content.classList.remove('show');
+        }
+        updatePromptPreview();
+      });
+    }
+
+    // Initialiser la mise à jour de l'aperçu
+    function initPromptPreview() {
+      // Écouter les changements sur tous les champs pertinents
+      const fields = ['niveau', 'matiere', 'unite', 'lecon', 'objectif', 'difficulte', 'nb_exercices', 'exemple'];
+      
+      fields.forEach(field => {
+        const element = document.getElementById(field);
+        if (element) {
+          element.addEventListener('input', updatePromptPreview);
+          element.addEventListener('change', updatePromptPreview);
+        }
+      });
+    }
+
+    // Mettre à jour l'aperçu du prompt IA
+    function updatePromptPreview() {
+      const niveauText = document.querySelector('#niveau option:checked')?.textContent || '';
+      const matiereText = document.querySelector('#matiere option:checked')?.textContent || '';
+      const uniteText = document.querySelector('#unite option:checked')?.textContent || '';
+      const leconText = document.querySelector('#lecon option:checked')?.textContent || '';
+      const objectif = document.getElementById('objectif')?.value || '';
+      const difficulte = document.getElementById('difficulte')?.value || '';
+      const nbExercices = document.getElementById('nb_exercices')?.value || '1';
+      const exemple = document.getElementById('exemple')?.value || '';
+      
+      let promptText = '';
+      
+      if (langJs === 'en') {
+        promptText = `Generate ${nbExercices} ${difficulte} exercises for:
+- Level: ${niveauText}
+- Subject: ${matiereText}
+- Unit: ${uniteText}
+- Lesson: ${leconText}
+
+Learning objective: ${objectif}`;
+
+        if (exemple) {
+          promptText += `\n\nExample exercise to follow:\n${exemple}`;
+        }
+      } else {
+        promptText = `Générer ${nbExercices} exercices de niveau ${difficulte} pour :
+- Niveau : ${niveauText}
+- Matière : ${matiereText}
+- Unité : ${uniteText}
+- Leçon : ${leconText}
+
+Objectif pédagogique : ${objectif}`;
+
+        if (exemple) {
+          promptText += `\n\nExemple d'exercice à suivre :\n${exemple}`;
+        }
+      }
+      
+      document.getElementById('prompt-preview').textContent = promptText;
+    }
+
+    // Gestion des changements de niveau
+    niveau.addEventListener("change", async function () {
+      matiere.innerHTML = ""; 
+      unite.innerHTML = ""; 
+      lecon.innerHTML = "";
+      matiere.disabled = unite.disabled = lecon.disabled = true;
+
+      if (!this.value) {
+        updatePromptPreview();
+        return;
+      }
+
+      // Afficher un indicateur de chargement
+      matiere.innerHTML = `<option value="">${langJs === 'en' ? 'Loading...' : 'Chargement...'}</option>`;
+      
+      try {
+        const res = await fetch(`/api/matieres?niveau_id=${this.value}&lang=${langJs}`);
+        const matieres = await res.json();
+        
+        matiere.innerHTML = `<option value="">${langJs === 'en' ? '-- Choose subject --' : '-- Choisir une matière --'}</option>`;
+        matieres.forEach(m => {
+          matiere.innerHTML += `<option value="${m.id}">${m.nom}</option>`;
+        });
+        matiere.disabled = false;
+        updatePromptPreview();
+      } catch (error) {
+        console.error('Error loading subjects:', error);
+        matiere.innerHTML = `<option value="">${langJs === 'en' ? 'Error loading subjects' : 'Erreur lors du chargement des matières'}</option>`;
+      }
+    });
+
+    // Gestion des changements de matière
+    matiere.addEventListener("change", async function () {
+      unite.innerHTML = ""; 
+      lecon.innerHTML = "";
+      unite.disabled = lecon.disabled = true;
+
+      if (!this.value) {
+        updatePromptPreview();
+        return;
+      }
+
+      // Afficher un indicateur de chargement
+      unite.innerHTML = `<option value="">${langJs === 'en' ? 'Loading...' : 'Chargement...'}</option>`;
+      
+      try {
+        const res = await fetch(`/api/unites?matiere_id=${this.value}&lang=${langJs}`);
+        const unites = await res.json();
+        
+        unite.innerHTML = `<option value="">${langJs === 'en' ? '-- Choose unit --' : '-- Choisir une unité --'}</option>`;
+        unites.forEach(u => {
+          unite.innerHTML += `<option value="${u.id}">${u.nom}</option>`;
+        });
+        unite.disabled = false;
+        updatePromptPreview();
+      } catch (error) {
+        console.error('Error loading units:', error);
+        unite.innerHTML = `<option value="">${langJs === 'en' ? 'Error loading units' : 'Erreur lors du chargement des unités'}</option>`;
+      }
+    });
+
+    // Gestion des changements d'unité
+    unite.addEventListener("change", async function () {
+      lecon.innerHTML = "";
+      lecon.disabled = true;
+
+      if (!this.value) {
+        updatePromptPreview();
+        return;
+      }
+
+      // Afficher un indicateur de chargement
+      lecon.innerHTML = `<option value="">${langJs === 'en' ? 'Loading...' : 'Chargement...'}</option>`;
+      
+      try {
+        const res = await fetch(`/api/lecons?unite_id=${this.value}&lang=${langJs}`);
+        const lecons = await res.json();
+        
+        lecon.innerHTML = `<option value="">${langJs === 'en' ? '-- Choose lesson --' : '-- Choisir une leçon --'}</option>`;
+        lecons.forEach(l => {
+          lecon.innerHTML += `<option value="${l.id}">${l.titre}</option>`;
+        });
+        lecon.disabled = false;
+        updatePromptPreview();
+      } catch (error) {
+        console.error('Error loading lessons:', error);
+        lecon.innerHTML = `<option value="">${langJs === 'en' ? 'Error loading lessons' : 'Erreur lors du chargement des leçons'}</option>`;
+      }
+    });
+
+    // Afficher une notification
+    function showNotification(message, type) {
+      notification.textContent = message;
+      notification.className = `notification ${type} show`;
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    // Gestion de la soumission du formulaire
+    document.getElementById('aiForm').addEventListener('submit', function(e) {
+      // Validation basique
+      const requiredFields = this.querySelectorAll('[required]');
+      let isValid = true;
+      
+      requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+          isValid = false;
+          field.style.borderColor = '#e74c3c';
+        } else {
+          field.style.borderColor = '';
+        }
+      });
+      
+      if (!isValid) {
+        e.preventDefault();
+        showNotification(
+          langJs === 'en' ? 'Please fill in all required fields' : 'Veuillez remplir tous les champs obligatoires', 
+          'error'
+        );
+        return;
+      }
+      
+      // Afficher un indicateur de chargement
+      submitBtn.innerHTML = `<span class="loading"></span> ${langJs === 'en' ? 'Generating...' : 'Génération en cours...'}`;
+      submitBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>

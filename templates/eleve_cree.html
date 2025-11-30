@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Student Created{% else %}Élève créé{% endif %}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 50px;
+      text-align: center;
+    }
+    .confirmation-box {
+      background: #fff;
+      max-width: 500px;
+      margin: auto;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #2ecc71;
+      margin-bottom: 20px;
+    }
+    p {
+      font-size: 16px;
+      color: #333;
+    }
+    .credentials {
+      margin-top: 20px;
+      padding: 15px;
+      background: #ecf0f1;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    a.button {
+      display: inline-block;
+      margin-top: 25px;
+      padding: 12px 20px;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+    a.button:hover {
+      background: #2980b9;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="confirmation-box">
+    <h2>
+      {% if lang == 'en' %}
+        ✅ Student successfully created!
+      {% else %}
+        ✅ Élève enregistré avec succès !
+      {% endif %}
+    </h2>
+
+    <p>
+      {% if lang == 'en' %}
+        The student has been added to the system.
+      {% else %}
+        L'élève a bien été ajouté au système.
+      {% endif %}
+    </p>
+
+    {% if username and mot_de_passe %}
+    <div class="credentials">
+      {% if lang == 'en' %}
+        Username: <strong>{{ username }}</strong><br>
+        Password: <strong>{{ mot_de_passe }}</strong>
+      {% else %}
+        Identifiant : <strong>{{ username }}</strong><br>
+        Mot de passe : <strong>{{ mot_de_passe }}</strong>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <a class="button" href="/admin/dashboard">
+      {% if lang == 'en' %}← Back to dashboard{% else %}← Retour au tableau de bord{% endif %}
+    </a>
+  </div>
+
+</body>
+</html>

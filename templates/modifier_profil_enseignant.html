@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Edit My Profile{% else %}Modifier mon profil{% endif %}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      padding: 40px;
+    }
+
+    .form-container {
+      background: #fff;
+      padding: 30px;
+      max-width: 500px;
+      margin: auto;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    input[type="email"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2980b9;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .lang-selector {
+      text-align: right;
+      margin-bottom: 20px;
+      padding-right: 50px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="lang-selector">
+    <form method="POST" action="/changer-langue">
+      <input type="hidden" name="redirect_page" value="modifier_profil_enseignant">
+      <select name="lang" onchange="this.form.submit()">
+        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+        <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+      </select>
+    </form>
+  </div>
+
+  <div class="form-container">
+    <h2>
+      {% if lang == 'en' %}
+        ✏️ Edit My Profile
+      {% else %}
+        ✏️ Modifier mon profil
+      {% endif %}
+    </h2>
+
+    <form method="POST" action="/enseignant/modifier-profil">
+      <label for="nom">
+        {% if lang == 'en' %}Full Name{% else %}Nom complet{% endif %}
+      </label>
+      <input type="text" id="nom" name="nom" value="{{ enseignant.nom }}" required>
+
+      <label for="email">
+        {% if lang == 'en' %}Email Address{% else %}Adresse e-mail{% endif %}
+      </label>
+      <input type="email" id="email" name="email" value="{{ enseignant.email }}" required>
+
+      <button type="submit">
+        {% if lang == 'en' %}Save Changes{% else %}Enregistrer{% endif %}
+      </button>
+    </form>
+
+    <div class="back-link">
+      <a href="/dashboard-enseignant">
+        {% if lang == 'en' %}← Back to dashboard{% else %}← Retour au tableau de bord{% endif %}
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>

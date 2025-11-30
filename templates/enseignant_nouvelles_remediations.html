@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>📌 Nouvelles remédiations</title>
+</head>
+<body>
+  <h2>📌 Remédiations non vues</h2>
+  {% if suggestions %}
+    <ul>
+      {% for s in suggestions %}
+        <li>
+          <strong>Élève :</strong> {{ s.user.nom_complet }} <br>
+          <strong>Thème :</strong> {{ s.theme }} <br>
+          <strong>Leçon :</strong> {{ s.lecon }} <br>
+          <a href="{{ url_for('marquer_remediation_vue', id=s.id) }}">✅ Marquer comme vue</a>
+        </li>
+        <hr>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>✅ Aucune nouvelle remédiation pour l’instant.</p>
+  {% endif %}
+</body>
+</html>

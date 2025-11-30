@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon VirtuEduc -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}List of Summative Tests{% else %}Liste des tests sommatifs{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --secondary-dark: #1a252f;
+      --success: #27ae60;
+      --success-dark: #219150;
+      --danger: #e74c3c;
+      --danger-dark: #c0392b;
+      --warning: #f39c12;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --border-radius: 10px;
+      --box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .page-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--secondary);
+    }
+
+    .page-title i {
+      color: var(--primary);
+      font-size: 1.8rem;
+    }
+
+    .page-title h2 {
+      font-size: 1.8rem;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--border-radius);
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+      color: white;
+    }
+
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, var(--warning) 0%, #e67e22 100%);
+      color: white;
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 10px rgba(243, 156, 18, 0.3);
+    }
+
+    .table-container {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      overflow: hidden;
+      margin-bottom: 30px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    }
+
+    th {
+      padding: 15px 20px;
+      text-align: left;
+      color: white;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--light-gray);
+      transition: var(--transition);
+    }
+
+    tbody tr:hover {
+      background-color: rgba(52, 152, 219, 0.05);
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    td {
+      padding: 15px 20px;
+      color: var(--dark);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .actions .btn {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 50px 20px;
+      color: var(--gray);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      color: var(--light-gray);
+    }
+
+    .empty-state h3 {
+      margin-bottom: 10px;
+      color: var(--secondary);
+    }
+
+    .filters {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+
+    .filter-group select, .filter-group input {
+      padding: 8px 12px;
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      font-family: inherit;
+    }
+
+    .stats-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 20px;
+      box-shadow: var(--box-shadow);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .stat-icon.primary {
+      background: rgba(52, 152, 219, 0.1);
+      color: var(--primary);
+    }
+
+    .stat-icon.success {
+      background: rgba(39, 174, 96, 0.1);
+      color: var(--success);
+    }
+
+    .stat-icon.warning {
+      background: rgba(243, 156, 18, 0.1);
+      color: var(--warning);
+    }
+
+    .stat-info h3 {
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+    }
+
+    .stat-info p {
+      font-size: 0.85rem;
+      color: var(--gray);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-success {
+      background: rgba(39, 174, 96, 0.1);
+      color: var(--success);
+    }
+
+    .badge-warning {
+      background: rgba(243, 156, 18, 0.1);
+      color: var(--warning);
+    }
+
+    .badge-danger {
+      background: rgba(231, 76, 60, 0.1);
+      color: var(--danger);
+    }
+
+    .time-display {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .pagination-btn {
+      padding: 8px 15px;
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .pagination-btn:hover {
+      background: var(--light);
+    }
+
+    .pagination-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .top-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      
+      .filters {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .filter-group {
+        width: 100%;
+      }
+      
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+      
+      .actions {
+        flex-direction: column;
+      }
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      box-shadow: var(--box-shadow);
+      z-index: 1000;
+      transform: translateX(150%);
+      transition: transform 0.4s ease;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success {
+      background: var(--success);
+    }
+
+    .notification.error {
+      background: var(--danger);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: var(--box-shadow);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+      color: var(--secondary);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--gray);
+    }
+
+    .modal-body {
+      margin-bottom: 20px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- En-tête de page -->
+    <div class="header">
+      <div class="page-title">
+        <i class="fas fa-vial"></i>
+        <h2>{% if lang == 'en' %}List of Summative Tests{% else %}Liste des tests sommatifs{% endif %}</h2>
+      </div>
+      
+      <div class="top-actions">
+        <a href="/admin/creer-test-sommatif-ia" class="btn btn-primary">
+          <i class="fas fa-robot"></i> {% if lang == 'en' %}Generate with AI{% else %}Générer avec IA{% endif %}
+        </a>
+        <a href="/admin/ajouter-test-sommatif" class="btn btn-success">
+          <i class="fas fa-plus"></i> {% if lang == 'en' %}Add Test{% else %}Ajouter un test{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Cartes de statistiques -->
+    <div class="stats-cards">
+      <div class="stat-card">
+        <div class="stat-icon primary">
+          <i class="fas fa-vial"></i>
+        </div>
+        <div class="stat-info">
+          <h3>{{ tests|length }}</h3>
+          <p>{% if lang == 'en' %}Total Tests{% else %}Tests totaux{% endif %}</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon success">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-info">
+          <h3>{{ (tests|sum(attribute='temps') / 60)|round|int if tests else 0 }}</h3>
+          <p>{% if lang == 'en' %}Total Minutes{% else %}Minutes totales{% endif %}</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon warning">
+          <i class="fas fa-layer-group"></i>
+        </div>
+        <div class="stat-info">
+          <h3>{{ (tests|length / 3)|round|int if tests else 0 }}</h3>
+          <p>{% if lang == 'en' %}Average per Unit{% else %}Moyenne par unité{% endif %}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters">
+      <div class="filter-group">
+        <label for="filter-unit">{% if lang == 'en' %}Unit{% else %}Unité{% endif %}</label>
+        <select id="filter-unit">
+          <option value="">{% if lang == 'en' %}All Units{% else %}Toutes les unités{% endif %}</option>
+          <!-- Options would be populated dynamically -->
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="filter-duration">{% if lang == 'en' %}Duration{% else %}Durée{% endif %}</label>
+        <select id="filter-duration">
+          <option value="">{% if lang == 'en' %}Any Duration{% else %}Toute durée{% endif %}</option>
+          <option value="short">{% if lang == 'en' %}Short (< 5 min){% else %}Court (< 5 min){% endif %}</option>
+          <option value="medium">{% if lang == 'en' %}Medium (5-15 min){% else %}Moyen (5-15 min){% endif %}</option>
+          <option value="long">{% if lang == 'en' %}Long (> 15 min){% else %}Long (> 15 min){% endif %}</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="search">{% if lang == 'en' %}Search{% else %}Rechercher{% endif %}</label>
+        <input type="text" id="search" placeholder="{% if lang == 'en' %}Search tests...{% else %}Rechercher des tests...{% endif %}">
+      </div>
+    </div>
+
+    <!-- Tableau des tests -->
+    <div class="table-container">
+      {% if tests %}
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>{% if lang == 'en' %}Unit{% else %}Unité{% endif %}</th>
+            <th>{% if lang == 'en' %}Subject{% else %}Matière{% endif %}</th>
+            <th>{% if lang == 'en' %}Level{% else %}Niveau{% endif %}</th>
+            <th>{% if lang == 'en' %}Time{% else %}Temps{% endif %}</th>
+            <th>{% if lang == 'en' %}Questions{% else %}Questions{% endif %}</th>
+            <th>{% if lang == 'en' %}Actions{% else %}Actions{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for test in tests %}
+          <tr>
+            <td><strong>#{{ test.id }}</strong></td>
+            <td>
+              <div>{{ test.unite.nom }}</div>
+              <small class="badge badge-success">{{ test.unite.matiere.nom }}</small>
+            </td>
+            <td>{{ test.unite.matiere.nom }}</td>
+            <td>{{ test.unite.matiere.niveau.nom }}</td>
+            <td>
+              <div class="time-display">
+                <i class="fas fa-clock"></i>
+                {{ test.temps }}s
+              </div>
+              <small>({{ (test.temps / 60)|round|int }} min)</small>
+            </td>
+            <td>
+              {% set question_count = test.exercices|length if test.exercices else 0 %}
+              <span class="badge {% if question_count > 10 %}badge-success{% elif question_count > 5 %}badge-warning{% else %}badge-danger{% endif %}">
+                {{ question_count }} {% if lang == 'en' %}questions{% else %}questions{% endif %}
+              </span>
+            </td>
+            <td>
+              <div class="actions">
+                <a class="btn btn-primary" href="{{ url_for('visualiser_test_sommatif', test_id=test.id) }}">
+                  <i class="fas fa-eye"></i> {% if lang == 'en' %}View{% else %}Voir{% endif %}
+                </a>
+                <a class="btn btn-warning" href="{{ url_for('modifier_test', test_id=test.id) }}">
+                  <i class="fas fa-edit"></i> {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
+                </a>
+                <button class="btn btn-danger delete-btn" data-test-id="{{ test.id }}" data-test-name="{{ test.unite.nom }}">
+                  <i class="fas fa-trash"></i> {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <i class="fas fa-vial"></i>
+        <h3>{% if lang == 'en' %}No tests found{% else %}Aucun test trouvé{% endif %}</h3>
+        <p>{% if lang == 'en' %}Get started by creating your first summative test.{% else %}Commencez par créer votre premier test sommatif.{% endif %}</p>
+        <a href="/admin/creer-test-sommatif-ia" class="btn btn-primary" style="margin-top: 15px;">
+          <i class="fas fa-robot"></i> {% if lang == 'en' %}Generate with AI{% else %}Générer avec IA{% endif %}
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if tests and tests|length > 10 %}
+    <div class="pagination">
+      <button class="pagination-btn active">1</button>
+      <button class="pagination-btn">2</button>
+      <button class="pagination-btn">3</button>
+      <button class="pagination-btn">...</button>
+      <button class="pagination-btn">10</button>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Modal de confirmation de suppression -->
+  <div class="modal" id="deleteModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>{% if lang == 'en' %}Confirm Deletion{% else %}Confirmer la suppression{% endif %}</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>{% if lang == 'en' %}Are you sure you want to delete the test{% else %}Êtes-vous sûr de vouloir supprimer le test{% endif %} "<strong id="test-name"></strong>" ?</p>
+        <p><small>{% if lang == 'en' %}This action cannot be undone.{% else %}Cette action ne peut pas être annulée.{% endif %}</small></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="cancelDelete">{% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}</button>
+        <form method="POST" action="" id="deleteForm" style="display: inline;">
+          <button type="submit" class="btn btn-danger">{% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+
+  <script>
+    // Gestion de la suppression avec modal
+    document.addEventListener('DOMContentLoaded', function() {
+      const deleteButtons = document.querySelectorAll('.delete-btn');
+      const deleteModal = document.getElementById('deleteModal');
+      const cancelDelete = document.getElementById('cancelDelete');
+      const modalClose = document.querySelector('.modal-close');
+      const testNameElement = document.getElementById('test-name');
+      const deleteForm = document.getElementById('deleteForm');
+      
+      deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const testId = this.getAttribute('data-test-id');
+          const testName = this.getAttribute('data-test-name');
+          
+          testNameElement.textContent = testName;
+          deleteForm.action = "{{ url_for('supprimer_test', test_id=0) }}".replace('0', testId);
+          
+          deleteModal.style.display = 'flex';
+        });
+      });
+      
+      // Fermer la modal
+      cancelDelete.addEventListener('click', function() {
+        deleteModal.style.display = 'none';
+      });
+      
+      modalClose.addEventListener('click', function() {
+        deleteModal.style.display = 'none';
+      });
+      
+      // Fermer la modal en cliquant à l'extérieur
+      window.addEventListener('click', function(event) {
+        if (event.target === deleteModal) {
+          deleteModal.style.display = 'none';
+        }
+      });
+      
+      // Filtrage des tests
+      const searchInput = document.getElementById('search');
+      const filterUnit = document.getElementById('filter-unit');
+      const filterDuration = document.getElementById('filter-duration');
+      const tableRows = document.querySelectorAll('tbody tr');
+      
+      function filterTests() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const unitFilter = filterUnit.value;
+        const durationFilter = filterDuration.value;
+        
+        tableRows.forEach(row => {
+          const unitName = row.cells[1].textContent.toLowerCase();
+          const durationText = row.cells[4].textContent;
+          const durationSeconds = parseInt(durationText);
+          
+          let matchesSearch = unitName.includes(searchTerm);
+          let matchesUnit = !unitFilter || unitName.includes(unitFilter.toLowerCase());
+          let matchesDuration = true;
+          
+          if (durationFilter === 'short') {
+            matchesDuration = durationSeconds < 300; // 5 minutes
+          } else if (durationFilter === 'medium') {
+            matchesDuration = durationSeconds >= 300 && durationSeconds <= 900; // 5-15 minutes
+          } else if (durationFilter === 'long') {
+            matchesDuration = durationSeconds > 900; // > 15 minutes
+          }
+          
+          if (matchesSearch && matchesUnit && matchesDuration) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      }
+      
+      searchInput.addEventListener('input', filterTests);
+      filterUnit.addEventListener('change', filterTests);
+      filterDuration.addEventListener('change', filterTests);
+      
+      // Afficher une notification si disponible
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('deleted') === 'true') {
+        showNotification(
+          "{% if lang == 'en' %}Test deleted successfully!{% else %}Test supprimé avec succès !{% endif %}", 
+          'success'
+        );
+      }
+    });
+    
+    function showNotification(message, type) {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.className = `notification ${type} show`;
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
