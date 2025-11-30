@@ -20,4 +20,5 @@ langdetect==1.0.9
 stripe==9.6.0
 pdfkit==1.0.0
 nltk==3.8.1
-reportlab==4.2.0        # ⬅️ AJOUTEZ CETTE LIGNE
+reportlab==4.2.0
+matplotlib==3.7.5        # ⬅️ AJOUTEZ CETTE LIGNE
