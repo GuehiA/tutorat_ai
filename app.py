@@ -237,7 +237,54 @@ def eleve_remediations():
         lang=lang
     )
 
-
+@app.route("/fix-admin-password")
+def fix_admin_password():
+    """Corrige le mot de passe admin - À SUPPRIMER APRÈS"""
+    try:
+        with app.app_context():
+            from werkzeug.security import generate_password_hash, check_password_hash
+            from datetime import datetime
+            
+            email = "ambroiseguehi@gmail.com"
+            password = "Ninsem@n@912"
+            
+            # Trouver ou créer l'admin
+            admin = User.query.filter_by(email=email).first()
+            
+            if not admin:
+                # Créer l'admin si n'existe pas
+                admin = User(
+                    username="ambroise",
+                    nom_complet="Ambroise Guehi",
+                    email=email,
+                    role="admin",
+                    est_actif=True,
+                    date_inscription=datetime.utcnow()
+                )
+                db.session.add(admin)
+                print("✅ Nouvel admin créé")
+            else:
+                print("✅ Admin existant trouvé, mise à jour du mot de passe")
+            
+            # FORCER le hash avec werkzeug directement
+            admin.mot_de_passe_hash = generate_password_hash(password)
+            db.session.commit()
+            
+            # Vérifier le hash
+            test_password = check_password_hash(admin.mot_de_passe_hash, password)
+            
+            return f"""
+            <h1>✅ Admin configuré !</h1>
+            <p><strong>Email:</strong> {email}</p>
+            <p><strong>Mot de passe:</strong> {password}</p>
+            <p><strong>Test du hash:</strong> {"✅ Réussi" if test_password else "❌ Échec"}</p>
+            <p><strong>⚠️ IMPORTANT:</strong> Supprimez cette route après connexion !</p>
+            <a href="/login-admin">Se connecter maintenant</a>
+            """
+            
+    except Exception as e:
+        return f"<h1>❌ Erreur:</h1><p>{str(e)}</p>"
+    
 # chatbot_routes.py
 @app.route("/enseignant-virtuel", methods=["GET", "POST"])
 def enseignant_virtuel():
