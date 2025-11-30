@@ -242,7 +242,7 @@ def creer_admin_auto():
     """Crée un admin automatiquement - À SUPPRIMER APRÈS"""
     try:
         with app.app_context():
-            email = "ambroiseguehi@gmail.com"
+            email = "admin@tutorat.ai"
             
             # Vérifier si admin existe déjà
             admin_existant = User.query.filter_by(email=email).first()
@@ -254,19 +254,20 @@ def creer_admin_auto():
                 <a href="/login-admin">Se connecter</a>
                 """
             
-            # Créer l'admin
-            from werkzeug.security import generate_password_hash
+            # Créer l'admin AVEC LE SETTER
             from datetime import datetime
             
             admin = User(
-                username="Ambroise",
+                username="admin",
                 nom_complet="Administrateur Principal",
                 email=email,
                 role="admin",
-                mot_de_passe_hash=generate_password_hash("@Riel16@8!"),
                 est_actif=True,
                 date_inscription=datetime.utcnow()
             )
+            
+            # Utilise le setter qui hash automatiquement
+            admin.mot_de_passe = "Admin123!"
             
             db.session.add(admin)
             db.session.commit()
