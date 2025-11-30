@@ -17,3 +17,4 @@ Markdown==3.8.2        # Si vous utilisez cette bibliothèque pour le rendu Mark
 requests==2.32.3        # Si vous faites des requêtes HTTP
 tenacity>=8.0.0
 langdetect>=1.0.9
+"stripe==9.6.0" 
