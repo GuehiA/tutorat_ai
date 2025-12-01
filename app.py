@@ -44,19 +44,83 @@ load_dotenv()
 # --- Clé secrète ---
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-me')
 
-# --- Correction DATABASE_URL pour Render ---
-raw_db_url = os.getenv('DATABASE_URL', 'sqlite:///tutorat_ai.db')
-if raw_db_url.startswith("postgres://"):
-    raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+# ====================================================================
+# 🔧 CONFIGURATION INTELLIGENTE DE LA BASE DE DONNÉES
+# ====================================================================
 
-app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
+def get_database_url():
+    """
+    Détermine l'URL de la base de données selon l'environnement.
+    Priorité : 
+    1. PostgreSQL sur Render (RENDER_POSTGRES_URL)
+    2. PostgreSQL standard (DATABASE_URL) 
+    3. PostgreSQL externe (POSTGRES_URL)
+    4. SQLite local (développement)
+    """
+    # 1. PostgreSQL intégré Render (service web + base)
+    render_postgres_url = os.getenv('RENDER_POSTGRES_URL')
+    if render_postgres_url:
+        print("🎯 Configuration: PostgreSQL Render (RENDER_POSTGRES_URL)")
+        db_url = render_postgres_url
+    
+    # 2. Base de données Render dédiée
+    elif os.getenv('DATABASE_URL'):
+        print("🎯 Configuration: Base de données Render dédiée (DATABASE_URL)")
+        db_url = os.getenv('DATABASE_URL')
+    
+    # 3. PostgreSQL externe
+    elif os.getenv('POSTGRES_URL'):
+        print("🎯 Configuration: PostgreSQL externe (POSTGRES_URL)")
+        db_url = os.getenv('POSTGRES_URL')
+    
+    # 4. Développement local - SQLite
+    else:
+        print("💻 Configuration: SQLite local (développement)")
+        db_url = 'sqlite:///tutorat_ai.db'
+    
+    # Correction pour SQLAlchemy 2.0+ (postgres:// → postgresql://)
+    if isinstance(db_url, str) and db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        print("🔧 Correction: postgres:// → postgresql://")
+    
+    return db_url
+
+# Application de la configuration
+DB_URL = get_database_url()
+app.config['SQLALCHEMY_DATABASE_URI'] = DB_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "pool_pre_ping": True,
-    "pool_recycle": 280,
-    "pool_size": 5,
-    "max_overflow": 10
-}
+
+# Options avancées pour PostgreSQL
+if 'postgresql' in DB_URL:
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        "pool_pre_ping": True,          # Vérifie la connexion avant utilisation
+        "pool_recycle": 280,            # Recycle les connexions après 280s
+        "pool_size": 5,                 # Nombre de connexions permanentes
+        "max_overflow": 10,             # Connexions supplémentaires temporaires
+        "connect_args": {
+            "connect_timeout": 10,      # Timeout de connexion de 10s
+            "keepalives": 1,            # Keepalive TCP
+            "keepalives_idle": 30,      # Attente avant keepalive
+            "keepalives_interval": 10,  # Intervalle entre keepalives
+        }
+    }
+    print(f"⚙️ Options PostgreSQL activées")
+else:
+    # SQLite - options minimales
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        "pool_pre_ping": False,
+        "pool_recycle": -1,
+    }
+    print(f"⚙️ Options SQLite (développement)")
+
+# Log de l'URL (masquée pour sécurité)
+if DB_URL and len(DB_URL) > 20:
+    masked_url = DB_URL[:20] + "..." + DB_URL[-20:] if len(DB_URL) > 40 else DB_URL[:40] + "..."
+    print(f"🔗 URL Base de données: {masked_url}")
+
+# ====================================================================
+# FIN CONFIGURATION BASE DE DONNÉES
+# ====================================================================
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -71,7 +135,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 # Debug Stripe
 print(f"🎯 Stripe configuré: {bool(stripe.api_key)}")
-print(f"🔑 Clé utilisée: {stripe.api_key[:20]}...")
+print(f"🔑 Clé utilisée: {stripe.api_key[:20]}..." if stripe.api_key else "❌ Pas de clé Stripe")
 
 # 📁 Configuration des uploads
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -208,6 +272,232 @@ def replace_latex_filter(text):
     text = re.sub(r'\s+', ' ', text)  # Normaliser les espaces
     
     return Markup(text.strip())
+
+# ====================================================================
+# ROUTES TEMPORAIRES POUR DIAGNOSTIC (À SUPPRIMER APRÈS)
+# ====================================================================
+
+@app.route("/system-check")
+def system_check():
+    """Vérification complète du système"""
+    import sys
+    
+    info = {
+        'Python Version': sys.version,
+        'Working Directory': os.getcwd(),
+        'Database URL': app.config.get('SQLALCHEMY_DATABASE_URI', 'Non défini'),
+        'Database Type': 'PostgreSQL' if 'postgresql' in str(app.config.get('SQLALCHEMY_DATABASE_URI', '')) else 'SQLite' if 'sqlite' in str(app.config.get('SQLALCHEMY_DATABASE_URI', '')) else 'Inconnu',
+        'Render Environment': os.getenv('RENDER', 'Non'),
+        'Database Connection Test': None,
+    }
+    
+    # Test de connexion à la base
+    try:
+        with app.app_context():
+            # Essayer de créer les tables si elles n'existent pas
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            
+            if not tables:
+                info['Tables'] = 'Aucune table - Base vide'
+                info['Recommendation'] = 'Exécutez /init-database-temp pour créer les tables'
+            else:
+                info['Tables'] = f"{len(tables)} tables: {', '.join(tables[:5])}{'...' if len(tables) > 5 else ''}"
+                
+            # Compter les utilisateurs
+            if 'users' in tables:
+                from sqlalchemy import text
+                result = db.session.execute(text("SELECT COUNT(*) FROM users"))
+                count = result.scalar()
+                info['User Count'] = count
+                
+                # Vérifier l'admin
+                admin_result = db.session.execute(text("SELECT email FROM users WHERE role = 'admin' LIMIT 1"))
+                admin = admin_result.scalar()
+                info['Admin Exists'] = '✅ Oui' if admin else '❌ Non'
+            
+    except Exception as e:
+        info['Database Error'] = str(e)
+        info['Recommendation'] = 'Problème de connexion DB. Vérifiez les variables d\'environnement.'
+    
+    # Format HTML
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>🔧 Diagnostic Système</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+            .section { background: white; padding: 20px; border-radius: 5px; margin: 15px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            .success { color: #28a745; }
+            .warning { color: #ffc107; }
+            .danger { color: #dc3545; }
+            .info { color: #17a2b8; }
+            .btn { display: inline-block; padding: 10px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 5px; }
+            .btn-danger { background: #dc3545; }
+            .btn-success { background: #28a745; }
+            .btn-warning { background: #ffc107; }
+            pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow: auto; }
+        </style>
+    </head>
+    <body>
+        <h1>🔧 Diagnostic du Système</h1>
+        
+        <div class="section">
+            <h2>📊 Informations Système</h2>
+    """
+    
+    for key, value in info.items():
+        html += f"<p><strong>{key}:</strong> <span class='info'>{value}</span></p>"
+    
+    html += """
+        </div>
+        
+        <div class="section">
+            <h2>🚀 Actions Rapides</h2>
+            <a href="/init-database-temp" class="btn btn-warning">🔄 Initialiser Base</a>
+            <a href="/debug-env" class="btn btn-info">🔍 Variables d'Environnement</a>
+            <a href="/login-admin" class="btn btn-success">🔐 Connexion Admin</a>
+            <a href="/" class="btn">🏠 Accueil</a>
+        </div>
+        
+        <div class="section">
+            <h2>📋 Recommandations</h2>
+            <ul>
+                <li>Si aucune table → Initialisez la base avec le bouton ci-dessus</li>
+                <li>Si erreur PostgreSQL → Vérifiez les variables d'environnement sur Render</li>
+                <li>Si SQLite en production → Passez à PostgreSQL sur Render</li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html
+
+@app.route("/init-database-temp")
+def init_database_temp():
+    """Initialise la base de données - À SUPPRIMER APRÈS"""
+    try:
+        with app.app_context():
+            from datetime import datetime
+            from sqlalchemy import inspect
+            
+            inspector = inspect(db.engine)
+            tables_before = inspector.get_table_names()
+            
+            # Créer les tables
+            db.create_all()
+            
+            # Vérifier après création
+            inspector = inspect(db.engine)
+            tables_after = inspector.get_table_names()
+            
+            # Créer l'admin si pas d'utilisateurs
+            from sqlalchemy import text
+            result = db.session.execute(text("SELECT COUNT(*) FROM users"))
+            user_count = result.scalar()
+            
+            if user_count == 0:
+                admin = User(
+                    username="admin",
+                    nom_complet="Administrateur Principal",
+                    email="ambroiseguehi@gmail.com",
+                    role="admin",
+                    statut="actif",
+                    statut_paiement="paye",
+                    date_inscription=datetime.utcnow(),
+                    langue="fr"
+                )
+                admin.mot_de_passe = "Ninsem@n@912"
+                db.session.add(admin)
+                db.session.commit()
+                admin_msg = "✅ Admin créé"
+            else:
+                admin_msg = "ℹ️ Utilisateurs existent déjà"
+            
+            return f"""
+            <h1>✅ Base de données initialisée</h1>
+            <p><strong>Tables avant:</strong> {len(tables_before)} ({', '.join(tables_before) if tables_before else 'aucune'})</p>
+            <p><strong>Tables après:</strong> {len(tables_after)} ({', '.join(tables_after) if tables_after else 'aucune'})</p>
+            <p><strong>Utilisateurs:</strong> {user_count}</p>
+            <p><strong>Admin:</strong> {admin_msg}</p>
+            <hr>
+            <p><a href="/login-admin" class="btn">🔐 Connexion Admin</a></p>
+            <p><small>⚠️ Supprimez cette route après usage</small></p>
+            """
+            
+    except Exception as e:
+        return f"<h1>❌ Erreur</h1><pre>{str(e)}</pre>"
+
+@app.route("/debug-env")
+def debug_env():
+    """Affiche toutes les variables d'environnement pertinentes - ADMIN ONLY"""
+    
+    # 🔒 Protection (optionnel mais recommandé)
+    if not session.get("is_admin"):
+        return redirect(url_for("login_admin"))
+    
+    relevant_vars = {}
+    
+    # Récupérer toutes les variables
+    all_vars = dict(os.environ)
+    
+    # Filtrer les variables pertinentes
+    for key, value in all_vars.items():
+        if any(term in key.upper() for term in ['DATABASE', 'POSTGRES', 'SQL', 'RENDER', 'STRIPE', 'OPENAI', 'SECRET', 'KEY']):
+            # Masquer les valeurs sensibles
+            if 'KEY' in key.upper() or 'SECRET' in key.upper() or 'PASSWORD' in key.upper():
+                masked_value = value[:10] + "..." + value[-10:] if len(value) > 20 else "***MASQUÉ***"
+                relevant_vars[key] = masked_value
+            else:
+                relevant_vars[key] = value
+    
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>🔍 Variables d'Environnement - Admin</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+            .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .var-key { color: #007bff; font-weight: bold; }
+            .var-value { color: #28a745; font-family: monospace; }
+            .masked { color: #dc3545; }
+            .btn { display: inline-block; padding: 8px 16px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; margin: 10px 5px; }
+            .btn-primary { background: #007bff; }
+        </style>
+    </head>
+    <body>
+        <h1>🔍 Variables d'Environnement</h1>
+        <p><em>Pour diagnostic uniquement - À ne pas exposer publiquement</em></p>
+        
+        <div class="card">
+    """
+    
+    for key in sorted(relevant_vars.keys()):
+        value = relevant_vars[key]
+        value_class = "var-value masked" if "***MASQUÉ***" in value or "..." in value else "var-value"
+        html += f"<p><span class='var-key'>{key}:</span> <span class='{value_class}'>{value}</span></p>"
+    
+    html += """
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <a href="/system-check" class="btn btn-primary">🔧 Retour au diagnostic</a>
+            <a href="/admin/dashboard" class="btn">📊 Dashboard Admin</a>
+            <a href="/logout" class="btn" style="background: #dc3545;">🚪 Déconnexion</a>
+        </div>
+        
+        <p style="margin-top: 30px; font-size: 0.8em; color: #666;">
+            ⚠️ Cette page doit être supprimée en production finale
+        </p>
+    </body>
+    </html>
+    """
+    
+    return html
 
 # ... ensuite vos routes commencent ici ...
 @app.route("/eleve/remediations")
@@ -4210,14 +4500,16 @@ def exercice_suggeres_eleve():
     )
 
 from sqlalchemy import select
-from database import engine  # ✅ correct # Remplace 'your_app' par le nom réel de ton fichier où engine est défini
 from flask import render_template, session
-from models import Niveau, Matiere, Unite, Lecon, Exercice  # Assure-toi que ces modèles sont bien importés
+from models import Niveau, Matiere, Unite, Lecon, Exercice
+from app import db  # Importez db depuis votre application
 
 @app.route("/exercice_suggeres")
 def afficher_exercice_suggeres():
     lang = session.get("lang", "fr")
-    conn = engine.connect()
+    
+    # Utilisez db.engine au lieu de database.engine
+    conn = db.engine.connect()
 
     Niveau_data = []
     Niveau_rows = conn.execute(select(Niveau)).scalars().all()
@@ -4264,8 +4556,8 @@ def afficher_exercice_suggeres():
             "matiere": matiere_data
         })
 
+    conn.close()  # Important : fermez la connexion
     return render_template("exercice_suggeres.html", Niveau=Niveau_data, lang=lang)
-
 
 @app.route("/progression-eleve")
 def progression_eleve():
