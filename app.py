@@ -3297,7 +3297,50 @@ def dashboard_eleve():
         date_du_jour=datetime.utcnow()
     )
 
-
+@app.route("/reset-admin-password")
+def reset_admin_password():
+    """Réinitialise le mot de passe admin - À SUPPRIMER APRÈS"""
+    try:
+        with app.app_context():
+            from werkzeug.security import generate_password_hash, check_password_hash
+            from datetime import datetime
+            
+            email = "ambroiseguehi@gmail.com"
+            password = "Ninsem@n@912"
+            
+            # Trouver l'admin
+            admin = User.query.filter_by(email=email, role="admin").first()
+            
+            if not admin:
+                return "<h1>❌ Admin non trouvé</h1><p>Créez d'abord un compte admin.</p>"
+            
+            # Afficher le hash actuel
+            current_hash = admin.mot_de_passe_hash[:30] if admin.mot_de_passe_hash else "N/A"
+            
+            # Générer un NOUVEAU hash
+            new_hash = generate_password_hash(password)
+            
+            # Mettre à jour le hash
+            admin.mot_de_passe_hash = new_hash
+            db.session.commit()
+            
+            # Vérifier le nouveau hash
+            test = check_password_hash(new_hash, password)
+            
+            return f"""
+            <h1>✅ Mot de passe admin réinitialisé !</h1>
+            <p><strong>Email:</strong> {email}</p>
+            <p><strong>Mot de passe:</strong> {password}</p>
+            <p><strong>Ancien hash:</strong> {current_hash}...</p>
+            <p><strong>Nouveau hash:</strong> {new_hash[:30]}...</p>
+            <p><strong>Test du mot de passe:</strong> {"✅ Réussi" if test else "❌ Échec"}</p>
+            <p><strong>⚠️ IMPORTANT:</strong> Supprimez cette route après usage !</p>
+            <a href="/login-admin">Se connecter maintenant</a>
+            """
+            
+    except Exception as e:
+        return f"<h1>❌ Erreur:</h1><p>{str(e)}</p>"
+    
 @app.route("/create-profile", methods=["POST"])
 def create_profile():
     data = request.json
