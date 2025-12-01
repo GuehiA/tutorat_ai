@@ -237,6 +237,53 @@ def eleve_remediations():
         lang=lang
     )
 
+@app.route("/urgence-recreate-admin")
+def urgence_recreate_admin():
+    """RECRÉER L'ADMIN URGENCE - À SUPPRIMER APRÈS"""
+    try:
+        with app.app_context():
+            from datetime import datetime
+            
+            # Créer les tables SI ELLES N'EXISTENT PAS
+            db.create_all()
+            
+            # Créer l'admin
+            email = "ambroiseguehi@gmail.com"
+            password = "Ninsem@n@912"
+            
+            admin = User(
+                username="admin",
+                nom_complet="Administrateur Principal",
+                email=email,
+                role="admin",
+                est_actif=True,
+                statut="actif",
+                statut_paiement="paye",
+                date_inscription=datetime.utcnow(),
+                langue="fr"
+            )
+            admin.mot_de_passe = password
+            
+            # Vérifier si existe déjà
+            existing = User.query.filter_by(email=email).first()
+            if existing:
+                db.session.delete(existing)  # Supprimer l'ancien
+                
+            db.session.add(admin)
+            db.session.commit()
+            
+            return f"""
+            <h1>✅ ADMIN RECRÉÉ URGENCE !</h1>
+            <p><strong>Tables recréées</strong></p>
+            <p><strong>Admin:</strong> {email}</p>
+            <p><strong>Mot de passe:</strong> {password}</p>
+            <p><strong>⚠️ SUPPRIMEZ CETTE ROUTE APRÈS USAGE !</strong></p>
+            <a href="/login-admin">Se connecter maintenant</a>
+            """
+            
+    except Exception as e:
+        return f"<h1>❌ Erreur:</h1><pre>{str(e)}</pre>"
+    
 # chatbot_routes.py
 @app.route("/enseignant-virtuel", methods=["GET", "POST"])
 def enseignant_virtuel():
