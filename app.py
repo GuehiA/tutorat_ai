@@ -3451,7 +3451,58 @@ def create_persistent_admin():
     except Exception as e:
         return f"<h1>❌ Erreur:</h1><p>{str(e)}</p>"
     
+@app.route("/init-database")
+def init_database():
+    """Crée les tables UNE FOIS - À SUPPRIMER APRÈS"""
+    try:
+        with app.app_context():
+            # Créer toutes les tables
+            db.create_all()
+            
+            # Maintenant créer l'admin
+            from datetime import datetime
+            from werkzeug.security import generate_password_hash
+            
+            email = "ambroiseguehi@gmail.com"
+            password = "Ninsem@n@912"
+            
+            # Vérifier si admin existe déjà
+            admin = User.query.filter_by(email=email).first()
+            
+            if not admin:
+                admin = User(
+                    username="admin",
+                    nom_complet="Administrateur Principal",
+                    email=email,
+                    role="admin",
+                    est_actif=True,
+                    statut="actif",
+                    statut_paiement="paye",
+                    date_inscription=datetime.utcnow(),
+                    langue="fr"
+                )
+                admin.mot_de_passe_hash = generate_password_hash(password)
+                db.session.add(admin)
+                db.session.commit()
+                message = "✅ Tables créées et admin ajouté"
+            else:
+                message = "✅ Tables créées (admin existait déjà)"
+            
+            return f"""
+            <h1>🎉 Base de données initialisée !</h1>
+            <p>{message}</p>
+            <p><strong>Tables créées:</strong> users, enseignants, exercices, etc.</p>
+            <p><strong>Admin:</strong> {email}</p>
+            <p><strong>Mot de passe:</strong> {password}</p>
+            <hr>
+            <p><strong>⚠️ IMPORTANT : Supprimez cette route après usage !</strong></p>
+            <a href="/login-admin">Se connecter maintenant</a>
+            """
+            
+    except Exception as e:
+        return f"<h1>❌ Erreur:</h1><pre>{str(e)}</pre>"
     
+        
 @app.route("/exercice-sequentiel-progressif")
 def exercice_sequentiel_progressif():
     username = request.args.get("username")
