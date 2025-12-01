@@ -1,41 +1,53 @@
-from models import db, User, Exercise, Parent, ParentEleve
+from models import db, User, Exercise, Parent, ParentEleve, Enseignant, Niveau, Matiere
 from app import app
+from datetime import datetime
 
-with app.app_context():
-    # 🔄 Réinitialise la base de données
-    db.drop_all()
-    db.create_all()
+def seed_data():
+    """Ajoute des données de test SEULEMENT si elles n'existent pas déjà"""
+    with app.app_context():
+        try:
+            print("🌱 Vérification des données de seed...")
+            
+            # 1. VÉRIFIER si l'admin existe déjà - NE PAS LE RECRÉER
+            admin = User.query.filter_by(email="ambroiseguehi@gmail.com").first()
+            if admin:
+                print(f"✅ Admin existe déjà: {admin.email}")
+            else:
+                print("ℹ️ Admin non trouvé - utiliser la connexion normale")
+            
+            # 2. Créer des données de test UNIQUEMENT SI nécessaire
+            # Exemple: Vérifier si des élèves existent
+            if User.query.filter_by(role="élève").count() == 0:
+                print("📝 Création de données de test pour les élèves...")
+                
+                # Créer un élève de test
+                eleve = User(
+                    username="test_eleve",
+                    nom_complet="Élève Test",
+                    email="eleve.test@example.com",
+                    role="élève",
+                    statut="actif",
+                    statut_paiement="essai_gratuit",
+                    date_inscription=datetime.utcnow(),
+                    date_fin_essai=datetime.utcnow() + datetime.timedelta(days=2)
+                )
+                eleve.mot_de_passe = "test123"
+                db.session.add(eleve)
+                
+                print("✅ Élève de test créé")
+                
+                # Autres données de test si besoin...
+                # exercices, niveaux, matières, etc.
+                
+                db.session.commit()
+                print("✅ Données de test ajoutées")
+            else:
+                print("✅ Des élèves existent déjà - pas de données de test ajoutées")
+            
+        except Exception as e:
+            print(f"❌ Erreur dans seed: {e}")
+            db.session.rollback()
 
-    # 👨‍👧 Création d'un parent
-    parent = Parent(nom_complet="Mme Dupont", email="parent1@example.com")
-    db.session.add(parent)
-    db.session.commit()
-
-    # 👧 Création d'un élève
-    eleve = User(
-        username="student_001",
-        nom_complet="Alice Dupont",
-        email="alice@example.com",
-        niveau="2nde",
-        role="élève"
-    )
-    db.session.add(eleve)
-    db.session.commit()
-
-    # 🔗 Lier l'élève au parent
-    lien = ParentEleve(parent_id=parent.id, eleve_id=eleve.id)
-    db.session.add(lien)
-
-    # 📘 Exercices avec leçons
-    exercices = [
-        Exercise(niveau="2nde", theme="algèbre", lecon="équations", enonce="Résous : 2x + 3 = 7", reponse_correcte="x = 2"),
-        Exercise(niveau="2nde", theme="algèbre", lecon="factorisation", enonce="Factorise : x² - 9", reponse_correcte="(x - 3)(x + 3)"),
-        Exercise(niveau="2nde", theme="géométrie", lecon="triangles", enonce="Calcule l'aire d'un triangle de base 4cm et hauteur 5cm", reponse_correcte="10 cm²"),
-        Exercise(niveau="1ère", theme="analyse", lecon="fonctions", enonce="Détermine l’image de 2 par f(x) = x² - 1", reponse_correcte="3"),
-        Exercise(niveau="Terminale", theme="analyse", lecon="dérivées", enonce="Calcule f'(x) si f(x) = 3x²", reponse_correcte="6x"),
-    ]
-
-    db.session.add_all(exercices)
-    db.session.commit()
-
-    print("✅ Données initiales insérées avec le champ 'lecon'.")
+if __name__ == "__main__":
+    # Ce script peut être exécuté manuellement si besoin
+    seed_data()
