@@ -378,11 +378,10 @@
 
     <!-- Conteneur de chat -->
     <div class="chat-container {% if session.get('mode_examen') %}exam-mode{% endif %}">
-      <!-- Contrôles : Utilise eleve.username -->
+      <!-- Contrôles : FORMULAIRES SIMPLIFIÉS -->
       <div class="controls">
         <form method="POST" action="/nouvel-exercice">
-          <input type="hidden" name="username" value="{{ eleve.username }}">
-          <input type="hidden" name="lang" value="{{ lang }}">
+          <!-- SUPPRIMÉ : les inputs cachés username et lang -->
           <button type="submit" class="btn btn-new">
             <i class="fas fa-plus-circle"></i>
             {% if lang == 'en' %}
@@ -394,8 +393,7 @@
         </form>
 
         <form method="POST" action="/toggle-examen">
-          <input type="hidden" name="username" value="{{ eleve.username }}">
-          <input type="hidden" name="lang" value="{{ lang }}">
+          <!-- SUPPRIMÉ : les inputs cachés username et lang -->
           <button type="submit" class="btn btn-exam">
             <i class="fas fa-graduation-cap"></i>
             {% if lang == 'en' %}
@@ -407,17 +405,16 @@
         </form>
       </div>
 
-      <!-- Zone de chat -->
+      <!-- Zone de chat : FORMULAIRE PRINCIPAL SIMPLIFIÉ -->
       <div class="chat-area">
         <form method="POST">
-          <input type="hidden" name="username" value="{{ eleve.username }}">
-          <input type="hidden" name="lang" value="{{ lang }}">
+          <!-- SUPPRIMÉ : les inputs cachés username et lang -->
           
           <textarea 
             name="question" 
             placeholder="{% if lang == 'en' %}Write your math exercise here... You can use LaTeX for formulas: \\(x^2 + y^2 = z^2\\){% else %}Écrivez votre exercice de mathématiques ici... Vous pouvez utiliser LaTeX pour les formules : \\(x^2 + y^2 = z^2\\){% endif %}" 
             required
-            autofocus></textarea>
+            autofocus>{% if question %}{{ question }}{% endif %}</textarea>
           
           <button type="submit" class="btn btn-send">
             <i class="fas fa-paper-plane"></i>
@@ -514,7 +511,7 @@
       }
 
       // Auto-focus sur le textarea
-      const textarea = document.querySelector('textarea');
+      const textarea = document.querySelector('textarea[name="question"]');
       if (textarea) {
         textarea.focus();
         // Place le curseur à la fin
