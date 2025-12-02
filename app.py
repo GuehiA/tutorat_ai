@@ -306,39 +306,27 @@ def eleve_remediations():
 @app.route("/enseignant-virtuel")
 def enseignant_virtuel():
     """Route pour l'enseignant virtuel"""
-    # Récupérer les paramètres
-    username = request.args.get('username')
-    lang = request.args.get('lang', 'fr')
+    # Vérifier si l'élève est connecté via la session (comme dashboard_eleve)
+    if "eleve_id" not in session:
+        flash("Veuillez vous connecter pour accéder à l'enseignant virtuel", "warning")
+        return redirect(url_for("login_eleve"))
+
+    # Récupérer l'élève depuis la session
+    eleve = User.query.options(joinedload(User.niveau)).get(session["eleve_id"])
+    if not eleve or eleve.role != "élève":
+        flash("Accès non autorisé", "error")
+        return redirect(url_for("login_eleve"))
     
-    print(f"DEBUG: username={username}, lang={lang}")
-    
-    # CORRECTION : Vérifier d'abord la session
-    # Si username n'est pas dans les paramètres, regarder dans la session
-    if not username:
-        username = session.get('current_student')
-        if not username:
-            # Si pas dans la session non plus, alors rediriger
-            flash("Veuillez vous connecter en tant qu'élève", "warning")
-            return redirect("/login-eleve")
-    
-    # Si username existe, vérifier si c'est le même que dans la session
-    # pour éviter les problèmes de session
-    if username != session.get('current_student'):
-        session['current_student'] = username
-    
-    # Récupérer l'élève
-    eleve = User.query.filter_by(username=username, role='student').first()
-    if not eleve:
-        # Si l'élève n'existe pas en base mais est dans la session,
-        # nettoyer la session et rediriger
-        session.pop('current_student', None)
-        flash("Élève non trouvé", "error")
-        return redirect("/login-eleve")
-    
-    # Stocker dans la session si ce n'est pas déjà fait
-    session['current_student'] = username
-    session['current_lang'] = lang
-    
+    # Vérifier l'accès (essai gratuit) - même logique que dashboard_eleve
+    if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
+        session.clear()
+        flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner pour continuer.", "error")
+        return redirect(url_for('login_eleve'))
+
+    # Récupérer la langue
+    lang = request.args.get("lang") or session.get("lang", "fr")
+    session["lang"] = lang
+
     # Récupérer la conversation
     conversation = session.get("guide_math_conversation", [])
     reponse_ia = None
@@ -348,11 +336,11 @@ def enseignant_virtuel():
         question = conversation[-2] if len(conversation) >= 2 else None
         reponse_ia = conversation[-1] if len(conversation) >= 1 else None
     
-    # Rendre le template avec 'eleve'
+    # Rendre le template
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
-        eleve=eleve,
+        eleve=eleve,  # Passer l'élève au template
         question=question,
         reponse=reponse_ia,
         date_du_jour=datetime.utcnow()
@@ -3248,6 +3236,9 @@ def dashboard_eleve():
         flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner pour continuer.", "error")
         return redirect(url_for('login_eleve'))
 
+    # ✅ CORRECTION : Stocker pour l'enseignant virtuel
+    session['current_student'] = eleve.username
+
     lang = request.args.get("lang") or session.get("lang", "fr")
     session["lang"] = lang
 
@@ -5020,9 +5011,11 @@ def login_eleve():
                 
                 flash(message, "info")
 
-            # Connexion
+            # Connexion - STOCKER DANS LA SESSION
             session['eleve_id'] = eleve.id
             session['eleve_username'] = eleve.username
+            session['current_student'] = eleve.username  # ✅ Pour l'enseignant virtuel
+            
             return redirect(url_for('dashboard_eleve'))
         else:
             flash("Identifiants incorrects", "error")
