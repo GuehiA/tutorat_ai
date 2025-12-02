@@ -411,7 +411,7 @@ RESPONSE FORMAT:
 # chatbot_routes.py
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel - VERSION SIMPLIFIÉE"""
+    """Route pour l'enseignant virtuel - VERSION AMÉLIORÉE"""
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
 
@@ -432,62 +432,77 @@ def enseignant_virtuel():
         question = request.form.get("question", "").strip()
         
         if question and len(question) >= 3:
+            # Récupérer ou initialiser les variables de session
             conversation = session.get("conversation", [])
             derniere_q_ia = session.get('derniere_q_ia')
             
-            # Format simple pour l'historique
+            # Garder TOUTE la conversation mais compresser si trop longue
+            if len(conversation) > 20:  # On garde plus de messages
+                # Garder le premier message (l'exercice original) et les 15 derniers
+                conversation = [conversation[0]] + conversation[-15:]
+            
+            # Ajouter la question de l'élève
             conversation.append(f"👤 Élève: {question}")
             
             if derniere_q_ia:
-                # Réponse à une question précédente
+                # Réponse à une question précédente de l'IA
                 reponse = generer_suite_conversation(
                     derniere_q=derniere_q_ia,
                     reponse=question,
-                    historique=conversation,
+                    historique=conversation,  # Envoyer TOUTE la conversation
                     niveau=eleve.niveau.nom if eleve.niveau else "6ème",
-                    mode_examen=session.get("mode_examen", False)
+                    mode_examen=session.get("mode_examen", False),
+                    exercice_original=conversation[0] if conversation else ""  # Toujours rappeler l'exercice
                 )
                 session.pop('derniere_q_ia', None)
             else:
-                # Nouvelle question
+                # Nouvelle question (début d'exercice)
                 reponse = generer_debut_conversation(
                     question=question,
                     niveau=eleve.niveau.nom if eleve.niveau else "6ème",
                     mode_examen=session.get("mode_examen", False)
                 )
             
+            # Ajouter la réponse de l'IA
             conversation.append(f"🤖 Enseignant: {reponse}")
             
-            # Limiter à 10 messages
-            if len(conversation) > 10:
-                conversation = conversation[-10:]
-            
-            session["conversation"] = conversation
-            
-            # Extraire la nouvelle question
-            nouvelle_q = extraire_question(reponse)
+            # Extraire la nouvelle question de l'IA
+            nouvelle_q = extraire_question_principale(reponse)
             if nouvelle_q:
                 session['derniere_q_ia'] = nouvelle_q
+            
+            # Sauvegarder la conversation complète
+            session["conversation"] = conversation
+            
+            # Marquer l'exercice en cours (première question)
+            if len(conversation) == 2:  # Juste la question élève + réponse IA
+                session['exercice_en_cours'] = question
             
             flash("Je te guide étape par étape !", "success")
     
     # Récupérer la conversation
     conversation = session.get("conversation", [])
+    exercice_en_cours = session.get('exercice_en_cours', '')
     
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
         eleve=eleve,
         conversation=conversation,
+        exercice_en_cours=exercice_en_cours,
         date_du_jour=datetime.utcnow()
     )
 
-def extraire_question(reponse):
-    """Extrait la question posée par l'IA - version simple"""
+def extraire_question_principale(reponse):
+    """Extrait la question principale posée par l'IA - version améliorée"""
     import re
     
-    # Chercher les questions directes
-    patterns = [
+    # Chercher la dernière question dans la réponse
+    lines = reponse.split('\n')
+    
+    # Patterns pour trouver les questions
+    question_patterns = [
+        r'[Qq]uestion\s*\d*[.:]\s*(.*?)(?:\n|$)',
         r'[Pp]eux-tu\s+(.*?)\?',
         r'[Qq]u\'est-ce que\s+(.*?)\?',
         r'[Cc]alcule\s+(.*?)\?',
@@ -497,15 +512,38 @@ def extraire_question(reponse):
         r'[Cc]ombien\s+(.*?)\?',
         r'[Cc]omment\s+(.*?)\?',
         r'[Pp]ourquoi\s+(.*?)\?',
-        r'[Éé]cris\s+(.*?)\?'
+        r'[Éé]cris\s+(.*?)\?',
+        r'[Ss]ais-tu\s+(.*?)\?',
+        r'[Pp]eux-tu\s+(.*?)\?',
+        r'[Ee]n\s+quoi\s+(.*?)\?'
     ]
     
-    for pattern in patterns:
-        match = re.search(pattern, reponse)
-        if match:
-            question = match.group(1).strip()
-            if len(question) > 5:  # Minimum 5 caractères
-                return question
+    # Chercher dans les dernières lignes d'abord
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+            
+        for pattern in question_patterns:
+            match = re.search(pattern, line)
+            if match:
+                question = match.group(1).strip()
+                if len(question) > 3:  # Minimum 3 caractères
+                    # Nettoyer la question
+                    if question.endswith('?'):
+                        question = question[:-1]
+                    return question
+    
+    # Si aucune question trouvée, chercher la dernière phrase qui se termine par "?"
+    for line in reversed(lines):
+        line = line.strip()
+        if line.endswith('?'):
+            # Enlever les marqueurs de formatage
+            clean_line = re.sub(r'^\*\*|\*\*$', '', line)
+            clean_line = re.sub(r'^\*|\*$', '', clean_line)
+            clean_line = clean_line.strip()
+            if len(clean_line) > 5:
+                return clean_line
     
     return None
 
@@ -760,98 +798,176 @@ def process_question(question, eleve, lang, session):
 
 
 def get_system_prompt(lang="fr", mode_examen=False):
-    """Prompt court et efficace"""
+    """Prompt optimisé pour garder le contexte"""
     if lang == "fr":
-        base = """Tu es le Guide de Maths. Tu guides les élèves pour qu'ils trouvent eux-mêmes les solutions.
+        base = """Tu es un enseignant de mathématiques expert en pédagogie. Tu guides les élèves pour qu'ils trouvent eux-mêmes les solutions.
 
-RÈGLES COURTES :
-- Tu ne donnes JAMAIS la réponse
-- Tu poses UNE question à la fois
-- Tu félicites quand c'est bon
-- Tu corriges doucement les erreurs
-- Tu utilises un langage simple
-- Tu tutoies l'élève (tu/vous)
-- Maximum 3 lignes par message
+**RÈGLES STRICTES :**
+1. TU NE DONNES JAMAIS LA RÉPONSE DIRECTEMENT
+2. Tu gardes toujours en tête l'exercice initial
+3. Tu poses UNE question à la fois
+4. Tu vérifies la compréhension à chaque étape
+5. Tu adaptes ton langage au niveau de l'élève
+6. Tu utilises des exemples concrets si besoin
+7. Tu félicites les progrès
+8. Tu corriges doucement les erreurs
+9. Tu tutoies l'élève (tu/vous)
+10. Tu rappelles le but final régulièrement
 
-EXEMPLE DE FORMAT :
-1. Reformule le problème simplement
-2. Pose une question précise
-3. Attends la réponse avant de continuer
+**STRATÉGIE PÉDAGOGIQUE :**
+- Commence par reformuler le problème
+- Identifie la méthode appropriée
+- Guide étape par étape
+- Pose des questions précises
+- Attends les réponses avant de continuer
+- Vérifie la compréhension
 
-""" + ("⚠️ MODE EXAMEN : Indices seulement, pas d'étapes." if mode_examen else "")
+""" + ("⚠️ MODE EXAMEN : Donne des indices sans révéler les étapes complètes." if mode_examen else "")
         
         return base
     else:
-        return "You are the Math Guide. You help students find solutions themselves."
+        return """You are a mathematics teacher expert in pedagogy. You guide students to find solutions themselves.
+
+**STRICT RULES:**
+1. YOU NEVER GIVE THE ANSWER DIRECTLY
+2. You always keep the initial exercise in mind
+3. You ask ONE question at a time
+4. You check understanding at each step
+5. You adapt your language to the student's level
+6. You use concrete examples if needed
+7. You praise progress
+8. You gently correct mistakes
+9. You use simple language
+10. You regularly remind the final goal
+
+**PEDAGOGICAL STRATEGY:**
+- Start by rephrasing the problem
+- Identify appropriate method
+- Guide step by step
+- Ask precise questions
+- Wait for answers before continuing
+- Check understanding
+""" + ("⚠️ EXAM MODE: Give hints without revealing complete steps." if mode_examen else "")
+
 
 def generer_debut_conversation(question, niveau, mode_examen=False):
-    """Début de conversation - court et direct"""
+    """Début de conversation - garde le contexte"""
     from openai import OpenAI
     import os
     
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
-    prompt = f"""Élève de {niveau} demande : "{question}"
+    prompt = f"""Élève de {niveau} pose l'exercice suivant : "{question}"
 
-Commence le dialogue. Reformule le problème simplement. Pose UNE première question pour guider l'élève vers la première étape.
+Ton rôle : Commencer le dialogue pédagogique.
 
-{"Mode examen : donne juste un indice pour commencer." if mode_examen else ""}"""
+**Instructions :**
+1. Reformule le problème dans tes mots
+2. Identifie la compétence mathématique concernée
+3. Propose une stratégie générale (sans détails)
+4. Pose la PREMIÈRE QUESTION qui guide vers la première étape
+
+**Format :**
+- Accueil et reformulation
+- Indication de la méthode générale
+- QUESTION PRÉCISE pour l'élève
+- Indication de ce qu'il doit faire ensuite
+
+{"Mode examen : reste au niveau des indices généraux." if mode_examen else ""}"""
     
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Plus rapide et moins cher
+            model="gpt-4",  # GPT-4 pour mieux comprendre le contexte
             messages=[
                 {"role": "system", "content": get_system_prompt("fr", mode_examen)},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=200  # Court !
+            max_tokens=350
         )
         
         return response.choices[0].message.content.strip()
         
     except Exception as e:
-        print(f"Erreur OpenAI: {e}")
-        return "Super, on travaille sur ça ensemble ! Peux-tu me redire le problème avec tes mots ?"
+        print(f"Erreur OpenAI début conversation: {e}")
+        return f"""Excellent ! On va travailler sur cet exercice ensemble.
 
-def generer_suite_conversation(derniere_q, reponse, historique, niveau, mode_examen=False):
-    """Continue la conversation - court et direct"""
+**Exercice :** {question}
+
+Je vais te guider étape par étape sans te donner la réponse directement.
+
+**Première étape :** Comprendre exactement ce qu'on te demande.
+
+**Question 1 :** Peux-tu reformuler ce problème dans tes propres mots ? Qu'est-ce qu'on cherche à trouver ?
+
+Écris ta reformulation, et je te guiderai vers la méthode à utiliser !"""
+
+
+def generer_suite_conversation(derniere_q, reponse, historique, niveau, mode_examen=False, exercice_original=""):
+    """Continue la conversation en gardant le contexte"""
     from openai import OpenAI
     import os
     
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
-    # Prendre les 4 derniers messages seulement
-    historique_recent = "\n".join(historique[-4:]) if len(historique) >= 4 else "\n".join(historique)
+    # Préparer l'historique contextuel
+    # Garder l'exercice original + les derniers échanges
+    historique_contextuel = []
     
-    prompt = f"""Élève de {niveau} a répondu à ma question "{derniere_q}" avec : "{reponse}"
+    # Toujours inclure l'exercice original s'il existe
+    if exercice_original and "👤 Élève:" in exercice_original:
+        historique_contextuel.append(f"Exercice initial: {exercice_original.replace('👤 Élève: ', '')}")
+    
+    # Ajouter les 10 derniers messages maximum
+    for msg in historique[-10:]:
+        historique_contextuel.append(msg)
+    
+    historique_text = "\n".join(historique_contextuel)
+    
+    prompt = f"""Élève de {niveau}
 
-Analyse rapidement :
-1. Est-ce correct ? Félicite si oui
-2. Y a-t-il des erreurs ? Corrige doucement
-3. Pose la prochaine question pour avancer
+**CONTEXTE COMPLET :**
+{historique_text}
 
-Historique récent :
-{historique_recent}
+**Dernière question que j'ai posée :** {derniere_q}
+**Réponse de l'élève :** {reponse}
 
-{"Mode examen : donne un petit indice seulement." if mode_examen else ""}"""
+**Ta tâche :**
+1. Analyser la réponse de l'élève
+2. Valider ce qui est correct
+3. Corriger doucement ce qui est erroné
+4. Rappeler l'objectif final (l'exercice initial)
+5. Poser la PROCHAINE QUESTION qui avance vers la solution
+
+**Important :** Ne pas donner la réponse. Guider vers l'étape suivante.
+
+{"Mode examen : guide avec des indices, ne révèle pas les étapes." if mode_examen else ""}"""
     
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": get_system_prompt("fr", mode_examen)},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=250  # Court !
+            max_tokens=400
         )
         
         return response.choices[0].message.content.strip()
         
     except Exception as e:
-        print(f"Erreur OpenAI: {e}")
-        return "Merci pour ta réponse ! Maintenant, quelle est l'étape suivante selon toi ?"
+        print(f"Erreur OpenAI suite conversation: {e}")
+        return f"""Merci pour ta réponse !
+
+Maintenant, continuons vers la solution.
+
+**Rappel de l'exercice :** {exercice_original.replace('👤 Élève: ', '') if exercice_original else "L'exercice en cours"}
+
+**Nouvelle question :** Quelle est la prochaine étape logique selon toi ? Si tu hésites, dis-moi ce que tu comprends jusqu'à présent.
+
+Je t'aiderai à avancer pas à pas !"""
+    
 
 @app.after_request
 def add_header(response):
@@ -870,26 +986,50 @@ def chat():
 
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
-    """Nouvel exercice"""
+    """Nouvel exercice - garde le contexte"""
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
-    session.pop("conversation", None)
-    session.pop("derniere_q_ia", None)
+    # Garder seulement l'exercice en cours pour référence
+    exercice_en_cours = session.get('exercice_en_cours', '')
+    session.clear()  # Nettoyer toute la session
+    session["eleve_id"] = request.args.get("eleve_id", session.get("eleve_id"))
+    session["lang"] = request.args.get("lang", session.get("lang", "fr"))
+    
+    # Si on avait un exercice, le remettre
+    if exercice_en_cours:
+        session['exercice_en_cours'] = exercice_en_cours
     
     flash("Nouvel exercice ! Pose ta question.", "success")
     return redirect(url_for("enseignant_virtuel"))
 
+
 @app.route("/toggle-examen", methods=["POST"])
 def toggle_examen():
-    """Basculer mode examen"""
+    """Basculer mode examen - garder la conversation"""
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
     current = session.get("mode_examen", False)
     session["mode_examen"] = not current
     
+    # Garder la conversation en cours
+    conversation = session.get("conversation", [])
+    
     flash(f"Mode examen {'activé' if not current else 'désactivé'}", "success")
+    return redirect(url_for("enseignant_virtuel"))
+
+
+@app.route("/retour-exercice", methods=["POST"])
+def retour_exercice():
+    """Revenir à l'exercice en cours"""
+    if "eleve_id" not in session:
+        return redirect(url_for("login_eleve"))
+    
+    # Nettoyer seulement les variables temporaires
+    session.pop('derniere_q_ia', None)
+    
+    flash("Retour à l'exercice en cours", "info")
     return redirect(url_for("enseignant_virtuel"))
 
 @app.after_request

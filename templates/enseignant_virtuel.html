@@ -122,6 +122,50 @@
       transform: translateX(-3px);
     }
     
+    /* Exercice en cours */
+    .exercice-header {
+      background: #e8f4ff;
+      border-left: 4px solid var(--primary);
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    
+    .exercice-icon {
+      color: var(--primary);
+      font-size: 1.2rem;
+      margin-top: 2px;
+    }
+    
+    .exercice-content {
+      flex: 1;
+    }
+    
+    .exercice-title {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+    }
+    
+    .exercice-text {
+      color: #34495e;
+      line-height: 1.4;
+      font-size: 0.95rem;
+    }
+    
+    .exercice-counter {
+      background: var(--primary);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    
     /* Controls */
     .controls {
       display: flex;
@@ -157,12 +201,17 @@
       color: var(--dark);
     }
     
+    .btn-reset {
+      background: #6c757d;
+      color: white;
+    }
+    
     /* Chat Container */
     .chat-container {
       background: white;
       border-radius: 12px;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      height: calc(100vh - 200px);
+      height: calc(100vh - 250px);
       min-height: 500px;
       display: flex;
       flex-direction: column;
@@ -235,6 +284,18 @@
       margin-bottom: 5px;
       font-size: 0.85rem;
       opacity: 0.8;
+    }
+    
+    /* Step indicator */
+    .step-indicator {
+      display: inline-block;
+      background: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      margin-right: 8px;
+      font-weight: 500;
     }
     
     /* Input Area */
@@ -365,6 +426,22 @@
       100% { transform: rotate(360deg); }
     }
     
+    /* Progress bar */
+    .progress-container {
+      height: 4px;
+      background: #e2e8f0;
+      border-radius: 2px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
       body {
@@ -399,8 +476,17 @@
         flex-direction: column;
       }
       
+      .exercice-header {
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .exercice-counter {
+        align-self: flex-start;
+      }
+      
       .chat-container {
-        height: calc(100vh - 220px);
+        height: calc(100vh - 270px);
       }
       
       .message {
@@ -418,13 +504,15 @@
       .controls,
       .input-area,
       .exam-mode-indicator,
-      .btn-back {
+      .btn-back,
+      .exercice-header {
         display: none !important;
       }
       
       .chat-container {
         box-shadow: none;
         border: 1px solid #ddd;
+        height: auto;
       }
     }
   </style>
@@ -470,6 +558,29 @@
       </div>
     </header>
 
+    <!-- Exercice en cours -->
+    {% set exercice_en_cours = session.get('exercice_en_cours', '') %}
+    {% set conversation = session.get('conversation', []) %}
+    
+    {% if exercice_en_cours and conversation|length > 0 %}
+    <div class="exercice-header">
+      <div class="exercice-icon">
+        <i class="fas fa-book-open"></i>
+      </div>
+      <div class="exercice-content">
+        <div class="exercice-title">
+          {% if lang == 'en' %}Current Exercise{% else %}Exercice en cours{% endif %}
+        </div>
+        <div class="exercice-text">
+          {{ exercice_en_cours[:150] }}{% if exercice_en_cours|length > 150 %}...{% endif %}
+        </div>
+      </div>
+      <div class="exercice-counter">
+        {{ conversation|length//2 }} {% if lang == 'en' %}steps{% else %}étapes{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Controls -->
     <div class="controls">
       <form method="POST" action="/nouvel-exercice" class="flex-1">
@@ -489,6 +600,15 @@
           {% endif %}
         </button>
       </form>
+      
+      {% if exercice_en_cours %}
+      <form method="POST" action="/retour-exercice" class="flex-1">
+        <button type="submit" class="btn btn-reset" id="resetBtn">
+          <i class="fas fa-redo"></i>
+          {% if lang == 'en' %}Reset Steps{% else %}Reprendre{% endif %}
+        </button>
+      </form>
+      {% endif %}
     </div>
 
     <!-- Chat Container -->
@@ -496,8 +616,6 @@
       <!-- Messages Area -->
       <div class="messages-area" id="messagesArea">
         <!-- Conversation -->
-        {% set conversation = session.get('conversation', []) %}
-        
         {% if conversation %}
           {% for message in conversation %}
             {% if '👤 Élève:' in message %}
@@ -505,6 +623,9 @@
                 <div class="message-header">
                   <i class="fas fa-user"></i>
                   <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
+                  {% if loop.index > 1 %}
+                  <span class="step-indicator">Étape {{ (loop.index + 1)//2 }}</span>
+                  {% endif %}
                 </div>
                 <div class="message-bubble">
                   {{ message.replace('👤 Élève: ', '')|safe }}
@@ -515,6 +636,9 @@
                 <div class="message-header">
                   <i class="fas fa-robot"></i>
                   <span>{% if lang == 'en' %}Guide{% else %}Guide{% endif %}</span>
+                  {% if loop.index > 2 %}
+                  <span class="step-indicator">Étape {{ loop.index//2 }}</span>
+                  {% endif %}
                 </div>
                 <div class="message-bubble">
                   {{ message.replace('🤖 Enseignant: ', '')|safe }}
@@ -522,6 +646,14 @@
               </div>
             {% endif %}
           {% endfor %}
+          
+          <!-- Progress indicator -->
+          {% if conversation|length >= 4 %}
+          <div class="progress-container">
+            <div class="progress-bar" style="width: {{ (conversation|length / 20) * 100 }}%"></div>
+          </div>
+          {% endif %}
+          
         {% else %}
           <!-- Welcome Message -->
           <div class="message bot-message welcome-message">
@@ -537,6 +669,16 @@
                 <li>{% if lang == 'en' %}You answer{% else %}Tu réponds{% endif %}</li>
                 <li>{% if lang == 'en' %}We continue until you find!{% else %}On continue jusqu'à ce que tu trouves !{% endif %}</li>
               </ol>
+              
+              {% if exercice_en_cours %}
+              <div class="teacher-question" style="margin-top: 15px;">
+                <h5><i class="fas fa-lightbulb"></i> 
+                  {% if lang == 'en' %}Previous exercise:{% else %}Exercice précédent :{% endif %}
+                </h5>
+                <p>{{ exercice_en_cours[:100] }}{% if exercice_en_cours|length > 100 %}...{% endif %}</p>
+              </div>
+              {% endif %}
+              
               <p><em>✨ {% if lang == 'en' %}Ready? Write your exercise below!{% else %}Prêt ? Écris ton exercice ci-dessous !{% endif %}</em></p>
             </div>
           </div>
@@ -578,6 +720,7 @@
   <!-- JavaScript -->
   <script>
     let isProcessing = false;
+    let conversationLength = {{ conversation|length|default(0) }};
     
     document.addEventListener('DOMContentLoaded', function() {
       // Auto-focus
@@ -615,17 +758,25 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i>';
           }
           
-          // Auto-reset after 15 seconds (safety)
+          // Show progress for long conversations
+          if (conversationLength >= 15) {
+            showAlert("{% if lang == 'en' %}Long conversation detected. The guide will keep the exercise in mind.{% else %}Conversation longue détectée. Le guide gardera l'exercice en tête.{% endif %}", 'info');
+          }
+          
+          // Auto-reset after 20 seconds (safety)
           setTimeout(() => {
-            isProcessing = false;
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            if (isProcessing) {
+              isProcessing = false;
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+              }
+              showAlert("{% if lang == 'en' %}Request timeout. Please try again.{% else %}Délai dépassé. Veuillez réessayer.{% endif %}", 'warning');
             }
-          }, 15000);
+          }, 20000);
           
           // Let form submit normally
-          console.log('📤 Sending...');
+          console.log('📤 Sending step ' + (conversationLength/2 + 1) + '...');
         });
       }
       
@@ -638,12 +789,16 @@
       }, 4000);
       
       // Prevent double clicks on control buttons
-      const controlBtns = document.querySelectorAll('#newExerciseBtn, #toggleExamBtn');
+      const controlBtns = document.querySelectorAll('#newExerciseBtn, #toggleExamBtn, #resetBtn');
       controlBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-          this.disabled = true;
-          setTimeout(() => this.disabled = false, 2000);
-        });
+        if (btn) {
+          btn.addEventListener('click', function() {
+            this.disabled = true;
+            setTimeout(() => {
+              if (this) this.disabled = false;
+            }, 2000);
+          });
+        }
       });
       
       // MathJax observer
@@ -655,6 +810,9 @@
         });
         observer.observe(messagesArea, { childList: true, subtree: true });
       }
+      
+      // Update progress bar based on conversation length
+      updateProgressBar();
     });
     
     function scrollToBottom() {
@@ -690,6 +848,14 @@
       }, 3000);
     }
     
+    function updateProgressBar() {
+      const progressBar = document.querySelector('.progress-bar');
+      if (progressBar) {
+        const width = Math.min((conversationLength / 20) * 100, 100);
+        progressBar.style.width = width + '%';
+      }
+    }
+    
     // Reset processing state on page show
     window.addEventListener('pageshow', function() {
       isProcessing = false;
@@ -698,7 +864,20 @@
         submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
       }
       setTimeout(scrollToBottom, 200);
+      updateProgressBar();
     });
+    
+    // Auto-scroll when new messages are added
+    const observer = new MutationObserver(function() {
+      setTimeout(scrollToBottom, 100);
+      conversationLength = document.querySelectorAll('.message').length;
+      updateProgressBar();
+    });
+    
+    const messagesContainer = document.getElementById('messagesArea');
+    if (messagesContainer) {
+      observer.observe(messagesContainer, { childList: true, subtree: false });
+    }
   </script>
 </body>
 </html>
