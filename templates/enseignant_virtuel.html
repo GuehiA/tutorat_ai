@@ -72,6 +72,12 @@
       box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
     }
     
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
     .student-info {
       display: flex;
       align-items: center;
@@ -95,6 +101,25 @@
       padding: 5px 12px;
       border-radius: 20px;
       font-size: 0.85rem;
+    }
+    
+    /* Bouton retour */
+    .btn-back {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 8px 15px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-back:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateX(-3px);
     }
     
     /* Controls */
@@ -348,6 +373,26 @@
       
       .header {
         padding: 12px 15px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .header-left {
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      .niveau-badge {
+        align-self: flex-start;
+      }
+      
+      .btn-back span {
+        display: none; /* Cache le texte sur mobile */
+      }
+      
+      .btn-back {
+        padding: 8px 12px;
       }
       
       .controls {
@@ -355,7 +400,7 @@
       }
       
       .chat-container {
-        height: calc(100vh - 180px);
+        height: calc(100vh - 220px);
       }
       
       .message {
@@ -372,7 +417,8 @@
     @media print {
       .controls,
       .input-area,
-      .exam-mode-indicator {
+      .exam-mode-indicator,
+      .btn-back {
         display: none !important;
       }
       
@@ -396,20 +442,29 @@
   <div class="container">
     <!-- Header -->
     <header class="header">
-      <div class="student-info">
-        <div class="avatar">
-          {{ eleve.nom_complet.split(' ')[0][0] }}
-          {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+      <div class="header-left">
+        <div class="student-info">
+          <div class="avatar">
+            {{ eleve.nom_complet.split(' ')[0][0] }}
+            {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.2rem;">
+              {% if lang == 'en' %}Math Guide{% else %}Guide de Maths{% endif %}
+            </h3>
+            <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
+              {{ eleve.nom_complet.split(' ')[0] }}
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 style="margin: 0; font-size: 1.2rem;">
-            {% if lang == 'en' %}Math Guide{% else %}Guide de Maths{% endif %}
-          </h3>
-          <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
-            {{ eleve.nom_complet.split(' ')[0] }}
-          </p>
-        </div>
+        
+        <!-- Bouton de retour au dashboard -->
+        <a href="{{ url_for('dashboard_eleve') }}" class="btn-back">
+          <i class="fas fa-arrow-left"></i>
+          <span>{% if lang == 'en' %}Dashboard{% else %}Retour{% endif %}</span>
+        </a>
       </div>
+      
       <div class="niveau-badge">
         {{ eleve.niveau.nom if eleve.niveau else '6ème' }}
       </div>
