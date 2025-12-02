@@ -253,6 +253,107 @@
       border-radius: 12px;
       margin-top: 20px;
     }
+    
+    /* NOUVELLE SECTION : IA PEDAGOGIQUE POUR ÉLÈVE */
+    .ia-pedagogique-section {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, #f8f9ff 0%, #e3e9ff 100%);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 25px;
+      box-shadow: var(--shadow);
+      border-left: 5px solid var(--accent);
+    }
+    
+    .ia-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .ia-avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4361ee, #9b59b6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: white;
+    }
+    
+    .ia-info h3 {
+      margin: 0;
+      color: #2c3e50;
+      font-size: 1.8rem;
+    }
+    
+    .ia-info p {
+      margin: 5px 0 0 0;
+      color: #7f8c8d;
+    }
+    
+    .ia-insights {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 25px;
+    }
+    
+    .ia-card {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transition: var(--transition);
+    }
+    
+    .ia-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    
+    .ia-card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      color: var(--dark);
+      font-size: 1.2rem;
+    }
+    
+    .ia-card-content {
+      color: #34495e;
+      line-height: 1.6;
+    }
+    
+    .ia-progress {
+      margin-top: 15px;
+    }
+    
+    .ia-progress-bar {
+      height: 8px;
+      background: var(--light);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    
+    .ia-progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    
+    .ia-progress-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+    
     /* DESIGN OPTIMISÉ POUR LE COMPTEUR D'ESSAI */
     .trial-counter-card {
       background: linear-gradient(135deg, #fff9e6 0%, #fef5e7 100%);
@@ -766,6 +867,143 @@
       </div>
     </div>
 
+    <!-- NOUVELLE SECTION : IA PEDAGOGIQUE -->
+    <div class="ia-pedagogique-section">
+      <div class="ia-header">
+        <div class="ia-avatar">
+          <i class="fas fa-brain"></i>
+        </div>
+        <div class="ia-info">
+          <h3>
+            {% if lang == 'en' %}
+              🧠 Pedagogical AI Assistant
+            {% else %}
+              🧠 Assistant Pédagogique IA
+            {% endif %}
+          </h3>
+          <p>
+            {% if lang == 'en' %}
+              Personalized insights based on your learning journey
+            {% else %}
+              Analyses personnalisées basées sur votre parcours
+            {% endif %}
+          </p>
+        </div>
+      </div>
+      
+      <div class="ia-insights">
+        <!-- Insight 1: Chapitre détecté -->
+        <div class="ia-card">
+          <div class="ia-card-title">
+            <i class="fas fa-book-open" style="color: #4361ee;"></i>
+            {% if lang == 'en' %}
+              Detected Chapter
+            {% else %}
+              Chapitre Détecté
+            {% endif %}
+          </div>
+          <div class="ia-card-content">
+            <strong style="color: #2c3e50; font-size: 1.1rem;">
+              {{ ai_stats.chapitre_actuel if ai_stats and ai_stats.chapitre_actuel else 'Fractions' }}
+            </strong>
+            <p style="margin-top: 10px; font-size: 0.95rem;">
+              {% if lang == 'en' %}
+                Based on your recent exercises, you're focusing on this topic. Great progress!
+              {% else %}
+                Basé sur vos exercices récents, vous travaillez sur ce sujet. Bonne progression !
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        
+        <!-- Insight 2: Niveau détecté -->
+        <div class="ia-card">
+          <div class="ia-card-title">
+            <i class="fas fa-chart-line" style="color: #3fba83;"></i>
+            {% if lang == 'en' %}
+              Detected Level
+            {% else %}
+              Niveau Détecté
+            {% endif %}
+          </div>
+          <div class="ia-card-content">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.1rem; font-weight: bold; color: #2c3e50;">
+                {% if ai_stats and ai_stats.niveau_detecte %}
+                  {{ 'Primary' if ai_stats.niveau_detecte == 'primaire' else 'Secondary' }}
+                {% else %}
+                  {{ 'Primary' if eleve.niveau and 'prim' in eleve.niveau.nom.lower() else 'Secondary' }}
+                {% endif %}
+              </span>
+              <span style="background: #e0f7ed; color: #38a873; padding: 3px 10px; border-radius: 12px; font-size: 0.85rem;">
+                {% if lang == 'en' %}
+                  Auto-detected
+                {% else %}
+                  Auto-détecté
+                {% endif %}
+              </span>
+            </div>
+            <p style="margin-top: 10px; font-size: 0.95rem;">
+              {% if lang == 'en' %}
+                The AI adapts explanations to your learning level.
+              {% else %}
+                L'IA adapte les explications à votre niveau d'apprentissage.
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        
+        <!-- Insight 3: Limite de tentatives -->
+        <div class="ia-card">
+          <div class="ia-card-title">
+            <i class="fas fa-shield-alt" style="color: #fcc419;"></i>
+            {% if lang == 'en' %}
+              Attempt Limit
+            {% else %}
+              Limite de Tentatives
+            {% endif %}
+          </div>
+          <div class="ia-card-content">
+            <div class="ia-progress">
+              <div class="ia-progress-text">
+                <span>
+                  {% if lang == 'en' %}
+                    Daily attempts
+                  {% else %}
+                    Tentatives journalières
+                  {% endif %}
+                </span>
+                <span>
+                  {{ ai_stats.tentatives_utilisees if ai_stats else 0 }}/{{ ai_stats.tentatives_max if ai_stats else 5 }}
+                </span>
+              </div>
+              <div class="ia-progress-bar">
+                <div class="ia-progress-fill" 
+                     style="width: {{ ((ai_stats.tentatives_utilisees if ai_stats else 0) / (ai_stats.tentatives_max if ai_stats else 5)) * 100 }}%;
+                            background: {{ 'linear-gradient(90deg, #fcc419, #e85959)' if ai_stats and ai_stats.tentatives_utilisees >= ai_stats.tentatives_max else 'linear-gradient(90deg, #3fba83, #2ecc71)' }};">
+                </div>
+              </div>
+            </div>
+            <p style="margin-top: 15px; font-size: 0.95rem;">
+              {% if lang == 'en' %}
+                {% if ai_stats and ai_stats.tentatives_utilisees >= ai_stats.tentatives_max %}
+                  ⚠️ Daily limit reached. Try again tomorrow!
+                {% else %}
+                  Focus on understanding, not just answers.
+                {% endif %}
+              {% else %}
+                {% if ai_stats and ai_stats.tentatives_utilisees >= ai_stats.tentatives_max %}
+                  ⚠️ Limite journalière atteinte. Réessayez demain !
+                {% else %}
+                  Concentrez-vous sur la compréhension, pas seulement les réponses.
+                {% endif %}
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Section principale du tableau de bord -->
     <div class="dashboard">
       <!-- Compteur d'essai gratuit - DESIGN OPTIMISÉ -->
@@ -974,120 +1212,122 @@
             {% endif %}
           </a>
         </div>
+        
         <!-- Carte Objectifs du Jour -->
-<div class="card">
-  <h3><i class="fas fa-bullseye"></i>
-    {% if lang == 'en' %}
-      Today's Goals
-    {% else %}
-      Objectifs du Jour
-    {% endif %}
-    <span style="font-size: 0.8em; color: var(--primary); margin-left: 10px;">
-      {{ date_du_jour.strftime('%d/%m') if date_du_jour }}
-    </span>
-  </h3>
-  
-  <div class="goals-container">
-    <!-- Objectif 1: Compléter 1 exercice -->
-    <div class="goal-item {% if objectifs_du_jour[0].completed %}goal-completed{% endif %}">
-      <div class="goal-checkbox">
-        <input type="checkbox" id="goal1" 
-               {% if objectifs_du_jour[0].completed %}checked{% endif %} disabled>
-        <label for="goal1"></label>
-      </div>
-      <div class="goal-content">
-        <span class="goal-text">
-          {{ objectifs_du_jour[0].text }}
-          <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
-            {{ objectifs_du_jour[0].progress }}
-          </small>
-        </span>
-        {% if objectifs_du_jour[0].completed %}
-        <span class="goal-completed">
-          <i class="fas fa-check"></i>
-          {% if lang == 'en' %}Done{% else %}Fait{% endif %}
-        </span>
-        {% endif %}
-      </div>
-    </div>
+        <div class="card">
+          <h3><i class="fas fa-bullseye"></i>
+            {% if lang == 'en' %}
+              Today's Goals
+            {% else %}
+              Objectifs du Jour
+            {% endif %}
+            <span style="font-size: 0.8em; color: var(--primary); margin-left: 10px;">
+              {{ date_du_jour.strftime('%d/%m') if date_du_jour }}
+            </span>
+          </h3>
+          
+          <div class="goals-container">
+            <!-- Objectif 1: Compléter 1 exercice -->
+            <div class="goal-item {% if objectifs_du_jour[0].completed %}goal-completed{% endif %}">
+              <div class="goal-checkbox">
+                <input type="checkbox" id="goal1" 
+                       {% if objectifs_du_jour[0].completed %}checked{% endif %} disabled>
+                <label for="goal1"></label>
+              </div>
+              <div class="goal-content">
+                <span class="goal-text">
+                  {{ objectifs_du_jour[0].text }}
+                  <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
+                    {{ objectifs_du_jour[0].progress }}
+                  </small>
+                </span>
+                {% if objectifs_du_jour[0].completed %}
+                <span class="goal-completed">
+                  <i class="fas fa-check"></i>
+                  {% if lang == 'en' %}Done{% else %}Fait{% endif %}
+                </span>
+                {% endif %}
+              </div>
+            </div>
 
-    <!-- Objectif 2: Moyenne 3+ étoiles -->
-    <div class="goal-item {% if objectifs_du_jour[1].completed %}goal-completed{% endif %}">
-      <div class="goal-checkbox">
-        <input type="checkbox" id="goal2" 
-               {% if objectifs_du_jour[1].completed %}checked{% endif %} disabled>
-        <label for="goal2"></label>
-      </div>
-      <div class="goal-content">
-        <span class="goal-text">
-          {{ objectifs_du_jour[1].text }}
-          <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
-            {{ objectifs_du_jour[1].progress }}
-          </small>
-        </span>
-        {% if objectifs_du_jour[1].completed %}
-        <span class="goal-completed">
-          <i class="fas fa-check"></i>
-          {% if lang == 'en' %}Done{% else %}Fait{% endif %}
-        </span>
-        {% endif %}
-      </div>
-    </div>
+            <!-- Objectif 2: Moyenne 3+ étoiles -->
+            <div class="goal-item {% if objectifs_du_jour[1].completed %}goal-completed{% endif %}">
+              <div class="goal-checkbox">
+                <input type="checkbox" id="goal2" 
+                       {% if objectifs_du_jour[1].completed %}checked{% endif %} disabled>
+                <label for="goal2"></label>
+              </div>
+              <div class="goal-content">
+                <span class="goal-text">
+                  {{ objectifs_du_jour[1].text }}
+                  <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
+                    {{ objectifs_du_jour[1].progress }}
+                  </small>
+                </span>
+                {% if objectifs_du_jour[1].completed %}
+                <span class="goal-completed">
+                  <i class="fas fa-check"></i>
+                  {% if lang == 'en' %}Done{% else %}Fait{% endif %}
+                </span>
+                {% endif %}
+              </div>
+            </div>
 
-    <!-- Objectif 3: Compléter une remédiation -->
-    <div class="goal-item {% if objectifs_du_jour[2].completed %}goal-completed{% endif %}">
-      <div class="goal-checkbox">
-        <input type="checkbox" id="goal3" 
-               {% if objectifs_du_jour[2].completed %}checked{% endif %} disabled>
-        <label for="goal3"></label>
-      </div>
-      <div class="goal-content">
-        <span class="goal-text">
-          {{ objectifs_du_jour[2].text }}
-          <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
-            {{ objectifs_du_jour[2].progress }}
-          </small>
-        </span>
-        {% if objectifs_du_jour[2].completed %}
-        <span class="goal-completed">
-          <i class="fas fa-check"></i>
-          {% if lang == 'en' %}Done{% else %}Fait{% endif %}
-        </span>
-        {% endif %}
-      </div>
-    </div>
-  </div>
+            <!-- Objectif 3: Compléter une remédiation -->
+            <div class="goal-item {% if objectifs_du_jour[2].completed %}goal-completed{% endif %}">
+              <div class="goal-checkbox">
+                <input type="checkbox" id="goal3" 
+                       {% if objectifs_du_jour[2].completed %}checked{% endif %} disabled>
+                <label for="goal3"></label>
+              </div>
+              <div class="goal-content">
+                <span class="goal-text">
+                  {{ objectifs_du_jour[2].text }}
+                  <small style="display: block; font-size: 0.8em; color: var(--gray); margin-top: 2px;">
+                    {{ objectifs_du_jour[2].progress }}
+                  </small>
+                </span>
+                {% if objectifs_du_jour[2].completed %}
+                <span class="goal-completed">
+                  <i class="fas fa-check"></i>
+                  {% if lang == 'en' %}Done{% else %}Fait{% endif %}
+                </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
 
-  <!-- Barre de progression -->
-  <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--light);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-      <small style="color: var(--gray);">
-        {% if lang == 'en' %}
-          Daily progress
-        {% else %}
-          Progression quotidienne
-        {% endif %}
-      </small>
-      <small style="color: var(--primary); font-weight: bold;">
-        {{ progression_quotidienne.percent }}%
-      </small>
-    </div>
-    <div style="height: 6px; background: var(--light); border-radius: 3px; overflow: hidden;">
-      <div style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); 
-                  border-radius: 3px; width: {{ progression_quotidienne.percent }}%; 
-                  transition: width 0.5s ease;"></div>
-    </div>
-    <div style="text-align: center; margin-top: 5px;">
-      <small style="color: var(--gray);">
-        {% if lang == 'en' %}
-          {{ progression_quotidienne.completed }}/{{ progression_quotidienne.total }} goals completed
-        {% else %}
-          {{ progression_quotidienne.completed }}/{{ progression_quotidienne.total }} objectifs complétés
-        {% endif %}
-      </small>
-    </div>
-  </div>
-</div>
+          <!-- Barre de progression -->
+          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--light);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <small style="color: var(--gray);">
+                {% if lang == 'en' %}
+                  Daily progress
+                {% else %}
+                  Progression quotidienne
+                {% endif %}
+              </small>
+              <small style="color: var(--primary); font-weight: bold;">
+                {{ progression_quotidienne.percent }}%
+              </small>
+            </div>
+            <div style="height: 6px; background: var(--light); border-radius: 3px; overflow: hidden;">
+              <div style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); 
+                          border-radius: 3px; width: {{ progression_quotidienne.percent }}%; 
+                          transition: width 0.5s ease;"></div>
+            </div>
+            <div style="text-align: center; margin-top: 5px;">
+              <small style="color: var(--gray);">
+                {% if lang == 'en' %}
+                  {{ progression_quotidienne.completed }}/{{ progression_quotidienne.total }} goals completed
+                {% else %}
+                  {{ progression_quotidienne.completed }}/{{ progression_quotidienne.total }} objectifs complétés
+                {% endif %}
+              </small>
+            </div>
+          </div>
+        </div>
+        
         <!-- Carte Activité Récente -->
         <div class="card">
           <h3><i class="fas fa-clock"></i>
@@ -1250,7 +1490,7 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const cards = document.querySelectorAll('.card, .action-card, .teacher-card');
+      const cards = document.querySelectorAll('.card, .action-card, .teacher-card, .ia-card');
       cards.forEach((card, index) => {
         card.style.opacity = '0';
         card.style.transform = 'translateY(20px)';
@@ -1264,6 +1504,16 @@
       {% if eleve.est_en_essai_gratuit() and total_seconds > 0 %}
       startTrialCountdown({{ total_seconds }}, {{ pourcentage_temps_restant }});
       {% endif %}
+      
+      // Animation des barres de progression IA
+      const progressBars = document.querySelectorAll('.ia-progress-fill');
+      progressBars.forEach(bar => {
+        const width = bar.style.width;
+        bar.style.width = '0';
+        setTimeout(() => {
+          bar.style.width = width;
+        }, 500);
+      });
     });
 
     function startTrialCountdown(totalSeconds, initialPercentage) {

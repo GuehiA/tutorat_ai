@@ -303,56 +303,36 @@ def eleve_remediations():
     )
     
 # chatbot_routes.py
-@app.route("/enseignant-virtuel", methods=["GET", "POST"])
+@app.route("/enseignant-virtuel")
 def enseignant_virtuel():
-    lang = session.get("lang", "fr")
-    username = request.args.get("username")
-    eleve = User.query.filter_by(username=username).first_or_404()
-
-    # ✅ Réinitialisation propre au chargement de la page
-    if request.method == "GET":
-        session["guide_math_conversation"] = [
-            {
-                "role": "system",
-                "content": get_system_prompt(lang)
-            }
-        ]
-
+    username = request.args.get('username')
+    lang = request.args.get('lang', 'fr')
+    
+    # Récupère l'utilisateur (qui est un élève dans ce contexte)
+    user = User.query.filter_by(username=username, role='student').first()
+    if not user:
+        flash("Élève non trouvé", "error")
+        return redirect("/")
+    
+    # Récupère la conversation si elle existe
+    conversation = session.get("guide_math_conversation", [])
+    
+    # Initialise la réponse IA
     reponse_ia = None
-    question = ""
-
-    if request.method == "POST":
-        question = request.form.get("question", "").strip()
-
-        if question:
-            session["guide_math_conversation"].append(
-                {"role": "user", "content": question}
-            )
-
-            try:
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=session["guide_math_conversation"],
-                    temperature=0.4
-                )
-
-                reponse_ia = response.choices[0].message.content.strip()
-
-                session["guide_math_conversation"].append(
-                    {"role": "assistant", "content": reponse_ia}
-                )
-
-                session.modified = True
-
-            except Exception as e:
-                reponse_ia = f"Erreur : {e}"
-
+    question = None
+    
+    # Récupère la dernière question/réponse si elle existe
+    if conversation:
+        question = conversation[-2] if len(conversation) >= 2 else None
+        reponse_ia = conversation[-1] if len(conversation) >= 1 else None
+    
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
-        eleve=eleve,
+        user=user,  # ← Important : passe 'user' au template
         question=question,
-        reponse=reponse_ia
+        reponse=reponse_ia,
+        date_du_jour=datetime.utcnow()
     )
 
 

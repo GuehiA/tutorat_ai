@@ -2,219 +2,552 @@
 <html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
+  <title>
+    {% if lang == 'en' %}Math Guide - Virtual Teacher{% else %}Guide de mathématiques - Enseignant Virtuel{% endif %}
+  </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Favicon VirtuEduc -->
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
 
-  <meta name="theme-color" content="#4361ee">
-
-  <title>{% if lang == 'en' %}Teacher Dashboard{% else %}Tableau de bord Enseignant{% endif %}</title>
-
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Bootstrap pour les alertes -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- MathJax -->
+  <script>
+    window.MathJax = {
+      tex: { 
+        inlineMath: [['\\(', '\\)']], 
+        displayMath: [['\\[', '\\]']] 
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            console.log('MathJax is ready');
+          });
+        }
+      }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
   <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --success: #3fba83;
+      --warning: #fcc419;
+      --danger: #e85959;
+      --light: #f8f9ff;
+      --dark: #121826;
+    }
+
     body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--light) 0%, #e8eaff 100%);
+      margin: 0;
       padding: 20px;
+      min-height: 100vh;
     }
 
-    .main-container {
-      max-width: 1200px;
-      margin: auto;
-      background: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
     }
 
-    .header-section {
-      background: linear-gradient(135deg, #4361ee, #3a56d4);
+    header {
+      background: var(--primary);
       color: white;
-      padding: 30px;
-      text-align: center;
-      position: relative;
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
     }
 
-    .teacher-avatar {
-      width: 80px;
-      height: 80px;
-      margin: auto;
+    .student-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .student-avatar {
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.2);
+      background: rgba(255, 255, 255, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2rem;
-      margin-bottom: 10px;
-    }
-
-    .content-section {
-      padding: 30px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-      margin-bottom: 40px;
-    }
-
-    .stat-card {
-      background: #f8f9ff;
-      border-radius: 14px;
-      padding: 20px;
-      text-align: center;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-    }
-
-    .stat-number {
-      font-size: 2.3rem;
+      font-size: 1.5rem;
       font-weight: bold;
-      color: #4361ee;
     }
 
-    .chart-container {
-      background: #f8f9ff;
-      border-radius: 16px;
-      padding: 25px;
-      margin-bottom: 30px;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    .chat-container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
     }
 
-    .chart-title {
-      font-weight: 600;
-      margin-bottom: 15px;
-      color: #4361ee;
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 25px;
     }
 
-    .logout-btn {
-      border: 2px solid #e85959;
-      padding: 10px 30px;
-      border-radius: 12px;
-      color: #e85959;
-      text-decoration: none;
-      font-weight: 600;
+    @media (max-width: 768px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .logout-btn:hover {
-      background: #e85959;
+    .btn {
+      padding: 14px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btn-new {
+      background: var(--success);
       color: white;
+    }
+
+    .btn-new:hover {
+      background: #38a873;
+      transform: translateY(-2px);
+    }
+
+    .btn-exam {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-exam:hover {
+      background: #e6b017;
+      transform: translateY(-2px);
+    }
+
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 20px;
+      font-size: 1.1rem;
+      border-radius: 10px;
+      border: 2px solid #e2e8f0;
+      resize: vertical;
+      font-family: inherit;
+      margin-bottom: 15px;
+      transition: border-color 0.3s ease;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .btn-send {
+      background: var(--primary);
+      color: white;
+      width: 100%;
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .btn-send:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(67, 97, 238, 0.3);
+    }
+
+    .messages {
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .message {
+      padding: 20px;
+      border-radius: 12px;
+      position: relative;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .user-message {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+      max-width: 80%;
+    }
+
+    .bot-message {
+      background: #f0f2f5;
+      border-left: 4px solid var(--primary);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+      max-width: 80%;
+    }
+
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .message-content {
+      line-height: 1.6;
+    }
+
+    .message-content p {
+      margin: 0 0 10px 0;
+    }
+
+    .message-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-content ul, .message-content ol {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+
+    .mode-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--warning);
+      color: white;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+    }
+
+    /* Styles pour le rendu MathJax */
+    .MathJax {
+      font-size: 1.1em !important;
+    }
+
+    .mjx-math {
+      font-size: 1.2em !important;
+    }
+
+    /* Alertes flash */
+    .alert-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      min-width: 300px;
+    }
+
+    /* Mode examen */
+    .exam-mode {
+      border: 3px solid var(--warning);
+    }
+
+    .exam-mode::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--warning), var(--danger));
+      border-radius: 15px 15px 0 0;
     }
   </style>
 </head>
 
 <body>
-
-<div class="main-container">
-
-  <!-- HEADER -->
-  <div class="header-section">
-    <div class="teacher-avatar"><i class="fas fa-chalkboard-teacher"></i></div>
-    <h1>
-      {% if lang == 'en' %}Welcome{% else %}Bienvenue{% endif %} {{ enseignant.nom }}
-    </h1>
-    <p>
-      {% if lang == 'en' %}
-        Pedagogical & AI supervision dashboard
-      {% else %}
-        Tableau de bord pédagogique & IA
+  <!-- Alertes flash -->
+  <div class="alert-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
       {% endif %}
-    </p>
+    {% endwith %}
   </div>
 
-  <!-- CONTENT -->
-  <div class="content-section">
-
-    <!-- STATS -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        👥
-        <div class="stat-number">{{ total_students or 0 }}</div>
-        Élèves
-      </div>
-      <div class="stat-card">
-        📚
-        <div class="stat-number">{{ total_lessons or 0 }}</div>
-        Leçons
-      </div>
-      <div class="stat-card">
-        ⭐
-        <div class="stat-number">{{ avg_stars or 0 }}/5</div>
-        Moyenne
-      </div>
-      <div class="stat-card">
-        🚧
-        <div class="stat-number">{{ nv_count or 0 }}</div>
-        Remédiations
-      </div>
-    </div>
-
-    <!-- IA ANALYSES -->
-    <h3 class="mb-3">🧠 Analyses pédagogiques IA</h3>
-
-    <div class="row">
-      <div class="col-md-6">
-        <div class="chart-container">
-          <div class="chart-title">📘 Chapitres les plus travaillés</div>
-          <canvas id="chapitresIA"></canvas>
-        </div>
-      </div>
-
-      <div class="col-md-6">
-        <div class="chart-container">
-          <div class="chart-title text-danger">🚨 Alertes pédagogiques</div>
-          <ul class="list-group list-group-flush">
-            <li class="list-group-item">
-              ⚠️ {{ ai_stats.tentatives_excessives }} dépassements de tentatives IA
-            </li>
-            <li class="list-group-item">
-              🚩 Élèves en difficulté :
-              <strong>{{ ai_stats.eleves_risque | join(', ') }}</strong>
-            </li>
-            <li class="list-group-item">
-              🎯 Niveau détecté automatiquement (primaire / secondaire)
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- LOGOUT -->
-    <div class="text-center mt-4">
-      <a href="/logout" class="logout-btn">
-        <i class="fas fa-sign-out-alt"></i> Déconnexion
-      </a>
-    </div>
-
+  <!-- Mode examen -->
+  {% if session.get('mode_examen') %}
+  <div class="mode-indicator">
+    <i class="fas fa-graduation-cap"></i>
+    {% if lang == 'en' %}Exam Mode: ON{% else %}Mode Examen : ACTIVÉ{% endif %}
   </div>
-</div>
+  {% endif %}
 
-<script>
-const ctx = document.getElementById('chapitresIA');
+  <div class="container">
+    <!-- En-tête -->
+    <header>
+      <div class="student-info">
+        <div class="student-avatar">
+          {{ user.nom_complet.split(' ')[0][0] }}{{ user.nom_complet.split(' ')[1][0] if user.nom_complet.split(' ')|length > 1 else '' }}
+        </div>
+        <div>
+          <h3 style="margin: 0;">
+            {% if lang == 'en' %}
+              Math Guide - {{ user.nom_complet.split(' ')[0] }}
+            {% else %}
+              Guide de maths - {{ user.nom_complet.split(' ')[0] }}
+            {% endif %}
+          </h3>
+          <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 0.9rem;">
+            {% if lang == 'en' %}
+              Virtual teacher for mathematics
+            {% else %}
+              Enseignant virtuel de mathématiques
+            {% endif %}
+          </p>
+        </div>
+      </div>
+      <div>
+        <span style="background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; font-size: 0.9rem;">
+          {{ user.niveau.nom if user.niveau else 'Niveau non défini' }}
+        </span>
+      </div>
+    </header>
 
-new Chart(ctx, {
-  type: 'doughnut',
-  data: {
-    labels: {{ ai_stats.chapitres | tojson }},
-    datasets: [{
-      data: {{ ai_stats.chapitre_counts | tojson }},
-      backgroundColor: ['#4361ee', '#3fba83', '#fcc419', '#e85959']
-    }]
-  },
-  options: {
-    plugins: {
-      legend: { position: 'bottom' }
+    <!-- Conteneur de chat -->
+    <div class="chat-container {% if session.get('mode_examen') %}exam-mode{% endif %}">
+      <!-- Contrôles -->
+      <div class="controls">
+        <form method="POST" action="/nouvel-exercice">
+          <input type="hidden" name="username" value="{{ user.username }}">
+          <input type="hidden" name="lang" value="{{ lang }}">
+          <button type="submit" class="btn btn-new">
+            <i class="fas fa-plus-circle"></i>
+            {% if lang == 'en' %}
+              New Exercise
+            {% else %}
+              Nouvel exercice
+            {% endif %}
+          </button>
+        </form>
+
+        <form method="POST" action="/toggle-examen">
+          <input type="hidden" name="username" value="{{ user.username }}">
+          <input type="hidden" name="lang" value="{{ lang }}">
+          <button type="submit" class="btn btn-exam">
+            <i class="fas fa-graduation-cap"></i>
+            {% if lang == 'en' %}
+              Exam Mode: {{ 'ON' if session.get('mode_examen') else 'OFF' }}
+            {% else %}
+              Mode Examen : {{ 'ACTIVÉ' if session.get('mode_examen') else 'DÉSACTIVÉ' }}
+            {% endif %}
+          </button>
+        </form>
+      </div>
+
+      <!-- Zone de chat -->
+      <div class="chat-area">
+        <form method="POST">
+          <input type="hidden" name="username" value="{{ user.username }}">
+          <input type="hidden" name="lang" value="{{ lang }}">
+          
+          <textarea 
+            name="question" 
+            placeholder="{% if lang == 'en' %}Write your math exercise here... You can use LaTeX for formulas: \\(x^2 + y^2 = z^2\\){% else %}Écrivez votre exercice de mathématiques ici... Vous pouvez utiliser LaTeX pour les formules : \\(x^2 + y^2 = z^2\\){% endif %}" 
+            required
+            autofocus></textarea>
+          
+          <button type="submit" class="btn btn-send">
+            <i class="fas fa-paper-plane"></i>
+            {% if lang == 'en' %}
+              Send to Virtual Teacher
+            {% else %}
+              Envoyer à l'enseignant virtuel
+            {% endif %}
+          </button>
+        </form>
+
+        <!-- Messages -->
+        <div class="messages">
+          {% if question and reponse %}
+            <!-- Message de l'élève -->
+            <div class="message user-message">
+              <div class="message-header">
+                <span><i class="fas fa-user"></i> {% if lang == 'en' %}You{% else %}Vous{% endif %}</span>
+                <span style="font-size: 0.8rem;">{{ date_du_jour.strftime('%H:%M') if date_du_jour else 'Maintenant' }}</span>
+              </div>
+              <div class="message-content">
+                {{ question|safe }}
+              </div>
+            </div>
+
+            <!-- Message du bot -->
+            <div class="message bot-message">
+              <div class="message-header">
+                <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
+                <span style="font-size: 0.8rem;">{{ date_du_jour.strftime('%H:%M') if date_du_jour else 'Maintenant' }}</span>
+              </div>
+              <div class="message-content">
+                {{ reponse|safe }}
+              </div>
+            </div>
+          {% elif not question and not reponse %}
+            <!-- Message de bienvenue -->
+            <div class="message bot-message">
+              <div class="message-header">
+                <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
+              </div>
+              <div class="message-content">
+                {% if lang == 'en' %}
+                  <h4 style="margin-top: 0;">👋 Hello {{ user.nom_complet.split(' ')[0] }}!</h4>
+                  <p>I'm your virtual math teacher. I can help you with:</p>
+                  <ul>
+                    <li>Solving exercises step by step</li>
+                    <li>Explaining mathematical concepts</li>
+                    <li>Checking your answers</li>
+                    <li>Guiding you through difficult problems</li>
+                  </ul>
+                  <p><strong>How to use:</strong></p>
+                  <ol>
+                    <li>Write your exercise in the box above</li>
+                    <li>Use LaTeX for formulas: <code>\(x^2 + y^2 = z^2\)</code></li>
+                    <li>Click "Send to Virtual Teacher"</li>
+                    <li>I'll guide you through the solution</li>
+                  </ol>
+                  <p><em>Try me with an exercise now! ✨</em></p>
+                {% else %}
+                  <h4 style="margin-top: 0;">👋 Bonjour {{ user.nom_complet.split(' ')[0] }} !</h4>
+                  <p>Je suis votre enseignant virtuel de mathématiques. Je peux vous aider à :</p>
+                  <ul>
+                    <li>Résoudre des exercices étape par étape</li>
+                    <li>Expliquer des concepts mathématiques</li>
+                    <li>Vérifier vos réponses</li>
+                    <li>Vous guider dans les problèmes difficiles</li>
+                  </ul>
+                  <p><strong>Comment utiliser :</strong></p>
+                  <ol>
+                    <li>Écrivez votre exercice dans la boîte ci-dessus</li>
+                    <li>Utilisez LaTeX pour les formules : <code>\(x^2 + y^2 = z^2\)</code></li>
+                    <li>Cliquez sur "Envoyer à l'enseignant virtuel"</li>
+                    <li>Je vous guiderai vers la solution</li>
+                  </ol>
+                  <p><em>Essayez-moi avec un exercice maintenant ! ✨</em></p>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS pour les alertes -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // MathJax
+      if (window.MathJax) {
+        MathJax.typesetPromise();
+      }
+
+      // Auto-focus sur le textarea
+      const textarea = document.querySelector('textarea');
+      if (textarea) {
+        textarea.focus();
+        // Place le curseur à la fin
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      }
+
+      // Auto-hide les alertes après 5 secondes
+      setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        });
+      }, 5000);
+
+      // Animation des messages
+      const messages = document.querySelectorAll('.message');
+      messages.forEach((message, index) => {
+        message.style.animationDelay = `${index * 0.2}s`;
+      });
+
+      // Gestion du mode examen
+      const examMode = {{ 'true' if session.get('mode_examen') else 'false' }};
+      if (examMode) {
+        console.log('Exam mode is active - limited assistance available');
+      }
+    });
+
+    // Re-render MathJax quand le contenu change
+    function renderMath() {
+      if (window.MathJax) {
+        MathJax.typesetPromise();
+      }
     }
-  }
-});
-</script>
 
+    // Re-render sur les messages qui pourraient être ajoutés dynamiquement
+    const observer = new MutationObserver(renderMath);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  </script>
 </body>
 </html>
