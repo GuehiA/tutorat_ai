@@ -166,40 +166,32 @@
       font-weight: 500;
     }
     
-    /* Controls */
+    /* Controls - SIMPLIFIÉ */
     .controls {
       display: flex;
       gap: 10px;
       margin-bottom: 15px;
     }
     
-    /* Classes flex pour les formulaires */
-    .flex-1 {
-      flex: 1;
-    }
-    
-    /* Correction pour les formulaires dans controls */
     .controls form {
       margin: 0;
       flex: 1;
       display: flex;
     }
     
-    .controls form .btn {
-      width: 100%;
-    }
-    
     .btn {
-      padding: 10px 15px;
+      padding: 12px 20px;
       border: none;
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 1rem;
       cursor: pointer;
       transition: all 0.2s ease;
       display: flex;
       align-items: center;
       gap: 8px;
       justify-content: center;
+      width: 100%;
+      font-weight: 500;
     }
     
     .btn:active {
@@ -211,14 +203,8 @@
       color: white;
     }
     
-    .btn-exam {
-      background: var(--warning);
-      color: var(--dark);
-    }
-    
-    .btn-reset {
-      background: #6c757d;
-      color: white;
+    .btn-new:hover {
+      background: #38a873;
     }
     
     /* Chat Container */
@@ -226,7 +212,7 @@
       background: white;
       border-radius: 12px;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      height: calc(100vh - 250px);
+      height: calc(100vh - 200px);
       min-height: 500px;
       display: flex;
       flex-direction: column;
@@ -364,28 +350,6 @@
       transform: scale(0.98);
     }
     
-    /* Exam Mode */
-    .exam-mode-indicator {
-      position: fixed;
-      top: 15px;
-      right: 15px;
-      background: var(--warning);
-      color: var(--dark);
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      z-index: 1000;
-      box-shadow: 0 2px 8px rgba(252, 196, 25, 0.3);
-    }
-    
-    .exam-mode {
-      border: 2px solid var(--warning);
-    }
-    
     /* Welcome message */
     .welcome-message .message-bubble {
       background: linear-gradient(135deg, #f0f2f5 0%, #e8eaff 100%);
@@ -480,7 +444,7 @@
       }
       
       .btn-back span {
-        display: none; /* Cache le texte sur mobile */
+        display: none;
       }
       
       .btn-back {
@@ -501,47 +465,17 @@
       }
       
       .chat-container {
-        height: calc(100vh - 270px);
+        height: calc(100vh - 220px);
       }
       
       .message {
         max-width: 90%;
-      }
-      
-      .exam-mode-indicator {
-        top: 10px;
-        right: 10px;
-      }
-    }
-    
-    /* Print styles */
-    @media print {
-      .controls,
-      .input-area,
-      .exam-mode-indicator,
-      .btn-back,
-      .exercice-header {
-        display: none !important;
-      }
-      
-      .chat-container {
-        box-shadow: none;
-        border: 1px solid #ddd;
-        height: auto;
       }
     }
   </style>
 </head>
 
 <body>
-  <!-- Exam Mode Indicator -->
-  {% if session.get('mode_examen') %}
-  <div class="exam-mode-indicator">
-    <i class="fas fa-graduation-cap"></i>
-    {% if lang == 'en' %}Exam Mode{% else %}Mode Examen{% endif %}
-  </div>
-  {% endif %}
-
   <div class="container">
     <!-- Header -->
     <header class="header">
@@ -596,41 +530,18 @@
     </div>
     {% endif %}
 
-    <!-- Controls -->
+    <!-- Controls - UN SEUL BOUTON -->
     <div class="controls">
-      <!-- Nouvel exercice -->
-      <form method="POST" action="{{ url_for('nouvel_exercice') }}">
+      <form method="POST" action="/nouvel-exercice">
         <button type="submit" class="btn btn-new" id="newExerciseBtn">
           <i class="fas fa-plus-circle"></i>
           {% if lang == 'en' %}New Exercise{% else %}Nouvel exercice{% endif %}
         </button>
       </form>
-      
-      <!-- Toggle examen -->
-      <form method="POST" action="{{ url_for('toggle_examen') }}">
-        <button type="submit" class="btn btn-exam" id="toggleExamBtn">
-          <i class="fas fa-graduation-cap"></i>
-          {% if lang == 'en' %}
-            {{ 'Exam ON' if session.get('mode_examen') else 'Exam OFF' }}
-          {% else %}
-            {{ 'Examen OUI' if session.get('mode_examen') else 'Examen NON' }}
-          {% endif %}
-        </button>
-      </form>
-      
-      <!-- Bouton Reprendre (seulement si exercice en cours) -->
-      {% if exercice_en_cours %}
-      <form method="POST" action="{{ url_for('retour_exercice') }}">
-        <button type="submit" class="btn btn-reset" id="resetBtn">
-          <i class="fas fa-redo"></i>
-          {% if lang == 'en' %}Reset Steps{% else %}Reprendre{% endif %}
-        </button>
-      </form>
-      {% endif %}
     </div>
 
     <!-- Chat Container -->
-    <div class="chat-container {% if session.get('mode_examen') %}exam-mode{% endif %}">
+    <div class="chat-container">
       <!-- Messages Area -->
       <div class="messages-area" id="messagesArea">
         <!-- Conversation -->
@@ -688,15 +599,6 @@
                 <li>{% if lang == 'en' %}We continue until you find!{% else %}On continue jusqu'à ce que tu trouves !{% endif %}</li>
               </ol>
               
-              {% if exercice_en_cours %}
-              <div class="teacher-question" style="margin-top: 15px;">
-                <h5><i class="fas fa-lightbulb"></i> 
-                  {% if lang == 'en' %}Previous exercise:{% else %}Exercice précédent :{% endif %}
-                </h5>
-                <p>{{ exercice_en_cours[:100] }}{% if exercice_en_cours|length > 100 %}...{% endif %}</p>
-              </div>
-              {% endif %}
-              
               <p><em>✨ {% if lang == 'en' %}Ready? Write your exercise below!{% else %}Prêt ? Écris ton exercice ci-dessous !{% endif %}</em></p>
             </div>
           </div>
@@ -716,17 +618,19 @@
 
       <!-- Input Area -->
       <div class="input-area">
-        <form method="POST" id="mainForm" class="input-group">
-          <textarea 
-            name="question" 
-            id="questionInput"
-            placeholder="{% if derniere_q_ia %}{% if lang == 'en' %}Answer the guide's question...{% else %}Réponds à la question du guide...{% endif %}{% else %}{% if lang == 'en' %}Write your math question here...{% else %}Écris ta question de maths ici...{% endif %}{% endif %}"
-            required
-            autofocus></textarea>
-          
-          <button type="submit" class="btn-send" id="submitBtn">
-            <i class="fas fa-paper-plane"></i>
-          </button>
+        <form method="POST" id="mainForm">
+          <div class="input-group">
+            <textarea 
+              name="question" 
+              id="questionInput"
+              placeholder="{% if derniere_q_ia %}{% if lang == 'en' %}Answer the guide's question...{% else %}Réponds à la question du guide...{% endif %}{% else %}{% if lang == 'en' %}Write your math question here...{% else %}Écris ta question de maths ici...{% endif %}{% endif %}"
+              required
+              autofocus></textarea>
+            
+            <button type="submit" class="btn-send" id="submitBtn">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -776,11 +680,6 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i>';
           }
           
-          // Show progress for long conversations
-          if (conversationLength >= 15) {
-            showAlert("{% if lang == 'en' %}Long conversation detected. The guide will keep the exercise in mind.{% else %}Conversation longue détectée. Le guide gardera l'exercice en tête.{% endif %}", 'info');
-          }
-          
           // Auto-reset after 20 seconds (safety)
           setTimeout(() => {
             if (isProcessing) {
@@ -793,8 +692,7 @@
             }
           }, 20000);
           
-          // Let form submit normally
-          console.log('📤 Sending step ' + (conversationLength/2 + 1) + '...');
+          console.log('📤 Sending...');
         });
       }
       
@@ -806,18 +704,18 @@
         });
       }, 4000);
       
-      // Prevent double clicks on control buttons
-      const controlBtns = document.querySelectorAll('#newExerciseBtn, #toggleExamBtn, #resetBtn');
-      controlBtns.forEach(btn => {
-        if (btn) {
-          btn.addEventListener('click', function() {
-            this.disabled = true;
-            setTimeout(() => {
-              if (this) this.disabled = false;
-            }, 2000);
-          });
-        }
-      });
+      // Prevent double clicks on new exercise button
+      const newExerciseBtn = document.getElementById('newExerciseBtn');
+      if (newExerciseBtn) {
+        newExerciseBtn.addEventListener('click', function() {
+          this.disabled = true;
+          this.innerHTML = '<i class="fas fa-spinner spinner"></i> {% if lang == "en" %}Resetting...{% else %}Réinitialisation...{% endif %}';
+          setTimeout(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-plus-circle"></i> {% if lang == "en" %}New Exercise{% else %}Nouvel exercice{% endif %}';
+          }, 3000);
+        });
+      }
       
       // MathJax observer
       const messagesArea = document.getElementById('messagesArea');
@@ -829,7 +727,7 @@
         observer.observe(messagesArea, { childList: true, subtree: true });
       }
       
-      // Update progress bar based on conversation length
+      // Update progress bar
       updateProgressBar();
     });
     
@@ -841,7 +739,6 @@
     }
     
     function showAlert(message, type = 'info') {
-      // Create alert
       const alertDiv = document.createElement('div');
       alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
       alertDiv.style.cssText = `
@@ -857,7 +754,6 @@
       `;
       document.body.appendChild(alertDiv);
       
-      // Auto-remove
       setTimeout(() => {
         if (alertDiv.parentNode) {
           const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
@@ -884,18 +780,6 @@
       setTimeout(scrollToBottom, 200);
       updateProgressBar();
     });
-    
-    // Auto-scroll when new messages are added
-    const observer = new MutationObserver(function() {
-      setTimeout(scrollToBottom, 100);
-      conversationLength = document.querySelectorAll('.message').length;
-      updateProgressBar();
-    });
-    
-    const messagesContainer = document.getElementById('messagesArea');
-    if (messagesContainer) {
-      observer.observe(messagesContainer, { childList: true, subtree: false });
-    }
   </script>
 </body>
 </html>

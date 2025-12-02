@@ -986,51 +986,18 @@ def chat():
 
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
-    """Nouvel exercice - garde le contexte"""
+    """Nouvel exercice - réinitialise complètement"""
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
-    # Garder seulement l'exercice en cours pour référence
-    exercice_en_cours = session.get('exercice_en_cours', '')
-    session.clear()  # Nettoyer toute la session
-    session["eleve_id"] = request.args.get("eleve_id", session.get("eleve_id"))
-    session["lang"] = request.args.get("lang", session.get("lang", "fr"))
-    
-    # Si on avait un exercice, le remettre
-    if exercice_en_cours:
-        session['exercice_en_cours'] = exercice_en_cours
+    # Vider TOUTE la conversation
+    session.pop("conversation", None)
+    session.pop("derniere_q_ia", None)
+    session.pop("exercice_en_cours", None)
     
     flash("Nouvel exercice ! Pose ta question.", "success")
     return redirect(url_for("enseignant_virtuel"))
 
-
-@app.route("/toggle-examen", methods=["POST"])
-def toggle_examen():
-    """Basculer mode examen - garder la conversation"""
-    if "eleve_id" not in session:
-        return redirect(url_for("login_eleve"))
-    
-    current = session.get("mode_examen", False)
-    session["mode_examen"] = not current
-    
-    # Garder la conversation en cours
-    conversation = session.get("conversation", [])
-    
-    flash(f"Mode examen {'activé' if not current else 'désactivé'}", "success")
-    return redirect(url_for("enseignant_virtuel"))
-
-
-@app.route("/retour-exercice", methods=["POST"])
-def retour_exercice():
-    """Revenir à l'exercice en cours"""
-    if "eleve_id" not in session:
-        return redirect(url_for("login_eleve"))
-    
-    # Nettoyer seulement les variables temporaires
-    session.pop('derniere_q_ia', None)
-    
-    flash("Retour à l'exercice en cours", "info")
-    return redirect(url_for("enseignant_virtuel"))
 
 @app.after_request
 def add_headers(response):
