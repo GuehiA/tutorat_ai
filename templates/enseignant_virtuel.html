@@ -446,63 +446,73 @@
         </form>
 
         <!-- Messages -->
-        <div class="messages" id="messagesContainer">
-          {% if question and reponse %}
-            <!-- Message de l'élève -->
-            <div class="message user-message">
-              <div class="message-header">
-                <span><i class="fas fa-user"></i> {% if lang == 'en' %}You{% else %}Vous{% endif %}</span>
-                <span style="font-size: 0.8rem;">{{ date_du_jour.strftime('%H:%M') if date_du_jour else 'Maintenant' }}</span>
-              </div>
-              <div class="message-content">
-                {{ question|safe }}
-              </div>
-            </div>
-
-            <!-- Message du bot -->
-            <div class="message bot-message">
-              <div class="message-header">
-                <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
-                <span style="font-size: 0.8rem;">{{ date_du_jour.strftime('%H:%M') if date_du_jour else 'Maintenant' }}</span>
-              </div>
-              <div class="message-content">
-                {{ reponse|safe }}
-              </div>
-            </div>
-          {% elif not question and not reponse %}
-            <!-- Message de bienvenue -->
-            <div class="message bot-message">
-              <div class="message-header">
-                <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
-              </div>
-              <div class="message-content">
-                {% if lang == 'en' %}
-                  <h4 style="margin-top: 0;">👋 Hello {{ eleve.nom_complet.split(' ')[0] }}!</h4>
-                  <p>I'm your virtual math teacher. I'll help you understand math <strong>step by step</strong>.</p>
-                  <p><strong>How it works:</strong></p>
-                  <ol>
-                    <li>Write your exercise above</li>
-                    <li>I'll guide you through the solution</li>
-                    <li>We'll go one step at a time</li>
-                    <li>You learn by understanding, not just getting answers</li>
-                  </ol>
-                  <p><em>{% if session.get('mode_examen') %}📝 Exam Mode: I'll give hints, not full solutions.{% else %}Try me with an exercise now! ✨{% endif %}</em></p>
-                {% else %}
-                  <h4 style="margin-top: 0;">👋 Bonjour {{ eleve.nom_complet.split(' ')[0] }} !</h4>
-                  <p>Je suis votre enseignant virtuel de mathématiques. Je vais vous aider à comprendre les maths <strong>étape par étape</strong>.</p>
-                  <p><strong>Comment ça marche :</strong></p>
-                  <ol>
-                    <li>Écrivez votre exercice ci-dessus</li>
-                    <li>Je vous guiderai vers la solution</li>
-                    <li>Nous avançons une étape à la fois</li>
-                    <li>Vous apprenez en comprenant, pas juste en ayant les réponses</li>
-                  </ol>
-                  <p><em>{% if session.get('mode_examen') %}📝 Mode Examen : Je donnerai des indices, pas les solutions complètes.{% else %}Essayez-moi avec un exercice maintenant ! ✨{% endif %}</em></p>
-                {% endif %}
-              </div>
-            </div>
-          {% endif %}
+<div class="messages" id="messagesContainer">
+  {% set conversation = session.get('guide_math_conversation', []) %}
+  
+  {% if conversation %}
+    {% for message in conversation[-6:] %}  <!-- Affiche les 6 derniers messages -->
+      {% if 'Élève:' in message or 'Élève (réponse):' in message %}
+        <div class="message user-message">
+          <div class="message-header">
+            <span><i class="fas fa-user"></i> {% if lang == 'en' %}You{% else %}Vous{% endif %}</span>
+            <span style="font-size: 0.8rem;">
+              {% if loop.index == conversation|length %}Maintenant{% endif %}
+            </span>
+          </div>
+          <div class="message-content">
+            {{ message.replace('Élève: ', '').replace('Élève (réponse): ', '')|safe }}
+          </div>
         </div>
+      {% elif 'Enseignant:' in message %}
+        <div class="message bot-message">
+          <div class="message-header">
+            <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
+            <span style="font-size: 0.8rem;">
+              {% if loop.index == conversation|length %}Maintenant{% endif %}
+            </span>
+          </div>
+          <div class="message-content">
+            {{ message.replace('Enseignant: ', '')|safe }}
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <!-- Message de bienvenue -->
+    <div class="message bot-message">
+      <div class="message-header">
+        <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
+      </div>
+      <div class="message-content">
+        {% if lang == 'en' %}
+          <h4 style="margin-top: 0;">👋 Hello {{ eleve.nom_complet.split(' ')[0] }}!</h4>
+          <p>I'm your virtual math teacher. <strong>I won't give you the answers</strong>, but I'll guide you step by step so YOU find them yourself!</p>
+          <p><strong>How it works:</strong></p>
+          <ol>
+            <li>You ask a math question</li>
+            <li>I'll ask you guiding questions</li>
+            <li>You answer each question</li>
+            <li>We continue until YOU solve it</li>
+            <li>You learn by discovering, not by being told</li>
+          </ol>
+          <p><em>Ready to solve some math? Ask your first question! ✨</em></p>
+        {% else %}
+          <h4 style="margin-top: 0;">👋 Bonjour {{ eleve.nom_complet.split(' ')[0] }} !</h4>
+          <p>Je suis votre enseignant virtuel de mathématiques. <strong>Je ne vous donnerai pas les réponses</strong>, mais je vous guiderai étape par étape pour que VOUS les trouviez vous-même !</p>
+          <p><strong>Comment ça marche :</strong></p>
+          <ol>
+            <li>Vous posez une question de maths</li>
+            <li>Je vous pose des questions guidantes</li>
+            <li>Vous répondez à chaque question</li>
+            <li>Nous continuons jusqu'à ce que VOUS résolviez</li>
+            <li>Vous apprenez en découvrant, pas en étant dit</li>
+          </ol>
+          <p><em>Prêt à résoudre des maths ? Posez votre première question ! ✨</em></p>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
       </div>
     </div>
   </div>

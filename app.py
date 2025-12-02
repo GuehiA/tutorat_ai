@@ -304,199 +304,119 @@ def eleve_remediations():
 
 def generer_reponse_guide_math(question, niveau_eleve, langue="fr", mode_examen=False, historique=None):
     """
-    Génère une réponse pédagogique pour une question de mathématiques
-    
-    Args:
-        question (str): La question de l'élève
-        niveau_eleve (str): Niveau scolaire de l'élève
-        langue (str): Langue de réponse ('fr' ou 'en')
-        mode_examen (bool): Si True, limite l'assistance
-        historique (list): Historique des messages précédents
-    
-    Returns:
-        str: Réponse formatée avec explications pédagogiques
+    Génère une réponse pédagogique POUR UNE QUESTION DE MATHÉMATIQUES
     """
-    
     try:
-        # Import OpenAI
         from openai import OpenAI
         import os
         
-        # Initialiser le client OpenAI
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         
-        # Construire le prompt selon le mode
-        if mode_examen:
-            prompt_mode = "mode examen activé - donne uniquement des indications, pas la solution complète"
-        else:
-            prompt_mode = "mode normal - explique étape par étape"
-        
-        # Construire l'historique
-        historique_text = ""
-        if historique and len(historique) > 0:
-            historique_text = "Historique de la conversation:\n"
-            for i, msg in enumerate(historique[-4:], 1):  # Garder les 4 derniers messages
-                historique_text += f"{i}. {msg}\n"
-        
-        # Construire le prompt complet
+        # Construire le système prompt
         if langue == "fr":
-            prompt = f"""Tu es un enseignant de mathématiques spécialisé en pédagogie différenciée.
+            system_content = f"""Tu es un enseignant de mathématiques pour un élève de {niveau_eleve}.
 
-CONTEXTE:
-- Niveau de l'élève: {niveau_eleve}
-- {prompt_mode}
-- {historique_text if historique_text else "Pas d'historique"}
+RÈGLES STRICTES :
+1. Tu dois GUIDER l'élève, PAS donner la réponse directement
+2. Pose des QUESTIONS pour vérifier sa compréhension
+3. Divise le problème en ÉTAPES simples
+4. Donne UNE ÉTAPE à la fois, attends la réponse de l'élève
+5. Utilise des exemples CONCRETS adaptés au niveau
+6. Sois ENCOURAGEANT et PATIENT
+7. Utilise LaTeX pour les formules : \\(formule\\) pour inline, \\[formule\\] pour display
 
-INSTRUCTIONS:
-1. Analyse la question: {question}
-2. Identifie les concepts mathématiques
-3. Propose une aide adaptée au niveau
-4. Si mode examen: donne des indications sans révéler la solution
-5. Si mode normal: explique étape par étape
-6. Utilise des exemples concrets
-7. Pose des questions pour vérifier la compréhension
-8. Formate ta réponse avec des sections claires
-9. Utilise LaTeX pour les formules: \(formule\) pour inline et \[formule\] pour display
+{"⚠️ MODE EXAMEN : Tu ne dois donner que des INDICATIONS, pas la solution. Pose des questions pour guider." if mode_examen else ""}
 
-RÉPONSE À FOURNIR:
-- Salutation adaptée
-- Reconnaissance de la difficulté
-- Explications progressives
-- Questions de vérification
-- Encouragements
+FORMAT DE RÉPONSE :
+- Commence par saluer et reformuler le problème
+- Identifie les concepts mathématiques en jeu
+- Propose la PREMIÈRE ÉTAPE seulement
+- Pose une question pour vérifier la compréhension
+- Termine par une invitation à continuer"""
+        else:
+            system_content = f"""You are a mathematics teacher for a {niveau_eleve} student.
 
-Question de l'élève: {question}
+STRICT RULES:
+1. You must GUIDE the student, NOT give the answer directly
+2. Ask QUESTIONS to check understanding
+3. Break the problem into SIMPLE STEPS
+4. Give ONE STEP at a time, wait for student response
+5. Use CONCRETE examples adapted to the level
+6. Be ENCOURAGING and PATIENT
+7. Use LaTeX for formulas: \\(formula\\) for inline, \\[formula\\] for display
 
-Réponse pédagogique:"""
-        else:  # anglais
-            prompt = f"""You are a mathematics teacher specialized in differentiated pedagogy.
+{"⚠️ EXAM MODE: You must only give HINTS, not the solution. Ask guiding questions." if mode_examen else ""}
 
-CONTEXT:
-- Student level: {niveau_eleve}
-- {prompt_mode}
-- {historique_text if historique_text else "No history"}
-
-INSTRUCTIONS:
-1. Analyze the question: {question}
-2. Identify mathematical concepts
-3. Provide help adapted to the level
-4. If exam mode: give hints without revealing the solution
-5. If normal mode: explain step by step
-6. Use concrete examples
-7. Ask questions to check understanding
-8. Format your answer with clear sections
-9. Use LaTeX for formulas: \(formula\) for inline and \[formula\] for display
-
-RESPONSE TO PROVIDE:
-- Appropriate greeting
-- Acknowledgment of difficulty
-- Progressive explanations
-- Comprehension check questions
-- Encouragement
-
-Student question: {question}
-
-Pedagogical response:"""
+RESPONSE FORMAT:
+- Start by greeting and rephrasing the problem
+- Identify mathematical concepts involved
+- Propose ONLY the FIRST STEP
+- Ask a question to check understanding
+- End with an invitation to continue"""
         
-        # Appeler OpenAI
+        # Construire le message utilisateur avec historique
+        user_content = f"Question de l'élève : {question}"
+        if historique:
+            user_content += f"\n\nHistorique récent :\n" + "\n".join([f"- {msg[:100]}..." for msg in historique[-3:]])
+        
+        # Appel à OpenAI
         response = client.chat.completions.create(
-            model="gpt-4",  # ou "gpt-3.5-turbo" si tu veux économiser
+            model="gpt-3.5-turbo",  # Plus rapide et moins cher que GPT-4
             messages=[
-                {"role": "system", "content": "Tu es un enseignant de mathématiques patient et pédagogique." if langue == "fr" else "You are a patient and pedagogical mathematics teacher."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": user_content}
             ],
             temperature=0.7,
-            max_tokens=1500
+            max_tokens=800  # Limiter la longueur
         )
         
-        # Récupérer et nettoyer la réponse
         reponse = response.choices[0].message.content.strip()
         
         # Formater la réponse
-        reponse_formatee = f"""
+        return f"""
 <div class="reponse-ia">
 {reponse}
 </div>
 """
-        return reponse_formatee
         
     except Exception as e:
         print(f"Erreur OpenAI: {e}")
         
-        # Fallback si OpenAI échoue
+        # Fallback simple
         if langue == "fr":
             return f"""
 <div class="reponse-ia">
-<h4>👨‍🏫 Réponse de l'enseignant virtuel</h4>
+<h4>👨‍🏫 Enseignant de Mathématiques</h4>
+<p>Je vais t'aider à résoudre ce problème <strong>étape par étape</strong>.</p>
 
-<p>Merci pour ta question sur : <strong>{question[:100]}...</strong></p>
+<p><strong>Première étape :</strong> Reformule le problème dans tes propres mots.</p>
+<p><em>Qu'est-ce que tu comprends de l'énoncé ? Peux-tu me le redire avec tes mots ?</em></p>
 
-<p>En tant qu'enseignant de mathématiques, je vais t'aider à comprendre ce problème.</p>
-
-<h5>🎯 Concepts identifiés :</h5>
-<ul>
-  <li>Analyse de la problématique</li>
-  <li>Application des formules mathématiques</li>
-  <li>Résolution étape par étape</li>
-</ul>
-
-<h5>📝 Démarche proposée :</h5>
-<ol>
-  <li>Lire attentivement l'énoncé</li>
-  <li>Identifier les données importantes</li>
-  <li>Choisir la méthode appropriée</li>
-  <li>Appliquer les calculs nécessaires</li>
-  <li>Vérifier la cohérence du résultat</li>
-</ol>
-
-<h5>💡 Pour aller plus loin :</h5>
-<p>Essaie de reformuler le problème dans tes propres mots. Qu'est-ce qu'on te demande exactement ?</p>
-
-<p><em>N'hésite pas à me poser des questions plus précises si tu bloques sur une étape !</em></p>
+<p>Une fois que tu auras fait ça, je te guiderai pour l'étape suivante !</p>
 </div>
 """
         else:
             return f"""
 <div class="reponse-ia">
-<h4>👨‍🏫 Virtual Teacher's Response</h4>
+<h4>👨‍🏫 Mathematics Teacher</h4>
+<p>I'll help you solve this problem <strong>step by step</strong>.</p>
 
-<p>Thank you for your question about: <strong>{question[:100]}...</strong></p>
+<p><strong>First step:</strong> Rephrase the problem in your own words.</p>
+<p><em>What do you understand from the statement? Can you tell me in your own words?</em></p>
 
-<p>As a mathematics teacher, I'll help you understand this problem.</p>
-
-<h5>🎯 Identified Concepts:</h5>
-<ul>
-  <li>Problem analysis</li>
-  <li>Mathematical formula application</li>
-  <li>Step-by-step resolution</li>
-</ul>
-
-<h5>📝 Proposed Approach:</h5>
-<ol>
-  <li>Read the statement carefully</li>
-  <li>Identify important data</li>
-  <li>Choose the appropriate method</li>
-  <li>Apply necessary calculations</li>
-  <li>Check result consistency</li>
-</ol>
-
-<h5>💡 To Go Further:</h5>
-<p>Try to rephrase the problem in your own words. What exactly are you being asked?</p>
-
-<p><em>Don't hesitate to ask more specific questions if you get stuck on a step!</em></p>
+<p>Once you've done that, I'll guide you to the next step!</p>
 </div>
 """
             
 # chatbot_routes.py
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel - GET pour afficher, POST pour traiter les questions"""
-    # Vérifier si l'élève est connecté via la session
+    """Route pour l'enseignant virtuel - VERSION PÉDAGOGIQUE"""
+    # Vérifier si l'élève est connecté
     if "eleve_id" not in session:
-        flash("Veuillez vous connecter pour accéder à l'enseignant virtuel", "warning")
+        flash("Veuillez vous connecter", "warning")
         return redirect(url_for("login_eleve"))
 
-    # Récupérer l'élève depuis la session
     eleve = User.query.options(joinedload(User.niveau)).get(session["eleve_id"])
     if not eleve or eleve.role != "élève":
         flash("Accès non autorisé", "error")
@@ -505,10 +425,10 @@ def enseignant_virtuel():
     # Vérifier l'accès (essai gratuit)
     if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
         session.clear()
-        flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner pour continuer.", "error")
+        flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner.", "error")
         return redirect(url_for('login_eleve'))
 
-    # Récupérer la langue
+    # Langue
     lang = request.args.get("lang") or session.get("lang", "fr")
     session["lang"] = lang
 
@@ -516,58 +436,78 @@ def enseignant_virtuel():
     question = None
     reponse_ia = None
     
-    # 📌 TRAITEMENT DES REQUÊTES POST (quand l'élève envoie une question)
+    # TRAITEMENT POST
     if request.method == 'POST':
-        question = request.form.get("question")
+        question = request.form.get("question", "").strip()
         
-        if question:
-            # Logique pour traiter la question avec l'IA
-            try:
-                # Récupérer la conversation en cours
-                conversation = session.get("guide_math_conversation", [])
+        if question and len(question) >= 3:
+            # Récupérer l'historique de conversation
+            conversation = session.get("guide_math_conversation", [])
+            
+            # Vérifier si c'est une réponse à une question précédente de l'IA
+            derniere_question_ia = session.get('derniere_question_ia')
+            
+            if derniere_question_ia:
+                # C'est une réponse de l'élève à la question de l'IA
+                conversation.append(f"Élève (réponse): {question}")
                 
-                # Ajouter la question à la conversation
-                conversation.append(question)
-                
-                # Limiter la taille de la conversation
-                if len(conversation) > 6:
-                    conversation = conversation[-6:]
-                
-                # Appeler l'IA pour obtenir une réponse
-                mode_examen = session.get("mode_examen", False)
-                
-                # Utiliser ta fonction d'IA existante
-                reponse_ia = generer_reponse_guide_math(
-                    question=question,
+                # Générer la suite du dialogue
+                reponse_ia = generer_suite_dialogue_pedagogique(
+                    derniere_question_ia=derniere_question_ia,
+                    reponse_eleve=question,
+                    historique=conversation,
                     niveau_eleve=eleve.niveau.nom if eleve.niveau else "6ème",
                     langue=lang,
-                    mode_examen=mode_examen,
-                    historique=conversation[:-1] if len(conversation) > 1 else []
+                    mode_examen=session.get("mode_examen", False)
                 )
                 
-                # Ajouter la réponse à la conversation
-                conversation.append(reponse_ia)
+                # Réinitialiser pour la prochaine étape
+                session.pop('derniere_question_ia', None)
+            else:
+                # C'est une nouvelle question de l'élève
+                conversation.append(f"Élève: {question}")
                 
-                # Sauvegarder la conversation dans la session
-                session["guide_math_conversation"] = conversation
-                
-                flash("Réponse générée avec succès!", "success")
-                
-            except Exception as e:
-                print(f"Erreur lors de la génération de réponse: {e}")
-                reponse_ia = "⚠️ Désolé, une erreur s'est produite lors du traitement de votre question. Veuillez réessayer."
-                flash("Erreur lors de la génération de la réponse", "danger")
+                # Générer le début du dialogue pédagogique
+                reponse_ia = generer_debut_dialogue_pedagogique(
+                    question_eleve=question,
+                    historique=conversation,
+                    niveau_eleve=eleve.niveau.nom if eleve.niveau else "6ème",
+                    langue=lang,
+                    mode_examen=session.get("mode_examen", False)
+                )
+            
+            # Ajouter la réponse de l'IA
+            conversation.append(f"Enseignant: {reponse_ia}")
+            
+            # Limiter la taille de la conversation
+            if len(conversation) > 20:
+                conversation = conversation[-20:]
+            
+            # Sauvegarder dans la session
+            session["guide_math_conversation"] = conversation
+            
+            # Extraire la dernière question posée par l'IA pour la session
+            derniere_question = extraire_question_ia(reponse_ia)
+            if derniere_question:
+                session['derniere_question_ia'] = derniere_question
+            
+            flash("Je vais te guider pas à pas !", "success")
     
-    # 📌 AFFICHAGE (GET ou POST après traitement)
+    # AFFICHAGE
     else:
-        # Récupérer la conversation existante pour l'affichage
+        # Récupérer la conversation pour l'affichage
         conversation = session.get("guide_math_conversation", [])
         
         if conversation:
-            question = conversation[-2] if len(conversation) >= 2 else None
-            reponse_ia = conversation[-1] if len(conversation) >= 1 else None
-    
-    # Rendre le template
+            # Prendre les 2 derniers messages
+            if len(conversation) >= 4:
+                # Avant-dernier message (question élève)
+                question = conversation[-4].replace("Élève: ", "").replace("Élève (réponse): ", "")
+                # Dernier message (réponse IA)
+                reponse_ia = conversation[-3].replace("Enseignant: ", "")
+            elif len(conversation) >= 2:
+                reponse_ia = conversation[-1].replace("Enseignant: ", "")
+
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
@@ -576,6 +516,283 @@ def enseignant_virtuel():
         reponse=reponse_ia,
         date_du_jour=datetime.utcnow()
     )
+
+def extraire_question_ia(reponse_ia):
+    """Extrait la dernière question posée par l'IA pour suivre le dialogue"""
+    import re
+    
+    # Chercher les patterns de questions
+    patterns = [
+        r'[Qq]uestion\s+\d+\s*[.:]\s*(.*?)(?=\n|$)',
+        r'[Pp]eux-tu\s+(.*?)(?=\?|$)',
+        r'[Qq]u\'(.*?)(?=\?|$)',
+        r'[Éé]cris\s+(.*?)(?=\?|$)',
+        r'[Cc]alcule\s+(.*?)(?=\?|$)',
+        r'[Tt]rouve\s+(.*?)(?=\?|$)',
+        r'[Dd]is-moi\s+(.*?)(?=\?|$)',
+        r'[Qq]uelle\s+(.*?)(?=\?|$)',
+        r'[Cc]omment\s+(.*?)(?=\?|$)',
+        r'[Pp]ourquoi\s+(.*?)(?=\?|$)'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, reponse_ia, re.DOTALL)
+        if match:
+            question = match.group(1).strip()
+            if len(question) > 10:  # Éviter les questions trop courtes
+                return question
+    
+    return None
+
+def generer_debut_dialogue_pedagogique(question_eleve, historique, niveau_eleve, langue="fr", mode_examen=False):
+    """Commence un dialogue pédagogique guidé"""
+    from openai import OpenAI
+    import os
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    if langue == "fr":
+        system_prompt = f"""Tu es un enseignant de mathématiques expert en pédagogie différenciée pour un élève de {niveau_eleve}.
+
+**RÈGLES STRICTES DE PÉDAGOGIE :**
+1. TU NE DONNES JAMAIS LA RÉPONSE DIRECTEMENT
+2. Tu guides l'élève étape par étape
+3. À chaque étape, tu poses une QUESTION PRÉCISE
+4. Tu attends la réponse de l'élève avant de continuer
+5. Tu adaptes ton langage au niveau scolaire
+6. Tu encourages et valorises les efforts
+7. Tu utilises des exemples concrets
+8. Tu vérifies la compréhension à chaque étape
+9. Tu reformules les problèmes dans les mots de l'élève
+10. Tu laisses l'élève faire les calculs et déductions
+
+**MÉTHODOLOGIE :**
+1. Reformuler le problème
+2. Identifier la méthode appropriée
+3. Guider vers la première étape
+4. Poser une question spécifique
+5. Attendre la réponse
+6. Continuer selon la réponse
+
+**FORMAT DE RÉPONSE :**
+- Salutation encourageante
+- Reformulation du problème
+- Proposition de méthode (sans donner les étapes)
+- PREMIÈRE QUESTION précise pour l'élève
+- Indication sur ce que l'élève doit faire ensuite
+
+{"⚠️ MODE EXAMEN : Guide avec des indices seulement, pas de solutions." if mode_examen else ""}"""
+    else:
+        system_prompt = f"""You are a mathematics teacher expert in differentiated pedagogy for a {niveau_eleve} student.
+
+**STRICT PEDAGOGICAL RULES:**
+1. YOU NEVER GIVE THE ANSWER DIRECTLY
+2. You guide the student step by step
+3. At each step, you ask a SPECIFIC QUESTION
+4. You wait for the student's answer before continuing
+5. You adapt your language to the school level
+6. You encourage and value efforts
+7. You use concrete examples
+8. You check understanding at each step
+9. You rephrase problems in the student's words
+10. You let the student do calculations and deductions
+
+**METHODOLOGY:**
+1. Rephrase the problem
+2. Identify appropriate method
+3. Guide to the first step
+4. Ask a specific question
+5. Wait for answer
+6. Continue based on response
+
+**RESPONSE FORMAT:**
+- Encouraging greeting
+- Problem rephrasing
+- Method proposal (without giving steps)
+- FIRST specific question for the student
+- Indication of what the student should do next
+
+{"⚠️ EXAM MODE: Guide with hints only, no solutions." if mode_examen else ""}"""
+    
+    # Construire l'historique
+    historique_text = "\n".join([f"- {msg}" for msg in historique[-6:]]) if historique else "Pas d'historique"
+    
+    user_prompt = f"""Question de l'élève : {question_eleve}
+
+Historique récent :
+{historique_text}
+
+Commence le dialogue pédagogique en suivant strictement les règles ci-dessus. Pose une PREMIÈRE QUESTION précise qui guide l'élève vers la première étape de résolution."""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",  # GPT-4 est meilleur pour la pédagogie
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        print(f"Erreur OpenAI début dialogue: {e}")
+        
+        if langue == "fr":
+            return f"""Super — on va travailler dessus ensemble !
+
+Tu as le problème suivant : {question_eleve}
+
+Je vais te guider pas à pas sans te donner la réponse directement.
+
+**Première étape :**
+Avant de résoudre, il faut bien comprendre le problème.
+
+**Question 1 :** Peux-tu reformuler ce problème dans tes propres mots ? Qu'est-ce qu'on te demande exactement ?
+
+Écris ta reformulation, et ensuite je te guiderai vers la prochaine étape !"""
+        else:
+            return f"""Great — let's work on this together!
+
+You have the following problem: {question_eleve}
+
+I'll guide you step by step without giving you the answer directly.
+
+**First step:**
+Before solving, we need to understand the problem well.
+
+**Question 1:** Can you rephrase this problem in your own words? What exactly are you being asked to do?
+
+Write your rephrasing, and then I'll guide you to the next step!"""
+
+def generer_suite_dialogue_pedagogique(derniere_question_ia, reponse_eleve, historique, niveau_eleve, langue="fr", mode_examen=False):
+    """Continue le dialogue pédagogique basé sur la réponse de l'élève"""
+    from openai import OpenAI
+    import os
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    if langue == "fr":
+        system_prompt = f"""Tu es un enseignant de mathématiques qui guide un élève de {niveau_eleve}.
+
+L'élève vient de répondre à ta question précédente. Analyse sa réponse et :
+1. Valide les éléments corrects
+2. Corrige doucement les erreurs
+3. Guide vers l'étape suivante
+4. Pose une NOUVELLE QUESTION précise
+5. Continue à ne jamais donner la réponse
+
+**TACTIQUES PÉDAGOGIQUES :**
+- Si la réponse est correcte : félicite et passe à l'étape suivante
+- Si la réponse est partielle : guide vers la complétion
+- Si la réponse est fausse : explique l'erreur sans humiliation
+- Si la réponse montre un malentendu : clarifie le concept
+- Toujours terminer par une question pour l'étape suivante
+
+{"⚠️ MODE EXAMEN : Reste au niveau des indices, ne révèle pas les étapes." if mode_examen else ""}"""
+    else:
+        system_prompt = f"""You are a mathematics teacher guiding a {niveau_eleve} student.
+
+The student just answered your previous question. Analyze their response and:
+1. Validate correct elements
+2. Gently correct errors
+3. Guide to the next step
+4. Ask a NEW specific question
+5. Continue to never give the answer
+
+**PEDAGOGICAL TACTICS:**
+- If answer is correct: praise and move to next step
+- If answer is partial: guide to completion
+- If answer is wrong: explain error without humiliation
+- If answer shows misunderstanding: clarify the concept
+- Always end with a question for the next step
+
+{"⚠️ EXAM MODE: Stay at hint level, don't reveal steps." if mode_examen else ""}"""
+    
+    user_prompt = f"""Dernière question que j'ai posée : {derniere_question_ia}
+
+Réponse de l'élève : {reponse_eleve}
+
+Historique complet :
+{chr(10).join(historique[-10:]) if historique else "Pas d'historique"}
+
+Analyse la réponse de l'élève et continue le dialogue pédagogique en posant une NOUVELLE QUESTION pour l'étape suivante."""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=600
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        print(f"Erreur OpenAI suite dialogue: {e}")
+        
+        if langue == "fr":
+            return f"""Merci pour ta réponse !
+
+Maintenant, analysons ensemble ce que tu as écrit.
+
+**Étape suivante :**
+Regardons ce que tu dois faire maintenant pour avancer vers la solution.
+
+**Nouvelle question :** Peux-tu identifier dans ton problème quelles sont les informations données et ce qu'on te demande de trouver ?
+
+Liste-les, et je te guiderai vers la méthode à utiliser !"""
+        else:
+            return f"""Thank you for your answer!
+
+Now, let's analyze together what you wrote.
+
+**Next step:**
+Let's see what you need to do now to move toward the solution.
+
+**New question:** Can you identify in your problem what information is given and what you're asked to find?
+
+List them, and I'll guide you to the method to use!"""
+
+def process_question(question, eleve, lang, session):
+    """Traiter une question de manière sécurisée"""
+    try:
+        conversation = session.get("guide_math_conversation", [])
+        
+        # Limiter la taille de la conversation
+        if len(conversation) > 10:
+            conversation = conversation[-10:]
+        
+        # Ajouter la question
+        conversation.append(question)
+        
+        # Générer la réponse
+        mode_examen = session.get("mode_examen", False)
+        reponse_ia = generer_reponse_guide_math(
+            question=question,
+            niveau_eleve=eleve.niveau.nom if eleve.niveau else "6ème",
+            langue=lang,
+            mode_examen=mode_examen,
+            historique=conversation[:-1]
+        )
+        
+        # Ajouter la réponse
+        conversation.append(reponse_ia)
+        
+        # Sauvegarder
+        session["guide_math_conversation"] = conversation
+        flash("Réponse générée ! Je vais te guider étape par étape.", "success")
+        
+    except Exception as e:
+        print(f"Erreur traitement question: {e}")
+        flash("Erreur lors du traitement de la question", "danger")
+
+
 
 def get_system_prompt(lang="fr", mode_examen=False):
     if lang == "fr":
@@ -612,6 +829,13 @@ def get_system_prompt(lang="fr", mode_examen=False):
     else:
         return "Equivalent English version"
 
+@app.after_request
+def add_header(response):
+    """Ajouter des headers pour empêcher la mise en cache et les rechargements"""
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -622,13 +846,17 @@ def chat():
 
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
-    """Nouvel exercice - réinitialise la conversation"""
-    session.pop("guide_math_conversation", None)
-    session.pop("mode_examen", None)
-    
+    """Recommencer un nouvel exercice"""
     # Vérifier la session
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
+    
+    # Réinitialiser la conversation
+    session.pop("guide_math_conversation", None)
+    session.pop("derniere_question_ia", None)
+    session.pop("mode_examen", None)
+    
+    flash("Nouvel exercice commencé ! Posez votre question.", "success")
     
     # Rediriger vers l'enseignant virtuel
     return redirect(url_for("enseignant_virtuel"))
@@ -640,12 +868,25 @@ def toggle_examen():
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
-    session["mode_examen"] = not session.get("mode_examen", False)
-    session.pop("guide_math_conversation", None)
+    # Basculer le mode examen
+    current_mode = session.get("mode_examen", False)
+    session["mode_examen"] = not current_mode
+    
+    # NE PAS effacer la conversation, on veut garder l'historique
+    # session.pop("guide_math_conversation", None)  # ← Commenter cette ligne
+    
+    flash(f"Mode examen {'activé' if not current_mode else 'désactivé'}", "success")
     
     # Rediriger vers l'enseignant virtuel
     return redirect(url_for("enseignant_virtuel"))
 
+@app.after_request
+def after_request(response):
+    """Ajouter des headers pour empêcher la mise en cache"""
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.route("/matiere-par-niveau/<int:niveau_id>")
 def matiere_par_niveau(niveau_id):
