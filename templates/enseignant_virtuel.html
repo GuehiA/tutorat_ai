@@ -2,43 +2,34 @@
 <html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
-  <title>
-    {% if lang == 'en' %}Math Guide - Virtual Teacher{% else %}Guide de mathématiques - Enseignant Virtuel{% endif %}
-  </title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if lang == 'en' %}Math Guide{% else %}Guide de Maths{% endif %}</title>
   
-  <!-- IMPORTANT: Empêcher la mise en cache -->
+  <!-- Cache control -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-
-  <!-- Favicon -->
-  <link rel="icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-
-  <!-- Icons -->
+  
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-  <!-- Bootstrap pour les alertes -->
+  
+  <!-- Bootstrap for alerts only -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
+  
   <!-- MathJax -->
   <script>
     window.MathJax = {
-      tex: { 
-        inlineMath: [['\\(', '\\)']], 
-        displayMath: [['\\[', '\\]']] 
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
       },
       startup: {
-        pageReady: () => {
-          return MathJax.startup.defaultPageReady().then(() => {
-            console.log('MathJax is ready');
-          });
-        }
+        pageReady: () => MathJax.startup.defaultPageReady()
       }
     };
   </script>
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
+  
   <style>
     :root {
       --primary: #4361ee;
@@ -49,330 +40,298 @@
       --light: #f8f9ff;
       --dark: #121826;
     }
-
+    
+    * {
+      box-sizing: border-box;
+    }
+    
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, var(--light) 0%, #e8eaff 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #f8f9ff 0%, #e8eaff 100%);
       margin: 0;
-      padding: 20px;
+      padding: 15px;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
     }
-
+    
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+      height: 100%;
     }
-
-    header {
+    
+    /* Header */
+    .header {
       background: var(--primary);
       color: white;
-      padding: 20px;
-      border-radius: 15px;
-      margin-bottom: 20px;
+      padding: 15px 20px;
+      border-radius: 12px;
+      margin-bottom: 15px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
     }
-
+    
     .student-info {
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 12px;
     }
-
-    .student-avatar {
-      width: 60px;
-      height: 60px;
+    
+    .avatar {
+      width: 45px;
+      height: 45px;
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
       font-weight: bold;
+      font-size: 1.2rem;
     }
-
-    .chat-container {
-      background: white;
-      border-radius: 15px;
-      padding: 30px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 500px;
+    
+    .niveau-badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
     }
-
+    
+    /* Controls */
     .controls {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-bottom: 25px;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
     }
-
-    @media (max-width: 768px) {
-      .controls {
-        grid-template-columns: 1fr;
-      }
-    }
-
+    
     .btn {
-      padding: 14px 20px;
+      padding: 10px 15px;
       border: none;
-      border-radius: 10px;
-      font-size: 1rem;
-      font-weight: 500;
+      border-radius: 8px;
+      font-size: 0.95rem;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
+      gap: 8px;
+      flex: 1;
       justify-content: center;
-      gap: 10px;
     }
-
+    
+    .btn:active {
+      transform: scale(0.98);
+    }
+    
     .btn-new {
       background: var(--success);
       color: white;
     }
-
-    .btn-new:hover {
-      background: #38a873;
-      transform: translateY(-2px);
-    }
-
+    
     .btn-exam {
       background: var(--warning);
-      color: white;
+      color: var(--dark);
     }
-
-    .btn-exam:hover {
-      background: #e6b017;
-      transform: translateY(-2px);
-    }
-
-    .chat-area {
-      flex: 1;
+    
+    /* Chat Container */
+    .chat-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      height: calc(100vh - 200px);
+      min-height: 500px;
       display: flex;
       flex-direction: column;
-      min-height: 0; /* Important pour le scroll */
+      overflow: hidden;
     }
-
-    /* Zone de conversation avec scroll */
-    .conversation-container {
+    
+    /* Messages Area */
+    .messages-area {
       flex: 1;
       overflow-y: auto;
-      margin-bottom: 25px;
-      padding-right: 10px;
-      min-height: 300px;
-      max-height: 500px;
-      border-bottom: 2px solid #f0f2f5;
-      padding-bottom: 20px;
-    }
-
-    /* Style de la scrollbar */
-    .conversation-container::-webkit-scrollbar {
-      width: 8px;
+      padding: 20px;
     }
     
-    .conversation-container::-webkit-scrollbar-track {
+    .messages-area::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .messages-area::-webkit-scrollbar-track {
       background: #f1f1f1;
-      border-radius: 4px;
     }
     
-    .conversation-container::-webkit-scrollbar-thumb {
+    .messages-area::-webkit-scrollbar-thumb {
       background: var(--primary);
-      border-radius: 4px;
+      border-radius: 3px;
     }
     
-    .conversation-container::-webkit-scrollbar-thumb:hover {
-      background: var(--primary-dark);
-    }
-
-    /* Zone de saisie fixée en bas */
-    .input-container {
-      background: white;
-      padding: 20px 0;
-      border-top: 1px solid #e2e8f0;
-      margin-top: auto; /* Pousse vers le bas */
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 120px;
-      padding: 20px;
-      font-size: 1.1rem;
-      border-radius: 10px;
-      border: 2px solid #e2e8f0;
-      resize: vertical;
-      font-family: inherit;
-      margin-bottom: 15px;
-      transition: border-color 0.3s ease;
-    }
-
-    textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-    }
-
-    .btn-send {
-      background: var(--primary);
-      color: white;
-      width: 100%;
-      padding: 16px;
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-
-    .btn-send:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(67, 97, 238, 0.3);
-    }
-
-    .messages {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
+    /* Messages */
     .message {
-      padding: 20px;
-      border-radius: 12px;
-      position: relative;
-      animation: fadeIn 0.5s ease;
+      margin-bottom: 15px;
+      max-width: 85%;
+      animation: fadeIn 0.3s ease;
     }
-
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
     .user-message {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-      color: white;
-      align-self: flex-end;
-      border-bottom-right-radius: 4px;
-      max-width: 80%;
       margin-left: auto;
     }
-
+    
     .bot-message {
-      background: #f0f2f5;
-      border-left: 4px solid var(--primary);
-      align-self: flex-start;
-      border-bottom-left-radius: 4px;
-      max-width: 80%;
       margin-right: auto;
     }
-
-    .message-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      font-size: 0.9rem;
-      opacity: 0.8;
+    
+    .message-bubble {
+      padding: 12px 16px;
+      border-radius: 15px;
+      line-height: 1.4;
     }
-
-    .message-content {
-      line-height: 1.6;
-    }
-
-    .message-content p {
-      margin: 0 0 10px 0;
-    }
-
-    .message-content p:last-child {
-      margin-bottom: 0;
-    }
-
-    .message-content ul, .message-content ol {
-      margin: 10px 0;
-      padding-left: 20px;
-    }
-
-    .mode-indicator {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--warning);
+    
+    .user-message .message-bubble {
+      background: var(--primary);
       color: white;
-      padding: 8px 15px;
-      border-radius: 20px;
-      font-size: 0.9rem;
-      font-weight: 500;
+      border-bottom-right-radius: 5px;
+    }
+    
+    .bot-message .message-bubble {
+      background: #f0f2f5;
+      color: var(--dark);
+      border-bottom-left-radius: 5px;
+      border-left: 3px solid var(--primary);
+    }
+    
+    .message-header {
       display: flex;
       align-items: center;
       gap: 8px;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.05);
-      }
-    }
-
-    /* Styles pour le rendu MathJax */
-    .MathJax {
-      font-size: 1.1em !important;
-    }
-
-    .mjx-math {
-      font-size: 1.2em !important;
-    }
-
-    /* Alertes flash */
-    .alert-container {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      min-width: 300px;
-    }
-
-    /* Mode examen */
-    .exam-mode {
-      border: 3px solid var(--warning);
-    }
-
-    .exam-mode::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, var(--warning), var(--danger));
-      border-radius: 15px 15px 0 0;
-    }
-
-    /* Style pour le bouton désactivé */
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none !important;
+      margin-bottom: 5px;
+      font-size: 0.85rem;
+      opacity: 0.8;
     }
     
+    /* Input Area */
+    .input-area {
+      border-top: 1px solid #e2e8f0;
+      padding: 15px;
+      background: white;
+    }
+    
+    .input-group {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    
+    textarea {
+      flex: 1;
+      min-height: 60px;
+      max-height: 150px;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      resize: vertical;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    .btn-send {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      cursor: pointer;
+      font-weight: 500;
+      height: 60px;
+      min-width: 60px;
+    }
+    
+    .btn-send:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .btn-send:not(:disabled):active {
+      transform: scale(0.98);
+    }
+    
+    /* Exam Mode */
+    .exam-mode-indicator {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      background: var(--warning);
+      color: var(--dark);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(252, 196, 25, 0.3);
+    }
+    
+    .exam-mode {
+      border: 2px solid var(--warning);
+    }
+    
+    /* Welcome message */
+    .welcome-message .message-bubble {
+      background: linear-gradient(135deg, #f0f2f5 0%, #e8eaff 100%);
+      border-left: 4px solid var(--primary);
+    }
+    
+    .welcome-message h4 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      color: var(--primary);
+    }
+    
+    .welcome-message ol {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    
+    .welcome-message li {
+      margin-bottom: 5px;
+    }
+    
+    /* Teacher question highlight */
+    .teacher-question {
+      background: #e8f4ff;
+      border-left: 4px solid #4a9eff;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin: 10px 0 15px 0;
+    }
+    
+    .teacher-question h5 {
+      margin: 0 0 5px 0;
+      color: #2c3e50;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .teacher-question p {
+      margin: 0;
+      color: #34495e;
+      font-weight: 500;
+    }
+    
+    /* Spinner */
     .spinner {
-      display: inline-block;
       animation: spin 1s linear infinite;
     }
     
@@ -380,367 +339,294 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-
-    /* Indicateur de dernière question de l'enseignant */
-    .last-question {
-      background: #e8f4ff;
-      border-left: 4px solid #4a9eff;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 15px;
-      margin-bottom: 10px;
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .header {
+        padding: 12px 15px;
+      }
+      
+      .controls {
+        flex-direction: column;
+      }
+      
+      .chat-container {
+        height: calc(100vh - 180px);
+      }
+      
+      .message {
+        max-width: 90%;
+      }
+      
+      .exam-mode-indicator {
+        top: 10px;
+        right: 10px;
+      }
     }
     
-    .last-question h5 {
-      color: #2c3e50;
-      margin-top: 0;
-      margin-bottom: 10px;
-      font-size: 1rem;
-    }
-    
-    .last-question p {
-      color: #34495e;
-      margin: 0;
-      font-weight: 500;
+    /* Print styles */
+    @media print {
+      .controls,
+      .input-area,
+      .exam-mode-indicator {
+        display: none !important;
+      }
+      
+      .chat-container {
+        box-shadow: none;
+        border: 1px solid #ddd;
+      }
     }
   </style>
 </head>
 
 <body>
-  <!-- Vérification de connexion -->
-  {% if not eleve %}
-    <script>
-      alert("{% if lang == 'en' %}Please log in to access the virtual teacher{% else %}Veuillez vous connecter pour accéder à l'enseignant virtuel{% endif %}");
-      window.location.href = "/login-eleve";
-    </script>
-  {% endif %}
-
-  <!-- Alertes flash -->
-  <div class="alert-container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-  </div>
-
-  <!-- Mode examen -->
+  <!-- Exam Mode Indicator -->
   {% if session.get('mode_examen') %}
-  <div class="mode-indicator">
+  <div class="exam-mode-indicator">
     <i class="fas fa-graduation-cap"></i>
-    {% if lang == 'en' %}Exam Mode: ON{% else %}Mode Examen : ACTIVÉ{% endif %}
+    {% if lang == 'en' %}Exam Mode{% else %}Mode Examen{% endif %}
   </div>
   {% endif %}
 
   <div class="container">
-    <!-- En-tête -->
-    <header>
+    <!-- Header -->
+    <header class="header">
       <div class="student-info">
-        <div class="student-avatar">
-          {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+        <div class="avatar">
+          {{ eleve.nom_complet.split(' ')[0][0] }}
+          {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
         </div>
         <div>
-          <h3 style="margin: 0;">
-            {% if lang == 'en' %}
-              Math Guide - {{ eleve.nom_complet.split(' ')[0] }}
-            {% else %}
-              Guide de maths - {{ eleve.nom_complet.split(' ')[0] }}
-            {% endif %}
+          <h3 style="margin: 0; font-size: 1.2rem;">
+            {% if lang == 'en' %}Math Guide{% else %}Guide de Maths{% endif %}
           </h3>
-          <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 0.9rem;">
-            {% if lang == 'en' %}
-              Virtual teacher for mathematics
-            {% else %}
-              Enseignant virtuel de mathématiques
-            {% endif %}
+          <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
+            {{ eleve.nom_complet.split(' ')[0] }}
           </p>
         </div>
       </div>
-      <div>
-        <span style="background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; font-size: 0.9rem;">
-          {{ eleve.niveau.nom if eleve.niveau else 'Niveau non défini' }}
-        </span>
+      <div class="niveau-badge">
+        {{ eleve.niveau.nom if eleve.niveau else '6ème' }}
       </div>
     </header>
 
-    <!-- Conteneur de chat -->
+    <!-- Controls -->
+    <div class="controls">
+      <form method="POST" action="/nouvel-exercice" class="flex-1">
+        <button type="submit" class="btn btn-new" id="newExerciseBtn">
+          <i class="fas fa-plus-circle"></i>
+          {% if lang == 'en' %}New Exercise{% else %}Nouvel exercice{% endif %}
+        </button>
+      </form>
+      
+      <form method="POST" action="/toggle-examen" class="flex-1">
+        <button type="submit" class="btn btn-exam" id="toggleExamBtn">
+          <i class="fas fa-graduation-cap"></i>
+          {% if lang == 'en' %}
+            {{ 'Exam ON' if session.get('mode_examen') else 'Exam OFF' }}
+          {% else %}
+            {{ 'Examen OUI' if session.get('mode_examen') else 'Examen NON' }}
+          {% endif %}
+        </button>
+      </form>
+    </div>
+
+    <!-- Chat Container -->
     <div class="chat-container {% if session.get('mode_examen') %}exam-mode{% endif %}">
-      <!-- Contrôles -->
-      <div class="controls">
-        <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
-          <button type="submit" class="btn btn-new" id="newExerciseBtn">
-            <i class="fas fa-plus-circle"></i>
-            {% if lang == 'en' %}
-              New Exercise
-            {% else %}
-              Nouvel exercice
-            {% endif %}
-          </button>
-        </form>
-
-        <form method="POST" action="/toggle-examen" id="toggleExamForm">
-          <button type="submit" class="btn btn-exam" id="toggleExamBtn">
-            <i class="fas fa-graduation-cap"></i>
-            {% if lang == 'en' %}
-              Exam Mode: {{ 'ON' if session.get('mode_examen') else 'OFF' }}
-            {% else %}
-              Mode Examen : {{ 'ACTIVÉ' if session.get('mode_examen') else 'DÉSACTIVÉ' }}
-            {% endif %}
-          </button>
-        </form>
-      </div>
-
-      <!-- Zone de chat -->
-      <div class="chat-area">
-        <!-- CONVERSATION : Affichée au-dessus -->
-        <div class="conversation-container" id="conversationContainer">
-          <div class="messages" id="messagesContainer">
-            {% set conversation = session.get('guide_math_conversation', []) %}
-            
-            {% if conversation %}
-              <!-- Afficher TOUTE la conversation du début à la fin -->
-              {% for message in conversation %}
-                {% if 'Élève:' in message or 'Élève (réponse):' in message %}
-                  <div class="message user-message">
-                    <div class="message-header">
-                      <span><i class="fas fa-user"></i> {% if lang == 'en' %}You{% else %}Vous{% endif %}</span>
-                      <span style="font-size: 0.8rem;">
-                        {% if loop.last %}Maintenant{% else %}{{ loop.index }}{% endif %}
-                      </span>
-                    </div>
-                    <div class="message-content">
-                      {{ message.replace('Élève: ', '').replace('Élève (réponse): ', '')|safe }}
-                    </div>
-                  </div>
-                {% elif 'Enseignant:' in message %}
-                  <div class="message bot-message">
-                    <div class="message-header">
-                      <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
-                      <span style="font-size: 0.8rem;">
-                        {% if loop.last %}Maintenant{% else %}{{ loop.index }}{% endif %}
-                      </span>
-                    </div>
-                    <div class="message-content">
-                      {{ message.replace('Enseignant: ', '')|safe }}
-                    </div>
-                  </div>
-                {% endif %}
-              {% endfor %}
-            {% else %}
-              <!-- Message de bienvenue initial -->
+      <!-- Messages Area -->
+      <div class="messages-area" id="messagesArea">
+        <!-- Conversation -->
+        {% set conversation = session.get('conversation', []) %}
+        
+        {% if conversation %}
+          {% for message in conversation %}
+            {% if '👤 Élève:' in message %}
+              <div class="message user-message">
+                <div class="message-header">
+                  <i class="fas fa-user"></i>
+                  <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
+                </div>
+                <div class="message-bubble">
+                  {{ message.replace('👤 Élève: ', '')|safe }}
+                </div>
+              </div>
+            {% elif '🤖 Enseignant:' in message %}
               <div class="message bot-message">
                 <div class="message-header">
-                  <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
+                  <i class="fas fa-robot"></i>
+                  <span>{% if lang == 'en' %}Guide{% else %}Guide{% endif %}</span>
                 </div>
-                <div class="message-content">
-                  {% if lang == 'en' %}
-                    <h4 style="margin-top: 0;">👋 Hello {{ eleve.nom_complet.split(' ')[0] }}!</h4>
-                    <p>I'm your virtual math teacher. <strong>I won't give you the answers</strong>, but I'll guide you step by step so YOU find them yourself!</p>
-                    <p><strong>How it works:</strong></p>
-                    <ol>
-                      <li>You ask a math question</li>
-                      <li>I'll ask you guiding questions</li>
-                      <li>You answer each question</li>
-                      <li>We continue until YOU solve it</li>
-                      <li>You learn by discovering, not by being told</li>
-                    </ol>
-                    <p><em>Ready to solve some math? Ask your first question below! ✨</em></p>
-                  {% else %}
-                    <h4 style="margin-top: 0;">👋 Bonjour {{ eleve.nom_complet.split(' ')[0] }} !</h4>
-                    <p>Je suis votre enseignant virtuel de mathématiques. <strong>Je ne vous donnerai pas les réponses</strong>, mais je vous guiderai étape par étape pour que VOUS les trouviez vous-même !</p>
-                    <p><strong>Comment ça marche :</strong></p>
-                    <ol>
-                      <li>Vous posez une question de maths</li>
-                      <li>Je vous pose des questions guidantes</li>
-                      <li>Vous répondez à chaque question</li>
-                      <li>Nous continuons jusqu'à ce que VOUS résolviez</li>
-                      <li>Vous apprenez en découvrant, pas en étant dit</li>
-                    </ol>
-                    <p><em>Prêt à résoudre des maths ? Posez votre première question ci-dessous ! ✨</em></p>
-                  {% endif %}
+                <div class="message-bubble">
+                  {{ message.replace('🤖 Enseignant: ', '')|safe }}
                 </div>
               </div>
             {% endif %}
+          {% endfor %}
+        {% else %}
+          <!-- Welcome Message -->
+          <div class="message bot-message welcome-message">
+            <div class="message-bubble">
+              <h4>👋 {% if lang == 'en' %}Hi {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Salut {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}</h4>
+              <p><strong>{% if lang == 'en' %}I'm your Math Guide.{% else %}Je suis ton guide de maths.{% endif %}</strong></p>
+              <p>{% if lang == 'en' %}I won't give you answers, but I'll ask questions so YOU find them!{% else %}Je ne te donnerai pas les réponses, mais je te poserai des questions pour que TU les trouves !{% endif %}</p>
+              
+              <p><strong>{% if lang == 'en' %}How it works:{% else %}Comment ça marche :{% endif %}</strong></p>
+              <ol>
+                <li>{% if lang == 'en' %}You ask a math question{% else %}Tu poses une question de maths{% endif %}</li>
+                <li>{% if lang == 'en' %}I ask you a guiding question{% else %}Je te pose une question pour te guider{% endif %}</li>
+                <li>{% if lang == 'en' %}You answer{% else %}Tu réponds{% endif %}</li>
+                <li>{% if lang == 'en' %}We continue until you find!{% else %}On continue jusqu'à ce que tu trouves !{% endif %}</li>
+              </ol>
+              <p><em>✨ {% if lang == 'en' %}Ready? Write your exercise below!{% else %}Prêt ? Écris ton exercice ci-dessous !{% endif %}</em></p>
+            </div>
           </div>
-        </div>
-
-        <!-- Dernière question posée par l'enseignant (si elle existe) -->
-        {% set derniere_question_ia = session.get('derniere_question_ia') %}
-        {% if derniere_question_ia %}
-        <div class="last-question">
-          <h5>
-            <i class="fas fa-question-circle"></i>
-            {% if lang == 'en' %}Teacher's last question:{% else %}Dernière question de l'enseignant :{% endif %}
-          </h5>
-          <p>{{ derniere_question_ia }}</p>
-        </div>
         {% endif %}
+      </div>
 
-        <!-- ZONE DE SAISIE : Fixée en bas -->
-        <div class="input-container">
-          <form method="POST" id="mainForm">
-            <textarea 
-              name="question" 
-              id="questionInput"
-              placeholder="{% if session.get('derniere_question_ia') %}{% if lang == 'en' %}Answer the teacher's question above...{% else %}Répondez à la question de l'enseignant ci-dessus...{% endif %}{% else %}{% if lang == 'en' %}Write your math exercise here... I'll guide you step by step{% else %}Écrivez votre exercice de mathématiques ici... Je vous guiderai étape par étape{% endif %}{% endif %}" 
-              required
-              autofocus></textarea>
-            
-            <button type="submit" class="btn btn-send" id="submitBtn">
-              <i class="fas fa-paper-plane"></i>
-              {% if session.get('derniere_question_ia') %}
-                {% if lang == 'en' %}Submit Answer{% else %}Soumettre la réponse{% endif %}
-              {% else %}
-                {% if lang == 'en' %}Start Conversation{% else %}Démarrer la conversation{% endif %}
-              {% endif %}
-            </button>
-          </form>
-        </div>
+      <!-- Teacher's Last Question -->
+      {% set derniere_q_ia = session.get('derniere_q_ia') %}
+      {% if derniere_q_ia %}
+      <div class="teacher-question">
+        <h5><i class="fas fa-question-circle"></i> 
+          {% if lang == 'en' %}Guide's question:{% else %}Question du guide :{% endif %}
+        </h5>
+        <p>{{ derniere_q_ia }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Input Area -->
+      <div class="input-area">
+        <form method="POST" id="mainForm" class="input-group">
+          <textarea 
+            name="question" 
+            id="questionInput"
+            placeholder="{% if derniere_q_ia %}{% if lang == 'en' %}Answer the guide's question...{% else %}Réponds à la question du guide...{% endif %}{% else %}{% if lang == 'en' %}Write your math question here...{% else %}Écris ta question de maths ici...{% endif %}{% endif %}"
+            required
+            autofocus></textarea>
+          
+          <button type="submit" class="btn-send" id="submitBtn">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </form>
       </div>
     </div>
   </div>
 
-  <!-- Bootstrap JS -->
+  <!-- Bootstrap JS for alerts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- JavaScript optimisé -->
+  <!-- JavaScript -->
   <script>
-    // État global
     let isProcessing = false;
     
     document.addEventListener('DOMContentLoaded', function() {
-      console.log("✅ Page enseignant virtuel chargée");
-      
-      // Initialiser MathJax
-      if (window.MathJax) {
-        MathJax.typesetPromise();
-      }
-      
-      // Focus sur le textarea
+      // Auto-focus
       const textarea = document.getElementById('questionInput');
       if (textarea) {
         textarea.focus();
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
       }
       
-      // Fermer automatiquement les alertes après 5 secondes
+      // Scroll to bottom
+      setTimeout(scrollToBottom, 100);
+      
+      // Form submission
+      const form = document.getElementById('mainForm');
+      const submitBtn = document.getElementById('submitBtn');
+      
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          if (isProcessing) {
+            e.preventDefault();
+            return false;
+          }
+          
+          // Check input length
+          if (textarea && textarea.value.trim().length < 3) {
+            e.preventDefault();
+            showAlert("{% if lang == 'en' %}Enter at least 3 characters{% else %}Entre au moins 3 caractères{% endif %}", 'warning');
+            return false;
+          }
+          
+          // Set processing state
+          isProcessing = true;
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i>';
+          }
+          
+          // Auto-reset after 15 seconds (safety)
+          setTimeout(() => {
+            isProcessing = false;
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            }
+          }, 15000);
+          
+          // Let form submit normally
+          console.log('📤 Sending...');
+        });
+      }
+      
+      // Auto-close alerts
       setTimeout(() => {
         document.querySelectorAll('.alert').forEach(alert => {
           const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
           bsAlert.close();
         });
-      }, 5000);
+      }, 4000);
       
-      // Scroller automatiquement vers le bas de la conversation
-      scrollToBottom();
-      
-      // Gérer la soumission du formulaire principal
-      const mainForm = document.getElementById('mainForm');
-      if (mainForm) {
-        mainForm.addEventListener('submit', function(e) {
-          // Empêcher les doubles soumissions
-          if (isProcessing) {
-            e.preventDefault();
-            showAlert("{% if lang == 'en' %}Please wait for the current request to complete{% else %}Veuillez attendre que la requête en cours soit terminée{% endif %}", 'warning');
-            return false;
-          }
-          
-          // Vérifier la longueur de la question
-          const questionInput = document.getElementById('questionInput');
-          if (!questionInput || questionInput.value.trim().length < 3) {
-            e.preventDefault();
-            showAlert("{% if lang == 'en' %}Please enter at least 3 characters{% else %}Veuillez saisir au moins 3 caractères{% endif %}", 'warning');
-            return false;
-          }
-          
-          // Marquer comme en traitement
-          isProcessing = true;
-          
-          // Désactiver le bouton
-          const submitBtn = document.getElementById('submitBtn');
-          const originalHTML = submitBtn.innerHTML;
-          submitBtn.disabled = true;
-          
-          {% if lang == 'en' %}
-          submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Sending...';
-          {% else %}
-          submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Envoi...';
-          {% endif %}
-          
-          // Réactiver après 30 secondes maximum (sécurité)
-          setTimeout(() => {
-            if (isProcessing) {
-              isProcessing = false;
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = originalHTML;
-              showAlert("{% if lang == 'en' %}Request timeout. Please try again.{% else %}Délai dépassé. Veuillez réessayer.{% endif %}", 'warning');
-            }
-          }, 30000);
-          
-          // Laisser le formulaire s'envoyer normalement
-          console.log('📤 Envoi de la réponse...');
+      // Prevent double clicks on control buttons
+      const controlBtns = document.querySelectorAll('#newExerciseBtn, #toggleExamBtn');
+      controlBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          this.disabled = true;
+          setTimeout(() => this.disabled = false, 2000);
         });
-      }
-      
-      // Empêcher les doubles clics sur les autres boutons
-      const newExerciseBtn = document.getElementById('newExerciseBtn');
-      const toggleExamBtn = document.getElementById('toggleExamBtn');
-      
-      [newExerciseBtn, toggleExamBtn].forEach(btn => {
-        if (btn) {
-          btn.addEventListener('click', function() {
-            this.disabled = true;
-            setTimeout(() => {
-              this.disabled = false;
-            }, 2000);
-          });
-        }
       });
       
-      // Observer les changements dans les messages pour MathJax
-      const messagesContainer = document.getElementById('messagesContainer');
-      if (messagesContainer && window.MathJax) {
+      // MathJax observer
+      const messagesArea = document.getElementById('messagesArea');
+      if (messagesArea && window.MathJax) {
         const observer = new MutationObserver(function() {
           MathJax.typesetPromise();
-          // Scroller vers le bas quand de nouveaux messages sont ajoutés
-          setTimeout(scrollToBottom, 100);
+          setTimeout(scrollToBottom, 50);
         });
-        observer.observe(messagesContainer, {
-          childList: true,
-          subtree: true
-        });
+        observer.observe(messagesArea, { childList: true, subtree: true });
       }
     });
     
-    // Fonction pour scroller vers le bas de la conversation
     function scrollToBottom() {
-      const container = document.getElementById('conversationContainer');
-      if (container) {
-        container.scrollTop = container.scrollHeight;
+      const area = document.getElementById('messagesArea');
+      if (area) {
+        area.scrollTop = area.scrollHeight;
       }
     }
     
-    // Fonction pour afficher des alertes
     function showAlert(message, type = 'info') {
+      // Create alert
       const alertDiv = document.createElement('div');
-      alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-      alertDiv.style.position = 'fixed';
-      alertDiv.style.top = '80px';
-      alertDiv.style.left = '50%';
-      alertDiv.style.transform = 'translateX(-50%)';
-      alertDiv.style.zIndex = '2000';
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+      alertDiv.style.cssText = `
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2000;
+        max-width: 90%;
+      `;
       alertDiv.innerHTML = `
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       `;
       document.body.appendChild(alertDiv);
       
-      // Fermer automatiquement après 3 secondes
+      // Auto-remove
       setTimeout(() => {
         if (alertDiv.parentNode) {
           const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
@@ -749,29 +635,14 @@
       }, 3000);
     }
     
-    // Réactiver les boutons quand la page se recharge (après un POST)
-    window.addEventListener('pageshow', function(event) {
-      // Si la page vient du cache (bouton retour), réactiver
-      if (event.persisted) {
-        isProcessing = false;
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          {% if lang == 'en' %}
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Answer';
-          {% else %}
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Soumettre la réponse';
-          {% endif %}
-        }
+    // Reset processing state on page show
+    window.addEventListener('pageshow', function() {
+      isProcessing = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
       }
-      
-      // Scroller vers le bas
       setTimeout(scrollToBottom, 200);
-    });
-    
-    // Scroller vers le bas au chargement initial
-    window.addEventListener('load', function() {
-      setTimeout(scrollToBottom, 500);
     });
   </script>
 </body>

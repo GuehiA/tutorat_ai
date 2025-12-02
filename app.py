@@ -411,135 +411,100 @@ RESPONSE FORMAT:
 # chatbot_routes.py
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel - VERSION PÉDAGOGIQUE"""
-    # Vérifier si l'élève est connecté
+    """Route pour l'enseignant virtuel - VERSION SIMPLIFIÉE"""
     if "eleve_id" not in session:
-        flash("Veuillez vous connecter", "warning")
         return redirect(url_for("login_eleve"))
 
     eleve = User.query.options(joinedload(User.niveau)).get(session["eleve_id"])
     if not eleve or eleve.role != "élève":
-        flash("Accès non autorisé", "error")
         return redirect(url_for("login_eleve"))
     
-    # Vérifier l'accès (essai gratuit)
+    # Vérifier l'accès
     if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
         session.clear()
-        flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner.", "error")
+        flash("Essai gratuit terminé. Abonne-toi pour continuer.", "error")
         return redirect(url_for('login_eleve'))
 
-    # Langue
-    lang = request.args.get("lang") or session.get("lang", "fr")
-    session["lang"] = lang
-
-    # Variables pour le template
-    question = None
-    reponse_ia = None
+    lang = session.get("lang", "fr")
     
     # TRAITEMENT POST
     if request.method == 'POST':
         question = request.form.get("question", "").strip()
         
         if question and len(question) >= 3:
-            # Récupérer l'historique de conversation
-            conversation = session.get("guide_math_conversation", [])
+            conversation = session.get("conversation", [])
+            derniere_q_ia = session.get('derniere_q_ia')
             
-            # Vérifier si c'est une réponse à une question précédente de l'IA
-            derniere_question_ia = session.get('derniere_question_ia')
+            # Format simple pour l'historique
+            conversation.append(f"👤 Élève: {question}")
             
-            if derniere_question_ia:
-                # C'est une réponse de l'élève à la question de l'IA
-                conversation.append(f"Élève (réponse): {question}")
-                
-                # Générer la suite du dialogue
-                reponse_ia = generer_suite_dialogue_pedagogique(
-                    derniere_question_ia=derniere_question_ia,
-                    reponse_eleve=question,
+            if derniere_q_ia:
+                # Réponse à une question précédente
+                reponse = generer_suite_conversation(
+                    derniere_q=derniere_q_ia,
+                    reponse=question,
                     historique=conversation,
-                    niveau_eleve=eleve.niveau.nom if eleve.niveau else "6ème",
-                    langue=lang,
+                    niveau=eleve.niveau.nom if eleve.niveau else "6ème",
                     mode_examen=session.get("mode_examen", False)
                 )
-                
-                # Réinitialiser pour la prochaine étape
-                session.pop('derniere_question_ia', None)
+                session.pop('derniere_q_ia', None)
             else:
-                # C'est une nouvelle question de l'élève
-                conversation.append(f"Élève: {question}")
-                
-                # Générer le début du dialogue pédagogique
-                reponse_ia = generer_debut_dialogue_pedagogique(
-                    question_eleve=question,
-                    historique=conversation,
-                    niveau_eleve=eleve.niveau.nom if eleve.niveau else "6ème",
-                    langue=lang,
+                # Nouvelle question
+                reponse = generer_debut_conversation(
+                    question=question,
+                    niveau=eleve.niveau.nom if eleve.niveau else "6ème",
                     mode_examen=session.get("mode_examen", False)
                 )
             
-            # Ajouter la réponse de l'IA
-            conversation.append(f"Enseignant: {reponse_ia}")
+            conversation.append(f"🤖 Enseignant: {reponse}")
             
-            # Limiter la taille de la conversation
-            if len(conversation) > 20:
-                conversation = conversation[-20:]
+            # Limiter à 10 messages
+            if len(conversation) > 10:
+                conversation = conversation[-10:]
             
-            # Sauvegarder dans la session
-            session["guide_math_conversation"] = conversation
+            session["conversation"] = conversation
             
-            # Extraire la dernière question posée par l'IA pour la session
-            derniere_question = extraire_question_ia(reponse_ia)
-            if derniere_question:
-                session['derniere_question_ia'] = derniere_question
+            # Extraire la nouvelle question
+            nouvelle_q = extraire_question(reponse)
+            if nouvelle_q:
+                session['derniere_q_ia'] = nouvelle_q
             
-            flash("Je vais te guider pas à pas !", "success")
+            flash("Je te guide étape par étape !", "success")
     
-    # AFFICHAGE
-    else:
-        # Récupérer la conversation pour l'affichage
-        conversation = session.get("guide_math_conversation", [])
-        
-        if conversation:
-            # Prendre les 2 derniers messages
-            if len(conversation) >= 4:
-                # Avant-dernier message (question élève)
-                question = conversation[-4].replace("Élève: ", "").replace("Élève (réponse): ", "")
-                # Dernier message (réponse IA)
-                reponse_ia = conversation[-3].replace("Enseignant: ", "")
-            elif len(conversation) >= 2:
-                reponse_ia = conversation[-1].replace("Enseignant: ", "")
-
+    # Récupérer la conversation
+    conversation = session.get("conversation", [])
+    
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
         eleve=eleve,
-        question=question,
-        reponse=reponse_ia,
+        conversation=conversation,
         date_du_jour=datetime.utcnow()
     )
 
-def extraire_question_ia(reponse_ia):
-    """Extrait la dernière question posée par l'IA pour suivre le dialogue"""
+def extraire_question(reponse):
+    """Extrait la question posée par l'IA - version simple"""
     import re
     
-    # Chercher les patterns de questions
+    # Chercher les questions directes
     patterns = [
-        r'[Qq]uestion\s+\d+\s*[.:]\s*(.*?)(?=\n|$)',
-        r'[Pp]eux-tu\s+(.*?)(?=\?|$)',
-        r'[Qq]u\'(.*?)(?=\?|$)',
-        r'[Éé]cris\s+(.*?)(?=\?|$)',
-        r'[Cc]alcule\s+(.*?)(?=\?|$)',
-        r'[Tt]rouve\s+(.*?)(?=\?|$)',
-        r'[Dd]is-moi\s+(.*?)(?=\?|$)',
-        r'[Qq]uelle\s+(.*?)(?=\?|$)',
-        r'[Cc]omment\s+(.*?)(?=\?|$)',
-        r'[Pp]ourquoi\s+(.*?)(?=\?|$)'
+        r'[Pp]eux-tu\s+(.*?)\?',
+        r'[Qq]u\'est-ce que\s+(.*?)\?',
+        r'[Cc]alcule\s+(.*?)\?',
+        r'[Tt]rouve\s+(.*?)\?',
+        r'[Dd]is-moi\s+(.*?)\?',
+        r'[Qq]uelle\s+(.*?)\?',
+        r'[Cc]ombien\s+(.*?)\?',
+        r'[Cc]omment\s+(.*?)\?',
+        r'[Pp]ourquoi\s+(.*?)\?',
+        r'[Éé]cris\s+(.*?)\?'
     ]
     
     for pattern in patterns:
-        match = re.search(pattern, reponse_ia, re.DOTALL)
+        match = re.search(pattern, reponse)
         if match:
             question = match.group(1).strip()
-            if len(question) > 10:  # Éviter les questions trop courtes
+            if len(question) > 5:  # Minimum 5 caractères
                 return question
     
     return None
@@ -795,39 +760,98 @@ def process_question(question, eleve, lang, session):
 
 
 def get_system_prompt(lang="fr", mode_examen=False):
+    """Prompt court et efficace"""
     if lang == "fr":
-        base = (
-            "Tu es le Guide de Maths, un tuteur pédagogique pour élèves du secondaire.\n\n"
+        base = """Tu es le Guide de Maths. Tu guides les élèves pour qu'ils trouvent eux-mêmes les solutions.
 
-            "RÈGLES ABSOLUES :\n"
-            "- Tu travailles TOUJOURS sur le même exercice que l’élève.\n"
-            "- Tu ne donnes JAMAIS la réponse finale immédiatement.\n"
-            "- Tu guides étape par étape.\n"
-            "- Tu demandes UNE action précise à l’élève à chaque message.\n"
-            "- Tu numérote les étapes : Étape 1, Étape 2, etc.\n"
-            "- Tu félicites les bonnes réponses.\n"
-            "- Si l’élève se trompe, tu corriges doucement.\n"
-            "- Si l’élève dit « je ne sais pas », tu donnes un indice progressif.\n"
-            "- Tu n’affiches la solution complète QUE lorsque toutes les étapes ont été faites.\n\n"
+RÈGLES COURTES :
+- Tu ne donnes JAMAIS la réponse
+- Tu poses UNE question à la fois
+- Tu félicites quand c'est bon
+- Tu corriges doucement les erreurs
+- Tu utilises un langage simple
+- Tu tutoies l'élève (tu/vous)
+- Maximum 3 lignes par message
 
-            "FORMAT STRICT :\n"
-            "Étape X : explication courte\n"
-            "Question à l’élève : ...\n\n"
+EXEMPLE DE FORMAT :
+1. Reformule le problème simplement
+2. Pose une question précise
+3. Attends la réponse avant de continuer
 
-            "Commence toujours par reformuler l’énoncé.\n"
-        )
-
-        if mode_examen:
-            base += (
-                "\nMODE EXAMEN ACTIVÉ :\n"
-                "- Tu donnes des indices MINIMAUX.\n"
-                "- Tu ne donnes aucune formule complète.\n"
-                "- Tu encourages la réflexion personnelle.\n"
-            )
+""" + ("⚠️ MODE EXAMEN : Indices seulement, pas d'étapes." if mode_examen else "")
+        
         return base
-
     else:
-        return "Equivalent English version"
+        return "You are the Math Guide. You help students find solutions themselves."
+
+def generer_debut_conversation(question, niveau, mode_examen=False):
+    """Début de conversation - court et direct"""
+    from openai import OpenAI
+    import os
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    prompt = f"""Élève de {niveau} demande : "{question}"
+
+Commence le dialogue. Reformule le problème simplement. Pose UNE première question pour guider l'élève vers la première étape.
+
+{"Mode examen : donne juste un indice pour commencer." if mode_examen else ""}"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",  # Plus rapide et moins cher
+            messages=[
+                {"role": "system", "content": get_system_prompt("fr", mode_examen)},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=200  # Court !
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        print(f"Erreur OpenAI: {e}")
+        return "Super, on travaille sur ça ensemble ! Peux-tu me redire le problème avec tes mots ?"
+
+def generer_suite_conversation(derniere_q, reponse, historique, niveau, mode_examen=False):
+    """Continue la conversation - court et direct"""
+    from openai import OpenAI
+    import os
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    # Prendre les 4 derniers messages seulement
+    historique_recent = "\n".join(historique[-4:]) if len(historique) >= 4 else "\n".join(historique)
+    
+    prompt = f"""Élève de {niveau} a répondu à ma question "{derniere_q}" avec : "{reponse}"
+
+Analyse rapidement :
+1. Est-ce correct ? Félicite si oui
+2. Y a-t-il des erreurs ? Corrige doucement
+3. Pose la prochaine question pour avancer
+
+Historique récent :
+{historique_recent}
+
+{"Mode examen : donne un petit indice seulement." if mode_examen else ""}"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": get_system_prompt("fr", mode_examen)},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=250  # Court !
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        print(f"Erreur OpenAI: {e}")
+        return "Merci pour ta réponse ! Maintenant, quelle est l'étape suivante selon toi ?"
 
 @app.after_request
 def add_header(response):
@@ -846,39 +870,34 @@ def chat():
 
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
-    """Recommencer un nouvel exercice"""
-    # Vérifier la session
+    """Nouvel exercice"""
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
-    # Réinitialiser la conversation
-    session.pop("guide_math_conversation", None)
-    session.pop("derniere_question_ia", None)
-    session.pop("mode_examen", None)
+    session.pop("conversation", None)
+    session.pop("derniere_q_ia", None)
     
-    flash("Nouvel exercice commencé ! Posez votre question.", "success")
-    
-    # Rediriger vers l'enseignant virtuel
+    flash("Nouvel exercice ! Pose ta question.", "success")
     return redirect(url_for("enseignant_virtuel"))
 
 @app.route("/toggle-examen", methods=["POST"])
 def toggle_examen():
-    """Basculer le mode examen"""
-    # Vérifier la session
+    """Basculer mode examen"""
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
-    # Basculer le mode examen
-    current_mode = session.get("mode_examen", False)
-    session["mode_examen"] = not current_mode
+    current = session.get("mode_examen", False)
+    session["mode_examen"] = not current
     
-    # NE PAS effacer la conversation, on veut garder l'historique
-    # session.pop("guide_math_conversation", None)  # ← Commenter cette ligne
-    
-    flash(f"Mode examen {'activé' if not current_mode else 'désactivé'}", "success")
-    
-    # Rediriger vers l'enseignant virtuel
+    flash(f"Mode examen {'activé' if not current else 'désactivé'}", "success")
     return redirect(url_for("enseignant_virtuel"))
+
+@app.after_request
+def add_headers(response):
+    """Headers anti-cache"""
+    response.headers['Cache-Control'] = 'no-store, no-cache'
+    response.headers['Pragma'] = 'no-cache'
+    return response
 
 @app.after_request
 def after_request(response):
