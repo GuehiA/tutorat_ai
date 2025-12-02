@@ -310,20 +310,32 @@ def enseignant_virtuel():
     username = request.args.get('username')
     lang = request.args.get('lang', 'fr')
     
-    print(f"DEBUG: username={username}, lang={lang}")  # Tu vois déjà cette ligne dans les logs
+    print(f"DEBUG: username={username}, lang={lang}")
     
+    # CORRECTION : Vérifier d'abord la session
+    # Si username n'est pas dans les paramètres, regarder dans la session
     if not username:
-        # Si pas de username, rediriger vers le login élève (pas /login)
-        flash("Veuillez vous connecter en tant qu'élève", "warning")
-        return redirect("/login-eleve")  # ← CORRECTION ICI
+        username = session.get('current_student')
+        if not username:
+            # Si pas dans la session non plus, alors rediriger
+            flash("Veuillez vous connecter en tant qu'élève", "warning")
+            return redirect("/login-eleve")
+    
+    # Si username existe, vérifier si c'est le même que dans la session
+    # pour éviter les problèmes de session
+    if username != session.get('current_student'):
+        session['current_student'] = username
     
     # Récupérer l'élève
     eleve = User.query.filter_by(username=username, role='student').first()
     if not eleve:
+        # Si l'élève n'existe pas en base mais est dans la session,
+        # nettoyer la session et rediriger
+        session.pop('current_student', None)
         flash("Élève non trouvé", "error")
-        return redirect("/login-eleve")  # ← CORRECTION ICI
+        return redirect("/login-eleve")
     
-    # Stocker dans la session
+    # Stocker dans la session si ce n'est pas déjà fait
     session['current_student'] = username
     session['current_lang'] = lang
     
@@ -340,7 +352,7 @@ def enseignant_virtuel():
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
-        eleve=eleve,  # Important: passe 'eleve'
+        eleve=eleve,
         question=question,
         reponse=reponse_ia,
         date_du_jour=datetime.utcnow()
