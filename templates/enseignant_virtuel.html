@@ -315,6 +315,18 @@
 </head>
 
 <body>
+  <!-- CORRECTION : Gestion des variables user/eleve -->
+  {% if not user and eleve %}
+    {% set user = eleve %}
+  {% endif %}
+  
+  {% if not user %}
+    <script>
+      alert("Veuillez vous connecter pour accéder à l'enseignant virtuel");
+      window.location.href = "/login";
+    </script>
+  {% endif %}
+
   <!-- Alertes flash -->
   <div class="alert-container">
     {% with messages = get_flashed_messages(with_categories=true) %}

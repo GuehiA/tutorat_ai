@@ -305,37 +305,49 @@ def eleve_remediations():
 # chatbot_routes.py
 @app.route("/enseignant-virtuel")
 def enseignant_virtuel():
+    """Route pour l'enseignant virtuel - accessible depuis le dashboard élève"""
+    # Récupérer les paramètres
     username = request.args.get('username')
     lang = request.args.get('lang', 'fr')
     
-    # Récupère l'utilisateur (qui est un élève dans ce contexte)
-    user = User.query.filter_by(username=username, role='student').first()
-    if not user:
+    # DEBUG: Afficher les paramètres reçus
+    print(f"DEBUG: username={username}, lang={lang}")
+    
+    if not username:
+        # Si pas de username, essayer de récupérer depuis la session
+        if 'username' in session:
+            username = session['username']
+            # Rediriger vers la même URL avec le username
+            return redirect(f"/enseignant-virtuel?username={username}&lang={lang}")
+        else:
+            flash("Veuillez vous connecter", "error")
+            return redirect("/login")
+    
+    # Récupérer l'élève
+    eleve = User.query.filter_by(username=username, role='student').first()
+    if not eleve:
         flash("Élève non trouvé", "error")
-        return redirect("/")
+        return redirect("/login")
     
-    # Récupère la conversation si elle existe
+    # Récupérer la conversation
     conversation = session.get("guide_math_conversation", [])
-    
-    # Initialise la réponse IA
     reponse_ia = None
     question = None
     
-    # Récupère la dernière question/réponse si elle existe
     if conversation:
         question = conversation[-2] if len(conversation) >= 2 else None
         reponse_ia = conversation[-1] if len(conversation) >= 1 else None
     
+    # Rendre le template avec 'eleve' comme variable
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
-        user=user,  # ← Important : passe 'user' au template
+        eleve=eleve,  # Important: utiliser 'eleve' si c'est ce que ton template attend
+        user=eleve,   # Ou les deux pour être sûr
         question=question,
         reponse=reponse_ia,
         date_du_jour=datetime.utcnow()
     )
-
-
 
 def get_system_prompt(lang="fr", mode_examen=False):
     if lang == "fr":
