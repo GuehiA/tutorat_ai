@@ -986,18 +986,27 @@ def chat():
 
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
-    """Nouvel exercice - réinitialise complètement"""
+    """Nouvel exercice - réinitialise COMPLÈTEMENT"""
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
-    # Vider TOUTE la conversation
-    session.pop("conversation", None)
-    session.pop("derniere_q_ia", None)
-    session.pop("exercice_en_cours", None)
+    # Vider TOUTE la session liée à la conversation
+    session_keys_to_remove = [
+        "conversation", 
+        "derniere_q_ia", 
+        "exercice_en_cours",
+        "mode_examen"  # Au cas où
+    ]
     
-    flash("Nouvel exercice ! Pose ta question.", "success")
-    return redirect(url_for("enseignant_virtuel"))
-
+    for key in session_keys_to_remove:
+        session.pop(key, None)
+    
+    # Flash message clair
+    flash("🎯 Nouvel exercice prêt ! Pose ta question.", "success")
+    
+    # Rediriger avec un timestamp pour éviter le cache
+    import time
+    return redirect(url_for("enseignant_virtuel") + f"?t={int(time.time())}")
 
 @app.after_request
 def add_headers(response):

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if lang == 'en' %}Math Guide{% else %}Guide de Maths{% endif %}</title>
   
-  <!-- Cache control -->
+  <!-- Cache control STRICT -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -122,7 +122,7 @@
       transform: translateX(-3px);
     }
     
-    /* Exercice en cours */
+    /* Exercice en cours - CACHÉ SI PAS D'EXERCICE */
     .exercice-header {
       background: #e8f4ff;
       border-left: 4px solid var(--primary);
@@ -166,7 +166,7 @@
       font-weight: 500;
     }
     
-    /* Controls - SIMPLIFIÉ */
+    /* Controls */
     .controls {
       display: flex;
       gap: 10px;
@@ -287,18 +287,6 @@
       opacity: 0.8;
     }
     
-    /* Step indicator */
-    .step-indicator {
-      display: inline-block;
-      background: rgba(67, 97, 238, 0.1);
-      color: var(--primary);
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 0.8rem;
-      margin-right: 8px;
-      font-weight: 500;
-    }
-    
     /* Input Area */
     .input-area {
       border-top: 1px solid #e2e8f0;
@@ -371,30 +359,6 @@
       margin-bottom: 5px;
     }
     
-    /* Teacher question highlight */
-    .teacher-question {
-      background: #e8f4ff;
-      border-left: 4px solid #4a9eff;
-      padding: 10px 15px;
-      border-radius: 8px;
-      margin: 10px 0 15px 0;
-    }
-    
-    .teacher-question h5 {
-      margin: 0 0 5px 0;
-      color: #2c3e50;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .teacher-question p {
-      margin: 0;
-      color: #34495e;
-      font-weight: 500;
-    }
-    
     /* Spinner */
     .spinner {
       animation: spin 1s linear infinite;
@@ -403,22 +367,6 @@
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
-    }
-    
-    /* Progress bar */
-    .progress-container {
-      height: 4px;
-      background: #e2e8f0;
-      border-radius: 2px;
-      margin: 10px 0;
-      overflow: hidden;
-    }
-    
-    .progress-bar {
-      height: 100%;
-      background: var(--primary);
-      width: 0%;
-      transition: width 0.3s ease;
     }
     
     /* Responsive */
@@ -507,7 +455,7 @@
       </div>
     </header>
 
-    <!-- Exercice en cours -->
+    <!-- Exercice en cours - AFFICHÉ SEULEMENT SI EXISTE -->
     {% set exercice_en_cours = session.get('exercice_en_cours', '') %}
     {% set conversation = session.get('conversation', []) %}
     
@@ -530,9 +478,9 @@
     </div>
     {% endif %}
 
-    <!-- Controls - UN SEUL BOUTON -->
+    <!-- Controls -->
     <div class="controls">
-      <form method="POST" action="/nouvel-exercice">
+      <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
         <button type="submit" class="btn btn-new" id="newExerciseBtn">
           <i class="fas fa-plus-circle"></i>
           {% if lang == 'en' %}New Exercise{% else %}Nouvel exercice{% endif %}
@@ -544,17 +492,14 @@
     <div class="chat-container">
       <!-- Messages Area -->
       <div class="messages-area" id="messagesArea">
-        <!-- Conversation -->
-        {% if conversation %}
+        <!-- Conversation - AFFICHÉE SEULEMENT SI EXISTE -->
+        {% if conversation and conversation|length > 0 %}
           {% for message in conversation %}
             {% if '👤 Élève:' in message %}
               <div class="message user-message">
                 <div class="message-header">
                   <i class="fas fa-user"></i>
                   <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
-                  {% if loop.index > 1 %}
-                  <span class="step-indicator">Étape {{ (loop.index + 1)//2 }}</span>
-                  {% endif %}
                 </div>
                 <div class="message-bubble">
                   {{ message.replace('👤 Élève: ', '')|safe }}
@@ -565,9 +510,6 @@
                 <div class="message-header">
                   <i class="fas fa-robot"></i>
                   <span>{% if lang == 'en' %}Guide{% else %}Guide{% endif %}</span>
-                  {% if loop.index > 2 %}
-                  <span class="step-indicator">Étape {{ loop.index//2 }}</span>
-                  {% endif %}
                 </div>
                 <div class="message-bubble">
                   {{ message.replace('🤖 Enseignant: ', '')|safe }}
@@ -576,15 +518,8 @@
             {% endif %}
           {% endfor %}
           
-          <!-- Progress indicator -->
-          {% if conversation|length >= 4 %}
-          <div class="progress-container">
-            <div class="progress-bar" style="width: {{ (conversation|length / 20) * 100 }}%"></div>
-          </div>
-          {% endif %}
-          
         {% else %}
-          <!-- Welcome Message -->
+          <!-- Welcome Message - TOUJOURS AFFICHÉ QUAND PAS DE CONVERSATION -->
           <div class="message bot-message welcome-message">
             <div class="message-bubble">
               <h4>👋 {% if lang == 'en' %}Hi {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Salut {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}</h4>
@@ -605,9 +540,9 @@
         {% endif %}
       </div>
 
-      <!-- Teacher's Last Question -->
+      <!-- Teacher's Last Question - AFFICHÉ SEULEMENT SI EXISTE -->
       {% set derniere_q_ia = session.get('derniere_q_ia') %}
-      {% if derniere_q_ia %}
+      {% if derniere_q_ia and conversation|length > 0 %}
       <div class="teacher-question">
         <h5><i class="fas fa-question-circle"></i> 
           {% if lang == 'en' %}Guide's question:{% else %}Question du guide :{% endif %}
@@ -623,7 +558,7 @@
             <textarea 
               name="question" 
               id="questionInput"
-              placeholder="{% if derniere_q_ia %}{% if lang == 'en' %}Answer the guide's question...{% else %}Réponds à la question du guide...{% endif %}{% else %}{% if lang == 'en' %}Write your math question here...{% else %}Écris ta question de maths ici...{% endif %}{% endif %}"
+              placeholder="{% if derniere_q_ia and conversation|length > 0 %}{% if lang == 'en' %}Answer the guide's question...{% else %}Réponds à la question du guide...{% endif %}{% else %}{% if lang == 'en' %}Write your math question here...{% else %}Écris ta question de maths ici...{% endif %}{% endif %}"
               required
               autofocus></textarea>
             
@@ -639,12 +574,13 @@
   <!-- Bootstrap JS for alerts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- JavaScript -->
+  <!-- JavaScript RENFORCÉ -->
   <script>
     let isProcessing = false;
-    let conversationLength = {{ conversation|length|default(0) }};
     
     document.addEventListener('DOMContentLoaded', function() {
+      console.log("📱 Page enseignant virtuel chargée");
+      
       // Auto-focus
       const textarea = document.getElementById('questionInput');
       if (textarea) {
@@ -655,7 +591,7 @@
       // Scroll to bottom
       setTimeout(scrollToBottom, 100);
       
-      // Form submission
+      // Form submission principal
       const form = document.getElementById('mainForm');
       const submitBtn = document.getElementById('submitBtn');
       
@@ -692,7 +628,36 @@
             }
           }, 20000);
           
-          console.log('📤 Sending...');
+          console.log('📤 Envoi de la réponse...');
+        });
+      }
+      
+      // Gestion du bouton "Nouvel exercice"
+      const newExerciseBtn = document.getElementById('newExerciseBtn');
+      const newExerciseForm = document.getElementById('newExerciseForm');
+      
+      if (newExerciseForm) {
+        newExerciseForm.addEventListener('submit', function(e) {
+          console.log("🔄 Nouvel exercice demandé");
+          
+          // Empêcher double clic
+          if (newExerciseBtn.disabled) {
+            e.preventDefault();
+            return false;
+          }
+          
+          // Désactiver le bouton pendant le traitement
+          newExerciseBtn.disabled = true;
+          const originalText = newExerciseBtn.innerHTML;
+          newExerciseBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> {% if lang == "en" %}Resetting...{% else %}Réinitialisation...{% endif %}';
+          
+          // Réactiver après 3 secondes (sécurité)
+          setTimeout(() => {
+            newExerciseBtn.disabled = false;
+            newExerciseBtn.innerHTML = originalText;
+          }, 3000);
+          
+          console.log("✅ Formulaire nouvel exercice soumis");
         });
       }
       
@@ -704,19 +669,6 @@
         });
       }, 4000);
       
-      // Prevent double clicks on new exercise button
-      const newExerciseBtn = document.getElementById('newExerciseBtn');
-      if (newExerciseBtn) {
-        newExerciseBtn.addEventListener('click', function() {
-          this.disabled = true;
-          this.innerHTML = '<i class="fas fa-spinner spinner"></i> {% if lang == "en" %}Resetting...{% else %}Réinitialisation...{% endif %}';
-          setTimeout(() => {
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-plus-circle"></i> {% if lang == "en" %}New Exercise{% else %}Nouvel exercice{% endif %}';
-          }, 3000);
-        });
-      }
-      
       // MathJax observer
       const messagesArea = document.getElementById('messagesArea');
       if (messagesArea && window.MathJax) {
@@ -726,9 +678,6 @@
         });
         observer.observe(messagesArea, { childList: true, subtree: true });
       }
-      
-      // Update progress bar
-      updateProgressBar();
     });
     
     function scrollToBottom() {
@@ -762,24 +711,32 @@
       }, 3000);
     }
     
-    function updateProgressBar() {
-      const progressBar = document.querySelector('.progress-bar');
-      if (progressBar) {
-        const width = Math.min((conversationLength / 20) * 100, 100);
-        progressBar.style.width = width + '%';
+    // FORCER le rechargement sans cache quand on revient sur la page
+    window.addEventListener('pageshow', function(event) {
+      // Si la page vient du cache, forcer un rechargement
+      if (event.persisted) {
+        console.log("🔄 Page chargée depuis le cache, vérification de l'état...");
+        window.location.reload();
       }
-    }
-    
-    // Reset processing state on page show
-    window.addEventListener('pageshow', function() {
+      
+      // Réinitialiser l'état de traitement
       isProcessing = false;
+      const submitBtn = document.getElementById('submitBtn');
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
       }
+      
+      // Scroll vers le bas
       setTimeout(scrollToBottom, 200);
-      updateProgressBar();
     });
+    
+    // Empêcher le cache du navigateur
+    window.onunload = function() {};
+    
+    // Log pour débogage
+    console.log("Conversation en session: {{ conversation|length|default(0) }} messages");
+    console.log("Exercice en cours: {{ 'Oui' if exercice_en_cours else 'Non' }}");
   </script>
 </body>
 </html>
