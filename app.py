@@ -1686,7 +1686,8 @@ def modifier_matiere(id):
         matiere.nom = request.form.get("nom")
         db.session.commit()
         flash("✅ Matière modifiée", "success")
-        return redirect("/admin/contenus")
+        # Rediriger vers une route qui existe
+        return redirect(url_for("admin_dashboard"))  # Si votre dashboard est sur "/admin"
 
     return render_template("modifier_matiere.html", matiere=matiere)
 
@@ -1697,7 +1698,8 @@ def supprimer_matiere(id):
     db.session.delete(matiere)
     db.session.commit()
     flash("🗑️ Matière supprimée", "success")
-    return redirect("/admin/contenus")
+    # Rediriger vers une route qui existe
+    return redirect(url_for("admin_dashboard"))  # Si votre dashboard est sur "/admin"
 
 @app.route("/admin/supprimer-test/<int:test_id>", methods=["POST"])
 def supprimer_test(test_id):

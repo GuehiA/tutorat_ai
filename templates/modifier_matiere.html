@@ -11,30 +11,117 @@
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
   <title>Modifier une matière</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; padding: 40px; background: #f4f4f4; }
-    .box {
-      max-width: 500px; margin: auto; background: white;
-      padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    body {
+      background: linear-gradient(135deg, #f8f9ff 0%, #e8eaff 100%);
+      min-height: 100vh;
+      padding: 40px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    label, input, button {
-      display: block; width: 100%; margin-top: 15px;
+    .form-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
-    input { padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-    button {
-      padding: 12px; background-color: #27ae60; color: white;
-      border: none; border-radius: 5px; font-size: 16px;
+    .btn-primary {
+      background: linear-gradient(135deg, #4361ee 0%, #3a56d4 100%);
+      border: none;
+      padding: 12px 30px;
+      font-weight: 500;
+    }
+    .btn-secondary {
+      background: #6c757d;
+      border: none;
+      padding: 12px 30px;
+    }
+    .form-label {
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+    .form-control {
+      padding: 12px 15px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.3s;
+    }
+    .form-control:focus {
+      border-color: #4361ee;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+    }
+    h2 {
+      color: #2d3748;
+      margin-bottom: 25px;
+      font-weight: 700;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      color: #4361ee;
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+    .back-link:hover {
+      color: #3a56d4;
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>✏️ Modifier une matière</h2>
+  <div class="form-container">
+    <a href="{{ url_for('admin_dashboard') }}" class="back-link">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left me-2" viewBox="0 0 16 16">
+        <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+      </svg>
+      Retour au tableau de bord
+    </a>
+    
+    <h2>✏️ Modifier la matière</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    
     <form method="POST">
-      <label>Nom de la matière</label>
-      <input type="text" name="nom" value="{{ matiere.nom }}" required>
-      <button type="submit">💾 Enregistrer</button>
+      <div class="mb-4">
+        <label class="form-label">Nom de la matière (français)</label>
+        <input type="text" name="nom" value="{{ matiere.nom }}" class="form-control" required>
+      </div>
+      
+      {% if matiere.nom_en %}
+      <div class="mb-4">
+        <label class="form-label">Nom de la matière (anglais) <small class="text-muted">Optionnel</small></label>
+        <input type="text" name="nom_en" value="{{ matiere.nom_en }}" class="form-control">
+      </div>
+      {% endif %}
+      
+      <div class="d-flex gap-3">
+        <button type="submit" class="btn btn-primary flex-grow-1">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle me-2" viewBox="0 0 16 16">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+            <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+          </svg>
+          Enregistrer les modifications
+        </button>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+          Annuler
+        </a>
+      </div>
     </form>
   </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
