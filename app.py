@@ -305,29 +305,27 @@ def eleve_remediations():
 # chatbot_routes.py
 @app.route("/enseignant-virtuel")
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel - accessible depuis le dashboard élève"""
+    """Route pour l'enseignant virtuel"""
     # Récupérer les paramètres
     username = request.args.get('username')
     lang = request.args.get('lang', 'fr')
     
-    # DEBUG: Afficher les paramètres reçus
-    print(f"DEBUG: username={username}, lang={lang}")
+    print(f"DEBUG: username={username}, lang={lang}")  # Tu vois déjà cette ligne dans les logs
     
     if not username:
-        # Si pas de username, essayer de récupérer depuis la session
-        if 'username' in session:
-            username = session['username']
-            # Rediriger vers la même URL avec le username
-            return redirect(f"/enseignant-virtuel?username={username}&lang={lang}")
-        else:
-            flash("Veuillez vous connecter", "error")
-            return redirect("/login")
+        # Si pas de username, rediriger vers le login élève (pas /login)
+        flash("Veuillez vous connecter en tant qu'élève", "warning")
+        return redirect("/login-eleve")  # ← CORRECTION ICI
     
     # Récupérer l'élève
     eleve = User.query.filter_by(username=username, role='student').first()
     if not eleve:
         flash("Élève non trouvé", "error")
-        return redirect("/login")
+        return redirect("/login-eleve")  # ← CORRECTION ICI
+    
+    # Stocker dans la session
+    session['current_student'] = username
+    session['current_lang'] = lang
     
     # Récupérer la conversation
     conversation = session.get("guide_math_conversation", [])
@@ -338,12 +336,11 @@ def enseignant_virtuel():
         question = conversation[-2] if len(conversation) >= 2 else None
         reponse_ia = conversation[-1] if len(conversation) >= 1 else None
     
-    # Rendre le template avec 'eleve' comme variable
+    # Rendre le template avec 'eleve'
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
-        eleve=eleve,  # Important: utiliser 'eleve' si c'est ce que ton template attend
-        user=eleve,   # Ou les deux pour être sûr
+        eleve=eleve,  # Important: passe 'eleve'
         question=question,
         reponse=reponse_ia,
         date_du_jour=datetime.utcnow()
@@ -396,14 +393,27 @@ def chat():
 def nouvel_exercice():
     session.pop("guide_math_conversation", None)
     session.pop("mode_examen", None)
-    return redirect(url_for("enseignant_virtuel"))
-
+    
+    username = request.form.get('username') or request.args.get('username')
+    lang = request.form.get('lang') or request.args.get('lang', 'fr')
+    
+    if not username:
+        return redirect("/login-eleve")
+    
+    return redirect(url_for("enseignant_virtuel", username=username, lang=lang))
 
 @app.route("/toggle-examen", methods=["POST"])
 def toggle_examen():
     session["mode_examen"] = not session.get("mode_examen", False)
     session.pop("guide_math_conversation", None)
-    return redirect(url_for("enseignant_virtuel"))
+    
+    username = request.form.get('username') or request.args.get('username')
+    lang = request.form.get('lang') or request.args.get('lang', 'fr')
+    
+    if not username:
+        return redirect("/login-eleve")
+    
+    return redirect(url_for("enseignant_virtuel", username=username, lang=lang))
 
 
 @app.route("/matiere-par-niveau/<int:niveau_id>")
