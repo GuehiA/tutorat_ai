@@ -309,46 +309,43 @@ def enseignant_virtuel():
     username = request.args.get("username")
     eleve = User.query.filter_by(username=username).first_or_404()
 
+    # ✅ Réinitialisation propre au chargement de la page
+    if request.method == "GET":
+        session["guide_math_conversation"] = [
+            {
+                "role": "system",
+                "content": get_system_prompt(lang)
+            }
+        ]
+
+    reponse_ia = None
+    question = ""
+
     if request.method == "POST":
         question = request.form.get("question", "").strip()
 
         if question:
-            if lang == "fr":
-                instruction = (
-                    "Tu es un enseignant de mathématiques bienveillant. "
-                    "❗ Tu ne dois **jamais** résoudre exactement l'exercice posé par l’élève. "
-                    "À la place, dis-lui : « Pour résoudre un problème de ce genre, voilà ce qu’il faut faire… », "
-                    "puis donne une courte leçon ou un exemple **similaire mais différent** que tu peux résoudre pour l’aider à comprendre la méthode. "
-                    "N’utilise pas les mêmes chiffres ou les mêmes termes que l’énoncé original. "
-                    "Si la question n’est pas liée aux mathématiques scolaires, explique poliment que tu ne peux répondre qu’à des questions de mathématiques. "
-                    "Sois clair, amical, tutoie l’élève et reste pédagogique."
-                )
-            else:
-                instruction = (
-                    "You are a kind and supportive math teacher. "
-                    "❗ You must **never** solve the exact problem provided by the student. "
-                    "Instead, say: ‘To solve a problem like this, here’s what you need to do…’, "
-                    "and provide a short explanation or solve a **similar but different** example. "
-                    "Do not reuse the same numbers or context from the student’s question. "
-                    "If the question is not math-related, kindly explain that you only answer math questions. "
-                    "Be friendly, speak informally (‘you’), and be as clear and pedagogical as possible."
-                )
-
-            full_prompt = f"{instruction}\n\n🧑‍🎓 Question de l'élève : {question}"
+            session["guide_math_conversation"].append(
+                {"role": "user", "content": question}
+            )
 
             try:
                 response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": full_prompt}],
+                    model="gpt-4o-mini",
+                    messages=session["guide_math_conversation"],
+                    temperature=0.4
                 )
+
                 reponse_ia = response.choices[0].message.content.strip()
+
+                session["guide_math_conversation"].append(
+                    {"role": "assistant", "content": reponse_ia}
+                )
+
+                session.modified = True
+
             except Exception as e:
                 reponse_ia = f"Erreur : {e}"
-        else:
-            reponse_ia = None
-    else:
-        question = ""
-        reponse_ia = None
 
     return render_template(
         "enseignant_virtuel.html",
@@ -359,12 +356,63 @@ def enseignant_virtuel():
     )
 
 
+
+def get_system_prompt(lang="fr", mode_examen=False):
+    if lang == "fr":
+        base = (
+            "Tu es le Guide de Maths, un tuteur pédagogique pour élèves du secondaire.\n\n"
+
+            "RÈGLES ABSOLUES :\n"
+            "- Tu travailles TOUJOURS sur le même exercice que l’élève.\n"
+            "- Tu ne donnes JAMAIS la réponse finale immédiatement.\n"
+            "- Tu guides étape par étape.\n"
+            "- Tu demandes UNE action précise à l’élève à chaque message.\n"
+            "- Tu numérote les étapes : Étape 1, Étape 2, etc.\n"
+            "- Tu félicites les bonnes réponses.\n"
+            "- Si l’élève se trompe, tu corriges doucement.\n"
+            "- Si l’élève dit « je ne sais pas », tu donnes un indice progressif.\n"
+            "- Tu n’affiches la solution complète QUE lorsque toutes les étapes ont été faites.\n\n"
+
+            "FORMAT STRICT :\n"
+            "Étape X : explication courte\n"
+            "Question à l’élève : ...\n\n"
+
+            "Commence toujours par reformuler l’énoncé.\n"
+        )
+
+        if mode_examen:
+            base += (
+                "\nMODE EXAMEN ACTIVÉ :\n"
+                "- Tu donnes des indices MINIMAUX.\n"
+                "- Tu ne donnes aucune formule complète.\n"
+                "- Tu encourages la réflexion personnelle.\n"
+            )
+        return base
+
+    else:
+        return "Equivalent English version"
+
+
 @app.route("/chat", methods=["POST"])
 def chat():
     from chatbot_utils import get_chatbot_response  # chemin selon ton organisation
     user_input = request.json.get("message", "")
     response = get_chatbot_response(user_input)
     return jsonify({"response": response})
+
+@app.route("/nouvel-exercice", methods=["POST"])
+def nouvel_exercice():
+    session.pop("guide_math_conversation", None)
+    session.pop("mode_examen", None)
+    return redirect(url_for("enseignant_virtuel"))
+
+
+@app.route("/toggle-examen", methods=["POST"])
+def toggle_examen():
+    session["mode_examen"] = not session.get("mode_examen", False)
+    session.pop("guide_math_conversation", None)
+    return redirect(url_for("enseignant_virtuel"))
+
 
 @app.route("/matiere-par-niveau/<int:niveau_id>")
 def matiere_par_niveau(niveau_id):
