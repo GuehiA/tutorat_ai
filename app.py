@@ -411,7 +411,7 @@ RESPONSE FORMAT:
 # chatbot_routes.py
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel - VERSION AMÉLIORÉE"""
+    """Route pour l'enseignant virtuel - Accès conditionnel"""
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
 
@@ -419,7 +419,7 @@ def enseignant_virtuel():
     if not eleve or eleve.role != "élève":
         return redirect(url_for("login_eleve"))
     
-    # Vérifier l'accès
+    # Vérifier l'accès (essai gratuit)
     if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
         session.clear()
         flash("Essai gratuit terminé. Abonne-toi pour continuer.", "error")
@@ -427,82 +427,119 @@ def enseignant_virtuel():
 
     lang = session.get("lang", "fr")
     
+    # 🆕 VÉRIFICATION D'ACCÈS: Seulement si échec récent (< 3/5)
+    remediation_access = session.get('remediation_access')
+    if not remediation_access:
+        flash("🎯 L'enseignant virtuel est disponible seulement pour t'aider sur les exercices difficiles (note < 3/5).", "info")
+        return redirect(url_for('dashboard_eleve'))
+    
+    # Vérifier si l'accès est encore valide (24h max)
+    from datetime import datetime
+    try:
+        first_access = datetime.fromisoformat(remediation_access.get('first_access', ''))
+        if (datetime.utcnow() - first_access).total_seconds() > 86400:  # 24 heures
+            session.pop('remediation_access', None)
+            flash("⏳ L'accès à l'enseignant virtuel pour cet exercice a expiré (24h).", "warning")
+            return redirect(url_for('dashboard_eleve'))
+    except:
+        pass
+    
+    # Vérifier la note
+    if remediation_access.get('note', 0) >= 3:
+        session.pop('remediation_access', None)
+        flash("🎉 Tu as déjà réussi cet exercice ! L'enseignant virtuel n'est plus nécessaire.", "success")
+        return redirect(url_for('dashboard_eleve'))
+    
+    # Limiter à 5 accès maximum
+    access_count = remediation_access.get('access_count', 0)
+    if access_count >= 5:
+        flash("⏳ Tu as utilisé tes 5 sessions avec l'enseignant virtuel pour cet exercice. Essaie de le résoudre seul maintenant !", "warning")
+        return redirect(url_for('exercice_detail', id=remediation_access.get('exercice_id')))
+    
+    # Récupérer l'exercice en cours de rémédiation
+    exercice_remediation = None
+    exercice_id = remediation_access.get('exercice_id')
+    if exercice_id:
+        exercice_remediation = Exercice.query.get(exercice_id)
+    
     # TRAITEMENT POST
     if request.method == 'POST':
         question = request.form.get("question", "").strip()
         
         if question and len(question) >= 3:
-            # Récupérer ou initialiser les variables de session
             conversation = session.get("conversation", [])
             derniere_q_ia = session.get('derniere_q_ia')
             
-            # Garder TOUTE la conversation mais compresser si trop longue
-            if len(conversation) > 20:  # On garde plus de messages
-                # Garder le premier message (l'exercice original) et les 15 derniers
-                conversation = [conversation[0]] + conversation[-15:]
-            
-            # Ajouter la question de l'élève
+            # Format simple pour l'historique
             conversation.append(f"👤 Élève: {question}")
             
             if derniere_q_ia:
-                # Réponse à une question précédente de l'IA
+                # Réponse à une question précédente
                 reponse = generer_suite_conversation(
                     derniere_q=derniere_q_ia,
                     reponse=question,
-                    historique=conversation,  # Envoyer TOUTE la conversation
+                    historique=conversation,
                     niveau=eleve.niveau.nom if eleve.niveau else "6ème",
                     mode_examen=session.get("mode_examen", False),
-                    exercice_original=conversation[0] if conversation else ""  # Toujours rappeler l'exercice
+                    exercice_context=(exercice_remediation.question_fr[:200] + "..." 
+                                    if exercice_remediation and exercice_remediation.question_fr 
+                                    else "Exercice en rémédiation")
                 )
                 session.pop('derniere_q_ia', None)
             else:
-                # Nouvelle question (début d'exercice)
+                # Nouvelle question - contexte de rémédiation
+                context_message = ""
+                if exercice_remediation:
+                    if lang == "en":
+                        context_message = f"\n\nI need help understanding this exercise:\n{exercice_remediation.question_en[:150]}..."
+                    else:
+                        context_message = f"\n\nJ'ai besoin d'aide pour comprendre cet exercice :\n{exercice_remediation.question_fr[:150]}..."
+                
+                full_question = question + context_message
                 reponse = generer_debut_conversation(
-                    question=question,
+                    question=full_question,
                     niveau=eleve.niveau.nom if eleve.niveau else "6ème",
                     mode_examen=session.get("mode_examen", False)
                 )
             
-            # Ajouter la réponse de l'IA
             conversation.append(f"🤖 Enseignant: {reponse}")
             
-            # Extraire la nouvelle question de l'IA
-            nouvelle_q = extraire_question_principale(reponse)
+            # Limiter à 10 messages
+            if len(conversation) > 10:
+                conversation = conversation[-10:]
+            
+            session["conversation"] = conversation
+            
+            # Extraire la nouvelle question
+            nouvelle_q = extraire_question(reponse)
             if nouvelle_q:
                 session['derniere_q_ia'] = nouvelle_q
             
-            # Sauvegarder la conversation complète
-            session["conversation"] = conversation
-            
-            # Marquer l'exercice en cours (première question)
-            if len(conversation) == 2:  # Juste la question élève + réponse IA
-                session['exercice_en_cours'] = question
+            # Incrémenter le compteur d'accès
+            remediation_access['access_count'] = access_count + 1
+            session['remediation_access'] = remediation_access
             
             flash("Je te guide étape par étape !", "success")
     
     # Récupérer la conversation
     conversation = session.get("conversation", [])
-    exercice_en_cours = session.get('exercice_en_cours', '')
     
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
         eleve=eleve,
         conversation=conversation,
-        exercice_en_cours=exercice_en_cours,
+        exercice_remediation=exercice_remediation,
+        access_count=remediation_access.get('access_count', 0) + 1,  # +1 pour l'accès actuel
         date_du_jour=datetime.utcnow()
     )
 
-def extraire_question_principale(reponse):
-    """Extrait la question principale posée par l'IA - version améliorée"""
+def extraire_question(reponse):
+    """Extrait la question posée par l'IA - version simple"""
     import re
     
-    # Chercher la dernière question dans la réponse
-    lines = reponse.split('\n')
-    
-    # Patterns pour trouver les questions
-    question_patterns = [
-        r'[Qq]uestion\s*\d*[.:]\s*(.*?)(?:\n|$)',
+    # Chercher les questions directes
+    patterns = [
         r'[Pp]eux-tu\s+(.*?)\?',
         r'[Qq]u\'est-ce que\s+(.*?)\?',
         r'[Cc]alcule\s+(.*?)\?',
@@ -512,38 +549,15 @@ def extraire_question_principale(reponse):
         r'[Cc]ombien\s+(.*?)\?',
         r'[Cc]omment\s+(.*?)\?',
         r'[Pp]ourquoi\s+(.*?)\?',
-        r'[Éé]cris\s+(.*?)\?',
-        r'[Ss]ais-tu\s+(.*?)\?',
-        r'[Pp]eux-tu\s+(.*?)\?',
-        r'[Ee]n\s+quoi\s+(.*?)\?'
+        r'[Éé]cris\s+(.*?)\?'
     ]
     
-    # Chercher dans les dernières lignes d'abord
-    for line in reversed(lines):
-        line = line.strip()
-        if not line:
-            continue
-            
-        for pattern in question_patterns:
-            match = re.search(pattern, line)
-            if match:
-                question = match.group(1).strip()
-                if len(question) > 3:  # Minimum 3 caractères
-                    # Nettoyer la question
-                    if question.endswith('?'):
-                        question = question[:-1]
-                    return question
-    
-    # Si aucune question trouvée, chercher la dernière phrase qui se termine par "?"
-    for line in reversed(lines):
-        line = line.strip()
-        if line.endswith('?'):
-            # Enlever les marqueurs de formatage
-            clean_line = re.sub(r'^\*\*|\*\*$', '', line)
-            clean_line = re.sub(r'^\*|\*$', '', clean_line)
-            clean_line = clean_line.strip()
-            if len(clean_line) > 5:
-                return clean_line
+    for pattern in patterns:
+        match = re.search(pattern, reponse)
+        if match:
+            question = match.group(1).strip()
+            if len(question) > 5:  # Minimum 5 caractères
+                return question
     
     return None
 
@@ -1697,6 +1711,21 @@ Correction :
         etoiles=0
     )
 
+@app.route("/close-remediation-access", methods=["POST"])
+def close_remediation_access():
+    """Ferme l'accès à l'enseignant virtuel après réussite"""
+    if "eleve_id" not in session:
+        return redirect(url_for("login_eleve"))
+    
+    # Supprimer les clés de session
+    session.pop('remediation_access_granted', None)
+    session.pop('remediation_exercice_id', None)
+    session.pop('remediation_access_count', None)
+    session.pop('conversation', None)
+    session.pop('derniere_q_ia', None)
+    
+    flash("🎉 Félicitations ! Tu as terminé la rémédiation.", "success")
+    return redirect(url_for('dashboard_eleve'))
 
 @app.context_processor
 def inject_lang():
@@ -1994,6 +2023,15 @@ Indice : ...
             db.session.add(nouvelle_suggestion)
             print("✅ Suggestion de remédiation sauvegardée")
             
+            # 🆕 IMPORTANT: Autoriser l'accès à l'enseignant virtuel pour cette rémédiation
+            session['remediation_access'] = {
+                'exercice_id': exercice.id,
+                'note': etoiles,
+                'access_count': 0,
+                'first_access': datetime.utcnow().isoformat()
+            }
+            print(f"✅ Accès à l'enseignant virtuel autorisé (note: {etoiles}/5)")
+            
         except Exception as e:
             print(f"❌ Erreur génération remédiation: {e}")
 
@@ -2024,7 +2062,8 @@ Indice : ...
         lang=lang,
         reponse=nouvelle,  # ✅ Rétroaction incluse
         show_feedback=True,  # ✅ Flag pour afficher la rétroaction
-        already_completed=True  # ✅ Marquer comme déjà complété
+        already_completed=True,  # ✅ Marquer comme déjà complété
+        show_teacher_button=(etoiles < 3)  # 🆕 Afficher bouton enseignant virtuel si note < 3
     )
 
 

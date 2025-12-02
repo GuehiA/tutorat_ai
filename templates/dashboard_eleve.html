@@ -542,100 +542,105 @@
       align-items: center;
       gap: 4px;
     }
-    /* Section 3 cartes côte à côte */
-    .three-cards-section {
+    /* Section 2 cartes côte à côte */
+    .two-cards-section {
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 25px;
       margin-bottom: 25px;
     }
-    @media (max-width: 1024px) {
-      .three-cards-section {
+    @media (max-width: 768px) {
+      .two-cards-section {
         grid-template-columns: 1fr;
       }
     }
-    .teacher-card {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+    
+    /* NOUVELLE CARTE : ASSISTANT DE RÉMÉDIATION */
+    .remediation-assistant-card {
+      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
       border-radius: 15px;
       padding: 25px;
       box-shadow: var(--shadow);
       transition: var(--transition);
       position: relative;
       overflow: hidden;
+      border-left: 5px solid #4caf50;
     }
-    .teacher-card:hover {
+    .remediation-assistant-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
     }
-    .teacher-header {
+    .remediation-header {
       display: flex;
       align-items: center;
       gap: 15px;
       margin-bottom: 15px;
     }
-    .teacher-avatar {
+    .remediation-avatar {
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
+      background: linear-gradient(135deg, #4caf50, #2e7d32);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.8rem;
+      color: white;
       border: 2px solid rgba(255, 255, 255, 0.3);
       flex-shrink: 0;
     }
-    .teacher-info h3 {
+    .remediation-info h3 {
       font-size: 1.4rem;
       margin-bottom: 5px;
-      color: white;
+      color: #2e7d32;
     }
-    .teacher-status {
+    .remediation-status {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 0.9rem;
-      opacity: 0.9;
+      color: #546e7a;
     }
     .status-dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: #4ade80;
+      background: #4caf50;
       animation: pulse 2s infinite;
     }
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-    .teacher-description {
+    .remediation-description {
       margin-bottom: 20px;
       line-height: 1.5;
-      opacity: 0.9;
+      color: #37474f;
     }
-    .teacher-cta {
+    .remediation-cta {
       display: inline-flex;
       align-items: center;
       gap: 10px;
       padding: 12px 20px;
-      background: rgba(255, 255, 255, 0.2);
+      background: linear-gradient(135deg, #4caf50, #2e7d32);
       color: white;
       text-decoration: none;
       border-radius: 50px;
       font-weight: 600;
       transition: var(--transition);
-      backdrop-filter: blur(10px);
-      border: 2px solid rgba(255, 255, 255, 0.3);
       width: 100%;
       justify-content: center;
+      border: none;
+      cursor: pointer;
     }
-    .teacher-cta:hover {
-      background: rgba(255, 255, 255, 0.3);
+    .remediation-cta:hover {
       transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
     }
+    
+    /* Carte pour les exercices récents améliorés */
+    .exercises-card {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border-left: 5px solid #1976d2;
+    }
+    
     .actions-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -810,6 +815,19 @@
       margin-left: 5px;
       color: #2c3e50;
     }
+    
+    /* Badge pour scores faibles */
+    .low-score-badge {
+      background: #ffebee;
+      color: #c62828;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
   </style>
 </head>
 <body>
@@ -867,7 +885,7 @@
       </div>
     </div>
 
-    <!-- NOUVELLE SECTION : IA PEDAGOGIQUE -->
+    <!-- SECTION : IA PEDAGOGIQUE -->
     <div class="ia-pedagogique-section">
       <div class="ia-header">
         <div class="ia-avatar">
@@ -953,52 +971,41 @@
           </div>
         </div>
         
-        <!-- Insight 3: Limite de tentatives -->
+        <!-- Insight 3: Assistance conditionnelle -->
         <div class="ia-card">
           <div class="ia-card-title">
-            <i class="fas fa-shield-alt" style="color: #fcc419;"></i>
+            <i class="fas fa-life-ring" style="color: #1976d2;"></i>
             {% if lang == 'en' %}
-              Attempt Limit
+              Smart Assistance
             {% else %}
-              Limite de Tentatives
+              Assistance Intelligente
             {% endif %}
           </div>
           <div class="ia-card-content">
-            <div class="ia-progress">
-              <div class="ia-progress-text">
-                <span>
-                  {% if lang == 'en' %}
-                    Daily attempts
-                  {% else %}
-                    Tentatives journalières
-                  {% endif %}
-                </span>
-                <span>
-                  {{ ai_stats.tentatives_utilisees if ai_stats else 0 }}/{{ ai_stats.tentatives_max if ai_stats else 5 }}
-                </span>
-              </div>
-              <div class="ia-progress-bar">
-                <div class="ia-progress-fill" 
-                     style="width: {{ ((ai_stats.tentatives_utilisees if ai_stats else 0) / (ai_stats.tentatives_max if ai_stats else 5)) * 100 }}%;
-                            background: {{ 'linear-gradient(90deg, #fcc419, #e85959)' if ai_stats and ai_stats.tentatives_utilisees >= ai_stats.tentatives_max else 'linear-gradient(90deg, #3fba83, #2ecc71)' }};">
-                </div>
-              </div>
+            <div style="margin-bottom: 15px;">
+              <span style="font-weight: 600; color: #2c3e50;">
+                {% if lang == 'en' %}
+                  Available when you need it most
+                {% else %}
+                  Disponible quand vous en avez le plus besoin
+                {% endif %}
+              </span>
             </div>
-            <p style="margin-top: 15px; font-size: 0.95rem;">
+            <p style="font-size: 0.95rem;">
               {% if lang == 'en' %}
-                {% if ai_stats and ai_stats.tentatives_utilisees >= ai_stats.tentatives_max %}
-                  ⚠️ Daily limit reached. Try again tomorrow!
-                {% else %}
-                  Focus on understanding, not just answers.
-                {% endif %}
+                💡 <strong>Virtual Teacher activates automatically</strong> when you score below 3/5 on an exercise.
               {% else %}
-                {% if ai_stats and ai_stats.tentatives_utilisees >= ai_stats.tentatives_max %}
-                  ⚠️ Limite journalière atteinte. Réessayez demain !
-                {% else %}
-                  Concentrez-vous sur la compréhension, pas seulement les réponses.
-                {% endif %}
+                💡 <strong>L'Enseignant Virtuel s'active automatiquement</strong> quand vous avez moins de 3/5 à un exercice.
               {% endif %}
             </p>
+            <div style="background: #f5f5f5; padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 0.9rem;">
+              <i class="fas fa-info-circle" style="color: #1976d2; margin-right: 5px;"></i>
+              {% if lang == 'en' %}
+                Focus on understanding, not just answers.
+              {% else %}
+                Concentrez-vous sur la compréhension, pas seulement les réponses.
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
@@ -1006,7 +1013,7 @@
 
     <!-- Section principale du tableau de bord -->
     <div class="dashboard">
-      <!-- Compteur d'essai gratuit - DESIGN OPTIMISÉ -->
+      <!-- Compteur d'essai gratuit -->
       {% if eleve.est_en_essai_gratuit() and total_seconds > 0 %}
       <div class="card trial-counter-card">
         <div class="trial-header">
@@ -1168,47 +1175,47 @@
         {% endif %}
       </div>
 
-      <!-- Section des 3 cartes côte à côte -->
-      <div class="three-cards-section">
-        <!-- Carte Enseignant Virtuel -->
-        <div class="teacher-card">
-          <div class="teacher-header">
-            <div class="teacher-avatar">
-              <i class="fas fa-robot"></i>
+      <!-- Section des 2 cartes côte à côte -->
+      <div class="two-cards-section">
+        <!-- Carte Assistant de Rémédiation -->
+        <div class="remediation-assistant-card">
+          <div class="remediation-header">
+            <div class="remediation-avatar">
+              <i class="fas fa-hands-helping"></i>
             </div>
-            <div class="teacher-info">
+            <div class="remediation-info">
               <h3>
                 {% if lang == 'en' %}
-                  Virtual Teacher
+                  Remediation Assistant
                 {% else %}
-                  Enseignant Virtuel
+                  Assistant de Rémédiation
                 {% endif %}
               </h3>
-              <div class="teacher-status">
+              <div class="remediation-status">
                 <div class="status-dot"></div>
                 <span>
                   {% if lang == 'en' %}
-                    Online
+                    Ready to help
                   {% else %}
-                    En ligne
+                    Prêt à aider
                   {% endif %}
                 </span>
               </div>
             </div>
           </div>
-          <div class="teacher-description">
+          <div class="remediation-description">
             {% if lang == 'en' %}
-              Ask me anything about your lessons! I'm here to help you understand difficult topics.
+              Need help with difficult exercises? Access targeted remediation exercises to strengthen your understanding of challenging topics.
             {% else %}
-              Demandez-moi tout sur vos leçons ! Je suis là pour vous aider à comprendre les sujets difficiles.
+              Besoin d'aide pour des exercices difficiles ? Accédez à des exercices de remédiation ciblés pour renforcer votre compréhension des sujets difficiles.
             {% endif %}
           </div>
-          <a href="/enseignant-virtuel" class="teacher-cta">
-            <i class="fas fa-comments"></i>
+          <a href="/eleve/remediations?username={{ eleve.username }}&lang={{ lang }}" class="remediation-cta">
+            <i class="fas fa-tools"></i>
             {% if lang == 'en' %}
-              Start Conversation
+              Access Remediations
             {% else %}
-              Démarrer la Conversation
+              Accéder aux Rémédiations
             {% endif %}
           </a>
         </div>
@@ -1312,7 +1319,7 @@
               </small>
             </div>
             <div style="height: 6px; background: var(--light); border-radius: 3px; overflow: hidden;">
-              <div style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); 
+              <div style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); 
                           border-radius: 3px; width: {{ progression_quotidienne.percent }}%; 
                           transition: width 0.5s ease;"></div>
             </div>
@@ -1327,60 +1334,76 @@
             </div>
           </div>
         </div>
-        
-        <!-- Carte Activité Récente -->
-        <div class="card">
-          <h3><i class="fas fa-clock"></i>
-            {% if lang == 'en' %}
-              Recent Activity
-            {% else %}
-              Activité Récente
-            {% endif %}
-          </h3>
-          <div class="recent-activity">
-            {% if reponses_eleve and reponses_eleve|length > 0 %}
-              {% for reponse in reponses_eleve[-3:] | reverse %}
-              <div class="activity-item">
-                <div class="activity-icon">
-                  <!-- NOUVEAU SYSTÈME D'ÉTOILES SUR 5 -->
-                  <div class="stars-container">
-                    {% for i in range(5) %}
-                      {% if i < reponse.etoiles %}
-                        <span class="star filled">★</span>
-                      {% else %}
-                        <span class="star">★</span>
-                      {% endif %}
-                    {% endfor %}
-                    <span class="score-text">{{ reponse.etoiles }}/5</span>
-                  </div>
-                </div>
-                <div class="activity-details">
-                  <div class="activity-title">
-                    {% if lang == 'en' %}
-                      Exercise completed
+      </div>
+
+      <!-- Carte Activité Récente (pleine largeur) -->
+      <div class="card" style="grid-column: 1 / -1;">
+        <h3><i class="fas fa-clock"></i>
+          {% if lang == 'en' %}
+            Recent Activity
+          {% else %}
+            Activité Récente
+          {% endif %}
+        </h3>
+        <div class="recent-activity">
+          {% if reponses_eleve and reponses_eleve|length > 0 %}
+            {% for reponse in reponses_eleve[-5:] | reverse %}
+            <div class="activity-item">
+              <div class="activity-icon">
+                <div class="stars-container">
+                  {% for i in range(5) %}
+                    {% if i < reponse.etoiles %}
+                      <span class="star filled">★</span>
                     {% else %}
-                      Exercice complété
+                      <span class="star">★</span>
                     {% endif %}
-                  </div>
-                  <div class="activity-meta">
-                    {{ reponse.timestamp.strftime('%d/%m %H:%M') if reponse.timestamp else 'N/A' }}
-                  </div>
+                  {% endfor %}
+                  <span class="score-text">{{ reponse.etoiles }}/5</span>
+                  {% if reponse.etoiles < 3 %}
+                  <span class="low-score-badge">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {% if lang == 'en' %}Needs review{% else %}À revoir{% endif %}
+                  </span>
+                  {% endif %}
                 </div>
               </div>
-              {% endfor %}
-            {% else %}
-              <div class="no-activity">
-                <i class="fas fa-book-open" style="font-size: 1.5rem; color: #bdc3c7; margin-bottom: 10px;"></i>
-                <p>
+              <div class="activity-details">
+                <div class="activity-title">
                   {% if lang == 'en' %}
-                    No recent activity
+                    Exercise completed
                   {% else %}
-                    Aucune activité récente
+                    Exercice complété
                   {% endif %}
-                </p>
+                  {% if reponse.etoiles < 3 %}
+                    <span style="color: #e74c3c; font-size: 0.85rem;">
+                      {% if lang == 'en' %}(Virtual Teacher available){% else %}(Enseignant Virtuel disponible){% endif %}
+                    </span>
+                  {% endif %}
+                </div>
+                <div class="activity-meta">
+                  {{ reponse.timestamp.strftime('%d/%m %H:%M') if reponse.timestamp else 'N/A' }}
+                  • 
+                  {% if lang == 'en' %}
+                    {{ reponse.lecon or 'General exercise' }}
+                  {% else %}
+                    {{ reponse.lecon or 'Exercice général' }}
+                  {% endif %}
+                </div>
               </div>
-            {% endif %}
-          </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="no-activity">
+              <i class="fas fa-book-open" style="font-size: 1.5rem; color: #bdc3c7; margin-bottom: 10px;"></i>
+              <p>
+                {% if lang == 'en' %}
+                  No recent activity. Start your first exercise!
+                {% else %}
+                  Aucune activité récente. Commencez votre premier exercice !
+                {% endif %}
+              </p>
+            </div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -1490,7 +1513,7 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const cards = document.querySelectorAll('.card, .action-card, .teacher-card, .ia-card');
+      const cards = document.querySelectorAll('.card, .action-card, .remediation-assistant-card, .ia-card');
       cards.forEach((card, index) => {
         card.style.opacity = '0';
         card.style.transform = 'translateY(20px)';
@@ -1513,6 +1536,13 @@
         setTimeout(() => {
           bar.style.width = width;
         }, 500);
+      });
+      
+      // Mise en évidence des scores faibles
+      const lowScoreItems = document.querySelectorAll('.low-score-badge').closest('.activity-item');
+      lowScoreItems.forEach(item => {
+        item.style.borderLeft = '3px solid #e74c3c';
+        item.style.background = '#ffebee';
       });
     });
 

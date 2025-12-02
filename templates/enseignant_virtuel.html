@@ -103,6 +103,15 @@
       font-size: 0.85rem;
     }
     
+    /* Bannière de rémédiation */
+    .remediation-context-banner {
+      background: linear-gradient(135deg, #e8f4ff 0%, #d1e7ff 100%);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border-left: 5px solid #4361ee;
+    }
+    
     /* Bouton retour */
     .btn-back {
       background: rgba(255, 255, 255, 0.2);
@@ -359,6 +368,23 @@
       margin-bottom: 5px;
     }
     
+    /* Teacher's Last Question */
+    .teacher-question {
+      background: #fff9e6;
+      border-left: 4px solid var(--warning);
+      padding: 15px;
+      margin: 15px 20px;
+      border-radius: 8px;
+    }
+    
+    .teacher-question h5 {
+      margin: 0 0 8px 0;
+      color: #e67e22;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
     /* Spinner */
     .spinner {
       animation: spin 1s linear infinite;
@@ -454,6 +480,49 @@
         {{ eleve.niveau.nom if eleve.niveau else '6ème' }}
       </div>
     </header>
+
+    <!-- Bannière de contexte de rémédiation -->
+    {% if exercice_remediation %}
+    <div class="remediation-context-banner">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="flex: 1;">
+          <h4 style="margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1rem;">
+            <i class="fas fa-life-ring" style="margin-right: 8px; color: #4361ee;"></i>
+            {% if lang == 'en' %}Remediation Help{% else %}Aide à la rémédiation{% endif %}
+          </h4>
+          <p style="margin: 0; color: #34495e; font-size: 0.9rem;">
+            {% if lang == 'en' %}
+              Exercise: {{ exercice_remediation.question_en[:100] }}...
+            {% else %}
+              Exercice : {{ exercice_remediation.question_fr[:100] }}...
+            {% endif %}
+          </p>
+        </div>
+        <div style="background: #4361ee; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
+          {% if lang == 'en' %}Session {{ access_count }}/5{% else %}Session {{ access_count }}/5{% endif %}
+        </div>
+      </div>
+      <p style="margin: 10px 0 0 0; font-size: 0.85rem; color: #666;">
+        <i class="fas fa-lightbulb" style="margin-right: 5px;"></i>
+        {% if lang == 'en' %}
+          The virtual teacher will guide you to understand this exercise step by step.
+        {% else %}
+          L'enseignant virtuel vous guidera pour comprendre cet exercice étape par étape.
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- Bouton "J'ai compris" -->
+    <div style="text-align: center; margin: 20px 0;">
+      <form method="POST" action="/close-remediation" onsubmit="return confirm('{% if lang == "fr" %}Es-tu sûr d\'avoir compris l\'exercice ? L\'accès à l\'enseignant virtuel sera fermé.{% else %}Are you sure you understand the exercise? Access to virtual teacher will be closed.{% endif %}');">
+        <input type="hidden" name="exercice_id" value="{{ exercice_remediation.id }}">
+        <button type="submit" class="btn" style="display: inline-flex; align-items: center; padding: 10px 25px; background: #3fba83; color: white; border: none; border-radius: 50px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+          <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
+          {% if lang == 'fr' %}J'ai compris, je peux continuer seul{% else %}I understand, I can continue alone{% endif %}
+        </button>
+      </form>
+    </div>
+    {% endif %}
 
     <!-- Exercice en cours - AFFICHÉ SEULEMENT SI EXISTE -->
     {% set exercice_en_cours = session.get('exercice_en_cours', '') %}

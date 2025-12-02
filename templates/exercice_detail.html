@@ -1036,6 +1036,45 @@
         </div>
       </div>
       {% endif %}
+      {% if show_teacher_button and etoiles < 3 %}
+<div class="teacher-access-card" style="background: linear-gradient(135deg, #e8f4ff 0%, #d1e7ff 100%); padding: 25px; border-radius: 15px; margin-top: 30px; border-left: 5px solid #4361ee;">
+    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+        <div style="width: 50px; height: 50px; border-radius: 50%; background: #4361ee; display: flex; align-items: center; justify-content: center; margin-right: 15px; color: white; font-size: 1.5rem;">
+            <i class="fas fa-robot"></i>
+        </div>
+        <div>
+            <h4 style="margin: 0 0 5px 0; color: #2c3e50;">
+                {% if lang == 'fr' %}Besoin d'aide supplémentaire ?{% else %}Need extra help?{% endif %}
+            </h4>
+            <p style="margin: 0; color: #34495e; font-size: 0.95rem;">
+                {% if lang == 'fr' %}
+                    Tu as obtenu {{ etoiles }}/5. L'enseignant virtuel peut te guider pas à pas.
+                {% else %}
+                    You scored {{ etoiles }}/5. The virtual teacher can guide you step by step.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <a href="{{ url_for('enseignant_virtuel') }}" class="btn" style="display: inline-flex; align-items: center; padding: 12px 30px; background: #4361ee; color: white; text-decoration: none; border-radius: 50px; font-weight: 600; transition: all 0.3s ease;">
+            <i class="fas fa-comments" style="margin-right: 10px;"></i>
+            {% if lang == 'fr' %}Parler à l'enseignant virtuel{% else %}Talk to Virtual Teacher{% endif %}
+        </a>
+    </div>
+    
+    <div style="background: rgba(255, 255, 255, 0.5); padding: 15px; border-radius: 10px; margin-top: 15px;">
+        <p style="margin: 0; font-size: 0.9rem; color: #666; display: flex; align-items: center;">
+            <i class="fas fa-info-circle" style="margin-right: 8px; color: #4361ee;"></i>
+            {% if lang == 'fr' %}
+                <strong>Disponible seulement pour les exercices difficiles</strong> (note < 3/5). Max 5 sessions.
+            {% else %}
+                <strong>Available only for difficult exercises</strong> (score < 3/5). Max 5 sessions.
+            {% endif %}
+        </p>
+    </div>
+</div>
+{% endif %}
     </div>
   </div>
 
