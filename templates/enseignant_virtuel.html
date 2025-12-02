@@ -6,6 +6,11 @@
     {% if lang == 'en' %}Math Guide - Virtual Teacher{% else %}Guide de mathématiques - Enseignant Virtuel{% endif %}
   </title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- IMPORTANT: Empêcher la mise en cache pour éviter les rechargements -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 
   <!-- Favicon -->
   <link rel="icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
@@ -311,6 +316,13 @@
       background: linear-gradient(90deg, var(--warning), var(--danger));
       border-radius: 15px 15px 0 0;
     }
+
+    /* Style pour le bouton désactivé */
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
   </style>
 </head>
 
@@ -377,12 +389,11 @@
     </header>
 
     <!-- Conteneur de chat -->
-    <div class="chat-container {% if session.get('mode_examen') %}exam-mode{% endif %}">
+    <div class="chat-container {% if session.get('mode_examen') %}exam-mode{% endif %}" id="chatContainer">
       <!-- Contrôles : FORMULAIRES SIMPLIFIÉS -->
       <div class="controls">
-        <form method="POST" action="/nouvel-exercice">
-          <!-- SUPPRIMÉ : les inputs cachés username et lang -->
-          <button type="submit" class="btn btn-new">
+        <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
+          <button type="submit" class="btn btn-new" id="newExerciseBtn">
             <i class="fas fa-plus-circle"></i>
             {% if lang == 'en' %}
               New Exercise
@@ -392,9 +403,8 @@
           </button>
         </form>
 
-        <form method="POST" action="/toggle-examen">
-          <!-- SUPPRIMÉ : les inputs cachés username et lang -->
-          <button type="submit" class="btn btn-exam">
+        <form method="POST" action="/toggle-examen" id="toggleExamForm">
+          <button type="submit" class="btn btn-exam" id="toggleExamBtn">
             <i class="fas fa-graduation-cap"></i>
             {% if lang == 'en' %}
               Exam Mode: {{ 'ON' if session.get('mode_examen') else 'OFF' }}
@@ -407,16 +417,15 @@
 
       <!-- Zone de chat : FORMULAIRE PRINCIPAL SIMPLIFIÉ -->
       <div class="chat-area">
-        <form method="POST">
-          <!-- SUPPRIMÉ : les inputs cachés username et lang -->
-          
+        <form method="POST" id="mainForm">
           <textarea 
             name="question" 
+            id="questionInput"
             placeholder="{% if lang == 'en' %}Write your math exercise here... You can use LaTeX for formulas: \\(x^2 + y^2 = z^2\\){% else %}Écrivez votre exercice de mathématiques ici... Vous pouvez utiliser LaTeX pour les formules : \\(x^2 + y^2 = z^2\\){% endif %}" 
             required
             autofocus>{% if question %}{{ question }}{% endif %}</textarea>
           
-          <button type="submit" class="btn btn-send">
+          <button type="submit" class="btn btn-send" id="submitBtn">
             <i class="fas fa-paper-plane"></i>
             {% if lang == 'en' %}
               Send to Virtual Teacher
@@ -427,7 +436,7 @@
         </form>
 
         <!-- Messages -->
-        <div class="messages">
+        <div class="messages" id="messagesContainer">
           {% if question and reponse %}
             <!-- Message de l'élève -->
             <div class="message user-message">
@@ -504,14 +513,21 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
+    // Variables globales pour suivre l'état
+    let isSubmitting = false;
+    let lastSubmitTime = 0;
+    const MIN_SUBMIT_INTERVAL = 5000; // 5 secondes entre les soumissions
+
     document.addEventListener('DOMContentLoaded', function() {
+      console.log("Page enseignant virtuel chargée - version corrigée");
+
       // MathJax
       if (window.MathJax) {
         MathJax.typesetPromise();
       }
 
       // Auto-focus sur le textarea
-      const textarea = document.querySelector('textarea[name="question"]');
+      const textarea = document.getElementById('questionInput');
       if (textarea) {
         textarea.focus();
         // Place le curseur à la fin
@@ -538,7 +554,137 @@
       if (examMode) {
         console.log('Exam mode is active - limited assistance available');
       }
+
+      // ✅ CORRECTION PRINCIPALE : Empêcher les doubles envois
+      const mainForm = document.getElementById('mainForm');
+      if (mainForm) {
+        mainForm.addEventListener('submit', function(e) {
+          const now = Date.now();
+          const timeSinceLastSubmit = now - lastSubmitTime;
+          
+          if (isSubmitting) {
+            e.preventDefault();
+            showMessage("{% if lang == 'en' %}Please wait, your previous request is being processed...{% else %}Veuillez patienter, votre requête précédente est en cours de traitement...{% endif %}", 'warning');
+            return false;
+          }
+          
+          if (timeSinceLastSubmit < MIN_SUBMIT_INTERVAL) {
+            e.preventDefault();
+            const secondsLeft = Math.ceil((MIN_SUBMIT_INTERVAL - timeSinceLastSubmit) / 1000);
+            showMessage(`{% if lang == 'en' %}Please wait ${secondsLeft} seconds before sending another question{% else %}Veuillez attendre ${secondsLeft} secondes avant d'envoyer une autre question{% endif %}`, 'warning');
+            return false;
+          }
+          
+          // Vérifier que le textarea n'est pas vide
+          const questionInput = document.getElementById('questionInput');
+          if (!questionInput || questionInput.value.trim().length < 5) {
+            e.preventDefault();
+            showMessage("{% if lang == 'en' %}Please enter a question with at least 5 characters{% else %}Veuillez saisir une question d'au moins 5 caractères{% endif %}", 'warning');
+            return false;
+          }
+          
+          // Tout est bon, on peut soumettre
+          isSubmitting = true;
+          lastSubmitTime = now;
+          
+          // Désactiver le bouton
+          const submitBtn = document.getElementById('submitBtn');
+          const originalText = submitBtn.innerHTML;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "en" %}Processing...{% else %}Traitement en cours...{% endif %}';
+          
+          // Ajouter un message temporaire
+          const tempMessage = document.createElement('div');
+          tempMessage.className = 'message bot-message';
+          tempMessage.innerHTML = `
+            <div class="message-header">
+              <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
+              <span style="font-size: 0.8rem;">Maintenant</span>
+            </div>
+            <div class="message-content">
+              <p><i class="fas fa-spinner fa-spin"></i> {% if lang == 'en' %}Thinking about your question...{% else %}Je réfléchis à votre question...{% endif %}</p>
+            </div>
+          `;
+          document.getElementById('messagesContainer').appendChild(tempMessage);
+          
+          // Réactiver après 30 secondes maximum
+          setTimeout(() => {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+          }, 30000);
+          
+          // Scroll vers le bas pour voir le nouveau message
+          setTimeout(() => {
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+          }, 100);
+          
+          console.log('Formulaire soumis avec succès');
+        });
+      }
+
+      // Empêcher les doubles clics sur les autres boutons
+      const newExerciseBtn = document.getElementById('newExerciseBtn');
+      const toggleExamBtn = document.getElementById('toggleExamBtn');
+      
+      [newExerciseBtn, toggleExamBtn].forEach(btn => {
+        if (btn) {
+          btn.addEventListener('click', function(e) {
+            if (this.disabled) {
+              e.preventDefault();
+              return false;
+            }
+            this.disabled = true;
+            setTimeout(() => {
+              this.disabled = false;
+            }, 2000);
+          });
+        }
+      });
+
+      // Empêcher les rechargements accidentels avec F5
+      window.addEventListener('keydown', function(e) {
+        if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+          if (isSubmitting) {
+            e.preventDefault();
+            showMessage("{% if lang == 'en' %}Your question is being processed. Please wait before refreshing.{% else %}Votre question est en cours de traitement. Veuillez patienter avant de rafraîchir.{% endif %}", 'warning');
+            return false;
+          }
+        }
+      });
+
+      // Empêcher la fermeture de la page pendant le traitement
+      window.addEventListener('beforeunload', function(e) {
+        if (isSubmitting) {
+          e.preventDefault();
+          e.returnValue = "{% if lang == 'en' %}Your question is being processed. Are you sure you want to leave?{% else %}Votre question est en cours de traitement. Êtes-vous sûr de vouloir quitter ?{% endif %}";
+          return e.returnValue;
+        }
+      });
     });
+
+    // Fonction utilitaire pour afficher des messages
+    function showMessage(text, type = 'info') {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+      alertDiv.style.position = 'fixed';
+      alertDiv.style.top = '80px';
+      alertDiv.style.left = '50%';
+      alertDiv.style.transform = 'translateX(-50%)';
+      alertDiv.style.zIndex = '2000';
+      alertDiv.innerHTML = `
+        ${text}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      document.body.appendChild(alertDiv);
+      
+      setTimeout(() => {
+        if (alertDiv.parentNode) {
+          const bsAlert = new bootstrap.Alert(alertDiv);
+          bsAlert.close();
+        }
+      }, 3000);
+    }
 
     // Re-render MathJax quand le contenu change
     function renderMath() {
@@ -549,10 +695,19 @@
 
     // Re-render sur les messages qui pourraient être ajoutés dynamiquement
     const observer = new MutationObserver(renderMath);
-    observer.observe(document.body, {
+    observer.observe(document.getElementById('messagesContainer'), {
       childList: true,
       subtree: true
     });
+
+    // Détecter les redirections automatiques
+    let lastLocation = window.location.href;
+    setInterval(() => {
+      if (window.location.href !== lastLocation && !isSubmitting) {
+        console.log('Redirection automatique détectée:', window.location.href);
+        lastLocation = window.location.href;
+      }
+    }, 1000);
   </script>
 </body>
 </html>
