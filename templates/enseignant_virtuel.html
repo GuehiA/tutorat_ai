@@ -7,7 +7,7 @@
   </title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-  <!-- IMPORTANT: Empêcher la mise en cache pour éviter les rechargements -->
+  <!-- IMPORTANT: Empêcher la mise en cache -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -323,14 +323,24 @@
       cursor: not-allowed;
       transform: none !important;
     }
+    
+    .spinner {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 
 <body>
-  <!-- CORRECTION SIMPLIFIÉE : Utilise eleve directement -->
+  <!-- Vérification de connexion -->
   {% if not eleve %}
     <script>
-      alert("Veuillez vous connecter pour accéder à l'enseignant virtuel");
+      alert("{% if lang == 'en' %}Please log in to access the virtual teacher{% else %}Veuillez vous connecter pour accéder à l'enseignant virtuel{% endif %}");
       window.location.href = "/login-eleve";
     </script>
   {% endif %}
@@ -358,7 +368,7 @@
   {% endif %}
 
   <div class="container">
-    <!-- En-tête : Utilise eleve -->
+    <!-- En-tête -->
     <header>
       <div class="student-info">
         <div class="student-avatar">
@@ -389,8 +399,8 @@
     </header>
 
     <!-- Conteneur de chat -->
-    <div class="chat-container {% if session.get('mode_examen') %}exam-mode{% endif %}" id="chatContainer">
-      <!-- Contrôles : FORMULAIRES SIMPLIFIÉS -->
+    <div class="chat-container {% if session.get('mode_examen') %}exam-mode{% endif %}">
+      <!-- Contrôles -->
       <div class="controls">
         <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
           <button type="submit" class="btn btn-new" id="newExerciseBtn">
@@ -415,7 +425,7 @@
         </form>
       </div>
 
-      <!-- Zone de chat : FORMULAIRE PRINCIPAL SIMPLIFIÉ -->
+      <!-- Zone de chat -->
       <div class="chat-area">
         <form method="POST" id="mainForm">
           <textarea 
@@ -460,7 +470,7 @@
               </div>
             </div>
           {% elif not question and not reponse %}
-            <!-- Message de bienvenue : Utilise eleve -->
+            <!-- Message de bienvenue -->
             <div class="message bot-message">
               <div class="message-header">
                 <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
@@ -468,38 +478,26 @@
               <div class="message-content">
                 {% if lang == 'en' %}
                   <h4 style="margin-top: 0;">👋 Hello {{ eleve.nom_complet.split(' ')[0] }}!</h4>
-                  <p>I'm your virtual math teacher. I can help you with:</p>
-                  <ul>
-                    <li>Solving exercises step by step</li>
-                    <li>Explaining mathematical concepts</li>
-                    <li>Checking your answers</li>
-                    <li>Guiding you through difficult problems</li>
-                  </ul>
-                  <p><strong>How to use:</strong></p>
+                  <p>I'm your virtual math teacher. I'll help you understand math <strong>step by step</strong>.</p>
+                  <p><strong>How it works:</strong></p>
                   <ol>
-                    <li>Write your exercise in the box above</li>
-                    <li>Use LaTeX for formulas: <code>\(x^2 + y^2 = z^2\)</code></li>
-                    <li>Click "Send to Virtual Teacher"</li>
+                    <li>Write your exercise above</li>
                     <li>I'll guide you through the solution</li>
+                    <li>We'll go one step at a time</li>
+                    <li>You learn by understanding, not just getting answers</li>
                   </ol>
-                  <p><em>Try me with an exercise now! ✨</em></p>
+                  <p><em>{% if session.get('mode_examen') %}📝 Exam Mode: I'll give hints, not full solutions.{% else %}Try me with an exercise now! ✨{% endif %}</em></p>
                 {% else %}
                   <h4 style="margin-top: 0;">👋 Bonjour {{ eleve.nom_complet.split(' ')[0] }} !</h4>
-                  <p>Je suis votre enseignant virtuel de mathématiques. Je peux vous aider à :</p>
-                  <ul>
-                    <li>Résoudre des exercices étape par étape</li>
-                    <li>Expliquer des concepts mathématiques</li>
-                    <li>Vérifier vos réponses</li>
-                    <li>Vous guider dans les problèmes difficiles</li>
-                  </ul>
-                  <p><strong>Comment utiliser :</strong></p>
+                  <p>Je suis votre enseignant virtuel de mathématiques. Je vais vous aider à comprendre les maths <strong>étape par étape</strong>.</p>
+                  <p><strong>Comment ça marche :</strong></p>
                   <ol>
-                    <li>Écrivez votre exercice dans la boîte ci-dessus</li>
-                    <li>Utilisez LaTeX pour les formules : <code>\(x^2 + y^2 = z^2\)</code></li>
-                    <li>Cliquez sur "Envoyer à l'enseignant virtuel"</li>
+                    <li>Écrivez votre exercice ci-dessus</li>
                     <li>Je vous guiderai vers la solution</li>
+                    <li>Nous avançons une étape à la fois</li>
+                    <li>Vous apprenez en comprenant, pas juste en ayant les réponses</li>
                   </ol>
-                  <p><em>Essayez-moi avec un exercice maintenant ! ✨</em></p>
+                  <p><em>{% if session.get('mode_examen') %}📝 Mode Examen : Je donnerai des indices, pas les solutions complètes.{% else %}Essayez-moi avec un exercice maintenant ! ✨{% endif %}</em></p>
                 {% endif %}
               </div>
             </div>
@@ -509,131 +507,92 @@
     </div>
   </div>
 
-  <!-- Bootstrap JS pour les alertes -->
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+  <!-- JavaScript simplifié et efficace -->
   <script>
-    // Variables globales pour suivre l'état
-    let isSubmitting = false;
-    let lastSubmitTime = 0;
-    const MIN_SUBMIT_INTERVAL = 5000; // 5 secondes entre les soumissions
-
+    // État global
+    let isProcessing = false;
+    
     document.addEventListener('DOMContentLoaded', function() {
-      console.log("Page enseignant virtuel chargée - version corrigée");
-
-      // MathJax
+      console.log("✅ Page enseignant virtuel chargée");
+      
+      // Initialiser MathJax
       if (window.MathJax) {
         MathJax.typesetPromise();
       }
-
-      // Auto-focus sur le textarea
+      
+      // Focus sur le textarea
       const textarea = document.getElementById('questionInput');
       if (textarea) {
         textarea.focus();
-        // Place le curseur à la fin
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
       }
-
-      // Auto-hide les alertes après 5 secondes
+      
+      // Fermer automatiquement les alertes après 5 secondes
       setTimeout(() => {
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(alert => {
-          const bsAlert = new bootstrap.Alert(alert);
+        document.querySelectorAll('.alert').forEach(alert => {
+          const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
           bsAlert.close();
         });
       }, 5000);
-
-      // Animation des messages
-      const messages = document.querySelectorAll('.message');
-      messages.forEach((message, index) => {
-        message.style.animationDelay = `${index * 0.2}s`;
-      });
-
-      // Gestion du mode examen
-      const examMode = {{ 'true' if session.get('mode_examen') else 'false' }};
-      if (examMode) {
-        console.log('Exam mode is active - limited assistance available');
-      }
-
-      // ✅ CORRECTION PRINCIPALE : Empêcher les doubles envois
+      
+      // Gérer la soumission du formulaire principal
       const mainForm = document.getElementById('mainForm');
       if (mainForm) {
         mainForm.addEventListener('submit', function(e) {
-          const now = Date.now();
-          const timeSinceLastSubmit = now - lastSubmitTime;
-          
-          if (isSubmitting) {
+          // Empêcher les doubles soumissions
+          if (isProcessing) {
             e.preventDefault();
-            showMessage("{% if lang == 'en' %}Please wait, your previous request is being processed...{% else %}Veuillez patienter, votre requête précédente est en cours de traitement...{% endif %}", 'warning');
+            showAlert("{% if lang == 'en' %}Please wait for the current request to complete{% else %}Veuillez attendre que la requête en cours soit terminée{% endif %}", 'warning');
             return false;
           }
           
-          if (timeSinceLastSubmit < MIN_SUBMIT_INTERVAL) {
-            e.preventDefault();
-            const secondsLeft = Math.ceil((MIN_SUBMIT_INTERVAL - timeSinceLastSubmit) / 1000);
-            showMessage(`{% if lang == 'en' %}Please wait ${secondsLeft} seconds before sending another question{% else %}Veuillez attendre ${secondsLeft} secondes avant d'envoyer une autre question{% endif %}`, 'warning');
-            return false;
-          }
-          
-          // Vérifier que le textarea n'est pas vide
+          // Vérifier la longueur de la question
           const questionInput = document.getElementById('questionInput');
           if (!questionInput || questionInput.value.trim().length < 5) {
             e.preventDefault();
-            showMessage("{% if lang == 'en' %}Please enter a question with at least 5 characters{% else %}Veuillez saisir une question d'au moins 5 caractères{% endif %}", 'warning');
+            showAlert("{% if lang == 'en' %}Please enter a question with at least 5 characters{% else %}Veuillez saisir une question d'au moins 5 caractères{% endif %}", 'warning');
             return false;
           }
           
-          // Tout est bon, on peut soumettre
-          isSubmitting = true;
-          lastSubmitTime = now;
+          // Marquer comme en traitement
+          isProcessing = true;
           
           // Désactiver le bouton
           const submitBtn = document.getElementById('submitBtn');
-          const originalText = submitBtn.innerHTML;
+          const originalHTML = submitBtn.innerHTML;
           submitBtn.disabled = true;
-          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "en" %}Processing...{% else %}Traitement en cours...{% endif %}';
           
-          // Ajouter un message temporaire
-          const tempMessage = document.createElement('div');
-          tempMessage.className = 'message bot-message';
-          tempMessage.innerHTML = `
-            <div class="message-header">
-              <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
-              <span style="font-size: 0.8rem;">Maintenant</span>
-            </div>
-            <div class="message-content">
-              <p><i class="fas fa-spinner fa-spin"></i> {% if lang == 'en' %}Thinking about your question...{% else %}Je réfléchis à votre question...{% endif %}</p>
-            </div>
-          `;
-          document.getElementById('messagesContainer').appendChild(tempMessage);
+          {% if lang == 'en' %}
+          submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Processing...';
+          {% else %}
+          submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Traitement...';
+          {% endif %}
           
-          // Réactiver après 30 secondes maximum
+          // Réactiver après 30 secondes maximum (sécurité)
           setTimeout(() => {
-            isSubmitting = false;
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
+            if (isProcessing) {
+              isProcessing = false;
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalHTML;
+              showAlert("{% if lang == 'en' %}Request timeout. Please try again.{% else %}Délai dépassé. Veuillez réessayer.{% endif %}", 'warning');
+            }
           }, 30000);
           
-          // Scroll vers le bas pour voir le nouveau message
-          setTimeout(() => {
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-          }, 100);
-          
-          console.log('Formulaire soumis avec succès');
+          // Laisser le formulaire s'envoyer normalement
+          console.log('📤 Envoi de la question...');
         });
       }
-
+      
       // Empêcher les doubles clics sur les autres boutons
       const newExerciseBtn = document.getElementById('newExerciseBtn');
       const toggleExamBtn = document.getElementById('toggleExamBtn');
       
       [newExerciseBtn, toggleExamBtn].forEach(btn => {
         if (btn) {
-          btn.addEventListener('click', function(e) {
-            if (this.disabled) {
-              e.preventDefault();
-              return false;
-            }
+          btn.addEventListener('click', function() {
             this.disabled = true;
             setTimeout(() => {
               this.disabled = false;
@@ -641,30 +600,22 @@
           });
         }
       });
-
-      // Empêcher les rechargements accidentels avec F5
-      window.addEventListener('keydown', function(e) {
-        if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
-          if (isSubmitting) {
-            e.preventDefault();
-            showMessage("{% if lang == 'en' %}Your question is being processed. Please wait before refreshing.{% else %}Votre question est en cours de traitement. Veuillez patienter avant de rafraîchir.{% endif %}", 'warning');
-            return false;
-          }
-        }
-      });
-
-      // Empêcher la fermeture de la page pendant le traitement
-      window.addEventListener('beforeunload', function(e) {
-        if (isSubmitting) {
-          e.preventDefault();
-          e.returnValue = "{% if lang == 'en' %}Your question is being processed. Are you sure you want to leave?{% else %}Votre question est en cours de traitement. Êtes-vous sûr de vouloir quitter ?{% endif %}";
-          return e.returnValue;
-        }
-      });
+      
+      // Observer les changements dans les messages pour MathJax
+      const messagesContainer = document.getElementById('messagesContainer');
+      if (messagesContainer && window.MathJax) {
+        const observer = new MutationObserver(function() {
+          MathJax.typesetPromise();
+        });
+        observer.observe(messagesContainer, {
+          childList: true,
+          subtree: true
+        });
+      }
     });
-
-    // Fonction utilitaire pour afficher des messages
-    function showMessage(text, type = 'info') {
+    
+    // Fonction pour afficher des alertes
+    function showAlert(message, type = 'info') {
       const alertDiv = document.createElement('div');
       alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
       alertDiv.style.position = 'fixed';
@@ -673,41 +624,32 @@
       alertDiv.style.transform = 'translateX(-50%)';
       alertDiv.style.zIndex = '2000';
       alertDiv.innerHTML = `
-        ${text}
+        ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       `;
       document.body.appendChild(alertDiv);
       
+      // Fermer automatiquement après 3 secondes
       setTimeout(() => {
         if (alertDiv.parentNode) {
-          const bsAlert = new bootstrap.Alert(alertDiv);
+          const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
           bsAlert.close();
         }
       }, 3000);
     }
-
-    // Re-render MathJax quand le contenu change
-    function renderMath() {
-      if (window.MathJax) {
-        MathJax.typesetPromise();
+    
+    // Réactiver les boutons quand la page se recharge (après un POST)
+    window.addEventListener('pageshow', function(event) {
+      // Si la page vient du cache (bouton retour), réactiver
+      if (event.persisted) {
+        isProcessing = false;
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "en" %}Send to Virtual Teacher{% else %}Envoyer à l\'enseignant virtuel{% endif %}';
+        }
       }
-    }
-
-    // Re-render sur les messages qui pourraient être ajoutés dynamiquement
-    const observer = new MutationObserver(renderMath);
-    observer.observe(document.getElementById('messagesContainer'), {
-      childList: true,
-      subtree: true
     });
-
-    // Détecter les redirections automatiques
-    let lastLocation = window.location.href;
-    setInterval(() => {
-      if (window.location.href !== lastLocation && !isSubmitting) {
-        console.log('Redirection automatique détectée:', window.location.href);
-        lastLocation = window.location.href;
-      }
-    }, 1000);
   </script>
 </body>
 </html>
