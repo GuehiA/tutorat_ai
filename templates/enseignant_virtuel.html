@@ -56,11 +56,16 @@
       margin: 0;
       padding: 20px;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
     .container {
       max-width: 800px;
       margin: 0 auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     header {
@@ -98,9 +103,10 @@
       border-radius: 15px;
       padding: 30px;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      min-height: 500px;
+      flex: 1;
       display: flex;
       flex-direction: column;
+      min-height: 500px;
     }
 
     .controls {
@@ -154,11 +160,51 @@
       flex: 1;
       display: flex;
       flex-direction: column;
+      min-height: 0; /* Important pour le scroll */
+    }
+
+    /* Zone de conversation avec scroll */
+    .conversation-container {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 25px;
+      padding-right: 10px;
+      min-height: 300px;
+      max-height: 500px;
+      border-bottom: 2px solid #f0f2f5;
+      padding-bottom: 20px;
+    }
+
+    /* Style de la scrollbar */
+    .conversation-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .conversation-container::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    .conversation-container::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 4px;
+    }
+    
+    .conversation-container::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Zone de saisie fixée en bas */
+    .input-container {
+      background: white;
+      padding: 20px 0;
+      border-top: 1px solid #e2e8f0;
+      margin-top: auto; /* Pousse vers le bas */
     }
 
     textarea {
       width: 100%;
-      min-height: 150px;
+      min-height: 120px;
       padding: 20px;
       font-size: 1.1rem;
       border-radius: 10px;
@@ -191,7 +237,6 @@
     }
 
     .messages {
-      margin-top: 30px;
       display: flex;
       flex-direction: column;
       gap: 20px;
@@ -210,6 +255,7 @@
       align-self: flex-end;
       border-bottom-right-radius: 4px;
       max-width: 80%;
+      margin-left: auto;
     }
 
     .bot-message {
@@ -218,6 +264,7 @@
       align-self: flex-start;
       border-bottom-left-radius: 4px;
       max-width: 80%;
+      margin-right: auto;
     }
 
     .message-header {
@@ -333,6 +380,29 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    /* Indicateur de dernière question de l'enseignant */
+    .last-question {
+      background: #e8f4ff;
+      border-left: 4px solid #4a9eff;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      margin-bottom: 10px;
+    }
+    
+    .last-question h5 {
+      color: #2c3e50;
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+    
+    .last-question p {
+      color: #34495e;
+      margin: 0;
+      font-weight: 500;
+    }
   </style>
 </head>
 
@@ -427,92 +497,110 @@
 
       <!-- Zone de chat -->
       <div class="chat-area">
-        <form method="POST" id="mainForm">
-          <textarea 
-            name="question" 
-            id="questionInput"
-            placeholder="{% if lang == 'en' %}Write your math exercise here... You can use LaTeX for formulas: \\(x^2 + y^2 = z^2\\){% else %}Écrivez votre exercice de mathématiques ici... Vous pouvez utiliser LaTeX pour les formules : \\(x^2 + y^2 = z^2\\){% endif %}" 
-            required
-            autofocus>{% if question %}{{ question }}{% endif %}</textarea>
-          
-          <button type="submit" class="btn btn-send" id="submitBtn">
-            <i class="fas fa-paper-plane"></i>
-            {% if lang == 'en' %}
-              Send to Virtual Teacher
+        <!-- CONVERSATION : Affichée au-dessus -->
+        <div class="conversation-container" id="conversationContainer">
+          <div class="messages" id="messagesContainer">
+            {% set conversation = session.get('guide_math_conversation', []) %}
+            
+            {% if conversation %}
+              <!-- Afficher TOUTE la conversation du début à la fin -->
+              {% for message in conversation %}
+                {% if 'Élève:' in message or 'Élève (réponse):' in message %}
+                  <div class="message user-message">
+                    <div class="message-header">
+                      <span><i class="fas fa-user"></i> {% if lang == 'en' %}You{% else %}Vous{% endif %}</span>
+                      <span style="font-size: 0.8rem;">
+                        {% if loop.last %}Maintenant{% else %}{{ loop.index }}{% endif %}
+                      </span>
+                    </div>
+                    <div class="message-content">
+                      {{ message.replace('Élève: ', '').replace('Élève (réponse): ', '')|safe }}
+                    </div>
+                  </div>
+                {% elif 'Enseignant:' in message %}
+                  <div class="message bot-message">
+                    <div class="message-header">
+                      <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
+                      <span style="font-size: 0.8rem;">
+                        {% if loop.last %}Maintenant{% else %}{{ loop.index }}{% endif %}
+                      </span>
+                    </div>
+                    <div class="message-content">
+                      {{ message.replace('Enseignant: ', '')|safe }}
+                    </div>
+                  </div>
+                {% endif %}
+              {% endfor %}
             {% else %}
-              Envoyer à l'enseignant virtuel
+              <!-- Message de bienvenue initial -->
+              <div class="message bot-message">
+                <div class="message-header">
+                  <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
+                </div>
+                <div class="message-content">
+                  {% if lang == 'en' %}
+                    <h4 style="margin-top: 0;">👋 Hello {{ eleve.nom_complet.split(' ')[0] }}!</h4>
+                    <p>I'm your virtual math teacher. <strong>I won't give you the answers</strong>, but I'll guide you step by step so YOU find them yourself!</p>
+                    <p><strong>How it works:</strong></p>
+                    <ol>
+                      <li>You ask a math question</li>
+                      <li>I'll ask you guiding questions</li>
+                      <li>You answer each question</li>
+                      <li>We continue until YOU solve it</li>
+                      <li>You learn by discovering, not by being told</li>
+                    </ol>
+                    <p><em>Ready to solve some math? Ask your first question below! ✨</em></p>
+                  {% else %}
+                    <h4 style="margin-top: 0;">👋 Bonjour {{ eleve.nom_complet.split(' ')[0] }} !</h4>
+                    <p>Je suis votre enseignant virtuel de mathématiques. <strong>Je ne vous donnerai pas les réponses</strong>, mais je vous guiderai étape par étape pour que VOUS les trouviez vous-même !</p>
+                    <p><strong>Comment ça marche :</strong></p>
+                    <ol>
+                      <li>Vous posez une question de maths</li>
+                      <li>Je vous pose des questions guidantes</li>
+                      <li>Vous répondez à chaque question</li>
+                      <li>Nous continuons jusqu'à ce que VOUS résolviez</li>
+                      <li>Vous apprenez en découvrant, pas en étant dit</li>
+                    </ol>
+                    <p><em>Prêt à résoudre des maths ? Posez votre première question ci-dessous ! ✨</em></p>
+                  {% endif %}
+                </div>
+              </div>
             {% endif %}
-          </button>
-        </form>
+          </div>
+        </div>
 
-        <!-- Messages -->
-<div class="messages" id="messagesContainer">
-  {% set conversation = session.get('guide_math_conversation', []) %}
-  
-  {% if conversation %}
-    {% for message in conversation[-6:] %}  <!-- Affiche les 6 derniers messages -->
-      {% if 'Élève:' in message or 'Élève (réponse):' in message %}
-        <div class="message user-message">
-          <div class="message-header">
-            <span><i class="fas fa-user"></i> {% if lang == 'en' %}You{% else %}Vous{% endif %}</span>
-            <span style="font-size: 0.8rem;">
-              {% if loop.index == conversation|length %}Maintenant{% endif %}
-            </span>
-          </div>
-          <div class="message-content">
-            {{ message.replace('Élève: ', '').replace('Élève (réponse): ', '')|safe }}
-          </div>
+        <!-- Dernière question posée par l'enseignant (si elle existe) -->
+        {% set derniere_question_ia = session.get('derniere_question_ia') %}
+        {% if derniere_question_ia %}
+        <div class="last-question">
+          <h5>
+            <i class="fas fa-question-circle"></i>
+            {% if lang == 'en' %}Teacher's last question:{% else %}Dernière question de l'enseignant :{% endif %}
+          </h5>
+          <p>{{ derniere_question_ia }}</p>
         </div>
-      {% elif 'Enseignant:' in message %}
-        <div class="message bot-message">
-          <div class="message-header">
-            <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
-            <span style="font-size: 0.8rem;">
-              {% if loop.index == conversation|length %}Maintenant{% endif %}
-            </span>
-          </div>
-          <div class="message-content">
-            {{ message.replace('Enseignant: ', '')|safe }}
-          </div>
-        </div>
-      {% endif %}
-    {% endfor %}
-  {% else %}
-    <!-- Message de bienvenue -->
-    <div class="message bot-message">
-      <div class="message-header">
-        <span><i class="fas fa-robot"></i> {% if lang == 'en' %}Math Teacher{% else %}Enseignant de maths{% endif %}</span>
-      </div>
-      <div class="message-content">
-        {% if lang == 'en' %}
-          <h4 style="margin-top: 0;">👋 Hello {{ eleve.nom_complet.split(' ')[0] }}!</h4>
-          <p>I'm your virtual math teacher. <strong>I won't give you the answers</strong>, but I'll guide you step by step so YOU find them yourself!</p>
-          <p><strong>How it works:</strong></p>
-          <ol>
-            <li>You ask a math question</li>
-            <li>I'll ask you guiding questions</li>
-            <li>You answer each question</li>
-            <li>We continue until YOU solve it</li>
-            <li>You learn by discovering, not by being told</li>
-          </ol>
-          <p><em>Ready to solve some math? Ask your first question! ✨</em></p>
-        {% else %}
-          <h4 style="margin-top: 0;">👋 Bonjour {{ eleve.nom_complet.split(' ')[0] }} !</h4>
-          <p>Je suis votre enseignant virtuel de mathématiques. <strong>Je ne vous donnerai pas les réponses</strong>, mais je vous guiderai étape par étape pour que VOUS les trouviez vous-même !</p>
-          <p><strong>Comment ça marche :</strong></p>
-          <ol>
-            <li>Vous posez une question de maths</li>
-            <li>Je vous pose des questions guidantes</li>
-            <li>Vous répondez à chaque question</li>
-            <li>Nous continuons jusqu'à ce que VOUS résolviez</li>
-            <li>Vous apprenez en découvrant, pas en étant dit</li>
-          </ol>
-          <p><em>Prêt à résoudre des maths ? Posez votre première question ! ✨</em></p>
         {% endif %}
-      </div>
-    </div>
-  {% endif %}
-</div>
+
+        <!-- ZONE DE SAISIE : Fixée en bas -->
+        <div class="input-container">
+          <form method="POST" id="mainForm">
+            <textarea 
+              name="question" 
+              id="questionInput"
+              placeholder="{% if session.get('derniere_question_ia') %}{% if lang == 'en' %}Answer the teacher's question above...{% else %}Répondez à la question de l'enseignant ci-dessus...{% endif %}{% else %}{% if lang == 'en' %}Write your math exercise here... I'll guide you step by step{% else %}Écrivez votre exercice de mathématiques ici... Je vous guiderai étape par étape{% endif %}{% endif %}" 
+              required
+              autofocus></textarea>
+            
+            <button type="submit" class="btn btn-send" id="submitBtn">
+              <i class="fas fa-paper-plane"></i>
+              {% if session.get('derniere_question_ia') %}
+                {% if lang == 'en' %}Submit Answer{% else %}Soumettre la réponse{% endif %}
+              {% else %}
+                {% if lang == 'en' %}Start Conversation{% else %}Démarrer la conversation{% endif %}
+              {% endif %}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -520,7 +608,7 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- JavaScript simplifié et efficace -->
+  <!-- JavaScript optimisé -->
   <script>
     // État global
     let isProcessing = false;
@@ -548,6 +636,9 @@
         });
       }, 5000);
       
+      // Scroller automatiquement vers le bas de la conversation
+      scrollToBottom();
+      
       // Gérer la soumission du formulaire principal
       const mainForm = document.getElementById('mainForm');
       if (mainForm) {
@@ -561,9 +652,9 @@
           
           // Vérifier la longueur de la question
           const questionInput = document.getElementById('questionInput');
-          if (!questionInput || questionInput.value.trim().length < 5) {
+          if (!questionInput || questionInput.value.trim().length < 3) {
             e.preventDefault();
-            showAlert("{% if lang == 'en' %}Please enter a question with at least 5 characters{% else %}Veuillez saisir une question d'au moins 5 caractères{% endif %}", 'warning');
+            showAlert("{% if lang == 'en' %}Please enter at least 3 characters{% else %}Veuillez saisir au moins 3 caractères{% endif %}", 'warning');
             return false;
           }
           
@@ -576,9 +667,9 @@
           submitBtn.disabled = true;
           
           {% if lang == 'en' %}
-          submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Processing...';
+          submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Sending...';
           {% else %}
-          submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Traitement...';
+          submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Envoi...';
           {% endif %}
           
           // Réactiver après 30 secondes maximum (sécurité)
@@ -592,7 +683,7 @@
           }, 30000);
           
           // Laisser le formulaire s'envoyer normalement
-          console.log('📤 Envoi de la question...');
+          console.log('📤 Envoi de la réponse...');
         });
       }
       
@@ -616,6 +707,8 @@
       if (messagesContainer && window.MathJax) {
         const observer = new MutationObserver(function() {
           MathJax.typesetPromise();
+          // Scroller vers le bas quand de nouveaux messages sont ajoutés
+          setTimeout(scrollToBottom, 100);
         });
         observer.observe(messagesContainer, {
           childList: true,
@@ -623,6 +716,14 @@
         });
       }
     });
+    
+    // Fonction pour scroller vers le bas de la conversation
+    function scrollToBottom() {
+      const container = document.getElementById('conversationContainer');
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
     
     // Fonction pour afficher des alertes
     function showAlert(message, type = 'info') {
@@ -656,9 +757,21 @@
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "en" %}Send to Virtual Teacher{% else %}Envoyer à l\'enseignant virtuel{% endif %}';
+          {% if lang == 'en' %}
+          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Answer';
+          {% else %}
+          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Soumettre la réponse';
+          {% endif %}
         }
       }
+      
+      // Scroller vers le bas
+      setTimeout(scrollToBottom, 200);
+    });
+    
+    // Scroller vers le bas au chargement initial
+    window.addEventListener('load', function() {
+      setTimeout(scrollToBottom, 500);
     });
   </script>
 </body>
