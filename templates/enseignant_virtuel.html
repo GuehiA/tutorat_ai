@@ -173,6 +173,22 @@
       margin-bottom: 15px;
     }
     
+    /* Classes flex pour les formulaires */
+    .flex-1 {
+      flex: 1;
+    }
+    
+    /* Correction pour les formulaires dans controls */
+    .controls form {
+      margin: 0;
+      flex: 1;
+      display: flex;
+    }
+    
+    .controls form .btn {
+      width: 100%;
+    }
+    
     .btn {
       padding: 10px 15px;
       border: none;
@@ -183,7 +199,6 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      flex: 1;
       justify-content: center;
     }
     
@@ -583,14 +598,16 @@
 
     <!-- Controls -->
     <div class="controls">
-      <form method="POST" action="/nouvel-exercice" class="flex-1">
+      <!-- Nouvel exercice -->
+      <form method="POST" action="{{ url_for('nouvel_exercice') }}">
         <button type="submit" class="btn btn-new" id="newExerciseBtn">
           <i class="fas fa-plus-circle"></i>
           {% if lang == 'en' %}New Exercise{% else %}Nouvel exercice{% endif %}
         </button>
       </form>
       
-      <form method="POST" action="/toggle-examen" class="flex-1">
+      <!-- Toggle examen -->
+      <form method="POST" action="{{ url_for('toggle_examen') }}">
         <button type="submit" class="btn btn-exam" id="toggleExamBtn">
           <i class="fas fa-graduation-cap"></i>
           {% if lang == 'en' %}
@@ -601,8 +618,9 @@
         </button>
       </form>
       
+      <!-- Bouton Reprendre (seulement si exercice en cours) -->
       {% if exercice_en_cours %}
-      <form method="POST" action="/retour-exercice" class="flex-1">
+      <form method="POST" action="{{ url_for('retour_exercice') }}">
         <button type="submit" class="btn btn-reset" id="resetBtn">
           <i class="fas fa-redo"></i>
           {% if lang == 'en' %}Reset Steps{% else %}Reprendre{% endif %}
