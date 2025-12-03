@@ -5669,6 +5669,12 @@ def login_eleve():
     lang = session.get('lang', 'fr')
     return render_template("login_eleve.html", lang=lang)
 
+# Ajoutez cette route à votre fichier de routes
+@app.route('/a-propos')
+def a_propos():
+    """Page À propos accessible à tous"""
+    return render_template('a_propos.html')
+
 @app.before_request
 def before_request():
     """Vérifier l'accès avant chaque requête - VERSION FINALE"""

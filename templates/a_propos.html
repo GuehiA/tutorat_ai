@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}About - AI Tutoring{% else %}À propos - Tutorat IA{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-light: #4895ef;
+      --secondary: #3a0ca3;
+      --accent: #f72585;
+      --success: #4cc9f0;
+      --remediation: #7209b7;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gradient: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+      --gradient-accent: linear-gradient(135deg, #f72585, #b5179e);
+      --gradient-remediation: linear-gradient(135deg, #7209b7, #3a0ca3);
+      --gradient-light: linear-gradient(135deg, #4cc9f0, #4361ee);
+      --border-radius: 16px;
+      --border-radius-lg: 25px;
+      --box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      --box-shadow-hover: 0 15px 35px rgba(0,0,0,0.15);
+      --transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: var(--dark);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 15px;
+    }
+
+    /* Navigation */
+    .navigation {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 0 25px;
+      position: relative;
+      z-index: 100;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 50px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: var(--transition);
+      border: 2px solid transparent;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .back-btn:hover {
+      transform: translateX(-3px);
+      background: white;
+      border-color: var(--primary);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lang-switch form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lang-switch label {
+      font-size: 1.3rem;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .lang-switch select {
+      padding: 8px 14px;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--dark);
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 500;
+    }
+
+    /* Badge Enseignant Certifié */
+    .certification-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #27ae60, #219653);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin: 15px auto 25px;
+      box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+      animation: pulse 2s infinite;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .certification-badge i {
+      font-size: 1.2rem;
+    }
+
+    /* Hero Section */
+    .hero-section {
+      text-align: center;
+      padding: 20px 0 30px;
+      position: relative;
+    }
+
+    .logo-container {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 15px;
+    }
+
+    .logo-outer {
+      width: 85px;
+      height: 85px;
+      background: var(--gradient);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px;
+      position: relative;
+      animation: float 6s ease-in-out infinite;
+      box-shadow: 0 12px 25px rgba(67, 97, 238, 0.3);
+    }
+
+    .logo-outer::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      right: -4px;
+      bottom: -4px;
+      background: var(--gradient);
+      border-radius: 50%;
+      opacity: 0.3;
+      z-index: -1;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .logo-inner {
+      width: 55px;
+      height: 55px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      color: var(--primary);
+      box-shadow: inset 0 3px 8px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, white, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    }
+
+    .tagline {
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.95);
+      max-width: 700px;
+      margin: 0 auto 20px;
+      font-weight: 300;
+      line-height: 1.4;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* Content Cards */
+    .content-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(15px);
+      border-radius: var(--border-radius-lg);
+      padding: 30px;
+      margin-bottom: 25px;
+      box-shadow: var(--box-shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .content-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--box-shadow-hover);
+    }
+
+    .content-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--gradient);
+    }
+
+    h2 {
+      font-size: 2rem;
+      color: var(--primary);
+      margin-bottom: 20px;
+      position: relative;
+      display: inline-block;
+      font-weight: 700;
+    }
+
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      width: 50px;
+      height: 3px;
+      background: var(--gradient-accent);
+      border-radius: 2px;
+    }
+
+    /* Email Badge */
+    .email-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      margin: 15px 0 25px;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+
+    .email-badge:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .email-badge i {
+      font-size: 1.1rem;
+    }
+
+    /* Features Grid - 4 cartes par ligne */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-top: 25px;
+    }
+
+    .feature-card {
+      background: white;
+      padding: 22px 18px;
+      border-radius: var(--border-radius);
+      text-align: center;
+      transition: var(--transition);
+      border: 1px solid rgba(67, 97, 238, 0.1);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--box-shadow-hover);
+      border-color: var(--primary-light);
+    }
+
+    .feature-icon {
+      width: 55px;
+      height: 55px;
+      background: var(--gradient-light);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 15px;
+      font-size: 1.6rem;
+      color: white;
+      transition: var(--transition);
+    }
+
+    .feature-card:hover .feature-icon {
+      transform: scale(1.1);
+    }
+
+    .feature-title {
+      font-size: 1.1rem;
+      color: var(--primary);
+      margin-bottom: 10px;
+      font-weight: 600;
+      flex-grow: 0;
+    }
+
+    .feature-description {
+      color: #666;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      flex-grow: 1;
+    }
+
+    /* Section Système de Remédiation */
+    .remediation-system-section {
+      background: var(--gradient-remediation);
+      border-radius: var(--border-radius-lg);
+      padding: 35px;
+      margin: 30px 0;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 15px 35px rgba(114, 9, 183, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .remediation-system-section::before {
+      content: '🔄';
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 4rem;
+      opacity: 0.2;
+      transform: rotate(15deg);
+    }
+
+    .remediation-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .remediation-icon {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .remediation-title {
+      color: white;
+      font-size: 2.2rem;
+      font-weight: 700;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .remediation-subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.1rem;
+      margin-bottom: 25px;
+    }
+
+    .remediation-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 25px;
+    }
+
+    .remediation-feature {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      padding: 20px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: var(--transition);
+    }
+
+    .remediation-feature:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-5px);
+    }
+
+    .remediation-feature i {
+      font-size: 2rem;
+      color: white;
+      margin-bottom: 12px;
+    }
+
+    .remediation-feature h4 {
+      color: white;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+
+    .remediation-feature p {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    /* Team Grid */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-top: 25px;
+    }
+
+    .team-card {
+      background: white;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      transition: var(--transition);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .team-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--box-shadow-hover);
+    }
+
+    .team-avatar {
+      height: 140px;
+      background: var(--gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.8rem;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .team-info {
+      padding: 18px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .team-name {
+      font-size: 1rem;
+      color: var(--primary);
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .team-role {
+      color: var(--accent);
+      font-weight: 500;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+    }
+
+    .team-bio {
+      color: #666;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      flex-grow: 1;
+    }
+
+    /* Contact Section */
+    .contact-section {
+      text-align: center;
+      padding: 30px 0 10px;
+    }
+
+    .contact-info {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      border-radius: var(--border-radius-lg);
+      padding: 25px 35px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .contact-title {
+      color: white;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .contact-email {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 25px;
+      border-radius: 50px;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 1.1rem;
+      text-decoration: none;
+      transition: var(--transition);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .contact-email:hover {
+      transform: translateY(-3px);
+      background: white;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      color: var(--secondary);
+    }
+
+    /* CTA Section */
+    .cta-section {
+      text-align: center;
+      padding: 35px 0;
+      position: relative;
+    }
+
+    .cta-card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: var(--border-radius-lg);
+      padding: 30px;
+      max-width: 800px;
+      margin: 0 auto;
+      box-shadow: var(--box-shadow);
+    }
+
+    .cta-title {
+      font-size: 1.8rem;
+      color: var(--primary);
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .cta-text {
+      font-size: 1rem;
+      color: #555;
+      margin-bottom: 20px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 28px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--gradient);
+      color: white;
+      box-shadow: 0 8px 18px rgba(67, 97, 238, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px) scale(1.03);
+      box-shadow: 0 12px 22px rgba(67, 97, 238, 0.4);
+    }
+
+    .btn-remediation {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 30px;
+      background: white;
+      color: var(--remediation);
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: var(--transition);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .btn-remediation:hover {
+      transform: translateY(-3px) scale(1.05);
+      background: white;
+      box-shadow: 0 12px 25px rgba(0,0,0,0.3);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 35px;
+      text-align: center;
+      padding: 25px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .footer-brand {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, white, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+
+    .footer-link {
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      font-weight: 500;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+
+    .footer-link:hover {
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .footer-email {
+      color: white;
+      font-weight: 600;
+      font-size: 1rem;
+      margin: 10px 0;
+    }
+
+    .copyright {
+      margin-top: 15px;
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    /* Step by step guide visualization */
+    .guide-steps {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    .guide-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 150px;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      background: var(--gradient);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .step-arrow {
+      color: var(--primary);
+      font-size: 1.5rem;
+      margin: 0 5px;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .features-grid,
+      .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+      
+      .remediation-features {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .guide-steps {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .step-arrow {
+        transform: rotate(90deg);
+        margin: 10px 0;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+
+      .navigation {
+        flex-direction: column;
+        gap: 15px;
+        padding: 10px 0 20px;
+      }
+
+      .back-btn, .lang-switch {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .lang-switch form {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .hero-section {
+        padding: 15px 0 25px;
+      }
+
+      h1 {
+        font-size: 2.2rem;
+      }
+
+      h2 {
+        font-size: 1.6rem;
+      }
+
+      .remediation-title {
+        font-size: 1.8rem;
+      }
+
+      .tagline {
+        font-size: 1rem;
+        margin-bottom: 15px;
+      }
+
+      .logo-outer {
+        width: 70px;
+        height: 70px;
+        margin-bottom: 8px;
+      }
+
+      .logo-inner {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+      }
+
+      .content-card {
+        padding: 25px 18px;
+        margin-bottom: 20px;
+      }
+
+      .features-grid,
+      .team-grid,
+      .remediation-features {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .feature-card,
+      .team-card,
+      .remediation-feature {
+        padding: 20px;
+      }
+
+      .feature-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+        margin-bottom: 12px;
+      }
+
+      .team-avatar {
+        height: 120px;
+        font-size: 2.5rem;
+      }
+
+      .remediation-system-section {
+        padding: 25px 20px;
+      }
+
+      .remediation-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+      }
+
+      .remediation-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.8rem;
+      }
+
+      .contact-info {
+        padding: 20px;
+        width: 100%;
+      }
+
+      .contact-email {
+        padding: 12px 20px;
+        font-size: 1rem;
+      }
+
+      .cta-card {
+        padding: 25px 18px;
+      }
+
+      .cta-title {
+        font-size: 1.5rem;
+      }
+
+      .cta-text {
+        font-size: 0.95rem;
+      }
+
+      .btn, .btn-remediation {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 25px;
+      }
+
+      .footer-links {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .footer {
+        padding: 20px 0;
+        margin-top: 25px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      h2 {
+        font-size: 1.4rem;
+      }
+
+      .content-card {
+        padding: 20px 15px;
+      }
+      
+      .certification-badge {
+        font-size: 0.8rem;
+        padding: 10px 16px;
+      }
+      
+      .contact-email {
+        font-size: 0.9rem;
+        padding: 10px 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Navigation -->
+    <div class="navigation">
+      <a href="/" class="back-btn">
+        <i class="fas fa-arrow-left"></i>
+        {% if lang == 'en' %}Back to Home{% else %}Retour à l'accueil{% endif %}
+      </a>
+      
+      <div class="lang-switch">
+        <form method="POST" action="/changer-langue">
+          <label for="lang">🌍</label>
+          <select name="lang" id="lang" onchange="this.form.submit()">
+            <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+            <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+          </select>
+          <input type="hidden" name="redirect_page" value="a_propos">
+        </form>
+      </div>
+    </div>
+
+    <!-- Hero Section avec Badge -->
+    <div class="hero-section">
+      <div class="logo-container">
+        <div class="logo-outer">
+          <div class="logo-inner">
+            <i class="fas fa-hands-helping"></i>
+          </div>
+        </div>
+      </div>
+      
+      <h1>Tutorat AI</h1>
+      
+      <p class="tagline">
+        {% if lang == 'en' %}
+          Smart remediation system activated when you need it most
+        {% else %}
+          Système de remédiation intelligent activé quand vous en avez le plus besoin
+        {% endif %}
+      </p>
+      
+      <!-- Badge Validé par enseignant certifié -->
+      <div class="certification-badge">
+        <i class="fas fa-check-circle"></i>
+        {% if lang == 'en' %}Validated by Certified Teachers{% else %}Validé par des enseignants certifiés{% endif %}
+      </div>
+      
+      <!-- Email Badge -->
+      <a href="mailto:info@advanceteach.com" class="email-badge">
+        <i class="fas fa-envelope"></i>
+        info@advanceteach.com
+      </a>
+    </div>
+
+    <!-- Mission Section -->
+    <div class="content-card">
+      <h2>
+        {% if lang == 'en' %}Our Mission{% else %}Notre Mission{% endif %}
+      </h2>
+      
+      <p>
+        {% if lang == 'en' %}
+          <strong>Tutorat AI</strong> provides intelligent academic support through a smart remediation system. When a student scores below 3/5 on an exercise, our system automatically triggers personalized help to ensure comprehension and mastery.
+        {% else %}
+          <strong>Tutorat AI</strong> offre un soutien académique intelligent grâce à un système de remédiation adaptatif. Quand un élève obtient moins de 3/5 à un exercice, notre système déclenche automatiquement une aide personnalisée pour garantir la compréhension et la maîtrise.
+        {% endif %}
+      </p>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}Score Detection{% else %}Détection de Score{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              System activates when score < 3/5
+            {% else %}
+              Système activé quand score < 3/5
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-robot"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}Virtual Tutor{% else %}Tuteur Virtuel{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Step-by-step guidance to comprehension
+            {% else %}
+              Guidance pas à pas vers la compréhension
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-chalkboard-teacher"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}Teacher Assignment{% else %}Attribution Enseignant{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Teachers choose or get assigned students
+            {% else %}
+              Enseignants choisissent ou reçoivent des élèves
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-sync-alt"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}Auto-Remediation{% else %}Remédiation Auto{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Remediation exercises sent automatically
+            {% else %}
+              Exercices de remédiation envoyés automatiquement
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Système de Remédiation -->
+    <div class="remediation-system-section">
+      <div class="remediation-header">
+        <div class="remediation-icon">
+          🔄
+        </div>
+        <div>
+          <h2 class="remediation-title">
+            {% if lang == 'en' %}Smart Remediation System{% else %}Système Intelligent de Remédiation{% endif %}
+          </h2>
+          <p class="remediation-subtitle">
+            {% if lang == 'en' %}
+              Help activated automatically when you need it most (score < 3/5)
+            {% else %}
+              Aide activée automatiquement quand vous en avez le plus besoin (score < 3/5)
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Guide pas à pas -->
+      <div class="guide-steps">
+        <div class="guide-step">
+          <div class="step-number">1</div>
+          <h4>{% if lang == 'en' %}Exercise{% else %}Exercice{% endif %}</h4>
+          <p style="color: rgba(255,255,255,0.9); font-size: 0.85rem;">
+            {% if lang == 'en' %}Student completes exercise{% else %}L'élève fait l'exercice{% endif %}
+          </p>
+        </div>
+        
+        <div class="step-arrow">→</div>
+        
+        <div class="guide-step">
+          <div class="step-number">2</div>
+          <h4>{% if lang == 'en' %}Score < 3/5{% else %}Note < 3/5{% endif %}</h4>
+          <p style="color: rgba(255,255,255,0.9); font-size: 0.85rem;">
+            {% if lang == 'en' %}System detects difficulty{% else %}Système détecte difficulté{% endif %}
+          </p>
+        </div>
+        
+        <div class="step-arrow">→</div>
+        
+        <div class="guide-step">
+          <div class="step-number">3</div>
+          <h4>{% if lang == 'en' %}Remediation{% else %}Remédiation{% endif %}</h4>
+          <p style="color: rgba(255,255,255,0.9); font-size: 0.85rem;">
+            {% if lang == 'en' %}Teacher sends exercise{% else %}Enseignant envoie exercice{% endif %}
+          </p>
+        </div>
+        
+        <div class="step-arrow">→</div>
+        
+        <div class="guide-step">
+          <div class="step-number">4</div>
+          <h4>{% if lang == 'en' %}Guide{% else %}Guide{% endif %}</h4>
+          <p style="color: rgba(255,255,255,0.9); font-size: 0.85rem;">
+            {% if lang == 'en' %}Virtual tutor guides step-by-step{% else %}Tuteur virtuel guide pas à pas{% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="remediation-features">
+        <div class="remediation-feature">
+          <i class="fas fa-bell"></i>
+          <h4>
+            {% if lang == 'en' %}Automatic Trigger{% else %}Déclenchement Auto{% endif %}
+          </h4>
+          <p>
+            {% if lang == 'en' %}
+              System activates when score is below 3/5
+            {% else %}
+              Système activé quand note inférieure à 3/5
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="remediation-feature">
+          <i class="fas fa-user-tie"></i>
+          <h4>
+            {% if lang == 'en' %}Teacher Follow-up{% else %}Suivi Enseignant{% endif %}
+          </h4>
+          <p>
+            {% if lang == 'en' %}
+              Assigned teacher sends remediation exercise
+            {% else %}
+              Enseignant attitré envoie exercice de remédiation
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="remediation-feature">
+          <i class="fas fa-robot"></i>
+          <h4>
+            {% if lang == 'en' %}Step-by-Step Guide{% else %}Guide Pas à Pas{% endif %}
+          </h4>
+          <p>
+            {% if lang == 'en' %}
+              Virtual tutor guides until comprehension
+            {% else %}
+              Tuteur virtuel guide jusqu'à compréhension
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="education-cta">
+        <a href="/login-eleve" class="btn-remediation">
+          <i class="fas fa-play-circle"></i>
+          {% if lang == 'en' %}Start Smart Tutoring{% else %}Commencer le Tutorat Intelligent{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="content-card">
+      <h2>
+        {% if lang == 'en' %}How It Works{% else %}Comment ça marche{% endif %}
+      </h2>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-user-plus"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}1. Registration{% else %}1. Inscription{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Student registers and gets teacher assignment
+            {% else %}
+              L'élève s'inscrit et reçoit un enseignant attitré
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-tasks"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}2. Exercises{% else %}2. Exercices{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Complete exercises independently
+            {% else %}
+              Fait les exercices de manière autonome
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}3. Score Analysis{% else %}3. Analyse Score{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              System monitors scores (triggers if < 3/5)
+            {% else %}
+              Système surveille scores (déclenche si < 3/5)
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-hands-helping"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}4. Remediation{% else %}4. Remédiation{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Teacher sends exercise, virtual tutor guides
+            {% else %}
+              Enseignant envoie exercice, tuteur virtuel guide
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teacher Assignment Section -->
+    <div class="content-card">
+      <h2>
+        {% if lang == 'en' %}Teacher Assignment System{% else %}Système d'Attribution des Enseignants{% endif %}
+      </h2>
+      
+      <p>
+        {% if lang == 'en' %}
+          Our unique system connects students with teachers in three different ways to ensure optimal support:
+        {% else %}
+          Notre système unique connecte élèves et enseignants de trois façons pour garantir un soutien optimal :
+        {% endif %}
+      </p>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-random"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}Automatic{% else %}Automatique{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              System assigns teacher to student
+            {% else %}
+              Système attribue enseignant à élève
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-hand-pointer"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}Teacher Choice{% else %}Choix Enseignant{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Teacher selects students to follow
+            {% else %}
+              Enseignant choisit élèves à suivre
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-user-check"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}Recommendation{% else %}Recommandation{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Teacher recommends student to platform
+            {% else %}
+              Enseignant recommande élève à la plateforme
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-eye"></i>
+          </div>
+          <h3 class="feature-title">
+            {% if lang == 'en' %}Follow-up{% else %}Suivi{% endif %}
+          </h3>
+          <p class="feature-description">
+            {% if lang == 'en' %}
+              Teacher monitors assigned student's progress
+            {% else %}
+              Enseignant suit progrès de l'élève attribué
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Section -->
+    <div class="contact-section">
+      <div class="contact-info">
+        <h3 class="contact-title">
+          {% if lang == 'en' %}Contact Us{% else %}Contactez-nous{% endif %}
+        </h3>
+        <a href="mailto:info@advanceteach.com" class="contact-email">
+          <i class="fas fa-envelope"></i>
+          info@advanceteach.com
+        </a>
+        <p style="color: rgba(255,255,255,0.9); font-size: 0.9rem; margin-top: 10px;">
+          {% if lang == 'en' %}
+            For questions about smart remediation or teacher assignment
+          {% else %}
+            Pour questions sur la remédiation intelligente ou attribution enseignants
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <!-- Team Section -->
+    <div class="content-card">
+      <h2>
+        {% if lang == 'en' %}Our Ecosystem{% else %}Notre Écosystème{% endif %}
+      </h2>
+      
+      <p>
+        {% if lang == 'en' %}
+          We connect students in need of remediation with certified teachers and intelligent virtual tutors.
+        {% else %}
+          Nous connectons élèves nécessitant une remédiation avec enseignants certifiés et tuteurs virtuels intelligents.
+        {% endif %}
+      </p>
+
+      <div class="team-grid">
+        <div class="team-card">
+          <div class="team-avatar">
+            <i class="fas fa-user-graduate"></i>
+          </div>
+          <div class="team-info">
+            <h3 class="team-name">
+              {% if lang == 'en' %}Students{% else %}Élèves{% endif %}
+            </h3>
+            <p class="team-role">
+              {% if lang == 'en' %}Receive Smart Help{% else %}Reçoivent Aide Intelligente{% endif %}
+            </p>
+            <p class="team-bio">
+              {% if lang == 'en' %}
+                Get remediation when score < 3/5
+              {% else %}
+                Reçoivent remédiation quand note < 3/5
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="team-card">
+          <div class="team-avatar">
+            <i class="fas fa-chalkboard-teacher"></i>
+          </div>
+          <div class="team-info">
+            <h3 class="team-name">
+              {% if lang == 'en' %}Teachers{% else %}Enseignants{% endif %}
+            </h3>
+            <p class="team-role">
+              {% if lang == 'en' %}Send Remediation{% else %}Envoient Remédiation{% endif %}
+            </p>
+            <p class="team-bio">
+              {% if lang == 'en' %}
+                Choose or get assigned students to follow
+              {% else %}
+                Choisissent ou reçoivent élèves à suivre
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="team-card">
+          <div class="team-avatar">
+            <i class="fas fa-robot"></i>
+          </div>
+          <div class="team-info">
+            <h3 class="team-name">
+              {% if lang == 'en' %}Virtual Tutor{% else %}Tuteur Virtuel{% endif %}
+            </h3>
+            <p class="team-role">
+              {% if lang == 'en' %}Step-by-Step Guide{% else %}Guide Pas à Pas{% endif %}
+            </p>
+            <p class="team-bio">
+              {% if lang == 'en' %}
+                Guides student until comprehension
+              {% else %}
+                Guide l'élève jusqu'à compréhension
+            {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="team-card">
+          <div class="team-avatar">
+            <i class="fas fa-cogs"></i>
+          </div>
+          <div class="team-info">
+            <h3 class="team-name">
+              {% if lang == 'en' %}Smart System{% else %}Système Intelligent{% endif %}
+            </h3>
+            <p class="team-role">
+              {% if lang == 'en' %}Automatic Detection{% else %}Détection Automatique{% endif %}
+            </p>
+            <p class="team-bio">
+              {% if lang == 'en' %}
+                Activates help when score < 3/5
+              {% else %}
+                Active l'aide quand note < 3/5
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="cta-section">
+      <div class="cta-card">
+        <h2 class="cta-title">
+          {% if lang == 'en' %}Ready for Smart Remediation?{% else %}Prêt pour la remédiation intelligente ?{% endif %}
+        </h2>
+        
+        <p class="cta-text">
+          {% if lang == 'en' %}
+            Join students who get targeted help exactly when they need it most (score < 3/5).
+          {% else %}
+            Rejoignez les élèves qui reçoivent de l'aide ciblée exactement quand ils en ont le plus besoin (note < 3/5).
+          {% endif %}
+        </p>
+        
+        <a href="/login-eleve" class="btn btn-primary">
+          <i class="fas fa-brain"></i>
+          {% if lang == 'en' %}Start Smart Tutoring{% else %}Commencer le Tutorat Intelligent{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-brand">Tutorat AI</div>
+      
+      <div class="footer-links">
+        <a href="/" class="footer-link">
+          <i class="fas fa-home"></i>
+          {% if lang == 'en' %}Home{% else %}Accueil{% endif %}
+        </a>
+        <a href="/a-propos" class="footer-link">
+          <i class="fas fa-info-circle"></i>
+          {% if lang == 'en' %}About{% else %}À propos{% endif %}
+        </a>
+        <a href="#remediation-system" class="footer-link">
+          <i class="fas fa-robot"></i>
+          {% if lang == 'en' %}Smart Remediation{% else %}Remédiation Intelligente{% endif %}
+        </a>
+        <a href="mailto:info@advanceteach.com" class="footer-link">
+          <i class="fas fa-envelope"></i>
+          {% if lang == 'en' %}Contact{% else %}Contact{% endif %}
+        </a>
+      </div>
+      
+      <div class="footer-email">
+        <i class="fas fa-envelope"></i> info@advanceteach.com
+      </div>
+      
+      <p class="copyright">
+        {% if lang == 'en' %}
+          © 2024 Tutorat AI. Smart remediation system. Help activated when score < 3/5.
+        {% else %}
+          © 2024 Tutorat AI. Système de remédiation intelligent. Aide activée quand note < 3/5.
+        {% endif %}
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // Animation pour le badge de certification
+    const badge = document.querySelector('.certification-badge');
+    if (badge) {
+      setInterval(() => {
+        badge.style.animation = 'none';
+        setTimeout(() => {
+          badge.style.animation = 'pulse 2s infinite';
+        }, 10);
+      }, 4000);
+    }
+
+    // Animation pour les étapes du guide
+    const steps = document.querySelectorAll('.step-number');
+    steps.forEach((step, index) => {
+      setTimeout(() => {
+        step.style.animation = 'pulse 2s infinite';
+      }, index * 500);
+    });
+
+    // Effet de particules simplifié
+    function createParticle() {
+      if (Math.random() > 0.7) return;
+      
+      const particle = document.createElement('div');
+      const size = Math.random() * 4 + 1;
+      const colors = ['rgba(67, 97, 238, 0.4)', 'rgba(72, 149, 239, 0.4)'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      particle.style.position = 'fixed';
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.background = color;
+      particle.style.borderRadius = '50%';
+      particle.style.pointerEvents = 'none';
+      particle.style.left = Math.random() * 100 + 'vw';
+      particle.style.top = '-10px';
+      particle.style.zIndex = '-1';
+      
+      document.body.appendChild(particle);
+      
+      const duration = Math.random() * 2 + 1;
+      particle.animate([
+        { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+        { transform: `translateY(100vh) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+      ], {
+        duration: duration * 1000,
+        easing: 'linear'
+      });
+      
+      setTimeout(() => particle.remove(), duration * 1000);
+    }
+
+    setInterval(createParticle, 300);
+
+    // Scroll animation pour les éléments
+    document.addEventListener('DOMContentLoaded', function() {
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+            observer.unobserve(entry.target);
+          }
+        });
+      }, observerOptions);
+
+      // Observer les cartes
+      const cards = document.querySelectorAll('.content-card, .feature-card, .team-card, .remediation-system-section, .contact-info, .guide-step');
+      cards.forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(card);
+      });
+    });
+
+    // Smooth scroll pour les ancres
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        if (targetId === '#') return;
+        
+        const targetElement = document.querySelector(targetId);
+        if (targetElement) {
+          window.scrollTo({
+            top: targetElement.offsetTop - 80,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
