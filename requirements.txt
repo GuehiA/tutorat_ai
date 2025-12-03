@@ -22,3 +22,4 @@ pdfkit==1.0.0
 nltk==3.8.1
 reportlab==4.2.0
 matplotlib==3.7.5        # ⬅️ AJOUTEZ CETTE LIGNE
+email_validator>=2.0.0
