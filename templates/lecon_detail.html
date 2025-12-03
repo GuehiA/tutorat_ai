@@ -2,6 +2,7 @@
 <html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -10,107 +11,742 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  <title>{{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }}</title>
+  <title>{{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }} - VirtuEduc</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
+    :root {
+      --primary: #4361ee;
+      --primary-light: #4895ef;
+      --primary-dark: #3a0ca3;
+      --secondary: #7209b7;
+      --accent: #f72585;
+      --success: #4cc9f0;
+      --warning: #ff9e00;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray-light: #f1f3f9;
+      --gray: #6c757d;
+      --gradient: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+      --gradient-accent: linear-gradient(135deg, #f72585, #b5179e);
+      --gradient-light: linear-gradient(135deg, #4cc9f0, #4361ee);
+      --gradient-success: linear-gradient(135deg, #4cc9f0, #4361ee);
+      --border-radius: 16px;
+      --border-radius-sm: 10px;
+      --border-radius-lg: 25px;
+      --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --box-shadow-hover: 0 15px 35px rgba(0, 0, 0, 0.12);
+      --transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+    }
+
+    * {
       margin: 0;
-      padding: 40px;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: var(--dark);
+      line-height: 1.6;
+      padding: 20px;
     }
 
     .container {
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      border-radius: 10px;
-      padding: 30px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 1000px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--box-shadow);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      animation: fadeIn 0.6s ease-out;
     }
 
-    h2 {
-      color: #2c3e50;
-    }
-
-    .objectif, .exercices {
-      margin-top: 20px;
-    }
-
-    .objectif p, .exercices ul {
-      font-size: 16px;
-      color: #333;
-    }
-
-    ul {
-      padding-left: 20px;
-    }
-
-    li {
-      margin-bottom: 10px;
-    }
-
-    .button {
-      display: inline-block;
-      padding: 10px 20px;
-      background-color: #3498db;
+    /* Header */
+    .lesson-header {
+      background: var(--gradient);
       color: white;
+      padding: 40px 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lesson-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+      opacity: 0.3;
+    }
+
+    .lesson-title {
+      font-size: 2.8rem;
+      font-weight: 800;
+      margin-bottom: 15px;
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .lesson-subtitle {
+      font-size: 1.1rem;
+      opacity: 0.95;
+      font-weight: 300;
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+    }
+
+    /* Content Section */
+    .content-wrapper {
+      padding: 40px;
+    }
+
+    /* Objective Card */
+    .objective-card {
+      background: var(--gray-light);
+      border-radius: var(--border-radius);
+      padding: 30px;
+      margin-bottom: 35px;
+      position: relative;
+      overflow: hidden;
+      border-left: 5px solid var(--primary);
+      box-shadow: var(--box-shadow);
+      transition: var(--transition);
+    }
+
+    .objective-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--box-shadow-hover);
+    }
+
+    .objective-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .objective-icon {
+      width: 60px;
+      height: 60px;
+      background: var(--gradient);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+    }
+
+    .objective-title {
+      font-size: 1.5rem;
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+
+    .objective-content {
+      font-size: 1.1rem;
+      color: var(--dark);
+      line-height: 1.7;
+      padding-left: 75px;
+    }
+
+    /* Exercises Section */
+    .exercises-section {
+      margin-bottom: 40px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--gray-light);
+    }
+
+    .section-icon {
+      width: 50px;
+      height: 50px;
+      background: var(--gradient-accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.8rem;
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+
+    /* Exercise Cards */
+    .exercises-grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .exercise-card {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 25px;
+      border: 2px solid var(--gray-light);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .exercise-card:hover {
+      border-color: var(--primary-light);
+      transform: translateY(-5px);
+      box-shadow: var(--box-shadow-hover);
+    }
+
+    .exercise-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 5px;
+      height: 100%;
+      background: var(--gradient);
+      transition: var(--transition);
+    }
+
+    .exercise-card:hover::before {
+      width: 8px;
+    }
+
+    .exercise-question {
+      font-size: 1.1rem;
+      color: var(--dark);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .exercise-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid var(--gray-light);
+    }
+
+    .exercise-number {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    .exercise-number i {
+      color: var(--primary);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 28px;
+      border-radius: 50px;
       text-decoration: none;
-      border-radius: 5px;
-      font-size: 15px;
-      margin-top: 20px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      justify-content: center;
     }
 
-    .button:hover {
-      background-color: #2980b9;
+    .btn-primary {
+      background: var(--gradient);
+      color: white;
+      box-shadow: 0 6px 20px rgba(67, 97, 238, 0.25);
     }
 
+    .btn-primary:hover {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 10px 25px rgba(67, 97, 238, 0.4);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      box-shadow: 0 4px 15px rgba(67, 97, 238, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.2);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #ff9e00, #ff6b00);
+      color: white;
+      box-shadow: 0 6px 20px rgba(255, 158, 0, 0.25);
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 10px 25px rgba(255, 158, 0, 0.4);
+    }
+
+    /* Navigation */
     .navigation {
-      margin-top: 40px;
-      text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 30px 40px;
+      background: var(--gray-light);
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      flex-wrap: wrap;
+      gap: 15px;
     }
 
-    .navigation a {
-      margin: 10px;
+    .nav-group {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    /* No Exercises Message */
+    .no-exercises {
+      text-align: center;
+      padding: 50px 30px;
+      background: var(--gray-light);
+      border-radius: var(--border-radius);
+      border: 2px dashed var(--gray-light);
+    }
+
+    .no-exercises-icon {
+      font-size: 4rem;
+      color: var(--gray);
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .no-exercises-text {
+      font-size: 1.2rem;
+      color: var(--gray);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* Progress Indicator */
+    .progress-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 50px;
+      padding: 10px 20px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .progress-text {
+      font-size: 0.9rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      width: 100px;
+      height: 6px;
+      background: var(--gray-light);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--gradient);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 1s ease;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .container {
+        border-radius: var(--border-radius);
+      }
+
+      .lesson-header {
+        padding: 30px 20px;
+      }
+
+      .lesson-title {
+        font-size: 2.2rem;
+      }
+
+      .lesson-subtitle {
+        font-size: 1rem;
+      }
+
+      .content-wrapper {
+        padding: 25px 20px;
+      }
+
+      .objective-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+      }
+
+      .objective-content {
+        padding-left: 0;
+      }
+
+      .section-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+      }
+
+      .exercise-meta {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+      }
+
+      .navigation {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+      }
+
+      .nav-group {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        text-align: center;
+      }
+
+      .progress-indicator {
+        position: static;
+        margin-bottom: 20px;
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .lesson-title {
+        font-size: 1.8rem;
+      }
+
+      .objective-card, .exercise-card {
+        padding: 20px;
+      }
+
+      .objective-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+      }
+
+      .section-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 1.3rem;
+      }
     }
   </style>
 </head>
 <body>
+  <!-- Progress Indicator -->
+  <div class="progress-indicator">
+    <span class="progress-text">
+      <i class="fas fa-book-open"></i> 
+      {% if lang == 'fr' %}Leçon en cours{% else %}Lesson in progress{% endif %}
+    </span>
+    <div class="progress-bar">
+      <div class="progress-fill" id="lessonProgress"></div>
+    </div>
+  </div>
 
   <div class="container">
-    <h2>{{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }}</h2>
-
-    <div class="objectif">
-      <h4>{% if lang == 'fr' %}🎯 Objectif pédagogique{% else %}🎯 Learning Objective{% endif %}</h4>
-      <p>{{ lecon.objectif_fr if lang == 'fr' else lecon.objectif_en }}</p>
+    <!-- Header -->
+    <div class="lesson-header">
+      <h1 class="lesson-title">{{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }}</h1>
+      <p class="lesson-subtitle">
+        {% if lang == 'fr' %}
+          Maîtrisez cette compétence avec nos exercices interactifs
+        {% else %}
+          Master this skill with our interactive exercises
+        {% endif %}
+      </p>
     </div>
 
-    <div class="exercices">
-      <h4>{% if lang == 'fr' %}📚 Exercices liés{% else %}📚 Linked Exercises{% endif %}</h4>
-      {% if lecon.exercices %}
-        <ul>
-          {% for ex in lecon.exercices %}
-            <li>
-              {{ ex.question_fr[:100] }}...
-              <a class="button" href="/exercice/{{ ex.id }}?username={{ username }}&lang={{ lang }}">
-                {% if lang == 'fr' %}Faire l'exercice{% else %}Do exercise{% endif %}
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p>{% if lang == 'fr' %}Aucun exercice lié pour le moment.{% else %}No linked exercise yet.{% endif %}</p>
-      {% endif %}
+    <!-- Content -->
+    <div class="content-wrapper">
+      <!-- Objective Card -->
+      <div class="objective-card">
+        <div class="objective-header">
+          <div class="objective-icon">
+            <i class="fas fa-bullseye"></i>
+          </div>
+          <h3 class="objective-title">
+            {% if lang == 'fr' %}🎯 Objectif pédagogique{% else %}🎯 Learning Objective{% endif %}
+          </h3>
+        </div>
+        <div class="objective-content">
+          {{ lecon.objectif_fr if lang == 'fr' else lecon.objectif_en }}
+        </div>
+      </div>
+
+      <!-- Exercises Section -->
+      <div class="exercises-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <i class="fas fa-book"></i>
+          </div>
+          <h3 class="section-title">
+            {% if lang == 'fr' %}📚 Exercices interactifs{% else %}📚 Interactive Exercises{% endif %}
+          </h3>
+        </div>
+
+        {% if lecon.exercices %}
+          <div class="exercises-grid">
+            {% for ex in lecon.exercices %}
+              <div class="exercise-card">
+                <div class="exercise-question">
+                  {{ ex.question_fr[:200] if lang == 'fr' else ex.question_en[:200] }}...
+                </div>
+                
+                <div class="exercise-meta">
+                  <div class="exercise-number">
+                    <i class="fas fa-hashtag"></i>
+                    <span>{% if lang == 'fr' %}Exercice{% else %}Exercise{% endif %} {{ loop.index }}</span>
+                  </div>
+                  <a href="/exercice/{{ ex.id }}?username={{ username }}&lang={{ lang }}" class="btn btn-primary">
+                    <i class="fas fa-play-circle"></i>
+                    {% if lang == 'fr' %}Commencer{% else %}Start{% endif %}
+                  </a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="no-exercises">
+            <div class="no-exercises-icon">
+              <i class="fas fa-bookmark"></i>
+            </div>
+            <h3 class="no-exercises-text">
+              {% if lang == 'fr' %}
+                Aucun exercice n'est disponible pour cette leçon pour le moment.
+              {% else %}
+                No exercises are available for this lesson yet.
+              {% endif %}
+            </h3>
+          </div>
+        {% endif %}
+      </div>
     </div>
 
+    <!-- Navigation -->
     <div class="navigation">
-      <a href="/contenus-eleve?username={{ username }}&lang={{ lang }}" class="button">
-        ← {% if lang == 'fr' %}Retour aux leçons{% else %}Back to lessons{% endif %}
-      </a>
-      <a href="/dashboard-eleve?username={{ username }}&lang={{ lang }}" class="button" style="background-color: #e67e22;">
-        ⬅ {% if lang == 'fr' %}Tableau de bord{% else %}Dashboard{% endif %}
+      <div class="nav-group">
+        <a href="/contenus-eleve?username={{ username }}&lang={{ lang }}" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i>
+          {% if lang == 'fr' %}Retour aux leçons{% else %}Back to lessons{% endif %}
+        </a>
+        {% if lecon.exercices %}
+          <a href="/exercice/{{ lecon.exercices[0].id }}?username={{ username }}&lang={{ lang }}" class="btn btn-primary">
+            <i class="fas fa-play"></i>
+            {% if lang == 'fr' %}Commencer le premier exercice{% else %}Start first exercise{% endif %}
+          </a>
+        {% endif %}
+      </div>
+      
+      <a href="/dashboard-eleve?username={{ username }}&lang={{ lang }}" class="btn btn-warning">
+        <i class="fas fa-tachometer-alt"></i>
+        {% if lang == 'fr' %}Tableau de bord{% else %}Dashboard{% endif %}
       </a>
     </div>
   </div>
 
+  <script>
+    // Progress animation
+    document.addEventListener('DOMContentLoaded', function() {
+      const progressFill = document.getElementById('lessonProgress');
+      
+      // Simulate reading progress
+      let progress = 0;
+      const progressInterval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress > 100) {
+          progress = 100;
+          clearInterval(progressInterval);
+        }
+        progressFill.style.width = `${progress}%`;
+      }, 300);
+      
+      // Animate elements on scroll
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      };
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+            observer.unobserve(entry.target);
+          }
+        });
+      }, observerOptions);
+      
+      // Animate cards
+      const cards = document.querySelectorAll('.objective-card, .exercise-card, .no-exercises');
+      cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        setTimeout(() => {
+          observer.observe(card);
+        }, index * 100);
+      });
+      
+      // Add hover effects to buttons
+      const buttons = document.querySelectorAll('.btn');
+      buttons.forEach(button => {
+        button.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-3px)';
+        });
+        
+        button.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0)';
+        });
+      });
+      
+      // Exercise card animations
+      const exerciseCards = document.querySelectorAll('.exercise-card');
+      exerciseCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+          const icon = this.querySelector('.btn i');
+          if (icon) {
+            icon.style.transform = 'translateX(5px)';
+            icon.style.transition = 'transform 0.3s ease';
+          }
+        });
+        
+        card.addEventListener('mouseleave', function() {
+          const icon = this.querySelector('.btn i');
+          if (icon) {
+            icon.style.transform = 'translateX(0)';
+          }
+        });
+      });
+    });
+    
+    // Add some interactive particles in background for visual appeal
+    function createParticle() {
+      if (Math.random() > 0.3) return;
+      
+      const particle = document.createElement('div');
+      const size = Math.random() * 3 + 1;
+      const colors = [
+        'rgba(67, 97, 238, 0.1)',
+        'rgba(72, 149, 239, 0.1)',
+        'rgba(247, 37, 133, 0.1)'
+      ];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      particle.style.position = 'fixed';
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.background = color;
+      particle.style.borderRadius = '50%';
+      particle.style.pointerEvents = 'none';
+      particle.style.left = `${Math.random() * 100}vw`;
+      particle.style.top = '-10px';
+      particle.style.zIndex = '-1';
+      
+      document.body.appendChild(particle);
+      
+      const duration = Math.random() * 3 + 2;
+      particle.animate([
+        { transform: 'translateY(0) rotate(0deg)', opacity: 0.8 },
+        { transform: `translateY(100vh) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+      ], {
+        duration: duration * 1000,
+        easing: 'linear'
+      });
+      
+      setTimeout(() => particle.remove(), duration * 1000);
+    }
+    
+    setInterval(createParticle, 500);
+  </script>
 </body>
 </html>
