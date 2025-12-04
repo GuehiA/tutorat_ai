@@ -5417,21 +5417,36 @@ def visualiser_exercices_lecon(lecon_id):
 def api_matieres():
     niveau_id = request.args.get("niveau_id")
     lang = request.args.get("lang", "fr")
+
     matieres = Matiere.query.filter_by(niveau_id=niveau_id).all()
+
     return jsonify([
-        {"id": m.id, "nom": m.nom_en if lang == "en" and m.nom_en else m.nom}
+        {
+            "id": m.id,
+            "nom": m.nom_en if lang == "en" and m.nom_en else m.nom,
+            "nb_unites": Unite.query.filter_by(matiere_id=m.id).count()
+        }
         for m in matieres
     ])
+
+
 
 @app.route("/api/unites")
 def api_unites():
     matiere_id = request.args.get("matiere_id")
     lang = request.args.get("lang", "fr")
+
     unites = Unite.query.filter_by(matiere_id=matiere_id).all()
+
     return jsonify([
-        {"id": u.id, "nom": u.nom_en if lang == "en" and u.nom_en else u.nom}
+        {
+            "id": u.id,
+            "nom": u.nom_en if lang == "en" and u.nom_en else u.nom,
+            "nb_lecons": Lecon.query.filter_by(unite_id=u.id).count()
+        }
         for u in unites
     ])
+
 
 @app.route("/api/lecons")
 def api_lecons():
