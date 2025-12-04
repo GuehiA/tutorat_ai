@@ -351,24 +351,24 @@
                     {{ form.ville(class="form-control", placeholder="Montréal") }}
                 </div>
 
-                <!-- PROVINCE - TRADUIT -->
+                <!-- PROVINCE -->
                 <div class="form-group optional">
                     <label for="province">{{ 'Province (Optional)' if lang == 'en' else 'Province (Optionnel)' }}</label>
-                    <select name="province" id="province" class="form-select">
+                    <select id="province" name="province" class="form-select">
                         <option value="">{{ 'Select a province' if lang == 'en' else 'Sélectionnez une province' }}</option>
-                        <option value="QC" {% if form.province.data == 'QC' %}selected{% endif %}>Québec</option>
-                        <option value="ON" {% if form.province.data == 'ON' %}selected{% endif %}>Ontario</option>
-                        <option value="BC" {% if form.province.data == 'BC' %}selected{% endif %}>British Columbia</option>
-                        <option value="AB" {% if form.province.data == 'AB' %}selected{% endif %}>Alberta</option>
-                        <option value="MB" {% if form.province.data == 'MB' %}selected{% endif %}>Manitoba</option>
-                        <option value="SK" {% if form.province.data == 'SK' %}selected{% endif %}>Saskatchewan</option>
-                        <option value="NS" {% if form.province.data == 'NS' %}selected{% endif %}>Nova Scotia</option>
-                        <option value="NB" {% if form.province.data == 'NB' %}selected{% endif %}>New Brunswick</option>
-                        <option value="NL" {% if form.province.data == 'NL' %}selected{% endif %}>Newfoundland and Labrador</option>
-                        <option value="PE" {% if form.province.data == 'PE' %}selected{% endif %}>Prince Edward Island</option>
-                        <option value="NT" {% if form.province.data == 'NT' %}selected{% endif %}>Northwest Territories</option>
-                        <option value="NU" {% if form.province.data == 'NU' %}selected{% endif %}>Nunavut</option>
-                        <option value="YT" {% if form.province.data == 'YT' %}selected{% endif %}>Yukon</option>
+                        <option value="AB">Alberta</option>
+                        <option value="BC">{{ 'British Columbia' if lang == 'en' else 'Colombie-Britannique' }}</option>
+                        <option value="MB">Manitoba</option>
+                        <option value="NB">{{ 'New Brunswick' if lang == 'en' else 'Nouveau-Brunswick' }}</option>
+                        <option value="NL">{{ 'Newfoundland and Labrador' if lang == 'en' else 'Terre-Neuve-et-Labrador' }}</option>
+                        <option value="NS">{{ 'Nova Scotia' if lang == 'en' else 'Nouvelle-Écosse' }}</option>
+                        <option value="ON">Ontario</option>
+                        <option value="PE">{{ 'Prince Edward Island' if lang == 'en' else 'Île-du-Prince-Édouard' }}</option>
+                        <option value="QC">Québec</option>
+                        <option value="SK">Saskatchewan</option>
+                        <option value="NT">{{ 'Northwest Territories' if lang == 'en' else 'Territoires du Nord-Ouest' }}</option>
+                        <option value="NU">Nunavut</option>
+                        <option value="YT">Yukon</option>
                     </select>
                 </div>
 
@@ -431,26 +431,13 @@
                     {% endif %}
                 </div>
 
-                <!-- LEVEL - TRADUIT -->
+                <!-- LEVEL -->
                 <div class="form-group">
                     <label for="niveau_id">{{ 'Level' if lang == 'en' else 'Niveau' }}</label>
-                    <select name="niveau_id" id="niveau_id" class="form-select" required>
+                    <select id="niveau_id" name="niveau_id" class="form-select" required>
                         <option value="">{{ 'Select a level' if lang == 'en' else 'Sélectionnez un niveau' }}</option>
                         {% for niveau_id, niveau_nom in form.niveau_id.choices %}
-                            {% set niveau_obj = None %}
-                            {% if 'niveaux' in context or 'niveaux' in vars() %}
-                                {# Chercher l'objet niveau dans la liste passée depuis la route #}
-                                {% for n in niveaux if n.id == niveau_id %}
-                                    {% set niveau_obj = n %}
-                                {% endfor %}
-                            {% endif %}
-                            <option value="{{ niveau_id }}" {% if form.niveau_id.data == niveau_id|string %}selected{% endif %}>
-                                {% if niveau_obj and lang == 'en' and niveau_obj.nom_en %}
-                                    {{ niveau_obj.nom_en }}
-                                {% else %}
-                                    {{ niveau_nom }}
-                                {% endif %}
-                            </option>
+                            <option value="{{ niveau_id }}">{{ niveau_nom }}</option>
                         {% endfor %}
                     </select>
                     {% if form.niveau_id.errors %}
@@ -461,6 +448,16 @@
                         </div>
                     {% endif %}
                 </div>
+
+                <!-- TEACHER (Optional) -->
+                <div class="form-group optional">
+                    <label for="enseignant_id">{{ 'Teacher (Optional)' if lang == 'en' else 'Enseignant (Optionnel)' }}</label>
+                    <select id="enseignant_id" name="enseignant_id" class="form-select">
+                        {% for enseignant_id, enseignant_nom in form.enseignant_id.choices %}
+                            <option value="{{ enseignant_id }}">{{ enseignant_nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
 
             <!-- SECTION 3: STATUT ET ADMINISTRATION -->
@@ -470,74 +467,53 @@
             </div>
 
             <div class="form-grid">
-                <!-- STATUS - TRADUIT -->
+                <!-- STATUS -->
                 <div class="form-group">
                     <label for="statut">{{ 'Status' if lang == 'en' else 'Statut' }}</label>
-                    <select name="statut" id="statut" class="form-select">
-                        <option value="actif" {% if form.statut.data == 'actif' %}selected{% endif %}>
-                            {{ 'Active' if lang == 'en' else 'Actif' }}
-                        </option>
-                        <option value="inactif" {% if form.statut.data == 'inactif' %}selected{% endif %}>
-                            {{ 'Inactive' if lang == 'en' else 'Inactif' }}
-                        </option>
-                        <option value="en_attente" {% if form.statut.data == 'en_attente' %}selected{% endif %}>
-                            {{ 'Pending' if lang == 'en' else 'En attente' }}
-                        </option>
-                        <option value="suspendu" {% if form.statut.data == 'suspendu' %}selected{% endif %}>
-                            {{ 'Suspended' if lang == 'en' else 'Suspendu' }}
-                        </option>
+                    <select id="statut" name="statut" class="form-select">
+                        <option value="actif">{{ 'Active' if lang == 'en' else 'Actif' }}</option>
+                        <option value="en_attente">{{ 'Pending' if lang == 'en' else 'En attente' }}</option>
+                        <option value="inactif">{{ 'Inactive' if lang == 'en' else 'Inactif' }}</option>
+                        <option value="suspendu">{{ 'Suspended' if lang == 'en' else 'Suspendu' }}</option>
+                        <option value="en_attente_paiement">{{ 'Pending payment' if lang == 'en' else 'En attente de paiement' }}</option>
                     </select>
                     <div class="status-info">
                         <small>
                             {% if lang == 'en' %}
                                 • <strong>Active:</strong> Full platform access<br>
-                                • <strong>Inactive:</strong> No access<br>
-                                • <strong>Pending:</strong> Limited access<br>
-                                • <strong>Suspended:</strong> Temporary suspension
+                                • <strong>Pending payment:</strong> Limited access<br>
+                                • <strong>Inactive:</strong> No access
                             {% else %}
                                 • <strong>Actif:</strong> Accès complet<br>
-                                • <strong>Inactif:</strong> Aucun accès<br>
-                                • <strong>En attente:</strong> Accès limité<br>
-                                • <strong>Suspendu:</strong> Suspension temporaire
+                                • <strong>En attente paiement:</strong> Accès limité<br>
+                                • <strong>Inactif:</strong> Aucun accès
                             {% endif %}
                         </small>
                     </div>
                 </div>
 
-                <!-- PAYMENT STATUS - TRADUIT -->
+                <!-- PAYMENT STATUS -->
                 <div class="form-group">
                     <label for="statut_paiement">{{ 'Payment Status' if lang == 'en' else 'Statut de paiement' }}</label>
-                    <select name="statut_paiement" id="statut_paiement" class="form-select">
-                        <option value="paye" {% if form.statut_paiement.data == 'paye' %}selected{% endif %}>
-                            {{ 'Paid' if lang == 'en' else 'Payé' }}
-                        </option>
-                        <option value="essai_gratuit" {% if form.statut_paiement.data == 'essai_gratuit' %}selected{% endif %}>
-                            {{ 'Free Trial' if lang == 'en' else 'Essai gratuit' }}
-                        </option>
-                        <option value="en_attente" {% if form.statut_paiement.data == 'en_attente' %}selected{% endif %}>
-                            {{ 'Pending' if lang == 'en' else 'En attente' }}
-                        </option>
-                        <option value="non_paye" {% if form.statut_paiement.data == 'non_paye' %}selected{% endif %}>
-                            {{ 'Not Paid' if lang == 'en' else 'Non payé' }}
-                        </option>
-                        <option value="expire" {% if form.statut_paiement.data == 'expire' %}selected{% endif %}>
-                            {{ 'Expired' if lang == 'en' else 'Expiré' }}
-                        </option>
+                    <select id="statut_paiement" name="statut_paiement" class="form-select">
+                        <option value="paye">{{ 'Paid' if lang == 'en' else 'Payé' }}</option>
+                        <option value="non_paye">{{ 'Unpaid' if lang == 'en' else 'Non payé' }}</option>
+                        <option value="partiel">{{ 'Partial' if lang == 'en' else 'Partiel' }}</option>
+                        <option value="en_attente">{{ 'Pending' if lang == 'en' else 'En attente' }}</option>
+                        <option value="paye_par_admin">{{ 'Paid by admin' if lang == 'en' else 'Payé par admin' }}</option>
+                        <option value="remise">{{ 'Discount' if lang == 'en' else 'Remise' }}</option>
+                        <option value="annule">{{ 'Cancelled' if lang == 'en' else 'Annulé' }}</option>
                     </select>
                     <div class="status-info">
                         <small>
                             {% if lang == 'en' %}
-                                • <strong>Paid:</strong> Full access<br>
-                                • <strong>Free Trial:</strong> 48-hour trial<br>
-                                • <strong>Pending:</strong> Payment required<br>
-                                • <strong>Not Paid:</strong> Limited access<br>
-                                • <strong>Expired:</strong> Subscription expired
+                                • <strong>Paid by admin:</strong> Account activated immediately<br>
+                                • <strong>Unpaid:</strong> Payment required<br>
+                                • <strong>Partial:</strong> Partial payment received
                             {% else %}
-                                • <strong>Payé:</strong> Accès complet<br>
-                                • <strong>Essai gratuit:</strong> Essai de 48h<br>
-                                • <strong>En attente:</strong> Paiement requis<br>
-                                • <strong>Non payé:</strong> Accès limité<br>
-                                • <strong>Expiré:</strong> Abonnement expiré
+                                • <strong>Payé par admin:</strong> Compte activé immédiatement<br>
+                                • <strong>Non payé:</strong> Paiement requis<br>
+                                • <strong>Partiel:</strong> Paiement partiel reçu
                             {% endif %}
                         </small>
                     </div>
@@ -548,7 +524,7 @@
                     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                         <!-- EMAIL VERIFIED -->
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            {{ form.email_verifie(class="form-control", style="width: auto;", checked=true) }}
+                            {{ form.email_verifie(class="form-control", style="width: auto;") }}
                             <label for="email_verifie" style="margin-bottom: 0; font-weight: normal;">
                                 {{ 'Email Verified' if lang == 'en' else 'Email Vérifié' }}
                             </label>
@@ -556,7 +532,7 @@
                         
                         <!-- PHONE VERIFIED -->
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            {{ form.telephone_verifie(class="form-control", style="width: auto;", checked=true) }}
+                            {{ form.telephone_verifie(class="form-control", style="width: auto;") }}
                             <label for="telephone_verifie" style="margin-bottom: 0; font-weight: normal;">
                                 {{ 'Phone Verified' if lang == 'en' else 'Téléphone Vérifié' }}
                             </label>
@@ -564,7 +540,7 @@
                         
                         <!-- TERMS ACCEPTED -->
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            {{ form.accepte_cgu(class="form-control", style="width: auto;", checked=true) }}
+                            {{ form.accepte_cgu(class="form-control", style="width: auto;") }}
                             <label for="accepte_cgu" style="margin-bottom: 0; font-weight: normal;">
                                 {{ 'Terms Accepted' if lang == 'en' else 'CGU Acceptées' }}
                             </label>
@@ -602,22 +578,43 @@
             return true;
         });
 
-        // Initialisation des valeurs par défaut pour admin
+        // Pré-sélectionner les valeurs pour conserver les données en cas d'erreur
         document.addEventListener('DOMContentLoaded', function() {
-            // Si aucun statut n'est sélectionné, mettre "actif" par défaut
-            if (!document.getElementById('statut').value) {
-                document.getElementById('statut').value = 'actif';
+            // Pré-sélectionner la province
+            const provinceSelect = document.getElementById('province');
+            const currentProvince = "{{ form.province.data if form.province.data else '' }}";
+            if (currentProvince && provinceSelect) {
+                for (let i = 0; i < provinceSelect.options.length; i++) {
+                    if (provinceSelect.options[i].value === currentProvince) {
+                        provinceSelect.options[i].selected = true;
+                        break;
+                    }
+                }
             }
-            
-            // Si aucun statut de paiement n'est sélectionné, mettre "paye" par défaut
-            if (!document.getElementById('statut_paiement').value) {
-                document.getElementById('statut_paiement').value = 'paye';
+
+            // Pré-sélectionner le statut
+            const statutSelect = document.getElementById('statut');
+            const currentStatut = "{{ form.statut.data if form.statut.data else '' }}";
+            if (currentStatut && statutSelect) {
+                for (let i = 0; i < statutSelect.options.length; i++) {
+                    if (statutSelect.options[i].value === currentStatut) {
+                        statutSelect.options[i].selected = true;
+                        break;
+                    }
+                }
             }
-            
-            // Cocher les cases par défaut pour admin
-            document.getElementById('email_verifie').checked = true;
-            document.getElementById('telephone_verifie').checked = true;
-            document.getElementById('accepte_cgu').checked = true;
+
+            // Pré-sélectionner le statut de paiement
+            const paiementSelect = document.getElementById('statut_paiement');
+            const currentPaiement = "{{ form.statut_paiement.data if form.statut_paiement.data else '' }}";
+            if (currentPaiement && paiementSelect) {
+                for (let i = 0; i < paiementSelect.options.length; i++) {
+                    if (paiementSelect.options[i].value === currentPaiement) {
+                        paiementSelect.options[i].selected = true;
+                        break;
+                    }
+                }
+            }
         });
     </script>
 </body>
