@@ -2,171 +2,226 @@
 <html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
+  <title>{% if lang=='en' %}Browse Lessons{% else %}Explorer les leçons{% endif %}</title>
 
-  <!-- Favicon -->
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-  <title>{% if lang == 'en' %}Browse Lessons{% else %}Explorer les leçons{% endif %}</title>
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+  :root{
+    --primary:#4f46e5;
+    --secondary:#312e81;
+    --accent:#ec4899;
+    --success:#22c55e;
+    --warning:#f59e0b;
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --muted:#6b7280;
+  }
 
-  <!-- MathJax -->
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
+  *{box-sizing:border-box}
 
-<style>
-/* ===== VARIABLES ===== */
-:root {
-  --primary:#4361ee;
-  --secondary:#3a0ca3;
-  --accent:#f72585;
-  --success:#4cc9f0;
-  --warning:#f9c74f;
-  --light:#f8f9fa;
-  --dark:#212529;
-  --gray:#6c757d;
-}
+  body{
+    margin:0;
+    font-family:Inter,system-ui,-apple-system;
+    background:radial-gradient(circle at top,#eef2ff,#f9fafb);
+    color:#111827;
+    padding:24px;
+  }
 
-/* ===== BASE ===== */
-body{
-  font-family:Segoe UI,system-ui;
-  background:linear-gradient(135deg,#f5f7fa,#c3cfe2);
-  padding:20px;
-}
-.container{max-width:1200px;margin:auto}
-h1{text-align:center;color:var(--secondary)}
+  .container{
+    max-width:1200px;
+    margin:auto;
+  }
 
-/* ===== CARTE ÉLÈVE ===== */
-.student-card{
-  background:white;
-  padding:20px;
-  border-radius:15px;
-  display:flex;
-  gap:15px;
-  margin:30px 0;
-  box-shadow:0 4px 12px rgba(0,0,0,.1);
-}
+  /* HEADER */
+  h1{
+    text-align:center;
+    font-size:2.4rem;
+    font-weight:800;
+    margin-bottom:30px;
+    color:var(--secondary);
+  }
 
-/* ===== NIVEAU ===== */
-.niveau-bloc{
-  background:white;
-  border-radius:16px;
-  padding:25px;
-  margin-bottom:30px;
-  box-shadow:0 5px 15px rgba(0,0,0,.1);
-}
-.niveau-header{
-  display:flex;
-  align-items:center;
-  gap:15px;
-  margin-bottom:15px;
-}
-.niveau-icon{
-  width:50px;height:50px;
-  background:var(--primary);
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:white;
-}
+  /* ELEVE */
+  .student-card{
+    background:var(--card);
+    border-radius:22px;
+    padding:20px;
+    display:flex;
+    gap:16px;
+    align-items:center;
+    box-shadow:0 12px 40px rgba(0,0,0,.1);
+    margin-bottom:30px;
+  }
 
-/* ===== ACCORDÉON MATIÈRE ===== */
-.matiere-header,
-.unite-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:15px;
-  background:var(--light);
-  border-radius:12px;
-  cursor:pointer;
-}
-.matiere-header{margin-top:15px}
-.toggle-icon{
-  transition:transform .3s;
-}
-.active .toggle-icon{
-  transform:rotate(180deg);
-}
-.matiere-content,
-.unite-content{
-  display:none;
-  margin-top:15px;
-  padding-left:10px;
-}
+  .student-avatar{
+    width:60px;height:60px;
+    border-radius:50%;
+    background:linear-gradient(135deg,var(--primary),var(--accent));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    font-size:1.4rem;
+  }
 
-/* ===== UNITÉ ===== */
-.unite-card{
-  background:#eef2ff;
-  padding:15px;
-  border-radius:12px;
-  margin-bottom:15px;
-}
+  /* NIVEAU */
+  .niveau{
+    background:var(--card);
+    border-radius:26px;
+    padding:30px;
+    margin-bottom:30px;
+    box-shadow:0 20px 50px rgba(0,0,0,.12);
+  }
 
-/* ===== LEÇON ===== */
-.lecon-item{
-  background:white;
-  padding:15px;
-  border-radius:10px;
-  margin:10px 0;
-}
-.lecon-link{
-  font-weight:bold;
-  color:var(--primary);
-  text-decoration:none;
-}
-.lecon-link:hover{color:var(--secondary)}
+  .niveau-header{
+    display:flex;
+    align-items:center;
+    gap:15px;
+    margin-bottom:20px;
+  }
 
-/* ===== EXERCICES ===== */
-.exercice-item{
-  background:var(--light);
-  padding:10px;
-  border-radius:8px;
-  margin-top:8px;
-}
-.status-done{color:var(--success)}
-.status-pending{color:var(--warning)}
-.action-btn{
-  display:inline-block;
-  margin-top:6px;
-  padding:6px 14px;
-  border-radius:20px;
-  background:var(--primary);
-  color:white;
-  text-decoration:none;
-  font-size:.85rem;
-}
-.action-btn.secondary{
-  background:#ddd;color:#333;
-}
+  .niveau-icon{
+    width:50px;height:50px;
+    border-radius:50%;
+    background:var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+  }
 
-/* ===== PROGRESS ===== */
-.progress{
-  background:#ddd;
-  border-radius:6px;
-  height:6px;
-  margin-top:10px;
-}
-.progress-fill{
-  background:var(--success);
-  height:100%;
-  border-radius:6px;
-}
+  /* MATIERE */
+  .matiere-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:18px 22px;
+    background:linear-gradient(135deg,#eef2ff,#fff);
+    border-radius:18px;
+    margin-top:16px;
+    cursor:pointer;
+    transition:.35s;
+    border:1px solid #e5e7eb;
+  }
 
-/* ===== RETOUR ===== */
-.back-link{
-  display:inline-block;
-  margin:30px auto;
-  text-decoration:none;
-  background:white;
-  padding:12px 25px;
-  border-radius:30px;
-  color:var(--accent);
-  font-weight:bold;
-}
-</style>
+  .matiere-header:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 30px rgba(79,70,229,.18);
+  }
+
+  .matiere-title{
+    font-weight:700;
+    font-size:1.15rem;
+  }
+
+  .matiere-content,
+  .unite-content{
+    display:none;
+    margin-top:18px;
+    padding-left:12px;
+  }
+
+  /* UNITE */
+  .unite-card{
+    background:rgba(255,255,255,.75);
+    backdrop-filter:blur(10px);
+    border-radius:20px;
+    padding:18px;
+    margin-bottom:16px;
+    border:1px solid #e5e7eb;
+  }
+
+  .unite-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    font-weight:700;
+  }
+
+  /* LECON */
+  .lecon-item{
+    background:#fff;
+    border-radius:16px;
+    padding:16px;
+    margin-top:14px;
+    border-left:5px solid var(--primary);
+    transition:.25s;
+  }
+
+  .lecon-item:hover{
+    transform:translateX(4px);
+    box-shadow:0 10px 25px rgba(0,0,0,.12);
+  }
+
+  .lecon-link{
+    display:block;
+    font-size:1.05rem;
+    font-weight:700;
+    text-decoration:none;
+    color:var(--primary);
+    margin-bottom:8px;
+  }
+
+  /* EXERCICE */
+  .exercice{
+    background:#f9fafb;
+    padding:12px;
+    border-radius:12px;
+    margin-top:8px;
+  }
+
+  .done{color:var(--success);font-weight:700}
+  .pending{color:var(--warning);font-weight:700}
+
+  .btn{
+    display:inline-block;
+    margin-top:6px;
+    padding:7px 18px;
+    border-radius:999px;
+    font-size:.85rem;
+    font-weight:600;
+    text-decoration:none;
+    background:var(--primary);
+    color:white;
+  }
+
+  .btn.secondary{
+    background:#e5e7eb;
+    color:#111827;
+  }
+
+  .toggle-icon{
+    transition:transform .3s;
+    color:var(--muted);
+  }
+
+  .active .toggle-icon{
+    transform:rotate(180deg);
+  }
+
+  /* RETOUR */
+  .back{
+    display:block;
+    width:fit-content;
+    margin:40px auto 0;
+    background:white;
+    padding:14px 30px;
+    border-radius:999px;
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+    color:var(--accent);
+    font-weight:700;
+    text-decoration:none;
+  }
+
+  @media(max-width:768px){
+    body{padding:14px}
+    h1{font-size:1.8rem}
+  }
+  </style>
 </head>
 
 <body>
@@ -175,15 +230,15 @@ h1{text-align:center;color:var(--secondary)}
 <h1><i class="fas fa-book-open"></i> Explorer les leçons</h1>
 
 <div class="student-card">
-  <i class="fas fa-user-graduate fa-2x"></i>
+  <div class="student-avatar"><i class="fas fa-user-graduate"></i></div>
   <div>
-    <h3>{{ eleve.nom_complet }}</h3>
-    <p>Progression générale</p>
+    <strong>{{ eleve.nom_complet }}</strong>
+    <div style="color:var(--muted)">Parcours personnalisé</div>
   </div>
 </div>
 
 {% for niveau in niveaux %}
-<div class="niveau-bloc">
+<div class="niveau">
 
   <div class="niveau-header">
     <div class="niveau-icon"><i class="fas fa-graduation-cap"></i></div>
@@ -192,21 +247,19 @@ h1{text-align:center;color:var(--secondary)}
 
   {% for matiere in niveau.matieres %}
   <div class="matiere-header toggle-matiere">
-    <span><i class="fas fa-atom"></i> {{ matiere.nom }}</span>
+    <span class="matiere-title"><i class="fas fa-layer-group"></i> {{ matiere.nom }}</span>
     <i class="fas fa-chevron-down toggle-icon"></i>
   </div>
 
   <div class="matiere-content">
     {% for unite in matiere.unites %}
     <div class="unite-card">
-
       <div class="unite-header toggle-unite">
-        <strong>{{ unite.nom }}</strong>
+        <span><i class="fas fa-cube"></i> {{ unite.nom }}</span>
         <i class="fas fa-chevron-down toggle-icon"></i>
       </div>
 
       <div class="unite-content">
-
         {% for lecon in unite.lecons %}
         <div class="lecon-item">
           <a class="lecon-link"
@@ -215,17 +268,17 @@ h1{text-align:center;color:var(--secondary)}
           </a>
 
           {% for ex in lecon.exercices %}
-          <div class="exercice-item">
-            {{ ex.question_fr[:80] }}...
+          <div class="exercice">
+            {{ ex.question_fr[:80] }}…
             {% if ex.id in exercices_faits %}
-              <div class="status-done">✔ Fait</div>
-              <a class="action-btn secondary"
+              <div class="done">✔ Fait</div>
+              <a class="btn secondary"
                  href="/historique?exercice_id={{ ex.id }}&username={{ eleve.username }}">
                  Analyse
               </a>
             {% else %}
-              <div class="status-pending">⏳ À faire</div>
-              <a class="action-btn"
+              <div class="pending">⏳ À faire</div>
+              <a class="btn"
                  href="/exercice/{{ ex.id }}?username={{ eleve.username }}">
                  Commencer
               </a>
@@ -234,42 +287,36 @@ h1{text-align:center;color:var(--secondary)}
           {% endfor %}
         </div>
         {% endfor %}
-
       </div>
     </div>
     {% endfor %}
   </div>
   {% endfor %}
+
 </div>
 {% endfor %}
 
-<div style="text-align:center">
-  <a class="back-link" href="/dashboard-eleve?username={{ eleve.username }}">
-    ← Retour tableau de bord
-  </a>
-</div>
+<a class="back" href="/dashboard-eleve?username={{ eleve.username }}">
+  ← Retour au tableau de bord
+</a>
 
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded",()=>{
+document.querySelectorAll(".toggle-matiere").forEach(h=>{
+  h.onclick=()=>{
+    h.classList.toggle("active");
+    const c=h.nextElementSibling;
+    c.style.display = c.style.display==="block"?"none":"block";
+  }
+});
 
-  document.querySelectorAll(".toggle-matiere").forEach(h=>{
-    h.onclick=()=>{
-      h.classList.toggle("active");
-      const c=h.nextElementSibling;
-      c.style.display = c.style.display==="block"?"none":"block";
-    };
-  });
-
-  document.querySelectorAll(".toggle-unite").forEach(h=>{
-    h.onclick=()=>{
-      h.classList.toggle("active");
-      const c=h.nextElementSibling;
-      c.style.display = c.style.display==="block"?"none":"block";
-    };
-  });
-
+document.querySelectorAll(".toggle-unite").forEach(h=>{
+  h.onclick=()=>{
+    h.classList.toggle("active");
+    const c=h.nextElementSibling;
+    c.style.display = c.style.display==="block"?"none":"block";
+  }
 });
 </script>
 </body>
