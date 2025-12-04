@@ -318,7 +318,9 @@
           <h4 class="mb-1">👋 {{ "Welcome" if lang == "en" else "Bienvenue" }}, {{ eleve.nom_complet }}</h4>
           <p class="mb-0 text-muted">
             <i class="fas fa-graduation-cap me-2"></i>
-            {{ "Level" if lang == "en" else "Niveau" }} : <strong>{{ eleve.niveau.nom }}</strong>
+            {{ "Level" if lang == "en" else "Niveau" }} : <strong>
+              {{ eleve.niveau.nom_en if lang == 'en' and eleve.niveau.nom_en else eleve.niveau.nom }}
+            </strong>
           </p>
         </div>
         <div class="mt-2 mt-md-0">
@@ -333,19 +335,19 @@
     <!-- Matières List -->
     {% set matiere_groupes = {} %}
     {% for unite in unites %}
-      {% set matiere_nom = unite.matiere.nom %}
+      {% set matiere_nom = unite.matiere.nom_en if lang == 'en' and unite.matiere.nom_en else unite.matiere.nom %}
       {% if matiere_nom not in matiere_groupes %}
         {% set _ = matiere_groupes.update({matiere_nom: []}) %}
       {% endif %}
       {% set _ = matiere_groupes[matiere_nom].append(unite) %}
     {% endfor %}
 
-    {% for matiere, unites_matiere in matiere_groupes.items() %}
+    {% for matiere_nom, unites_matiere in matiere_groupes.items() %}
       <div class="matiere-card">
         <!-- Matière Header -->
         <div class="matiere-header">
           <i class="fas fa-book-open icon-large"></i>
-          {{ matiere }}
+          {{ matiere_nom }}
           <span class="badge bg-light text-dark ms-2">{{ unites_matiere|length }} {{ "units" if lang == "en" else "unités" }}</span>
         </div>
 
@@ -355,7 +357,7 @@
             <!-- Unité Title -->
             <div class="unite-title">
               <i class="fas fa-cube"></i>
-              {{ unite.nom }}
+              {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
             </div>
 
             <!-- Test Sommatif -->
@@ -385,7 +387,7 @@
                   <div class="lecon-info">
                     <div class="lecon-name">
                       <i class="fas fa-file-alt me-2 text-primary"></i>
-                      {{ lecon.titre_en if lang == 'en' else lecon.titre_fr }}
+                      {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
                     </div>
                     <div class="lecon-meta">
                       <span class="badge-exercises">
