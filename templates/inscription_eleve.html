@@ -399,8 +399,9 @@
                 <h3>{{ 'Student Information' if lang == 'en' else 'Informations de l\'Élève' }}</h3>
             </div>
 
+            <!-- USERNAME -->
             <div class="form-group">
-                {{ form.username.label }}
+                <label for="username">{{ 'Username' if lang == 'en' else 'Nom d\'utilisateur' }}</label>
                 {{ form.username(class="form-control", placeholder="john_doe") }}
                 {% if form.username.errors %}
                     <div class="error-message">
@@ -411,8 +412,9 @@
                 {% endif %}
             </div>
 
+            <!-- EMAIL -->
             <div class="form-group">
-                {{ form.email.label }}
+                <label for="email">{{ 'Email' if lang == 'en' else 'Email' }}</label>
                 {{ form.email(class="form-control", placeholder="email@example.com") }}
                 {% if form.email.errors %}
                     <div class="error-message">
@@ -423,8 +425,9 @@
                 {% endif %}
             </div>
 
+            <!-- FULL NAME -->
             <div class="form-group">
-                {{ form.nom_complet.label }}
+                <label for="nom_complet">{{ 'Full Name' if lang == 'en' else 'Nom Complet' }}</label>
                 {{ form.nom_complet(class="form-control", placeholder="John Doe") }}
                 {% if form.nom_complet.errors %}
                     <div class="error-message">
@@ -435,9 +438,10 @@
                 {% endif %}
             </div>
 
+            <!-- PASSWORDS -->
             <div class="form-row">
                 <div class="form-group">
-                    {{ form.mot_de_passe.label }}
+                    <label for="mot_de_passe">{{ 'Password' if lang == 'en' else 'Mot de Passe' }}</label>
                     {{ form.mot_de_passe(class="form-control", placeholder="••••••") }}
                     {% if form.mot_de_passe.errors %}
                         <div class="error-message">
@@ -449,7 +453,7 @@
                 </div>
 
                 <div class="form-group">
-                    {{ form.confirmer_mot_de_passe.label }}
+                    <label for="confirmer_mot_de_passe">{{ 'Confirm Password' if lang == 'en' else 'Confirmer le Mot de Passe' }}</label>
                     {{ form.confirmer_mot_de_passe(class="form-control", placeholder="••••••") }}
                     {% if form.confirmer_mot_de_passe.errors %}
                         <div class="error-message">
@@ -461,10 +465,24 @@
                 </div>
             </div>
 
+            <!-- LEVEL AND PHONE -->
             <div class="form-row">
                 <div class="form-group">
-                    {{ form.niveau.label }}
-                    {{ form.niveau(class="form-select") }}
+                    <label for="niveau">{{ 'Level' if lang == 'en' else 'Niveau' }}</label>
+                    <select name="niveau" id="niveau" class="form-select">
+                        <option value="">{{ 'Select your level' if lang == 'en' else 'Sélectionnez votre niveau' }}</option>
+                        {% for niveau in form.niveau.choices %}
+                            {% set niveau_id, niveau_nom = niveau %}
+                            {% set niveau_obj = Niveau.query.get(niveau_id) if 'Niveau' in globals() else None %}
+                            <option value="{{ niveau_id }}">
+                                {% if niveau_obj and lang == 'en' and niveau_obj.nom_en %}
+                                    {{ niveau_obj.nom_en }}
+                                {% else %}
+                                    {{ niveau_nom }}
+                                {% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
                     {% if form.niveau.errors %}
                         <div class="error-message">
                             {% for error in form.niveau.errors %}
@@ -475,7 +493,7 @@
                 </div>
 
                 <div class="form-group optional">
-                    {{ form.telephone.label }}
+                    <label for="telephone">{{ 'Phone (Optional)' if lang == 'en' else 'Téléphone (Optionnel)' }}</label>
                     {{ form.telephone(class="form-control", placeholder="+1 (555) 123-4567") }}
                 </div>
             </div>
@@ -569,10 +587,13 @@
                 <input type="hidden" name="plan_type" id="planType" value="annual">
             </div>
 
+            <!-- CGU CHECKBOX -->
             <div class="form-group">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     {{ form.accepte_cgu(class="form-control", style="width: auto;") }}
-                    {{ form.accepte_cgu.label }}
+                    <label for="accepte_cgu" style="margin-bottom: 0; font-weight: normal;">
+                        {{ 'I accept the Terms and Conditions' if lang == 'en' else 'J\'accepte les Conditions Générales d\'Utilisation' }}
+                    </label>
                     <small style="color: #6c757d;">
                         <a href="{{ url_for('cgu') if 'cgu' in url_for.__globals__ else '#' }}" target="_blank">
                             {{ '(View Terms and Conditions)' if lang == 'en' else '(Voir les CGU)' }}
@@ -588,12 +609,14 @@
                 {% endif %}
             </div>
 
+            <!-- SUBMIT BUTTON -->
             <button type="submit" class="btn-submit">
                 <i class="fas fa-user-plus"></i>
                 {{ 'Continue to Payment' if lang == 'en' else 'Continuer vers le Paiement' }}
             </button>
         </form>
 
+        <!-- LOGIN LINK -->
         <div class="login-link">
             <p>
                 {% if lang == 'en' %}
