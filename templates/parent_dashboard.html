@@ -619,7 +619,6 @@
                 <div class="child-details">
                   <div class="detail-item">
                     <i class="fas fa-user-graduate"></i>
-                    <!-- CORRECTION : Traduction du niveau -->
                     {% if eleve.niveau %}
                       {{ eleve.niveau.nom_en if lang == 'en' and eleve.niveau.nom_en else eleve.niveau.nom }}
                     {% else %}
@@ -630,13 +629,6 @@
                     <i class="fas fa-user"></i>
                     {{ eleve.username }}
                   </div>
-                  <!-- AJOUT : Niveau dans la base de données de l'élève -->
-                  {% if eleve.niveau_id and not eleve.niveau %}
-                  <div class="detail-item">
-                    <i class="fas fa-layer-group"></i>
-                    ID Niveau: {{ eleve.niveau_id }}
-                  </div>
-                  {% endif %}
                 </div>
               </div>
             </div>
@@ -659,7 +651,6 @@
                   </div>
                   <div class="average-text">
                     {{ "%.1f"|format(eleve.moyenne_etoiles) }}/5
-                    <!-- AJOUT : Texte explicatif -->
                     <span style="font-size: 0.8rem; color: var(--gray); margin-left: 5px;">
                       ({{ "average" if lang == 'en' else "moyenne" }})
                     </span>
@@ -669,7 +660,6 @@
                 <div class="progress-bar">
                   <div class="progress-fill" style="width: {{ (eleve.moyenne_etoiles / 3 * 100)|round|int }}%"></div>
                 </div>
-                <!-- AJOUT : Interprétation de la performance -->
                 <div style="margin-top: 10px; font-size: 0.9rem; color: var(--gray); text-align: center;">
                   {% if eleve.moyenne_etoiles >= 4 %}
                     <i class="fas fa-trophy text-warning"></i>
@@ -697,7 +687,7 @@
               {% endif %}
             </div>
 
-            <!-- Actions -->
+            <!-- Actions (SEULEMENT LES BOUTONS ORIGINAUX) -->
             <div class="actions">
               <a href="{{ url_for('historique_eleve', username=eleve.username, lang=lang) }}" class="btn btn-primary">
                 <i class="fas fa-history"></i>
@@ -706,11 +696,6 @@
               <a href="{{ url_for('dashboard_eleve') }}?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-success">
                 <i class="fas fa-tachometer-alt"></i>
                 {% if lang == 'en' %}Student Dashboard{% else %}Tableau de bord élève{% endif %}
-              </a>
-              <!-- AJOUT : Bouton pour explorer les leçons -->
-              <a href="{{ url_for('contenus_eleve', username=eleve.username, lang=lang) if 'contenus_eleve' in url_for.__globals__ else '#' }}" class="btn btn-primary" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);">
-                <i class="fas fa-book-open"></i>
-                {% if lang == 'en' %}Browse Lessons{% else %}Explorer les leçons{% endif %}
               </a>
             </div>
           </div>
@@ -737,21 +722,9 @@
         <i class="fas fa-file-pdf"></i>
         {% if lang == 'en' %}Download Full Report (PDF){% else %}Télécharger le rapport complet (PDF){% endif %}
       </a>
-      <!-- AJOUT : Information sur le PDF -->
       <p style="margin-top: 10px; color: var(--gray); font-size: 0.9rem;">
         <i class="fas fa-info-circle"></i>
         {% if lang == 'en' %}Includes detailed performance reports for all your children.{% else %}Inclut des rapports de performance détaillés pour tous vos enfants.{% endif %}
-      </p>
-    </div>
-
-    <!-- AJOUT : Section d'aide ou de contact -->
-    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--light); text-align: center;">
-      <p style="color: var(--gray); font-size: 0.9rem;">
-        {% if lang == 'en' %}
-          Need help? <a href="mailto:support@tutoratai.com" style="color: var(--primary); text-decoration: none;">Contact our support team</a>
-        {% else %}
-          Besoin d'aide ? <a href="mailto:support@tutoratai.com" style="color: var(--primary); text-decoration: none;">Contactez notre équipe de support</a>
-        {% endif %}
       </p>
     </div>
   </div>
@@ -773,16 +746,6 @@
       setTimeout(() => {
         bar.style.width = width;
       }, 500);
-    });
-
-    // AJOUT : Tooltips pour les étoiles
-    const stars = document.querySelectorAll('.star');
-    stars.forEach(star => {
-      star.addEventListener('mouseover', function() {
-        const index = Array.from(this.parentElement.children).indexOf(this);
-        const rating = index + 1;
-        this.title = `${rating}/5 ${"{{ 'stars' if lang == 'en' else 'étoiles' }}"}`;
-      });
     });
   });
 </script>
