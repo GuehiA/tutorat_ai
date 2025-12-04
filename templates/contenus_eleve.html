@@ -2,365 +2,275 @@
 <html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
-  <!-- Favicon VirtuEduc -->
+
+  <!-- Favicon -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
   <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
-  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-  <meta name="msapplication-TileColor" content="#4361ee">
-  <meta name="theme-color" content="#4361ee">
-  <title>{% if lang == 'en' %}Browse Lessons{% else %}Explorer les Leçons{% endif %}</title>
-  
-  <style>
-    :root {
-      --primary: #4361ee;
-      --secondary: #3a0ca3;
-      --accent: #f72585;
-      --success: #4cc9f0;
-      --warning: #f9c74f;
-      --light: #f8f9fa;
-      --dark: #212529;
-      --gray: #6c757d;
-      --light-gray: #e9ecef;
-      --math-color: #8e44ad;
-    }
-    
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      padding: 20px;
-      min-height: 100vh;
-      color: var(--dark);
-    }
-    
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    header {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-    
-    h1 {
-      color: var(--secondary);
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-    }
-    
-    .student-card {
-      background: white;
-      border-radius: 15px;
-      padding: 20px;
-      margin-bottom: 30px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-      display: flex;
-      align-items: center;
-      border-left: 5px solid var(--primary);
-    }
-    
-    .niveau-bloc {
-      background: white;
-      border-radius: 15px;
-      padding: 25px;
-      margin-bottom: 30px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-      border-top: 5px solid var(--primary);
-    }
-    
-    .niveau-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid var(--light-gray);
-    }
-    
-    .niveau-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: var(--primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 15px;
-      color: white;
-      font-size: 1.3rem;
-    }
-    
-    .niveau-title {
-      color: var(--secondary);
-      font-size: 1.8rem;
-    }
-    
-    .matiere-section {
-      margin-bottom: 15px;
-    }
-    
-    .matiere-header {
-      display: flex;
-      align-items: center;
-      padding: 15px;
-      background: var(--light);
-      border-radius: 10px;
-      border-left: 4px solid var(--math-color);
-      cursor: pointer;
-      transition: all 0.3s ease;
-      margin-bottom: 10px;
-    }
-    
-    .matiere-header:hover {
-      background: #e3e6ef;
-    }
-    
-    .matiere-icon {
-      margin-right: 12px;
-      color: var(--math-color);
-      font-size: 1.3rem;
-    }
-    
-    .matiere-title {
-      color: var(--dark);
-      font-size: 1.4rem;
-      font-weight: 600;
-      flex-grow: 1;
-    }
-    
-    .unites-container {
-      display: none; /* Caché par défaut */
-      margin-left: 20px;
-      margin-top: 10px;
-      border-left: 2px solid #ddd;
-      padding-left: 15px;
-    }
-    
-    .unite-card {
-      background: var(--light);
-      border-radius: 10px;
-      padding: 15px;
-      margin-bottom: 15px;
-      border-left: 4px solid var(--success);
-    }
-    
-    .unite-header {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      margin-bottom: 10px;
-    }
-    
-    .unite-header:hover {
-      background: #e0f7fa;
-      padding: 10px;
-      border-radius: 8px;
-    }
-    
-    .unite-icon {
-      margin-right: 10px;
-      color: var(--success);
-    }
-    
-    .unite-title {
-      color: var(--secondary);
-      font-size: 1.2rem;
-      font-weight: 600;
-      flex-grow: 1;
-    }
-    
-    .lecons-container {
-      display: none; /* Caché par défaut */
-      margin-left: 20px;
-      margin-top: 10px;
-      padding-left: 15px;
-    }
-    
-    .lecon-item {
-      background: white;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    
-    .toggle-icon {
-      font-size: 1.2rem;
-      color: var(--gray);
-      transition: transform 0.3s ease;
-      margin-left: 10px;
-    }
-    
-    .active .toggle-icon {
-      transform: rotate(180deg);
-    }
-    
-    .count-badge {
-      background: var(--accent);
-      color: white;
-      border-radius: 20px;
-      padding: 3px 10px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-left: 10px;
-    }
-  </style>
-  
-  <!-- Font Awesome pour les icônes -->
+  <title>{% if lang == 'en' %}Browse Lessons{% else %}Explorer les leçons{% endif %}</title>
+
+  <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- MathJax -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
+
+<style>
+/* ===== VARIABLES ===== */
+:root {
+  --primary:#4361ee;
+  --secondary:#3a0ca3;
+  --accent:#f72585;
+  --success:#4cc9f0;
+  --warning:#f9c74f;
+  --light:#f8f9fa;
+  --dark:#212529;
+  --gray:#6c757d;
+}
+
+/* ===== BASE ===== */
+body{
+  font-family:Segoe UI,system-ui;
+  background:linear-gradient(135deg,#f5f7fa,#c3cfe2);
+  padding:20px;
+}
+.container{max-width:1200px;margin:auto}
+h1{text-align:center;color:var(--secondary)}
+
+/* ===== CARTE ÉLÈVE ===== */
+.student-card{
+  background:white;
+  padding:20px;
+  border-radius:15px;
+  display:flex;
+  gap:15px;
+  margin:30px 0;
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+}
+
+/* ===== NIVEAU ===== */
+.niveau-bloc{
+  background:white;
+  border-radius:16px;
+  padding:25px;
+  margin-bottom:30px;
+  box-shadow:0 5px 15px rgba(0,0,0,.1);
+}
+.niveau-header{
+  display:flex;
+  align-items:center;
+  gap:15px;
+  margin-bottom:15px;
+}
+.niveau-icon{
+  width:50px;height:50px;
+  background:var(--primary);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:white;
+}
+
+/* ===== ACCORDÉON MATIÈRE ===== */
+.matiere-header,
+.unite-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:15px;
+  background:var(--light);
+  border-radius:12px;
+  cursor:pointer;
+}
+.matiere-header{margin-top:15px}
+.toggle-icon{
+  transition:transform .3s;
+}
+.active .toggle-icon{
+  transform:rotate(180deg);
+}
+.matiere-content,
+.unite-content{
+  display:none;
+  margin-top:15px;
+  padding-left:10px;
+}
+
+/* ===== UNITÉ ===== */
+.unite-card{
+  background:#eef2ff;
+  padding:15px;
+  border-radius:12px;
+  margin-bottom:15px;
+}
+
+/* ===== LEÇON ===== */
+.lecon-item{
+  background:white;
+  padding:15px;
+  border-radius:10px;
+  margin:10px 0;
+}
+.lecon-link{
+  font-weight:bold;
+  color:var(--primary);
+  text-decoration:none;
+}
+.lecon-link:hover{color:var(--secondary)}
+
+/* ===== EXERCICES ===== */
+.exercice-item{
+  background:var(--light);
+  padding:10px;
+  border-radius:8px;
+  margin-top:8px;
+}
+.status-done{color:var(--success)}
+.status-pending{color:var(--warning)}
+.action-btn{
+  display:inline-block;
+  margin-top:6px;
+  padding:6px 14px;
+  border-radius:20px;
+  background:var(--primary);
+  color:white;
+  text-decoration:none;
+  font-size:.85rem;
+}
+.action-btn.secondary{
+  background:#ddd;color:#333;
+}
+
+/* ===== PROGRESS ===== */
+.progress{
+  background:#ddd;
+  border-radius:6px;
+  height:6px;
+  margin-top:10px;
+}
+.progress-fill{
+  background:var(--success);
+  height:100%;
+  border-radius:6px;
+}
+
+/* ===== RETOUR ===== */
+.back-link{
+  display:inline-block;
+  margin:30px auto;
+  text-decoration:none;
+  background:white;
+  padding:12px 25px;
+  border-radius:30px;
+  color:var(--accent);
+  font-weight:bold;
+}
+</style>
 </head>
+
 <body>
-  <div class="container">
-    <header>
-      <h1>
-        <i class="fas fa-book-open"></i> 
-        {% if lang == 'en' %}Browse Lessons{% else %}Explorer les Leçons{% endif %}
-      </h1>
-    </header>
-    
-    <div class="student-card">
-      <div class="student-info">
-        <h2>{{ eleve.nom_complet }}</h2>
-        <p>
-          {% if lang == 'en' %}Progress in all subjects{% else %}Progression dans toutes les matières{% endif %}
-        </p>
-      </div>
-    </div>
+<div class="container">
 
-    {% for niveau in niveaux %}
-      <div class="niveau-bloc">
-        <!-- NIVEAU (toujours visible) -->
-        <div class="niveau-header">
-          <div class="niveau-icon">
-            <i class="fas fa-graduation-cap"></i>
-          </div>
-          <h2 class="niveau-title">{{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}</h2>
-        </div>
+<h1><i class="fas fa-book-open"></i> Explorer les leçons</h1>
 
-        <!-- MATIERES (déroulantes) -->
-        {% for matiere in niveau.matieres %}
-          <div class="matiere-section">
-            <div class="matiere-header" onclick="toggleSection('unites-matiere-{{ matiere.id }}', this)">
-              <i class="fas fa-atom matiere-icon"></i>
-              <h3 class="matiere-title">{{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}</h3>
-              <span class="count-badge">{{ matiere.unites|length }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
-              <i class="fas fa-chevron-down toggle-icon"></i>
-            </div>
+<div class="student-card">
+  <i class="fas fa-user-graduate fa-2x"></i>
+  <div>
+    <h3>{{ eleve.nom_complet }}</h3>
+    <p>Progression générale</p>
+  </div>
+</div>
 
-            <!-- UNITES (cachées par défaut) -->
-            <div id="unites-matiere-{{ matiere.id }}" class="unites-container">
-              {% for unite in matiere.unites %}
-                <div class="unite-card">
-                  <div class="unite-header" onclick="toggleSection('lecons-unite-{{ unite.id }}', this)">
-                    <i class="fas fa-cube unite-icon"></i>
-                    <h4 class="unite-title">
-                      {% if lang == 'en' %}Unit:{% else %}Unité:{% endif %} 
-                      {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
-                    </h4>
-                    <span class="count-badge">{{ unite.lecons|length }} {% if lang == 'en' %}lessons{% else %}leçons{% endif %}</span>
-                    <i class="fas fa-chevron-down toggle-icon"></i>
-                  </div>
+{% for niveau in niveaux %}
+<div class="niveau-bloc">
 
-                  <!-- LECONS (cachées par défaut) -->
-                  <div id="lecons-unite-{{ unite.id }}" class="lecons-container">
-                    {% for lecon in unite.lecons %}
-                      <div class="lecon-item">
-                        <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}">
-                          <i class="fas fa-file-alt"></i> 
-                          {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
-                        </a>
-                      </div>
-                    {% endfor %}
-                    
-                    <!-- EXEMPLE SIMPLE pour tester -->
-                    <div class="lecon-item">
-                      <p><strong>Exemple de leçon 1</strong></p>
-                      <p>Contenu de la leçon...</p>
-                    </div>
-                    <div class="lecon-item">
-                      <p><strong>Exemple de leçon 2</strong></p>
-                      <p>Contenu de la leçon...</p>
-                    </div>
-                  </div>
-                </div>
-              {% endfor %}
-              
-              <!-- EXEMPLE SIMPLE pour tester si aucune unité ne s'affiche -->
-              <div class="unite-card">
-                <div class="unite-header" onclick="toggleSection('test-unite', this)">
-                  <i class="fas fa-cube unite-icon"></i>
-                  <h4 class="unite-title">
-                    Unité Test (pour debug)
-                  </h4>
-                  <span class="count-badge">2 leçons</span>
-                  <i class="fas fa-chevron-down toggle-icon"></i>
-                </div>
-                <div id="test-unite" class="lecons-container">
-                  <div class="lecon-item">
-                    <p><strong>Leçon Test 1</strong></p>
-                    <p>Ceci est un test</p>
-                  </div>
-                  <div class="lecon-item">
-                    <p><strong>Leçon Test 2</strong></p>
-                    <p>Ceci est un autre test</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endfor %}
+  <div class="niveau-header">
+    <div class="niveau-icon"><i class="fas fa-graduation-cap"></i></div>
+    <h2>{{ niveau.nom }}</h2>
   </div>
 
-  <script>
-    // Fonction générique pour dérouler/replier
-    function toggleSection(sectionId, element) {
-      const section = document.getElementById(sectionId);
-      
-      if (!section) {
-        console.error('Section non trouvée:', sectionId);
-        return;
-      }
-      
-      // Toggle la classe active pour l'animation de l'icône
-      element.classList.toggle('active');
-      
-      // Toggle l'affichage de la section
-      if (section.style.display === 'block') {
-        section.style.display = 'none';
-      } else {
-        section.style.display = 'block';
-      }
-      
-      console.log('Section', sectionId, 'affichée:', section.style.display);
-    }
-    
-    // Au chargement, cacher toutes les sections
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('Page chargée');
-      
-      // Cacher toutes les unités et leçons
-      const sections = document.querySelectorAll('.unites-container, .lecons-container');
-      sections.forEach(section => {
-        section.style.display = 'none';
-      });
-      
-      // Test: rendre la première matière visible
-      const firstMatiere = document.querySelector('.matiere-header');
-      if (firstMatiere) {
-        const firstUnitesId = firstMatiere.getAttribute('onclick').match(/'(.*?)'/)[1];
-        console.log('Première matière:', firstUnitesId);
-      }
-    });
-  </script>
+  {% for matiere in niveau.matieres %}
+  <div class="matiere-header toggle-matiere">
+    <span><i class="fas fa-atom"></i> {{ matiere.nom }}</span>
+    <i class="fas fa-chevron-down toggle-icon"></i>
+  </div>
+
+  <div class="matiere-content">
+    {% for unite in matiere.unites %}
+    <div class="unite-card">
+
+      <div class="unite-header toggle-unite">
+        <strong>{{ unite.nom }}</strong>
+        <i class="fas fa-chevron-down toggle-icon"></i>
+      </div>
+
+      <div class="unite-content">
+
+        {% for lecon in unite.lecons %}
+        <div class="lecon-item">
+          <a class="lecon-link"
+             href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}">
+            {{ lecon.titre_fr }}
+          </a>
+
+          {% for ex in lecon.exercices %}
+          <div class="exercice-item">
+            {{ ex.question_fr[:80] }}...
+            {% if ex.id in exercices_faits %}
+              <div class="status-done">✔ Fait</div>
+              <a class="action-btn secondary"
+                 href="/historique?exercice_id={{ ex.id }}&username={{ eleve.username }}">
+                 Analyse
+              </a>
+            {% else %}
+              <div class="status-pending">⏳ À faire</div>
+              <a class="action-btn"
+                 href="/exercice/{{ ex.id }}?username={{ eleve.username }}">
+                 Commencer
+              </a>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+
+<div style="text-align:center">
+  <a class="back-link" href="/dashboard-eleve?username={{ eleve.username }}">
+    ← Retour tableau de bord
+  </a>
+</div>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+
+  document.querySelectorAll(".toggle-matiere").forEach(h=>{
+    h.onclick=()=>{
+      h.classList.toggle("active");
+      const c=h.nextElementSibling;
+      c.style.display = c.style.display==="block"?"none":"block";
+    };
+  });
+
+  document.querySelectorAll(".toggle-unite").forEach(h=>{
+    h.onclick=()=>{
+      h.classList.toggle("active");
+      const c=h.nextElementSibling;
+      c.style.display = c.style.display==="block"?"none":"block";
+    };
+  });
+
+});
+</script>
 </body>
 </html>
