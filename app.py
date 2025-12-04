@@ -2734,7 +2734,8 @@ def inscription_eleve():
                 statut_paiement="essai_gratuit",
                 inscrit_par_admin=False,
                 accepte_cgu=form.accepte_cgu.data,
-                date_acceptation_cgu=datetime.datetime.now() if form.accepte_cgu.data else None
+                # CORRECTION ICI : datetime.now() au lieu de datetime.datetime.now()
+                date_acceptation_cgu=datetime.now() if form.accepte_cgu.data else None
             )
             
             eleve.mot_de_passe = form.mot_de_passe.data
@@ -2810,6 +2811,7 @@ def inscription_eleve():
                 
             except Exception as e:
                 print(f"❌ Stripe échoue, essai gratuit de 48h activé: {e}")
+                traceback.print_exc()  # Ajout pour debug
                 
                 # Connexion automatique avec essai
                 session['eleve_id'] = eleve.id
@@ -2828,6 +2830,7 @@ def inscription_eleve():
         except Exception as e:
             db.session.rollback()
             print(f"❌ Erreur création élève/parent: {e}")
+            traceback.print_exc()  # Ajout pour debug
             flash("Une erreur est survenue lors de la création du compte", "error")
     
     lang = session.get('lang', 'fr')
