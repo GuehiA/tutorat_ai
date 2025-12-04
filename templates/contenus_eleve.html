@@ -162,14 +162,6 @@
       margin-bottom: 20px;
       padding-bottom: 15px;
       border-bottom: 2px solid var(--light-gray);
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    
-    .niveau-header:hover {
-      background: var(--light);
-      padding: 15px;
-      border-radius: 10px;
     }
     
     .niveau-icon {
@@ -183,29 +175,15 @@
       margin-right: 15px;
       color: white;
       font-size: 1.3rem;
-      transition: transform 0.3s ease;
-    }
-    
-    .niveau-header:hover .niveau-icon {
-      transform: scale(1.1);
     }
     
     .niveau-title {
       color: var(--secondary);
       font-size: 1.8rem;
-      flex-grow: 1;
-    }
-    
-    .toggle-icon {
-      font-size: 1.5rem;
-      color: var(--gray);
-      transition: transform 0.3s ease;
     }
     
     .matiere-section {
       margin-bottom: 25px;
-      display: none; /* Caché par défaut */
-      animation: slideDown 0.3s ease;
     }
     
     .matiere-header {
@@ -273,6 +251,11 @@
       flex-grow: 1;
     }
     
+    .lecon-section {
+      display: none; /* Caché par défaut */
+      animation: slideDown 0.3s ease;
+    }
+    
     .lecon-item {
       background: white;
       border-radius: 10px;
@@ -280,7 +263,6 @@
       margin-bottom: 15px;
       box-shadow: 0 3px 10px rgba(0,0,0,0.05);
       transition: all 0.3s ease;
-      animation: slideDown 0.3s ease;
     }
     
     .lecon-item:hover {
@@ -551,6 +533,13 @@
       transform: rotate(180deg);
     }
     
+    .toggle-icon {
+      font-size: 1.2rem;
+      color: var(--gray);
+      transition: transform 0.3s ease;
+      margin-left: 10px;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
       body {
@@ -631,160 +620,159 @@
 
     {% for niveau in niveaux %}
       <div class="niveau-bloc">
-        <div class="niveau-header" onclick="toggleMatiereSection('niveau-{{ niveau.id }}')">
+        <!-- NIVEAU (toujours visible) -->
+        <div class="niveau-header">
           <div class="niveau-icon">
             <i class="fas fa-graduation-cap"></i>
           </div>
           <h2 class="niveau-title">{{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}</h2>
-          <span class="count-badge">{{ niveau.matieres|length }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}</span>
-          <i class="fas fa-chevron-down toggle-icon"></i>
         </div>
 
-        <div id="matieres-niveau-{{ niveau.id }}" class="matieres-container">
-          {% for matiere in niveau.matieres %}
-            <div class="matiere-section" id="niveau-{{ niveau.id }}-matiere-{{ matiere.id }}">
-              <div class="matiere-header" onclick="toggleUniteSection('matiere-{{ matiere.id }}')">
-                <i class="fas fa-atom matiere-icon"></i>
-                <h3 class="matiere-title">{{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}</h3>
-                <span class="count-badge">{{ matiere.unites|length }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
-                <i class="fas fa-chevron-down toggle-icon"></i>
-              </div>
+        <!-- MATIERES (déroulantes) -->
+        {% for matiere in niveau.matieres %}
+          <div class="matiere-section">
+            <div class="matiere-header" onclick="toggleUniteSection('matiere-{{ matiere.id }}')">
+              <i class="fas fa-atom matiere-icon"></i>
+              <h3 class="matiere-title">{{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}</h3>
+              <span class="count-badge">{{ matiere.unites|length }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
+              <i class="fas fa-chevron-down toggle-icon"></i>
+            </div>
 
-              <div id="unites-matiere-{{ matiere.id }}" class="unites-container">
-                {% for unite in matiere.unites %}
-                  <div class="unite-section" id="matiere-{{ matiere.id }}-unite-{{ unite.id }}">
-                    <div class="unite-header" onclick="toggleLeconSection('unite-{{ unite.id }}')">
-                      <i class="fas fa-cube unite-icon"></i>
-                      <h4 class="unite-title">
-                        {% if lang == 'en' %}Unit:{% else %}Unité:{% endif %} 
-                        {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
-                      </h4>
-                      <span class="count-badge">{{ unite.lecons|length }} {% if lang == 'en' %}lessons{% else %}leçons{% endif %}</span>
-                      <i class="fas fa-chevron-down toggle-icon"></i>
-                    </div>
+            <!-- UNITES (cachées par défaut) -->
+            <div id="unites-matiere-{{ matiere.id }}" class="unite-section">
+              {% for unite in matiere.unites %}
+                <div class="unite-section">
+                  <div class="unite-header" onclick="toggleLeconSection('unite-{{ unite.id }}')">
+                    <i class="fas fa-cube unite-icon"></i>
+                    <h4 class="unite-title">
+                      {% if lang == 'en' %}Unit:{% else %}Unité:{% endif %} 
+                      {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
+                    </h4>
+                    <span class="count-badge">{{ unite.lecons|length }} {% if lang == 'en' %}lessons{% else %}leçons{% endif %}</span>
+                    <i class="fas fa-chevron-down toggle-icon"></i>
+                  </div>
 
-                    <div id="lecons-unite-{{ unite.id }}" class="lecons-container">
-                      {% set exercices_non_faits = [] %}
-                      {% set total_exercices = 0 %}
-                      {% set completed_exercices = 0 %}
+                  <!-- LECONS (cachées par défaut) -->
+                  <div id="lecons-unite-{{ unite.id }}" class="lecon-section">
+                    {% set exercices_non_faits = [] %}
+                    {% set total_exercices = 0 %}
+                    {% set completed_exercices = 0 %}
 
-                      {% for lecon in unite.lecons %}
-                        <div class="lecon-item">
-                          <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" class="lecon-link">
-                            <i class="fas fa-file-alt"></i> 
-                            {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
-                          </a>
-                          
-                          <div class="exercice-list">
-                            {% for ex in lecon.exercices %}
-                              {% set total_exercices = total_exercices + 1 %}
-                              <div class="exercice-item">
-                                <div class="exercice-question">
-                                  <!-- AFFICHAGE CONVIVIAL DES EXPRESSIONS MATHÉMATIQUES -->
-                                  {% set question_text = ex.question_en if lang == 'en' and ex.question_en else ex.question_fr %}
-                                  {{ question_text[:80] | replace_latex | safe }}...
-                                </div>
-                                <div class="exercice-status">
-                                  {% if ex.id in exercices_faits %}
-                                    {% set completed_exercices = completed_exercices + 1 %}
-                                    <span class="status-badge status-done">
-                                      <i class="fas fa-check-circle"></i> 
-                                      {% if lang == 'fr' %}Fait{% else %}Done{% endif %}
-                                    </span>
-                                    <a class="action-btn btn-secondary" href="/historique?username={{ eleve.username }}&exercice_id={{ ex.id }}&lang={{ lang }}">
-                                      <i class="fas fa-chart-bar"></i> 
-                                      {% if lang == 'fr' %}Voir l'analyse{% else %}See feedback{% endif %}
-                                    </a>
-                                  {% else %}
-                                    {% set _ = exercices_non_faits.append(ex.id) %}
-                                    <span class="status-badge status-pending">
-                                      <i class="fas fa-clock"></i> 
-                                      {% if lang == 'fr' %}À faire{% else %}Pending{% endif %}
-                                    </span>
-                                    <a class="action-btn btn-primary" href="/exercice/{{ ex.id }}?username={{ eleve.username }}&lang={{ lang }}">
-                                      <i class="fas fa-play-circle"></i> 
-                                      {% if lang == 'fr' %}Commencer{% else %}Start{% endif %}
-                                    </a>
-                                  {% endif %}
-                                </div>
+                    {% for lecon in unite.lecons %}
+                      <div class="lecon-item">
+                        <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" class="lecon-link">
+                          <i class="fas fa-file-alt"></i> 
+                          {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                        </a>
+                        
+                        <div class="exercice-list">
+                          {% for ex in lecon.exercices %}
+                            {% set total_exercices = total_exercices + 1 %}
+                            <div class="exercice-item">
+                              <div class="exercice-question">
+                                {% set question_text = ex.question_en if lang == 'en' and ex.question_en else ex.question_fr %}
+                                {{ question_text[:80] | replace_latex | safe }}...
                               </div>
-                            {% endfor %}
-                          </div>
-                        </div>
-                      {% endfor %}
-
-                      <!-- Barre de progression de l'unité -->
-                      {% if total_exercices > 0 %}
-                        <div style="margin: 15px 0;">
-                          <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--gray);">
-                            <span>{% if lang == 'fr' %}Progression de l'unité{% else %}Unit progress{% endif %}</span>
-                            <span>{{ completed_exercices }}/{{ total_exercices }}</span>
-                          </div>
-                          <div class="progress-indicator">
-                            <div class="progress-fill" style="width: {{ (completed_exercices / total_exercices) * 100 }}%"></div>
-                          </div>
-                        </div>
-                      {% endif %}
-
-                      <!-- Bouton pour commencer les exercices non faits -->
-                      {% if exercices_non_faits %}
-                        <form action="/sequence-unite" method="GET">
-                          <input type="hidden" name="ids" value="{{ exercices_non_faits | join(',') }}">
-                          <input type="hidden" name="username" value="{{ eleve.username }}">
-                          <input type="hidden" name="lang" value="{{ lang }}">
-                          <div class="batch-section">
-                            <p style="margin-bottom: 15px;">
-                              <i class="fas fa-bolt"></i> 
-                              {% if lang == 'fr' %}
-                                {{ exercices_non_faits | length }} exercice(s) en attente
-                              {% else %}
-                                {{ exercices_non_faits | length }} exercise(s) pending
-                              {% endif %}
-                            </p>
-                            <button type="submit" class="batch-btn">
-                              <i class="fas fa-play"></i> 
-                              {% if lang == 'fr' %}
-                                Commencer la séquence
-                              {% else %}
-                                Start sequence
-                              {% endif %}
-                            </button>
-                          </div>
-                        </form>
-                      {% endif %}
-
-                      <!-- Section des tests sommatifs -->
-                      {% if unite.tests %}
-                        <div class="tests-section">
-                          <div class="tests-header">
-                            <i class="fas fa-vial tests-icon"></i>
-                            <h4 class="tests-title">
-                              {% if lang == 'en' %}Summative Tests{% else %}Tests Sommatifs{% endif %}
-                            </h4>
-                          </div>
-                          {% for test in unite.tests %}
-                            <div class="test-item">
-                              <div>
-                                <strong>{% if lang == 'en' %}Test #{{ test.id }}{% else %}Test #{{ test.id }}{% endif %}</strong>
-                                <p style="color: var(--gray); font-size: 0.9rem; margin-top: 5px;">
-                                  {% if lang == 'en' %}Evaluate your knowledge{% else %}Évaluez vos connaissances{% endif %}
-                                </p>
+                              <div class="exercice-status">
+                                {% if ex.id in exercices_faits %}
+                                  {% set completed_exercices = completed_exercices + 1 %}
+                                  <span class="status-badge status-done">
+                                    <i class="fas fa-check-circle"></i> 
+                                    {% if lang == 'fr' %}Fait{% else %}Done{% endif %}
+                                  </span>
+                                  <a class="action-btn btn-secondary" href="/historique?username={{ eleve.username }}&exercice_id={{ ex.id }}&lang={{ lang }}">
+                                    <i class="fas fa-chart-bar"></i> 
+                                    {% if lang == 'fr' %}Voir l'analyse{% else %}See feedback{% endif %}
+                                  </a>
+                                {% else %}
+                                  {% set _ = exercices_non_faits.append(ex.id) %}
+                                  <span class="status-badge status-pending">
+                                    <i class="fas fa-clock"></i> 
+                                    {% if lang == 'fr' %}À faire{% else %}Pending{% endif %}
+                                  </span>
+                                  <a class="action-btn btn-primary" href="/exercice/{{ ex.id }}?username={{ eleve.username }}&lang={{ lang }}">
+                                    <i class="fas fa-play-circle"></i> 
+                                    {% if lang == 'fr' %}Commencer{% else %}Start{% endif %}
+                                  </a>
+                                {% endif %}
                               </div>
-                              <a class="test-link" href="/test/{{ test.id }}?username={{ eleve.username }}&lang={{ lang }}">
-                                <i class="fas fa-rocket"></i> 
-                                {% if lang == 'en' %}Start Test{% else %}Commencer{% endif %}
-                              </a>
                             </div>
                           {% endfor %}
                         </div>
-                      {% endif %}
-                    </div>
+                      </div>
+                    {% endfor %}
+
+                    <!-- Barre de progression de l'unité -->
+                    {% if total_exercices > 0 %}
+                      <div style="margin: 15px 0;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--gray);">
+                          <span>{% if lang == 'fr' %}Progression de l'unité{% else %}Unit progress{% endif %}</span>
+                          <span>{{ completed_exercices }}/{{ total_exercices }}</span>
+                        </div>
+                        <div class="progress-indicator">
+                          <div class="progress-fill" style="width: {{ (completed_exercices / total_exercices) * 100 }}%"></div>
+                        </div>
+                      </div>
+                    {% endif %}
+
+                    <!-- Bouton pour commencer les exercices non faits -->
+                    {% if exercices_non_faits %}
+                      <form action="/sequence-unite" method="GET">
+                        <input type="hidden" name="ids" value="{{ exercices_non_faits | join(',') }}">
+                        <input type="hidden" name="username" value="{{ eleve.username }}">
+                        <input type="hidden" name="lang" value="{{ lang }}">
+                        <div class="batch-section">
+                          <p style="margin-bottom: 15px;">
+                            <i class="fas fa-bolt"></i> 
+                            {% if lang == 'fr' %}
+                              {{ exercices_non_faits | length }} exercice(s) en attente
+                            {% else %}
+                              {{ exercices_non_faits | length }} exercise(s) pending
+                            {% endif %}
+                          </p>
+                          <button type="submit" class="batch-btn">
+                            <i class="fas fa-play"></i> 
+                            {% if lang == 'fr' %}
+                              Commencer la séquence
+                            {% else %}
+                              Start sequence
+                            {% endif %}
+                          </button>
+                        </div>
+                      </form>
+                    {% endif %}
+
+                    <!-- Section des tests sommatifs -->
+                    {% if unite.tests %}
+                      <div class="tests-section">
+                        <div class="tests-header">
+                          <i class="fas fa-vial tests-icon"></i>
+                          <h4 class="tests-title">
+                            {% if lang == 'en' %}Summative Tests{% else %}Tests Sommatifs{% endif %}
+                          </h4>
+                        </div>
+                        {% for test in unite.tests %}
+                          <div class="test-item">
+                            <div>
+                              <strong>{% if lang == 'en' %}Test #{{ test.id }}{% else %}Test #{{ test.id }}{% endif %}</strong>
+                              <p style="color: var(--gray); font-size: 0.9rem; margin-top: 5px;">
+                                {% if lang == 'en' %}Evaluate your knowledge{% else %}Évaluez vos connaissances{% endif %}
+                              </p>
+                            </div>
+                            <a class="test-link" href="/test/{{ test.id }}?username={{ eleve.username }}&lang={{ lang }}">
+                              <i class="fas fa-rocket"></i> 
+                              {% if lang == 'en' %}Start Test{% else %}Commencer{% endif %}
+                            </a>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    {% endif %}
                   </div>
-                {% endfor %}
-              </div>
+                </div>
+              {% endfor %}
             </div>
-          {% endfor %}
-        </div>
+          </div>
+        {% endfor %}
       </div>
     {% endfor %}
 
@@ -797,22 +785,7 @@
   </div>
 
   <script>
-    // Fonctions pour gérer le déroulement
-    function toggleMatiereSection(niveauId) {
-      const niveauHeader = event.currentTarget;
-      const matieresContainer = document.getElementById(`matieres-${niveauId}`);
-      
-      // Toggle la classe active pour l'animation de l'icône
-      niveauHeader.classList.toggle('active');
-      
-      // Toggle l'affichage des matières
-      if (matieresContainer.style.display === 'block') {
-        matieresContainer.style.display = 'none';
-      } else {
-        matieresContainer.style.display = 'block';
-      }
-    }
-    
+    // Fonction pour dérouler les unités d'une matière
     function toggleUniteSection(matiereId) {
       const matiereHeader = event.currentTarget;
       const unitesContainer = document.getElementById(`unites-${matiereId}`);
@@ -828,6 +801,7 @@
       }
     }
     
+    // Fonction pour dérouler les leçons d'une unité
     function toggleLeconSection(uniteId) {
       const uniteHeader = event.currentTarget;
       const leconsContainer = document.getElementById(`lecons-${uniteId}`);
@@ -843,34 +817,13 @@
       }
     }
     
-    // Fonction pour ouvrir une matière spécifique depuis l'URL
-    function openFromHash() {
-      const hash = window.location.hash;
-      if (hash) {
-        // Exemple: #matiere-3-unite-5
-        const parts = hash.split('-');
-        if (parts[0] === '#matiere') {
-          const matiereId = parts[1];
-          const unitesContainer = document.getElementById(`unites-matiere-${matiereId}`);
-          if (unitesContainer) {
-            unitesContainer.style.display = 'block';
-            const matiereHeader = document.querySelector(`[onclick*="matiere-${matiereId}"]`);
-            if (matiereHeader) matiereHeader.classList.add('active');
-          }
-        }
-      }
-    }
-    
-    // Au chargement de la page
+    // Au chargement de la page, cacher toutes les sections déroulables
     document.addEventListener('DOMContentLoaded', function() {
-      // Initialiser tous les conteneurs comme cachés
-      const matieresContainers = document.querySelectorAll('.matieres-container, .unites-container, .lecons-container');
-      matieresContainers.forEach(container => {
+      // Cacher toutes les unités et leçons
+      const unitesContainers = document.querySelectorAll('.unite-section, .lecon-section');
+      unitesContainers.forEach(container => {
         container.style.display = 'none';
       });
-      
-      // Ouvrir depuis le hash de l'URL
-      openFromHash();
     });
   </script>
 </body>
