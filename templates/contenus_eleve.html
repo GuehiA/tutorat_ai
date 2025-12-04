@@ -1,265 +1,323 @@
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
-<meta charset="UTF-8">
-<title>Explorer les leçons</title>
+  <meta charset="UTF-8">
+  <title>{% if lang=='en' %}Browse Lessons{% else %}Explorer les leçons{% endif %}</title>
 
-<link rel="stylesheet"
- href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<style>
-:root{
-  --bg:#f5f7fb;
-  --card:#ffffff;
-  --text:#111827;
-  --muted:#6b7280;
-  --primary:#4f46e5;
-  --border:#e5e7eb;
-}
-body.dark{
-  --bg:#0f172a;
-  --card:#020617;
-  --text:#e5e7eb;
-  --muted:#9ca3af;
-  --primary:#818cf8;
-  --border:#1e293b;
-}
+  <style>
+  :root{
+    --primary:#4f46e5;
+    --secondary:#312e81;
+    --accent:#ec4899;
+    --success:#22c55e;
+    --warning:#f59e0b;
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --muted:#6b7280;
+  }
 
-body{
-  margin:0;
-  font-family:Inter,system-ui,-apple-system;
-  background:var(--bg);
-  color:var(--text);
-}
+  *{box-sizing:border-box}
 
-.container{
-  max-width:1100px;
-  margin:auto;
-  padding:24px;
-}
+  body{
+    margin:0;
+    font-family:Inter,system-ui,-apple-system;
+    background:radial-gradient(circle at top,#eef2ff,#f9fafb);
+    color:#111827;
+    padding:24px;
+  }
 
-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:28px;
-}
+  .container{
+    max-width:1200px;
+    margin:auto;
+  }
 
-h1{
-  font-size:1.8rem;
-  margin:0;
-}
+  /* HEADER */
+  h1{
+    text-align:center;
+    font-size:2.4rem;
+    font-weight:800;
+    margin-bottom:30px;
+    color:var(--secondary);
+  }
 
-.toggle-theme{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:999px;
-  padding:8px 14px;
-  cursor:pointer;
-  color:var(--text);
-}
+  /* ELEVE */
+  .student-card{
+    background:var(--card);
+    border-radius:22px;
+    padding:20px;
+    display:flex;
+    gap:16px;
+    align-items:center;
+    box-shadow:0 12px 40px rgba(0,0,0,.1);
+    margin-bottom:30px;
+  }
 
-/* ===== MATIÈRES ===== */
-.matiere{
-  background:var(--card);
-  border-radius:18px;
-  margin-bottom:16px;
-  border:1px solid var(--border);
-  overflow:hidden;
-}
+  .student-avatar{
+    width:60px;height:60px;
+    border-radius:50%;
+    background:linear-gradient(135deg,var(--primary),var(--accent));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    font-size:1.4rem;
+  }
 
-.matiere-header{
-  padding:18px 22px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  cursor:pointer;
-}
-.matiere-header:hover{
-  background:rgba(79,70,229,.07);
-}
+  /* NIVEAU */
+  .niveau{
+    background:var(--card);
+    border-radius:26px;
+    padding:30px;
+    margin-bottom:30px;
+    box-shadow:0 20px 50px rgba(0,0,0,.12);
+  }
 
-.matiere-title{
-  font-weight:600;
-  font-size:1.05rem;
-}
+  .niveau-header{
+    display:flex;
+    align-items:center;
+    gap:15px;
+    margin-bottom:20px;
+  }
 
-.matiere-msg{
-  font-size:.85rem;
-  color:var(--muted);
-}
+  .niveau-icon{
+    width:50px;height:50px;
+    border-radius:50%;
+    background:var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+  }
 
-.matiere-body{
-  display:none;
-  padding:18px 20px 22px;
-}
+  /* MATIERE */
+  .matiere-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:18px 22px;
+    background:linear-gradient(135deg,#eef2ff,#fff);
+    border-radius:18px;
+    margin-top:16px;
+    cursor:pointer;
+    transition:.35s;
+    border:1px solid #e5e7eb;
+  }
 
-/* ===== UNITÉS ===== */
-.unite{
-  background:rgba(0,0,0,.02);
-  border-radius:14px;
-  padding:14px 18px;
-  margin-bottom:12px;
-}
+  .matiere-header:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 30px rgba(79,70,229,.18);
+  }
 
-.unite-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  cursor:pointer;
-  font-weight:600;
-}
+  .matiere-title{
+    font-weight:700;
+    font-size:1.15rem;
+  }
 
-.unit-meta{
-  font-size:.8rem;
-  color:var(--muted);
-}
+  .matiere-content,
+  .unite-content{
+    display:none;
+    margin-top:18px;
+    padding-left:12px;
+  }
 
-.lecons{
-  margin-top:10px;
-}
+  /* UNITE */
+  .unite-card{
+    background:rgba(255,255,255,.75);
+    backdrop-filter:blur(10px);
+    border-radius:20px;
+    padding:18px;
+    margin-bottom:16px;
+    border:1px solid #e5e7eb;
+  }
 
-/* ===== LEÇONS ===== */
-.lecon{
-  background:var(--card);
-  border-radius:12px;
-  padding:12px 14px;
-  margin-top:8px;
-  border-left:4px solid var(--primary);
-}
+  .unite-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    font-weight:700;
+  }
 
-.lecon a{
-  color:var(--primary);
-  font-weight:600;
-  text-decoration:none;
-}
+  /* LECON */
+  .lecon-item{
+    background:#fff;
+    border-radius:16px;
+    padding:16px;
+    margin-top:14px;
+    border-left:5px solid var(--primary);
+    transition:.25s;
+  }
 
-/* ===== PROGRESS ===== */
-.circle{
-  width:40px;
-  height:40px;
-  border-radius:50%;
-  background:
-    conic-gradient(var(--primary) var(--p),var(--border) 0);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:.7rem;
-  font-weight:600;
-}
-</style>
+  .lecon-item:hover{
+    transform:translateX(4px);
+    box-shadow:0 10px 25px rgba(0,0,0,.12);
+  }
+
+  .lecon-link{
+    display:block;
+    font-size:1.05rem;
+    font-weight:700;
+    text-decoration:none;
+    color:var(--primary);
+    margin-bottom:8px;
+  }
+
+  /* EXERCICE */
+  .exercice{
+    background:#f9fafb;
+    padding:12px;
+    border-radius:12px;
+    margin-top:8px;
+  }
+
+  .done{color:var(--success);font-weight:700}
+  .pending{color:var(--warning);font-weight:700}
+
+  .btn{
+    display:inline-block;
+    margin-top:6px;
+    padding:7px 18px;
+    border-radius:999px;
+    font-size:.85rem;
+    font-weight:600;
+    text-decoration:none;
+    background:var(--primary);
+    color:white;
+  }
+
+  .btn.secondary{
+    background:#e5e7eb;
+    color:#111827;
+  }
+
+  .toggle-icon{
+    transition:transform .3s;
+    color:var(--muted);
+  }
+
+  .active .toggle-icon{
+    transform:rotate(180deg);
+  }
+
+  /* RETOUR */
+  .back{
+    display:block;
+    width:fit-content;
+    margin:40px auto 0;
+    background:white;
+    padding:14px 30px;
+    border-radius:999px;
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+    color:var(--accent);
+    font-weight:700;
+    text-decoration:none;
+  }
+
+  @media(max-width:768px){
+    body{padding:14px}
+    h1{font-size:1.8rem}
+  }
+  </style>
 </head>
 
 <body>
 <div class="container">
 
-<header>
-  <h1>📚 Explorer les leçons</h1>
-  <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
-</header>
+<h1><i class="fas fa-book-open"></i> Explorer les leçons</h1>
 
-<!-- ZONE MATIÈRES -->
-<div id="matiereZone"></div>
+<div class="student-card">
+  <div class="student-avatar"><i class="fas fa-user-graduate"></i></div>
+  <div>
+    <strong>{{ eleve.nom_complet }}</strong>
+    <div style="color:var(--muted)">Parcours personnalisé</div>
+  </div>
+</div>
+
+{% for niveau in niveaux %}
+<div class="niveau">
+
+  <div class="niveau-header">
+    <div class="niveau-icon"><i class="fas fa-graduation-cap"></i></div>
+    <h2>{{ niveau.nom }}</h2>
+  </div>
+
+  {% for matiere in niveau.matieres %}
+  <div class="matiere-header toggle-matiere">
+    <span class="matiere-title"><i class="fas fa-layer-group"></i> {{ matiere.nom }}</span>
+    <i class="fas fa-chevron-down toggle-icon"></i>
+  </div>
+
+  <div class="matiere-content">
+    {% for unite in matiere.unites %}
+    <div class="unite-card">
+      <div class="unite-header toggle-unite">
+        <span><i class="fas fa-cube"></i> {{ unite.nom }}</span>
+        <i class="fas fa-chevron-down toggle-icon"></i>
+      </div>
+
+      <div class="unite-content">
+        {% for lecon in unite.lecons %}
+        <div class="lecon-item">
+          <a class="lecon-link"
+             href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}">
+            {{ lecon.titre_fr }}
+          </a>
+
+          {% for ex in lecon.exercices %}
+          <div class="exercice">
+            {{ ex.question_fr[:80] }}…
+            {% if ex.id in exercices_faits %}
+              <div class="done">✔ Fait</div>
+              <a class="btn secondary"
+                 href="/historique?exercice_id={{ ex.id }}&username={{ eleve.username }}">
+                 Analyse
+              </a>
+            {% else %}
+              <div class="pending">⏳ À faire</div>
+              <a class="btn"
+                 href="/exercice/{{ ex.id }}?username={{ eleve.username }}">
+                 Commencer
+              </a>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+</div>
+{% endfor %}
+
+<a class="back" href="/dashboard-eleve?username={{ eleve.username }}">
+  ← Retour au tableau de bord
+</a>
 
 </div>
 
 <script>
-const niveauId = "{{ niveau_id }}";
-const lang = "{{ lang }}";
-
-/* DARK MODE */
-function toggleTheme(){
-  document.body.classList.toggle("dark");
-}
-
-/* CHARGEMENT MATIÈRES */
-fetch(`/api/matieres?niveau_id=${niveauId}&lang=${lang}`)
-  .then(r=>r.json())
-  .then(matieres=>{
-    const zone=document.getElementById("matiereZone");
-    zone.innerHTML="";
-    matieres.forEach(m=>{
-      const box=document.createElement("div");
-      box.className="matiere";
-      box.innerHTML=`
-        <div class="matiere-header">
-          <div>
-            <div class="matiere-title">${m.nom}</div>
-            <div class="matiere-msg">
-              ${m.nb_unites} unité${m.nb_unites>1?'s':''}
-            </div>
-          </div>
-          <i class="fas fa-chevron-down"></i>
-        </div>
-        <div class="matiere-body"></div>
-      `;
-      box.querySelector(".matiere-header").onclick=()=>toggleMatiere(box,m.id);
-      zone.appendChild(box);
-    });
-  });
-
-/* 1 SEULE MATIÈRE OUVERTE */
-function toggleMatiere(box,id){
-  document.querySelectorAll('.matiere').forEach(m=>{
-    if(m!==box) m.querySelector('.matiere-body').style.display="none";
-  });
-  const body=box.querySelector('.matiere-body');
-  if(body.style.display==="block"){
-    body.style.display="none";
-    return;
+document.querySelectorAll(".toggle-matiere").forEach(h=>{
+  h.onclick=()=>{
+    h.classList.toggle("active");
+    const c=h.nextElementSibling;
+    c.style.display = c.style.display==="block"?"none":"block";
   }
-  body.style.display="block";
-  if(!body.dataset.loaded){
-    loadUnites(id,body);
-    body.dataset.loaded=1;
+});
+
+document.querySelectorAll(".toggle-unite").forEach(h=>{
+  h.onclick=()=>{
+    h.classList.toggle("active");
+    const c=h.nextElementSibling;
+    c.style.display = c.style.display==="block"?"none":"block";
   }
-}
-
-/* CHARGER UNITÉS */
-function loadUnites(matiereId,container){
-  container.innerHTML="Chargement…";
-  fetch(`/api/unites?matiere_id=${matiereId}&lang=${lang}`)
-    .then(r=>r.json())
-    .then(unites=>{
-      container.innerHTML="";
-      unites.forEach(u=>{
-        const unit=document.createElement("div");
-        unit.className="unite";
-        unit.innerHTML=`
-          <div class="unite-header">
-            <span>
-              ${u.nom}
-              <span class="unit-meta">
-                · ${u.nb_lecons} leçon${u.nb_lecons>1?'s':''}
-              </span>
-            </span>
-            <div class="circle" style="--p:0%">0%</div>
-          </div>
-          <div class="lecons"></div>
-        `;
-        unit.querySelector(".unite-header").onclick=
-          ()=>loadLecons(u.id,unit.querySelector(".lecons"));
-        container.appendChild(unit);
-      });
-    });
-}
-
-/* CHARGER LEÇONS */
-function loadLecons(uniteId,container){
-  if(container.dataset.loaded) return;
-  container.dataset.loaded=1;
-  fetch(`/api/lecons?unite_id=${uniteId}&lang=${lang}`)
-    .then(r=>r.json())
-    .then(lecons=>{
-      lecons.forEach(l=>{
-        const div=document.createElement("div");
-        div.className="lecon";
-        div.innerHTML=`<a href="/lecon/${l.id}?lang=${lang}">${l.titre}</a>`;
-        container.appendChild(div);
-      });
-    });
-}
+});
 </script>
-
 </body>
 </html>
