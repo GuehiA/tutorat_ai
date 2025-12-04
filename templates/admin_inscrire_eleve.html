@@ -55,7 +55,7 @@
             }
         }
 
-        /* BOUTON RETOUR */
+        /* BOUTON RETOUR AJOUTÉ */
         .back-btn {
             position: absolute;
             top: 20px;
@@ -85,7 +85,7 @@
         .header {
             text-align: center;
             margin-bottom: 40px;
-            margin-top: 20px;
+            margin-top: 20px; /* Ajusté pour le bouton */
         }
 
         .logo {
@@ -254,7 +254,7 @@
 </head>
 <body>
     <div class="registration-box">
-        <!-- BOUTON RETOUR -->
+        <!-- BOUTON RETOUR AJOUTÉ -->
         <a href="{{ url_for('admin_dashboard') }}?lang={{ lang }}" class="back-btn">
             <i class="fas fa-arrow-left"></i>
             {{ 'Back to Admin Dashboard' if lang == 'en' else 'Retour au Tableau de Bord Admin' }}
@@ -340,8 +340,8 @@
                 </div>
 
                 <!-- BIRTH DATE -->
-                <div class="form-group optional">
-                    <label for="date_naissance">{{ 'Birth Date (Optional)' if lang == 'en' else 'Date de Naissance (Optionnel)' }}</label>
+                <div class="form-group">
+                    <label for="date_naissance">{{ 'Birth Date' if lang == 'en' else 'Date de Naissance' }}</label>
                     {{ form.date_naissance(class="form-control", type="date") }}
                 </div>
 
@@ -419,20 +419,7 @@
                 <!-- LEVEL -->
                 <div class="form-group">
                     <label for="niveau_id">{{ 'Level' if lang == 'en' else 'Niveau' }}</label>
-                    <select name="niveau_id" id="niveau_id" class="form-select" required>
-                        <option value="">{{ 'Select a level' if lang == 'en' else 'Sélectionnez un niveau' }}</option>
-                        {% for niveau in form.niveau_id.choices %}
-                            {% set niveau_id, niveau_nom = niveau %}
-                            {% set niveau_obj = Niveau.query.get(niveau_id) if 'Niveau' in globals() else None %}
-                            <option value="{{ niveau_id }}">
-                                {% if niveau_obj and lang == 'en' and niveau_obj.nom_en %}
-                                    {{ niveau_obj.nom_en }}
-                                {% else %}
-                                    {{ niveau_nom }}
-                                {% endif %}
-                            </option>
-                        {% endfor %}
-                    </select>
+                    {{ form.niveau_id(class="form-select") }}
                     {% if form.niveau_id.errors %}
                         <div class="error-message">
                             {% for error in form.niveau_id.errors %}
@@ -453,21 +440,15 @@
                 <!-- STATUS -->
                 <div class="form-group">
                     <label for="statut">{{ 'Status' if lang == 'en' else 'Statut' }}</label>
-                    <select name="statut" id="statut" class="form-select">
-                        <option value="actif">{{ 'Active' if lang == 'en' else 'Actif' }}</option>
-                        <option value="inactif">{{ 'Inactive' if lang == 'en' else 'Inactif' }}</option>
-                        <option value="en_attente">{{ 'Pending' if lang == 'en' else 'En attente' }}</option>
-                    </select>
+                    {{ form.statut(class="form-select") }}
                     <div class="status-info">
                         <small>
                             {% if lang == 'en' %}
                                 • <strong>Active:</strong> Full platform access<br>
-                                • <strong>Inactive:</strong> No access<br>
-                                • <strong>Pending:</strong> Limited access
+                                • <strong>Pending payment:</strong> Limited access
                             {% else %}
                                 • <strong>Actif:</strong> Accès complet<br>
-                                • <strong>Inactif:</strong> Aucun accès<br>
-                                • <strong>En attente:</strong> Accès limité
+                                • <strong>En attente paiement:</strong> Accès limité
                             {% endif %}
                         </small>
                     </div>
@@ -476,30 +457,21 @@
                 <!-- PAYMENT STATUS -->
                 <div class="form-group">
                     <label for="statut_paiement">{{ 'Payment Status' if lang == 'en' else 'Statut de paiement' }}</label>
-                    <select name="statut_paiement" id="statut_paiement" class="form-select">
-                        <option value="paye">{{ 'Paid' if lang == 'en' else 'Payé' }}</option>
-                        <option value="essai_gratuit">{{ 'Free Trial' if lang == 'en' else 'Essai gratuit' }}</option>
-                        <option value="en_attente">{{ 'Pending' if lang == 'en' else 'En attente' }}</option>
-                        <option value="non_paye">{{ 'Not Paid' if lang == 'en' else 'Non payé' }}</option>
-                    </select>
+                    {{ form.statut_paiement(class="form-select") }}
                     <div class="status-info">
                         <small>
                             {% if lang == 'en' %}
-                                • <strong>Paid:</strong> Full access<br>
-                                • <strong>Free Trial:</strong> 48-hour trial<br>
-                                • <strong>Pending:</strong> Payment required<br>
-                                • <strong>Not Paid:</strong> Limited access
+                                • <strong>Paid by admin:</strong> Account activated immediately<br>
+                                • <strong>Unpaid:</strong> Payment required
                             {% else %}
-                                • <strong>Payé:</strong> Accès complet<br>
-                                • <strong>Essai gratuit:</strong> Essai de 48h<br>
-                                • <strong>En attente:</strong> Paiement requis<br>
-                                • <strong>Non payé:</strong> Accès limité
+                                • <strong>Payé par admin:</strong> Compte activé immédiatement<br>
+                                • <strong>Non payé:</strong> Paiement requis
                             {% endif %}
                         </small>
                     </div>
                 </div>
 
-                <!-- CHECKBOXES -->
+                <!-- CHECKBOXES avec labels traduits -->
                 <div class="form-group full-width">
                     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                         <!-- EMAIL VERIFIED -->
@@ -527,25 +499,10 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- TEACHER REFERENCE (optional) -->
-                <div class="form-group optional full-width">
-                    <label for="enseignant_id">{{ 'Reference Teacher (Optional)' if lang == 'en' else 'Enseignant Référent (Optionnel)' }}</label>
-                    <select name="enseignant_id" id="enseignant_id" class="form-select">
-                        <option value="">{{ 'No teacher assigned' if lang == 'en' else 'Aucun enseignant assigné' }}</option>
-                        {% if enseignants %}
-                            {% for enseignant in enseignants %}
-                                <option value="{{ enseignant.id }}">
-                                    {{ enseignant.nom }} ({{ enseignant.email }})
-                                </option>
-                            {% endfor %}
-                        {% endif %}
-                    </select>
-                </div>
             </div>
 
             <!-- SUBMIT BUTTON -->
-            <button type="submit" class="btn-submit" onclick="return validateForm()">
+            <button type="submit" class="btn-submit">
                 <i class="fas fa-user-plus"></i>
                 {{ 'Register Student' if lang == 'en' else 'Inscrire l\'élève' }}
             </button>
@@ -553,68 +510,24 @@
     </div>
 
     <script>
-        function validateForm() {
-            const username = document.getElementById('username').value;
-            const email = document.getElementById('email').value;
+        // Validation simple
+        document.getElementById('studentForm').addEventListener('submit', function(e) {
             const password = document.getElementById('mot_de_passe').value;
-            const parentEmail = document.getElementById('parent_email').value;
-            const parentName = document.getElementById('responsable_nom').value;
             const level = document.getElementById('niveau_id').value;
-            
-            // Validation basique
-            if (username.length < 3) {
-                alert('{{ "Username must be at least 3 characters" if lang == "en" else "Le nom d\'utilisateur doit contenir au moins 3 caractères" }}');
-                return false;
-            }
             
             if (password.length < 3) {
                 alert('{{ "Password must be at least 3 characters" if lang == "en" else "Le mot de passe doit contenir au moins 3 caractères" }}');
+                e.preventDefault();
                 return false;
             }
             
             if (!level) {
                 alert('{{ "Please select a level" if lang == "en" else "Veuillez sélectionner un niveau" }}');
+                e.preventDefault();
                 return false;
             }
             
-            // Validation email
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                alert('{{ "Please enter a valid email address" if lang == "en" else "Veuillez entrer une adresse email valide" }}');
-                return false;
-            }
-            
-            // Validation email parent si fourni
-            if (parentEmail && !emailRegex.test(parentEmail)) {
-                alert('{{ "Please enter a valid parent email address" if lang == "en" else "Veuillez entrer une adresse email parent valide" }}');
-                return false;
-            }
-            
-            // Confirmation avant soumission
-            return confirm('{{ "Are you sure you want to register this student?" if lang == "en" else "Êtes-vous sûr de vouloir inscrire cet élève ?" }}');
-        }
-
-        // Initialisation des sélecteurs
-        document.addEventListener('DOMContentLoaded', function() {
-            // Mettre le statut par défaut à "actif"
-            document.getElementById('statut').value = 'actif';
-            
-            // Mettre le statut de paiement par défaut à "paye" pour admin
-            document.getElementById('statut_paiement').value = 'paye';
-            
-            // Cocher les cases par défaut pour admin
-            document.getElementById('email_verifie').checked = true;
-            document.getElementById('telephone_verifie').checked = true;
-            document.getElementById('accepte_cgu').checked = true;
-            
-            // Désactiver le bouton de soumission pendant le chargement
-            const form = document.getElementById('studentForm');
-            const submitBtn = form.querySelector('.btn-submit');
-            
-            form.addEventListener('submit', function() {
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Registering..." if lang == "en" else "Inscription en cours..." }}';
-                submitBtn.disabled = true;
-            });
+            return true;
         });
     </script>
 </body>
