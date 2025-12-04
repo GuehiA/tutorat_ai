@@ -227,13 +227,17 @@
 <body>
 <div class="container">
 
-<h1><i class="fas fa-book-open"></i> Explorer les leçons</h1>
+<!-- CORRECTION : Utiliser la variable lang pour le titre -->
+<h1><i class="fas fa-book-open"></i> {% if lang=='en' %}Browse Lessons{% else %}Explorer les leçons{% endif %}</h1>
 
 <div class="student-card">
   <div class="student-avatar"><i class="fas fa-user-graduate"></i></div>
   <div>
     <strong>{{ eleve.nom_complet }}</strong>
-    <div style="color:var(--muted)">Parcours personnalisé</div>
+    <!-- CORRECTION : Texte selon la langue -->
+    <div style="color:var(--muted)">
+      {% if lang=='en' %}Personalized learning journey{% else %}Parcours personnalisé{% endif %}
+    </div>
   </div>
 </div>
 
@@ -242,12 +246,16 @@
 
   <div class="niveau-header">
     <div class="niveau-icon"><i class="fas fa-graduation-cap"></i></div>
-    <h2>{{ niveau.nom }}</h2>
+    <!-- CORRECTION : Utiliser nom_en si anglais, sinon nom -->
+    <h2>{{ niveau.nom_en if lang=='en' and niveau.nom_en else niveau.nom }}</h2>
   </div>
 
   {% for matiere in niveau.matieres %}
   <div class="matiere-header toggle-matiere">
-    <span class="matiere-title"><i class="fas fa-layer-group"></i> {{ matiere.nom }}</span>
+    <!-- CORRECTION : Utiliser nom_en si anglais, sinon nom -->
+    <span class="matiere-title"><i class="fas fa-layer-group"></i> 
+      {{ matiere.nom_en if lang=='en' and matiere.nom_en else matiere.nom }}
+    </span>
     <i class="fas fa-chevron-down toggle-icon"></i>
   </div>
 
@@ -255,32 +263,44 @@
     {% for unite in matiere.unites %}
     <div class="unite-card">
       <div class="unite-header toggle-unite">
-        <span><i class="fas fa-cube"></i> {{ unite.nom }}</span>
+        <!-- CORRECTION : Utiliser nom_en si anglais, sinon nom -->
+        <span><i class="fas fa-cube"></i> 
+          {{ unite.nom_en if lang=='en' and unite.nom_en else unite.nom }}
+        </span>
         <i class="fas fa-chevron-down toggle-icon"></i>
       </div>
 
       <div class="unite-content">
         {% for lecon in unite.lecons %}
         <div class="lecon-item">
+          <!-- CORRECTION : Utiliser titre_en si anglais, sinon titre_fr -->
           <a class="lecon-link"
              href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}">
-            {{ lecon.titre_fr }}
+            {{ lecon.titre_en if lang=='en' and lecon.titre_en else lecon.titre_fr }}
           </a>
 
           {% for ex in lecon.exercices %}
           <div class="exercice">
-            {{ ex.question_fr[:80] }}…
+            <!-- CORRECTION : Utiliser question_en si anglais, sinon question_fr -->
+            {% if lang=='en' and ex.question_en %}
+              {{ ex.question_en[:80] }}…
+            {% else %}
+              {{ ex.question_fr[:80] }}…
+            {% endif %}
+            
             {% if ex.id in exercices_faits %}
-              <div class="done">✔ Fait</div>
+              <!-- CORRECTION : Texte selon la langue -->
+              <div class="done">{% if lang=='en' %}✔ Done{% else %}✔ Fait{% endif %}</div>
               <a class="btn secondary"
-                 href="/historique?exercice_id={{ ex.id }}&username={{ eleve.username }}">
-                 Analyse
+                 href="/historique?exercice_id={{ ex.id }}&username={{ eleve.username }}&lang={{ lang }}">
+                 {% if lang=='en' %}Analysis{% else %}Analyse{% endif %}
               </a>
             {% else %}
-              <div class="pending">⏳ À faire</div>
+              <!-- CORRECTION : Texte selon la langue -->
+              <div class="pending">{% if lang=='en' %}⏳ Pending{% else %}⏳ À faire{% endif %}</div>
               <a class="btn"
-                 href="/exercice/{{ ex.id }}?username={{ eleve.username }}">
-                 Commencer
+                 href="/exercice/{{ ex.id }}?username={{ eleve.username }}&lang={{ lang }}">
+                 {% if lang=='en' %}Start{% else %}Commencer{% endif %}
               </a>
             {% endif %}
           </div>
@@ -296,8 +316,9 @@
 </div>
 {% endfor %}
 
-<a class="back" href="/dashboard-eleve?username={{ eleve.username }}">
-  ← Retour au tableau de bord
+<!-- CORRECTION : Texte selon la langue -->
+<a class="back" href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}">
+  ← {% if lang=='en' %}Back to dashboard{% else %}Retour au tableau de bord{% endif %}
 </a>
 
 </div>
