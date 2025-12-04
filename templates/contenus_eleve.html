@@ -216,10 +216,18 @@
       flex-grow: 1;
     }
     
-    .unite-section {
-      margin-bottom: 20px;
+    .unites-container {
       display: none; /* Caché par défaut */
       animation: slideDown 0.3s ease;
+      margin-left: 20px;
+    }
+    
+    .unite-card {
+      background: var(--light);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--success);
     }
     
     .unite-header {
@@ -251,9 +259,10 @@
       flex-grow: 1;
     }
     
-    .lecon-section {
+    .lecons-container {
       display: none; /* Caché par défaut */
       animation: slideDown 0.3s ease;
+      margin-left: 20px;
     }
     
     .lecon-item {
@@ -638,10 +647,10 @@
               <i class="fas fa-chevron-down toggle-icon"></i>
             </div>
 
-            <!-- UNITES (cachées par défaut) -->
-            <div id="unites-matiere-{{ matiere.id }}" class="unite-section">
+            <!-- CONTAINER DES UNITES (caché par défaut) -->
+            <div id="unites-matiere-{{ matiere.id }}" class="unites-container">
               {% for unite in matiere.unites %}
-                <div class="unite-section">
+                <div class="unite-card">
                   <div class="unite-header" onclick="toggleLeconSection('unite-{{ unite.id }}')">
                     <i class="fas fa-cube unite-icon"></i>
                     <h4 class="unite-title">
@@ -652,8 +661,8 @@
                     <i class="fas fa-chevron-down toggle-icon"></i>
                   </div>
 
-                  <!-- LECONS (cachées par défaut) -->
-                  <div id="lecons-unite-{{ unite.id }}" class="lecon-section">
+                  <!-- CONTAINER DES LECONS (caché par défaut) -->
+                  <div id="lecons-unite-{{ unite.id }}" class="lecons-container">
                     {% set exercices_non_faits = [] %}
                     {% set total_exercices = 0 %}
                     {% set completed_exercices = 0 %}
@@ -788,7 +797,7 @@
     // Fonction pour dérouler les unités d'une matière
     function toggleUniteSection(matiereId) {
       const matiereHeader = event.currentTarget;
-      const unitesContainer = document.getElementById(`unites-${matiereId}`);
+      const unitesContainer = document.getElementById(`unites-matiere-${matiereId}`);
       
       // Toggle la classe active pour l'animation de l'icône
       matiereHeader.classList.toggle('active');
@@ -804,7 +813,7 @@
     // Fonction pour dérouler les leçons d'une unité
     function toggleLeconSection(uniteId) {
       const uniteHeader = event.currentTarget;
-      const leconsContainer = document.getElementById(`lecons-${uniteId}`);
+      const leconsContainer = document.getElementById(`lecons-unite-${uniteId}`);
       
       // Toggle la classe active pour l'animation de l'icône
       uniteHeader.classList.toggle('active');
@@ -819,8 +828,8 @@
     
     // Au chargement de la page, cacher toutes les sections déroulables
     document.addEventListener('DOMContentLoaded', function() {
-      // Cacher toutes les unités et leçons
-      const unitesContainers = document.querySelectorAll('.unite-section, .lecon-section');
+      // Cacher tous les containers d'unités et de leçons
+      const unitesContainers = document.querySelectorAll('.unites-container, .lecons-container');
       unitesContainers.forEach(container => {
         container.style.display = 'none';
       });
