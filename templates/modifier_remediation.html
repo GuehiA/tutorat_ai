@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -11,149 +12,684 @@
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
   <title>Modifier la remédiation</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css">
   <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --primary-light: #eef2ff;
+      --secondary: #7209b7;
+      --accent: #4cc9f0;
+      --success: #27ae60;
+      --success-dark: #219653;
+      --warning: #f8961e;
+      --danger: #ef476f;
+      --light: #ffffff;
+      --dark: #1a1a2e;
+      --gray: #6c757d;
+      --light-gray: #f8f9fa;
+      --border-radius: 20px;
+      --border-radius-sm: 12px;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 25px 50px rgba(0, 0, 0, 0.12);
+      --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 30px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+      line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Effet de fond */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 20%),
+        radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 20%);
+      pointer-events: none;
+      z-index: -1;
     }
 
     .container {
-      background: white;
-      max-width: 800px;
-      margin: auto;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 1000px;
+      margin: 0 auto;
+      animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    h2 {
-      color: #2c3e50;
-      margin-bottom: 20px;
-      text-align: center;
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: bold;
-      color: #34495e;
+    /* Header */
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
     }
 
-    textarea {
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
-      padding: 10px;
-      font-size: 1em;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .header-icon {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.8rem;
+      box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
+      flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-size: 2rem;
+      color: var(--dark);
+      margin-bottom: 5px;
+      font-weight: 700;
+    }
+
+    .header-text p {
+      color: var(--gray);
+      font-size: 1.1rem;
+    }
+
+    .student-info {
+      background: var(--primary-light);
+      padding: 15px 20px;
+      border-radius: var(--border-radius-sm);
+      margin-top: 15px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .student-info strong {
+      color: var(--primary);
+    }
+
+    /* Formulaire */
+    .form-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      padding: 40px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 35px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: var(--dark);
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-label i {
+      color: var(--primary);
+      font-size: 1.2rem;
+    }
+
+    .text-editor {
+      width: 100%;
+      min-height: 150px;
+      padding: 20px;
+      border: 2px solid var(--light-gray);
+      border-radius: var(--border-radius-sm);
+      font-size: 1rem;
+      transition: var(--transition);
+      background: white;
+      font-family: inherit;
+      line-height: 1.6;
       resize: vertical;
-      white-space: pre-wrap;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .text-editor:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+    }
+
+    /* Éditeur Math */
+    .math-section {
+      margin-top: 20px;
+      background: var(--light-gray);
+      border-radius: var(--border-radius-sm);
+      padding: 20px;
+      border: 2px dashed rgba(67, 97, 238, 0.2);
+    }
+
+    .math-section h4 {
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .math-editor {
       width: 100%;
-      min-height: 3em;
-      border: 1px solid #ccc;
-      padding: 10px;
-      border-radius: 5px;
-      margin-top: 8px;
+      min-height: 60px;
+      background: white;
+      border-radius: var(--border-radius-sm);
+      border: 2px solid var(--light-gray);
+      font-family: 'Cambria Math', serif;
+      padding: 15px;
+      font-size: 1.2rem;
+      transition: var(--transition);
+      margin-bottom: 15px;
     }
 
-    .btn-insert {
-      background-color: #3498db;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 5px;
-      margin-top: 10px;
-      cursor: pointer;
+    .math-editor:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
     }
 
-    .btn-insert:hover {
-      background-color: #2980b9;
+    .math-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
-    .actions {
-      margin-top: 25px;
-      text-align: center;
-    }
-
-    .btn {
+    .math-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 10px 20px;
-      font-size: 1em;
+      background: var(--primary);
+      color: white;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.95rem;
       border: none;
-      border-radius: 5px;
       cursor: pointer;
-      margin: 0 10px;
+      transition: var(--transition);
+      box-shadow: 0 4px 15px rgba(67, 97, 238, 0.2);
     }
 
-    .btn-save {
-      background-color: #2ecc71;
-      color: white;
+    .math-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(67, 97, 238, 0.3);
     }
 
-    .btn-save:hover {
-      background-color: #27ae60;
+    .math-btn.secondary {
+      background: var(--gray);
     }
 
-    .btn-cancel {
-      background-color: #e67e22;
-      color: white;
+    .math-btn.secondary:hover {
+      background: #5a6268;
+    }
+
+    .math-preview {
+      background: white;
+      padding: 15px;
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--light-gray);
+      margin-top: 15px;
+      min-height: 50px;
+      font-family: 'Cambria Math', serif;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Actions */
+    .actions-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 35px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.1rem;
       text-decoration: none;
-      display: inline-block;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
 
-    .btn-cancel:hover {
-      background-color: #d35400;
+    .save-btn {
+      background: linear-gradient(135deg, var(--success), var(--success-dark));
+      color: white;
+    }
+
+    .save-btn:hover {
+      background: linear-gradient(135deg, var(--success-dark), #1e7e34);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(39, 174, 96, 0.3);
+    }
+
+    .cancel-btn {
+      background: white;
+      color: var(--warning);
+      border: 2px solid var(--warning);
+    }
+
+    .cancel-btn:hover {
+      background: var(--warning);
+      color: white;
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(248, 150, 30, 0.3);
+    }
+
+    /* Quick Insert */
+    .quick-insert {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .insert-btn {
+      background: var(--light-gray);
+      border: 1px solid var(--light-gray);
+      border-radius: var(--border-radius-sm);
+      padding: 10px 15px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 0.9rem;
+      transition: var(--transition);
+    }
+
+    .insert-btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      
+      .header {
+        padding: 25px 20px;
+      }
+      
+      .header-content {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .form-container {
+        padding: 25px 20px;
+      }
+      
+      .header-text h1 {
+        font-size: 1.6rem;
+      }
+      
+      .actions-container {
+        flex-direction: column;
+      }
+      
+      .action-btn {
+        width: 100%;
+        justify-content: center;
+      }
+      
+      .math-buttons {
+        flex-direction: column;
+      }
+      
+      .math-btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+      }
+      
+      .form-container {
+        padding: 20px 15px;
+      }
+      
+      .text-editor {
+        min-height: 120px;
+        padding: 15px;
+      }
+      
+      .math-section {
+        padding: 15px;
+      }
     }
   </style>
-
-  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css">
-  <script defer src="https://unpkg.com/mathlive"></script>
 </head>
 <body>
 
-<div class="container">
-  <h2>✏️ Modifier la suggestion de remédiation</h2>
-
-  <form method="POST">
-    <label for="message">🧠 Message d'analyse IA :</label>
-    <textarea name="message" id="message">{{ suggestion.message }}</textarea>
-    <math-field id="math_message" virtual-keyboard-mode="onfocus" class="math-editor"></math-field>
-    <button type="button" class="btn-insert" onclick="insertMath('math_message', 'message')">➕ Insérer la formule</button>
-
-    <label for="exercice_suggere">📝 Exercice suggéré :</label>
-    <textarea name="exercice_suggere" id="exercice_suggere">{{ suggestion.exercice_suggere }}</textarea>
-    <math-field id="math_exercice" virtual-keyboard-mode="onfocus" class="math-editor"></math-field>
-    <button type="button" class="btn-insert" onclick="insertMath('math_exercice', 'exercice_suggere')">➕ Insérer la formule</button>
-
-    <div class="actions">
-      <button type="submit" class="btn btn-save">✅ Enregistrer</button>
-      <a href="{{ url_for('remediations_a_valider') }}" class="btn btn-cancel">↩️ Annuler</a>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <div class="header-icon">
+          <i class="fas fa-pen-to-square"></i>
+        </div>
+        <div class="header-text">
+          <h1>Modifier la remédiation</h1>
+          <p>Personnalisez l'analyse et l'exercice de remédiation</p>
+          
+          <div class="student-info">
+            <strong>Élève :</strong> {{ suggestion.user.nom_complet }} 
+            | <strong>Thème :</strong> {{ suggestion.theme }} 
+            | <strong>Leçon :</strong> {{ suggestion.lecon }}
+          </div>
+        </div>
+      </div>
     </div>
-  </form>
-</div>
 
-<script>
-  function insertMath(mathFieldId, textareaId) {
-    const mathField = document.getElementById(mathFieldId);
-    const textarea = document.getElementById(textareaId);
-    const formula = mathField.value;
-    if (!formula || !textarea) return;
+    <!-- Formulaire -->
+    <div class="form-container">
+      <form method="POST" id="remediationForm">
+        <!-- Analyse IA -->
+        <div class="form-group">
+          <label for="message">
+            <i class="fas fa-brain"></i>
+            Analyse IA - Message personnalisé
+          </label>
+          <textarea 
+            name="message" 
+            id="message" 
+            class="text-editor"
+            placeholder="Expliquez à l'élève les difficultés identifiées et proposez des pistes d'amélioration..."
+          >{{ suggestion.message }}</textarea>
+          
+          <div class="math-section">
+            <h4><i class="fas fa-square-root-alt"></i> Insérer une formule mathématique</h4>
+            <math-field id="math_message" virtual-keyboard-mode="onfocus" class="math-editor"></math-field>
+            
+            <div class="math-buttons">
+              <button type="button" class="math-btn" onclick="insertMath('math_message', 'message')">
+                <i class="fas fa-plus"></i> Insérer dans l'analyse
+              </button>
+              <button type="button" class="math-btn secondary" onclick="clearMath('math_message')">
+                <i class="fas fa-eraser"></i> Effacer la formule
+              </button>
+            </div>
+          </div>
+        </div>
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const before = textarea.value.substring(0, start);
-    const after = textarea.value.substring(end);
+        <!-- Exercice suggéré -->
+        <div class="form-group">
+          <label for="exercice_suggere">
+            <i class="fas fa-tasks"></i>
+            Exercice suggéré
+          </label>
+          <textarea 
+            name="exercice_suggere" 
+            id="exercice_suggere" 
+            class="text-editor"
+            placeholder="Proposez un exercice adapté pour aider l'élève à surmonter ses difficultés..."
+          >{{ suggestion.exercice_suggere }}</textarea>
+          
+          <div class="math-section">
+            <h4><i class="fas fa-calculator"></i> Insérer une formule mathématique</h4>
+            <math-field id="math_exercice" virtual-keyboard-mode="onfocus" class="math-editor"></math-field>
+            
+            <div class="math-buttons">
+              <button type="button" class="math-btn" onclick="insertMath('math_exercice', 'exercice_suggere')">
+                <i class="fas fa-plus"></i> Insérer dans l'exercice
+              </button>
+              <button type="button" class="math-btn secondary" onclick="clearMath('math_exercice')">
+                <i class="fas fa-eraser"></i> Effacer la formule
+              </button>
+            </div>
+          </div>
+          
+          <!-- Insertion rapide de modèles -->
+          <div class="quick-insert" style="margin-top: 20px;">
+            <button type="button" class="insert-btn" onclick="insertTemplate('exercice_suggere', 'Calcule : $$x^2 + 2x + 1 = 0$$')">
+              Équation quadratique
+            </button>
+            <button type="button" class="insert-btn" onclick="insertTemplate('exercice_suggere', 'Trouve la dérivée de $$f(x) = \\sin(x)$$')">
+              Dérivée
+            </button>
+            <button type="button" class="insert-btn" onclick="insertTemplate('exercice_suggere', 'Résous le système : $$\\begin{cases} 2x + y = 5 \\\\ x - y = 1 \\end{cases}$$')">
+              Système d'équations
+            </button>
+            <button type="button" class="insert-btn" onclick="insertTemplate('exercice_suggere', 'Calcule l\'intégrale : $$\\int_0^1 x^2 \\, dx$$')">
+              Intégrale
+            </button>
+          </div>
+        </div>
 
-    textarea.value = before + formula + after;
-    textarea.focus();
-    textarea.selectionStart = textarea.selectionEnd = start + formula.length;
+        <!-- Actions -->
+        <div class="actions-container">
+          <button type="submit" class="action-btn save-btn">
+            <i class="fas fa-save"></i>
+            Enregistrer et valider
+          </button>
+          <a href="{{ url_for('remediations_a_valider') }}" class="action-btn cancel-btn">
+            <i class="fas fa-times"></i>
+            Annuler
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
 
-    mathField.value = '';
-  }
-</script>
+  <script defer src="https://unpkg.com/mathlive"></script>
+  <script>
+    // Insérer une formule mathématique dans un textarea
+    function insertMath(mathFieldId, textareaId) {
+      const mathField = document.getElementById(mathFieldId);
+      const textarea = document.getElementById(textareaId);
+      const formula = mathField.value;
+      
+      if (!formula || !textarea) return;
+      
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      
+      // Ajouter les délimiteurs LaTeX si nécessaire
+      const latexFormula = formula.startsWith('$$') ? formula : `$$${formula}$$`;
+      
+      textarea.value = before + latexFormula + after;
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + latexFormula.length;
+      
+      // Animation de confirmation
+      mathField.style.borderColor = 'var(--success)';
+      mathField.style.boxShadow = '0 0 0 3px rgba(39, 174, 96, 0.2)';
+      setTimeout(() => {
+        mathField.style.borderColor = '';
+        mathField.style.boxShadow = '';
+      }, 1000);
+    }
+
+    // Effacer une formule
+    function clearMath(mathFieldId) {
+      const mathField = document.getElementById(mathFieldId);
+      mathField.value = '';
+      mathField.focus();
+    }
+
+    // Insérer un template prédéfini
+    function insertTemplate(textareaId, template) {
+      const textarea = document.getElementById(textareaId);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      
+      textarea.value = before + template + after;
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + template.length;
+      
+      // Animation
+      textarea.style.borderColor = 'var(--primary)';
+      setTimeout(() => {
+        textarea.style.borderColor = '';
+      }, 1000);
+    }
+
+    // Validation du formulaire
+    document.getElementById('remediationForm').addEventListener('submit', function(e) {
+      const message = document.getElementById('message').value.trim();
+      const exercice = document.getElementById('exercice_suggere').value.trim();
+      
+      if (!message && !exercice) {
+        e.preventDefault();
+        alert('Veuillez remplir au moins un des champs (analyse ou exercice).');
+        return false;
+      }
+      
+      // Animation du bouton
+      const submitBtn = this.querySelector('.save-btn');
+      const originalHTML = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+      submitBtn.disabled = true;
+      
+      return true;
+    });
+
+    // Compteur de caractères
+    function setupCharacterCount(textareaId, maxChars = 2000) {
+      const textarea = document.getElementById(textareaId);
+      if (!textarea) return;
+      
+      const counter = document.createElement('div');
+      counter.className = 'char-counter';
+      counter.style.cssText = `
+        text-align: right;
+        font-size: 0.85rem;
+        color: var(--gray);
+        margin-top: 5px;
+      `;
+      
+      textarea.parentNode.insertBefore(counter, textarea.nextSibling);
+      
+      function updateCounter() {
+        const length = textarea.value.length;
+        counter.textContent = `${length} / ${maxChars} caractères`;
+        counter.style.color = length > maxChars * 0.9 ? 'var(--danger)' : 'var(--gray)';
+      }
+      
+      textarea.addEventListener('input', updateCounter);
+      updateCounter();
+    }
+
+    // Initialiser les compteurs
+    setupCharacterCount('message', 2000);
+    setupCharacterCount('exercice_suggere', 1500);
+
+    // Focus automatique sur le premier champ
+    setTimeout(() => {
+      const firstTextarea = document.querySelector('.text-editor');
+      if (firstTextarea) {
+        firstTextarea.focus();
+      }
+    }, 500);
+
+    // Effet de particules
+    function createParticle() {
+      if (Math.random() > 0.9) return;
+      
+      const particle = document.createElement('div');
+      const size = Math.random() * 3 + 1;
+      const colors = ['rgba(67, 97, 238, 0.2)', 'rgba(114, 9, 183, 0.2)', 'rgba(39, 174, 96, 0.2)'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      particle.style.position = 'fixed';
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.background = color;
+      particle.style.borderRadius = '50%';
+      particle.style.pointerEvents = 'none';
+      particle.style.left = Math.random() * 100 + 'vw';
+      particle.style.top = '-10px';
+      particle.style.zIndex = '0';
+      
+      document.body.appendChild(particle);
+      
+      const duration = Math.random() * 4 + 2;
+      particle.animate([
+        { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+        { transform: `translateY(100vh) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+      ], {
+        duration: duration * 1000,
+        easing: 'linear'
+      });
+      
+      setTimeout(() => particle.remove(), duration * 1000);
+    }
+
+    setInterval(createParticle, 500);
+  </script>
 
 </body>
 </html>

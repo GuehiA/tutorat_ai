@@ -3,14 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Favicon VirtuEduc -->
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
-  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-  <meta name="msapplication-TileColor" content="#4361ee">
-  <meta name="theme-color" content="#4361ee">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <title>{% if lang == 'en' %}Teacher Registration{% else %}Inscription Enseignant{% endif %}</title>
   <style>
     :root {
@@ -19,13 +12,17 @@
       --primary-light: #eef2ff;
       --secondary: #7209b7;
       --accent: #4cc9f0;
-      --light: #f8f9fa;
-      --dark: #212529;
+      --success: #38b000;
+      --warning: #f8961e;
+      --light: #ffffff;
+      --dark: #1a1a2e;
       --gray: #6c757d;
-      --light-gray: #e9ecef;
-      --border-radius: 12px;
-      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-      --transition: all 0.3s ease;
+      --light-gray: #f0f2f5;
+      --border-radius: 20px;
+      --border-radius-sm: 12px;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 25px 50px rgba(0, 0, 0, 0.12);
+      --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
     * {
@@ -35,163 +32,541 @@
     }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #4361ee 100%);
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
       color: var(--dark);
       line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Effet de particules de fond */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 20%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 20%);
+      pointer-events: none;
+      z-index: -1;
     }
 
     .container {
       width: 100%;
-      max-width: 480px;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 40px;
+      align-items: stretch;
+      position: relative;
+      z-index: 1;
     }
 
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
+    @media (max-width: 992px) {
+      .container {
+        grid-template-columns: 1fr;
+        max-width: 600px;
+        gap: 30px;
+      }
     }
 
-    .logo {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-      color: var(--primary);
-    }
-
-    .header h1 {
-      color: var(--dark);
-      font-weight: 600;
-      font-size: 1.8rem;
-      margin-bottom: 8px;
-    }
-
-    .header p {
-      color: var(--gray);
-      font-size: 1rem;
-    }
-
-    .form-container {
-      background: white;
-      padding: 40px;
+    /* Carte de bienvenue */
+    .welcome-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.92));
+      backdrop-filter: blur(20px);
       border-radius: var(--border-radius);
+      padding: 50px 40px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .welcome-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 150px;
+      height: 150px;
+      background: linear-gradient(135deg, var(--primary), transparent 70%);
+      border-radius: 0 0 0 100%;
+      opacity: 0.1;
+    }
+
+    .welcome-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .teacher-illustration {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .teacher-illustration i {
+      font-size: 5rem;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 10px 20px rgba(67, 97, 238, 0.3));
+    }
+
+    .welcome-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+
+    .welcome-subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+      margin-bottom: 40px;
+      font-weight: 400;
+    }
+
+    /* Étapes du processus */
+    .process-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+      margin-bottom: 40px;
+    }
+
+    .process-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 25px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: var(--border-radius-sm);
+      border-left: 4px solid var(--primary);
+      transition: var(--transition);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .process-step:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+      background: white;
+    }
+
+    .step-indicator {
+      width: 50px;
+      height: 50px;
+      min-width: 50px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+    }
+
+    .step-content h4 {
+      color: var(--dark);
+      margin-bottom: 8px;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .step-content p {
+      color: var(--gray);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Note importante */
+    .important-note {
+      background: linear-gradient(135deg, #fff3e0, #ffecb3);
+      border-radius: var(--border-radius-sm);
+      padding: 25px;
+      border: 2px dashed var(--warning);
+      margin-top: 20px;
+      position: relative;
+    }
+
+    .important-note::before {
+      content: '💡';
+      position: absolute;
+      top: -15px;
+      left: 25px;
+      font-size: 1.5rem;
+      background: white;
+      padding: 5px 10px;
+      border-radius: 50%;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .important-note h5 {
+      color: var(--dark);
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .important-note p {
+      color: #5d4037;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Email display box */
+    .email-display-box {
+      background: linear-gradient(135deg, var(--primary-light), rgba(67, 97, 238, 0.1));
+      border-radius: var(--border-radius-sm);
+      padding: 20px;
+      margin-top: 25px;
+      border: 2px solid rgba(67, 97, 238, 0.2);
+      text-align: center;
+      transition: var(--transition);
+    }
+
+    .email-display-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(67, 97, 238, 0.15);
+      border-color: var(--primary);
+    }
+
+    .email-display-box h6 {
+      color: var(--dark);
+      margin-bottom: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .email-address {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: white;
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-weight: 600;
+      color: var(--primary);
+      text-decoration: none;
+      border: 2px solid var(--primary-light);
+      transition: var(--transition);
+      margin-top: 5px;
+      font-size: 1.1rem;
+    }
+
+    .email-address:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+    }
+
+    .email-note {
+      color: var(--gray);
+      font-size: 0.85rem;
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    /* Carte de formulaire */
+    .form-card {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 50px 40px;
       box-shadow: var(--shadow);
       position: relative;
       overflow: hidden;
     }
 
-    .form-container::before {
+    .form-card::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 5px;
-      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      height: 8px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
     }
 
+    .form-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .form-title {
+      font-size: 2rem;
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-weight: 700;
+      position: relative;
+      display: inline-block;
+    }
+
+    .form-title::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: 2px;
+    }
+
+    .form-subtitle {
+      color: var(--gray);
+      font-size: 1rem;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    /* Formulaire */
     .form-group {
-      margin-bottom: 24px;
+      margin-bottom: 30px;
       position: relative;
     }
 
-    label {
-      display: block;
-      margin-bottom: 8px;
+    .floating-label {
+      position: absolute;
+      top: 18px;
+      left: 16px;
+      color: var(--gray);
       font-weight: 500;
-      color: var(--dark);
-      transition: var(--transition);
+      transition: all 0.3s ease;
+      pointer-events: none;
+      background: white;
+      padding: 0 5px;
     }
 
     .input-container {
       position: relative;
     }
 
-    input {
+    .form-input {
       width: 100%;
-      padding: 14px 16px;
+      padding: 18px 50px 18px 20px;
       border: 2px solid var(--light-gray);
-      border-radius: var(--border-radius);
+      border-radius: var(--border-radius-sm);
       font-size: 16px;
       transition: var(--transition);
-      background-color: var(--light);
+      background: white;
+      font-family: inherit;
     }
 
-    input:focus {
+    .form-input:focus {
       outline: none;
       border-color: var(--primary);
-      background-color: white;
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+      box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+    }
+
+    .form-input:focus + .floating-label,
+    .form-input:not(:placeholder-shown) + .floating-label {
+      top: -10px;
+      left: 12px;
+      font-size: 0.85rem;
+      color: var(--primary);
+      font-weight: 600;
     }
 
     .input-icon {
       position: absolute;
-      right: 16px;
+      right: 20px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--gray);
+      pointer-events: none;
     }
 
-    button {
-      margin-top: 10px;
-      padding: 16px;
+    .password-toggle {
+      position: absolute;
+      right: 50px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      transition: var(--transition);
+    }
+
+    .password-toggle:hover {
+      color: var(--primary);
+    }
+
+    /* Bouton d'inscription */
+    .submit-btn {
       width: 100%;
+      padding: 20px;
       background: linear-gradient(135deg, var(--primary), var(--secondary));
       border: none;
       color: white;
-      border-radius: var(--border-radius);
-      font-size: 16px;
+      border-radius: var(--border-radius-sm);
+      font-size: 1.1rem;
       font-weight: 600;
       cursor: pointer;
       transition: var(--transition);
-      box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+      box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 12px;
+      margin-top: 20px;
+      position: relative;
+      overflow: hidden;
     }
 
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
-    }
-
-    button:active {
-      transform: translateY(0);
-    }
-
-    .back-link {
-      display: block;
-      text-align: center;
-      margin-top: 25px;
-      text-decoration: none;
-      color: var(--gray);
-      font-weight: 500;
-      transition: var(--transition);
-      padding: 10px;
-      border-radius: var(--border-radius);
-    }
-
-    .back-link:hover {
-      color: var(--primary);
-      background-color: rgba(67, 97, 238, 0.05);
-    }
-
-    .lang-switch {
+    .submit-btn::before {
+      content: '';
       position: absolute;
-      top: 20px;
-      right: 20px;
-      z-index: 10;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: 0.5s;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 30px rgba(67, 97, 238, 0.4);
+    }
+
+    .submit-btn:hover::before {
+      left: 100%;
+    }
+
+    .submit-btn:active {
+      transform: translateY(-1px);
+    }
+
+    /* Liens */
+    .form-footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid var(--light-gray);
+    }
+
+    .login-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 50px;
+      transition: var(--transition);
+    }
+
+    .login-link:hover {
+      background: var(--primary-light);
+      transform: translateY(-2px);
+    }
+
+    .support-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--secondary);
+      text-decoration: none;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 50px;
+      background: rgba(114, 9, 183, 0.1);
+      margin-top: 15px;
+      transition: var(--transition);
+    }
+
+    .support-link:hover {
+      background: rgba(114, 9, 183, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Email visible dans le formulaire */
+    .form-email-display {
+      background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+      border-radius: var(--border-radius-sm);
+      padding: 20px;
+      margin: 25px 0;
+      border-left: 4px solid var(--success);
+      text-align: center;
+    }
+
+    .form-email-display h6 {
+      color: var(--dark);
+      margin-bottom: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .form-email-address {
+      font-family: 'Courier New', monospace;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary);
+      background: white;
+      padding: 10px 20px;
+      border-radius: var(--border-radius-sm);
+      display: inline-block;
+      margin: 10px 0;
+      border: 2px solid #c8e6c9;
+    }
+
+    .form-email-note {
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    /* Sélecteur de langue */
+    .lang-switch {
+      position: fixed;
+      top: 25px;
+      right: 25px;
+      z-index: 1000;
     }
 
     .lang-switch form {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px 15px;
+      border-radius: 50px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .lang-switch label {
@@ -201,128 +576,517 @@
 
     .lang-switch select {
       padding: 8px 12px;
-      border-radius: var(--border-radius);
+      border-radius: var(--border-radius-sm);
       font-size: 14px;
       border: 1px solid var(--light-gray);
-      background-color: white;
+      background: white;
       cursor: pointer;
       transition: var(--transition);
+      font-weight: 500;
     }
 
     .lang-switch select:focus {
       outline: none;
       border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
     }
 
-    .teacher-icon {
-      text-align: center;
-      margin-bottom: 20px;
+    /* Checkbox personnalisée */
+    .checkbox-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      margin-top: 30px;
+      padding: 25px;
+      background: var(--light-gray);
+      border-radius: var(--border-radius-sm);
+      transition: var(--transition);
+    }
+
+    .checkbox-container:hover {
+      background: var(--primary-light);
+    }
+
+    .custom-checkbox {
+      position: relative;
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      cursor: pointer;
+    }
+
+    .custom-checkbox input {
+      position: absolute;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .checkmark {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 22px;
+      height: 22px;
+      background: white;
+      border: 2px solid var(--gray);
+      border-radius: 6px;
+      transition: var(--transition);
+    }
+
+    .custom-checkbox input:checked ~ .checkmark {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .checkmark::after {
+      content: '';
+      position: absolute;
+      display: none;
+      left: 7px;
+      top: 3px;
+      width: 5px;
+      height: 10px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .custom-checkbox input:checked ~ .checkmark::after {
+      display: block;
+    }
+
+    .checkbox-label {
+      font-size: 0.95rem;
+      color: var(--dark);
+      line-height: 1.5;
+      font-weight: 500;
+    }
+
+    .checkbox-label a {
       color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
     }
 
-    .teacher-icon svg {
-      width: 64px;
-      height: 64px;
+    .checkbox-label a:hover {
+      text-decoration: underline;
+    }
+
+    /* Animation des étapes */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .process-step {
+      animation: fadeInUp 0.6s ease-out forwards;
+      opacity: 0;
+    }
+
+    .process-step:nth-child(1) { animation-delay: 0.1s; }
+    .process-step:nth-child(2) { animation-delay: 0.2s; }
+    .process-step:nth-child(3) { animation-delay: 0.3s; }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+      .container {
+        padding: 10px;
+      }
+      
+      .welcome-card,
+      .form-card {
+        padding: 40px 30px;
+      }
+      
+      .welcome-title {
+        font-size: 2rem;
+      }
+      
+      .form-title {
+        font-size: 1.8rem;
+      }
+      
+      .teacher-illustration i {
+        font-size: 4rem;
+      }
     }
 
     @media (max-width: 576px) {
-      .form-container {
+      .welcome-card,
+      .form-card {
         padding: 30px 20px;
       }
       
-      .header h1 {
-        font-size: 1.5rem;
+      .welcome-title {
+        font-size: 1.8rem;
       }
       
-      .teacher-icon svg {
-        width: 48px;
-        height: 48px;
+      .form-title {
+        font-size: 1.6rem;
+      }
+      
+      .process-step {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .step-indicator {
+        align-self: flex-start;
+      }
+      
+      .lang-switch {
+        position: relative;
+        top: 0;
+        right: 0;
+        margin-bottom: 20px;
+        justify-content: center;
+      }
+      
+      .lang-switch form {
+        background: rgba(255, 255, 255, 0.95);
+      }
+      
+      .email-address,
+      .form-email-address {
+        font-size: 1rem;
+        padding: 10px 15px;
       }
     }
   </style>
 </head>
 <body>
 
+  <!-- Sélecteur de langue -->
+  <div class="lang-switch">
+    <form method="POST" action="/changer-langue">
+      <label for="lang">🌍</label>
+      <select name="lang" id="lang" onchange="this.form.submit()">
+        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+        <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+      </select>
+      <input type="hidden" name="redirect_page" value="inscription_enseignant">
+    </form>
+  </div>
+
   <div class="container">
-    <!-- Sélecteur de langue -->
-    <div class="lang-switch">
-      <form method="POST" action="/changer-langue">
-        <label for="lang">🌍</label>
-        <select name="lang" id="lang" onchange="this.form.submit()">
-          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-          <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
-        </select>
-        <input type="hidden" name="redirect_page" value="ajouter_unite">
-      </form>
+    <!-- Carte de bienvenue -->
+    <div class="welcome-card">
+      <div class="welcome-content">
+        <div class="teacher-illustration">
+          <i class="fas fa-chalkboard-teacher"></i>
+        </div>
+        
+        <h1 class="welcome-title">
+          {% if lang == 'en' %}Join Our Teaching Community{% else %}Rejoignez Notre Communauté Pédagogique{% endif %}
+        </h1>
+        
+        <p class="welcome-subtitle">
+          {% if lang == 'en' %}
+            Empower students with intelligent remediation and personalized guidance. Transform the learning experience.
+          {% else %}
+            Soutenez les élèves avec une remédiation intelligente et un accompagnement personnalisé. Transformez l'expérience d'apprentissage.
+          {% endif %}
+        </p>
+        
+        <div class="process-steps">
+          <div class="process-step">
+            <div class="step-indicator">1</div>
+            <div class="step-content">
+              <h4>{% if lang == 'en' %}Create Your Profile{% else %}Créez votre profil{% endif %}</h4>
+              <p>
+                {% if lang == 'en' %}
+                  Fill in your details to create your professional teaching profile
+                {% else %}
+                  Remplissez vos informations pour créer votre profil professionnel d'enseignement
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          
+          <div class="process-step">
+            <div class="step-indicator">2</div>
+            <div class="step-content">
+              <h4>{% if lang == 'en' %}Contact Support{% else %}Contactez le support{% endif %}</h4>
+              <p>
+                {% if lang == 'en' %}
+                  Email us to connect with your recommended students
+                {% else %}
+                  Envoyez-nous un email pour vous connecter à vos élèves recommandés
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          
+          <div class="process-step">
+            <div class="step-indicator">3</div>
+            <div class="step-content">
+              <h4>{% if lang == 'en' %}Guide & Monitor{% else %}Guidez & Suivez{% endif %}</h4>
+              <p>
+                {% if lang == 'en' %}
+                  Provide personalized exercises and track student progress in real-time
+                {% else %}
+                  Fournissez des exercices personnalisés et suivez les progrès des élèves en temps réel
+                {% endif %}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="important-note">
+          <h5><i class="fas fa-star"></i> {% if lang == 'en' %}Important Information{% else %}Information importante{% endif %}</h5>
+          <p>
+            {% if lang == 'en' %}
+              <strong>Student Connection Process:</strong> After completing registration, please contact our support team to establish connections with your recommended students. If you provide private tutoring, you can recommend your students to our platform for additional exercises and remote monitoring.
+            {% else %}
+              <strong>Processus de connexion aux élèves :</strong> Après avoir complété l'inscription, veuillez contacter notre équipe de support pour établir les connexions avec vos élèves recommandés. Si vous donnez des cours particuliers, vous pouvez recommander vos élèves sur notre plateforme pour des exercices supplémentaires et un suivi à distance.
+            {% endif %}
+          </p>
+        </div>
+
+        <!-- Boîte email dans la section info -->
+        <div class="email-display-box">
+          <h6><i class="fas fa-envelope"></i> {% if lang == 'en' %}Contact Support Email{% else %}Email du support{% endif %}</h6>
+          <a href="mailto:info@advanceteach.com?subject=Teacher%20Support%20-%20Student%20Connection" class="email-address">
+            <i class="fas fa-paper-plane"></i>
+            info@advanceteach.com
+          </a>
+          <p class="email-note">
+            {% if lang == 'en' %}
+              Click to email or copy this address for future reference
+            {% else %}
+              Cliquez pour envoyer un email ou copiez cette adresse pour référence future
+            {% endif %}
+          </p>
+        </div>
+      </div>
     </div>
 
-    <!-- En-tête avec logo et titre -->
-    <div class="header">
-      <div class="logo">📚</div>
-      <h1>{% if lang == 'en' %}Teacher Registration{% else %}Inscription Enseignant{% endif %}</h1>
-      <p>{% if lang == 'en' %}Add a new teacher to the platform{% else %}Ajouter un nouvel enseignant à la plateforme{% endif %}</p>
-    </div>
+    <!-- Carte de formulaire -->
+    <div class="form-card">
+      <div class="form-header">
+        <h2 class="form-title">{% if lang == 'en' %}Register Now{% else %}Inscrivez-vous maintenant{% endif %}</h2>
+        <p class="form-subtitle">
+          {% if lang == 'en' %}
+            Complete the form below to start your teaching journey
+          {% else %}
+            Complétez le formulaire ci-dessous pour commencer votre parcours d'enseignement
+          {% endif %}
+        </p>
+      </div>
 
-    <!-- Icône d'enseignant -->
-    <div class="teacher-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z" />
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v6m0 0l-3-3m3 3l3-3m-9-5v6m0 0l-3-3m3 3l3-3" />
-      </svg>
-    </div>
-
-    <div class="form-container">
-      <form method="POST" action="/inscription-enseignant">
+      <form method="POST" action="/inscription-enseignant" id="teacherForm">
         <div class="form-group">
-          <label for="nom">{% if lang == 'en' %}Full Name:{% else %}Nom :{% endif %}</label>
           <div class="input-container">
-            <input type="text" id="nom" name="nom" required>
+            <input type="text" id="nom" name="nom" class="form-input" placeholder=" " required>
+            <label for="nom" class="floating-label">
+              {% if lang == 'en' %}Full Name{% else %}Nom complet{% endif %} *
+            </label>
             <div class="input-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-              </svg>
+              <i class="fas fa-user"></i>
             </div>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="email">Email :</label>
           <div class="input-container">
-            <input type="email" id="email" name="email" required>
+            <input type="email" id="email" name="email" class="form-input" placeholder=" " required>
+            <label for="email" class="floating-label">Email *</label>
             <div class="input-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/>
-              </svg>
+              <i class="fas fa-envelope"></i>
             </div>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="mot_de_passe">{% if lang == 'en' %}Password:{% else %}Mot de passe :{% endif %}</label>
           <div class="input-container">
-            <input type="password" id="mot_de_passe" name="mot_de_passe" required>
+            <input type="password" id="mot_de_passe" name="mot_de_passe" class="form-input" placeholder=" " required>
+            <label for="mot_de_passe" class="floating-label">
+              {% if lang == 'en' %}Password{% else %}Mot de passe{% endif %} *
+            </label>
+            <button type="button" class="password-toggle" id="togglePassword">
+              <i class="fas fa-eye"></i>
+            </button>
             <div class="input-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
-              </svg>
+              <i class="fas fa-lock"></i>
+            </div>
+          </div>
+          <small style="color: var(--gray); font-size: 0.85rem; margin-top: 5px; display: block;">
+            {% if lang == 'en' %}Minimum 8 characters{% else %}Minimum 8 caractères{% endif %}
+          </small>
+        </div>
+
+        <div class="form-group">
+          <div class="input-container">
+            <input type="password" id="confirm_password" name="confirm_password" class="form-input" placeholder=" " required>
+            <label for="confirm_password" class="floating-label">
+              {% if lang == 'en' %}Confirm Password{% else %}Confirmer le mot de passe{% endif %} *
+            </label>
+            <button type="button" class="password-toggle" id="toggleConfirmPassword">
+              <i class="fas fa-eye"></i>
+            </button>
+            <div class="input-icon">
+              <i class="fas fa-lock"></i>
             </div>
           </div>
         </div>
 
-        <button type="submit">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-          </svg>
-          {% if lang == 'en' %}Register Teacher{% else %}Inscrire l'enseignant{% endif %}
+        <!-- Boîte email visible dans le formulaire -->
+        <div class="form-email-display">
+          <h6><i class="fas fa-life-ring"></i> {% if lang == 'en' %}Need Help Connecting Students?{% else %}Besoin d'aide pour connecter des élèves ?{% endif %}</h6>
+          <div class="form-email-address">
+            <i class="fas fa-envelope"></i> info@advanceteach.com
+          </div>
+          <p class="form-email-note">
+            {% if lang == 'en' %}
+              After registration, email this address to connect with your recommended students. Include your registered email and student details.
+            {% else %}
+              Après inscription, envoyez un email à cette adresse pour vous connecter à vos élèves recommandés. Incluez votre email d'inscription et les détails des élèves.
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="checkbox-container">
+          <div class="custom-checkbox">
+            <input type="checkbox" id="terms" name="terms" required>
+            <span class="checkmark"></span>
+          </div>
+          <label for="terms" class="checkbox-label">
+            {% if lang == 'en' %}
+              I understand that after registration, I need to contact the support team at <strong>info@advanceteach.com</strong> to be linked with my recommended students.
+            {% else %}
+              Je comprends qu'après inscription, je dois contacter l'équipe de support à <strong>info@advanceteach.com</strong> pour être mis en lien avec mes élèves recommandés.
+            {% endif %}
+          </label>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-user-plus"></i>
+          {% if lang == 'en' %}Create Account{% else %}Créer le compte{% endif %}
         </button>
       </form>
 
-      <a class="back-link" href="/admin/dashboard">
-        ← {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
-      </a>
+      <div class="form-footer">
+        <a href="/login-enseignant" class="login-link">
+          <i class="fas fa-sign-in-alt"></i>
+          {% if lang == 'en' %}Already have an account? Login here{% else %}Déjà un compte ? Connectez-vous ici{% endif %}
+        </a>
+        
+        <a href="mailto:info@advanceteach.com?subject=Teacher%20Support" class="support-link">
+          <i class="fas fa-headset"></i>
+          {% if lang == 'en' %}Contact Support: info@advanceteach.com{% else %}Contacter le support : info@advanceteach.com{% endif %}
+        </a>
+      </div>
     </div>
   </div>
+
+  <script>
+    // Toggle password visibility
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('mot_de_passe');
+    const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+
+    togglePassword.addEventListener('click', function() {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+    });
+
+    toggleConfirmPassword.addEventListener('click', function() {
+      const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      confirmPasswordInput.setAttribute('type', type);
+      this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+    });
+
+    // Form validation
+    document.getElementById('teacherForm').addEventListener('submit', function(e) {
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+      const terms = document.getElementById('terms').checked;
+      
+      if (!terms) {
+        e.preventDefault();
+        alert("{% if lang == 'en' %}Please accept the terms to proceed.{% else %}Veuillez accepter les conditions pour continuer.{% endif %}");
+        return false;
+      }
+      
+      if (password !== confirmPassword) {
+        e.preventDefault();
+        alert("{% if lang == 'en' %}Passwords do not match!{% else %}Les mots de passe ne correspondent pas !{% endif %}");
+        confirmPasswordInput.focus();
+        return false;
+      }
+      
+      if (password.length < 8) {
+        e.preventDefault();
+        alert("{% if lang == 'en' %}Password must be at least 8 characters.{% else %}Le mot de passe doit contenir au moins 8 caractères.{% endif %}");
+        passwordInput.focus();
+        return false;
+      }
+      
+      // Animation du bouton
+      const submitBtn = document.querySelector('.submit-btn');
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == 'en' %}Processing...{% else %}Traitement en cours...{% endif %}';
+      submitBtn.disabled = true;
+      
+      return true;
+    });
+
+    // Copier l'adresse email au clic
+    const emailAddresses = document.querySelectorAll('.email-address, .form-email-address');
+    emailAddresses.forEach(email => {
+      email.addEventListener('click', function(e) {
+        if (this.tagName === 'A') return; // Laisse le lien fonctionner
+        
+        e.preventDefault();
+        const emailText = 'info@advanceteach.com';
+        navigator.clipboard.writeText(emailText).then(() => {
+          const originalText = this.innerHTML;
+          this.innerHTML = '<i class="fas fa-check"></i> {% if lang == 'en' %}Copied!{% else %}Copié !{% endif %}';
+          setTimeout(() => {
+            this.innerHTML = originalText;
+          }, 2000);
+        });
+      });
+    });
+
+    // Effet de focus amélioré
+    const inputs = document.querySelectorAll('.form-input');
+    inputs.forEach(input => {
+      input.addEventListener('focus', function() {
+        this.parentElement.style.transform = 'scale(1.02)';
+      });
+      
+      input.addEventListener('blur', function() {
+        this.parentElement.style.transform = 'scale(1)';
+      });
+    });
+
+    // Animation des étapes au scroll
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.animation = 'fadeInUp 0.6s ease-out forwards';
+          observer.unobserve(entry.target);
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.process-step').forEach(step => {
+      observer.observe(step);
+    });
+  </script>
 
 </body>
 </html>

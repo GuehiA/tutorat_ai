@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -10,46 +11,1043 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  <title>Gestion des enseignants</title>
+  <title>Gestion des enseignants - VirtuEduc</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    body { font-family: Arial, sans-serif; padding: 40px; background: #f9f9f9; }
-    h2 { color: #2c3e50; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
-    th { background-color: #3498db; color: white; }
-    tr:nth-child(even) { background-color: #f2f2f2; }
-    a, button { margin-right: 10px; text-decoration: none; }
-    .btn-delete { background: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; }
-    .btn-edit { background: #f39c12; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; }
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --primary-light: #eef2ff;
+      --secondary: #7209b7;
+      --accent: #4cc9f0;
+      --success: #27ae60;
+      --success-dark: #219653;
+      --danger: #e63946;
+      --danger-dark: #c62839;
+      --warning: #f8961e;
+      --warning-dark: #e68a1a;
+      --info: #17a2b8;
+      --light: #ffffff;
+      --dark: #1a1a2e;
+      --gray: #6c757d;
+      --light-gray: #f8f9fa;
+      --border-radius: 20px;
+      --border-radius-sm: 12px;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 25px 50px rgba(0, 0, 0, 0.12);
+      --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.05);
+      --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: var(--dark);
+      line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Effet de fond */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 20%),
+        radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 20%);
+      pointer-events: none;
+      z-index: -1;
+      animation: floatBackground 20s infinite linear;
+    }
+
+    @keyframes floatBackground {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-10px, 10px) rotate(90deg); }
+      50% { transform: translate(0, 20px) rotate(180deg); }
+      75% { transform: translate(10px, 10px) rotate(270deg); }
+      100% { transform: translate(0, 0) rotate(360deg); }
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+      animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* En-tête */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .title-section {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--light), rgba(255, 255, 255, 0.9));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.1rem;
+      font-weight: 400;
+      max-width: 600px;
+    }
+
+    /* Boutons d'action */
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .back-btn {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .add-btn {
+      background: linear-gradient(135deg, var(--success), var(--success-dark));
+      color: white;
+    }
+
+    .add-btn:hover {
+      background: linear-gradient(135deg, var(--success-dark), #1e7e34);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(39, 174, 96, 0.3);
+    }
+
+    /* Carte principale */
+    .card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.92));
+      backdrop-filter: blur(20px);
+      border-radius: var(--border-radius);
+      padding: 40px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+    }
+
+    /* Messages Flash */
+    .messages-container {
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .flash-message {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: var(--border-radius-sm);
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: var(--shadow);
+      border-left: 5px solid var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      animation: slideInMessage 0.5s ease-out;
+    }
+
+    .flash-message.success {
+      border-left-color: var(--success);
+      background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(255, 255, 255, 0.95));
+    }
+
+    .flash-message.error {
+      border-left-color: var(--danger);
+      background: linear-gradient(135deg, rgba(230, 57, 70, 0.1), rgba(255, 255, 255, 0.95));
+    }
+
+    @keyframes slideInMessage {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .flash-icon {
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+
+    .flash-message.success .flash-icon {
+      color: var(--success);
+    }
+
+    .flash-message.error .flash-icon {
+      color: var(--danger);
+    }
+
+    /* Tableau */
+    .table-container {
+      overflow-x: auto;
+      border-radius: var(--border-radius-sm);
+      box-shadow: var(--shadow-card);
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+
+    thead {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    }
+
+    th {
+      padding: 20px 25px;
+      text-align: left;
+      color: white;
+      font-weight: 600;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: relative;
+    }
+
+    th:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 25%;
+      height: 50%;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: var(--transition);
+    }
+
+    tbody tr:hover {
+      background: linear-gradient(135deg, rgba(67, 97, 238, 0.05), rgba(114, 9, 183, 0.05));
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    td {
+      padding: 20px 25px;
+      color: var(--dark);
+      font-size: 0.95rem;
+    }
+
+    .teacher-name {
+      font-weight: 600;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .teacher-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
+    .teacher-email {
+      color: var(--gray);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .teacher-email i {
+      color: var(--primary);
+    }
+
+    /* Actions */
+    .actions-cell {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .action-form {
+      display: inline-block;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-edit {
+      background: linear-gradient(135deg, var(--warning), var(--warning-dark));
+      color: white;
+      box-shadow: 0 4px 12px rgba(248, 150, 30, 0.2);
+    }
+
+    .btn-edit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(248, 150, 30, 0.3);
+    }
+
+    .btn-delete {
+      background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+      color: white;
+      box-shadow: 0 4px 12px rgba(230, 57, 70, 0.2);
+    }
+
+    .btn-delete:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(230, 57, 70, 0.3);
+    }
+
+    /* État vide */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray);
+    }
+
+    .empty-icon {
+      font-size: 4rem;
+      color: var(--light-gray);
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: var(--gray);
+    }
+
+    .empty-state p {
+      max-width: 400px;
+      margin: 0 auto 30px;
+      line-height: 1.6;
+    }
+
+    /* Statistiques */
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius-sm);
+      padding: 25px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: var(--transition);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .stat-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      color: white;
+    }
+
+    .stat-icon.teachers {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+
+    .stat-content h3 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+      color: var(--dark);
+    }
+
+    .stat-content p {
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        text-align: center;
+        gap: 30px;
+      }
+
+      .title-section {
+        min-width: auto;
+      }
+
+      .action-buttons {
+        justify-content: center;
+      }
+
+      .card {
+        padding: 30px 20px;
+      }
+
+      th, td {
+        padding: 15px 20px;
+      }
+
+      .actions-cell {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .stats-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 20px 10px;
+      }
+
+      .title {
+        font-size: 2rem;
+      }
+
+      .subtitle {
+        font-size: 1rem;
+      }
+
+      .action-btn {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+      }
+
+      .teacher-name {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .teacher-avatar {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Animation des lignes du tableau */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    tbody tr {
+      animation: fadeIn 0.5s ease-out;
+      animation-fill-mode: both;
+    }
+
+    tbody tr:nth-child(1) { animation-delay: 0.1s; }
+    tbody tr:nth-child(2) { animation-delay: 0.2s; }
+    tbody tr:nth-child(3) { animation-delay: 0.3s; }
+    tbody tr:nth-child(4) { animation-delay: 0.4s; }
+    tbody tr:nth-child(5) { animation-delay: 0.5s; }
+    tbody tr:nth-child(6) { animation-delay: 0.6s; }
+    tbody tr:nth-child(7) { animation-delay: 0.7s; }
+    tbody tr:nth-child(8) { animation-delay: 0.8s; }
+    tbody tr:nth-child(9) { animation-delay: 0.9s; }
+    tbody tr:nth-child(10) { animation-delay: 1s; }
+
+    /* Effet de particules */
+    .particle {
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+      animation: floatParticle 20s linear infinite;
+    }
+
+    @keyframes floatParticle {
+      0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 0.3;
+      }
+      90% {
+        opacity: 0.3;
+      }
+      100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <h2>Liste des enseignants</h2>
+  <div class="container">
+    <!-- En-tête avec boutons -->
+    <div class="header">
+      <div class="title-section">
+        <h1 class="title">👨‍🏫 Gestion des Enseignants</h1>
+        <p class="subtitle">Gérez les enseignants de votre établissement VirtuEduc</p>
+      </div>
+      <div class="action-buttons">
+        <a href="/admin/dashboard" class="action-btn back-btn">
+          <i class="fas fa-arrow-left"></i>
+          Retour au Dashboard
+        </a>
+        <a href="/ajouter-enseignant" class="action-btn add-btn">
+          <i class="fas fa-plus"></i>
+          Ajouter un Enseignant
+        </a>
+      </div>
+    </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Nom</th>
-        <th>Email</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for enseignant in enseignants %}
-      <tr>
-        <td>{{ enseignant.nom }}</td>
-        <td>{{ enseignant.email }}</td>
-        <td>
-          <form action="/supprimer-enseignant/{{ enseignant.id }}" method="POST" style="display:inline;">
-            <button class="btn-delete" onclick="return confirm('Supprimer cet enseignant ?')">Supprimer</button>
-          </form>
-          <a href="/modifier-enseignant/{{ enseignant.id }}" class="btn-edit">Modifier</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <!-- Messages Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="messages-container">
+          {% for category, message in messages %}
+            <div class="flash-message {{ category }}">
+              <div class="flash-icon">
+                {% if category == 'success' %}
+                  <i class="fas fa-check-circle"></i>
+                {% elif category == 'error' %}
+                  <i class="fas fa-exclamation-circle"></i>
+                {% else %}
+                  <i class="fas fa-info-circle"></i>
+                {% endif %}
+              </div>
+              <div class="flash-text">{{ message }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
 
+    <!-- Statistiques -->
+    <div class="stats-container">
+      <div class="stat-card">
+        <div class="stat-icon teachers">
+          <i class="fas fa-chalkboard-teacher"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ enseignants|length }}</h3>
+          <p>Enseignants actifs</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carte principale -->
+    <div class="card">
+      {% if enseignants %}
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Enseignant</th>
+                <th>Contact</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for enseignant in enseignants %}
+              <tr>
+                <td>
+                  <div class="teacher-name">
+                    <div class="teacher-avatar">
+                      {{ enseignant.nom[0] if enseignant.nom else '?' }}
+                    </div>
+                    <span>{{ enseignant.nom }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="teacher-email">
+                    <i class="fas fa-envelope"></i>
+                    <span>{{ enseignant.email }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="actions-cell">
+                    <a href="/modifier-enseignant/{{ enseignant.id }}" class="btn btn-edit">
+                      <i class="fas fa-edit"></i>
+                      Modifier
+                    </a>
+                    <form action="/supprimer-enseignant/{{ enseignant.id }}" method="POST" class="action-form" onsubmit="return confirmDelete(event)">
+                      <button type="submit" class="btn btn-delete">
+                        <i class="fas fa-trash"></i>
+                        Supprimer
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">
+            <i class="fas fa-chalkboard-teacher"></i>
+          </div>
+          <h3>Aucun enseignant trouvé</h3>
+          <p>Commencez par ajouter votre premier enseignant à la plateforme.</p>
+          <a href="/ajouter-enseignant" class="action-btn add-btn">
+            <i class="fas fa-plus"></i>
+            Ajouter un enseignant
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // Confirmation de suppression
+    function confirmDelete(event) {
+      event.preventDefault();
+      const form = event.target;
+      
+      // Créer une modal de confirmation personnalisée
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        animation: fadeIn 0.3s ease-out;
+      `;
+      
+      const modalContent = document.createElement('div');
+      modalContent.style.cssText = `
+        background: white;
+        padding: 40px;
+        border-radius: var(--border-radius);
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        box-shadow: var(--shadow);
+      `;
+      
+      modalContent.innerHTML = `
+        <div style="margin-bottom: 30px;">
+          <div style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--danger), var(--danger-dark)); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 2rem;">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <h3 style="margin-bottom: 10px; color: var(--dark);">Confirmer la suppression</h3>
+          <p style="color: var(--gray); line-height: 1.6;">Êtes-vous sûr de vouloir supprimer cet enseignant ? Cette action est irréversible.</p>
+        </div>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+          <button id="confirmCancel" style="padding: 12px 30px; background: var(--light-gray); border: none; border-radius: 50px; color: var(--dark); font-weight: 600; cursor: pointer; transition: var(--transition);">
+            <i class="fas fa-times"></i> Annuler
+          </button>
+          <button id="confirmDelete" style="padding: 12px 30px; background: linear-gradient(135deg, var(--danger), var(--danger-dark)); border: none; border-radius: 50px; color: white; font-weight: 600; cursor: pointer; transition: var(--transition);">
+            <i class="fas fa-trash"></i> Supprimer
+          </button>
+        </div>
+      `;
+      
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+      
+      // Ajouter l'animation
+      document.head.insertAdjacentHTML('beforeend', `
+        <style>
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        </style>
+      `);
+      
+      return new Promise((resolve) => {
+        modalContent.querySelector('#confirmCancel').onclick = () => {
+          document.body.removeChild(modal);
+          resolve(false);
+        };
+        
+        modalContent.querySelector('#confirmDelete').onclick = () => {
+          document.body.removeChild(modal);
+          form.submit();
+          resolve(true);
+        };
+        
+        // Fermer en cliquant en dehors
+        modal.onclick = (e) => {
+          if (e.target === modal) {
+            document.body.removeChild(modal);
+            resolve(false);
+          }
+        };
+      }).then(result => false);
+    }
+
+    // Effet de particules
+    function createParticle() {
+      const particle = document.createElement('div');
+      const size = Math.random() * 3 + 1;
+      const colors = ['rgba(67, 97, 238, 0.1)', 'rgba(114, 9, 183, 0.1)', 'rgba(76, 201, 240, 0.1)'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      particle.className = 'particle';
+      particle.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        background: ${color};
+        border-radius: 50%;
+        left: ${Math.random() * 100}vw;
+        animation-delay: ${Math.random() * 20}s;
+      `;
+      
+      document.body.appendChild(particle);
+      
+      // Supprimer après l'animation
+      setTimeout(() => {
+        if (particle.parentNode) {
+          particle.parentNode.removeChild(particle);
+        }
+      }, 20000);
+    }
+
+    // Créer des particules
+    for (let i = 0; i < 20; i++) {
+      setTimeout(createParticle, i * 1000);
+    }
+
+    // Animation au survol des cartes de statistiques
+    document.querySelectorAll('.stat-card').forEach(card => {
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-5px)';
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+      });
+    });
+
+    // Animation au survol des boutons d'action
+    document.querySelectorAll('.action-btn, .btn').forEach(btn => {
+      btn.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+      });
+      
+      btn.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+      });
+    });
+
+    // Recherche dynamique (fonctionnalité avancée)
+    function setupSearch() {
+      const searchContainer = document.createElement('div');
+      searchContainer.style.cssText = `
+        margin-bottom: 30px;
+        position: relative;
+      `;
+      
+      searchContainer.innerHTML = `
+        <div style="position: relative;">
+          <input type="text" id="teacherSearch" placeholder="Rechercher un enseignant par nom ou email..." style="
+            width: 100%;
+            padding: 16px 50px 16px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: var(--transition);
+          ">
+          <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); color: rgba(255, 255, 255, 0.7);">
+            <i class="fas fa-search"></i>
+          </div>
+        </div>
+      `;
+      
+      const titleSection = document.querySelector('.title-section');
+      if (titleSection) {
+        titleSection.parentNode.insertBefore(searchContainer, titleSection.nextSibling);
+        
+        const searchInput = document.getElementById('teacherSearch');
+        const rows = document.querySelectorAll('tbody tr');
+        
+        searchInput.addEventListener('input', function() {
+          const searchTerm = this.value.toLowerCase();
+          
+          rows.forEach(row => {
+            const name = row.querySelector('.teacher-name span').textContent.toLowerCase();
+            const email = row.querySelector('.teacher-email span').textContent.toLowerCase();
+            
+            if (name.includes(searchTerm) || email.includes(searchTerm)) {
+              row.style.display = '';
+              row.style.animation = 'fadeIn 0.3s ease-out';
+            } else {
+              row.style.display = 'none';
+            }
+          });
+        });
+        
+        // Effet de focus
+        searchInput.addEventListener('focus', function() {
+          this.style.background = 'rgba(255, 255, 255, 0.15)';
+          this.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+          this.style.boxShadow = '0 0 0 4px rgba(255, 255, 255, 0.1)';
+        });
+        
+        searchInput.addEventListener('blur', function() {
+          this.style.background = 'rgba(255, 255, 255, 0.1)';
+          this.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          this.style.boxShadow = 'none';
+        });
+      }
+    }
+
+    // Initialiser la recherche si des enseignants existent
+    {% if enseignants %}
+      setTimeout(setupSearch, 1000);
+    {% endif %}
+
+    // Ajouter une animation de chargement pour la suppression
+    document.querySelectorAll('form[action*="supprimer"]').forEach(form => {
+      form.addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('.btn-delete');
+        if (submitBtn) {
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Suppression...';
+          submitBtn.disabled = true;
+        }
+      });
+    });
+
+    // Mettre en évidence les nouvelles lignes
+    function highlightNewRows() {
+      const rows = document.querySelectorAll('tbody tr');
+      rows.forEach((row, index) => {
+        if (index === rows.length - 1) {
+          row.style.animation = 'fadeIn 0.5s ease-out, highlightPulse 2s ease-out 0.5s';
+        }
+      });
+      
+      // Ajouter l'animation de surbrillance
+      document.head.insertAdjacentHTML('beforeend', `
+        <style>
+          @keyframes highlightPulse {
+            0%, 100% { background: transparent; }
+            50% { background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(39, 174, 96, 0.05)); }
+          }
+        </style>
+      `);
+    }
+
+    // Initialiser les animations
+    document.addEventListener('DOMContentLoaded', function() {
+      if (document.querySelector('tbody tr')) {
+        highlightNewRows();
+      }
+    });
+
+    // Exporter la liste (fonctionnalité bonus)
+    function exportTeachers() {
+      const teachers = Array.from(document.querySelectorAll('tbody tr')).map(row => ({
+        nom: row.querySelector('.teacher-name span').textContent,
+        email: row.querySelector('.teacher-email span').textContent
+      }));
+      
+      const csv = teachers.map(t => `"${t.nom}","${t.email}"`).join('\n');
+      const blob = new Blob([`Nom,Email\n${csv}`], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'enseignants_virtueduc.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Afficher un message de confirmation
+      showNotification('Liste exportée avec succès !', 'success');
+    }
+
+    // Fonction pour afficher des notifications
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: white;
+        padding: 20px;
+        border-radius: var(--border-radius-sm);
+        box-shadow: var(--shadow);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transform: translateX(150%);
+        transition: transform 0.3s ease-out;
+        z-index: 1000;
+        border-left: 5px solid ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--primary)'};
+      `;
+      
+      notification.innerHTML = `
+        <div style="color: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--primary)'}; font-size: 1.5rem;">
+          <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        </div>
+        <div>${message}</div>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      // Afficher la notification
+      setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+      }, 100);
+      
+      // Cacher après 5 secondes
+      setTimeout(() => {
+        notification.style.transform = 'translateX(150%)';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
+      }, 5000);
+    }
+
+    // Ajouter le bouton d'export si des enseignants existent
+    {% if enseignants %}
+      setTimeout(() => {
+        const actionButtons = document.querySelector('.action-buttons');
+        if (actionButtons) {
+          const exportBtn = document.createElement('a');
+          exportBtn.href = '#';
+          exportBtn.className = 'action-btn';
+          exportBtn.style.background = 'linear-gradient(135deg, var(--info), #138496)';
+          exportBtn.innerHTML = '<i class="fas fa-download"></i> Exporter';
+          exportBtn.onclick = (e) => {
+            e.preventDefault();
+            exportTeachers();
+          };
+          actionButtons.appendChild(exportBtn);
+        }
+      }, 500);
+    {% endif %}
+  </script>
 </body>
 </html>

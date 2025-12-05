@@ -2,6 +2,7 @@
 <html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -10,57 +11,1076 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  <title>{% if lang == 'en' %}Edit Lesson{% else %}Modifier la leçon{% endif %}</title>
+  <title>{% if lang == 'en' %}Edit Lesson - VirtuEduc{% else %}Modifier la leçon - VirtuEduc{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    body { font-family: Arial; background: #f4f4f4; padding: 40px; }
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --primary-light: #eef2ff;
+      --secondary: #7209b7;
+      --accent: #4cc9f0;
+      --success: #27ae60;
+      --success-dark: #219653;
+      --danger: #e63946;
+      --warning: #f8961e;
+      --light: #ffffff;
+      --dark: #1a1a2e;
+      --gray: #6c757d;
+      --light-gray: #f8f9fa;
+      --border-radius: 20px;
+      --border-radius-sm: 12px;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 25px 50px rgba(0, 0, 0, 0.12);
+      --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--dark);
+      line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Effet de fond */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 20%),
+        radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 20%);
+      pointer-events: none;
+      z-index: -1;
+      animation: floatBackground 20s infinite linear;
+    }
+
+    @keyframes floatBackground {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-10px, 10px) rotate(90deg); }
+      50% { transform: translate(0, 20px) rotate(180deg); }
+      75% { transform: translate(10px, 10px) rotate(270deg); }
+      100% { transform: translate(0, 0) rotate(360deg); }
+    }
+
     .container {
-      max-width: 650px; margin: auto; background: white;
-      padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 800px;
+      position: relative;
+      z-index: 1;
+      animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    h2 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
-    label { display: block; margin-top: 15px; font-weight: bold; }
-    input, textarea {
-      width: 100%; padding: 10px; margin-top: 5px;
-      border-radius: 5px; border: 1px solid #ccc;
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
-    textarea { resize: vertical; }
-    button {
-      width: 100%; margin-top: 25px;
-      background-color: #27ae60; color: white;
-      padding: 12px; border: none; border-radius: 5px;
+
+    /* Carte principale */
+    .card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.92));
+      backdrop-filter: blur(20px);
+      border-radius: var(--border-radius);
+      padding: 50px 40px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+    }
+
+    .card::after {
+      content: '';
+      position: absolute;
+      bottom: -50px;
+      right: -50px;
+      width: 150px;
+      height: 150px;
+      background: linear-gradient(135deg, var(--primary), transparent 70%);
+      border-radius: 50%;
+      opacity: 0.1;
+      z-index: 0;
+    }
+
+    /* En-tête */
+    .header {
+      margin-bottom: 40px;
+      position: relative;
+      z-index: 2;
+      text-align: center;
+    }
+
+    .header-icon {
+      width: 90px;
+      height: 90px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 25px;
+      color: white;
+      font-size: 2.5rem;
+      box-shadow: 0 15px 35px rgba(67, 97, 238, 0.3);
+      position: relative;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .header-icon::after {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      right: -5px;
+      bottom: -5px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 50%;
+      opacity: 0.3;
+      z-index: -1;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.3; }
+      50% { transform: scale(1.1); opacity: 0.5; }
+    }
+
+    .title {
+      font-size: 2.3rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+      font-weight: 400;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Informations de la leçon */
+    .lesson-info {
+      background: linear-gradient(135deg, var(--primary-light), rgba(67, 97, 238, 0.1));
+      border-radius: var(--border-radius-sm);
+      padding: 20px;
+      margin-bottom: 30px;
+      border: 2px solid rgba(67, 97, 238, 0.2);
+      text-align: left;
+    }
+
+    .lesson-info h4 {
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lesson-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin: 5px 0;
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
+    }
+
+    .lesson-details {
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    /* Messages Flash */
+    .messages-container {
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .flash-message {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: var(--border-radius-sm);
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: var(--shadow);
+      border-left: 5px solid var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      animation: slideInMessage 0.5s ease-out;
+    }
+
+    .flash-message.success {
+      border-left-color: var(--success);
+      background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(255, 255, 255, 0.95));
+    }
+
+    .flash-message.error {
+      border-left-color: var(--danger);
+      background: linear-gradient(135deg, rgba(239, 71, 111, 0.1), rgba(255, 255, 255, 0.95));
+    }
+
+    @keyframes slideInMessage {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .flash-icon {
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+
+    .flash-message.success .flash-icon {
+      color: var(--success);
+    }
+
+    .flash-message.error .flash-icon {
+      color: var(--danger);
+    }
+
+    /* Formulaire */
+    .form {
+      position: relative;
+      z-index: 2;
+    }
+
+    .form-group {
+      margin-bottom: 35px;
+      position: relative;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: var(--dark);
+      font-size: 1.1rem;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-label i {
+      color: var(--primary);
+      font-size: 1.2rem;
+    }
+
+    .form-input-container {
+      position: relative;
+    }
+
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 18px 50px 18px 20px;
+      border: 2px solid var(--light-gray);
+      border-radius: var(--border-radius-sm);
       font-size: 16px;
+      transition: var(--transition);
+      background: white;
+      font-family: inherit;
+      color: var(--dark);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
     }
-    button:hover { background-color: #219150; }
-    a {
-      display: block; text-align: center;
-      margin-top: 20px; color: #3498db;
-      text-decoration: none; font-weight: bold;
+
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+      padding: 18px 20px;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+      pointer-events: none;
+      transition: var(--transition);
+    }
+
+    .form-input:focus + .input-icon, .form-textarea:focus + .input-icon {
+      color: var(--primary);
+    }
+
+    .input-hint {
+      color: var(--gray);
+      font-size: 0.85rem;
+      margin-top: 8px;
+      text-align: left;
+      font-style: italic;
+      line-height: 1.4;
+    }
+
+    .language-section {
+      background: linear-gradient(135deg, rgba(67, 97, 238, 0.05), rgba(114, 9, 183, 0.05));
+      border-radius: var(--border-radius-sm);
+      padding: 25px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(67, 97, 238, 0.1);
+    }
+
+    .language-section h3 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .language-section.fr {
+      border-left: 4px solid #0055a4;
+    }
+
+    .language-section.en {
+      border-left: 4px solid #c8102e;
+    }
+
+    /* Boutons d'action */
+    .actions-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 35px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      text-decoration: none;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, var(--success), var(--success-dark));
+      color: white;
+      flex: 1;
+      min-width: 200px;
+      justify-content: center;
+    }
+
+    .save-btn:hover {
+      background: linear-gradient(135deg, var(--success-dark), #1e7e34);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(39, 174, 96, 0.3);
+    }
+
+    .cancel-btn {
+      background: white;
+      color: var(--warning);
+      border: 2px solid var(--warning);
+      flex: 1;
+      min-width: 200px;
+      justify-content: center;
+    }
+
+    .cancel-btn:hover {
+      background: var(--warning);
+      color: white;
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(248, 150, 30, 0.3);
+    }
+
+    /* Lien de retour */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 30px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 50px;
+      transition: var(--transition);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 3;
+    }
+
+    .back-link:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        max-width: 90%;
+      }
+      
+      .card {
+        padding: 40px 30px;
+      }
+      
+      .title {
+        font-size: 1.9rem;
+      }
+      
+      .header-icon {
+        width: 80px;
+        height: 80px;
+        font-size: 2.2rem;
+      }
+      
+      .actions-container {
+        flex-direction: column;
+      }
+      
+      .action-btn {
+        width: 100%;
+      }
+      
+      .back-link {
+        position: relative;
+        top: 0;
+        left: 0;
+        margin-bottom: 20px;
+        justify-content: center;
+      }
+      
+      .language-section {
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        padding: 30px 20px;
+      }
+      
+      .title {
+        font-size: 1.7rem;
+      }
+      
+      .subtitle {
+        font-size: 1rem;
+      }
+      
+      .header-icon {
+        width: 70px;
+        height: 70px;
+        font-size: 2rem;
+      }
+      
+      .form-input, .form-textarea {
+        padding: 16px 45px 16px 15px;
+      }
+      
+      .form-textarea {
+        min-height: 100px;
+      }
     }
   </style>
 </head>
 <body>
 
+  <!-- Lien de retour -->
+  <a href="/admin/dashboard" class="back-link">
+    <i class="fas fa-arrow-left"></i>
+    {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+  </a>
+
   <div class="container">
-    <h2>📒 {% if lang == 'en' %}Edit Lesson{% else %}Modifier la Leçon{% endif %}</h2>
+    <div class="card">
+      <div class="header">
+        <div class="header-icon">
+          <i class="fas fa-book-open"></i>
+        </div>
+        <h1 class="title">
+          {% if lang == 'en' %}Edit Lesson{% else %}Modifier la Leçon{% endif %}
+        </h1>
+        <p class="subtitle">
+          {% if lang == 'en' %}
+            Update the information for this learning lesson. Provide both French and English versions for bilingual content.
+          {% else %}
+            Mettez à jour les informations de cette leçon d'apprentissage. Fournissez les versions française et anglaise pour un contenu bilingue.
+          {% endif %}
+        </p>
+        
+        <div class="lesson-info">
+          <h4><i class="fas fa-info-circle"></i> 
+            {% if lang == 'en' %}Current Lesson{% else %}Leçon actuelle{% endif %}
+          </h4>
+          <div class="lesson-badge">
+            <i class="fas fa-graduation-cap"></i>
+            {{ lecon.titre_fr }}
+          </div>
+          <div class="lesson-details">
+            <strong>{% if lang == 'en' %}English title:{% else %}Titre anglais :{% endif %}</strong> {{ lecon.titre_en }}
+          </div>
+          <p class="lesson-details">
+            {% if lang == 'en' %}
+              This lesson contains educational content that can be accessed in both languages.
+            {% else %}
+              Cette leçon contient du contenu éducatif accessible dans les deux langues.
+            {% endif %}
+          </p>
+        </div>
+      </div>
 
-    <form method="POST">
-      <label>{% if lang == 'en' %}Title (FR){% else %}Titre (FR){% endif %} :</label>
-      <input type="text" name="titre_fr" value="{{ lecon.titre_fr }}" required>
+      <!-- Messages Flash -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="messages-container">
+            {% for category, message in messages %}
+              <div class="flash-message {{ category }}">
+                <div class="flash-icon">
+                  {% if category == 'success' %}
+                    <i class="fas fa-check-circle"></i>
+                  {% elif category == 'error' %}
+                    <i class="fas fa-exclamation-circle"></i>
+                  {% else %}
+                    <i class="fas fa-info-circle"></i>
+                  {% endif %}
+                </div>
+                <div class="flash-text">{{ message }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
 
-      <label>{% if lang == 'en' %}Title (EN){% else %}Titre (EN){% endif %} :</label>
-      <input type="text" name="titre_en" value="{{ lecon.titre_en }}" required>
+      <!-- Formulaire -->
+      <form method="POST" class="form" id="lessonForm">
+        
+        <!-- Section Français -->
+        <div class="language-section fr">
+          <h3><i class="fas fa-flag"></i> {% if lang == 'en' %}French Version{% else %}Version Française{% endif %}</h3>
+          
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-heading"></i>
+              {% if lang == 'en' %}Title (French) *{% else %}Titre (Français) *{% endif %}
+            </label>
+            <div class="form-input-container">
+              <input 
+                type="text" 
+                name="titre_fr" 
+                value="{{ lecon.titre_fr }}" 
+                class="form-input" 
+                required
+                placeholder="{% if lang == 'en' %}Ex: Introduction to Algebra{% else %}Ex: Introduction à l'algèbre{% endif %}"
+                autocomplete="off"
+                autocapitalize="words"
+                maxlength="100"
+                id="titleFr"
+              >
+              <div class="input-icon">
+                <i class="fas fa-font"></i>
+              </div>
+            </div>
+            <div class="input-hint">
+              {% if lang == 'en' %}
+                Choose a clear and descriptive title for the lesson (max 100 characters).
+              {% else %}
+                Choisissez un titre clair et descriptif pour la leçon (max 100 caractères).
+              {% endif %}
+            </div>
+          </div>
 
-      <label>{% if lang == 'en' %}Objective (FR){% else %}Objectif (FR){% endif %} :</label>
-      <textarea name="objectif_fr">{{ lecon.objectif_fr }}</textarea>
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-bullseye"></i>
+              {% if lang == 'en' %}Objective (French){% else %}Objectif (Français){% endif %}
+            </label>
+            <div class="form-input-container">
+              <textarea 
+                name="objectif_fr" 
+                class="form-textarea"
+                placeholder="{% if lang == 'en' %}Describe the learning objectives...{% else %}Décrivez les objectifs d'apprentissage...{% endif %}"
+                autocomplete="off"
+                maxlength="500"
+                id="objectiveFr"
+              >{{ lecon.objectif_fr }}</textarea>
+              <div class="input-icon">
+                <i class="fas fa-edit"></i>
+              </div>
+            </div>
+            <div class="input-hint">
+              {% if lang == 'en' %}
+                Describe what students will learn from this lesson (max 500 characters).
+              {% else %}
+                Décrivez ce que les élèves apprendront dans cette leçon (max 500 caractères).
+              {% endif %}
+            </div>
+          </div>
+        </div>
 
-      <label>{% if lang == 'en' %}Objective (EN){% else %}Objectif (EN){% endif %} :</label>
-      <textarea name="objectif_en">{{ lecon.objectif_en }}</textarea>
+        <!-- Section Anglais -->
+        <div class="language-section en">
+          <h3><i class="fas fa-flag-usa"></i> {% if lang == 'en' %}English Version{% else %}Version Anglaise{% endif %}</h3>
+          
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-heading"></i>
+              {% if lang == 'en' %}Title (English) *{% else %}Titre (Anglais) *{% endif %}
+            </label>
+            <div class="form-input-container">
+              <input 
+                type="text" 
+                name="titre_en" 
+                value="{{ lecon.titre_en }}" 
+                class="form-input" 
+                required
+                placeholder="{% if lang == 'en' %}Ex: Introduction to Algebra{% else %}Ex: Introduction to Algebra{% endif %}"
+                autocomplete="off"
+                autocapitalize="words"
+                maxlength="100"
+                id="titleEn"
+              >
+              <div class="input-icon">
+                <i class="fas fa-font"></i>
+              </div>
+            </div>
+            <div class="input-hint">
+              {% if lang == 'en' %}
+                English title for the lesson (max 100 characters).
+              {% else %}
+                Titre anglais de la leçon (max 100 caractères).
+              {% endif %}
+            </div>
+          </div>
 
-      <button type="submit">💾 {% if lang == 'en' %}Save{% else %}Enregistrer{% endif %}</button>
-    </form>
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-bullseye"></i>
+              {% if lang == 'en' %}Objective (English){% else %}Objectif (Anglais){% endif %}
+            </label>
+            <div class="form-input-container">
+              <textarea 
+                name="objectif_en" 
+                class="form-textarea"
+                placeholder="{% if lang == 'en' %}Describe the learning objectives...{% else %}Describe the learning objectives...{% endif %}"
+                autocomplete="off"
+                maxlength="500"
+                id="objectiveEn"
+              >{{ lecon.objectif_en }}</textarea>
+              <div class="input-icon">
+                <i class="fas fa-edit"></i>
+              </div>
+            </div>
+            <div class="input-hint">
+              {% if lang == 'en' %}
+                Describe learning objectives in English (max 500 characters).
+              {% else %}
+                Décrivez les objectifs d'apprentissage en anglais (max 500 caractères).
+              {% endif %}
+            </div>
+          </div>
+        </div>
 
-    <a href="/admin/dashboard">← {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}</a>
+        <!-- Boutons d'action -->
+        <div class="actions-container">
+          <button type="submit" class="action-btn save-btn">
+            <i class="fas fa-save"></i>
+            {% if lang == 'en' %}Save Changes{% else %}Enregistrer les modifications{% endif %}
+          </button>
+          <a href="/admin/dashboard" class="action-btn cancel-btn">
+            <i class="fas fa-times"></i>
+            {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
+          </a>
+        </div>
+      </form>
+    </div>
   </div>
+
+  <script>
+    // Initialisation des variables de langue
+    const isFrench = "{{ lang }}" === 'fr';
+
+    // Validation du formulaire
+    const form = document.getElementById('lessonForm');
+    
+    form.addEventListener('submit', function(e) {
+      const titleFr = document.getElementById('titleFr').value.trim();
+      const titleEn = document.getElementById('titleEn').value.trim();
+      const objectiveFr = document.getElementById('objectiveFr').value.trim();
+      const objectiveEn = document.getElementById('objectiveEn').value.trim();
+      
+      // Validation des champs obligatoires
+      if (!titleFr) {
+        e.preventDefault();
+        showError('titleFr', isFrench ? 'Le titre français est requis' : 'French title is required');
+        return false;
+      }
+      
+      if (!titleEn) {
+        e.preventDefault();
+        showError('titleEn', isFrench ? 'Le titre anglais est requis' : 'English title is required');
+        return false;
+      }
+      
+      if (titleFr.length > 100) {
+        e.preventDefault();
+        showError('titleFr', isFrench ? 'Le titre doit contenir au maximum 100 caractères' : 'Title must be maximum 100 characters');
+        return false;
+      }
+      
+      if (titleEn.length > 100) {
+        e.preventDefault();
+        showError('titleEn', isFrench ? 'Le titre doit contenir au maximum 100 caractères' : 'Title must be maximum 100 characters');
+        return false;
+      }
+      
+      if (objectiveFr.length > 500) {
+        e.preventDefault();
+        showError('objectiveFr', isFrench ? 'L\'objectif doit contenir au maximum 500 caractères' : 'Objective must be maximum 500 characters');
+        return false;
+      }
+      
+      if (objectiveEn.length > 500) {
+        e.preventDefault();
+        showError('objectiveEn', isFrench ? 'L\'objectif doit contenir au maximum 500 caractères' : 'Objective must be maximum 500 characters');
+        return false;
+      }
+      
+      // Animation du bouton de soumission
+      const submitBtn = this.querySelector('.save-btn');
+      const originalHTML = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (isFrench ? 'Enregistrement...' : 'Saving...');
+      submitBtn.disabled = true;
+      
+      return true;
+    });
+
+    function showError(inputId, message) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      
+      // Animation d'erreur
+      input.style.borderColor = 'var(--danger)';
+      input.style.boxShadow = '0 0 0 4px rgba(230, 57, 70, 0.15)';
+      
+      // Supprimer l'ancien message d'erreur s'il existe
+      const existingError = input.parentNode.querySelector('.error-message');
+      if (existingError) existingError.remove();
+      
+      // Ajouter le nouveau message d'erreur
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-message';
+      errorDiv.textContent = message;
+      errorDiv.style.color = 'var(--danger)';
+      errorDiv.style.fontSize = '0.85rem';
+      errorDiv.style.marginTop = '5px';
+      errorDiv.style.textAlign = 'left';
+      
+      input.parentNode.appendChild(errorDiv);
+      
+      // Focus sur le champ
+      input.focus();
+      input.select();
+      
+      // Supprimer l'erreur après 3 secondes
+      setTimeout(() => {
+        input.style.borderColor = '';
+        input.style.boxShadow = '';
+        if (errorDiv.parentNode) {
+          errorDiv.parentNode.removeChild(errorDiv);
+        }
+      }, 3000);
+    }
+
+    // Effet de focus amélioré
+    const inputs = document.querySelectorAll('.form-input, .form-textarea');
+    inputs.forEach(input => {
+      input.addEventListener('focus', function() {
+        this.style.transform = 'translateY(-2px)';
+      });
+      
+      input.addEventListener('blur', function() {
+        this.style.transform = 'translateY(0)';
+      });
+    });
+
+    // Compteurs de caractères
+    function setupCharacterCount(inputId, maxChars) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      
+      const counter = document.createElement('div');
+      counter.className = 'char-counter';
+      counter.style.cssText = `
+        text-align: right;
+        font-size: 0.85rem;
+        color: var(--gray);
+        margin-top: 5px;
+        font-style: italic;
+      `;
+      
+      input.parentNode.appendChild(counter);
+      
+      function updateCounter() {
+        const length = input.value.length;
+        counter.textContent = `${length}/${maxChars} ` + (isFrench ? 'caractères' : 'characters');
+        counter.style.color = length > maxChars * 0.9 ? 'var(--danger)' : 
+                             length > maxChars * 0.8 ? 'var(--warning)' : 'var(--gray)';
+        
+        // Feedback visuel
+        if (length > 0 && length <= maxChars) {
+          input.style.borderColor = length === maxChars ? 'var(--warning)' : 'var(--success)';
+        } else if (length > maxChars) {
+          input.style.borderColor = 'var(--danger)';
+        } else {
+          input.style.borderColor = '';
+        }
+      }
+      
+      input.addEventListener('input', updateCounter);
+      updateCounter();
+    }
+
+    // Initialiser les compteurs
+    setupCharacterCount('titleFr', 100);
+    setupCharacterCount('titleEn', 100);
+    setupCharacterCount('objectiveFr', 500);
+    setupCharacterCount('objectiveEn', 500);
+
+    // Effet de particules
+    function createParticle() {
+      if (Math.random() > 0.9) return;
+      
+      const particle = document.createElement('div');
+      const size = Math.random() * 3 + 1;
+      const colors = ['rgba(67, 97, 238, 0.2)', 'rgba(114, 9, 183, 0.2)', 'rgba(76, 201, 240, 0.2)'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      particle.style.position = 'fixed';
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.background = color;
+      particle.style.borderRadius = '50%';
+      particle.style.pointerEvents = 'none';
+      particle.style.left = Math.random() * 100 + 'vw';
+      particle.style.top = '-10px';
+      particle.style.zIndex = '0';
+      
+      document.body.appendChild(particle);
+      
+      const duration = Math.random() * 4 + 2;
+      particle.animate([
+        { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+        { transform: `translateY(100vh) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+      ], {
+        duration: duration * 1000,
+        easing: 'linear'
+      });
+      
+      setTimeout(() => particle.remove(), duration * 1000);
+    }
+
+    setInterval(createParticle, 500);
+
+    // Animation de l'icône au survol
+    const headerIcon = document.querySelector('.header-icon');
+    if (headerIcon) {
+      headerIcon.addEventListener('mouseenter', function() {
+        this.style.animation = 'float 1s ease-in-out, pulse 1s ease-in-out';
+      });
+      
+      headerIcon.addEventListener('mouseleave', function() {
+        this.style.animation = 'float 3s ease-in-out infinite, pulse 2s ease-in-out infinite';
+      });
+    }
+
+    // Mettre le focus sur le premier champ
+    setTimeout(() => {
+      const firstInput = document.getElementById('titleFr');
+      if (firstInput) {
+        firstInput.focus();
+        firstInput.select();
+      }
+    }, 500);
+
+    // Auto-traduction basique (exemple simple)
+    const titleFrInput = document.getElementById('titleFr');
+    const titleEnInput = document.getElementById('titleEn');
+    const objectiveFrInput = document.getElementById('objectiveFr');
+    const objectiveEnInput = document.getElementById('objectiveEn');
+    
+    // Fonction pour détecter si un champ est vide
+    function isEmpty(value) {
+      return !value || value.trim().length === 0;
+    }
+    
+    // Proposer la traduction du titre
+    if (titleFrInput && titleEnInput) {
+      titleFrInput.addEventListener('blur', function() {
+        const frValue = this.value.trim();
+        const enValue = titleEnInput.value.trim();
+        
+        if (frValue && isEmpty(enValue)) {
+          // Ici vous pourriez ajouter une API de traduction
+          // Pour l'instant, on propose juste de copier
+          setTimeout(() => {
+            const shouldCopy = confirm(
+              isFrench 
+                ? "Voulez-vous copier le titre français dans le champ anglais ?" 
+                : "Do you want to copy the French title to the English field?"
+            );
+            if (shouldCopy) {
+              titleEnInput.value = frValue;
+              titleEnInput.dispatchEvent(new Event('input'));
+              
+              // Animation de confirmation
+              titleEnInput.style.borderColor = 'var(--primary)';
+              titleEnInput.style.boxShadow = '0 0 0 4px rgba(67, 97, 238, 0.15)';
+              setTimeout(() => {
+                titleEnInput.style.borderColor = '';
+                titleEnInput.style.boxShadow = '';
+              }, 1000);
+            }
+          }, 100);
+        }
+      });
+    }
+    
+    // Synchronisation des zones de texte (optionnel)
+    function syncTextareas(sourceId, targetId) {
+      const source = document.getElementById(sourceId);
+      const target = document.getElementById(targetId);
+      
+      if (source && target) {
+        source.addEventListener('input', function() {
+          // Option: pourrait être utilisé pour une traduction en temps réel
+          // avec une API appropriée
+        });
+      }
+    }
+    
+    // Ajouter une animation de chargement pour le texte long
+    document.querySelectorAll('.form-textarea').forEach(textarea => {
+      textarea.addEventListener('focus', function() {
+        this.style.minHeight = '150px';
+      });
+      
+      textarea.addEventListener('blur', function() {
+        if (this.value.length < 50) {
+          this.style.minHeight = '120px';
+        }
+      });
+    });
+
+    // Effet visuel pour les sections de langue
+    document.querySelectorAll('.language-section').forEach(section => {
+      section.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-5px)';
+        this.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
+      });
+      
+      section.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = 'none';
+      });
+    });
+
+    // Prévisualisation rapide (optionnel)
+    function setupPreview() {
+      const previewBtn = document.createElement('button');
+      previewBtn.type = 'button';
+      previewBtn.className = 'action-btn preview-btn';
+      previewBtn.innerHTML = '<i class="fas fa-eye"></i> ' + (isFrench ? 'Aperçu rapide' : 'Quick Preview');
+      previewBtn.style.background = 'linear-gradient(135deg, var(--primary), var(--secondary))';
+      
+      const actionsContainer = document.querySelector('.actions-container');
+      if (actionsContainer) {
+        actionsContainer.insertBefore(previewBtn, actionsContainer.firstChild);
+        
+        previewBtn.addEventListener('click', function() {
+          const titleFr = document.getElementById('titleFr').value || (isFrench ? 'Titre français' : 'French title');
+          const titleEn = document.getElementById('titleEn').value || (isFrench ? 'Titre anglais' : 'English title');
+          
+          alert(
+            (isFrench ? 'Aperçu de la leçon :\n\n' : 'Lesson preview:\n\n') +
+            (isFrench ? 'Titre français : ' : 'French title: ') + titleFr + '\n' +
+            (isFrench ? 'Titre anglais : ' : 'English title: ') + titleEn
+          );
+        });
+      }
+    }
+
+    // Démarrer les fonctionnalités
+    document.addEventListener('DOMContentLoaded', function() {
+      setupPreview();
+    });
+  </script>
 
 </body>
 </html>
