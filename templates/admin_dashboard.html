@@ -91,34 +91,39 @@
       backdrop-filter: blur(10px);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      margin-bottom: 25px;
       transition: var(--transition);
       border: 1px solid rgba(255, 255, 255, 0.2);
       overflow: hidden;
       opacity: 0;
       animation: fadeInUp 0.6s ease-out forwards;
+      height: 100%;
     }
 
     .dashboard-card:nth-child(1) { animation-delay: 0.1s; }
     .dashboard-card:nth-child(2) { animation-delay: 0.2s; }
     .dashboard-card:nth-child(3) { animation-delay: 0.3s; }
-    .dashboard-card:nth-child(4) { animation-delay: 0.4s; }
 
     .dashboard-card:hover {
       transform: translateY(-8px) scale(1.01);
       box-shadow: var(--shadow-lg);
     }
 
-    .dashboard-card .card-header {
+    .dashboard-card .card-header { 
       border-bottom: 1px solid var(--border);
       font-weight: 600;
-      padding: 20px 25px;
-      font-size: 1.1rem;
-      background: rgba(255, 255, 255, 0.1);
+      padding: 25px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 80px;
     }
 
     .dashboard-card .card-body {
       padding: 25px;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
     }
 
     .nav-tabs {
@@ -171,12 +176,12 @@
     }
 
     .action-btn {
-      border-radius: 8px;
-      padding: 12px 20px;
+      border-radius: 10px;
+      padding: 14px 18px;
       font-weight: 500;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       transition: var(--transition);
       text-decoration: none;
       position: relative;
@@ -184,6 +189,12 @@
       border: none;
       width: 100%;
       justify-content: flex-start;
+      margin-bottom: 10px;
+      text-align: left;
+      font-size: 0.95rem;
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
 
     .action-btn::after {
@@ -200,65 +211,21 @@
       transition: transform 0.3s ease;
     }
 
+    .action-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+      border-color: transparent;
+    }
+
     .action-btn:hover::after {
       transform: scaleX(1);
       transform-origin: left;
     }
 
-    .action-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-    }
-
-    /* Amélioration des boutons d'action */
-    .action-buttons {
-      display: flex;
-      gap: 8px;
-      margin-left: auto;
-    }
-
-    .action-buttons .btn-action {
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px;
-      border: none;
-      color: white;
-      font-size: 14px;
-      cursor: pointer;
-      transition: var(--transition);
-      text-decoration: none;
-    }
-
-    .action-buttons .btn-action:hover {
-      transform: translateY(-2px) scale(1.1);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-
-    .action-buttons .btn-edit {
-      background: var(--success);
-    }
-
-    .action-buttons .btn-edit:hover {
-      background: var(--success-dark);
-    }
-
-    .action-buttons .btn-delete {
-      background: var(--danger);
-    }
-
-    .action-buttons .btn-delete:hover {
-      background: var(--danger-dark);
-    }
-
-    .action-buttons .btn-view {
-      background: var(--info);
-    }
-
-    .action-buttons .btn-view:hover {
-      background: var(--info-dark);
+    .action-btn i {
+      font-size: 1.1rem;
+      width: 24px;
+      text-align: center;
     }
 
     /* User Management */
@@ -266,13 +233,12 @@
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: white;
     }
-    .user-management .btn { 
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-      border: none;
-      color: white;
+    .user-management .action-btn:hover { 
+      background: linear-gradient(135deg, var(--primary-light) 0%, #d0d9ff 100%);
+      color: var(--primary-dark);
     }
-    .user-management .btn:hover { 
-      background: linear-gradient(135deg, var(--primary-dark) 0%, #2d44c9 100%);
+    .user-management .action-btn i { 
+      color: var(--primary);
     }
 
     /* Content Management */
@@ -280,13 +246,12 @@
       background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
       color: white;
     }
-    .content-management .btn { 
-      background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
-      border: none;
-      color: white;
+    .content-management .action-btn:hover { 
+      background: linear-gradient(135deg, var(--success-light) 0%, #c0ebd9 100%);
+      color: var(--success-dark);
     }
-    .content-management .btn:hover { 
-      background: linear-gradient(135deg, var(--success-dark) 0%, #2e9c68 100%);
+    .content-management .action-btn i { 
+      color: var(--success);
     }
 
     /* Evaluations */
@@ -294,27 +259,12 @@
       background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
       color: white;
     }
-    .evaluations .btn { 
-      background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
-      border: none;
-      color: white;
+    .evaluations .action-btn:hover { 
+      background: linear-gradient(135deg, var(--warning-light) 0%, #ffeccc 100%);
+      color: var(--warning-dark);
     }
-    .evaluations .btn:hover { 
-      background: linear-gradient(135deg, var(--warning-dark) 0%, #d9a215 100%);
-    }
-
-    /* Administration */
-    .administration .card-header { 
-      background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
-      color: white;
-    }
-    .administration .btn { 
-      background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
-      border: none;
-      color: white;
-    }
-    .administration .btn:hover { 
-      background: linear-gradient(135deg, var(--danger-dark) 0%, #c44545 100%);
+    .evaluations .action-btn i { 
+      color: var(--warning);
     }
 
     .stats-card {
@@ -388,50 +338,6 @@
       transform: rotate(15deg);
     }
 
-    .content-item {
-      padding: 15px;
-      border-left: 4px solid var(--primary);
-      background: rgba(67, 97, 238, 0.05);
-      margin-bottom: 10px;
-      border-radius: 0 8px 8px 0;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .content-item:hover {
-      background: rgba(67, 97, 238, 0.1);
-      transform: translateX(5px);
-    }
-
-    .content-item .content-info {
-      flex: 1;
-    }
-
-    .accordion-button:not(.collapsed) { 
-      background-color: rgba(67, 97, 238, 0.1);
-      color: var(--primary);
-      box-shadow: none;
-    }
-
-    .accordion-button { 
-      font-weight: 600;
-      padding: 15px 20px;
-    }
-
-    .accordion-button:focus {
-      box-shadow: none;
-      border-color: var(--primary);
-    }
-
-    .badge-pill {
-      border-radius: 20px;
-      padding: 6px 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
     .logout-btn {
       background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
       color: white;
@@ -454,41 +360,13 @@
       box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
 
-    /* Styles spécifiques pour les matières */
-    .matiere-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 15px;
-      padding: 12px 15px;
-      background: rgba(63, 186, 131, 0.1);
-      border-radius: 8px;
-      border-left: 4px solid var(--success);
+    /* Cartes alignées */
+    .quick-actions-row {
+      margin-top: 20px;
     }
 
-    .matiere-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* Amélioration des éléments imbriqués */
-    .nested-content {
-      margin-left: 20px;
-      padding-left: 20px;
-      border-left: 2px solid var(--border);
-    }
-
-    .lecon-item {
-      background: rgba(23, 162, 184, 0.05);
-      border-left: 4px solid var(--info);
-      margin-bottom: 8px;
-    }
-
-    .exercice-item {
-      background: rgba(108, 117, 125, 0.05);
-      border-left: 4px solid #6c757d;
-      margin-bottom: 5px;
+    .card-icon {
+      font-size: 1.5rem;
     }
 
     /* Animations */
@@ -523,22 +401,6 @@
       }
     }
 
-    @keyframes pulse {
-      0% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.05);
-      }
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    .pulse {
-      animation: pulse 2s infinite;
-    }
-
     /* Responsive */
     @media (max-width: 768px) {
       body {
@@ -558,32 +420,27 @@
         font-size: 0.9rem;
       }
       
-      .action-buttons {
-        flex-direction: column;
-        gap: 5px;
+      .dashboard-card .card-header {
+        padding: 20px;
+        height: auto;
+        flex-wrap: wrap;
       }
       
-      .action-buttons .btn-action {
-        width: 32px;
-        height: 32px;
-        font-size: 12px;
-      }
-      
-      .content-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-      }
-      
-      .content-item .action-buttons {
-        margin-left: 0;
-        align-self: flex-end;
+      .action-btn {
+        padding: 12px 15px;
+        font-size: 0.9rem;
       }
       
       .logout-btn {
         padding: 10px 15px;
         font-size: 0.9rem;
         margin-left: 5px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .quick-actions-row .col-md-4 {
+        margin-bottom: 20px;
       }
     }
   </style>
@@ -663,23 +520,23 @@
 
   <!-- Contenu des onglets -->
   <div class="tab-content" id="adminTabsContent">
-    <!-- Onglet Actions Rapides -->
+    <!-- Onglet Actions Rapides - TROIS CARTES ALIGNÉES -->
     <div class="tab-pane fade show active" id="actions" role="tabpanel">
-      <div class="row mt-4">
+      <div class="row quick-actions-row">
         <!-- Gestion des Utilisateurs -->
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="dashboard-card user-management">
-            <div class="card-header d-flex align-items-center">
-              <i class="fas fa-users me-2"></i>
+            <div class="card-header">
+              <i class="fas fa-users card-icon"></i>
               {% if lang == 'en' %}User Management{% else %}Gestion des Utilisateurs{% endif %}
             </div>
-            <div class="card-body d-grid gap-2">
+            <div class="card-body">
               <a href="/inscription-enseignant" class="btn action-btn">
                 <i class="fas fa-plus-circle"></i>
                 {% if lang == 'en' %}Add Teacher{% else %}Ajouter un Enseignant{% endif %}
               </a>
               <a href="/admin/creer-eleve" class="btn action-btn">
-                <i class="fas fa-plus-circle"></i>
+                <i class="fas fa-user-plus"></i>
                 {% if lang == 'en' %}Add Student{% else %}Ajouter un Élève{% endif %}
               </a>
               <a href="/admin-enseignants" class="btn action-btn">
@@ -695,13 +552,13 @@
         </div>
 
         <!-- Gestion des Contenus -->
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="dashboard-card content-management">
-            <div class="card-header d-flex align-items-center">
-              <i class="fas fa-book me-2"></i>
+            <div class="card-header">
+              <i class="fas fa-book card-icon"></i>
               {% if lang == 'en' %}Content Management{% else %}Gestion des Contenus{% endif %}
             </div>
-            <div class="card-body d-grid gap-2">
+            <div class="card-body">
               <a href="/admin/ajouter-niveau" class="btn action-btn">
                 <i class="fas fa-layer-group"></i>
                 {% if lang == 'en' %}Add Level{% else %}Ajouter un Niveau{% endif %}
@@ -723,13 +580,13 @@
         </div>
 
         <!-- Évaluations -->
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="dashboard-card evaluations">
-            <div class="card-header d-flex align-items-center">
-              <i class="fas fa-clipboard-check me-2"></i>
+            <div class="card-header">
+              <i class="fas fa-clipboard-check card-icon"></i>
               {% if lang == 'en' %}Evaluations{% else %}Évaluations{% endif %}
             </div>
-            <div class="card-body d-grid gap-2">
+            <div class="card-body">
               <a href="/admin/ajouter-exercice" class="btn action-btn">
                 <i class="fas fa-edit"></i>
                 {% if lang == 'en' %}Add Exercise{% else %}Ajouter un Exercice{% endif %}
@@ -753,22 +610,6 @@
               <a href="/admin/tests" class="btn action-btn">
                 <i class="fas fa-list"></i>
                 {% if lang == 'en' %}View All Tests{% else %}Voir tous les Tests{% endif %}
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Administration -->
-        <div class="col-md-6">
-          <div class="dashboard-card administration">
-            <div class="card-header d-flex align-items-center">
-              <i class="fas fa-cogs me-2"></i>
-              {% if lang == 'en' %}Administration{% else %}Administration{% endif %}
-            </div>
-            <div class="card-body d-grid gap-2">
-              <a href="/logout" class="btn action-btn">
-                <i class="fas fa-sign-out-alt"></i>
-                {% if lang == 'en' %}Logout{% else %}Déconnexion{% endif %}
               </a>
             </div>
           </div>
@@ -1086,19 +927,6 @@
         themeIcon.className = 'fas fa-moon';
       }
     }
-    
-    // Initialisation des tooltips Bootstrap
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl)
-    });
-    
-    // Ajouter des tooltips aux boutons d'action
-    document.querySelectorAll('.btn-action').forEach(btn => {
-      if (btn.title) {
-        new bootstrap.Tooltip(btn);
-      }
-    });
     
     // Animation au chargement
     document.addEventListener('DOMContentLoaded', function() {
