@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}" data-theme="light">
+<html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
   <!-- Favicon VirtuEduc -->
@@ -11,41 +11,19 @@
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
   <title>{% if lang == 'en' %}Add Teacher{% else %}Ajouter un enseignant{% endif %}</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #4361ee;
       --primary-dark: #3a56d4;
-      --primary-light: #e0e7ff;
       --secondary: #7209b7;
-      --secondary-light: #f3e8ff;
-      --success: #10b981;
-      --light: #f8f9ff;
-      --dark: #121826;
+      --light: #f8f9fa;
+      --dark: #212529;
       --gray: #6c757d;
-      --light-gray: #f1f5f9;
-      --border: #e2e8f0;
-      --card-bg: rgba(255, 255, 255, 0.95);
-      --text: #2d3748;
-      --text-light: #64748b;
-      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-      --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
-      --radius: 16px;
-      --radius-sm: 12px;
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    [data-theme="dark"] {
-      --light: #121826;
-      --dark: #f8f9ff;
-      --card-bg: rgba(30, 30, 46, 0.95);
-      --text: #e2e8f0;
-      --text-light: #94a3b8;
-      --border: #2d3748;
-      --light-gray: #1e293b;
-      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
-      --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
+      --light-gray: #e9ecef;
+      --success: #4bb543;
+      --border-radius: 12px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --transition: all 0.3s ease;
     }
 
     * {
@@ -55,38 +33,29 @@
     }
 
     body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, var(--light) 0%, #e8eaff 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
-      color: var(--text);
-      line-height: 1.6;
-      transition: var(--transition);
+      color: var(--dark);
     }
 
-    h1, h2, h3, h4, h5, h6 {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 600;
-    }
-
-    .glass-container {
-      background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      border-radius: var(--radius);
-      padding: 50px;
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: var(--border-radius);
       width: 100%;
-      max-width: 500px;
-      box-shadow: var(--shadow-lg);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      max-width: 480px;
+      box-shadow: var(--shadow);
       position: relative;
       overflow: hidden;
-      animation: fadeInUp 0.6s ease-out;
     }
 
-    .glass-container::before {
+    .container::before {
       content: '';
       position: absolute;
       top: 0;
@@ -94,45 +63,18 @@
       width: 100%;
       height: 5px;
       background: linear-gradient(90deg, var(--primary), var(--secondary));
-      border-radius: var(--radius) var(--radius) 0 0;
-    }
-
-    .header-section {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-
-    .icon-wrapper {
-      width: 80px;
-      height: 80px;
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
-      box-shadow: 0 10px 20px rgba(67, 97, 238, 0.2);
-      animation: pulse 2s infinite;
-    }
-
-    .icon-wrapper i {
-      font-size: 32px;
-      color: white;
     }
 
     h2 {
-      color: var(--text);
-      margin-bottom: 8px;
+      text-align: center;
+      color: var(--dark);
+      margin-bottom: 30px;
+      font-weight: 600;
       font-size: 1.8rem;
     }
 
-    .subtitle {
-      color: var(--text-light);
-      font-size: 0.95rem;
-    }
-
     .form-group {
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       position: relative;
     }
 
@@ -140,599 +82,193 @@
       display: block;
       margin-bottom: 8px;
       font-weight: 500;
-      color: var(--text);
-      font-size: 0.95rem;
+      color: var(--dark);
       transition: var(--transition);
     }
 
-    .input-wrapper {
+    .input-container {
       position: relative;
     }
 
     input {
       width: 100%;
-      padding: 16px 20px 16px 48px;
-      border: 2px solid var(--border);
-      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      border: 2px solid var(--light-gray);
+      border-radius: var(--border-radius);
       font-size: 16px;
-      font-family: 'Inter', sans-serif;
       transition: var(--transition);
-      background-color: var(--light-gray);
-      color: var(--text);
-      caret-color: var(--primary);
+      background-color: var(--light);
     }
 
     input:focus {
       outline: none;
       border-color: var(--primary);
       background-color: white;
-      box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
-      transform: translateY(-1px);
-    }
-
-    input::placeholder {
-      color: var(--text-light);
-      opacity: 0.7;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
     }
 
     .input-icon {
       position: absolute;
-      left: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--primary);
-      font-size: 18px;
-      transition: var(--transition);
-    }
-
-    input:focus + .input-icon {
-      color: var(--secondary);
-      transform: translateY(-50%) scale(1.1);
-    }
-
-    .password-toggle {
-      position: absolute;
       right: 16px;
       top: 50%;
       transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: var(--text-light);
-      cursor: pointer;
-      font-size: 18px;
-      transition: var(--transition);
-      padding: 4px;
-      border-radius: 4px;
+      color: var(--gray);
     }
 
-    .password-toggle:hover {
-      color: var(--primary);
-      background: rgba(67, 97, 238, 0.1);
-    }
-
-    .submit-btn {
-      margin-top: 30px;
-      padding: 18px;
+    button {
+      margin-top: 25px;
+      padding: 16px;
       width: 100%;
       background: linear-gradient(135deg, var(--primary), var(--secondary));
       border: none;
       color: white;
-      border-radius: var(--radius-sm);
+      border-radius: var(--border-radius);
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
       transition: var(--transition);
-      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
-      font-family: 'Poppins', sans-serif;
-      position: relative;
-      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
     }
 
-    .submit-btn::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.7s;
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
     }
 
-    .submit-btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 25px rgba(67, 97, 238, 0.4);
-    }
-
-    .submit-btn:hover::after {
-      left: 100%;
-    }
-
-    .submit-btn:active {
-      transform: translateY(-1px);
+    button:active {
+      transform: translateY(0);
     }
 
     .back-link {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      display: block;
+      text-align: center;
       margin-top: 25px;
       text-decoration: none;
-      color: var(--text-light);
+      color: var(--gray);
       font-weight: 500;
       transition: var(--transition);
-      padding: 12px;
-      border-radius: var(--radius-sm);
-      background: var(--light-gray);
+      padding: 10px;
+      border-radius: var(--border-radius);
     }
 
     .back-link:hover {
       color: var(--primary);
-      background: rgba(67, 97, 238, 0.1);
-      transform: translateX(-3px);
+      background-color: rgba(67, 97, 238, 0.05);
     }
 
-    .back-link i {
-      font-size: 14px;
-      transition: var(--transition);
-    }
-
-    .back-link:hover i {
-      transform: translateX(-2px);
-    }
-
-    .controls {
+    .lang-select {
       position: absolute;
-      top: 25px;
-      right: 25px;
-      display: flex;
-      gap: 12px;
+      top: 20px;
+      right: 20px;
       z-index: 10;
     }
 
-    .theme-toggle, .lang-toggle {
-      width: 40px;
-      height: 40px;
-      background: var(--light-gray);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .lang-select select {
+      padding: 8px 12px;
+      border-radius: var(--border-radius);
+      font-size: 14px;
+      border: 1px solid var(--light-gray);
+      background-color: white;
       cursor: pointer;
       transition: var(--transition);
-      border: 1px solid var(--border);
-      color: var(--text);
     }
 
-    .theme-toggle:hover, .lang-toggle:hover {
-      background: var(--primary-light);
+    .lang-select select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .header-icon {
+      text-align: center;
+      margin-bottom: 15px;
       color: var(--primary);
-      transform: rotate(15deg) scale(1.1);
     }
 
-    .lang-selector {
-      position: absolute;
-      top: 70px;
-      right: 25px;
-      background: var(--card-bg);
-      border-radius: var(--radius-sm);
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      padding: 8px;
-      display: none;
-      z-index: 20;
+    .header-icon svg {
+      width: 48px;
+      height: 48px;
     }
 
-    .lang-selector.show {
-      display: block;
-      animation: fadeInDown 0.2s ease-out;
-    }
-
-    .lang-option {
-      padding: 10px 16px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      transition: var(--transition);
-      text-decoration: none;
-      color: var(--text);
-    }
-
-    .lang-option:hover {
-      background: var(--light-gray);
-    }
-
-    .lang-option.active {
-      background: var(--primary-light);
-      color: var(--primary);
-      font-weight: 500;
-    }
-
-    .floating-shapes {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      top: 0;
-      left: 0;
-      overflow: hidden;
-      z-index: -1;
-      pointer-events: none;
-    }
-
-    .shape {
-      position: absolute;
-      border-radius: 50%;
-      opacity: 0.1;
-    }
-
-    .shape-1 {
-      width: 150px;
-      height: 150px;
-      background: var(--primary);
-      top: -50px;
-      right: -50px;
-      animation: float 20s infinite linear;
-    }
-
-    .shape-2 {
-      width: 100px;
-      height: 100px;
-      background: var(--secondary);
-      bottom: -30px;
-      left: -30px;
-      animation: float 15s infinite linear reverse;
-    }
-
-    .shape-3 {
-      width: 80px;
-      height: 80px;
-      background: var(--success);
-      top: 50%;
-      left: -40px;
-      animation: float 25s infinite linear;
-    }
-
-    /* Animations */
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes fadeInDown {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 10px 20px rgba(67, 97, 238, 0.2);
-      }
-      50% {
-        transform: scale(1.05);
-        box-shadow: 0 15px 30px rgba(67, 97, 238, 0.3);
-      }
-    }
-
-    @keyframes float {
-      0%, 100% {
-        transform: translateY(0) rotate(0deg);
-      }
-      25% {
-        transform: translateY(-20px) rotate(90deg);
-      }
-      50% {
-        transform: translateY(0) rotate(180deg);
-      }
-      75% {
-        transform: translateY(20px) rotate(270deg);
-      }
-    }
-
-    /* Responsive */
     @media (max-width: 576px) {
-      body {
-        padding: 15px;
-      }
-      
-      .glass-container {
-        padding: 40px 25px;
+      .container {
+        padding: 30px 20px;
       }
       
       h2 {
-        font-size: 1.6rem;
-      }
-      
-      .icon-wrapper {
-        width: 70px;
-        height: 70px;
-      }
-      
-      .icon-wrapper i {
-        font-size: 28px;
-      }
-      
-      .controls {
-        top: 20px;
-        right: 20px;
-      }
-      
-      input {
-        padding: 14px 16px 14px 44px;
-      }
-      
-      .input-icon {
-        left: 14px;
-        font-size: 16px;
-      }
-    }
-
-    @media (max-width: 400px) {
-      .glass-container {
-        padding: 35px 20px;
-      }
-      
-      h2 {
-        font-size: 1.4rem;
+        font-size: 1.5rem;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Formes flottantes décoratives -->
-  <div class="floating-shapes">
-    <div class="shape shape-1"></div>
-    <div class="shape shape-2"></div>
-    <div class="shape shape-3"></div>
-  </div>
-
-  <div class="glass-container">
-    <!-- Contrôles (thème et langue) -->
-    <div class="controls">
-      <div class="theme-toggle" id="themeToggle">
-        <i class="fas fa-moon"></i>
-      </div>
-      <div class="lang-toggle" id="langToggle">
-        <i class="fas fa-globe"></i>
-      </div>
-    </div>
-
-    <!-- Sélecteur de langue (caché par défaut) -->
-    <div class="lang-selector" id="langSelector">
-      <form method="POST" action="/changer-langue" id="langForm">
+  <div class="container">
+    <!-- Sélecteur de langue -->
+    <div class="lang-select">
+      <form method="POST" action="/changer-langue">
+        <select name="lang" id="lang" onchange="this.form.submit()">
+          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+          <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+        </select>
         <input type="hidden" name="redirect_page" value="inscription_enseignant">
-        <a href="#" class="lang-option {% if lang == 'fr' %}active{% endif %}" data-lang="fr">
-          <span>🇫🇷</span>
-          <span>Français</span>
-        </a>
-        <a href="#" class="lang-option {% if lang == 'en' %}active{% endif %}" data-lang="en">
-          <span>🇬🇧</span>
-          <span>English</span>
-        </a>
       </form>
     </div>
 
-    <!-- En-tête avec icône -->
-    <div class="header-section">
-      <div class="icon-wrapper">
-        <i class="fas fa-chalkboard-teacher"></i>
-      </div>
-      <h2>{% if lang == 'en' %}Add a Teacher{% else %}Ajouter un enseignant{% endif %}</h2>
-      <p class="subtitle">
-        {% if lang == 'en' %}Fill in the details to add a new teacher to the platform{% else %}Remplissez les détails pour ajouter un nouvel enseignant à la plateforme{% endif %}
-      </p>
+    <!-- Icône d'enseignant -->
+    <div class="header-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v6m0 0l-3-3m3 3l3-3m-9-5v6m0 0l-3-3m3 3l3-3" />
+      </svg>
     </div>
 
-    <!-- Formulaire -->
-    <form method="POST" id="teacherForm">
+    <h2>{% if lang == 'en' %}Add a Teacher{% else %}Ajouter un enseignant{% endif %}</h2>
+
+    <form method="POST">
       <div class="form-group">
         <label for="nom">{% if lang == 'en' %}Full Name{% else %}Nom complet{% endif %}</label>
-        <div class="input-wrapper">
-          <input type="text" id="nom" name="nom" required 
-                 placeholder="{% if lang == 'en' %}Enter full name{% else %}Saisissez le nom complet{% endif %}">
+        <div class="input-container">
+          <input type="text" id="nom" name="nom" required>
           <div class="input-icon">
-            <i class="fas fa-user"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+            </svg>
           </div>
         </div>
       </div>
 
       <div class="form-group">
         <label for="email">Email</label>
-        <div class="input-wrapper">
-          <input type="email" id="email" name="email" required 
-                 placeholder="{% if lang == 'en' %}teacher@example.com{% else %}enseignant@exemple.com{% endif %}">
+        <div class="input-container">
+          <input type="email" id="email" name="email" required>
           <div class="input-icon">
-            <i class="fas fa-envelope"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/>
+            </svg>
           </div>
         </div>
       </div>
 
       <div class="form-group">
         <label for="mot_de_passe">{% if lang == 'en' %}Password{% else %}Mot de passe{% endif %}</label>
-        <div class="input-wrapper">
-          <input type="password" id="mot_de_passe" name="mot_de_passe" required 
-                 placeholder="{% if lang == 'en' %}Create a secure password{% else %}Créez un mot de passe sécurisé{% endif %}">
+        <div class="input-container">
+          <input type="password" id="mot_de_passe" name="mot_de_passe" required>
           <div class="input-icon">
-            <i class="fas fa-lock"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+            </svg>
           </div>
-          <button type="button" class="password-toggle" id="passwordToggle">
-            <i class="fas fa-eye"></i>
-          </button>
         </div>
-        <small style="color: var(--text-light); font-size: 0.85rem; margin-top: 4px; display: block;">
-          {% if lang == 'en' %}Minimum 8 characters with letters and numbers{% else %}Minimum 8 caractères avec lettres et chiffres{% endif %}
-        </small>
       </div>
 
-      <button type="submit" class="submit-btn">
-        <i class="fas fa-user-plus"></i>
-        {% if lang == 'en' %}Add Teacher{% else %}Ajouter l'enseignant{% endif %}
-      </button>
+      <button type="submit">{% if lang == 'en' %}Add Teacher{% else %}Ajouter l'enseignant{% endif %}</button>
     </form>
 
     <a class="back-link" href="{{ url_for('admin_dashboard') }}">
-      <i class="fas fa-arrow-left"></i>
-      {% if lang == 'en' %}Back to dashboard{% else %}Retour au tableau de bord{% endif %}
+      ← {% if lang == 'en' %}Back to dashboard{% else %}Retour au tableau de bord{% endif %}
     </a>
   </div>
 
-  <script>
-    // Gestion du thème
-    const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = themeToggle.querySelector('i');
-    
-    // Vérifier le thème sauvegardé ou la préférence système
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-    
-    themeToggle.addEventListener('click', () => {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-      
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-      updateThemeIcon(newTheme);
-    });
-    
-    function updateThemeIcon(theme) {
-      if (theme === 'dark') {
-        themeIcon.className = 'fas fa-sun';
-      } else {
-        themeIcon.className = 'fas fa-moon';
-      }
-    }
-    
-    // Gestion du sélecteur de langue
-    const langToggle = document.getElementById('langToggle');
-    const langSelector = document.getElementById('langSelector');
-    const langForm = document.getElementById('langForm');
-    const langOptions = document.querySelectorAll('.lang-option');
-    
-    langToggle.addEventListener('click', () => {
-      langSelector.classList.toggle('show');
-    });
-    
-    // Fermer le sélecteur de langue en cliquant à l'extérieur
-    document.addEventListener('click', (e) => {
-      if (!langToggle.contains(e.target) && !langSelector.contains(e.target)) {
-        langSelector.classList.remove('show');
-      }
-    });
-    
-    // Changer de langue
-    langOptions.forEach(option => {
-      option.addEventListener('click', (e) => {
-        e.preventDefault();
-        const lang = option.getAttribute('data-lang');
-        
-        // Mettre à jour le formulaire et le soumettre
-        const langSelect = document.createElement('input');
-        langSelect.type = 'hidden';
-        langSelect.name = 'lang';
-        langSelect.value = lang;
-        langForm.appendChild(langSelect);
-        langForm.submit();
-      });
-    });
-    
-    // Afficher/masquer le mot de passe
-    const passwordToggle = document.getElementById('passwordToggle');
-    const passwordInput = document.getElementById('mot_de_passe');
-    const passwordIcon = passwordToggle.querySelector('i');
-    
-    passwordToggle.addEventListener('click', () => {
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
-      passwordIcon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
-    });
-    
-    // Validation du formulaire
-    const form = document.getElementById('teacherForm');
-    
-    form.addEventListener('submit', (e) => {
-      const password = passwordInput.value;
-      const email = document.getElementById('email').value;
-      
-      // Validation du mot de passe
-      if (password.length < 8) {
-        e.preventDefault();
-        showError(passwordInput, '{% if lang == "en" %}Password must be at least 8 characters{% else %}Le mot de passe doit contenir au moins 8 caractères{% endif %}');
-        return;
-      }
-      
-      // Validation basique de l'email
-      if (!email.includes('@') || !email.includes('.')) {
-        e.preventDefault();
-        showError(document.getElementById('email'), '{% if lang == "en" %}Please enter a valid email address{% else %}Veuillez entrer une adresse email valide{% endif %}');
-        return;
-      }
-    });
-    
-    function showError(input, message) {
-      // Supprimer les erreurs précédentes
-      const existingError = input.parentNode.querySelector('.error-message');
-      if (existingError) existingError.remove();
-      
-      // Ajouter un style d'erreur
-      input.style.borderColor = '#e53e3e';
-      input.style.boxShadow = '0 0 0 4px rgba(229, 62, 62, 0.1)';
-      
-      // Créer le message d'erreur
-      const error = document.createElement('div');
-      error.className = 'error-message';
-      error.style.color = '#e53e3e';
-      error.style.fontSize = '0.85rem';
-      error.style.marginTop = '6px';
-      error.textContent = message;
-      
-      input.parentNode.appendChild(error);
-      
-      // Supprimer le style d'erreur après 3 secondes
-      setTimeout(() => {
-        input.style.borderColor = '';
-        input.style.boxShadow = '';
-        error.remove();
-      }, 3000);
-    }
-    
-    // Ajouter des animations aux inputs au focus
-    const inputs = document.querySelectorAll('input');
-    inputs.forEach(input => {
-      input.addEventListener('focus', () => {
-        input.parentNode.parentNode.style.transform = 'translateY(-2px)';
-      });
-      
-      input.addEventListener('blur', () => {
-        input.parentNode.parentNode.style.transform = 'translateY(0)';
-      });
-    });
-    
-    // Animation au chargement
-    document.addEventListener('DOMContentLoaded', () => {
-      document.body.style.opacity = '0';
-      document.body.style.transition = 'opacity 0.5s ease';
-      
-      setTimeout(() => {
-        document.body.style.opacity = '1';
-      }, 100);
-    });
-  </script>
 </body>
 </html>
