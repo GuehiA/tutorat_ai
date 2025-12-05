@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}">
+<html lang="{{ lang }}" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -11,33 +10,42 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  <title>{% if lang == 'en' %}Add Teacher - VirtuEduc{% else %}Ajouter un Enseignant - VirtuEduc{% endif %}</title>
+  <title>{% if lang == 'en' %}Add Teacher{% else %}Ajouter un enseignant{% endif %}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #4361ee;
       --primary-dark: #3a56d4;
-      --primary-light: #eef2ff;
+      --primary-light: #e0e7ff;
       --secondary: #7209b7;
-      --accent: #4cc9f0;
-      --success: #27ae60;
-      --success-dark: #219653;
-      --warning: #f8961e;
-      --danger: #e63946;
-      --light: #ffffff;
-      --dark: #1a1a2e;
+      --secondary-light: #f3e8ff;
+      --success: #10b981;
+      --light: #f8f9ff;
+      --dark: #121826;
       --gray: #6c757d;
-      --light-gray: #f8f9fa;
-      --border-radius: 25px;
-      --border-radius-sm: 15px;
-      --border-radius-xs: 10px;
-      --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-      --shadow-hover: 0 35px 60px -15px rgba(0, 0, 0, 0.2);
-      --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.08);
-      --transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      --gradient-primary: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      --gradient-success: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
-      --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --light-gray: #f1f5f9;
+      --border: #e2e8f0;
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --text: #2d3748;
+      --text-light: #64748b;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+      --radius: 16px;
+      --radius-sm: 12px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --light: #121826;
+      --dark: #f8f9ff;
+      --card-bg: rgba(30, 30, 46, 0.95);
+      --text: #e2e8f0;
+      --text-light: #94a3b8;
+      --border: #2d3748;
+      --light-gray: #1e293b;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
     }
 
     * {
@@ -47,1349 +55,683 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--gradient-bg);
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, var(--light) 0%, #e8eaff 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 30px;
-      color: var(--dark);
+      padding: 20px;
+      color: var(--text);
       line-height: 1.6;
-      position: relative;
-      overflow-x: hidden;
+      transition: var(--transition);
     }
 
-    /* Effet de fond animé */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+    }
+
+    .glass-container {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      padding: 50px;
       width: 100%;
-      height: 100%;
-      background: 
-        radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 25%),
-        radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 25%),
-        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
-      pointer-events: none;
-      z-index: -1;
-      animation: floatBackground 30s infinite linear;
-    }
-
-    @keyframes floatBackground {
-      0% { transform: translate(0, 0) rotate(0deg) scale(1); }
-      25% { transform: translate(-20px, 20px) rotate(90deg) scale(1.02); }
-      50% { transform: translate(0, 40px) rotate(180deg) scale(1); }
-      75% { transform: translate(20px, 20px) rotate(270deg) scale(0.98); }
-      100% { transform: translate(0, 0) rotate(360deg) scale(1); }
-    }
-
-    /* Effet de particules */
-    .particle {
-      position: fixed;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 0;
-      animation: floatParticle 20s linear infinite;
-    }
-
-    @keyframes floatParticle {
-      0% {
-        transform: translateY(100vh) rotate(0deg);
-        opacity: 0;
-      }
-      10% {
-        opacity: 0.5;
-      }
-      90% {
-        opacity: 0.5;
-      }
-      100% {
-        transform: translateY(-100px) rotate(360deg);
-        opacity: 0;
-      }
-    }
-
-    .container {
-      width: 100%;
-      max-width: 550px;
-      position: relative;
-      z-index: 2;
-      animation: slideInUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    @keyframes slideInUp {
-      from {
-        opacity: 0;
-        transform: translateY(50px) scale(0.9);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    /* Carte principale */
-    .card {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95));
-      backdrop-filter: blur(30px);
-      border-radius: var(--border-radius);
-      padding: 60px 50px;
-      box-shadow: var(--shadow);
-      border: 1px solid rgba(255, 255, 255, 0.4);
+      max-width: 500px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       position: relative;
       overflow: hidden;
+      animation: fadeInUp 0.6s ease-out;
     }
 
-    .card::before {
+    .glass-container::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 8px;
-      background: var(--gradient-primary);
-      z-index: 1;
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: var(--radius) var(--radius) 0 0;
     }
 
-    .card::after {
-      content: '';
-      position: absolute;
-      top: -100px;
-      right: -100px;
-      width: 300px;
-      height: 300px;
-      background: var(--gradient-primary);
-      border-radius: 50%;
-      opacity: 0.08;
-      z-index: 0;
-      animation: rotateSlow 30s linear infinite;
-    }
-
-    @keyframes rotateSlow {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    /* En-tête */
-    .header {
+    .header-section {
       text-align: center;
-      margin-bottom: 50px;
-      position: relative;
-      z-index: 2;
+      margin-bottom: 40px;
     }
 
-    .header-icon {
-      width: 110px;
-      height: 110px;
-      background: var(--gradient-primary);
+    .icon-wrapper {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 30px;
+      margin: 0 auto 20px;
+      box-shadow: 0 10px 20px rgba(67, 97, 238, 0.2);
+      animation: pulse 2s infinite;
+    }
+
+    .icon-wrapper i {
+      font-size: 32px;
       color: white;
-      font-size: 3rem;
-      box-shadow: 0 20px 40px rgba(67, 97, 238, 0.4);
-      position: relative;
-      animation: float 6s ease-in-out infinite;
-      transition: var(--transition);
     }
 
-    .header-icon:hover {
-      animation: float 2s ease-in-out infinite, pulse 1.5s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0) rotate(0deg); }
-      33% { transform: translateY(-15px) rotate(5deg); }
-      66% { transform: translateY(5px) rotate(-5deg); }
-    }
-
-    @keyframes pulse {
-      0%, 100% { 
-        box-shadow: 0 20px 40px rgba(67, 97, 238, 0.4), 
-                   0 0 0 0 rgba(67, 97, 238, 0.7); 
-      }
-      50% { 
-        box-shadow: 0 20px 40px rgba(67, 97, 238, 0.4), 
-                   0 0 0 20px rgba(67, 97, 238, 0); 
-      }
-    }
-
-    .header-icon::before {
-      content: '';
-      position: absolute;
-      top: -10px;
-      left: -10px;
-      right: -10px;
-      bottom: -10px;
-      background: var(--gradient-primary);
-      border-radius: 50%;
-      opacity: 0.3;
-      z-index: -1;
-      animation: pulseGlow 3s ease-in-out infinite;
-    }
-
-    @keyframes pulseGlow {
-      0%, 100% { transform: scale(1); opacity: 0.3; }
-      50% { transform: scale(1.1); opacity: 0.5; }
-    }
-
-    .title {
-      font-size: 2.5rem;
-      font-weight: 800;
-      margin-bottom: 15px;
-      background: var(--gradient-primary);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      line-height: 1.2;
-      letter-spacing: -0.5px;
+    h2 {
+      color: var(--text);
+      margin-bottom: 8px;
+      font-size: 1.8rem;
     }
 
     .subtitle {
-      color: var(--gray);
-      font-size: 1.15rem;
-      font-weight: 400;
-      max-width: 400px;
-      margin: 0 auto;
-      opacity: 0.9;
-    }
-
-    /* Formulaire */
-    .form {
-      position: relative;
-      z-index: 2;
+      color: var(--text-light);
+      font-size: 0.95rem;
     }
 
     .form-group {
-      margin-bottom: 35px;
+      margin-bottom: 24px;
       position: relative;
     }
 
-    .form-label {
+    label {
       display: block;
-      margin-bottom: 18px;
-      font-weight: 600;
-      color: var(--dark);
-      font-size: 1.1rem;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text);
+      font-size: 0.95rem;
       transition: var(--transition);
     }
 
-    .form-label:hover {
-      color: var(--primary);
-      transform: translateX(5px);
-    }
-
-    .form-label i {
-      color: var(--primary);
-      font-size: 1.3rem;
-      width: 24px;
-      text-align: center;
-    }
-
-    .form-input-container {
+    .input-wrapper {
       position: relative;
-      transition: var(--transition);
     }
 
-    .form-input-container:hover {
-      transform: translateY(-3px);
-    }
-
-    .form-input {
+    input {
       width: 100%;
-      padding: 22px 65px 22px 25px;
-      border: 2px solid transparent;
-      border-radius: var(--border-radius-sm);
-      font-size: 17px;
+      padding: 16px 20px 16px 48px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      font-family: 'Inter', sans-serif;
       transition: var(--transition);
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-      font-family: inherit;
-      color: var(--dark);
-      box-shadow: var(--shadow-light);
-      backdrop-filter: blur(10px);
+      background-color: var(--light-gray);
+      color: var(--text);
+      caret-color: var(--primary);
     }
 
-    .form-input:focus {
+    input:focus {
       outline: none;
       border-color: var(--primary);
-      background: white;
-      box-shadow: 0 0 0 6px rgba(67, 97, 238, 0.15), var(--shadow-light);
-      transform: translateY(-5px);
+      background-color: white;
+      box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+      transform: translateY(-1px);
     }
 
-    .form-input:valid {
-      border-color: rgba(39, 174, 96, 0.3);
+    input::placeholder {
+      color: var(--text-light);
+      opacity: 0.7;
     }
 
     .input-icon {
       position: absolute;
-      right: 25px;
+      left: 16px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--gray);
-      font-size: 1.3rem;
-      transition: var(--transition);
-      pointer-events: none;
-    }
-
-    .form-input:focus + .input-icon {
       color: var(--primary);
-      transform: translateY(-50%) scale(1.2);
-    }
-
-    .input-hint {
-      color: var(--gray);
-      font-size: 0.9rem;
-      margin-top: 12px;
-      text-align: left;
-      font-style: italic;
-      line-height: 1.4;
-      padding-left: 36px;
-      opacity: 0.8;
-    }
-
-    /* Contrôle du mot de passe */
-    .password-controls {
-      display: flex;
-      gap: 12px;
-      margin-top: 15px;
-      align-items: center;
-    }
-
-    .toggle-password {
-      background: rgba(255, 255, 255, 0.8);
-      border: 1px solid var(--light-gray);
-      border-radius: var(--border-radius-xs);
-      padding: 10px 18px;
-      cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 18px;
       transition: var(--transition);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--dark);
-      backdrop-filter: blur(10px);
     }
 
-    .toggle-password:hover {
-      background: var(--primary-light);
-      border-color: var(--primary);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-light);
+    input:focus + .input-icon {
+      color: var(--secondary);
+      transform: translateY(-50%) scale(1.1);
     }
 
-    .generate-password {
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: var(--border-radius-xs);
-      padding: 10px 18px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 500;
-    }
-
-    .generate-password:hover {
-      background: #3ab8e0;
-      transform: translateY(-2px) scale(1.05);
-      box-shadow: 0 8px 20px rgba(76, 201, 240, 0.4);
-    }
-
-    /* Indicateur de force du mot de passe */
-    .password-strength {
-      height: 6px;
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 3px;
-      margin-top: 12px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .password-strength-bar {
-      height: 100%;
-      width: 0%;
-      background: var(--danger);
-      transition: var(--transition);
-      border-radius: 3px;
-      position: relative;
-    }
-
-    .password-strength-bar::after {
-      content: '';
+    .password-toggle {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(90deg, 
-        transparent 0%, 
-        rgba(255, 255, 255, 0.3) 50%, 
-        transparent 100%);
-      animation: shimmer 2s infinite;
-    }
-
-    @keyframes shimmer {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
-    }
-
-    .strength-weak { background: var(--danger); }
-    .strength-medium { background: var(--warning); }
-    .strength-strong { background: var(--success); }
-
-    .strength-label {
-      font-size: 0.85rem;
-      color: var(--gray);
-      margin-top: 8px;
-      text-align: right;
-      font-weight: 500;
-      transition: var(--transition);
-    }
-
-    /* Bouton d'action */
-    .action-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 15px;
-      padding: 22px 45px;
-      border-radius: 50px;
-      font-weight: 700;
-      font-size: 1.2rem;
-      text-decoration: none;
-      transition: var(--transition);
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
       border: none;
+      color: var(--text-light);
       cursor: pointer;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
-      position: relative;
-      overflow: hidden;
-      width: 100%;
-      justify-content: center;
-      margin-top: 20px;
+      font-size: 18px;
+      transition: var(--transition);
+      padding: 4px;
+      border-radius: 4px;
     }
 
-    .action-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(45deg, 
-        transparent 0%, 
-        rgba(255, 255, 255, 0.2) 50%, 
-        transparent 100%);
-      transform: translateX(-100%);
-      transition: transform 0.6s;
-    }
-
-    .action-btn:hover::before {
-      transform: translateX(100%);
+    .password-toggle:hover {
+      color: var(--primary);
+      background: rgba(67, 97, 238, 0.1);
     }
 
     .submit-btn {
-      background: var(--gradient-success);
+      margin-top: 30px;
+      padding: 18px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: none;
       color: white;
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+      font-family: 'Poppins', sans-serif;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .submit-btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.7s;
     }
 
     .submit-btn:hover {
-      background: linear-gradient(135deg, var(--success-dark), #1e7e34);
-      transform: translateY(-5px) scale(1.02);
-      box-shadow: 0 20px 40px rgba(39, 174, 96, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(67, 97, 238, 0.4);
+    }
+
+    .submit-btn:hover::after {
+      left: 100%;
     }
 
     .submit-btn:active {
-      transform: translateY(-2px) scale(0.98);
+      transform: translateY(-1px);
     }
 
-    /* Lien de retour */
     .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 40px;
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 600;
-      padding: 16px 30px;
-      border-radius: 50px;
-      transition: var(--transition);
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      position: absolute;
-      top: 30px;
-      left: 30px;
-      z-index: 3;
-    }
-
-    .back-link:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-3px) translateX(5px);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Sélecteur de langue */
-    .lang-selector {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(15px);
-      border-radius: var(--border-radius-xs);
-      padding: 12px 18px;
-      box-shadow: var(--shadow-light);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      position: absolute;
-      top: 30px;
-      right: 30px;
-      z-index: 3;
-      transition: var(--transition);
-    }
-
-    .lang-selector:hover {
-      background: rgba(255, 255, 255, 0.25);
-      transform: translateY(-3px);
-    }
-
-    .lang-selector form {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .lang-selector label {
-      color: white;
-      font-weight: 500;
-      font-size: 1.1rem;
-      margin: 0;
-    }
-
-    .lang-selector select {
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 8px;
-      padding: 8px 12px;
-      color: white;
-      font-size: 0.95rem;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .lang-selector select:focus {
-      outline: none;
-      border-color: rgba(255, 255, 255, 0.6);
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-    }
-
-    .lang-selector option {
-      background: var(--dark);
-      color: white;
-    }
-
-    /* Messages de succès/erreur */
-    .message {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: var(--border-radius-sm);
-      padding: 25px;
-      margin-bottom: 30px;
-      box-shadow: var(--shadow-light);
-      border-left: 6px solid var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      animation: slideInRight 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      backdrop-filter: blur(10px);
-    }
-
-    .message.success {
-      border-left-color: var(--success);
-      background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(255, 255, 255, 0.95));
-    }
-
-    .message.error {
-      border-left-color: var(--danger);
-      background: linear-gradient(135deg, rgba(230, 57, 70, 0.1), rgba(255, 255, 255, 0.95));
-    }
-
-    @keyframes slideInRight {
-      from {
-        opacity: 0;
-        transform: translateX(-30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    .message-icon {
-      font-size: 2rem;
-      color: var(--primary);
-      flex-shrink: 0;
-    }
-
-    .message.success .message-icon {
-      color: var(--success);
-    }
-
-    .message.error .message-icon {
-      color: var(--danger);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      body {
-        padding: 20px;
-      }
-      
-      .container {
-        max-width: 90%;
-      }
-      
-      .card {
-        padding: 50px 35px;
-      }
-      
-      .title {
-        font-size: 2.1rem;
-      }
-      
-      .header-icon {
-        width: 90px;
-        height: 90px;
-        font-size: 2.5rem;
-      }
-      
-      .form-input {
-        padding: 20px 60px 20px 20px;
-      }
-      
-      .back-link, .lang-selector {
-        position: relative;
-        top: 0;
-        left: 0;
-        right: 0;
-        margin-bottom: 20px;
-        justify-content: center;
-        width: 100%;
-      }
-      
-      .lang-selector {
-        order: -1;
-        margin-bottom: 30px;
-      }
-      
-      .back-link {
-        margin-top: 30px;
-      }
-      
-      .password-controls {
-        flex-direction: column;
-        align-items: stretch;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .card {
-        padding: 40px 25px;
-        border-radius: 20px;
-      }
-      
-      .title {
-        font-size: 1.8rem;
-      }
-      
-      .subtitle {
-        font-size: 1rem;
-      }
-      
-      .header-icon {
-        width: 80px;
-        height: 80px;
-        font-size: 2.2rem;
-      }
-      
-      .form-input {
-        padding: 18px 55px 18px 18px;
-        font-size: 16px;
-      }
-      
-      .action-btn {
-        padding: 20px 35px;
-        font-size: 1.1rem;
-      }
-      
-      .form-label {
-        font-size: 1rem;
-      }
-    }
-
-    /* Validation visuelle */
-    .valid-input {
-      border-color: var(--success) !important;
-      background: linear-gradient(135deg, rgba(39, 174, 96, 0.05), rgba(255, 255, 255, 0.9)) !important;
-    }
-
-    .invalid-input {
-      border-color: var(--danger) !important;
-      background: linear-gradient(135deg, rgba(230, 57, 70, 0.05), rgba(255, 255, 255, 0.9)) !important;
-    }
-
-    .validation-message {
-      color: var(--danger);
-      font-size: 0.85rem;
-      margin-top: 8px;
-      text-align: left;
-      padding-left: 36px;
-      animation: shake 0.5s ease;
-    }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      75% { transform: translateX(5px); }
-    }
-
-    /* Animation de chargement */
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 9999;
-      opacity: 0;
-      visibility: hidden;
+      gap: 8px;
+      margin-top: 25px;
+      text-decoration: none;
+      color: var(--text-light);
+      font-weight: 500;
       transition: var(--transition);
-      backdrop-filter: blur(10px);
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      background: var(--light-gray);
     }
 
-    .loading-overlay.active {
-      opacity: 1;
-      visibility: visible;
+    .back-link:hover {
+      color: var(--primary);
+      background: rgba(67, 97, 238, 0.1);
+      transform: translateX(-3px);
     }
 
-    .spinner {
+    .back-link i {
+      font-size: 14px;
+      transition: var(--transition);
+    }
+
+    .back-link:hover i {
+      transform: translateX(-2px);
+    }
+
+    .controls {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      display: flex;
+      gap: 12px;
+      z-index: 10;
+    }
+
+    .theme-toggle, .lang-toggle {
+      width: 40px;
+      height: 40px;
+      background: var(--light-gray);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .theme-toggle:hover, .lang-toggle:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+      transform: rotate(15deg) scale(1.1);
+    }
+
+    .lang-selector {
+      position: absolute;
+      top: 70px;
+      right: 25px;
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 8px;
+      display: none;
+      z-index: 20;
+    }
+
+    .lang-selector.show {
+      display: block;
+      animation: fadeInDown 0.2s ease-out;
+    }
+
+    .lang-option {
+      padding: 10px 16px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .lang-option:hover {
+      background: var(--light-gray);
+    }
+
+    .lang-option.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .floating-shapes {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .shape {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.1;
+    }
+
+    .shape-1 {
+      width: 150px;
+      height: 150px;
+      background: var(--primary);
+      top: -50px;
+      right: -50px;
+      animation: float 20s infinite linear;
+    }
+
+    .shape-2 {
+      width: 100px;
+      height: 100px;
+      background: var(--secondary);
+      bottom: -30px;
+      left: -30px;
+      animation: float 15s infinite linear reverse;
+    }
+
+    .shape-3 {
       width: 80px;
       height: 80px;
-      border: 5px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top-color: var(--primary);
-      animation: spin 1s ease-in-out infinite;
+      background: var(--success);
+      top: 50%;
+      left: -40px;
+      animation: float 25s infinite linear;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 10px 20px rgba(67, 97, 238, 0.2);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 15px 30px rgba(67, 97, 238, 0.3);
+      }
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0) rotate(0deg);
+      }
+      25% {
+        transform: translateY(-20px) rotate(90deg);
+      }
+      50% {
+        transform: translateY(0) rotate(180deg);
+      }
+      75% {
+        transform: translateY(20px) rotate(270deg);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+      body {
+        padding: 15px;
+      }
+      
+      .glass-container {
+        padding: 40px 25px;
+      }
+      
+      h2 {
+        font-size: 1.6rem;
+      }
+      
+      .icon-wrapper {
+        width: 70px;
+        height: 70px;
+      }
+      
+      .icon-wrapper i {
+        font-size: 28px;
+      }
+      
+      .controls {
+        top: 20px;
+        right: 20px;
+      }
+      
+      input {
+        padding: 14px 16px 14px 44px;
+      }
+      
+      .input-icon {
+        left: 14px;
+        font-size: 16px;
+      }
+    }
+
+    @media (max-width: 400px) {
+      .glass-container {
+        padding: 35px 20px;
+      }
+      
+      h2 {
+        font-size: 1.4rem;
+      }
     }
   </style>
 </head>
 <body>
 
-  <!-- Lien de retour -->
-  <a href="{{ url_for('admin_dashboard') }}" class="back-link">
-    <i class="fas fa-arrow-left"></i>
-    {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
-  </a>
-
-  <!-- Sélecteur de langue -->
-  <div class="lang-selector">
-    <form method="POST" action="/changer-langue">
-      <label for="lang">🌍</label>
-      <select name="lang" id="lang" onchange="this.form.submit()">
-        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-        <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
-      </select>
-      <input type="hidden" name="redirect_page" value="inscription_enseignant">
-    </form>
+  <!-- Formes flottantes décoratives -->
+  <div class="floating-shapes">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
   </div>
 
-  <div class="container">
-    <div class="card">
-      <div class="header">
-        <div class="header-icon">
-          <i class="fas fa-chalkboard-teacher"></i>
-        </div>
-        <h1 class="title">
-          {% if lang == 'en' %}Add a New Teacher{% else %}Ajouter un Nouvel Enseignant{% endif %}
-        </h1>
-        <p class="subtitle">
-          {% if lang == 'en' %}
-            Create a new teacher account to access the VirtuEduc platform
-          {% else %}
-            Créez un nouveau compte enseignant pour accéder à la plateforme VirtuEduc
-          {% endif %}
-        </p>
+  <div class="glass-container">
+    <!-- Contrôles (thème et langue) -->
+    <div class="controls">
+      <div class="theme-toggle" id="themeToggle">
+        <i class="fas fa-moon"></i>
       </div>
+      <div class="lang-toggle" id="langToggle">
+        <i class="fas fa-globe"></i>
+      </div>
+    </div>
 
-      <!-- Messages -->
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="message {{ category }}">
-              <div class="message-icon">
-                {% if category == 'success' %}
-                  <i class="fas fa-check-circle"></i>
-                {% elif category == 'error' %}
-                  <i class="fas fa-exclamation-circle"></i>
-                {% else %}
-                  <i class="fas fa-info-circle"></i>
-                {% endif %}
-              </div>
-              <div class="message-text">{{ message }}</div>
-            </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-
-      <!-- Formulaire -->
-      <form method="POST" class="form" id="teacherForm">
-        <div class="form-group">
-          <label class="form-label">
-            <i class="fas fa-user"></i>
-            {% if lang == 'en' %}Full Name *{% else %}Nom Complet *{% endif %}
-          </label>
-          <div class="form-input-container">
-            <input 
-              type="text" 
-              name="nom" 
-              class="form-input" 
-              required
-              placeholder="{% if lang == 'en' %}Enter teacher's full name{% else %}Saisir le nom complet de l'enseignant{% endif %}"
-              autocomplete="name"
-              autocapitalize="words"
-              maxlength="100"
-              id="teacherName"
-            >
-            <div class="input-icon">
-              <i class="fas fa-user-tie"></i>
-            </div>
-          </div>
-          <div class="input-hint">
-            {% if lang == 'en' %}
-              The name that will appear on the platform (max 100 characters)
-            {% else %}
-              Le nom qui apparaîtra sur la plateforme (max 100 caractères)
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">
-            <i class="fas fa-envelope"></i>
-            Email *
-          </label>
-          <div class="form-input-container">
-            <input 
-              type="email" 
-              name="email" 
-              class="form-input" 
-              required
-              placeholder="exemple@virtueduc.fr"
-              autocomplete="email"
-              maxlength="100"
-              id="teacherEmail"
-            >
-            <div class="input-icon">
-              <i class="fas fa-at"></i>
-            </div>
-          </div>
-          <div class="input-hint">
-            {% if lang == 'en' %}
-              Email address used for login and notifications
-            {% else %}
-              Adresse email utilisée pour la connexion et les notifications
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">
-            <i class="fas fa-key"></i>
-            {% if lang == 'en' %}Password *{% else %}Mot de Passe *{% endif %}
-          </label>
-          <div class="form-input-container">
-            <input 
-              type="password" 
-              name="mot_de_passe" 
-              class="form-input" 
-              required
-              placeholder="{% if lang == 'en' %}Enter a secure password{% else %}Saisir un mot de passe sécurisé{% endif %}"
-              autocomplete="new-password"
-              minlength="6"
-              id="teacherPassword"
-            >
-            <div class="input-icon">
-              <i class="fas fa-lock"></i>
-            </div>
-          </div>
-          
-          <div class="password-strength">
-            <div class="password-strength-bar" id="passwordStrengthBar"></div>
-          </div>
-          <div class="strength-label" id="passwordStrengthLabel">
-            {% if lang == 'en' %}Password strength{% else %}Force du mot de passe{% endif %}
-          </div>
-          
-          <div class="password-controls">
-            <button type="button" class="toggle-password" id="togglePassword">
-              <i class="fas fa-eye"></i>
-              {% if lang == 'en' %}Show Password{% else %}Afficher le Mot de Passe{% endif %}
-            </button>
-            <button type="button" class="generate-password" id="generatePassword">
-              <i class="fas fa-random"></i>
-              {% if lang == 'en' %}Generate Secure Password{% else %}Générer un Mot de Passe{% endif %}
-            </button>
-          </div>
-          
-          <div class="input-hint">
-            {% if lang == 'en' %}
-              Minimum 6 characters. Use a combination of letters, numbers and symbols.
-            {% else %}
-              Minimum 6 caractères. Utilisez une combinaison de lettres, chiffres et symboles.
-            {% endif %}
-          </div>
-        </div>
-
-        <button type="submit" class="action-btn submit-btn">
-          <i class="fas fa-user-plus"></i>
-          {% if lang == 'en' %}Create Teacher Account{% else %}Créer le Compte Enseignant{% endif %}
-        </button>
+    <!-- Sélecteur de langue (caché par défaut) -->
+    <div class="lang-selector" id="langSelector">
+      <form method="POST" action="/changer-langue" id="langForm">
+        <input type="hidden" name="redirect_page" value="inscription_enseignant">
+        <a href="#" class="lang-option {% if lang == 'fr' %}active{% endif %}" data-lang="fr">
+          <span>🇫🇷</span>
+          <span>Français</span>
+        </a>
+        <a href="#" class="lang-option {% if lang == 'en' %}active{% endif %}" data-lang="en">
+          <span>🇬🇧</span>
+          <span>English</span>
+        </a>
       </form>
     </div>
-  </div>
 
-  <!-- Overlay de chargement -->
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
+    <!-- En-tête avec icône -->
+    <div class="header-section">
+      <div class="icon-wrapper">
+        <i class="fas fa-chalkboard-teacher"></i>
+      </div>
+      <h2>{% if lang == 'en' %}Add a Teacher{% else %}Ajouter un enseignant{% endif %}</h2>
+      <p class="subtitle">
+        {% if lang == 'en' %}Fill in the details to add a new teacher to the platform{% else %}Remplissez les détails pour ajouter un nouvel enseignant à la plateforme{% endif %}
+      </p>
+    </div>
+
+    <!-- Formulaire -->
+    <form method="POST" id="teacherForm">
+      <div class="form-group">
+        <label for="nom">{% if lang == 'en' %}Full Name{% else %}Nom complet{% endif %}</label>
+        <div class="input-wrapper">
+          <input type="text" id="nom" name="nom" required 
+                 placeholder="{% if lang == 'en' %}Enter full name{% else %}Saisissez le nom complet{% endif %}">
+          <div class="input-icon">
+            <i class="fas fa-user"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <div class="input-wrapper">
+          <input type="email" id="email" name="email" required 
+                 placeholder="{% if lang == 'en' %}teacher@example.com{% else %}enseignant@exemple.com{% endif %}">
+          <div class="input-icon">
+            <i class="fas fa-envelope"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="mot_de_passe">{% if lang == 'en' %}Password{% else %}Mot de passe{% endif %}</label>
+        <div class="input-wrapper">
+          <input type="password" id="mot_de_passe" name="mot_de_passe" required 
+                 placeholder="{% if lang == 'en' %}Create a secure password{% else %}Créez un mot de passe sécurisé{% endif %}">
+          <div class="input-icon">
+            <i class="fas fa-lock"></i>
+          </div>
+          <button type="button" class="password-toggle" id="passwordToggle">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <small style="color: var(--text-light); font-size: 0.85rem; margin-top: 4px; display: block;">
+          {% if lang == 'en' %}Minimum 8 characters with letters and numbers{% else %}Minimum 8 caractères avec lettres et chiffres{% endif %}
+        </small>
+      </div>
+
+      <button type="submit" class="submit-btn">
+        <i class="fas fa-user-plus"></i>
+        {% if lang == 'en' %}Add Teacher{% else %}Ajouter l'enseignant{% endif %}
+      </button>
+    </form>
+
+    <a class="back-link" href="{{ url_for('admin_dashboard') }}">
+      <i class="fas fa-arrow-left"></i>
+      {% if lang == 'en' %}Back to dashboard{% else %}Retour au tableau de bord{% endif %}
+    </a>
   </div>
 
   <script>
-    // Variables globales
-    let isPasswordVisible = false;
-
-    // Créer des particules de fond
-    function createParticles() {
-      const colors = [
-        'rgba(67, 97, 238, 0.2)',
-        'rgba(114, 9, 183, 0.2)',
-        'rgba(76, 201, 240, 0.2)',
-        'rgba(255, 255, 255, 0.1)'
-      ];
-
-      for (let i = 0; i < 25; i++) {
-        setTimeout(() => {
-          const particle = document.createElement('div');
-          const size = Math.random() * 4 + 1;
-          const color = colors[Math.floor(Math.random() * colors.length)];
-
-          particle.className = 'particle';
-          particle.style.cssText = `
-            width: ${size}px;
-            height: ${size}px;
-            background: ${color};
-            left: ${Math.random() * 100}vw;
-            animation-delay: ${Math.random() * 20}s;
-          `;
-
-          document.body.appendChild(particle);
-
-          setTimeout(() => {
-            if (particle.parentNode) {
-              particle.parentNode.removeChild(particle);
-            }
-          }, 20000);
-        }, i * 200);
+    // Gestion du thème
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = themeToggle.querySelector('i');
+    
+    // Vérifier le thème sauvegardé ou la préférence système
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+    
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateThemeIcon(newTheme);
+    });
+    
+    function updateThemeIcon(theme) {
+      if (theme === 'dark') {
+        themeIcon.className = 'fas fa-sun';
+      } else {
+        themeIcon.className = 'fas fa-moon';
       }
     }
-
-    // Initialiser les particules
-    createParticles();
-
-    // Toggle password visibility
-    const togglePasswordBtn = document.getElementById('togglePassword');
-    const passwordInput = document.getElementById('teacherPassword');
     
-    if (togglePasswordBtn && passwordInput) {
-      togglePasswordBtn.addEventListener('click', function() {
-        isPasswordVisible = !isPasswordVisible;
-        passwordInput.type = isPasswordVisible ? 'text' : 'password';
-        this.innerHTML = isPasswordVisible 
-          ? '<i class="fas fa-eye-slash"></i> ' + 
-            ("{{ lang }}" === 'en' ? 'Hide Password' : 'Masquer le Mot de Passe')
-          : '<i class="fas fa-eye"></i> ' + 
-            ("{{ lang }}" === 'en' ? 'Show Password' : 'Afficher le Mot de Passe');
-      });
-    }
-
-    // Generate secure password
-    const generatePasswordBtn = document.getElementById('generatePassword');
+    // Gestion du sélecteur de langue
+    const langToggle = document.getElementById('langToggle');
+    const langSelector = document.getElementById('langSelector');
+    const langForm = document.getElementById('langForm');
+    const langOptions = document.querySelectorAll('.lang-option');
     
-    if (generatePasswordBtn && passwordInput) {
-      generatePasswordBtn.addEventListener('click', function() {
-        const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        const lower = 'abcdefghijklmnopqrstuvwxyz';
-        const numbers = '0123456789';
-        const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-        
-        let password = '';
-        
-        // Ensure at least one of each type
-        password += upper[Math.floor(Math.random() * upper.length)];
-        password += lower[Math.floor(Math.random() * lower.length)];
-        password += numbers[Math.floor(Math.random() * numbers.length)];
-        password += symbols[Math.floor(Math.random() * symbols.length)];
-        
-        // Fill the rest randomly
-        const allChars = upper + lower + numbers + symbols;
-        for (let i = 4; i < 12; i++) {
-          password += allChars[Math.floor(Math.random() * allChars.length)];
-        }
-        
-        // Shuffle the password
-        password = password.split('').sort(() => Math.random() - 0.5).join('');
-        
-        passwordInput.value = password;
-        passwordInput.type = 'text';
-        isPasswordVisible = true;
-        
-        // Update toggle button
-        if (togglePasswordBtn) {
-          togglePasswordBtn.innerHTML = 
-            '<i class="fas fa-eye-slash"></i> ' + 
-            ("{{ lang }}" === 'en' ? 'Hide Password' : 'Masquer le Mot de Passe');
-        }
-        
-        // Update password strength
-        updatePasswordStrength(password);
-        
-        // Animation feedback
-        passwordInput.classList.add('valid-input');
-        generatePasswordBtn.style.background = '#3fba83';
-        generatePasswordBtn.innerHTML = 
-          '<i class="fas fa-check"></i> ' + 
-          ("{{ lang }}" === 'en' ? 'Generated!' : 'Généré!');
-        
-        // Reset after 2 seconds
-        setTimeout(() => {
-          passwordInput.classList.remove('valid-input');
-          generatePasswordBtn.style.background = '';
-          generatePasswordBtn.innerHTML = 
-            '<i class="fas fa-random"></i> ' + 
-            ("{{ lang }}" === 'en' ? 'Generate Secure Password' : 'Générer un Mot de Passe');
-        }, 2000);
-      });
-    }
-
-    // Password strength indicator
-    function updatePasswordStrength(password) {
-      const strengthBar = document.getElementById('passwordStrengthBar');
-      const strengthLabel = document.getElementById('passwordStrengthLabel');
-      
-      if (!strengthBar || !strengthLabel) return;
-      
-      let strength = 0;
-      let label = "{{ lang }}" === 'en' ? 'Weak' : 'Faible';
-      let colorClass = 'strength-weak';
-      
-      if (password.length >= 6) strength += 20;
-      if (password.length >= 8) strength += 20;
-      if (password.length >= 12) strength += 20;
-      if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength += 20;
-      if (/[0-9]/.test(password)) strength += 10;
-      if (/[^A-Za-z0-9]/.test(password)) strength += 10;
-      
-      strength = Math.min(strength, 100);
-      
-      if (strength >= 70) {
-        label = "{{ lang }}" === 'en' ? 'Strong' : 'Fort';
-        colorClass = 'strength-strong';
-      } else if (strength >= 40) {
-        label = "{{ lang }}" === 'en' ? 'Medium' : 'Moyen';
-        colorClass = 'strength-medium';
+    langToggle.addEventListener('click', () => {
+      langSelector.classList.toggle('show');
+    });
+    
+    // Fermer le sélecteur de langue en cliquant à l'extérieur
+    document.addEventListener('click', (e) => {
+      if (!langToggle.contains(e.target) && !langSelector.contains(e.target)) {
+        langSelector.classList.remove('show');
       }
-      
-      strengthBar.style.width = strength + '%';
-      strengthBar.className = 'password-strength-bar ' + colorClass;
-      strengthLabel.textContent = "{{ lang }}" === 'en' ? 
-        `Password strength: ${label}` : 
-        `Force du mot de passe: ${label}`;
-    }
-
-    // Écouter les changements du mot de passe
-    if (passwordInput) {
-      passwordInput.addEventListener('input', function() {
-        updatePasswordStrength(this.value);
+    });
+    
+    // Changer de langue
+    langOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.preventDefault();
+        const lang = option.getAttribute('data-lang');
+        
+        // Mettre à jour le formulaire et le soumettre
+        const langSelect = document.createElement('input');
+        langSelect.type = 'hidden';
+        langSelect.name = 'lang';
+        langSelect.value = lang;
+        langForm.appendChild(langSelect);
+        langForm.submit();
       });
-    }
-
-    // Initialiser la force du mot de passe
-    if (passwordInput) {
-      updatePasswordStrength(passwordInput.value);
-    }
-
+    });
+    
+    // Afficher/masquer le mot de passe
+    const passwordToggle = document.getElementById('passwordToggle');
+    const passwordInput = document.getElementById('mot_de_passe');
+    const passwordIcon = passwordToggle.querySelector('i');
+    
+    passwordToggle.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      passwordIcon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+    });
+    
     // Validation du formulaire
     const form = document.getElementById('teacherForm');
-    const loadingOverlay = document.getElementById('loadingOverlay');
     
-    form.addEventListener('submit', function(e) {
-      const name = document.getElementById('teacherName').value.trim();
-      const email = document.getElementById('teacherEmail').value.trim();
-      const password = document.getElementById('teacherPassword').value;
+    form.addEventListener('submit', (e) => {
+      const password = passwordInput.value;
+      const email = document.getElementById('email').value;
       
-      // Validation
-      let isValid = true;
-      
-      // Name validation
-      if (!name) {
-        showError('teacherName', "{{ lang }}" === 'en' ? 
-          'Full name is required' : 'Le nom complet est requis');
-        isValid = false;
-      } else if (name.length > 100) {
-        showError('teacherName', "{{ lang }}" === 'en' ? 
-          'Name must be maximum 100 characters' : 'Le nom doit contenir au maximum 100 caractères');
-        isValid = false;
-      } else {
-        clearError('teacherName');
-      }
-      
-      // Email validation
-      if (!email) {
-        showError('teacherEmail', "{{ lang }}" === 'en' ? 
-          'Email address is required' : 'L\'adresse email est requise');
-        isValid = false;
-      } else if (!isValidEmail(email)) {
-        showError('teacherEmail', "{{ lang }}" === 'en' ? 
-          'Please enter a valid email address' : 'Veuillez entrer une adresse email valide');
-        isValid = false;
-      } else {
-        clearError('teacherEmail');
-      }
-      
-      // Password validation
-      if (!password) {
-        showError('teacherPassword', "{{ lang }}" === 'en' ? 
-          'Password is required' : 'Le mot de passe est requis');
-        isValid = false;
-      } else if (password.length < 6) {
-        showError('teacherPassword', "{{ lang }}" === 'en' ? 
-          'Password must be at least 6 characters' : 'Le mot de passe doit contenir au moins 6 caractères');
-        isValid = false;
-      } else {
-        clearError('teacherPassword');
-      }
-      
-      if (!isValid) {
+      // Validation du mot de passe
+      if (password.length < 8) {
         e.preventDefault();
-        return false;
+        showError(passwordInput, '{% if lang == "en" %}Password must be at least 8 characters{% else %}Le mot de passe doit contenir au moins 8 caractères{% endif %}');
+        return;
       }
       
-      // Show loading overlay
-      loadingOverlay.classList.add('active');
-      
-      // Change button text
-      const submitBtn = this.querySelector('.submit-btn');
-      const originalHTML = submitBtn.innerHTML;
-      submitBtn.innerHTML = 
-        '<i class="fas fa-spinner fa-spin"></i> ' + 
-        ("{{ lang }}" === 'en' ? 'Creating Account...' : 'Création du Compte...');
-      submitBtn.disabled = true;
-      
-      return true;
+      // Validation basique de l'email
+      if (!email.includes('@') || !email.includes('.')) {
+        e.preventDefault();
+        showError(document.getElementById('email'), '{% if lang == "en" %}Please enter a valid email address{% else %}Veuillez entrer une adresse email valide{% endif %}');
+        return;
+      }
     });
-
-    function showError(inputId, message) {
-      const input = document.getElementById(inputId);
-      if (!input) return;
-      
-      // Add error class
-      input.classList.add('invalid-input');
-      input.classList.remove('valid-input');
-      
-      // Remove existing error message
-      const existingError = input.parentNode.querySelector('.validation-message');
+    
+    function showError(input, message) {
+      // Supprimer les erreurs précédentes
+      const existingError = input.parentNode.querySelector('.error-message');
       if (existingError) existingError.remove();
       
-      // Add new error message
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'validation-message';
-      errorDiv.textContent = message;
+      // Ajouter un style d'erreur
+      input.style.borderColor = '#e53e3e';
+      input.style.boxShadow = '0 0 0 4px rgba(229, 62, 62, 0.1)';
       
-      input.parentNode.appendChild(errorDiv);
+      // Créer le message d'erreur
+      const error = document.createElement('div');
+      error.className = 'error-message';
+      error.style.color = '#e53e3e';
+      error.style.fontSize = '0.85rem';
+      error.style.marginTop = '6px';
+      error.textContent = message;
       
-      // Focus on field
-      input.focus();
+      input.parentNode.appendChild(error);
       
-      // Remove error after 5 seconds
+      // Supprimer le style d'erreur après 3 secondes
       setTimeout(() => {
-        clearError(inputId);
-      }, 5000);
+        input.style.borderColor = '';
+        input.style.boxShadow = '';
+        error.remove();
+      }, 3000);
     }
-
-    function clearError(inputId) {
-      const input = document.getElementById(inputId);
-      if (!input) return;
-      
-      input.classList.remove('invalid-input');
-      
-      const existingError = input.parentNode.querySelector('.validation-message');
-      if (existingError) existingError.remove();
-    }
-
-    function isValidEmail(email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return emailRegex.test(email);
-    }
-
-    // Real-time validation
-    const inputs = document.querySelectorAll('.form-input');
+    
+    // Ajouter des animations aux inputs au focus
+    const inputs = document.querySelectorAll('input');
     inputs.forEach(input => {
-      input.addEventListener('blur', function() {
-        if (this.value.trim()) {
-          if (this.type === 'email' && !isValidEmail(this.value)) {
-            this.classList.add('invalid-input');
-          } else {
-            this.classList.add('valid-input');
-            this.classList.remove('invalid-input');
-          }
-        }
+      input.addEventListener('focus', () => {
+        input.parentNode.parentNode.style.transform = 'translateY(-2px)';
       });
       
-      input.addEventListener('input', function() {
-        this.classList.remove('invalid-input', 'valid-input');
-        
-        // Clear error message on input
-        const error = this.parentNode.querySelector('.validation-message');
-        if (error) error.remove();
+      input.addEventListener('blur', () => {
+        input.parentNode.parentNode.style.transform = 'translateY(0)';
       });
     });
-
-    // Animation au focus
-    inputs.forEach(input => {
-      input.addEventListener('focus', function() {
-        this.parentElement.style.transform = 'translateY(-3px)';
-      });
+    
+    // Animation au chargement
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body.style.opacity = '0';
+      document.body.style.transition = 'opacity 0.5s ease';
       
-      input.addEventListener('blur', function() {
-        this.parentElement.style.transform = 'translateY(0)';
-      });
-    });
-
-    // Focus sur le premier champ
-    setTimeout(() => {
-      const firstInput = document.getElementById('teacherName');
-      if (firstInput) {
-        firstInput.focus();
-      }
-    }, 500);
-
-    // Animation de l'icône au survol
-    const headerIcon = document.querySelector('.header-icon');
-    if (headerIcon) {
-      headerIcon.addEventListener('mouseenter', function() {
-        this.style.animation = 'float 2s ease-in-out, pulse 1.5s ease-in-out';
-      });
-      
-      headerIcon.addEventListener('mouseleave', function() {
-        this.style.animation = 'float 6s ease-in-out infinite';
-      });
-    }
-
-    // Smooth transition on language change
-    const langSelect = document.getElementById('lang');
-    if (langSelect) {
-      langSelect.addEventListener('change', function() {
-        document.body.style.opacity = '0.5';
-        document.body.style.transition = 'opacity 0.3s ease';
-      });
-    }
-
-    // Character counter for name
-    const nameInput = document.getElementById('teacherName');
-    if (nameInput) {
-      const counter = document.createElement('div');
-      counter.className = 'input-hint';
-      counter.style.marginTop = '5px';
-      counter.style.textAlign = 'right';
-      counter.style.fontSize = '0.8rem';
-      counter.style.color = 'var(--gray)';
-      
-      nameInput.parentNode.appendChild(counter);
-      
-      function updateCounter() {
-        const length = nameInput.value.length;
-        counter.textContent = `${length}/100`;
-        counter.style.color = length >= 90 ? 'var(--danger)' : 
-                             length >= 70 ? 'var(--warning)' : 'var(--gray)';
-      }
-      
-      nameInput.addEventListener('input', updateCounter);
-      updateCounter();
-    }
-
-    // Auto-focus on email after name if it looks complete
-    if (nameInput) {
-      nameInput.addEventListener('blur', function() {
-        if (this.value.trim().split(' ').length >= 2) {
-          const emailInput = document.getElementById('teacherEmail');
-          if (emailInput && !emailInput.value) {
-            emailInput.focus();
-          }
-        }
-      });
-    }
-
-    // Confirmation before leaving page
-    window.addEventListener('beforeunload', function(e) {
-      const form = document.getElementById('teacherForm');
-      const hasData = Array.from(form.querySelectorAll('input')).some(input => 
-        input.value && input.type !== 'submit'
-      );
-      
-      if (hasData) {
-        e.preventDefault();
-        e.returnValue = "{{ lang }}" === 'en' ? 
-          'You have unsaved changes. Are you sure you want to leave?' : 
-          'Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir quitter ?';
-      }
-    });
-
-    // Animation on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      // Animate form groups sequentially
-      const formGroups = document.querySelectorAll('.form-group');
-      formGroups.forEach((group, index) => {
-        setTimeout(() => {
-          group.style.opacity = '1';
-          group.style.transform = 'translateY(0)';
-        }, 100 * index);
-        
-        group.style.opacity = '0';
-        group.style.transform = 'translateY(20px)';
-        group.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-      });
-      
-      // Animate submit button
-      const submitBtn = document.querySelector('.submit-btn');
       setTimeout(() => {
-        submitBtn.style.opacity = '1';
-        submitBtn.style.transform = 'translateY(0)';
-      }, 500);
-      
-      submitBtn.style.opacity = '0';
-      submitBtn.style.transform = 'translateY(20px)';
-      submitBtn.style.transition = 'opacity 0.5s ease 0.5s, transform 0.5s ease 0.5s';
+        document.body.style.opacity = '1';
+      }, 100);
     });
   </script>
 </body>

@@ -432,32 +432,26 @@
       font-weight: 600;
     }
 
-    .search-box {
-      position: relative;
-      margin-bottom: 25px;
-    }
-
-    .search-box input {
+    .logout-btn {
+      background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
+      color: white;
+      border: none;
       border-radius: 30px;
-      padding: 12px 20px 12px 45px;
-      border: 1px solid var(--border);
-      background: var(--card-bg);
-      color: var(--text);
-      box-shadow: var(--shadow);
+      padding: 12px 25px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       transition: var(--transition);
+      text-decoration: none;
+      cursor: pointer;
+      margin-left: 10px;
     }
 
-    .search-box input:focus {
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
-      border-color: var(--primary);
-    }
-
-    .search-box i {
-      position: absolute;
-      left: 20px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-light);
+    .logout-btn:hover {
+      background: linear-gradient(135deg, var(--danger-dark) 0%, #c44545 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
 
     /* Styles spécifiques pour les matières */
@@ -585,11 +579,17 @@
         margin-left: 0;
         align-self: flex-end;
       }
+      
+      .logout-btn {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        margin-left: 5px;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Header avec sélecteur de langue et thème -->
+  <!-- Header avec sélecteur de langue, thème et bouton de déconnexion -->
   <div class="dashboard-header">
     <div class="row align-items-center">
       <div class="col-md-6">
@@ -598,10 +598,6 @@
       </div>
       <div class="col-md-6 text-end">
         <div class="d-flex justify-content-end align-items-center">
-          <div class="search-box me-3">
-            <i class="fas fa-search"></i>
-            <input type="text" class="form-control" placeholder="{% if lang == 'en' %}Search...{% else %}Rechercher...{% endif %}" id="searchInput">
-          </div>
           <div class="lang-selector d-inline-block me-2">
             <form method="POST" action="/changer-langue" class="d-flex align-items-center">
               <label for="lang" class="me-2">🌍</label>
@@ -612,6 +608,10 @@
               <input type="hidden" name="redirect_page" value="admin_dashboard">
             </form>
           </div>
+          <a href="/logout" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i>
+            {% if lang == 'en' %}Logout{% else %}Déconnexion{% endif %}
+          </a>
           <div class="theme-toggle" id="themeToggle">
             <i class="fas fa-moon"></i>
           </div>
@@ -620,30 +620,24 @@
     </div>
   </div>
 
-  <!-- Cartes de statistiques rapides -->
+  <!-- Cartes de statistiques rapides - TROIS CARTES SUR LA MÊME LIGNE -->
   <div class="row mb-4">
-    <div class="col-md-3">
+    <div class="col-md-4">
       <div class="stats-card">
         <div class="stats-number">{{ stats.enseignants_count if stats else '24' }}</div>
         <div class="stats-label">{% if lang == 'en' %}Teachers{% else %}Enseignants{% endif %}</div>
       </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
       <div class="stats-card">
         <div class="stats-number">{{ stats.eleves_count if stats else '156' }}</div>
         <div class="stats-label">{% if lang == 'en' %}Students{% else %}Élèves{% endif %}</div>
       </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
       <div class="stats-card">
         <div class="stats-number">{{ stats.lecons_count if stats else '42' }}</div>
         <div class="stats-label">{% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}</div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="stats-card">
-        <div class="stats-number">{{ stats.tests_count if stats else '18' }}</div>
-        <div class="stats-label">{% if lang == 'en' %}Tests{% else %}Tests{% endif %}</div>
       </div>
     </div>
   </div>
@@ -1092,39 +1086,6 @@
         themeIcon.className = 'fas fa-moon';
       }
     }
-    
-    // Recherche dans le contenu
-    const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('input', function() {
-      const searchTerm = this.value.toLowerCase();
-      
-      // Recherche dans la hiérarchie du contenu
-      if (searchTerm.length > 2) {
-        document.querySelectorAll('.content-item, .accordion-button, .matiere-title h5').forEach(item => {
-          const text = item.textContent.toLowerCase();
-          if (text.includes(searchTerm)) {
-            item.closest('.matiere-header, .content-item, .accordion-item').style.backgroundColor = 'rgba(67, 97, 238, 0.2)';
-            // Ouvrir les accordions parents
-            const accordionItem = item.closest('.accordion-item');
-            if (accordionItem) {
-              const collapse = accordionItem.querySelector('.accordion-collapse');
-              if (collapse) {
-                new bootstrap.Collapse(collapse, { toggle: false }).show();
-              }
-            }
-          } else {
-            const element = item.closest('.matiere-header, .content-item, .accordion-item');
-            if (element) {
-              element.style.backgroundColor = '';
-            }
-          }
-        });
-      } else {
-        document.querySelectorAll('.matiere-header, .content-item, .accordion-item').forEach(item => {
-          item.style.backgroundColor = '';
-        });
-      }
-    });
     
     // Initialisation des tooltips Bootstrap
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
