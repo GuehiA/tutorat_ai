@@ -44,7 +44,6 @@
       --radius: 12px;
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
-
     [data-theme="dark"] {
       --light: #121826;
       --dark: #f8f9ff;
@@ -55,11 +54,9 @@
       --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
       --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
     }
-
     * {
       box-sizing: border-box;
     }
-
     body {
       font-family: 'Inter', sans-serif;
       background: linear-gradient(135deg, var(--light) 0%, #e8eaff 100%);
@@ -69,12 +66,10 @@
       transition: var(--transition);
       line-height: 1.6;
     }
-
     h1, h2, h3, h4, h5, h6 {
       font-family: 'Poppins', sans-serif;
       font-weight: 600;
     }
-
     .dashboard-header {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -85,7 +80,6 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       animation: fadeInDown 0.6s ease-out;
     }
-
     .dashboard-card {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -98,17 +92,14 @@
       animation: fadeInUp 0.6s ease-out forwards;
       height: 100%;
     }
-
     .dashboard-card:nth-child(1) { animation-delay: 0.1s; }
     .dashboard-card:nth-child(2) { animation-delay: 0.2s; }
     .dashboard-card:nth-child(3) { animation-delay: 0.3s; }
-
     .dashboard-card:hover {
       transform: translateY(-8px) scale(1.01);
       box-shadow: var(--shadow-lg);
     }
-
-    .dashboard-card .card-header { 
+    .dashboard-card .card-header {
       border-bottom: 1px solid var(--border);
       font-weight: 600;
       padding: 25px;
@@ -118,19 +109,16 @@
       gap: 12px;
       height: 80px;
     }
-
     .dashboard-card .card-body {
       padding: 25px;
       min-height: 280px;
       display: flex;
       flex-direction: column;
     }
-
     .nav-tabs {
       border-bottom: 1px solid var(--border);
       margin-bottom: 25px;
     }
-
     .nav-tabs .nav-link {
       border: none;
       border-radius: var(--radius) var(--radius) 0 0;
@@ -141,7 +129,6 @@
       position: relative;
       overflow: hidden;
     }
-
     .nav-tabs .nav-link::before {
       content: '';
       position: absolute;
@@ -153,17 +140,14 @@
       transform: scaleX(0);
       transition: transform 0.3s ease;
     }
-
     .nav-tabs .nav-link.active {
       background-color: transparent;
       color: var(--primary);
       font-weight: 600;
     }
-
     .nav-tabs .nav-link.active::before {
       transform: scaleX(1);
     }
-
     .content-section {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -174,7 +158,6 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       animation: fadeIn 0.6s ease-out;
     }
-
     .action-btn {
       border-radius: 10px;
       padding: 14px 18px;
@@ -196,7 +179,6 @@
       color: var(--text);
       border: 1px solid var(--border);
     }
-
     .action-btn::after {
       content: "";
       display: block;
@@ -210,63 +192,56 @@
       transform-origin: right;
       transition: transform 0.3s ease;
     }
-
     .action-btn:hover {
       transform: translateY(-3px);
       box-shadow: 0 6px 15px rgba(0,0,0,0.1);
       border-color: transparent;
     }
-
     .action-btn:hover::after {
       transform: scaleX(1);
       transform-origin: left;
     }
-
     .action-btn i {
       font-size: 1.1rem;
       width: 24px;
       text-align: center;
     }
-
     /* User Management */
-    .user-management .card-header { 
+    .user-management .card-header {
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: white;
     }
-    .user-management .action-btn:hover { 
+    .user-management .action-btn:hover {
       background: linear-gradient(135deg, var(--primary-light) 0%, #d0d9ff 100%);
       color: var(--primary-dark);
     }
-    .user-management .action-btn i { 
+    .user-management .action-btn i {
       color: var(--primary);
     }
-
     /* Content Management */
-    .content-management .card-header { 
+    .content-management .card-header {
       background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
       color: white;
     }
-    .content-management .action-btn:hover { 
+    .content-management .action-btn:hover {
       background: linear-gradient(135deg, var(--success-light) 0%, #c0ebd9 100%);
       color: var(--success-dark);
     }
-    .content-management .action-btn i { 
+    .content-management .action-btn i {
       color: var(--success);
     }
-
     /* Evaluations */
-    .evaluations .card-header { 
+    .evaluations .card-header {
       background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
       color: white;
     }
-    .evaluations .action-btn:hover { 
+    .evaluations .action-btn:hover {
       background: linear-gradient(135deg, var(--warning-light) 0%, #ffeccc 100%);
       color: var(--warning-dark);
     }
-    .evaluations .action-btn i { 
+    .evaluations .action-btn i {
       color: var(--warning);
     }
-
     .stats-card {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -280,7 +255,6 @@
       position: relative;
       overflow: hidden;
     }
-
     .stats-card::before {
       content: '';
       position: absolute;
@@ -290,25 +264,21 @@
       height: 4px;
       background: linear-gradient(90deg, var(--primary), var(--success));
     }
-
     .stats-card:hover {
       transform: translateY(-5px);
       box-shadow: var(--shadow-lg);
     }
-
     .stats-number {
       font-size: 2.5rem;
       font-weight: 700;
       color: var(--primary);
       margin-bottom: 5px;
     }
-
     .stats-label {
       font-size: 0.9rem;
       color: var(--text-light);
       font-weight: 500;
     }
-
     .lang-selector {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -317,7 +287,6 @@
       box-shadow: var(--shadow);
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
-
     .theme-toggle {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -333,11 +302,9 @@
       transition: var(--transition);
       margin-left: 10px;
     }
-
     .theme-toggle:hover {
       transform: rotate(15deg);
     }
-
     .logout-btn {
       background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
       color: white;
@@ -353,47 +320,43 @@
       cursor: pointer;
       margin-left: 10px;
     }
-
     .logout-btn:hover {
       background: linear-gradient(135deg, var(--danger-dark) 0%, #c44545 100%);
       transform: translateY(-2px);
       box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
-
     /* Cartes alignées */
     .quick-actions-row {
       margin-top: 20px;
     }
-
     .card-icon {
       font-size: 1.5rem;
     }
-
-    /* Styles pour la Structure du Contenu */
-    .matiere-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 15px;
-      padding: 12px 15px;
-      background: rgba(63, 186, 131, 0.1);
-      border-radius: 8px;
-      border-left: 4px solid var(--success);
+    /* Styles pour les accordéons */
+    .accordion-button:not(.collapsed) {
+      background-color: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+      box-shadow: none;
     }
-
-    .matiere-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .accordion-button {
+      font-weight: 600;
+      padding: 15px 20px;
     }
-
-    /* Amélioration des éléments imbriqués */
+    .accordion-button:focus {
+      box-shadow: none;
+      border-color: var(--primary);
+    }
+    .badge-pill {
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
     .nested-content {
       margin-left: 20px;
       padding-left: 20px;
       border-left: 2px solid var(--border);
     }
-
     .content-item {
       padding: 15px;
       border-left: 4px solid var(--primary);
@@ -405,34 +368,26 @@
       align-items: center;
       justify-content: space-between;
     }
-
     .content-item:hover {
       background: rgba(67, 97, 238, 0.1);
       transform: translateX(5px);
     }
-
     .content-item .content-info {
       flex: 1;
     }
-
     .lecon-item {
       background: rgba(23, 162, 184, 0.05);
       border-left: 4px solid var(--info);
-      margin-bottom: 8px;
     }
-
     .exercice-item {
       background: rgba(108, 117, 125, 0.05);
       border-left: 4px solid #6c757d;
-      margin-bottom: 5px;
     }
-
     .action-buttons {
       display: flex;
       gap: 8px;
       margin-left: auto;
     }
-
     .action-buttons .btn-action {
       width: 36px;
       height: 36px;
@@ -447,59 +402,28 @@
       transition: var(--transition);
       text-decoration: none;
     }
-
     .action-buttons .btn-action:hover {
       transform: translateY(-2px) scale(1.1);
       box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
-
     .action-buttons .btn-edit {
       background: var(--success);
     }
-
     .action-buttons .btn-edit:hover {
       background: var(--success-dark);
     }
-
     .action-buttons .btn-delete {
       background: var(--danger);
     }
-
     .action-buttons .btn-delete:hover {
       background: var(--danger-dark);
     }
-
     .action-buttons .btn-view {
       background: var(--info);
     }
-
     .action-buttons .btn-view:hover {
       background: var(--info-dark);
     }
-
-    .accordion-button:not(.collapsed) { 
-      background-color: rgba(67, 97, 238, 0.1);
-      color: var(--primary);
-      box-shadow: none;
-    }
-
-    .accordion-button { 
-      font-weight: 600;
-      padding: 15px 20px;
-    }
-
-    .accordion-button:focus {
-      box-shadow: none;
-      border-color: var(--primary);
-    }
-
-    .badge-pill {
-      border-radius: 20px;
-      padding: 6px 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
     /* Animations */
     @keyframes fadeInUp {
       from {
@@ -511,7 +435,6 @@
         transform: translateY(0);
       }
     }
-
     @keyframes fadeInDown {
       from {
         opacity: 0;
@@ -522,7 +445,6 @@
         transform: translateY(0);
       }
     }
-
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -531,66 +453,54 @@
         opacity: 1;
       }
     }
-
     /* Responsive */
     @media (max-width: 768px) {
       body {
         padding: 15px;
       }
-      
       .dashboard-header {
         padding: 20px;
       }
-      
       .stats-number {
         font-size: 2rem;
       }
-      
       .nav-tabs .nav-link {
         padding: 12px 15px;
         font-size: 0.9rem;
       }
-      
       .dashboard-card .card-header {
         padding: 20px;
         height: auto;
         flex-wrap: wrap;
       }
-      
       .action-btn {
         padding: 12px 15px;
         font-size: 0.9rem;
       }
-      
       .logout-btn {
         padding: 10px 15px;
         font-size: 0.9rem;
         margin-left: 5px;
       }
-      
       .action-buttons {
         flex-direction: column;
         gap: 5px;
       }
-      
       .action-buttons .btn-action {
         width: 32px;
         height: 32px;
         font-size: 12px;
       }
-      
       .content-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
       }
-      
       .content-item .action-buttons {
         margin-left: 0;
         align-self: flex-end;
       }
     }
-
     @media (max-width: 576px) {
       .quick-actions-row .col-md-4 {
         margin-bottom: 20px;
@@ -629,8 +539,7 @@
       </div>
     </div>
   </div>
-
-  <!-- Cartes de statistiques rapides - TROIS CARTES SUR LA MÊME LIGNE -->
+  <!-- Cartes de statistiques rapides -->
   <div class="row mb-4">
     <div class="col-md-4">
       <div class="stats-card">
@@ -651,7 +560,6 @@
       </div>
     </div>
   </div>
-
   <!-- Navigation par onglets -->
   <ul class="nav nav-tabs" id="adminTabs" role="tablist">
     <li class="nav-item" role="presentation">
@@ -670,10 +578,9 @@
       </button>
     </li>
   </ul>
-
   <!-- Contenu des onglets -->
   <div class="tab-content" id="adminTabsContent">
-    <!-- Onglet Actions Rapides - TROIS CARTES ALIGNÉES -->
+    <!-- Onglet Actions Rapides -->
     <div class="tab-pane fade show active" id="actions" role="tabpanel">
       <div class="row quick-actions-row">
         <!-- Gestion des Utilisateurs -->
@@ -703,7 +610,6 @@
             </div>
           </div>
         </div>
-
         <!-- Gestion des Contenus -->
         <div class="col-md-4">
           <div class="dashboard-card content-management">
@@ -731,7 +637,6 @@
             </div>
           </div>
         </div>
-
         <!-- Évaluations -->
         <div class="col-md-4">
           <div class="dashboard-card evaluations">
@@ -769,159 +674,173 @@
         </div>
       </div>
     </div>
-
-    <!-- Onglet Structure du Contenu -->
+    <!-- Onglet Structure du Contenu (ACCORDÉON ÉLÉGANT) -->
     <div class="tab-pane fade" id="content" role="tabpanel">
       <div class="content-section mt-4">
         <h4 class="mb-3">{% if lang == 'en' %}Content Hierarchy{% else %}Hiérarchie du Contenu{% endif %}</h4>
-        
+
+        <!-- Accordéon principal pour les niveaux -->
         <div class="accordion" id="contentAccordion">
           {% for niveau in niveaux %}
             <div class="accordion-item">
               <h2 class="accordion-header" id="headingNiveau{{ niveau.id }}">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau{{ niveau.id }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau{{ niveau.id }}" aria-expanded="false" aria-controls="collapseNiveau{{ niveau.id }}">
                   <i class="fas fa-layer-group me-2 text-primary"></i>
                   {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
                   <span class="badge bg-primary badge-pill ms-2">{{ niveau.matieres|length }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}</span>
                 </button>
               </h2>
-              <div id="collapseNiveau{{ niveau.id }}" class="accordion-collapse collapse">
+              <div id="collapseNiveau{{ niveau.id }}" class="accordion-collapse collapse" aria-labelledby="headingNiveau{{ niveau.id }}" data-bs-parent="#contentAccordion">
                 <div class="accordion-body">
-                  {% for matiere in niveau.matieres %}
-                    <div class="mb-4">
-                      <!-- En-tête de la matière avec boutons -->
-                      <div class="matiere-header">
-                        <div class="matiere-title">
-                          <i class="fas fa-book text-success"></i>
-                          <h5 class="mb-0">
+                  <!-- Accordéon pour les matières -->
+                  <div class="accordion" id="matiereAccordion{{ niveau.id }}">
+                    {% for matiere in niveau.matieres %}
+                      <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingMatiere{{ matiere.id }}">
+                          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMatiere{{ matiere.id }}" aria-expanded="false" aria-controls="collapseMatiere{{ matiere.id }}">
+                            <i class="fas fa-book me-2 text-success"></i>
                             {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
                             <span class="badge bg-success badge-pill ms-2">{{ matiere.unites|length }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
-                          </h5>
-                        </div>
-                        <div class="action-buttons">
-                          <!-- Bouton Modifier Matière -->
-                          <a href="{{ url_for('modifier_matiere', id=matiere.id) }}" class="btn-action btn-edit" 
-                             title="{% if lang == 'en' %}Edit subject{% else %}Modifier la matière{% endif %}">
-                            <i class="fas fa-edit"></i>
-                          </a>
-                          <!-- Bouton Supprimer Matière -->
-                          <form method="POST" action="{{ url_for('supprimer_matiere', id=matiere.id) }}" class="d-inline">
-                            <button type="submit" class="btn-action btn-delete" 
-                                    onclick="return confirm('{% if lang == 'en' %}Are you sure you want to delete this subject? This will also delete all associated units, lessons, and exercises.{% else %}Êtes-vous sûr de vouloir supprimer cette matière ? Toutes les unités, leçons et exercices associés seront également supprimés.{% endif %}')"
-                                    title="{% if lang == 'en' %}Delete subject{% else %}Supprimer la matière{% endif %}">
-                              <i class="fas fa-trash"></i>
-                            </button>
-                          </form>
-                        </div>
-                      </div>
-                      
-                      <!-- Unités de la matière -->
-                      <div class="nested-content mt-3">
-                        {% for unite in matiere.unites %}
-                          <div class="mb-3">
-                            <div class="content-item">
-                              <div class="content-info">
-                                <i class="fas fa-cube me-2 text-info"></i>
-                                <strong class="text-info">{{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}</strong>
-                              </div>
+                          </button>
+                        </h2>
+                        <div id="collapseMatiere{{ matiere.id }}" class="accordion-collapse collapse" aria-labelledby="headingMatiere{{ matiere.id }}" data-bs-parent="#matiereAccordion{{ niveau.id }}">
+                          <div class="accordion-body">
+                            <!-- Boutons d'action pour la matière -->
+                            <div class="d-flex justify-content-end mb-3">
                               <div class="action-buttons">
-                                <form method="POST" action="/admin/supprimer-unite/{{ unite.id }}" class="d-inline">
-                                  <button type="submit" class="btn-action btn-delete" 
-                                          onclick="return confirm('{% if lang == 'en' %}Delete this unit? All associated lessons and exercises will also be deleted.{% else %}Supprimer cette unité ? Toutes les leçons et exercices associés seront également supprimés.{% endif %}')"
-                                          title="{% if lang == 'en' %}Delete unit{% else %}Supprimer l'unité{% endif %}">
+                                <a href="{{ url_for('modifier_matiere', id=matiere.id) }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit subject{% else %}Modifier la matière{% endif %}">
+                                  <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('supprimer_matiere', id=matiere.id) }}" class="d-inline">
+                                  <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Are you sure you want to delete this subject? This will also delete all associated units, lessons, and exercises.{% else %}Êtes-vous sûr de vouloir supprimer cette matière ? Toutes les unités, leçons et exercices associés seront également supprimés.{% endif %}')">
                                     <i class="fas fa-trash"></i>
                                   </button>
                                 </form>
                               </div>
                             </div>
-                            
-                            <!-- Tests de l'unité -->
-                            {% if unite.tests %}
-                              <div class="nested-content">
-                                {% for test in unite.tests %}
-                                  <div class="content-item mb-2 lecon-item">
-                                    <div class="content-info">
-                                      <i class="fas fa-vial me-2 text-warning"></i>
-                                      {% if lang == 'en' %}Summative Test #{{ test.id }}{% else %}Test Sommatif #{{ test.id }}{% endif %}
-                                    </div>
-                                    <div class="action-buttons">
-                                      <a href="/admin/visualiser-test-sommatif/{{ test.id }}" class="btn-action btn-view" 
-                                         title="{% if lang == 'en' %}View test{% else %}Voir le test{% endif %}">
-                                        <i class="fas fa-eye"></i>
-                                      </a>
-                                      <a href="/admin/modifier-test/{{ test.id }}" class="btn-action btn-edit"
-                                         title="{% if lang == 'en' %}Edit test{% else %}Modifier le test{% endif %}">
-                                        <i class="fas fa-edit"></i>
-                                      </a>
-                                    </div>
-                                  </div>
-                                {% endfor %}
-                              </div>
-                            {% endif %}
-                            
-                            <!-- Leçons de l'unité -->
-                            <div class="nested-content">
-                              {% for lecon in unite.lecons %}
-                                <div class="mb-2">
-                                  <div class="content-item lecon-item">
-                                    <div class="content-info">
-                                      <i class="fas fa-file-alt me-2 text-secondary"></i>
-                                      {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
-                                      <span class="badge bg-secondary badge-pill ms-2">{{ lecon.exercices|length }} {% if lang == 'en' %}exercises{% else %}exercices{% endif %}</span>
-                                    </div>
-                                    <div class="action-buttons">
-                                      <a href="/admin/modifier-lecon/{{ lecon.id }}" class="btn-action btn-edit"
-                                         title="{% if lang == 'en' %}Edit lesson{% else %}Modifier la leçon{% endif %}">
-                                        <i class="fas fa-edit"></i>
-                                      </a>
-                                      <form method="POST" action="/admin/supprimer-lecon/{{ lecon.id }}" class="d-inline">
-                                        <button type="submit" class="btn-action btn-delete" 
-                                                onclick="return confirm('{% if lang == 'en' %}Delete this lesson? All associated exercises will also be deleted.{% else %}Supprimer cette leçon ? Tous les exercices associés seront également supprimés.{% endif %}')"
-                                                title="{% if lang == 'en' %}Delete lesson{% else %}Supprimer la leçon{% endif %}">
-                                          <i class="fas fa-trash"></i>
-                                        </button>
-                                      </form>
-                                    </div>
-                                  </div>
-                                  
-                                  <!-- Exercices de la leçon -->
-                                  {% if lecon.exercices %}
-                                    <div class="nested-content mt-2">
-                                      {% for exercice in lecon.exercices %}
-                                        <div class="content-item mb-1 exercice-item">
-                                          <div class="content-info">
-                                            <i class="fas fa-edit me-2 text-muted"></i>
-                                            <small>
-                                              {% if lang == 'en' %}
-                                                {{ exercice.question_en[:50] if exercice.question_en else exercice.question_fr[:50] }}...
-                                              {% else %}
-                                                {{ exercice.question_fr[:50] if exercice.question_fr else exercice.question_en[:50] }}...
-                                              {% endif %}
-                                            </small>
-                                          </div>
-                                          <div class="action-buttons">
-                                            <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn-action btn-edit"
-                                               title="{% if lang == 'en' %}Edit exercise{% else %}Modifier l'exercice{% endif %}">
-                                              <i class="fas fa-edit"></i>
-                                            </a>
-                                            <button type="button" class="btn-action btn-delete" 
-                                                    onclick="confirmDelete('{{ exercice.id }}')"
-                                                    title="{% if lang == 'en' %}Delete exercise{% else %}Supprimer l'exercice{% endif %}">
+
+                            <!-- Accordéon pour les unités -->
+                            <div class="accordion" id="uniteAccordion{{ matiere.id }}">
+                              {% for unite in matiere.unites %}
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="headingUnite{{ unite.id }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUnite{{ unite.id }}" aria-expanded="false" aria-controls="collapseUnite{{ unite.id }}">
+                                      <i class="fas fa-cube me-2 text-info"></i>
+                                      {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
+                                      <span class="badge bg-info badge-pill ms-2">
+                                        {{ unite.lecons|length + unite.tests|length }} {% if lang == 'en' %}items{% else %}éléments{% endif %}
+                                      </span>
+                                    </button>
+                                  </h2>
+                                  <div id="collapseUnite{{ unite.id }}" class="accordion-collapse collapse" aria-labelledby="headingUnite{{ unite.id }}" data-bs-parent="#uniteAccordion{{ matiere.id }}">
+                                    <div class="accordion-body">
+                                      <!-- Boutons d'action pour l'unité -->
+                                      <div class="d-flex justify-content-end mb-3">
+                                        <div class="action-buttons">
+                                          <form method="POST" action="/admin/supprimer-unite/{{ unite.id }}" class="d-inline">
+                                            <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Delete this unit? All associated lessons and exercises will also be deleted.{% else %}Supprimer cette unité ? Toutes les leçons et exercices associés seront également supprimés.{% endif %}')">
                                               <i class="fas fa-trash"></i>
                                             </button>
-                                          </div>
+                                          </form>
                                         </div>
-                                      {% endfor %}
+                                      </div>
+
+                                      <!-- Liste des leçons et tests -->
+                                      <div class="nested-content">
+                                        <!-- Tests -->
+                                        {% if unite.tests %}
+                                          <h6 class="text-warning mb-2">{% if lang == 'en' %}Summative Tests{% else %}Tests Sommatifs{% endif %}</h6>
+                                          {% for test in unite.tests %}
+                                            <div class="content-item lecon-item mb-2">
+                                              <div class="content-info">
+                                                <i class="fas fa-vial me-2 text-warning"></i>
+                                                {% if lang == 'en' %}Test #{{ test.id }}{% else %}Test #{{ test.id }}{% endif %}
+                                              </div>
+                                              <div class="action-buttons">
+                                                <a href="/admin/visualiser-test-sommatif/{{ test.id }}" class="btn-action btn-view" title="{% if lang == 'en' %}View test{% else %}Voir le test{% endif %}">
+                                                  <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="/admin/modifier-test/{{ test.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit test{% else %}Modifier le test{% endif %}">
+                                                  <i class="fas fa-edit"></i>
+                                                </a>
+                                              </div>
+                                            </div>
+                                          {% endfor %}
+                                        {% endif %}
+
+                                        <!-- Leçons -->
+                                        <h6 class="text-secondary mb-2 mt-3">{% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}</h6>
+                                        {% for lecon in unite.lecons %}
+                                          <div class="accordion" id="leconAccordion{{ lecon.id }}">
+                                            <div class="accordion-item">
+                                              <h2 class="accordion-header" id="headingLecon{{ lecon.id }}">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLecon{{ lecon.id }}" aria-expanded="false" aria-controls="collapseLecon{{ lecon.id }}">
+                                                  <i class="fas fa-file-alt me-2 text-secondary"></i>
+                                                  {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                                                  <span class="badge bg-secondary badge-pill ms-2">{{ lecon.exercices|length }} {% if lang == 'en' %}exercises{% else %}exercices{% endif %}</span>
+                                                </button>
+                                              </h2>
+                                              <div id="collapseLecon{{ lecon.id }}" class="accordion-collapse collapse" aria-labelledby="headingLecon{{ lecon.id }}" data-bs-parent="#leconAccordion{{ lecon.id }}">
+                                                <div class="accordion-body">
+                                                  <!-- Boutons d'action pour la leçon -->
+                                                  <div class="d-flex justify-content-end mb-3">
+                                                    <div class="action-buttons">
+                                                      <a href="/admin/modifier-lecon/{{ lecon.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit lesson{% else %}Modifier la leçon{% endif %}">
+                                                        <i class="fas fa-edit"></i>
+                                                      </a>
+                                                      <form method="POST" action="/admin/supprimer-lecon/{{ lecon.id }}" class="d-inline">
+                                                        <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Delete this lesson? All associated exercises will also be deleted.{% else %}Supprimer cette leçon ? Tous les exercices associés seront également supprimés.{% endif %}')">
+                                                          <i class="fas fa-trash"></i>
+                                                        </button>
+                                                      </form>
+                                                    </div>
+                                                  </div>
+
+                                                  <!-- Exercices -->
+                                                  {% if lecon.exercices %}
+                                                    <div class="nested-content">
+                                                      {% for exercice in lecon.exercices %}
+                                                        <div class="content-item exercice-item mb-2">
+                                                          <div class="content-info">
+                                                            <i class="fas fa-edit me-2 text-muted"></i>
+                                                            <small>
+                                                              {% if lang == 'en' %}
+                                                                {{ exercice.question_en[:50] if exercice.question_en else exercice.question_fr[:50] }}...
+                                                              {% else %}
+                                                                {{ exercice.question_fr[:50] if exercice.question_fr else exercice.question_en[:50] }}...
+                                                              {% endif %}
+                                                            </small>
+                                                          </div>
+                                                          <div class="action-buttons">
+                                                            <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit exercise{% else %}Modifier l'exercice{% endif %}">
+                                                              <i class="fas fa-edit"></i>
+                                                            </a>
+                                                            <button type="button" class="btn-action btn-delete" onclick="confirmDelete('{{ exercice.id }}')" title="{% if lang == 'en' %}Delete exercise{% else %}Supprimer l'exercice{% endif %}">
+                                                              <i class="fas fa-trash"></i>
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                      {% endfor %}
+                                                    </div>
+                                                  {% else %}
+                                                    <p class="text-muted mb-0">{% if lang == 'en' %}No exercises for this lesson.{% else %}Aucun exercice pour cette leçon.{% endif %}</p>
+                                                  {% endif %}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        {% endfor %}
+                                      </div>
                                     </div>
-                                  {% endif %}
+                                  </div>
                                 </div>
                               {% endfor %}
                             </div>
                           </div>
-                        {% endfor %}
+                        </div>
                       </div>
-                    </div>
-                  {% endfor %}
+                    {% endfor %}
+                  </div>
                 </div>
               </div>
             </div>
@@ -929,7 +848,6 @@
         </div>
       </div>
     </div>
-
     <!-- Onglet Analytics -->
     <div class="tab-pane fade" id="analytics" role="tabpanel">
       <div class="content-section mt-4">
@@ -944,11 +862,9 @@
               <div class="card-body">
                 <!-- Graphique dynamique des élèves par niveau -->
                 <canvas id="chartElevesParNiveau" height="120"></canvas>
-
                 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
                 <script>
                   const ctx = document.getElementById('chartElevesParNiveau');
-
                   const data = {
                     labels: {{ eleves_par_niveau|map(attribute=0)|list|tojson }},
                     datasets: [{
@@ -960,7 +876,6 @@
                       borderWidth: 1
                     }]
                   };
-
                   new Chart(ctx, {
                     type: 'bar',
                     data: data,
@@ -982,7 +897,6 @@
                     }
                   });
                 </script>
-
               </div>
             </div>
           </div>
@@ -1029,7 +943,6 @@
       </div>
     </div>
   </div>
-
   <script>
     function confirmDelete(exerciceId) {
       Swal.fire({
@@ -1054,25 +967,25 @@
         }
       });
     }
-    
+
     // Gestion du thème
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = themeToggle.querySelector('i');
-    
+
     // Vérifier le thème sauvegardé ou la préférence système
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
-    
+
     themeToggle.addEventListener('click', () => {
       const currentTheme = document.documentElement.getAttribute('data-theme');
       const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-      
+
       document.documentElement.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
       updateThemeIcon(newTheme);
     });
-    
+
     function updateThemeIcon(theme) {
       if (theme === 'dark') {
         themeIcon.className = 'fas fa-sun';
@@ -1080,10 +993,9 @@
         themeIcon.className = 'fas fa-moon';
       }
     }
-    
+
     // Animation au chargement
     document.addEventListener('DOMContentLoaded', function() {
-      // Ajouter une classe pour déclencher les animations
       document.body.classList.add('loaded');
     });
   </script>
