@@ -369,6 +369,141 @@
       font-size: 1.5rem;
     }
 
+    /* Styles pour la Structure du Contenu */
+    .content-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .subject-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+    
+    .subject-card:hover {
+      box-shadow: var(--shadow);
+    }
+    
+    .subject-header {
+      background: rgba(63, 186, 131, 0.1);
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .subject-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    
+    .subject-actions .btn-group {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .subject-content {
+      padding: 20px;
+    }
+    
+    .unit-item {
+      background: white;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 0;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    
+    .unit-header {
+      background: linear-gradient(135deg, rgba(23, 162, 184, 0.1) 0%, rgba(20, 142, 161, 0.1) 100%);
+    }
+    
+    .tests-section, .lessons-section {
+      padding: 0 15px 15px;
+    }
+    
+    .lesson-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: var(--transition);
+      height: 100%;
+    }
+    
+    .lesson-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+    }
+    
+    .lesson-header {
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .lesson-body {
+      min-height: 150px;
+    }
+    
+    .exercise-item {
+      transition: var(--transition);
+    }
+    
+    .exercise-item:hover {
+      background: rgba(67, 97, 238, 0.05);
+    }
+    
+    .exercise-actions .btn-link {
+      opacity: 0.6;
+      transition: var(--transition);
+    }
+    
+    .exercise-actions .btn-link:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    
+    .empty-state-icon {
+      color: var(--text-light);
+      opacity: 0.3;
+    }
+    
+    .accordion-button {
+      padding: 20px;
+      background: white;
+      box-shadow: none;
+    }
+    
+    .accordion-button:not(.collapsed) {
+      background: white;
+      color: inherit;
+      box-shadow: none;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .accordion-button::after {
+      background-size: 1rem;
+    }
+    
+    .accordion-button:focus {
+      box-shadow: none;
+      border-color: var(--primary);
+    }
+    
+    .accordion-body {
+      padding: 0;
+    }
+    
+    /* Tooltips personnalisés */
+    [data-bs-toggle="tooltip"] {
+      cursor: pointer;
+    }
+
     /* Animations */
     @keyframes fadeInUp {
       from {
@@ -436,11 +571,60 @@
         font-size: 0.9rem;
         margin-left: 5px;
       }
+      
+      .subject-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+      
+      .subject-actions {
+        margin-top: 10px;
+      }
+      
+      .unit-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      
+      .unit-actions {
+        align-self: flex-end;
+      }
+      
+      .lesson-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      
+      .lesson-actions {
+        margin-top: 10px;
+      }
+      
+      .exercise-item {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      
+      .exercise-actions {
+        align-self: center;
+      }
     }
 
     @media (max-width: 576px) {
       .quick-actions-row .col-md-4 {
         margin-bottom: 20px;
+      }
+      
+      .content-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+      
+      .content-actions .btn {
+        width: 100%;
       }
     }
   </style>
@@ -620,160 +804,238 @@
     <!-- Onglet Structure du Contenu -->
     <div class="tab-pane fade" id="content" role="tabpanel">
       <div class="content-section mt-4">
-        <h4 class="mb-3">{% if lang == 'en' %}Content Hierarchy{% else %}Hiérarchie du Contenu{% endif %}</h4>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">{% if lang == 'en' %}Content Hierarchy{% else %}Hiérarchie du Contenu{% endif %}</h4>
+          <div class="content-actions">
+            <button class="btn btn-sm btn-outline-primary" id="expandAllBtn">
+              <i class="fas fa-expand-alt me-1"></i>
+              {% if lang == 'en' %}Expand All{% else %}Tout Développer{% endif %}
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="collapseAllBtn">
+              <i class="fas fa-compress-alt me-1"></i>
+              {% if lang == 'en' %}Collapse All{% else %}Tout Réduire{% endif %}
+            </button>
+          </div>
+        </div>
         
         <div class="accordion" id="contentAccordion">
           {% for niveau in niveaux %}
-            <div class="accordion-item">
+            <div class="accordion-item mb-3 border-0">
               <h2 class="accordion-header" id="headingNiveau{{ niveau.id }}">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau{{ niveau.id }}">
-                  <i class="fas fa-layer-group me-2 text-primary"></i>
-                  {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
-                  <span class="badge bg-primary badge-pill ms-2">{{ niveau.matieres|length }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}</span>
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau{{ niveau.id }}" aria-expanded="false">
+                  <div class="d-flex align-items-center w-100">
+                    <div class="level-icon me-3">
+                      <i class="fas fa-layer-group fa-lg text-primary"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                      <h5 class="mb-0">
+                        {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
+                      </h5>
+                      <small class="text-muted">
+                        {{ niveau.matieres|length }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}
+                      </small>
+                    </div>
+                    <div class="badge bg-primary rounded-pill px-3 py-2">
+                      {{ niveau.matieres|length }}
+                    </div>
+                  </div>
                 </button>
               </h2>
-              <div id="collapseNiveau{{ niveau.id }}" class="accordion-collapse collapse">
-                <div class="accordion-body">
-                  {% for matiere in niveau.matieres %}
-                    <div class="mb-4">
-                      <!-- En-tête de la matière avec boutons -->
-                      <div class="matiere-header">
-                        <div class="matiere-title">
-                          <i class="fas fa-book text-success"></i>
-                          <h5 class="mb-0">
-                            {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
-                            <span class="badge bg-success badge-pill ms-2">{{ matiere.unites|length }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
-                          </h5>
-                        </div>
-                        <div class="action-buttons">
-                          <!-- Bouton Modifier Matière -->
-                          <a href="{{ url_for('modifier_matiere', id=matiere.id) }}" class="btn-action btn-edit" 
-                             title="{% if lang == 'en' %}Edit subject{% else %}Modifier la matière{% endif %}">
-                            <i class="fas fa-edit"></i>
-                          </a>
-                          <!-- Bouton Supprimer Matière -->
-                          <form method="POST" action="{{ url_for('supprimer_matiere', id=matiere.id) }}" class="d-inline">
-                            <button type="submit" class="btn-action btn-delete" 
-                                    onclick="return confirm('{% if lang == 'en' %}Are you sure you want to delete this subject? This will also delete all associated units, lessons, and exercises.{% else %}Êtes-vous sûr de vouloir supprimer cette matière ? Toutes les unités, leçons et exercices associés seront également supprimés.{% endif %}')"
-                                    title="{% if lang == 'en' %}Delete subject{% else %}Supprimer la matière{% endif %}">
-                              <i class="fas fa-trash"></i>
-                            </button>
-                          </form>
-                        </div>
-                      </div>
-                      
-                      <!-- Unités de la matière -->
-                      <div class="nested-content mt-3">
-                        {% for unite in matiere.unites %}
-                          <div class="mb-3">
-                            <div class="content-item">
-                              <div class="content-info">
-                                <i class="fas fa-cube me-2 text-info"></i>
-                                <strong class="text-info">{{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}</strong>
+              <div id="collapseNiveau{{ niveau.id }}" class="accordion-collapse collapse" data-bs-parent="#contentAccordion">
+                <div class="accordion-body pt-3">
+                  <div class="row g-3">
+                    {% for matiere in niveau.matieres %}
+                      <div class="col-12">
+                        <div class="subject-card">
+                          <!-- En-tête de la matière -->
+                          <div class="subject-header">
+                            <div class="d-flex align-items-center">
+                              <div class="subject-icon me-3">
+                                <i class="fas fa-book fa-lg text-success"></i>
                               </div>
-                              <div class="action-buttons">
-                                <form method="POST" action="/admin/supprimer-unite/{{ unite.id }}" class="d-inline">
-                                  <button type="submit" class="btn-action btn-delete" 
-                                          onclick="return confirm('{% if lang == 'en' %}Delete this unit? All associated lessons and exercises will also be deleted.{% else %}Supprimer cette unité ? Toutes les leçons et exercices associés seront également supprimés.{% endif %}')"
-                                          title="{% if lang == 'en' %}Delete unit{% else %}Supprimer l'unité{% endif %}">
+                              <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">
+                                  {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
+                                </h6>
+                                <small class="text-muted">
+                                  {{ matiere.unites|length }} {% if lang == 'en' %}units{% else %}unités{% endif %}
+                                </small>
+                              </div>
+                              <div class="subject-actions">
+                                <div class="btn-group btn-group-sm" role="group">
+                                  <a href="{{ url_for('modifier_matiere', id=matiere.id) }}" class="btn btn-outline-primary" 
+                                     data-bs-toggle="tooltip" title="{% if lang == 'en' %}Edit subject{% else %}Modifier la matière{% endif %}">
+                                    <i class="fas fa-edit"></i>
+                                  </a>
+                                  <button type="button" class="btn btn-outline-danger" 
+                                          onclick="confirmDeleteMatiere({{ matiere.id }}, '{{ matiere.nom|escapejs }}')"
+                                          data-bs-toggle="tooltip" title="{% if lang == 'en' %}Delete subject{% else %}Supprimer la matière{% endif %}">
                                     <i class="fas fa-trash"></i>
                                   </button>
-                                </form>
+                                </div>
                               </div>
                             </div>
-                            
-                            <!-- Tests de l'unité -->
-                            {% if unite.tests %}
-                              <div class="nested-content">
-                                {% for test in unite.tests %}
-                                  <div class="content-item mb-2 lecon-item">
-                                    <div class="content-info">
-                                      <i class="fas fa-vial me-2 text-warning"></i>
-                                      {% if lang == 'en' %}Summative Test #{{ test.id }}{% else %}Test Sommatif #{{ test.id }}{% endif %}
-                                    </div>
-                                    <div class="action-buttons">
-                                      <a href="/admin/visualiser-test-sommatif/{{ test.id }}" class="btn-action btn-view" 
-                                         title="{% if lang == 'en' %}View test{% else %}Voir le test{% endif %}">
-                                        <i class="fas fa-eye"></i>
-                                      </a>
-                                      <a href="/admin/modifier-test/{{ test.id }}" class="btn-action btn-edit"
-                                         title="{% if lang == 'en' %}Edit test{% else %}Modifier le test{% endif %}">
-                                        <i class="fas fa-edit"></i>
-                                      </a>
-                                    </div>
+                          </div>
+                          
+                          <!-- Unités de la matière -->
+                          <div class="subject-content mt-3">
+                            {% for unite in matiere.unites %}
+                              <div class="unit-item mb-3">
+                                <div class="unit-header d-flex align-items-center justify-content-between p-3 bg-light rounded">
+                                  <div class="d-flex align-items-center">
+                                    <i class="fas fa-cube text-info me-2"></i>
+                                    <strong class="text-info">{{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}</strong>
+                                    <span class="badge bg-info ms-2">{{ unite.lecons|length }} {% if lang == 'en' %}lessons{% else %}leçons{% endif %}</span>
                                   </div>
-                                {% endfor %}
-                              </div>
-                            {% endif %}
-                            
-                            <!-- Leçons de l'unité -->
-                            <div class="nested-content">
-                              {% for lecon in unite.lecons %}
-                                <div class="mb-2">
-                                  <div class="content-item lecon-item">
-                                    <div class="content-info">
-                                      <i class="fas fa-file-alt me-2 text-secondary"></i>
-                                      {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
-                                      <span class="badge bg-secondary badge-pill ms-2">{{ lecon.exercices|length }} {% if lang == 'en' %}exercises{% else %}exercices{% endif %}</span>
-                                    </div>
-                                    <div class="action-buttons">
-                                      <a href="/admin/modifier-lecon/{{ lecon.id }}" class="btn-action btn-edit"
-                                         title="{% if lang == 'en' %}Edit lesson{% else %}Modifier la leçon{% endif %}">
-                                        <i class="fas fa-edit"></i>
-                                      </a>
-                                      <form method="POST" action="/admin/supprimer-lecon/{{ lecon.id }}" class="d-inline">
-                                        <button type="submit" class="btn-action btn-delete" 
-                                                onclick="return confirm('{% if lang == 'en' %}Delete this lesson? All associated exercises will also be deleted.{% else %}Supprimer cette leçon ? Tous les exercices associés seront également supprimés.{% endif %}')"
-                                                title="{% if lang == 'en' %}Delete lesson{% else %}Supprimer la leçon{% endif %}">
-                                          <i class="fas fa-trash"></i>
-                                        </button>
-                                      </form>
-                                    </div>
+                                  <div class="unit-actions">
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="confirmDeleteUnite({{ unite.id }}, '{{ unite.nom|escapejs }}')"
+                                            data-bs-toggle="tooltip" title="{% if lang == 'en' %}Delete unit{% else %}Supprimer l'unité{% endif %}">
+                                      <i class="fas fa-trash"></i>
+                                    </button>
                                   </div>
-                                  
-                                  <!-- Exercices de la leçon -->
-                                  {% if lecon.exercices %}
-                                    <div class="nested-content mt-2">
-                                      {% for exercice in lecon.exercices %}
-                                        <div class="content-item mb-1 exercice-item">
-                                          <div class="content-info">
-                                            <i class="fas fa-edit me-2 text-muted"></i>
-                                            <small>
-                                              {% if lang == 'en' %}
-                                                {{ exercice.question_en[:50] if exercice.question_en else exercice.question_fr[:50] }}...
-                                              {% else %}
-                                                {{ exercice.question_fr[:50] if exercice.question_fr else exercice.question_en[:50] }}...
-                                              {% endif %}
-                                            </small>
-                                          </div>
-                                          <div class="action-buttons">
-                                            <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn-action btn-edit"
-                                               title="{% if lang == 'en' %}Edit exercise{% else %}Modifier l'exercice{% endif %}">
-                                              <i class="fas fa-edit"></i>
-                                            </a>
-                                            <button type="button" class="btn-action btn-delete" 
-                                                    onclick="confirmDelete('{{ exercice.id }}')"
-                                                    title="{% if lang == 'en' %}Delete exercise{% else %}Supprimer l'exercice{% endif %}">
-                                              <i class="fas fa-trash"></i>
-                                            </button>
+                                </div>
+                                
+                                <!-- Tests de l'unité -->
+                                {% if unite.tests %}
+                                  <div class="tests-section mt-2">
+                                    <h6 class="text-warning mb-2">
+                                      <i class="fas fa-vial me-1"></i>
+                                      {% if lang == 'en' %}Summative Tests{% else %}Tests Sommatifs{% endif %}
+                                    </h6>
+                                    <div class="row g-2">
+                                      {% for test in unite.tests %}
+                                        <div class="col-md-6">
+                                          <div class="test-item d-flex align-items-center justify-content-between p-2 bg-warning bg-opacity-10 rounded">
+                                            <div class="d-flex align-items-center">
+                                              <i class="fas fa-vial text-warning me-2"></i>
+                                              <span>{% if lang == 'en' %}Test #{{ test.id }}{% else %}Test #{{ test.id }}{% endif %}</span>
+                                            </div>
+                                            <div class="test-actions">
+                                              <div class="btn-group btn-group-sm">
+                                                <a href="/admin/visualiser-test-sommatif/{{ test.id }}" class="btn btn-outline-warning" 
+                                                   data-bs-toggle="tooltip" title="{% if lang == 'en' %}View test{% else %}Voir le test{% endif %}">
+                                                  <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="/admin/modifier-test/{{ test.id }}" class="btn btn-outline-warning"
+                                                   data-bs-toggle="tooltip" title="{% if lang == 'en' %}Edit test{% else %}Modifier le test{% endif %}">
+                                                  <i class="fas fa-edit"></i>
+                                                </a>
+                                              </div>
+                                            </div>
                                           </div>
                                         </div>
                                       {% endfor %}
                                     </div>
-                                  {% endif %}
+                                  </div>
+                                {% endif %}
+                                
+                                <!-- Leçons de l'unité -->
+                                <div class="lessons-section mt-3">
+                                  <h6 class="text-secondary mb-2">
+                                    <i class="fas fa-file-alt me-1"></i>
+                                    {% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}
+                                  </h6>
+                                  <div class="row g-3">
+                                    {% for lecon in unite.lecons %}
+                                      <div class="col-md-6 col-lg-4">
+                                        <div class="lesson-card">
+                                          <div class="lesson-header d-flex align-items-center justify-content-between p-3 bg-secondary bg-opacity-10 rounded-top">
+                                            <div class="d-flex align-items-center">
+                                              <i class="fas fa-file-alt text-secondary me-2"></i>
+                                              <span class="fw-medium">{{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr|truncate(30) }}</span>
+                                            </div>
+                                            <div class="lesson-actions">
+                                              <div class="btn-group btn-group-sm">
+                                                <a href="/admin/modifier-lecon/{{ lecon.id }}" class="btn btn-outline-secondary"
+                                                   data-bs-toggle="tooltip" title="{% if lang == 'en' %}Edit lesson{% else %}Modifier la leçon{% endif %}">
+                                                  <i class="fas fa-edit"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-outline-danger" 
+                                                        onclick="confirmDeleteLecon({{ lecon.id }}, '{{ lecon.titre_fr|escapejs|truncate(30) }}')"
+                                                        data-bs-toggle="tooltip" title="{% if lang == 'en' %}Delete lesson{% else %}Supprimer la leçon{% endif %}">
+                                                  <i class="fas fa-trash"></i>
+                                                </button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div class="lesson-body p-3 bg-white rounded-bottom border-top-0">
+                                            <!-- Exercices de la leçon -->
+                                            {% if lecon.exercices %}
+                                              <div class="exercises-section">
+                                                <small class="text-muted d-block mb-2">
+                                                  <i class="fas fa-edit me-1"></i>
+                                                  {{ lecon.exercices|length }} {% if lang == 'en' %}exercises{% else %}exercices{% endif %}
+                                                </small>
+                                                <div class="exercises-list">
+                                                  {% for exercice in lecon.exercices %}
+                                                    <div class="exercise-item d-flex align-items-center justify-content-between py-2 border-bottom">
+                                                      <div class="exercise-info">
+                                                        <small class="text-muted">
+                                                          {% if lang == 'en' %}
+                                                            {{ exercice.question_en[:40] if exercice.question_en else exercice.question_fr[:40] }}...
+                                                          {% else %}
+                                                            {{ exercice.question_fr[:40] if exercice.question_fr else exercice.question_en[:40] }}...
+                                                          {% endif %}
+                                                        </small>
+                                                      </div>
+                                                      <div class="exercise-actions">
+                                                        <div class="btn-group btn-group-sm">
+                                                          <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn btn-link text-primary p-0 me-2"
+                                                             data-bs-toggle="tooltip" title="{% if lang == 'en' %}Edit exercise{% else %}Modifier l'exercice{% endif %}">
+                                                            <i class="fas fa-edit fa-sm"></i>
+                                                          </a>
+                                                          <button type="button" class="btn btn-link text-danger p-0"
+                                                                  onclick="confirmDeleteExercice({{ exercice.id }})"
+                                                                  data-bs-toggle="tooltip" title="{% if lang == 'en' %}Delete exercise{% else %}Supprimer l'exercice{% endif %}">
+                                                            <i class="fas fa-trash fa-sm"></i>
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                  {% endfor %}
+                                                </div>
+                                              </div>
+                                            {% else %}
+                                              <div class="text-center py-3">
+                                                <small class="text-muted">
+                                                  <i class="fas fa-info-circle me-1"></i>
+                                                  {% if lang == 'en' %}No exercises{% else %}Aucun exercice{% endif %}
+                                                </small>
+                                              </div>
+                                            {% endif %}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    {% endfor %}
+                                  </div>
                                 </div>
-                              {% endfor %}
-                            </div>
+                              </div>
+                            {% endfor %}
                           </div>
-                        {% endfor %}
+                        </div>
                       </div>
-                    </div>
-                  {% endfor %}
+                    {% endfor %}
+                  </div>
                 </div>
               </div>
             </div>
           {% endfor %}
         </div>
+        
+        {% if not niveaux %}
+          <div class="text-center py-5">
+            <div class="empty-state-icon mb-3">
+              <i class="fas fa-sitemap fa-3x text-muted"></i>
+            </div>
+            <h5 class="text-muted">{% if lang == 'en' %}No content hierarchy available{% else %}Aucune hiérarchie de contenu disponible{% endif %}</h5>
+            <p class="text-muted mb-4">{% if lang == 'en' %}Start by adding levels and subjects{% else %}Commencez par ajouter des niveaux et des matières{% endif %}</p>
+            <a href="/admin/ajouter-niveau" class="btn btn-primary">
+              <i class="fas fa-plus me-2"></i>
+              {% if lang == 'en' %}Add First Level{% else %}Ajouter un premier niveau{% endif %}
+            </a>
+          </div>
+        {% endif %}
       </div>
     </div>
 
@@ -878,19 +1140,80 @@
   </div>
 
   <script>
-    function confirmDelete(exerciceId) {
+    // Fonctions de confirmation pour la suppression
+    function confirmDeleteMatiere(id, nom) {
       Swal.fire({
-        title: '{{ "Supprimer ?" if lang != "en" else "Delete?" }}',
-        text: '{{ "Cette action est irréversible." if lang != "en" else "This action cannot be undone." }}',
+        title: '{% if lang == "en" %}Delete Subject?{% else %}Supprimer la matière ?{% endif %}',
+        html: `{% if lang == "en" %}Are you sure you want to delete <strong>"${nom}"</strong>?<br>All associated units, lessons, and exercises will also be deleted.{% else %}Êtes-vous sûr de vouloir supprimer <strong>"${nom}"</strong> ?<br>Toutes les unités, leçons et exercices associés seront également supprimés.{% endif %}`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#e74c3c',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: '{{ "Oui, supprimer" if lang != "en" else "Yes, delete" }}',
-        cancelButtonText: '{{ "Annuler" if lang != "en" else "Cancel" }}'
+        confirmButtonText: '{% if lang == "en" %}Yes, delete{% else %}Oui, supprimer{% endif %}',
+        cancelButtonText: '{% if lang == "en" %}Cancel{% else %}Annuler{% endif %}',
+        reverseButtons: true
       }).then((result) => {
         if (result.isConfirmed) {
-          fetch('/admin/supprimer-exercice/' + exerciceId, { method: 'POST' })
+          // Soumettre le formulaire de suppression
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = "{{ url_for('supprimer_matiere', id=0) }}".replace('/0', '/' + id);
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    }
+    
+    function confirmDeleteUnite(id, nom) {
+      Swal.fire({
+        title: '{% if lang == "en" %}Delete Unit?{% else %}Supprimer l\'unité ?{% endif %}',
+        html: `{% if lang == "en" %}Delete unit <strong>"${nom}"</strong>?<br>All associated lessons and exercises will also be deleted.{% else %}Supprimer l\'unité <strong>"${nom}"</strong> ?<br>Toutes les leçons et exercices associés seront également supprimés.{% endif %}`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e74c3c',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '{% if lang == "en" %}Delete{% else %}Supprimer{% endif %}',
+        cancelButtonText: '{% if lang == "en" %}Cancel{% else %}Annuler{% endif %}',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = '/admin/supprimer-unite/' + id;
+        }
+      });
+    }
+    
+    function confirmDeleteLecon(id, titre) {
+      Swal.fire({
+        title: '{% if lang == "en" %}Delete Lesson?{% else %}Supprimer la leçon ?{% endif %}',
+        html: `{% if lang == "en" %}Delete lesson <strong>"${titre}"</strong>?<br>All associated exercises will also be deleted.{% else %}Supprimer la leçon <strong>"${titre}"</strong> ?<br>Tous les exercices associés seront également supprimés.{% endif %}`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e74c3c',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '{% if lang == "en" %}Delete{% else %}Supprimer{% endif %}',
+        cancelButtonText: '{% if lang == "en" %}Cancel{% else %}Annuler{% endif %}',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = '/admin/supprimer-lecon/' + id;
+        }
+      });
+    }
+    
+    function confirmDeleteExercice(id) {
+      Swal.fire({
+        title: '{% if lang == "en" %}Delete Exercise?{% else %}Supprimer l\'exercice ?{% endif %}',
+        text: '{% if lang == "en" %}This action cannot be undone.{% else %}Cette action est irréversible.{% endif %}',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e74c3c',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '{% if lang == "en" %}Yes, delete{% else %}Oui, supprimer{% endif %}',
+        cancelButtonText: '{% if lang == "en" %}Cancel{% else %}Annuler{% endif %}',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          fetch('/admin/supprimer-exercice/' + id, { method: 'POST' })
             .then(response => {
               if (response.redirected) {
                 window.location.href = response.url;
@@ -928,10 +1251,34 @@
       }
     }
     
-    // Animation au chargement
+    // Boutons Expand/Collapse All
     document.addEventListener('DOMContentLoaded', function() {
-      // Ajouter une classe pour déclencher les animations
-      document.body.classList.add('loaded');
+      const expandAllBtn = document.getElementById('expandAllBtn');
+      const collapseAllBtn = document.getElementById('collapseAllBtn');
+      
+      if (expandAllBtn) {
+        expandAllBtn.addEventListener('click', function() {
+          const collapses = document.querySelectorAll('.accordion-collapse');
+          collapses.forEach(collapse => {
+            new bootstrap.Collapse(collapse, { toggle: false }).show();
+          });
+        });
+      }
+      
+      if (collapseAllBtn) {
+        collapseAllBtn.addEventListener('click', function() {
+          const collapses = document.querySelectorAll('.accordion-collapse');
+          collapses.forEach(collapse => {
+            new bootstrap.Collapse(collapse, { toggle: false }).hide();
+          });
+        });
+      }
+      
+      // Initialiser les tooltips
+      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+      });
     });
   </script>
 </body>
