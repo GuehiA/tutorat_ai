@@ -107,114 +107,14 @@
       gap: 5px;
     }
 
-    /* Contrôles d'accessibilité */
-    .accessibility-controls {
-      background: rgba(255, 255, 255, 0.95);
+    /* Bannière de rémédiation - CACHÉE SANS EXERCICE */
+    .remediation-context-banner {
+      background: linear-gradient(135deg, #e8f4ff 0%, #d1e7ff 100%);
+      padding: 15px;
       border-radius: 10px;
-      padding: 12px 15px;
-      margin-bottom: 15px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      border-left: 4px solid var(--accent);
-    }
-
-    .accessibility-title {
-      font-weight: 600;
-      color: var(--dark);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9rem;
-    }
-
-    .accessibility-title i {
-      color: var(--accent);
-    }
-
-    .accessibility-options {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .btn-speech {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      background: var(--light);
-      color: var(--dark);
-      border: 1px solid #dee2e6;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: all 0.3s ease;
-    }
-
-    .btn-speech:hover:not(:disabled) {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-      transform: translateY(-2px);
-    }
-
-    .btn-speech:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn-speech.playing {
-      background: var(--danger);
-      color: white;
-      border-color: var(--danger);
-      animation: pulse 1.5s infinite;
-    }
-
-    .voice-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .voice-speed {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.8rem;
-      color: var(--dark);
-    }
-
-    .voice-speed select {
-      padding: 3px 6px;
-      border-radius: 4px;
-      border: 1px solid #dee2e6;
-      background: white;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-
-    /* Bouton retour */
-    .btn-back {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-      padding: 8px 15px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.3s ease;
-    }
-
-    .btn-back:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateX(-3px);
+      margin-bottom: 20px;
+      border-left: 5px solid #4361ee;
+      display: none;
     }
 
     /* Sélecteur de matière */
@@ -250,6 +150,69 @@
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    /* Bouton retour */
+    .btn-back {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 8px 15px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-back:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateX(-3px);
+    }
+
+    /* Exercice en cours - CACHÉ SI PAS D'EXERCICE */
+    .exercice-header {
+      background: #e8f4ff;
+      border-left: 4px solid var(--primary);
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .exercice-icon {
+      color: var(--primary);
+      font-size: 1.2rem;
+      margin-top: 2px;
+    }
+
+    .exercice-content {
+      flex: 1;
+    }
+
+    .exercice-title {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+    }
+
+    .exercice-text {
+      color: #34495e;
+      line-height: 1.4;
+      font-size: 0.95rem;
+    }
+
+    .exercice-counter {
+      background: var(--primary);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
     }
 
     /* Controls */
@@ -298,7 +261,7 @@
       background: white;
       border-radius: 12px;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      height: calc(100vh - 270px);
+      height: calc(100vh - 250px);
       min-height: 500px;
       display: flex;
       flex-direction: column;
@@ -330,7 +293,6 @@
       margin-bottom: 15px;
       max-width: 85%;
       animation: fadeIn 0.3s ease;
-      position: relative;
     }
 
     @keyframes fadeIn {
@@ -350,7 +312,6 @@
       padding: 12px 16px;
       border-radius: 15px;
       line-height: 1.4;
-      position: relative;
     }
 
     .user-message .message-bubble {
@@ -375,53 +336,61 @@
       opacity: 0.8;
     }
 
-    /* Bouton d'écoute sur chaque message */
-    .listen-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: rgba(255, 255, 255, 0.2);
-      color: var(--primary);
-      border: none;
-      border-radius: 50%;
-      width: 26px;
-      height: 26px;
+    /* Input Area */
+    .input-area {
+      border-top: 1px solid #e2e8f0;
+      padding: 15px;
+      background: white;
+    }
+
+    .input-group {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 0.75rem;
-      opacity: 0;
-      transition: all 0.3s ease;
-      z-index: 10;
+      gap: 10px;
+      align-items: flex-end;
     }
 
-    .user-message .listen-btn {
-      background: rgba(255, 255, 255, 0.3);
-      color: white;
+    textarea {
+      flex: 1;
+      min-height: 60px;
+      max-height: 150px;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      resize: vertical;
+      font-family: inherit;
+      font-size: 1rem;
     }
 
-    .message-bubble:hover .listen-btn {
-      opacity: 1;
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
     }
 
-    .listen-btn:hover {
+    .btn-send {
       background: var(--primary);
       color: white;
-      transform: scale(1.1);
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      cursor: pointer;
+      font-weight: 500;
+      height: 60px;
+      min-width: 60px;
+      transition: all 0.3s ease;
     }
 
-    .listen-btn.playing {
-      background: var(--danger);
-      color: white;
-      opacity: 1;
-      animation: pulse 1.5s infinite;
+    .btn-send:hover:not(:disabled) {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
     }
 
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
+    .btn-send:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-send:not(:disabled):active {
+      transform: scale(0.98);
     }
 
     /* Welcome message */
@@ -510,29 +479,6 @@
       gap: 5px;
     }
 
-    /* Mode dyslexie */
-    .dyslexia-mode {
-      font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
-      letter-spacing: 0.05em;
-      line-height: 1.8;
-    }
-
-    /* High contrast */
-    .high-contrast-mode {
-      background: #000 !important;
-      color: #fff !important;
-    }
-
-    .high-contrast-mode .message-bubble {
-      background: #222 !important;
-      color: #fff !important;
-      border: 1px solid #444 !important;
-    }
-
-    .high-contrast-mode .user-message .message-bubble {
-      background: #1a5fb4 !important;
-    }
-
     /* Responsive */
     @media (max-width: 768px) {
       body {
@@ -564,23 +510,21 @@
         padding: 8px 12px;
       }
 
-      .accessibility-controls {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-
-      .accessibility-options {
-        width: 100%;
-        justify-content: flex-start;
-      }
-
       .controls {
         flex-direction: column;
       }
 
+      .exercice-header {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .exercice-counter {
+        align-self: flex-start;
+      }
+
       .chat-container {
-        height: calc(100vh - 290px);
+        height: calc(100vh - 270px);
       }
 
       .message {
@@ -589,22 +533,6 @@
 
       .matiere-selector {
         padding: 12px;
-      }
-
-      .listen-btn {
-        opacity: 1; /* Toujours visible sur mobile */
-      }
-    }
-
-    @media (max-width: 480px) {
-      .accessibility-options {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      
-      .voice-controls {
-        width: 100%;
-        justify-content: space-between;
       }
     }
   </style>
@@ -660,48 +588,6 @@
       </div>
     </div>
 
-    <!-- Contrôles d'accessibilité -->
-    <div class="accessibility-controls">
-      <div class="accessibility-title">
-        <i class="fas fa-universal-access"></i>
-        {% if lang == 'en' %}Accessibility Options{% else %}Options d'accessibilité{% endif %}
-      </div>
-      <div class="accessibility-options">
-        <div class="voice-controls">
-          <button id="readLastBtn" class="btn-speech">
-            <i class="fas fa-volume-up"></i>
-            {% if lang == 'en' %}Read Last{% else %}Lire le dernier{% endif %}
-          </button>
-          <button id="readAllBtn" class="btn-speech">
-            <i class="fas fa-headphones"></i>
-            {% if lang == 'en' %}Read All{% else %}Tout lire{% endif %}
-          </button>
-          <button id="stopSpeechBtn" class="btn-speech" disabled>
-            <i class="fas fa-stop"></i>
-            {% if lang == 'en' %}Stop{% else %}Arrêter{% endif %}
-          </button>
-          <div class="voice-speed">
-            <span>{% if lang == 'en' %}Speed:{% else %}Vitesse:{% endif %}</span>
-            <select id="voiceSpeed">
-              <option value="0.7">0.7x</option>
-              <option value="0.85">0.85x</option>
-              <option value="1" selected>1x</option>
-              <option value="1.15">1.15x</option>
-              <option value="1.3">1.3x</option>
-            </select>
-          </div>
-        </div>
-        <button id="toggleDyslexia" class="btn-speech">
-          <i class="fas fa-font"></i>
-          {% if lang == 'en' %}Dyslexia{% else %}Dyslexie{% endif %}
-        </button>
-        <button id="toggleContrast" class="btn-speech">
-          <i class="fas fa-adjust"></i>
-          {% if lang == 'en' %}Contrast{% else %}Contraste{% endif %}
-        </button>
-      </div>
-    </div>
-
     <!-- Sélecteur de matière -->
     <div class="matiere-selector">
       <label for="matiere">
@@ -725,6 +611,38 @@
       </select>
     </div>
 
+    <!-- Bannière de contexte de rémédiation - AFFICHÉE SEULEMENT SI exercice_remediation existe -->
+    {% if exercice_remediation %}
+    <div class="remediation-context-banner" id="remediationBanner" style="display: block;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="flex: 1;">
+          <h4 style="margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1rem;">
+            <i class="fas fa-life-ring" style="margin-right: 8px; color: #4361ee;"></i>
+            {% if lang == 'en' %}Remediation Help{% else %}Aide à la rémédiation{% endif %}
+          </h4>
+          <p style="margin: 0; color: #34495e; font-size: 0.9rem;">
+            {% if lang == 'en' %}
+              Exercise: {{ exercice_remediation.question_en[:100] if exercice_remediation.question_en else 'Math exercise' }}...
+            {% else %}
+              Exercice : {{ exercice_remediation.question_fr[:100] if exercice_remediation.question_fr else 'Exercice de maths' }}...
+            {% endif %}
+          </p>
+        </div>
+        <div style="background: #4361ee; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
+          {% if lang == 'en' %}Session {{ access_count }}/5{% else %}Session {{ access_count }}/5{% endif %}
+        </div>
+      </div>
+      <p style="margin: 10px 0 0 0; font-size: 0.85rem; color: #666;">
+        <i class="fas fa-lightbulb" style="margin-right: 5px;"></i>
+        {% if lang == 'en' %}
+          The virtual teacher will guide you to understand this exercise step by step.
+        {% else %}
+          L'enseignant virtuel vous guidera pour comprendre cet exercice étape par étape.
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+
     <!-- Controls -->
     <div class="controls">
       <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
@@ -739,41 +657,38 @@
     <div class="chat-container">
       <!-- Messages Area -->
       <div class="messages-area" id="messagesArea">
-        <!-- Conversation avec données de synthèse vocale -->
-        {% if conversation_parlee and conversation_parlee|length > 0 %}
-          {% for msg in conversation_parlee %}
-            {% if msg.type == 'student' %}
+        <!-- Conversation - AFFICHÉE SEULEMENT SI EXISTE -->
+        {% set conversation = session.get('conversation', []) %}
+
+        {% if conversation and conversation|length > 0 %}
+          {% for message in conversation %}
+            {% if '👤 Student:' in message or '👤 Élève:' in message %}
               <div class="message user-message">
                 <div class="message-header">
                   <i class="fas fa-user"></i>
                   <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
                 </div>
-                <div class="message-bubble" data-spoken="{{ msg.spoken_content|escape }}">
-                  {{ msg.content|safe }}
-                  <button class="listen-btn" title="{% if lang == 'en' %}Listen to this message{% else %}Écouter ce message{% endif %}">
-                    <i class="fas fa-volume-up"></i>
-                  </button>
+                <div class="message-bubble">
+                  {{ message.replace('👤 Student: ', '').replace('👤 Élève: ', '')|safe }}
                 </div>
               </div>
-            {% elif msg.type == 'bot' %}
+            {% elif '🤖 Teacher:' in message or '🤖 Enseignant:' in message %}
               <div class="message bot-message">
                 <div class="message-header">
                   <i class="fas fa-robot"></i>
                   <span>{% if lang == 'en' %}Virtual Teacher{% else %}Enseignant Virtuel{% endif %}</span>
                 </div>
-                <div class="message-bubble" data-spoken="{{ msg.spoken_content|escape }}">
-                  {{ msg.content|safe }}
-                  <button class="listen-btn" title="{% if lang == 'en' %}Listen to this message{% else %}Écouter ce message{% endif %}">
-                    <i class="fas fa-volume-up"></i>
-                  </button>
+                <div class="message-bubble">
+                  {{ message.replace('🤖 Teacher: ', '').replace('🤖 Enseignant: ', '')|safe }}
                 </div>
               </div>
             {% endif %}
           {% endfor %}
+
         {% else %}
-          <!-- Welcome Message -->
+          <!-- Welcome Message - TOUJOURS AFFICHÉ QUAND PAS DE CONVERSATION -->
           <div class="message bot-message welcome-message">
-            <div class="message-bubble" data-spoken="{% if lang == 'en' %}Hello! I'm your virtual teacher. Ask me any question about any subject! I'll guide you step by step without giving you the answer directly. How to use: Select your subject above. Ask your question. I'll guide you with questions. Answer my questions. Together we'll find the solution! Ready to learn? Write your question below!{% else %}Bonjour ! Je suis ton enseignant virtuel. Pose-moi n'importe quelle question sur n'importe quelle matière ! Je te guiderai pas à pas sans te donner la réponse directement. Comment utiliser : Choisis ta matière ci-dessus. Pose ta question. Je te guiderai avec des questions. Réponds à mes questions. Ensemble on trouvera la solution ! Prêt à apprendre ? Écris ta question ci-dessous !{% endif %}">
+            <div class="message-bubble">
               <h4><i class="fas fa-graduation-cap"></i>
                 {% if lang == 'en' %}Hello {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Bonjour {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}
               </h4>
@@ -812,17 +727,14 @@
               <p style="text-align: center; margin-top: 20px;">
                 <em>✨ {% if lang == 'en' %}Ready to learn? Write your question below!{% else %}Prêt à apprendre ? Écris ta question ci-dessous !{% endif %}</em>
               </p>
-              <button class="listen-btn" title="{% if lang == 'en' %}Listen to welcome message{% else %}Écouter le message de bienvenue{% endif %}">
-                <i class="fas fa-volume-up"></i>
-              </button>
             </div>
           </div>
         {% endif %}
       </div>
 
-      <!-- Teacher's Last Question -->
+      <!-- Teacher's Last Question - AFFICHÉ SEULEMENT SI EXISTE -->
       {% set derniere_q_ia = session.get('derniere_q_ia') %}
-      {% if derniere_q_ia and conversation_parlee|length > 0 %}
+      {% if derniere_q_ia and conversation|length > 0 %}
       <div class="teacher-question" id="teacherQuestion" style="display: block;">
         <h5><i class="fas fa-question-circle"></i>
           {% if lang == 'en' %}My question for you:{% else %}Ma question pour toi :{% endif %}
@@ -837,6 +749,7 @@
 
       <!-- Input Area -->
       <div class="input-area">
+        <!-- FORMULAIRE AVEC ACTION CORRECTE -->
         <form method="POST" action="{{ url_for('enseignant_virtuel') }}" id="mainForm">
           <!-- Champ caché pour la matière -->
           <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics') }}">
@@ -845,7 +758,7 @@
             <textarea
               name="question"
               id="questionInput"
-              placeholder="{% if derniere_q_ia and conversation_parlee|length > 0 %}{% if lang == 'en' %}Answer the teacher's question...{% else %}Réponds à la question de l'enseignant...{% endif %}{% else %}{% if lang == 'en' %}Ask your question about {{ matiere|default('mathematics') }}...{% else %}Pose ta question sur {{ matiere|default('mathématiques') }}...{% endif %}{% endif %}"
+              placeholder="{% if derniere_q_ia and conversation|length > 0 %}{% if lang == 'en' %}Answer the teacher's question...{% else %}Réponds à la question de l'enseignant...{% endif %}{% else %}{% if lang == 'en' %}Ask your question about {{ matiere|default('mathematics') }}...{% else %}Pose ta question sur {{ matiere|default('mathématiques') }}...{% endif %}{% endif %}"
               required
               autofocus
               rows="3"></textarea>
@@ -870,21 +783,11 @@
   <!-- Bootstrap JS for alerts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- JavaScript pour la synthèse vocale -->
+  <!-- JavaScript SIMPLIFIÉ -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      console.log("📱 Enseignant Virtuel - Page chargée avec synthèse vocale");
+      console.log("📱 Enseignant Virtuel - Page chargée");
 
-      // Variables pour la synthèse vocale
-      let speechSynthesis = window.speechSynthesis;
-      let isSpeaking = false;
-      let currentUtterance = null;
-      let speechQueue = [];
-      let currentLang = "{{ lang }}";
-      
-      // Vérifier si la synthèse vocale est supportée
-      const isSpeechSupported = 'speechSynthesis' in window;
-      
       // Éléments DOM
       const textarea = document.getElementById('questionInput');
       const submitBtn = document.getElementById('submitBtn');
@@ -893,270 +796,8 @@
       const currentSubject = document.getElementById('currentSubject');
       const charCount = document.getElementById('charCount');
       const form = document.getElementById('mainForm');
-      const readLastBtn = document.getElementById('readLastBtn');
-      const readAllBtn = document.getElementById('readAllBtn');
-      const stopSpeechBtn = document.getElementById('stopSpeechBtn');
-      const voiceSpeed = document.getElementById('voiceSpeed');
-      const toggleDyslexiaBtn = document.getElementById('toggleDyslexia');
-      const toggleContrastBtn = document.getElementById('toggleContrast');
-      const listenButtons = document.querySelectorAll('.listen-btn');
-      
-      // Désactiver les boutons si pas supporté
-      if (!isSpeechSupported) {
-        console.warn('Synthèse vocale non supportée par le navigateur');
-        readLastBtn.disabled = true;
-        readAllBtn.disabled = true;
-        readLastBtn.title = readAllBtn.title = currentLang === 'fr' 
-          ? 'Synthèse vocale non supportée' 
-          : 'Speech synthesis not supported';
-        listenButtons.forEach(btn => btn.disabled = true);
-      }
-      
-      // Initialisation de la synthèse vocale
-      function initSpeechSynthesis() {
-        if (!isSpeechSupported) return false;
-        
-        // Récupérer les voix disponibles
-        let voices = [];
-        
-        speechSynthesis.onvoiceschanged = function() {
-          voices = speechSynthesis.getVoices();
-          console.log('Voix disponibles:', voices.map(v => v.name));
-        };
-        
-        // Forcer le chargement des voix
-        setTimeout(() => {
-          voices = speechSynthesis.getVoices();
-          if (voices.length === 0) {
-            console.warn('Aucune voix disponible');
-          }
-        }, 100);
-        
-        return true;
-      }
-      
-      // Fonction pour lire du texte
-      function speakText(text, callback = null) {
-        if (!text || !isSpeechSupported) return;
-        
-        // Arrêter toute lecture en cours
-        stopSpeaking();
-        
-        // Créer l'énoncé
-        currentUtterance = new SpeechSynthesisUtterance(text);
-        
-        // Configurer la voix
-        currentUtterance.lang = currentLang === 'fr' ? 'fr-FR' : 'en-GB';
-        currentUtterance.rate = parseFloat(voiceSpeed.value);
-        currentUtterance.volume = 1;
-        currentUtterance.pitch = 1;
-        
-        // Choisir la voix appropriée
-        const voices = speechSynthesis.getVoices();
-        const preferredVoice = voices.find(voice => {
-          if (currentLang === 'fr') {
-            return voice.lang === 'fr-FR' || voice.lang === 'fr-fr' || voice.lang === 'fr';
-          } else {
-            return voice.lang === 'en-GB' || voice.lang === 'en-US' || voice.lang.startsWith('en');
-          }
-        }) || voices[0];
-        
-        if (preferredVoice) {
-          currentUtterance.voice = preferredVoice;
-        }
-        
-        // Gestion des événements
-        currentUtterance.onstart = function() {
-          isSpeaking = true;
-          stopSpeechBtn.disabled = false;
-          readLastBtn.disabled = true;
-          readAllBtn.disabled = true;
-          document.querySelectorAll('.listen-btn').forEach(btn => btn.disabled = true);
-        };
-        
-        currentUtterance.onend = function() {
-          isSpeaking = false;
-          stopSpeechBtn.disabled = true;
-          readLastBtn.disabled = false;
-          readAllBtn.disabled = false;
-          document.querySelectorAll('.listen-btn').forEach(btn => btn.disabled = false);
-          
-          // Réinitialiser les boutons d'écoute
-          document.querySelectorAll('.listen-btn.playing').forEach(btn => {
-            btn.classList.remove('playing');
-            btn.querySelector('i').className = 'fas fa-volume-up';
-          });
-          
-          if (callback) callback();
-          
-          // Lire le prochain élément dans la file d'attente
-          if (speechQueue.length > 0) {
-            const nextText = speechQueue.shift();
-            speakText(nextText);
-          }
-        };
-        
-        currentUtterance.onerror = function(event) {
-          console.error('Erreur de synthèse vocale:', event);
-          isSpeaking = false;
-          stopSpeechBtn.disabled = true;
-          readLastBtn.disabled = false;
-          readAllBtn.disabled = false;
-          document.querySelectorAll('.listen-btn').forEach(btn => btn.disabled = false);
-          
-          document.querySelectorAll('.listen-btn.playing').forEach(btn => {
-            btn.classList.remove('playing');
-            btn.querySelector('i').className = 'fas fa-volume-up';
-          });
-          
-          // Afficher une alerte silencieuse
-          if (currentLang === 'fr') {
-            console.warn('Impossible de lire le texte. Vérifiez que votre navigateur supporte la synthèse vocale.');
-          } else {
-            console.warn('Unable to read text. Please check if your browser supports speech synthesis.');
-          }
-        };
-        
-        // Lire le texte
-        try {
-          speechSynthesis.speak(currentUtterance);
-        } catch (error) {
-          console.error('Erreur lors de la lecture:', error);
-        }
-      }
-      
-      // Fonction pour arrêter la lecture
-      function stopSpeaking() {
-        if (speechSynthesis && speechSynthesis.speaking) {
-          speechSynthesis.cancel();
-          isSpeaking = false;
-          stopSpeechBtn.disabled = true;
-          readLastBtn.disabled = false;
-          readAllBtn.disabled = false;
-          speechQueue = [];
-          document.querySelectorAll('.listen-btn').forEach(btn => btn.disabled = false);
-          
-          document.querySelectorAll('.listen-btn.playing').forEach(btn => {
-            btn.classList.remove('playing');
-            btn.querySelector('i').className = 'fas fa-volume-up';
-          });
-        }
-      }
-      
-      // Lire le dernier message
-      function readLastMessage() {
-        const lastMessage = document.querySelector('.message:last-child .message-bubble');
-        if (lastMessage) {
-          const text = lastMessage.getAttribute('data-spoken');
-          if (text) {
-            speakText(text);
-            
-            // Mettre en évidence le bouton du dernier message
-            const listenBtn = lastMessage.querySelector('.listen-btn');
-            if (listenBtn) {
-              listenBtn.classList.add('playing');
-              listenBtn.querySelector('i').className = 'fas fa-stop';
-            }
-          }
-        }
-      }
-      
-      // Lire toute la conversation
-      function readAllMessages() {
-        const messages = document.querySelectorAll('.message-bubble');
-        if (messages.length === 0) return;
-        
-        // Vider la file d'attente
-        speechQueue = [];
-        
-        // Ajouter tous les messages à la file d'attente
-        messages.forEach((message, index) => {
-          const text = message.getAttribute('data-spoken');
-          if (text && text.trim().length > 0) {
-            speechQueue.push(text);
-          }
-        });
-        
-        // Lire le premier message
-        if (speechQueue.length > 0) {
-          const firstText = speechQueue.shift();
-          speakText(firstText);
-          
-          // Mettre en évidence le premier bouton
-          const firstListenBtn = messages[0].querySelector('.listen-btn');
-          if (firstListenBtn) {
-            firstListenBtn.classList.add('playing');
-            firstListenBtn.querySelector('i').className = 'fas fa-stop';
-          }
-        }
-      }
-      
-      // Gestionnaires d'événements pour la synthèse vocale
-      readLastBtn.addEventListener('click', readLastMessage);
-      readAllBtn.addEventListener('click', readAllMessages);
-      stopSpeechBtn.addEventListener('click', stopSpeaking);
-      
-      voiceSpeed.addEventListener('change', function() {
-        if (isSpeaking && currentUtterance) {
-          currentUtterance.rate = parseFloat(this.value);
-          speechSynthesis.cancel();
-          speechSynthesis.speak(currentUtterance);
-        }
-      });
-      
-      // Gestion des boutons d'écoute individuels
-      listenButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-          e.stopPropagation();
-          
-          const messageBubble = this.closest('.message-bubble');
-          if (!messageBubble) return;
-          
-          const text = messageBubble.getAttribute('data-spoken');
-          if (!text) return;
-          
-          if (isSpeaking && this.classList.contains('playing')) {
-            // Si déjà en train de lire ce message, arrêter
-            stopSpeaking();
-          } else {
-            // Sinon, lire ce message
-            stopSpeaking();
-            
-            // Mettre en évidence ce bouton
-            document.querySelectorAll('.listen-btn.playing').forEach(btn => {
-              btn.classList.remove('playing');
-              btn.querySelector('i').className = 'fas fa-volume-up';
-            });
-            
-            this.classList.add('playing');
-            this.querySelector('i').className = 'fas fa-stop';
-            speakText(text);
-          }
-        });
-      });
-      
-      // Mode dyslexie
-      toggleDyslexiaBtn.addEventListener('click', function() {
-        document.body.classList.toggle('dyslexia-mode');
-        this.classList.toggle('active');
-        this.innerHTML = this.classList.contains('active')
-          ? '<i class="fas fa-font"></i>' + (currentLang === 'fr' ? ' Standard' : ' Standard')
-          : '<i class="fas fa-font"></i>' + (currentLang === 'fr' ? ' Dyslexie' : ' Dyslexia');
-      });
-      
-      // Mode haut contraste
-      toggleContrastBtn.addEventListener('click', function() {
-        document.body.classList.toggle('high-contrast-mode');
-        this.classList.toggle('active');
-        this.innerHTML = this.classList.contains('active')
-          ? '<i class="fas fa-adjust"></i>' + (currentLang === 'fr' ? ' Normal' : ' Normal')
-          : '<i class="fas fa-adjust"></i>' + (currentLang === 'fr' ? ' Contraste' : ' Contrast');
-      });
-      
-      // Initialiser la synthèse vocale
-      initSpeechSynthesis();
-      
-      // Fonctionnalités existantes
+
+      // Auto-focus
       if (textarea) {
         textarea.focus();
 
@@ -1193,9 +834,7 @@
 
           // Mettre à jour le placeholder
           if (textarea) {
-            const placeholderText = currentLang === 'en' 
-              ? `Ask your question about ${selectedMatiere}...`
-              : `Pose ta question sur ${selectedMatiere === 'mathematics' ? 'mathématiques' : selectedMatiere}...`;
+            const placeholderText = "{% if lang == 'en' %}Ask your question about " + selectedMatiere + "...{% else %}Pose ta question sur " + (selectedMatiere === 'mathematics' ? 'mathématiques' : selectedMatiere) + "...{% endif %}";
             textarea.placeholder = placeholderText;
           }
         });
@@ -1212,17 +851,13 @@
         form.addEventListener('submit', function(e) {
           if (!textarea || textarea.value.trim().length < 3) {
             e.preventDefault();
-            alert(currentLang === 'en' 
-              ? "Please enter at least 3 characters" 
-              : "Veuillez entrer au moins 3 caractères");
+            alert("{% if lang == 'en' %}Please enter at least 3 characters{% else %}Veuillez entrer au moins 3 caractères{% endif %}");
             return false;
           }
 
           if (textarea.value.trim().length > 500) {
             e.preventDefault();
-            alert(currentLang === 'en' 
-              ? "Maximum 500 characters" 
-              : "Maximum 500 caractères");
+            alert("{% if lang == 'en' %}Maximum 500 characters{% else %}Maximum 500 caractères{% endif %}");
             return false;
           }
 
@@ -1251,13 +886,13 @@
       if (window.MathJax) {
         MathJax.typesetPromise();
       }
-      
-      // Forcer le rechargement si page vient du cache
-      window.addEventListener('pageshow', function(event) {
-        if (event.persisted) {
-          window.location.reload();
-        }
-      });
+    });
+
+    // Forcer le rechargement si page vient du cache
+    window.addEventListener('pageshow', function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
     });
   </script>
 </body>
