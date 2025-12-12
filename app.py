@@ -469,9 +469,15 @@ def obtenir_nom_matiere_objet(matiere_obj, lang="fr"):
 
 
 # ============ ROUTE ADAPTÉE ============
+import re
+from flask import request, render_template, session, redirect, url_for, flash
+import html
+from datetime import datetime
+from sqlalchemy.orm import joinedload
+
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel - Accès libre - BILINGUE"""
+    """Route pour l'enseignant virtuel - Accès libre - BILINGUE avec lecture intelligente"""
     from datetime import datetime
     
     if "eleve_id" not in session:
@@ -488,12 +494,15 @@ def enseignant_virtuel():
         flash(get_message("essai_termine", lang), "error")
         return redirect(url_for('login_eleve'))
 
-    # Initialiser la conversation si elle n'existe pas
+    # Initialiser les conversations si elles n'existent pas
     if "conversation" not in session:
         session["conversation"] = []
     
+    if "conversation_parlee" not in session:
+        session["conversation_parlee"] = []
+    
     # Récupérer la matière sélectionnée ou par défaut
-    matiere = "mathématiques" if lang == "fr" else "mathematics"
+    matiere = session.get("matiere", "mathématiques" if lang == "fr" else "mathematics")
     
     # TRAITEMENT POST
     if request.method == 'POST':
@@ -502,9 +511,11 @@ def enseignant_virtuel():
         
         if matiere_form:
             matiere = matiere_form
+            session["matiere"] = matiere
         
         if question and len(question) >= 3:
             conversation = session.get("conversation", [])
+            conversation_parlee = session.get("conversation_parlee", [])
             derniere_q_ia = session.get('derniere_q_ia')
             
             # Si c'est une nouvelle conversation, ajouter un message de bienvenue
@@ -512,10 +523,26 @@ def enseignant_virtuel():
                 bienvenue_msg = get_message("bienvenue_enseignant", lang)
                 enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
                 conversation.append(f"{enseignant_label} {bienvenue_msg}")
+                
+                # Ajouter à la conversation parlée
+                bienvenue_parlee = {
+                    'type': 'bot',
+                    'content': bienvenue_msg,
+                    'spoken_content': latex_to_speech(bienvenue_msg, lang)
+                }
+                conversation_parlee.append(bienvenue_parlee)
             
-            # Format simple pour l'historique
+            # Ajouter la question de l'élève
             eleve_label = "👤 Student:" if lang == "en" else "👤 Élève:"
             conversation.append(f"{eleve_label} {question}")
+            
+            # Ajouter à la conversation parlée
+            question_parlee = {
+                'type': 'student',
+                'content': question,
+                'spoken_content': latex_to_speech(question, lang)
+            }
+            conversation_parlee.append(question_parlee)
             
             try:
                 if derniere_q_ia:
@@ -545,11 +572,21 @@ def enseignant_virtuel():
                 enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
                 conversation.append(f"{enseignant_label} {reponse}")
                 
+                # Ajouter à la conversation parlée
+                reponse_parlee = {
+                    'type': 'bot',
+                    'content': reponse,
+                    'spoken_content': latex_to_speech(reponse, lang)
+                }
+                conversation_parlee.append(reponse_parlee)
+                
                 # Limiter à 15 messages
                 if len(conversation) > 15:
                     conversation = conversation[-15:]
+                    conversation_parlee = conversation_parlee[-15:]
                 
                 session["conversation"] = conversation
+                session["conversation_parlee"] = conversation_parlee
                 
                 # Extraire la nouvelle question
                 nouvelle_q = extraire_question(reponse, lang)
@@ -568,22 +605,538 @@ def enseignant_virtuel():
                 
                 enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
                 conversation.append(f"{enseignant_label} {fallback_msg}")
+                
+                # Ajouter l'erreur à la conversation parlée
+                erreur_parlee = {
+                    'type': 'bot',
+                    'content': fallback_msg,
+                    'spoken_content': fallback_msg  # Pas besoin de conversion LaTeX
+                }
+                conversation_parlee.append(erreur_parlee)
+                
                 session["conversation"] = conversation
+                session["conversation_parlee"] = conversation_parlee
                 flash(get_message("erreur_traitement", lang), "warning")
     
-    # Récupérer la conversation
+    # Récupérer les conversations
     conversation = session.get("conversation", [])
+    conversation_parlee = session.get("conversation_parlee", [])
+    
+    # Si conversation_parlee est vide mais conversation ne l'est pas, la générer
+    if conversation and not conversation_parlee:
+        conversation_parlee = generate_spoken_conversation(conversation, lang)
+        session["conversation_parlee"] = conversation_parlee
     
     return render_template(
-        "enseignant_virtuel.html",
+        "enseignant_virtuel.html",  # Nouveau template avec synthèse vocale
         lang=lang,
         eleve=eleve,
         conversation=conversation,
+        conversation_parlee=conversation_parlee,  # Nouveau paramètre
         exercice_remediation=None,
         access_count=0,
         date_du_jour=datetime.utcnow(),
         matiere=matiere
     )
+
+
+def latex_to_speech(latex_content, lang="fr"):
+    """Convertit le LaTeX en texte lisible pour la synthèse vocale - VERSION AMÉLIORÉE"""
+    if not latex_content:
+        return ""
+    
+    # Nettoyer le HTML
+    text = html.unescape(latex_content)
+    
+    # Ajouter un espace après les commandes LaTeX courantes pour faciliter le parsing
+    text = re.sub(r'\\([a-zA-Z]+)\{', r' \\\1{ ', text)
+    
+    # Dictionnaire des remplacements FRANÇAIS
+    replacements_fr = [
+        # FRACTIONS
+        (r'\\frac\{([^}]+)\}\{([^}]+)\}', r' \1 sur \2 '),
+        (r'\\dfrac\{([^}]+)\}\{([^}]+)\}', r' \1 sur \2 '),
+        (r'\\tfrac\{([^}]+)\}\{([^}]+)\}', r' \1 sur \2 '),
+        (r'\\cfrac\{([^}]+)\}\{([^}]+)\}', r' \1 sur \2 '),
+        
+        # RACINES
+        (r'\\sqrt\{([^}]+)\}', r' racine carrée de \1 '),
+        (r'\\sqrt\[([^\]]+)\]\{([^}]+)\}', r' racine \1-ième de \2 '),
+        
+        # INTÉGRALES
+        (r'\\int', ' intégrale '),
+        (r'\\int_\{([^}]+)\}\^\{([^}]+)\}', r' intégrale de \1 à \2 '),
+        (r'\\int_\{([^}]+)\}', r' intégrale à partir de \1 '),
+        (r'\\int\^\{([^}]+)\}', r' intégrale jusqu\'à \1 '),
+        (r'\\oint', ' intégrale fermée '),
+        (r'\\iint', ' double intégrale '),
+        (r'\\iiint', ' triple intégrale '),
+        
+        # DÉRIVÉES
+        (r'\\frac\{d\}\{dx\}', ' dérivée par rapport à x '),
+        (r'\\frac\{d\}\{d([^}]+)\}', r' dérivée par rapport à \1 '),
+        (r'\\frac\{\partial\}\{\partial x\}', ' dérivée partielle par rapport à x '),
+        (r'\\frac\{\partial\}\{\partial ([^}]+)\}', r' dérivée partielle par rapport à \1 '),
+        (r"f'\(x\)", " f prime de x "),
+        (r"f''\(x\)", " f seconde de x "),
+        (r"f\^{(\\d+)}\(x\)", r' f \1-ième de x '),
+        (r'\\frac\{d\^2\}\{dx\^2\}', ' dérivée seconde par rapport à x '),
+        (r'\\frac\{d\^(\\d+)\}\{dx\^(\\d+)\}', r' dérivée \1-ième par rapport à x '),
+        
+        # LIMITES
+        (r'\\lim_\{([^}]+)\}', r' limite quand \1 '),
+        (r'\\lim_\{([^}]+)\}\\to\{([^}]+)\}', r' limite quand \1 tend vers \2 '),
+        (r'\\lim', ' limite '),
+        
+        # SOMMES ET PRODUITS
+        (r'\\sum', ' somme '),
+        (r'\\sum_\{([^}]+)\}\^\{([^}]+)\}', r' somme de \1 à \2 '),
+        (r'\\prod', ' produit '),
+        (r'\\prod_\{([^}]+)\}\^\{([^}]+)\}', r' produit de \1 à \2 '),
+        
+        # FONCTIONS SPÉCIALES
+        (r'f\(x\)', ' f de x '),
+        (r'g\(x\)', ' g de x '),
+        (r'h\(x\)', ' h de x '),
+        (r'f\(t\)', ' f de t '),
+        (r'\\sin\(', ' sinus de '),
+        (r'\\cos\(', ' cosinus de '),
+        (r'\\tan\(', ' tangente de '),
+        (r'\\ln\(', ' logarithme népérien de '),
+        (r'\\log\(', ' logarithme de '),
+        (r'\\log_\{([^}]+)\}\(', r' logarithme en base \1 de '),
+        (r'\\exp\(', ' exponentielle de '),
+        
+        # EXPOSANTS ET INDICES
+        (r'\^\{([^}]+)\}', r' puissance \1 '),
+        (r'\^\((\\d+)\)', r' puissance \1 '),
+        (r'\^([0-9])', r' puissance \1 '),
+        (r'\^\{-([^}]+)\}', r' puissance moins \1 '),
+        (r'_\{([^}]+)\}', r' indice \1 '),
+        (r'_([0-9a-zA-Z])', r' indice \1 '),
+        
+        # SYMBOLES GRECS
+        (r'\\alpha', ' alpha '),
+        (r'\\beta', ' bêta '),
+        (r'\\gamma', ' gamma '),
+        (r'\\Gamma', ' gamma majuscule '),
+        (r'\\delta', ' delta '),
+        (r'\\Delta', ' delta majuscule '),
+        (r'\\epsilon', ' epsilon '),
+        (r'\\varepsilon', ' epsilon '),
+        (r'\\theta', ' thêta '),
+        (r'\\Theta', ' thêta majuscule '),
+        (r'\\lambda', ' lambda '),
+        (r'\\Lambda', ' lambda majuscule '),
+        (r'\\pi', ' pi '),
+        (r'\\Pi', ' pi majuscule '),
+        (r'\\sigma', ' sigma '),
+        (r'\\Sigma', ' sigma majuscule '),
+        (r'\\phi', ' phi '),
+        (r'\\Phi', ' phi majuscule '),
+        (r'\\omega', ' oméga '),
+        (r'\\Omega', ' oméga majuscule '),
+        
+        # OPÉRATEURS MATHÉMATIQUES
+        (r'\\pm', ' plus ou moins '),
+        (r'\\mp', ' moins ou plus '),
+        (r'\\times', ' fois '),
+        (r'\\cdot', ' fois '),
+        (r'\\ast', ' fois '),
+        (r'\\div', ' divisé par '),
+        
+        # RELATIONS
+        (r'\\leq', ' inférieur ou égal à '),
+        (r'\\leqslant', ' inférieur ou égal à '),
+        (r'\\geq', ' supérieur ou égal à '),
+        (r'\\geqslant', ' supérieur ou égal à '),
+        (r'\\neq', ' différent de '),
+        (r'\\equiv', ' équivalent à '),
+        (r'\\sim', ' similaire à '),
+        (r'\\simeq', ' approximativement égal à '),
+        (r'\\approx', ' environ '),
+        (r'\\propto', ' proportionnel à '),
+        
+        # FLÈCHES
+        (r'\\rightarrow', ' tend vers '),
+        (r'\\to', ' vers '),
+        (r'\\Rightarrow', ' implique '),
+        (r'\\leftarrow', ' de '),
+        (r'\\Leftarrow', ' est impliqué par '),
+        (r'\\leftrightarrow', ' équivalent à '),
+        (r'\\Leftrightarrow', ' si et seulement si '),
+        
+        # ENSEMBLES
+        (r'\\in', ' appartient à '),
+        (r'\\notin', ' n\'appartient pas à '),
+        (r'\\subset', ' inclus dans '),
+        (r'\\subseteq', ' inclus ou égal à '),
+        (r'\\supset', ' contient '),
+        (r'\\supseteq', ' contient ou égal à '),
+        (r'\\cup', ' union '),
+        (r'\\cap', ' intersection '),
+        (r'\\emptyset', ' ensemble vide '),
+        
+        # AUTRES SYMBOLES
+        (r'\\infty', ' infini '),
+        (r'\\partial', ' partielle '),
+        (r'\\nabla', ' nabla '),
+        (r'\\forall', ' pour tout '),
+        (r'\\exists', ' il existe '),
+        (r'\\nexists', ' il n\'existe pas '),
+        (r'\\therefore', ' donc '),
+        (r'\\because', ' parce que '),
+        (r'\\angle', ' angle '),
+        (r'\\degree', ' degré '),
+        (r'\\circ', ' degré '),
+        
+        # PARENTHÈSES ET DÉLIMITEURS
+        (r'\\left\(', ' '),
+        (r'\\right\)', ' '),
+        (r'\\left\[', ' '),
+        (r'\\right\]', ' '),
+        (r'\\left\{', ' '),
+        (r'\\right\}', ' '),
+        
+        # FORMATAGE
+        (r'\\text\{([^}]+)\}', r' \1 '),
+        (r'\\textbf\{([^}]+)\}', r' \1 '),
+        (r'\\mathrm\{([^}]+)\}', r' \1 '),
+        (r'\\mathbb\{([^}]+)\}', r' \1 '),
+        
+        # ESPACES
+        (r'\\,', ' '),
+        (r'\\:', ' '),
+        (r'\\;', ' '),
+        (r'\\!', ' '),
+        (r'\\ ', ' '),
+    ]
+    
+    # Dictionnaire des remplacements ANGLAIS
+    replacements_en = [
+        # FRACTIONS
+        (r'\\frac\{([^}]+)\}\{([^}]+)\}', r' \1 over \2 '),
+        (r'\\dfrac\{([^}]+)\}\{([^}]+)\}', r' \1 over \2 '),
+        (r'\\tfrac\{([^}]+)\}\{([^}]+)\}', r' \1 over \2 '),
+        (r'\\cfrac\{([^}]+)\}\{([^}]+)\}', r' \1 over \2 '),
+        
+        # ROOTS
+        (r'\\sqrt\{([^}]+)\}', r' square root of \1 '),
+        (r'\\sqrt\[([^\]]+)\]\{([^}]+)\}', r' \1-th root of \2 '),
+        
+        # INTEGRALS
+        (r'\\int', ' integral '),
+        (r'\\int_\{([^}]+)\}\^\{([^}]+)\}', r' integral from \1 to \2 '),
+        (r'\\int_\{([^}]+)\}', r' integral starting at \1 '),
+        (r'\\int\^\{([^}]+)\}', r' integral up to \1 '),
+        (r'\\oint', ' closed integral '),
+        (r'\\iint', ' double integral '),
+        (r'\\iiint', ' triple integral '),
+        
+        # DERIVATIVES
+        (r'\\frac\{d\}\{dx\}', ' derivative with respect to x '),
+        (r'\\frac\{d\}\{d([^}]+)\}', r' derivative with respect to \1 '),
+        (r'\\frac\{\partial\}\{\partial x\}', ' partial derivative with respect to x '),
+        (r"f'\(x\)", " f prime of x "),
+        (r"f''\(x\)", " f double prime of x "),
+        (r"f\^{(\\d+)}\(x\)", r' f \1-th of x '),
+        (r'\\frac\{d\^2\}\{dx\^2\}', ' second derivative with respect to x '),
+        (r'\\frac\{d\^(\\d+)\}\{dx\^(\\d+)\}', r' \1-th derivative with respect to x '),
+        
+        # LIMITS
+        (r'\\lim_\{([^}]+)\}', r' limit as \1 '),
+        (r'\\lim_\{([^}]+)\}\\to\{([^}]+)\}', r' limit as \1 approaches \2 '),
+        (r'\\lim', ' limit '),
+        
+        # SUMS AND PRODUCTS
+        (r'\\sum', ' sum '),
+        (r'\\sum_\{([^}]+)\}\^\{([^}]+)\}', r' sum from \1 to \2 '),
+        (r'\\prod', ' product '),
+        (r'\\prod_\{([^}]+)\}\^\{([^}]+)\}', r' product from \1 to \2 '),
+        
+        # SPECIAL FUNCTIONS
+        (r'f\(x\)', ' f of x '),
+        (r'g\(x\)', ' g of x '),
+        (r'h\(x\)', ' h of x '),
+        (r'f\(t\)', ' f of t '),
+        (r'\\sin\(', ' sine of '),
+        (r'\\cos\(', ' cosine of '),
+        (r'\\tan\(', ' tangent of '),
+        (r'\\ln\(', ' natural logarithm of '),
+        (r'\\log\(', ' logarithm of '),
+        (r'\\log_\{([^}]+)\}\(', r' logarithm base \1 of '),
+        (r'\\exp\(', ' exponential of '),
+        
+        # EXPONENTS AND SUBSCRIPTS
+        (r'\^\{([^}]+)\}', r' to the power \1 '),
+        (r'\^\((\\d+)\)', r' to the power \1 '),
+        (r'\^([0-9])', r' to the power \1 '),
+        (r'\^\{-([^}]+)\}', r' to the power minus \1 '),
+        (r'_\{([^}]+)\}', r' subscript \1 '),
+        (r'_([0-9a-zA-Z])', r' subscript \1 '),
+        
+        # GREEK SYMBOLS
+        (r'\\alpha', ' alpha '),
+        (r'\\beta', ' beta '),
+        (r'\\gamma', ' gamma '),
+        (r'\\Gamma', ' capital gamma '),
+        (r'\\delta', ' delta '),
+        (r'\\Delta', ' capital delta '),
+        (r'\\epsilon', ' epsilon '),
+        (r'\\varepsilon', ' epsilon '),
+        (r'\\theta', ' theta '),
+        (r'\\Theta', ' capital theta '),
+        (r'\\lambda', ' lambda '),
+        (r'\\Lambda', ' capital lambda '),
+        (r'\\pi', ' pi '),
+        (r'\\Pi', ' capital pi '),
+        (r'\\sigma', ' sigma '),
+        (r'\\Sigma', ' capital sigma '),
+        (r'\\phi', ' phi '),
+        (r'\\Phi', ' capital phi '),
+        (r'\\omega', ' omega '),
+        (r'\\Omega', ' capital omega '),
+        
+        # MATHEMATICAL OPERATORS
+        (r'\\pm', ' plus or minus '),
+        (r'\\mp', ' minus or plus '),
+        (r'\\times', ' times '),
+        (r'\\cdot', ' times '),
+        (r'\\ast', ' times '),
+        (r'\\div', ' divided by '),
+        
+        # RELATIONS
+        (r'\\leq', ' less than or equal to '),
+        (r'\\leqslant', ' less than or equal to '),
+        (r'\\geq', ' greater than or equal to '),
+        (r'\\geqslant', ' greater than or equal to '),
+        (r'\\neq', ' not equal to '),
+        (r'\\equiv', ' equivalent to '),
+        (r'\\sim', ' similar to '),
+        (r'\\simeq', ' approximately equal to '),
+        (r'\\approx', ' approximately '),
+        (r'\\propto', ' proportional to '),
+        
+        # ARROWS
+        (r'\\rightarrow', ' tends to '),
+        (r'\\to', ' to '),
+        (r'\\Rightarrow', ' implies '),
+        (r'\\leftarrow', ' from '),
+        (r'\\Leftarrow', ' is implied by '),
+        (r'\\leftrightarrow', ' equivalent to '),
+        (r'\\Leftrightarrow', ' if and only if '),
+        
+        # SETS
+        (r'\\in', ' belongs to '),
+        (r'\\notin', ' does not belong to '),
+        (r'\\subset', ' subset of '),
+        (r'\\subseteq', ' subset or equal to '),
+        (r'\\supset', ' contains '),
+        (r'\\supseteq', ' contains or equal to '),
+        (r'\\cup', ' union '),
+        (r'\\cap', ' intersection '),
+        (r'\\emptyset', ' empty set '),
+        
+        # OTHER SYMBOLS
+        (r'\\infty', ' infinity '),
+        (r'\\partial', ' partial '),
+        (r'\\nabla', ' nabla '),
+        (r'\\forall', ' for all '),
+        (r'\\exists', ' there exists '),
+        (r'\\nexists', ' there does not exist '),
+        (r'\\therefore', ' therefore '),
+        (r'\\because', ' because '),
+        (r'\\angle', ' angle '),
+        (r'\\degree', ' degree '),
+        (r'\\circ', ' degree '),
+        
+        # PARENTHESES AND DELIMITERS
+        (r'\\left\(', ' '),
+        (r'\\right\)', ' '),
+        (r'\\left\[', ' '),
+        (r'\\right\]', ' '),
+        (r'\\left\{', ' '),
+        (r'\\right\}', ' '),
+        
+        # FORMATTING
+        (r'\\text\{([^}]+)\}', r' \1 '),
+        (r'\\textbf\{([^}]+)\}', r' \1 '),
+        (r'\\mathrm\{([^}]+)\}', r' \1 '),
+        (r'\\mathbb\{([^}]+)\}', r' \1 '),
+        
+        # SPACES
+        (r'\\,', ' '),
+        (r'\\:', ' '),
+        (r'\\;', ' '),
+        (r'\\!', ' '),
+        (r'\\ ', ' '),
+    ]
+    
+    # Sélectionner les remplacements selon la langue
+    replacements = replacements_fr if lang == "fr" else replacements_en
+    
+    # Appliquer tous les remplacements
+    for pattern, replacement in replacements:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    
+    # Supprimer les commandes LaTeX restantes
+    text = re.sub(r'\\[a-zA-Z]+\{', ' ', text)
+    text = re.sub(r'\}', ' ', text)
+    text = re.sub(r'\\[a-zA-Z]+', ' ', text)
+    
+    # Nettoyer les espaces multiples
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    # Remplacer les caractères spéciaux
+    special_chars_fr = {
+        '{': ' ', '}': ' ', '[': ' ', ']': ' ', '(': ' ', ')': ' ',
+        '$': ' ', '&': ' et ', '%': ' pourcent ', '#': ' ',
+        '_': ' ', '^': ' puissance ', '~': ' environ ',
+        '=': ' égale ', '+': ' plus ', '-': ' moins ',
+        '*': ' fois ', '/': ' sur ', '<': ' inférieur à ',
+        '>': ' supérieur à ', '|': ' ou ', '\\': ' ',
+        '±': ' plus ou moins ', '×': ' fois ', '÷': ' divisé par ',
+        '≤': ' inférieur ou égal à ', '≥': ' supérieur ou égal à ',
+        '≠': ' différent de ', '≈': ' environ ', '≡': ' équivalent à ',
+        '→': ' tend vers ', '←': ' de ', '↔': ' équivalent à ',
+        '⇒': ' implique ', '⇔': ' si et seulement si ',
+        '∀': ' pour tout ', '∃': ' il existe ', '∈': ' appartient à ',
+        '∉': ' n\'appartient pas à ', '⊂': ' inclus dans ',
+        '⊆': ' inclus ou égal à ', '∪': ' union ', '∩': ' intersection ',
+        '∅': ' ensemble vide ', '∞': ' infini ', '∂': ' partielle ',
+        '∫': ' intégrale ', '∑': ' somme ', '∏': ' produit ',
+        '√': ' racine ', '∝': ' proportionnel à ', '∠': ' angle ',
+        '°': ' degré ',
+    }
+    
+    special_chars_en = {
+        '{': ' ', '}': ' ', '[': ' ', ']': ' ', '(': ' ', ')': ' ',
+        '$': ' ', '&': ' and ', '%': ' percent ', '#': ' ',
+        '_': ' ', '^': ' to the power ', '~': ' approximately ',
+        '=': ' equals ', '+': ' plus ', '-': ' minus ',
+        '*': ' times ', '/': ' divided by ', '<': ' less than ',
+        '>': ' greater than ', '|': ' or ', '\\': ' ',
+        '±': ' plus or minus ', '×': ' times ', '÷': ' divided by ',
+        '≤': ' less than or equal to ', '≥': ' greater than or equal to ',
+        '≠': ' not equal to ', '≈': ' approximately ', '≡': ' equivalent to ',
+        '→': ' tends to ', '←': ' from ', '↔': ' equivalent to ',
+        '⇒': ' implies ', '⇔': ' if and only if ',
+        '∀': ' for all ', '∃': ' there exists ', '∈': ' belongs to ',
+        '∉': ' does not belong to ', '⊂': ' subset of ',
+        '⊆': ' subset or equal to ', '∪': ' union ', '∩': ' intersection ',
+        '∅': ' empty set ', '∞': ' infinity ', '∂': ' partial ',
+        '∫': ' integral ', '∑': ' sum ', '∏': ' product ',
+        '√': ' root ', '∝': ' proportional to ', '∠': ' angle ',
+        '°': ' degree ',
+    }
+    
+    special_chars = special_chars_fr if lang == "fr" else special_chars_en
+    for char, replacement in special_chars.items():
+        text = text.replace(char, replacement)
+    
+    # Gérer les fonctions mathématiques f(x), g(t), etc.
+    function_pattern = r'(\b[a-zA-Z][a-zA-Z0-9]*)\s*\(\s*([^)]+?)\s*\)'
+    
+    def replace_function(match):
+        func_name = match.group(1)
+        variable = match.group(2)
+        if lang == "fr":
+            return f' {func_name} de {variable} '
+        else:
+            return f' {func_name} of {variable} '
+    
+    text = re.sub(function_pattern, replace_function, text)
+    
+    # Gérer les dérivées f'(x), f''(x)
+    derivative_pattern_fr = r"(\b[a-zA-Z][a-zA-Z0-9]*)'\s*\(\s*([^)]+?)\s*\)"
+    derivative_pattern_en = r"(\b[a-zA-Z][a-zA-Z0-9]*)'\s*\(\s*([^)]+?)\s*\)"
+    
+    def replace_derivative(match):
+        func_name = match.group(1)
+        variable = match.group(2)
+        if lang == "fr":
+            return f' {func_name} prime de {variable} '
+        else:
+            return f' {func_name} prime of {variable} '
+    
+    text = re.sub(derivative_pattern_fr if lang == "fr" else derivative_pattern_en, 
+                 replace_derivative, text)
+    
+    # Gérer les dérivées secondes f''(x)
+    second_derivative_pattern = r"(\b[a-zA-Z][a-zA-Z0-9]*)''\s*\(\s*([^)]+?)\s*\)"
+    
+    def replace_second_derivative(match):
+        func_name = match.group(1)
+        variable = match.group(2)
+        if lang == "fr":
+            return f' {func_name} seconde de {variable} '
+        else:
+            return f' {func_name} double prime of {variable} '
+    
+    text = re.sub(second_derivative_pattern, replace_second_derivative, text)
+    
+    # Gérer les opérations mathématiques entre nombres
+    ops_patterns = [
+        (r'(\d+)\s*\+\s*(\d+)', r'\1 plus \2'),
+        (r'(\d+)\s*\-\s*(\d+)', r'\1 moins \2' if lang == 'fr' else r'\1 minus \2'),
+        (r'(\d+)\s*\*\s*(\d+)', r'\1 fois \2' if lang == 'fr' else r'\1 times \2'),
+        (r'(\d+)\s*/\s*(\d+)', r'\1 sur \2' if lang == 'fr' else r'\1 divided by \2'),
+        (r'(\d+)\s*=\s*(\d+)', r'\1 égale \2' if lang == 'fr' else r'\1 equals \2'),
+    ]
+    
+    for pattern, replacement in ops_patterns:
+        text = re.sub(pattern, replacement, text)
+    
+    # Remplacer les nombres décimaux
+    if lang == "fr":
+        text = re.sub(r'(\d+)[.,](\d+)', r'\1 virgule \2', text)
+    else:
+        text = re.sub(r'(\d+)[.,](\d+)', r'\1 point \2', text)
+    
+    # Gérer les fractions simples 1/2, 3/4, etc.
+    text = re.sub(r'(\d+)\s*/\s*(\d+)', 
+                  r'\1 sur \2' if lang == 'fr' else r'\1 over \2', 
+                  text)
+    
+    # Nettoyer à nouveau les espaces multiples
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    # Capitaliser la première lettre
+    if text:
+        text = text[0].upper() + text[1:]
+    
+    # Ajouter un point final si nécessaire
+    if text and not text.endswith(('.', '!', '?')):
+        text += '.'
+    
+    return text
+
+
+def generate_spoken_conversation(conversation, lang="fr"):
+    """Génère la version parlée d'une conversation existante"""
+    conversation_parlee = []
+    
+    for message in conversation:
+        if '🤖 Teacher:' in message or '🤖 Enseignant:' in message:
+            # Message du bot
+            content = message.replace('🤖 Teacher: ', '').replace('🤖 Enseignant: ', '')
+            spoken_content = latex_to_speech(content, lang)
+            conversation_parlee.append({
+                'type': 'bot',
+                'content': content,
+                'spoken_content': spoken_content
+            })
+        elif '👤 Student:' in message or '👤 Élève:' in message:
+            # Message de l'élève
+            content = message.replace('👤 Student: ', '').replace('👤 Élève: ', '')
+            spoken_content = latex_to_speech(content, lang)
+            conversation_parlee.append({
+                'type': 'student',
+                'content': content,
+                'spoken_content': spoken_content
+            })
+    
+    return conversation_parlee
 
 
 def get_message(key, lang="fr"):
