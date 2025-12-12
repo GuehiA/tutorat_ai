@@ -226,6 +226,27 @@
       line-height: 1.4;
     }
     
+    /* CARTE ENSEIGNANT VIRTUEL */
+    .enseignant-virtuel-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-left: 5px solid #9b59b6;
+    }
+    
+    .enseignant-virtuel-card .main-action-icon {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+    
+    .enseignant-virtuel-card:hover {
+      background: #9b59b6;
+    }
+    
+    .enseignant-virtuel-card:hover .main-action-icon {
+      background: white;
+      color: #9b59b6;
+    }
+    
     /* SECTION TABLEAU DE BORD */
     .dashboard {
       display: grid;
@@ -849,6 +870,22 @@
       background: var(--danger);
       color: var(--white);
     }
+    
+    /* ANIMATIONS D'ENTRÉE */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animated-card {
+      animation: fadeInUp 0.5s ease forwards;
+    }
   </style>
 </head>
 <body>
@@ -880,7 +917,7 @@
     </header>
 
     <!-- Carte de bienvenue -->
-    <div class="welcome-card">
+    <div class="welcome-card animated-card">
       <div class="welcome-text">
         <h2>
           {% if lang == 'en' %}
@@ -909,7 +946,32 @@
     <!-- SECTION ACTIONS PRINCIPALES EN PREMIER -->
     <div class="main-actions-section">
       <div class="main-actions-grid">
-        <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card">
+        <!-- CARTE ENSEIGNANT VIRTUEL -->
+        <a href="/enseignant-virtuel" class="main-action-card enseignant-virtuel-card animated-card" style="animation-delay: 0.1s;">
+          <div class="main-action-icon">
+            <i class="fas fa-robot"></i>
+          </div>
+          <h4>
+            {% if lang == 'en' %}
+              Virtual Teacher
+            {% else %}
+              Enseignant Virtuel
+            {% endif %}
+          </h4>
+          <p>
+            {% if lang == 'en' %}
+              Get help from AI teacher for any subject
+            {% else %}
+              Obtenez de l'aide d'un enseignant IA pour toutes les matières
+            {% endif %}
+          </p>
+          <span class="badge" style="background: #9b59b6; color: white; margin-top: 5px;">
+            <i class="fas fa-bolt"></i>
+            {% if lang == 'en' %}NEW{% else %}NOUVEAU{% endif %}
+          </span>
+        </a>
+        
+        <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.2s;">
           <div class="main-action-icon">
             <i class="fas fa-bullseye"></i>
           </div>
@@ -929,7 +991,7 @@
           </p>
         </a>
         
-        <a href="/historique?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card">
+        <a href="/historique?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.3s;">
           <div class="main-action-icon">
             <i class="fas fa-history"></i>
           </div>
@@ -949,7 +1011,7 @@
           </p>
         </a>
         
-        <a href="/eleve/remediations?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card">
+        <a href="/eleve/remediations?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.4s;">
           <div class="main-action-icon">
             <i class="fas fa-tools"></i>
           </div>
@@ -974,7 +1036,7 @@
           {% endif %}
         </a>
         
-        <a href="/contenus-eleve?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card">
+        <a href="/contenus-eleve?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.5s;">
           <div class="main-action-icon">
             <i class="fas fa-compass"></i>
           </div>
@@ -993,11 +1055,31 @@
             {% endif %}
           </p>
         </a>
+        
+        <a href="/test-exercices?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.6s;">
+          <div class="main-action-icon">
+            <i class="fas fa-clipboard-check"></i>
+          </div>
+          <h4>
+            {% if lang == 'en' %}
+              Test Exercises
+            {% else %}
+              Exercices Tests
+            {% endif %}
+          </h4>
+          <p>
+            {% if lang == 'en' %}
+              Practice with test exercises
+            {% else %}
+              Pratique avec des exercices tests
+            {% endif %}
+          </p>
+        </a>
       </div>
     </div>
 
     <!-- SECTION : IA PEDAGOGIQUE -->
-    <div class="ia-pedagogique-section">
+    <div class="ia-pedagogique-section animated-card" style="animation-delay: 0.7s;">
       <div class="ia-header">
         <div class="ia-avatar">
           <i class="fas fa-brain"></i>
@@ -1084,28 +1166,32 @@
           <div class="ia-card-title">
             <i class="fas fa-life-ring" style="color: #1976d2;"></i>
             {% if lang == 'en' %}
-              Smart Assistance
+              AI Teacher Available
             {% else %}
-              Assistance Intelligente
+              Enseignant IA Disponible
             {% endif %}
           </div>
           <div class="ia-card-content">
             <div style="margin-bottom: 10px;">
               <span style="font-weight: 600; color: #2c3e50; font-size: 0.95rem;">
                 {% if lang == 'en' %}
-                  Available when you need it most
+                  Accessible 24/7
                 {% else %}
-                  Disponible quand vous en avez le plus besoin
+                  Accessible 24h/24
                 {% endif %}
               </span>
             </div>
             <p style="font-size: 0.9rem;">
               {% if lang == 'en' %}
-                💡 <strong>Virtual Teacher activates automatically</strong> when you score below 3/5.
+                🎯 <strong>Virtual Teacher now available anytime!</strong> Get help with any subject or question.
               {% else %}
-                💡 <strong>L'Enseignant Virtuel s'active automatiquement</strong> quand vous avez moins de 3/5.
+                🎯 <strong>Enseignant Virtuel disponible à tout moment !</strong> Obtenez de l'aide pour toute matière ou question.
               {% endif %}
             </p>
+            <a href="/enseignant-virtuel" style="display: inline-block; margin-top: 10px; padding: 6px 12px; background: #4361ee; color: white; border-radius: 6px; text-decoration: none; font-size: 0.85rem; transition: all 0.3s ease;">
+              <i class="fas fa-arrow-right"></i>
+              {% if lang == 'en' %}Try now{% else %}Essayer maintenant{% endif %}
+            </a>
           </div>
         </div>
       </div>
@@ -1115,7 +1201,7 @@
     <div class="dashboard">
       <!-- Notifications et compteur d'essai -->
       {% if eleve.est_en_essai_gratuit() and total_seconds > 0 %}
-      <div class="card trial-counter-card">
+      <div class="card trial-counter-card animated-card" style="animation-delay: 0.8s;">
         <div class="trial-header">
           <h3>
             <i class="fas fa-clock"></i>
@@ -1151,7 +1237,7 @@
         </button>
       </div>
       {% elif eleve.essai_est_expire() %}
-      <div class="card trial-counter-card expired">
+      <div class="card trial-counter-card expired animated-card" style="animation-delay: 0.8s;">
         <div class="trial-header">
           <h3>
             <i class="fas fa-exclamation-triangle"></i>
@@ -1190,7 +1276,7 @@
       {% endif %}
 
       {% if remediations_non_lues %}
-      <div class="card notif-card">
+      <div class="card notif-card animated-card" style="animation-delay: 0.9s;">
         <h3><i class="fas fa-bell"></i>
           {% if lang == 'en' %}
             New Remediation
@@ -1222,8 +1308,8 @@
       </div>
       {% endif %}
 
-      <!-- Assistant de Rémédiation et Objectifs -->
-      <div class="remediation-compact-card">
+      <!-- Assistant de Rémédiation -->
+      <div class="remediation-compact-card animated-card" style="animation-delay: 1.0s;">
         <div class="remediation-header-compact">
           <div class="remediation-avatar-compact">
             <i class="fas fa-hands-helping"></i>
@@ -1266,7 +1352,7 @@
       </div>
       
       <!-- Objectifs du Jour -->
-      <div class="card">
+      <div class="card animated-card" style="animation-delay: 1.1s;">
         <h3><i class="fas fa-bullseye"></i>
           {% if lang == 'en' %}
             Today's Goals
@@ -1325,7 +1411,7 @@
             </div>
           </div>
 
-          <!-- Objectif 3: Compléter une remédiation -->
+          <!-- Objectif 3: Utiliser l'enseignant virtuel -->
           <div class="goal-item {% if objectifs_du_jour[2].completed %}goal-completed{% endif %}">
             <div class="goal-checkbox">
               <input type="checkbox" id="goal3" 
@@ -1381,7 +1467,7 @@
       </div>
 
       <!-- Statistiques de progression -->
-      <div class="card stats-card">
+      <div class="card stats-card animated-card" style="animation-delay: 1.2s;">
         <h3><i class="fas fa-chart-line"></i>
           {% if lang == 'en' %}
             Your Progress
@@ -1433,7 +1519,7 @@
       </div>
 
       <!-- Activité Récente -->
-      <div class="card" style="grid-column: 1 / -1;">
+      <div class="card animated-card" style="grid-column: 1 / -1; animation-delay: 1.3s;">
         <h3><i class="fas fa-clock"></i>
           {% if lang == 'en' %}
             Recent Activity
@@ -1487,6 +1573,10 @@
                   Commencez votre premier exercice !
                 {% endif %}
               </p>
+              <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-secondary" style="margin-top: 10px;">
+                <i class="fas fa-play"></i>
+                {% if lang == 'en' %}Start Learning{% else %}Commencer à apprendre{% endif %}
+              </a>
             </div>
           {% endif %}
         </div>
@@ -1494,7 +1584,7 @@
     </div>
 
     <!-- Déconnexion -->
-    <a class="logout-btn" href="/logout">
+    <a class="logout-btn animated-card" href="/logout" style="animation-delay: 1.4s;">
       <i class="fas fa-sign-out-alt"></i>
       {% if lang == 'en' %}Log out{% else %}Se déconnecter{% endif %}
     </a>
@@ -1502,15 +1592,17 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const cards = document.querySelectorAll('.card, .main-action-card, .remediation-compact-card, .ia-card');
+      const cards = document.querySelectorAll('.card, .main-action-card, .remediation-compact-card, .ia-card, .welcome-card, .logout-btn');
       cards.forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        setTimeout(() => {
-          card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-          card.style.opacity = '1';
-          card.style.transform = 'translateY(0)';
-        }, 100 * index);
+        if (!card.classList.contains('animated-card')) {
+          card.style.opacity = '0';
+          card.style.transform = 'translateY(20px)';
+          setTimeout(() => {
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+          }, 100 * index);
+        }
       });
 
       {% if eleve.est_en_essai_gratuit() and total_seconds > 0 %}
@@ -1525,6 +1617,15 @@
         setTimeout(() => {
           bar.style.width = width;
         }, 500);
+      });
+      
+      // Animation des cartes avec délai
+      const animatedCards = document.querySelectorAll('.animated-card');
+      animatedCards.forEach((card, index) => {
+        const delay = parseFloat(card.style.animationDelay) || 0;
+        setTimeout(() => {
+          card.style.animation = 'fadeInUp 0.5s ease forwards';
+        }, delay * 1000);
       });
     });
 
@@ -1574,6 +1675,17 @@
 
     function showUpgradeOptions() {
       window.location.href = "/upgrade-options?username={{ eleve.username }}&lang={{ lang }}";
+    }
+    
+    // Animation au survol de l'enseignant virtuel
+    const enseignantCard = document.querySelector('.enseignant-virtuel-card');
+    if (enseignantCard) {
+      enseignantCard.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-5px) scale(1.02)';
+      });
+      enseignantCard.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(-5px)';
+      });
     }
   </script>
 </body>

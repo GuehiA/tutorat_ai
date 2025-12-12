@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if lang == 'en' %}Math Guide{% else %}Guide de Maths{% endif %}</title>
+  <title>{% if lang == 'en' %}Virtual Teacher{% else %}Enseignant Virtuel{% endif %}</title>
   
   <!-- Cache control STRICT -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -39,6 +39,7 @@
       --danger: #e85959;
       --light: #f8f9ff;
       --dark: #121826;
+      --accent: #9b59b6;
     }
     
     * {
@@ -61,7 +62,7 @@
     
     /* Header */
     .header {
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
       color: white;
       padding: 15px 20px;
       border-radius: 12px;
@@ -101,15 +102,54 @@
       padding: 5px 12px;
       border-radius: 20px;
       font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
     
-    /* Bannière de rémédiation */
+    /* Bannière de rémédiation - CACHÉE SANS EXERCICE */
     .remediation-context-banner {
       background: linear-gradient(135deg, #e8f4ff 0%, #d1e7ff 100%);
       padding: 15px;
       border-radius: 10px;
       margin-bottom: 20px;
       border-left: 5px solid #4361ee;
+      display: none; /* Caché par défaut */
+    }
+    
+    /* Sélecteur de matière */
+    .matiere-selector {
+      margin-bottom: 15px;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .matiere-selector label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--dark);
+    }
+    
+    .matiere-selector select {
+      width: 100%;
+      padding: 10px 15px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .matiere-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
     }
     
     /* Bouton retour */
@@ -138,7 +178,7 @@
       padding: 12px 15px;
       border-radius: 8px;
       margin-bottom: 15px;
-      display: flex;
+      display: none; /* Caché par défaut */
       align-items: flex-start;
       gap: 10px;
     }
@@ -221,7 +261,7 @@
       background: white;
       border-radius: 12px;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      height: calc(100vh - 200px);
+      height: calc(100vh - 250px);
       min-height: 500px;
       display: flex;
       flex-direction: column;
@@ -336,6 +376,12 @@
       font-weight: 500;
       height: 60px;
       min-width: 60px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-send:hover:not(:disabled) {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
     }
     
     .btn-send:disabled {
@@ -351,12 +397,16 @@
     .welcome-message .message-bubble {
       background: linear-gradient(135deg, #f0f2f5 0%, #e8eaff 100%);
       border-left: 4px solid var(--primary);
+      padding: 20px;
     }
     
     .welcome-message h4 {
       margin-top: 0;
       margin-bottom: 10px;
       color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     
     .welcome-message ol {
@@ -365,7 +415,7 @@
     }
     
     .welcome-message li {
-      margin-bottom: 5px;
+      margin-bottom: 8px;
     }
     
     /* Teacher's Last Question */
@@ -375,6 +425,7 @@
       padding: 15px;
       margin: 15px 20px;
       border-radius: 8px;
+      display: none; /* Caché par défaut */
     }
     
     .teacher-question h5 {
@@ -385,6 +436,26 @@
       gap: 8px;
     }
     
+    /* Session info */
+    .session-info {
+      background: rgba(67, 97, 238, 0.1);
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+    
+    .session-matiere {
+      background: var(--accent);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+    }
+    
     /* Spinner */
     .spinner {
       animation: spin 1s linear infinite;
@@ -393,6 +464,19 @@
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+    }
+    
+    /* Badge enseignant virtuel */
+    .badge-enseignant {
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
     
     /* Responsive */
@@ -415,6 +499,7 @@
       
       .niveau-badge {
         align-self: flex-start;
+        margin-top: 5px;
       }
       
       .btn-back span {
@@ -439,11 +524,15 @@
       }
       
       .chat-container {
-        height: calc(100vh - 220px);
+        height: calc(100vh - 270px);
       }
       
       .message {
         max-width: 90%;
+      }
+      
+      .matiere-selector {
+        padding: 12px;
       }
     }
   </style>
@@ -460,8 +549,13 @@
             {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
           </div>
           <div>
-            <h3 style="margin: 0; font-size: 1.2rem;">
-              {% if lang == 'en' %}Math Guide{% else %}Guide de Maths{% endif %}
+            <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-robot"></i>
+              {% if lang == 'en' %}Virtual Teacher{% else %}Enseignant Virtuel{% endif %}
+              <span class="badge-enseignant">
+                <i class="fas fa-bolt"></i>
+                {% if lang == 'en' %}24/7{% else %}24h/24{% endif %}
+              </span>
             </h3>
             <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
               {{ eleve.nom_complet.split(' ')[0] }}
@@ -477,13 +571,49 @@
       </div>
       
       <div class="niveau-badge">
-        {{ eleve.niveau.nom if eleve.niveau else '6ème' }}
+        <i class="fas fa-graduation-cap"></i>
+        {{ eleve.niveau.nom if eleve.niveau else ('6th grade' if lang == 'en' else '6ème') }}
       </div>
     </header>
 
-    <!-- Bannière de contexte de rémédiation -->
+    <!-- Information de session -->
+    <div class="session-info">
+      <div>
+        <i class="fas fa-clock" style="margin-right: 5px; color: var(--primary);"></i>
+        <span id="currentTime">{{ date_du_jour.strftime('%H:%M') if date_du_jour else '' }}</span>
+      </div>
+      <div class="session-matiere" id="currentSubject">
+        <i class="fas fa-book"></i>
+        {{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics')|title }}
+      </div>
+    </div>
+
+    <!-- Sélecteur de matière -->
+    <div class="matiere-selector">
+      <label for="matiere">
+        <i class="fas fa-book-open"></i>
+        {% if lang == 'en' %}Select Subject:{% else %}Choisir la matière :{% endif %}
+      </label>
+      <select name="matiere" id="matiereSelect">
+        {% if lang == 'fr' %}
+          <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>Mathématiques</option>
+          <option value="français" {% if matiere == 'français' %}selected{% endif %}>Français</option>
+          <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>Histoire</option>
+          <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>Sciences</option>
+          <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>Géographie</option>
+        {% else %}
+          <option value="mathematics" {% if matiere == 'mathematics' %}selected{% endif %}>Mathematics</option>
+          <option value="french" {% if matiere == 'french' %}selected{% endif %}>French</option>
+          <option value="history" {% if matiere == 'history' %}selected{% endif %}>History</option>
+          <option value="science" {% if matiere == 'science' %}selected{% endif %}>Science</option>
+          <option value="geography" {% if matiere == 'geography' %}selected{% endif %}>Geography</option>
+        {% endif %}
+      </select>
+    </div>
+
+    <!-- Bannière de contexte de rémédiation - AFFICHÉE SEULEMENT SI exercice_remediation existe -->
     {% if exercice_remediation %}
-    <div class="remediation-context-banner">
+    <div class="remediation-context-banner" id="remediationBanner" style="display: block;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div style="flex: 1;">
           <h4 style="margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1rem;">
@@ -492,9 +622,9 @@
           </h4>
           <p style="margin: 0; color: #34495e; font-size: 0.9rem;">
             {% if lang == 'en' %}
-              Exercise: {{ exercice_remediation.question_en[:100] }}...
+              Exercise: {{ exercice_remediation.question_en[:100] if exercice_remediation.question_en else 'Math exercise' }}...
             {% else %}
-              Exercice : {{ exercice_remediation.question_fr[:100] }}...
+              Exercice : {{ exercice_remediation.question_fr[:100] if exercice_remediation.question_fr else 'Exercice de maths' }}...
             {% endif %}
           </p>
         </div>
@@ -511,40 +641,6 @@
         {% endif %}
       </p>
     </div>
-
-    <!-- Bouton "J'ai compris" -->
-    <div style="text-align: center; margin: 20px 0;">
-      <form method="POST" action="/close-remediation" onsubmit="return confirm('{% if lang == "fr" %}Es-tu sûr d\'avoir compris l\'exercice ? L\'accès à l\'enseignant virtuel sera fermé.{% else %}Are you sure you understand the exercise? Access to virtual teacher will be closed.{% endif %}');">
-        <input type="hidden" name="exercice_id" value="{{ exercice_remediation.id }}">
-        <button type="submit" class="btn" style="display: inline-flex; align-items: center; padding: 10px 25px; background: #3fba83; color: white; border: none; border-radius: 50px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
-          <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
-          {% if lang == 'fr' %}J'ai compris, je peux continuer seul{% else %}I understand, I can continue alone{% endif %}
-        </button>
-      </form>
-    </div>
-    {% endif %}
-
-    <!-- Exercice en cours - AFFICHÉ SEULEMENT SI EXISTE -->
-    {% set exercice_en_cours = session.get('exercice_en_cours', '') %}
-    {% set conversation = session.get('conversation', []) %}
-    
-    {% if exercice_en_cours and conversation|length > 0 %}
-    <div class="exercice-header">
-      <div class="exercice-icon">
-        <i class="fas fa-book-open"></i>
-      </div>
-      <div class="exercice-content">
-        <div class="exercice-title">
-          {% if lang == 'en' %}Current Exercise{% else %}Exercice en cours{% endif %}
-        </div>
-        <div class="exercice-text">
-          {{ exercice_en_cours[:150] }}{% if exercice_en_cours|length > 150 %}...{% endif %}
-        </div>
-      </div>
-      <div class="exercice-counter">
-        {{ conversation|length//2 }} {% if lang == 'en' %}steps{% else %}étapes{% endif %}
-      </div>
-    </div>
     {% endif %}
 
     <!-- Controls -->
@@ -552,7 +648,7 @@
       <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
         <button type="submit" class="btn btn-new" id="newExerciseBtn">
           <i class="fas fa-plus-circle"></i>
-          {% if lang == 'en' %}New Exercise{% else %}Nouvel exercice{% endif %}
+          {% if lang == 'en' %}New Conversation{% else %}Nouvelle Conversation{% endif %}
         </button>
       </form>
     </div>
@@ -562,26 +658,28 @@
       <!-- Messages Area -->
       <div class="messages-area" id="messagesArea">
         <!-- Conversation - AFFICHÉE SEULEMENT SI EXISTE -->
+        {% set conversation = session.get('conversation', []) %}
+        
         {% if conversation and conversation|length > 0 %}
           {% for message in conversation %}
-            {% if '👤 Élève:' in message %}
+            {% if '👤 Student:' in message or '👤 Élève:' in message %}
               <div class="message user-message">
                 <div class="message-header">
                   <i class="fas fa-user"></i>
                   <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
                 </div>
                 <div class="message-bubble">
-                  {{ message.replace('👤 Élève: ', '')|safe }}
+                  {{ message.replace('👤 Student: ', '').replace('👤 Élève: ', '')|safe }}
                 </div>
               </div>
-            {% elif '🤖 Enseignant:' in message %}
+            {% elif '🤖 Teacher:' in message or '🤖 Enseignant:' in message %}
               <div class="message bot-message">
                 <div class="message-header">
                   <i class="fas fa-robot"></i>
-                  <span>{% if lang == 'en' %}Guide{% else %}Guide{% endif %}</span>
+                  <span>{% if lang == 'en' %}Virtual Teacher{% else %}Enseignant Virtuel{% endif %}</span>
                 </div>
                 <div class="message-bubble">
-                  {{ message.replace('🤖 Enseignant: ', '')|safe }}
+                  {{ message.replace('🤖 Teacher: ', '').replace('🤖 Enseignant: ', '')|safe }}
                 </div>
               </div>
             {% endif %}
@@ -591,19 +689,44 @@
           <!-- Welcome Message - TOUJOURS AFFICHÉ QUAND PAS DE CONVERSATION -->
           <div class="message bot-message welcome-message">
             <div class="message-bubble">
-              <h4>👋 {% if lang == 'en' %}Hi {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Salut {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}</h4>
-              <p><strong>{% if lang == 'en' %}I'm your Math Guide.{% else %}Je suis ton guide de maths.{% endif %}</strong></p>
-              <p>{% if lang == 'en' %}I won't give you answers, but I'll ask questions so YOU find them!{% else %}Je ne te donnerai pas les réponses, mais je te poserai des questions pour que TU les trouves !{% endif %}</p>
+              <h4><i class="fas fa-graduation-cap"></i> 
+                {% if lang == 'en' %}Hello {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Bonjour {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}
+              </h4>
               
-              <p><strong>{% if lang == 'en' %}How it works:{% else %}Comment ça marche :{% endif %}</strong></p>
+              <p><strong>{% if lang == 'en' %}I'm your Virtual Teacher{% else %}Je suis ton Enseignant Virtuel{% endif %}</strong> 
+                {% if lang == 'en' %}👨‍🏫{% else %}👩‍🏫{% endif %}
+              </p>
+              
+              <p>{% if lang == 'en' %}
+                I'm here to help you understand concepts and solve problems in any subject!
+                <strong>I won't give direct answers</strong>, but I'll guide you step by step so you discover the solutions yourself.
+              {% else %}
+                Je suis là pour t'aider à comprendre les concepts et résoudre des problèmes dans toutes les matières !
+                <strong>Je ne donnerai pas les réponses directement</strong>, mais je te guiderai pas à pas pour que tu découvres les solutions toi-même.
+              {% endif %}</p>
+              
+              <p><strong>{% if lang == 'en' %}How to use:{% else %}Comment utiliser :{% endif %}</strong></p>
               <ol>
-                <li>{% if lang == 'en' %}You ask a math question{% else %}Tu poses une question de maths{% endif %}</li>
-                <li>{% if lang == 'en' %}I ask you a guiding question{% else %}Je te pose une question pour te guider{% endif %}</li>
-                <li>{% if lang == 'en' %}You answer{% else %}Tu réponds{% endif %}</li>
-                <li>{% if lang == 'en' %}We continue until you find!{% else %}On continue jusqu'à ce que tu trouves !{% endif %}</li>
+                <li>{% if lang == 'en' %}Select your subject above{% else %}Choisis ta matière ci-dessus{% endif %}</li>
+                <li>{% if lang == 'en' %}Ask your question{% else %}Pose ta question{% endif %}</li>
+                <li>{% if lang == 'en' %}I'll guide you with questions{% else %}Je te guiderai avec des questions{% endif %}</li>
+                <li>{% if lang == 'en' %}Answer my questions{% else %}Réponds à mes questions{% endif %}</li>
+                <li>{% if lang == 'en' %}Together we'll find the solution!{% else %}Ensemble on trouvera la solution !{% endif %}</li>
               </ol>
               
-              <p><em>✨ {% if lang == 'en' %}Ready? Write your exercise below!{% else %}Prêt ? Écris ton exercice ci-dessous !{% endif %}</em></p>
+              <p style="margin-top: 15px; padding: 10px; background: rgba(67, 97, 238, 0.1); border-radius: 8px;">
+                <i class="fas fa-lightbulb" style="color: #fcc419;"></i>
+                <strong>{% if lang == 'en' %}Pro tip:{% else %}Astuce :{% endif %}</strong>
+                {% if lang == 'en' %}
+                  You can ask about homework, exam preparation, concept explanations, or practice exercises.
+                {% else %}
+                  Tu peux poser des questions sur tes devoirs, la préparation d'examens, l'explication de concepts ou des exercices d'entraînement.
+                {% endif %}
+              </p>
+              
+              <p style="text-align: center; margin-top: 20px;">
+                <em>✨ {% if lang == 'en' %}Ready to learn? Write your question below!{% else %}Prêt à apprendre ? Écris ta question ci-dessous !{% endif %}</em>
+              </p>
             </div>
           </div>
         {% endif %}
@@ -612,28 +735,44 @@
       <!-- Teacher's Last Question - AFFICHÉ SEULEMENT SI EXISTE -->
       {% set derniere_q_ia = session.get('derniere_q_ia') %}
       {% if derniere_q_ia and conversation|length > 0 %}
-      <div class="teacher-question">
+      <div class="teacher-question" id="teacherQuestion" style="display: block;">
         <h5><i class="fas fa-question-circle"></i> 
-          {% if lang == 'en' %}Guide's question:{% else %}Question du guide :{% endif %}
+          {% if lang == 'en' %}My question for you:{% else %}Ma question pour toi :{% endif %}
         </h5>
         <p>{{ derniere_q_ia }}</p>
+        <small style="color: #666; display: block; margin-top: 5px;">
+          <i class="fas fa-hand-point-right"></i>
+          {% if lang == 'en' %}Answer in the box below{% else %}Réponds dans la zone ci-dessous{% endif %}
+        </small>
       </div>
       {% endif %}
 
       <!-- Input Area -->
       <div class="input-area">
         <form method="POST" id="mainForm">
+          <!-- Champ caché pour la matière -->
+          <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics') }}">
+          
           <div class="input-group">
             <textarea 
               name="question" 
               id="questionInput"
-              placeholder="{% if derniere_q_ia and conversation|length > 0 %}{% if lang == 'en' %}Answer the guide's question...{% else %}Réponds à la question du guide...{% endif %}{% else %}{% if lang == 'en' %}Write your math question here...{% else %}Écris ta question de maths ici...{% endif %}{% endif %}"
+              placeholder="{% if derniere_q_ia and conversation|length > 0 %}{% if lang == 'en' %}Answer the teacher's question...{% else %}Réponds à la question de l'enseignant...{% endif %}{% else %}{% if lang == 'en' %}Ask your question about {{ matiere|default('mathematics') }}...{% else %}Pose ta question sur {{ matiere|default('mathématiques') }}...{% endif %}{% endif %}"
               required
-              autofocus></textarea>
+              autofocus
+              rows="3"></textarea>
             
-            <button type="submit" class="btn-send" id="submitBtn">
+            <button type="submit" class="btn-send" id="submitBtn" title="{% if lang == 'en' %}Send message{% else %}Envoyer le message{% endif %}">
               <i class="fas fa-paper-plane"></i>
             </button>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+            <small style="color: #666; font-size: 0.85rem;">
+              <i class="fas fa-keyboard"></i>
+              {% if lang == 'en' %}Press Shift+Enter for new line{% else %}Shift+Entrée pour aller à la ligne{% endif %}
+            </small>
+            <small id="charCount" style="color: #999; font-size: 0.85rem;">0/500</small>
           </div>
         </form>
       </div>
@@ -643,18 +782,81 @@
   <!-- Bootstrap JS for alerts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- JavaScript RENFORCÉ -->
+  <!-- JavaScript -->
   <script>
     let isProcessing = false;
     
     document.addEventListener('DOMContentLoaded', function() {
-      console.log("📱 Page enseignant virtuel chargée");
+      console.log("📱 Enseignant Virtuel - Page chargée");
       
-      // Auto-focus
+      // Mettre à jour l'heure
+      updateTime();
+      setInterval(updateTime, 60000);
+      
+      // Éléments DOM
       const textarea = document.getElementById('questionInput');
+      const submitBtn = document.getElementById('submitBtn');
+      const matiereSelect = document.getElementById('matiereSelect');
+      const matiereInput = document.getElementById('matiereInput');
+      const currentSubject = document.getElementById('currentSubject');
+      const charCount = document.getElementById('charCount');
+      
+      // Auto-focus et sélection
       if (textarea) {
         textarea.focus();
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        
+        // Compteur de caractères
+        textarea.addEventListener('input', function() {
+          const length = this.value.length;
+          charCount.textContent = `${length}/500`;
+          
+          if (length > 450) {
+            charCount.style.color = '#e85959';
+          } else if (length > 300) {
+            charCount.style.color = '#fcc419';
+          } else {
+            charCount.style.color = '#999';
+          }
+        });
+        
+        // Initialiser le compteur
+        charCount.textContent = `${textarea.value.length}/500`;
+        
+        // Gestion Shift+Enter
+        textarea.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('mainForm').dispatchEvent(new Event('submit'));
+          }
+        });
+      }
+      
+      // Sélecteur de matière
+      if (matiereSelect && matiereInput && currentSubject) {
+        matiereSelect.addEventListener('change', function() {
+          const selectedMatiere = this.value;
+          matiereInput.value = selectedMatiere;
+          
+          // Mettre à jour l'affichage
+          const subjectNames = {
+            'mathématiques': 'Mathématiques', 'français': 'Français', 'histoire': 'Histoire', 
+            'sciences': 'Sciences', 'géographie': 'Géographie',
+            'mathematics': 'Mathematics', 'french': 'French', 'history': 'History',
+            'science': 'Science', 'geography': 'Geography'
+          };
+          
+          currentSubject.innerHTML = `<i class="fas fa-book"></i> ${subjectNames[selectedMatiere] || selectedMatiere}`;
+          
+          // Mettre à jour le placeholder
+          if (textarea) {
+            const placeholderText = "{% if lang == 'en' %}Ask your question about " + selectedMatiere + "...{% else %}Pose ta question sur " + (selectedMatiere === 'mathematics' ? 'mathématiques' : selectedMatiere) + "...{% endif %}";
+            textarea.placeholder = placeholderText;
+          }
+          
+          // Afficher un feedback
+          showAlert("{% if lang == 'en' %}Subject changed to: {% else %}Matière changée pour : {% endif %}" + (subjectNames[selectedMatiere] || selectedMatiere), 'info');
+        });
       }
       
       // Scroll to bottom
@@ -662,12 +864,12 @@
       
       // Form submission principal
       const form = document.getElementById('mainForm');
-      const submitBtn = document.getElementById('submitBtn');
       
       if (form) {
         form.addEventListener('submit', function(e) {
           if (isProcessing) {
             e.preventDefault();
+            showAlert("{% if lang == 'en' %}Please wait...{% else %}Veuillez patienter...{% endif %}", 'warning');
             return false;
           }
           
@@ -678,6 +880,12 @@
             return false;
           }
           
+          if (textarea && textarea.value.trim().length > 500) {
+            e.preventDefault();
+            showAlert("{% if lang == 'en' %}Maximum 500 characters{% else %}Maximum 500 caractères{% endif %}", 'warning');
+            return false;
+          }
+          
           // Set processing state
           isProcessing = true;
           if (submitBtn) {
@@ -685,29 +893,47 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i>';
           }
           
-          // Auto-reset after 20 seconds (safety)
-          setTimeout(() => {
+          // Désactiver le textarea
+          if (textarea) {
+            textarea.disabled = true;
+          }
+          
+          // Auto-reset after 25 seconds (safety)
+          const safetyTimeout = setTimeout(() => {
             if (isProcessing) {
               isProcessing = false;
               if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
               }
+              if (textarea) {
+                textarea.disabled = false;
+              }
               showAlert("{% if lang == 'en' %}Request timeout. Please try again.{% else %}Délai dépassé. Veuillez réessayer.{% endif %}", 'warning');
             }
-          }, 20000);
+          }, 25000);
+          
+          // Nettoyer le timeout si la page se recharge
+          window.addEventListener('beforeunload', function() {
+            clearTimeout(safetyTimeout);
+          });
           
           console.log('📤 Envoi de la réponse...');
         });
       }
       
-      // Gestion du bouton "Nouvel exercice"
+      // Gestion du bouton "Nouvelle conversation"
       const newExerciseBtn = document.getElementById('newExerciseBtn');
       const newExerciseForm = document.getElementById('newExerciseForm');
       
       if (newExerciseForm) {
         newExerciseForm.addEventListener('submit', function(e) {
-          console.log("🔄 Nouvel exercice demandé");
+          if (!confirm("{% if lang == 'en' %}Start a new conversation? Current conversation will be lost.{% else %}Commencer une nouvelle conversation ? La conversation actuelle sera perdue.{% endif %}")) {
+            e.preventDefault();
+            return false;
+          }
+          
+          console.log("🔄 Nouvelle conversation demandée");
           
           // Empêcher double clic
           if (newExerciseBtn.disabled) {
@@ -725,8 +951,6 @@
             newExerciseBtn.disabled = false;
             newExerciseBtn.innerHTML = originalText;
           }, 3000);
-          
-          console.log("✅ Formulaire nouvel exercice soumis");
         });
       }
       
@@ -736,14 +960,14 @@
           const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
           bsAlert.close();
         });
-      }, 4000);
+      }, 5000);
       
       // MathJax observer
       const messagesArea = document.getElementById('messagesArea');
       if (messagesArea && window.MathJax) {
         const observer = new MutationObserver(function() {
           MathJax.typesetPromise();
-          setTimeout(scrollToBottom, 50);
+          setTimeout(scrollToBottom, 100);
         });
         observer.observe(messagesArea, { childList: true, subtree: true });
       }
@@ -765,8 +989,10 @@
         transform: translateX(-50%);
         z-index: 2000;
         max-width: 90%;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       `;
       alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       `;
@@ -777,23 +1003,36 @@
           const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
           bsAlert.close();
         }
-      }, 3000);
+      }, 4000);
+    }
+    
+    function updateTime() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const timeElement = document.getElementById('currentTime');
+      if (timeElement) {
+        timeElement.textContent = timeString;
+      }
     }
     
     // FORCER le rechargement sans cache quand on revient sur la page
     window.addEventListener('pageshow', function(event) {
-      // Si la page vient du cache, forcer un rechargement
       if (event.persisted) {
-        console.log("🔄 Page chargée depuis le cache, vérification de l'état...");
+        console.log("🔄 Page chargée depuis le cache, rechargement...");
         window.location.reload();
       }
       
       // Réinitialiser l'état de traitement
       isProcessing = false;
       const submitBtn = document.getElementById('submitBtn');
+      const textarea = document.getElementById('questionInput');
+      
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+      }
+      if (textarea) {
+        textarea.disabled = false;
       }
       
       // Scroll vers le bas
@@ -804,8 +1043,9 @@
     window.onunload = function() {};
     
     // Log pour débogage
-    console.log("Conversation en session: {{ conversation|length|default(0) }} messages");
-    console.log("Exercice en cours: {{ 'Oui' if exercice_en_cours else 'Non' }}");
+    console.log("🗣️ Conversation en session: {{ conversation|length|default(0) }} messages");
+    console.log("📚 Matière: {{ matiere|default('Non définie') }}");
+    console.log("🎓 Élève: {{ eleve.nom_complet }}");
   </script>
 </body>
 </html>

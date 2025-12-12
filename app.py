@@ -471,7 +471,9 @@ def obtenir_nom_matiere_objet(matiere_obj, lang="fr"):
 # ============ ROUTE ADAPTÉE ============
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel - Accès conditionnel - BILINGUE"""
+    """Route pour l'enseignant virtuel - Accès libre - BILINGUE"""
+    from datetime import datetime
+    
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
 
@@ -479,144 +481,95 @@ def enseignant_virtuel():
     if not eleve or eleve.role != "élève":
         return redirect(url_for("login_eleve"))
     
-    # Vérifier l'accès (essai gratuit)
+    # Vérifier l'accès (essai gratuit uniquement)
+    lang = session.get("lang", "fr")
     if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
         session.clear()
         flash(get_message("essai_termine", lang), "error")
         return redirect(url_for('login_eleve'))
 
-    lang = session.get("lang", "fr")
+    # Initialiser la conversation si elle n'existe pas
+    if "conversation" not in session:
+        session["conversation"] = []
     
-    # 🆕 VÉRIFICATION D'ACCÈS
-    remediation_access = session.get('remediation_access')
-    if not remediation_access:
-        flash(get_message("enseignant_disponible", lang), "info")
-        return redirect(url_for('dashboard_eleve'))
-    
-    # Vérifier si l'accès est encore valide (24h max)
-    from datetime import datetime
-    try:
-        first_access = datetime.fromisoformat(remediation_access.get('first_access', ''))
-        if (datetime.utcnow() - first_access).total_seconds() > 86400:  # 24 heures
-            session.pop('remediation_access', None)
-            flash(get_message("acces_expire_24h", lang), "warning")
-            return redirect(url_for('dashboard_eleve'))
-    except:
-        pass
-    
-    # Vérifier la note
-    if remediation_access.get('note', 0) >= 3:
-        session.pop('remediation_access', None)
-        flash(get_message("exercice_reussi", lang), "success")
-        return redirect(url_for('dashboard_eleve'))
-    
-    # RÉCUPÉRER LE COMPTEUR D'ACCÈS ICI
-    access_count = remediation_access.get('access_count', 0)  # DÉFINIR LA VARIABLE ICI
-    
-    # Limiter à 5 accès maximum
-    if access_count >= 5:
-        flash(get_message("limite_5_sessions", lang), "warning")
-        return redirect(url_for('exercice_detail', id=remediation_access.get('exercice_id')))
-    
-    # Récupérer l'exercice et la matière
-    exercice_remediation = None
+    # Récupérer la matière sélectionnée ou par défaut
     matiere = "mathématiques" if lang == "fr" else "mathematics"
-    exercice_context = ""
-    
-    exercice_id = remediation_access.get('exercice_id')
-    test_exercice_id = remediation_access.get('test_exercice_id')
-    
-    # CAS 1: Exercice standard
-    if exercice_id:
-        exercice_remediation = Exercice.query.get(exercice_id)
-        if exercice_remediation:
-            matiere_obj = obtenir_matiere_exercice(exercice_remediation)
-            if matiere_obj:
-                matiere = obtenir_nom_matiere_objet(matiere_obj, lang)
-            
-            # Contexte dans la bonne langue
-            question_field = "question_fr" if lang == "fr" else "question_en"
-            question = getattr(exercice_remediation, question_field, None)
-            if question:
-                exercice_context = f"{question[:200]}..." if len(question) > 200 else question
-    
-    # CAS 2: Exercice de test
-    elif test_exercice_id:
-        test_exercice = TestExercice.query.get(test_exercice_id)
-        if test_exercice:
-            matiere_obj = obtenir_matiere_test_exercice(test_exercice)
-            if matiere_obj:
-                matiere = obtenir_nom_matiere_objet(matiere_obj, lang)
-            
-            # Contexte dans la bonne langue
-            question_field = "question_fr" if lang == "fr" else "question_en"
-            question = getattr(test_exercice, question_field, None)
-            if question:
-                exercice_context = f"{question[:200]}..." if len(question) > 200 else question
     
     # TRAITEMENT POST
     if request.method == 'POST':
         question = request.form.get("question", "").strip()
+        matiere_form = request.form.get("matiere", "")
+        
+        if matiere_form:
+            matiere = matiere_form
         
         if question and len(question) >= 3:
             conversation = session.get("conversation", [])
             derniere_q_ia = session.get('derniere_q_ia')
             
+            # Si c'est une nouvelle conversation, ajouter un message de bienvenue
+            if not conversation:
+                bienvenue_msg = get_message("bienvenue_enseignant", lang)
+                enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
+                conversation.append(f"{enseignant_label} {bienvenue_msg}")
+            
             # Format simple pour l'historique
             eleve_label = "👤 Student:" if lang == "en" else "👤 Élève:"
             conversation.append(f"{eleve_label} {question}")
             
-            if derniere_q_ia:
-                # Réponse à une question précédente
-                reponse = generer_suite_conversation(
-                    derniere_q=derniere_q_ia,
-                    reponse=question,
-                    historique=conversation,
-                    niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
-                    langue=lang,
-                    mode_examen=session.get("mode_examen", False),
-                    exercice_context=exercice_context,
-                    matiere=matiere
-                )
-                session.pop('derniere_q_ia', None)
-            else:
-                # Nouvelle question
-                context_message = ""
-                if exercice_context:
-                    if lang == "en":
-                        context_message = f"\n\nI need help understanding this {matiere} exercise:\n{exercice_context}"
-                    else:
-                        context_message = f"\n\nJ'ai besoin d'aide pour comprendre cet exercice de {matiere} :\n{exercice_context}"
+            try:
+                if derniere_q_ia:
+                    # Réponse à une question précédente
+                    reponse = generer_suite_conversation(
+                        derniere_q=derniere_q_ia,
+                        reponse=question,
+                        historique=conversation,
+                        niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
+                        langue=lang,
+                        mode_examen=session.get("mode_examen", False),
+                        exercice_context="",
+                        matiere=matiere
+                    )
+                    session.pop('derniere_q_ia', None)
+                else:
+                    # Nouvelle question
+                    reponse = generer_debut_conversation(
+                        question=question,
+                        niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
+                        langue=lang,
+                        mode_examen=session.get("mode_examen", False),
+                        matiere=matiere
+                    )
                 
-                full_question = question + context_message
-                reponse = generer_debut_conversation(
-                    question=full_question,
-                    niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
-                    langue=lang,
-                    mode_examen=session.get("mode_examen", False),
-                    matiere=matiere
-                )
-            
-            # Ajouter la réponse de l'IA
-            enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
-            conversation.append(f"{enseignant_label} {reponse}")
-            
-            # Limiter à 10 messages
-            if len(conversation) > 10:
-                conversation = conversation[-10:]
-            
-            session["conversation"] = conversation
-            
-            # Extraire la nouvelle question
-            nouvelle_q = extraire_question(reponse, lang)
-            if nouvelle_q:
-                session['derniere_q_ia'] = nouvelle_q
-            
-            # Incrémenter le compteur d'accès
-            remediation_access['access_count'] = access_count + 1  # ICI access_count est définie
-            session['remediation_access'] = remediation_access
-            
-            flash(get_message("je_te_guide", lang), "success")
+                # Ajouter la réponse de l'IA
+                enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
+                conversation.append(f"{enseignant_label} {reponse}")
+                
+                # Limiter à 15 messages
+                if len(conversation) > 15:
+                    conversation = conversation[-15:]
+                
+                session["conversation"] = conversation
+                
+                # Extraire la nouvelle question
+                nouvelle_q = extraire_question(reponse, lang)
+                if nouvelle_q:
+                    session['derniere_q_ia'] = nouvelle_q
+                
+                flash(get_message("je_te_guide", lang), "success")
+                
+            except Exception as e:
+                print(f"Erreur lors de la génération de réponse: {e}")
+                # Message d'erreur bilingue
+                if lang == "fr":
+                    fallback_msg = "Je suis désolé, j'ai rencontré une erreur. Pourrais-tu reformuler ta question ?"
+                else:
+                    fallback_msg = "I'm sorry, I encountered an error. Could you rephrase your question?"
+                
+                enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
+                conversation.append(f"{enseignant_label} {fallback_msg}")
+                session["conversation"] = conversation
+                flash(get_message("erreur_traitement", lang), "warning")
     
     # Récupérer la conversation
     conversation = session.get("conversation", [])
@@ -626,35 +579,35 @@ def enseignant_virtuel():
         lang=lang,
         eleve=eleve,
         conversation=conversation,
-        exercice_remediation=exercice_remediation,
-        access_count=access_count + 1,  # +1 pour l'accès actuel
+        exercice_remediation=None,
+        access_count=0,
         date_du_jour=datetime.utcnow(),
         matiere=matiere
     )
+
 
 def get_message(key, lang="fr"):
     """Système de messages bilingues"""
     messages = {
         "fr": {
             "essai_termine": "Essai gratuit terminé. Abonne-toi pour continuer.",
-            "enseignant_disponible": "🎯 L'enseignant virtuel est disponible seulement pour t'aider sur les exercices difficiles (note < 3/5).",
-            "acces_expire_24h": "⏳ L'accès à l'enseignant virtuel pour cet exercice a expiré (24h).",
-            "exercice_reussi": "🎉 Tu as déjà réussi cet exercice ! L'enseignant virtuel n'est plus nécessaire.",
-            "limite_5_sessions": "⏳ Tu as utilisé tes 5 sessions avec l'enseignant virtuel pour cet exercice. Essaie de le résoudre seul maintenant !",
             "je_te_guide": "Je te guide étape par étape !",
-            "erreur_traitement": "Erreur lors du traitement de la question"
+            "erreur_traitement": "Erreur lors du traitement de la question",
+            "bienvenue_enseignant": "👋 Bonjour ! Je suis ton enseignant virtuel. Pose-moi n'importe quelle question sur n'importe quelle matière !",
+            "nouveau_dialogue": "Nouvelle conversation commencée. Pose ta question !",
+            "acces_enseignant": "Accès à l'enseignant virtuel activé !"
         },
         "en": {
             "essai_termine": "Free trial ended. Subscribe to continue.",
-            "enseignant_disponible": "🎯 The virtual teacher is only available to help you with difficult exercises (score < 3/5).",
-            "acces_expire_24h": "⏳ Access to the virtual teacher for this exercise has expired (24h).",
-            "exercice_reussi": "🎉 You've already passed this exercise! The virtual teacher is no longer needed.",
-            "limite_5_sessions": "⏳ You've used your 5 sessions with the virtual teacher for this exercise. Try to solve it on your own now!",
             "je_te_guide": "I'll guide you step by step!",
-            "erreur_traitement": "Error processing the question"
+            "erreur_traitement": "Error processing the question",
+            "bienvenue_enseignant": "👋 Hello! I'm your virtual teacher. Ask me any question about any subject!",
+            "nouveau_dialogue": "New conversation started. Ask your question!",
+            "acces_enseignant": "Virtual teacher access activated!"
         }
     }
     return messages.get(lang, messages["fr"]).get(key, key)
+
 
 def extraire_question(reponse, lang="fr"):
     """Extrait la question posée par l'IA - version bilingue"""
@@ -673,7 +626,8 @@ def extraire_question(reponse, lang="fr"):
         r'[Pp]ourquoi\s+(.*?)\?',
         r'[Éé]cris\s+(.*?)\?',
         r'[Aa]nalyse\s+(.*?)\?',
-        r'[Ee]xplique\s+(.*?)\?'
+        r'[Ee]xplique\s+(.*?)\?',
+        r'[Rr]eformule\s+(.*?)\?'
     ]
     
     # Patterns ANGLAIS
@@ -690,7 +644,8 @@ def extraire_question(reponse, lang="fr"):
         r'[Ww]rite\s+(.*?)\?',
         r'[Aa]nalyze\s+(.*?)\?',
         r'[Ee]xplain\s+(.*?)\?',
-        r'[Dd]escribe\s+(.*?)\?'
+        r'[Dd]escribe\s+(.*?)\?',
+        r'[Rr]ephrase\s+(.*?)\?'
     ]
     
     patterns = patterns_fr if lang == "fr" else patterns_en
@@ -703,255 +658,6 @@ def extraire_question(reponse, lang="fr"):
                 return question
     
     return None
-
-def generer_debut_dialogue_pedagogique(question_eleve, historique, niveau_eleve, langue="fr", mode_examen=False):
-    """Commence un dialogue pédagogique guidé"""
-    from openai import OpenAI
-    import os
-    
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    
-    if langue == "fr":
-        system_prompt = f"""Tu es un enseignant de mathématiques expert en pédagogie différenciée pour un élève de {niveau_eleve}.
-
-**RÈGLES STRICTES DE PÉDAGOGIE :**
-1. TU NE DONNES JAMAIS LA RÉPONSE DIRECTEMENT
-2. Tu guides l'élève étape par étape
-3. À chaque étape, tu poses une QUESTION PRÉCISE
-4. Tu attends la réponse de l'élève avant de continuer
-5. Tu adaptes ton langage au niveau scolaire
-6. Tu encourages et valorises les efforts
-7. Tu utilises des exemples concrets
-8. Tu vérifies la compréhension à chaque étape
-9. Tu reformules les problèmes dans les mots de l'élève
-10. Tu laisses l'élève faire les calculs et déductions
-
-**MÉTHODOLOGIE :**
-1. Reformuler le problème
-2. Identifier la méthode appropriée
-3. Guider vers la première étape
-4. Poser une question spécifique
-5. Attendre la réponse
-6. Continuer selon la réponse
-
-**FORMAT DE RÉPONSE :**
-- Salutation encourageante
-- Reformulation du problème
-- Proposition de méthode (sans donner les étapes)
-- PREMIÈRE QUESTION précise pour l'élève
-- Indication sur ce que l'élève doit faire ensuite
-
-{"⚠️ MODE EXAMEN : Guide avec des indices seulement, pas de solutions." if mode_examen else ""}"""
-    else:
-        system_prompt = f"""You are a mathematics teacher expert in differentiated pedagogy for a {niveau_eleve} student.
-
-**STRICT PEDAGOGICAL RULES:**
-1. YOU NEVER GIVE THE ANSWER DIRECTLY
-2. You guide the student step by step
-3. At each step, you ask a SPECIFIC QUESTION
-4. You wait for the student's answer before continuing
-5. You adapt your language to the school level
-6. You encourage and value efforts
-7. You use concrete examples
-8. You check understanding at each step
-9. You rephrase problems in the student's words
-10. You let the student do calculations and deductions
-
-**METHODOLOGY:**
-1. Rephrase the problem
-2. Identify appropriate method
-3. Guide to the first step
-4. Ask a specific question
-5. Wait for answer
-6. Continue based on response
-
-**RESPONSE FORMAT:**
-- Encouraging greeting
-- Problem rephrasing
-- Method proposal (without giving steps)
-- FIRST specific question for the student
-- Indication of what the student should do next
-
-{"⚠️ EXAM MODE: Guide with hints only, no solutions." if mode_examen else ""}"""
-    
-    # Construire l'historique
-    historique_text = "\n".join([f"- {msg}" for msg in historique[-6:]]) if historique else "Pas d'historique"
-    
-    user_prompt = f"""Question de l'élève : {question_eleve}
-
-Historique récent :
-{historique_text}
-
-Commence le dialogue pédagogique en suivant strictement les règles ci-dessus. Pose une PREMIÈRE QUESTION précise qui guide l'élève vers la première étape de résolution."""
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",  # GPT-4 est meilleur pour la pédagogie
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=500
-        )
-        
-        return response.choices[0].message.content.strip()
-        
-    except Exception as e:
-        print(f"Erreur OpenAI début dialogue: {e}")
-        
-        if langue == "fr":
-            return f"""Super — on va travailler dessus ensemble !
-
-Tu as le problème suivant : {question_eleve}
-
-Je vais te guider pas à pas sans te donner la réponse directement.
-
-**Première étape :**
-Avant de résoudre, il faut bien comprendre le problème.
-
-**Question 1 :** Peux-tu reformuler ce problème dans tes propres mots ? Qu'est-ce qu'on te demande exactement ?
-
-Écris ta reformulation, et ensuite je te guiderai vers la prochaine étape !"""
-        else:
-            return f"""Great — let's work on this together!
-
-You have the following problem: {question_eleve}
-
-I'll guide you step by step without giving you the answer directly.
-
-**First step:**
-Before solving, we need to understand the problem well.
-
-**Question 1:** Can you rephrase this problem in your own words? What exactly are you being asked to do?
-
-Write your rephrasing, and then I'll guide you to the next step!"""
-
-def generer_suite_dialogue_pedagogique(derniere_question_ia, reponse_eleve, historique, niveau_eleve, langue="fr", mode_examen=False):
-    """Continue le dialogue pédagogique basé sur la réponse de l'élève"""
-    from openai import OpenAI
-    import os
-    
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    
-    if langue == "fr":
-        system_prompt = f"""Tu es un enseignant de mathématiques qui guide un élève de {niveau_eleve}.
-
-L'élève vient de répondre à ta question précédente. Analyse sa réponse et :
-1. Valide les éléments corrects
-2. Corrige doucement les erreurs
-3. Guide vers l'étape suivante
-4. Pose une NOUVELLE QUESTION précise
-5. Continue à ne jamais donner la réponse
-
-**TACTIQUES PÉDAGOGIQUES :**
-- Si la réponse est correcte : félicite et passe à l'étape suivante
-- Si la réponse est partielle : guide vers la complétion
-- Si la réponse est fausse : explique l'erreur sans humiliation
-- Si la réponse montre un malentendu : clarifie le concept
-- Toujours terminer par une question pour l'étape suivante
-
-{"⚠️ MODE EXAMEN : Reste au niveau des indices, ne révèle pas les étapes." if mode_examen else ""}"""
-    else:
-        system_prompt = f"""You are a mathematics teacher guiding a {niveau_eleve} student.
-
-The student just answered your previous question. Analyze their response and:
-1. Validate correct elements
-2. Gently correct errors
-3. Guide to the next step
-4. Ask a NEW specific question
-5. Continue to never give the answer
-
-**PEDAGOGICAL TACTICS:**
-- If answer is correct: praise and move to next step
-- If answer is partial: guide to completion
-- If answer is wrong: explain error without humiliation
-- If answer shows misunderstanding: clarify the concept
-- Always end with a question for the next step
-
-{"⚠️ EXAM MODE: Stay at hint level, don't reveal steps." if mode_examen else ""}"""
-    
-    user_prompt = f"""Dernière question que j'ai posée : {derniere_question_ia}
-
-Réponse de l'élève : {reponse_eleve}
-
-Historique complet :
-{chr(10).join(historique[-10:]) if historique else "Pas d'historique"}
-
-Analyse la réponse de l'élève et continue le dialogue pédagogique en posant une NOUVELLE QUESTION pour l'étape suivante."""
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=600
-        )
-        
-        return response.choices[0].message.content.strip()
-        
-    except Exception as e:
-        print(f"Erreur OpenAI suite dialogue: {e}")
-        
-        if langue == "fr":
-            return f"""Merci pour ta réponse !
-
-Maintenant, analysons ensemble ce que tu as écrit.
-
-**Étape suivante :**
-Regardons ce que tu dois faire maintenant pour avancer vers la solution.
-
-**Nouvelle question :** Peux-tu identifier dans ton problème quelles sont les informations données et ce qu'on te demande de trouver ?
-
-Liste-les, et je te guiderai vers la méthode à utiliser !"""
-        else:
-            return f"""Thank you for your answer!
-
-Now, let's analyze together what you wrote.
-
-**Next step:**
-Let's see what you need to do now to move toward the solution.
-
-**New question:** Can you identify in your problem what information is given and what you're asked to find?
-
-List them, and I'll guide you to the method to use!"""
-
-def process_question(question, eleve, lang, session):
-    """Traiter une question de manière sécurisée"""
-    try:
-        conversation = session.get("guide_math_conversation", [])
-        
-        # Limiter la taille de la conversation
-        if len(conversation) > 10:
-            conversation = conversation[-10:]
-        
-        # Ajouter la question
-        conversation.append(question)
-        
-        # Générer la réponse
-        mode_examen = session.get("mode_examen", False)
-        reponse_ia = generer_reponse_guide_math(
-            question=question,
-            niveau_eleve=eleve.niveau.nom if eleve.niveau else "6ème",
-            langue=lang,
-            mode_examen=mode_examen,
-            historique=conversation[:-1]
-        )
-        
-        # Ajouter la réponse
-        conversation.append(reponse_ia)
-        
-        # Sauvegarder
-        session["guide_math_conversation"] = conversation
-        flash("Réponse générée ! Je vais te guider étape par étape.", "success")
-        
-    except Exception as e:
-        print(f"Erreur traitement question: {e}")
-        flash("Erreur lors du traitement de la question", "danger")
-
 
 
 def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
@@ -1013,6 +719,20 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         - "Comment vérifierais-tu cette hypothèse ?"
         - "Que signifie ce résultat selon toi ?"
         - "Quelle serait la prochaine étape de l'expérience ?"
+        """,
+        
+        "géographie": """Tu es un professeur de géographie expert en pédagogie.
+        **RÈGLES STRICTES :**
+        1. TU NE DONNES JAMAIS LES RÉPONSES DIRECTEMENT
+        2. Guide pour lire et interpréter les cartes
+        3. Aide à comprendre les phénomènes géographiques
+        4. Fais faire des liens entre climat, relief et activités humaines
+        5. Encourage l'observation et l'analyse spatiale
+        **EXEMPLES DE QUESTIONS :**
+        - "Que peux-tu observer sur cette carte ?"
+        - "Quels liens fais-tu entre le climat et l'agriculture ici ?"
+        - "Comment expliquerais-tu cette répartition de population ?"
+        - "Quelles sont les caractéristiques principales de ce type de paysage ?"
         """
     }
     
@@ -1033,7 +753,7 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         
         "french": """You are a French teacher expert in pedagogy.
         **STRICT RULES:**
-        1. YOU NEVER GIVE THE ANSWER DIRECTLY
+        1. YOU NEVER GIVE THE ANSWER DIRECTELY
         2. For grammar: guide to find the rules
         3. For text analysis: help identify literary devices
         4. For conjugation: practice verb endings
@@ -1072,6 +792,20 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         - "How would you verify this hypothesis?"
         - "What does this result mean to you?"
         - "What would be the next step of the experiment?"
+        """,
+        
+        "geography": """You are a geography teacher expert in pedagogy.
+        **STRICT RULES:**
+        1. YOU NEVER GIVE ANSWERS DIRECTLY
+        2. Guide to read and interpret maps
+        3. Help understand geographical phenomena
+        4. Make connections between climate, terrain and human activities
+        5. Encourage observation and spatial analysis
+        **EXAMPLE QUESTIONS:**
+        - "What can you observe on this map?"
+        - "What connections do you make between climate and agriculture here?"
+        - "How would you explain this population distribution?"
+        - "What are the main characteristics of this type of landscape?"
         """
     }
     
@@ -1106,6 +840,8 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         6. Vérifier la compréhension à chaque étape
         7. Féliciter les progrès et efforts
         8. Corriger doucement les erreurs
+        9. Adapter le langage au niveau de l'élève
+        10. Utiliser des exemples concrets et familiers
         
         {"⚠️ MODE EXAMEN : Guide avec des indices seulement, ne donne pas les étapes complètes." if mode_examen else ""}
         """
@@ -1120,11 +856,14 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         6. Check understanding at each step
         7. Praise progress and efforts
         8. Gently correct mistakes
+        9. Adapt language to student's level
+        10. Use concrete and familiar examples
         
         {"⚠️ EXAM MODE: Guide with hints only, do not give complete steps." if mode_examen else ""}
         """
     
     return prompt_base + regles_communes
+
 
 def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False, matiere="mathématiques"):
     """Début de conversation bilingue adapté à la matière"""
@@ -1134,139 +873,45 @@ def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False,
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
     if langue == "fr":
-        prompt = f"""Élève de {niveau} en {matiere.upper()} pose l'exercice suivant : "{question}"
+        prompt = f"""Élève de {niveau} en {matiere.upper()} pose la question suivante : "{question}"
 
 Ton rôle : Commencer le dialogue pédagogique SPÉCIFIQUE À LA MATIÈRE.
 
 **Instructions :**
-1. Reformule le problème dans tes mots
+1. Reformule la question dans tes mots pour vérifier la compréhension
 2. Identifie la compétence de {matiere} concernée
 3. Propose une stratégie générale adaptée à {matiere}
 4. Pose la PREMIÈRE QUESTION qui guide vers la première étape
 
 **Format :**
-- Accueil et reformulation
+- Accueil chaleureux et reformulation
 - Indication de la méthode adaptée à {matiere}
 - QUESTION PRÉCISE pour l'élève
 - Indication de ce qu'il doit faire ensuite
 
-{"Mode examen : reste au niveau des indices généraux." if mode_examen else ""}"""
+{"Mode examen : reste au niveau des indices généraux." if mode_examen else ""}
+
+**Important :** Sois encourageant et pédagogue !"""
     else:
-        prompt = f"""{niveau} student in {matiere.upper()} asks the following exercise: "{question}"
+        prompt = f"""{niveau} student in {matiere.upper()} asks the following question: "{question}"
 
 Your role: Start the pedagogical dialogue SPECIFIC TO THE SUBJECT.
 
 **Instructions:**
-1. Rephrase the problem in your words
+1. Rephrase the question in your words to check understanding
 2. Identify the relevant {matiere} skill
 3. Propose a general strategy adapted to {matiere}
 4. Ask the FIRST QUESTION that guides to the first step
 
 **Format:**
-- Welcome and rephrasing
+- Warm welcome and rephrasing
 - Indication of method adapted to {matiere}
 - SPECIFIC QUESTION for the student
 - Indication of what they should do next
 
-{"Exam mode: stay at general hint level." if mode_examen else ""}"""
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": get_system_prompt(matiere, langue, mode_examen)},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=350
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        # Fallback bilingue
-        if langue == "fr":
-            return f"""Excellent ! On va travailler sur cet exercice de {matiere} ensemble.
+{"Exam mode: stay at general hint level." if mode_examen else ""}
 
-**Exercice :** {question}
-
-Je vais te guider étape par étape sans te donner la réponse directement.
-
-**Première étape :** Comprendre exactement ce qu'on te demande.
-
-**Question 1 :** Peux-tu reformuler ce problème dans tes propres mots ? Qu'est-ce qu'on cherche à trouver ?
-
-Écris ta reformulation, et je te guiderai vers la méthode à utiliser !"""
-        else:
-            return f"""Excellent! Let's work on this {matiere} exercise together.
-
-**Exercise:** {question}
-
-I'll guide you step by step without giving you the answer directly.
-
-**First step:** Understand exactly what you're being asked.
-
-**Question 1:** Can you rephrase this problem in your own words? What are we trying to find?
-
-Write your rephrasing, and I'll guide you to the method to use!"""
-
-def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", mode_examen=False, exercice_context="", matiere="mathématiques"):
-    """Continue la conversation bilingue avec contexte de matière"""
-    from openai import OpenAI
-    import os
-    
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    
-    # Préparer l'historique contextuel
-    historique_contextuel = []
-    
-    # Toujours inclure l'exercice original s'il existe
-    if exercice_context:
-        label = "Initial exercise:" if langue == "en" else "Exercice initial:"
-        historique_contextuel.append(f"{label} {exercice_context}")
-    
-    # Ajouter les 10 derniers messages maximum
-    for msg in historique[-10:]:
-        historique_contextuel.append(msg)
-    
-    historique_text = "\n".join(historique_contextuel)
-    
-    if langue == "fr":
-        prompt = f"""Élève de {niveau} en {matiere.upper()}
-
-**CONTEXTE COMPLET ({matiere.upper()}) :**
-{historique_text}
-
-**Dernière question que j'ai posée :** {derniere_q}
-**Réponse de l'élève :** {reponse}
-
-**Ta tâche ({matiere}) :**
-1. Analyser la réponse de l'élève dans le contexte de {matiere}
-2. Valider ce qui est correct selon les règles de {matiere}
-3. Corriger doucement ce qui est erroné
-4. Rappeler l'objectif final (l'exercice initial)
-5. Poser la PROCHAINE QUESTION qui avance vers la solution
-
-**Important :** Ne pas donner la réponse. Guider vers l'étape suivante.
-
-{"Mode examen : guide avec des indices, ne révèle pas les étapes." if mode_examen else ""}"""
-    else:
-        prompt = f"""{niveau} student in {matiere.upper()}
-
-**FULL CONTEXT ({matiere.upper()}) :**
-{historique_text}
-
-**Last question I asked:** {derniere_q}
-**Student's answer:** {reponse}
-
-**Your task ({matiere}):**
-1. Analyze the student's response in the context of {matiere}
-2. Validate what is correct according to {matiere} rules
-3. Gently correct what is wrong
-4. Remind the final goal (initial exercise)
-5. Ask the NEXT QUESTION that moves toward the solution
-
-**Important:** Do not give the answer. Guide to the next step.
-
-{"Exam mode: guide with hints, do not reveal steps." if mode_examen else ""}"""
+**Important:** Be encouraging and pedagogical!"""
     
     try:
         response = client.chat.completions.create(
@@ -1282,55 +927,134 @@ def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="
     except Exception as e:
         # Fallback bilingue
         if langue == "fr":
-            return f"""Merci pour ta réponse !
+            return f"""Excellent ! On va travailler sur cette question de {matiere} ensemble.
 
-Maintenant, continuons vers la solution.
+**Question :** {question}
 
-**Rappel de l'exercice :** {exercice_context if exercice_context else "L'exercice en cours"}
+Je vais te guider étape par étape sans te donner la réponse directement.
 
-**Nouvelle question :** Quelle est la prochaine étape logique selon toi ? Si tu hésites, dis-moi ce que tu comprends jusqu'à présent.
+**Première étape :** Comprendre exactement ce qu'on te demande.
 
-Je t'aiderai à avancer pas à pas !"""
+**Question 1 :** Peux-tu reformuler ce problème dans tes propres mots ? Qu'est-ce qu'on cherche à comprendre ou résoudre ?
+
+Écris ta reformulation, et je te guiderai vers la méthode à utiliser !
+
+💡 *Astuce : Commence par expliquer ce que tu as déjà compris.*"""
         else:
-            return f"""Thank you for your answer!
+            return f"""Excellent! Let's work on this {matiere} question together.
 
-Now, let's continue toward the solution.
+**Question:** {question}
 
-**Exercise reminder:** {exercice_context if exercice_context else "The current exercise"}
+I'll guide you step by step without giving you the answer directly.
 
-**New question:** What is the next logical step in your opinion? If you hesitate, tell me what you understand so far.
+**First step:** Understand exactly what you're being asked.
 
-I'll help you move forward step by step!"""
+**Question 1:** Can you rephrase this problem in your own words? What are we trying to understand or solve?
+
+Write your rephrasing, and I'll guide you to the method to use!
+
+💡 *Tip: Start by explaining what you already understand.*"""
+
+
+def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", mode_examen=False, exercice_context="", matiere="mathématiques"):
+    """Continue la conversation bilingue avec contexte de matière"""
+    from openai import OpenAI
+    import os
     
-def activer_enseignant_virtuel(exercice_id=None, test_exercice_id=None, note=0, lang="fr"):
-    """Activer l'accès à l'enseignant virtuel - BILINGUE"""
-    # Détecter la matière
-    matiere = "mathématiques" if lang == "fr" else "mathematics"
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
-    if exercice_id:
-        exercice = Exercice.query.get(exercice_id)
-        matiere_obj = obtenir_matiere_exercice(exercice)
-        if matiere_obj:
-            matiere = matiere_obj.nom if lang == "fr" else (matiere_obj.nom_en or matiere_obj.nom)
+    # Préparer l'historique contextuel
+    historique_contextuel = []
     
-    elif test_exercice_id:
-        test_exercice = TestExercice.query.get(test_exercice_id)
-        matiere_obj = obtenir_matiere_test_exercice(test_exercice)
-        if matiere_obj:
-            matiere = matiere_obj.nom if lang == "fr" else (matiere_obj.nom_en or matiere_obj.nom)
+    # Ajouter les 10 derniers messages maximum
+    for msg in historique[-10:]:
+        historique_contextuel.append(msg)
     
-    session['remediation_access'] = {
-        'exercice_id': exercice_id,
-        'test_exercice_id': test_exercice_id,
-        'note': note,
-        'matiere': matiere.lower(),  # Normalisé
-        'first_access': datetime.utcnow().isoformat(),
-        'access_count': 0,
-        'lang': lang  # Stocker aussi la langue
-    }
+    historique_text = "\n".join(historique_contextuel)
     
-    flash_msg = "🎯 Accès à l'enseignant virtuel activé !" if lang == "fr" else "🎯 Virtual teacher access activated!"
-    flash(flash_msg, "success")
+    if langue == "fr":
+        prompt = f"""Élève de {niveau} en {matiere.upper()}
+
+**HISTORIQUE DE CONVERSATION :**
+{historique_text}
+
+**Dernière question que j'ai posée :** {derniere_q}
+**Réponse de l'élève :** {reponse}
+
+**Ta tâche ({matiere}) :**
+1. Analyser la réponse de l'élève dans le contexte de {matiere}
+2. Valider ce qui est correct selon les règles de {matiere}
+3. Corriger doucement ce qui est erroné (sans critiquer)
+4. Poser la PROCHAINE QUESTION qui avance vers la compréhension/solution
+5. Toujours encourager et féliciter les efforts
+
+**Règles pédagogiques strictes :**
+- Ne jamais donner la réponse directement
+- Guider avec des questions spécifiques
+- Adapter le langage au niveau scolaire
+- Être patient et bienveillant
+- Utiliser des exemples concrets si nécessaire
+
+{"Mode examen : guide avec des indices, ne révèle pas les étapes." if mode_examen else ""}"""
+    else:
+        prompt = f"""{niveau} student in {matiere.upper()}
+
+**CONVERSATION HISTORY:**
+{historique_text}
+
+**Last question I asked:** {derniere_q}
+**Student's answer:** {reponse}
+
+**Your task ({matiere}):**
+1. Analyze the student's response in the context of {matiere}
+2. Validate what is correct according to {matiere} rules
+3. Gently correct what is wrong (without criticism)
+4. Ask the NEXT QUESTION that moves toward understanding/solution
+5. Always encourage and praise efforts
+
+**Strict pedagogical rules:**
+- Never give the answer directly
+- Guide with specific questions
+- Adapt language to school level
+- Be patient and supportive
+- Use concrete examples if needed
+
+{"Exam mode: guide with hints, do not reveal steps." if mode_examen else ""}"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": get_system_prompt(matiere, langue, mode_examen)},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=450
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        # Fallback bilingue
+        if langue == "fr":
+            return f"""Merci pour ta réponse ! C'est un bon début.
+
+Pour continuer notre exploration de cette question de {matiere}, j'ai besoin de comprendre un peu mieux ta pensée.
+
+**Nouvelle question :** Quelle est la prochaine étape logique selon toi ? Si tu hésites, dis-moi simplement ce que tu comprends jusqu'à présent.
+
+Je suis là pour t'aider à avancer pas à pas !
+
+✨ *N'oublie pas : chaque erreur est une occasion d'apprendre !*"""
+        else:
+            return f"""Thank you for your answer! That's a good start.
+
+To continue our exploration of this {matiere} question, I need to understand your thinking a bit better.
+
+**New question:** What is the next logical step in your opinion? If you hesitate, just tell me what you understand so far.
+
+I'm here to help you move forward step by step!
+
+✨ *Remember: every mistake is a learning opportunity!*"""
+
 
 @app.after_request
 def add_header(response):
