@@ -202,7 +202,7 @@
       border-left-color: var(--success);
     }
 
-    .ai-feedback {
+    .info-section {
       background: rgba(155, 89, 182, 0.05);
       border-left-color: #9b59b6;
     }
@@ -225,9 +225,9 @@
     .message-section .section-title i { color: var(--primary); }
     .exercise-section .section-title i { color: var(--warning); }
     .submission-section .section-title i { color: var(--success); }
-    .ai-feedback .section-title i { color: #9b59b6; }
+    .info-section .section-title i { color: #9b59b6; }
 
-    /* CONTENU D'EXERCICE AMÉLIORÉ */
+    /* CONTENU D'EXERCICE SIMPLIFIÉ */
     .exercise-content {
       background: white;
       padding: 15px;
@@ -533,7 +533,7 @@
             <div class="math-content">{{ r.message }}</div>
           </div>
 
-          <!-- Exercise Section - FORMATAGE AMÉLIORÉ -->
+          <!-- Exercise Section -->
           {% if r.exercice_suggere %}
             <div class="content-section exercise-section">
               <div class="section-title">
@@ -541,13 +541,12 @@
                 {% if lang == 'en' %}Remediation Exercise{% else %}Exercice de remédiation{% endif %}
               </div>
               <div class="exercise-content" id="exercise-{{ r.id }}">
-                {# Le contenu sera formaté par JavaScript #}
                 {{ r.exercice_suggere }}
               </div>
             </div>
           {% endif %}
 
-          <!-- Student Submission Section -->
+          <!-- Student Submission Section (SEULEMENT si l'élève a répondu) -->
           {% if r.reponse_eleve %}
             <div class="content-section submission-section">
               <div class="section-title">
@@ -556,17 +555,21 @@
               </div>
               <div class="math-content">{{ r.reponse_eleve }}</div>
             </div>
-
-            <!-- AI Feedback Section -->
-            {% if r.analyse_ia %}
-              <div class="content-section ai-feedback">
-                <div class="section-title">
-                  <i class="fas fa-robot"></i>
-                  {% if lang == 'en' %}AI Feedback{% else %}Analyse IA{% endif %}
-                </div>
-                <div class="math-content">{{ r.analyse_ia }}</div>
+            
+            <!-- Information pour l'élève -->
+            <div class="content-section info-section">
+              <div class="section-title">
+                <i class="fas fa-info-circle"></i>
+                {% if lang == 'en' %}Information{% else %}Information{% endif %}
               </div>
-            {% endif %}
+              <div class="math-content">
+                {% if lang == 'en' %}
+                  Your teacher will review your submission and provide feedback soon.
+                {% else %}
+                  Votre enseignant examinera votre travail et vous donnera un retour prochainement.
+                {% endif %}
+              </div>
+            </div>
           {% else %}
             <!-- Action Button for Pending Remediation -->
             <div class="actions">
@@ -627,52 +630,6 @@
         dateText.textContent = local.toLocaleString(lang === "fr" ? 'fr-FR' : 'en-GB');
       }
     });
-
-    // FORMATAGE DES EXERCICES - CORRECTION DES PROBLÈMES
-    function formatExerciseContent(exerciseElement) {
-      let content = exerciseElement.textContent || exerciseElement.innerText;
-      
-      // Nettoyer le contenu
-      content = content.trim();
-      
-      // Supprimer les lignes indésirables (réponses, explications)
-      const lines = content.split('\n').filter(line => {
-        const trimmed = line.trim();
-        return !trimmed.match(/^(Réponse attendue|Expected answer|Explication|Explanation)/i) && 
-               trimmed.length > 0;
-      });
-
-      // Reconstruire le contenu avec un formatage propre
-      let formattedContent = '';
-      
-      lines.forEach((line, index) => {
-        const trimmed = line.trim();
-        
-        // Identifier les titres/questions
-        if (trimmed.match(/^(Exercice|Exercise|Problème|Problem|Question)/i) || 
-            (trimmed.endsWith(':') && lines[index + 1] && !lines[index + 1].trim().match(/^[a-z]/))) {
-          if (formattedContent) formattedContent += '<br><br>';
-          formattedContent += `<div class="exercise-title">${trimmed}</div>`;
-        }
-        // Identifier les numéros de question (1., 2., a), b), etc.)
-        else if (trimmed.match(/^(\d+\.|\d+\)|[a-z]\)|\•)/)) {
-          if (formattedContent) formattedContent += '<br>';
-          formattedContent += `<div class="question"><span class="question-number">${trimmed.split(' ')[0]}</span> ${trimmed.substring(trimmed.indexOf(' ') + 1)}</div>`;
-        }
-        // Lignes normales
-        else {
-          if (formattedContent && !formattedContent.endsWith('<br>')) {
-            formattedContent += '<br>';
-          }
-          formattedContent += `<div class="exercise-line">${trimmed}</div>`;
-        }
-      });
-
-      exerciseElement.innerHTML = formattedContent || '<div class="exercise-line">' + content + '</div>';
-    }
-
-    // Appliquer le formatage à tous les exercices
-    document.querySelectorAll('.exercise-content').forEach(formatExerciseContent);
 
     // Animation d'apparition progressive
     const cards = document.querySelectorAll('.remediation-card');
