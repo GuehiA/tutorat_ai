@@ -17,6 +17,9 @@
             --light: #ecf0f1;
             --dark: #2c3e50;
             --white: #ffffff;
+            --gold: #ffd700;
+            --silver: #c0c0c0;
+            --bronze: #cd7f32;
         }
         
         * {
@@ -34,7 +37,7 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
@@ -45,101 +48,239 @@
         }
         
         .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            font-size: 2.8rem;
+            margin-bottom: 15px;
         }
         
         .header p {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto 30px;
+            line-height: 1.5;
+        }
+        
+        .platform-highlight {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .platform-highlight h3 {
+            color: white;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 1.4rem;
+        }
+        
+        .platform-highlight ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .platform-highlight li {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .plans-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 30px;
-            margin-bottom: 40px;
+            margin-bottom: 50px;
+        }
+        
+        @media (max-width: 1200px) {
+            .plans-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .plans-container {
+                grid-template-columns: 1fr;
+            }
         }
         
         .plan-card {
             background: var(--white);
-            border-radius: 20px;
+            border-radius: 25px;
             padding: 40px 30px;
             text-align: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 650px;
         }
         
         .plan-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+            transform: translateY(-15px);
+            box-shadow: 0 40px 70px rgba(0, 0, 0, 0.2);
+        }
+        
+        .plan-card.weekly {
+            border: 4px solid var(--bronze);
+        }
+        
+        .plan-card.monthly {
+            border: 4px solid var(--silver);
+        }
+        
+        .plan-card.annual {
+            border: 4px solid var(--gold);
         }
         
         .plan-card.popular {
-            border: 3px solid var(--secondary);
             transform: scale(1.05);
         }
         
         .plan-card.popular::before {
-            content: '{% if lang == "en" %}MOST POPULAR{% else %}PLUS POPULAIRE{% endif %}';
+            content: '{% if lang == "en" %}BEST VALUE{% else %}MEILLEUR RAPPORT{% endif %}';
             position: absolute;
-            top: 20px;
-            right: -30px;
-            background: var(--secondary);
+            top: 25px;
+            right: -35px;
+            background: linear-gradient(135deg, var(--gold), #ffa500);
             color: white;
-            padding: 8px 40px;
-            font-size: 0.8rem;
+            padding: 10px 45px;
+            font-size: 0.9rem;
             font-weight: bold;
             transform: rotate(45deg);
+            letter-spacing: 1px;
+        }
+        
+        .plan-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .plan-badge.weekly {
+            background: var(--bronze);
+        }
+        
+        .plan-badge.monthly {
+            background: var(--silver);
+        }
+        
+        .plan-badge.annual {
+            background: var(--gold);
         }
         
         .plan-icon {
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
+            margin: 0 auto 25px;
             color: white;
-            font-size: 2rem;
+            font-size: 2.5rem;
+        }
+        
+        .plan-icon.weekly {
+            background: linear-gradient(135deg, var(--bronze), #b5651d);
+        }
+        
+        .plan-icon.monthly {
+            background: linear-gradient(135deg, var(--silver), #a0a0a0);
+        }
+        
+        .plan-icon.annual {
+            background: linear-gradient(135deg, var(--gold), #ffa500);
         }
         
         .plan-name {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-bottom: 10px;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 15px;
             color: var(--dark);
         }
         
         .plan-price {
-            font-size: 3rem;
-            font-weight: bold;
+            font-size: 3.5rem;
+            font-weight: 900;
             margin: 20px 0;
-            color: var(--primary);
+            line-height: 1;
+        }
+        
+        .plan-price.weekly {
+            color: var(--bronze);
+        }
+        
+        .plan-price.monthly {
+            color: var(--silver);
+        }
+        
+        .plan-price.annual {
+            color: var(--gold);
         }
         
         .plan-period {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .plan-savings {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
             font-size: 1rem;
-            color: var(--dark);
-            opacity: 0.7;
+            font-weight: 700;
+            margin-bottom: 25px;
+        }
+        
+        .effective-price {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 30px;
+            font-weight: 600;
         }
         
         .plan-features {
             list-style: none;
             margin: 30px 0;
             text-align: left;
+            flex-grow: 1;
         }
         
         .plan-features li {
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid var(--light);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            font-size: 1rem;
+            line-height: 1.4;
         }
         
         .plan-features li:last-child {
@@ -147,63 +288,8 @@
         }
         
         .plan-features li i {
-            color: var(--secondary);
-        }
-        
-        .upgrade-btn {
-            display: inline-block;
-            width: 100%;
-            padding: 15px 30px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        
-        .upgrade-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
-            color: white;
-            text-decoration: none;
-        }
-        
-        .upgrade-btn.popular {
-            background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
-        }
-        
-        .back-btn {
-            display: inline-block;
-            padding: 12px 25px;
-            background: transparent;
-            color: white;
-            border: 2px solid white;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        
-        .back-btn:hover {
-            background: white;
-            color: var(--dark);
-            text-decoration: none;
-        }
-        
-        .trial-info {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            text-align: center;
-            color: white;
-            backdrop-filter: blur(10px);
+            font-size: 1rem;
+            flex-shrink: 0;
         }
         
         .feature-included {
@@ -211,7 +297,166 @@
         }
         
         .feature-excluded {
+            color: #dee2e6;
+        }
+        
+        .upgrade-btn {
+            display: inline-block;
+            width: 100%;
+            padding: 18px 30px;
+            border-radius: 15px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: auto;
+        }
+        
+        .upgrade-btn.weekly {
+            background: linear-gradient(135deg, var(--bronze), #b5651d);
+            color: white;
+        }
+        
+        .upgrade-btn.monthly {
+            background: linear-gradient(135deg, var(--silver), #a0a0a0);
+            color: white;
+        }
+        
+        .upgrade-btn.annual {
+            background: linear-gradient(135deg, var(--gold), #ffa500);
+            color: white;
+        }
+        
+        .upgrade-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            padding: 15px 35px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            border-radius: 15px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 0 auto;
+        }
+        
+        .back-btn:hover {
+            background: white;
+            color: var(--dark);
+            text-decoration: none;
+            transform: translateY(-2px);
+        }
+        
+        .trial-info {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 40px;
+            text-align: center;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        .trial-info h3 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+        }
+        
+        .trial-countdown {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--gold);
+            margin-top: 10px;
+        }
+        
+        .recommendation {
+            text-align: center;
+            margin: 40px 0;
+            color: white;
+        }
+        
+        .recommendation h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .recommendation p {
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .comparison-table th, .comparison-table td {
+            padding: 18px;
+            text-align: center;
+            border: 1px solid var(--light);
+        }
+        
+        .comparison-table th {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .comparison-table th:first-child {
+            text-align: left;
+        }
+        
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .comparison-table .check {
+            color: var(--secondary);
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+        
+        .comparison-table .cross {
             color: var(--danger);
+            font-weight: bold;
+            font-size: 1.3rem;
         }
         
         @media (max-width: 768px) {
@@ -219,8 +464,19 @@
                 transform: none;
             }
             
-            .plans-container {
-                grid-template-columns: 1fr;
+            .plan-card.popular::before {
+                top: 15px;
+                right: -30px;
+                padding: 8px 35px;
+                font-size: 0.8rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .header p {
+                font-size: 1.1rem;
             }
         }
     </style>
@@ -228,65 +484,264 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>{% if lang == 'en' %}Upgrade Your Account{% else %}Améliorez Votre Compte{% endif %}</h1>
-            <p>{% if lang == 'en' %}Choose the plan that's right for you{% else %}Choisissez le forfait qui vous convient{% endif %}</p>
+            <h1>{% if lang == 'en' %}Upgrade Your Learning Experience{% else %}Améliorez Votre Expérience d'Apprentissage{% endif %}</h1>
+            <p>
+                {% if lang == 'en' %}
+                    Unlock the full potential of our intelligent tutoring platform with a virtual teacher that uses <strong>Socratic questioning</strong> to help you discover answers yourself.
+                {% else %}
+                    Débloquez tout le potentiel de notre plateforme de tutorat intelligent avec un enseignant virtuel qui utilise le <strong>questionnement socratique</strong> pour vous aider à découvrir les réponses par vous-même.
+                {% endif %}
+            </p>
+        </div>
+        
+        <!-- PLATFORM HIGHLIGHTS -->
+        <div class="platform-highlight">
+            <h3><i class="fas fa-brain"></i> {{ 'Intelligent Tutoring Features' if lang == 'en' else 'Fonctionnalités de Tutorat Intelligent' }}</h3>
+            <ul>
+                <li><i class="fas fa-robot"></i> {{ 'AI Virtual Teacher' if lang == 'en' else 'Enseignant Virtuel IA' }}</li>
+                <li><i class="fas fa-question-circle"></i> {{ 'Socratic Questioning' if lang == 'en' else 'Questionnement Socratique' }}</li>
+                <li><i class="fas fa-chart-line"></i> {{ 'Personalized Learning Path' if lang == 'en' else 'Parcours Personnalisé' }}</li>
+                <li><i class="fas fa-clock"></i> {{ '24/7 Availability' if lang == 'en' else 'Disponibilité 24h/24' }}</li>
+                <li><i class="fas fa-graduation-cap"></i> {{ 'Adaptive Difficulty' if lang == 'en' else 'Difficulté Adaptative' }}</li>
+            </ul>
         </div>
         
         {% if eleve.est_en_essai_gratuit() %}
         <div class="trial-info">
             <h3><i class="fas fa-clock"></i> 
                 {% if lang == 'en' %}
-                    Your free trial ends in {{ (eleve.temps_restant_essai().seconds // 3600) + (eleve.temps_restant_essai().days * 24) }} hours
+                    Your FREE trial ends in 
                 {% else %}
-                    Votre essai gratuit se termine dans {{ (eleve.temps_restant_essai().seconds // 3600) + (eleve.temps_restant_essai().days * 24) }} heures
+                    Votre essai GRATUIT se termine dans 
                 {% endif %}
+                <span class="trial-countdown">
+                    {{ (eleve.temps_restant_essai().seconds // 3600) + (eleve.temps_restant_essai().days * 24) }}h
+                </span>
             </h3>
+            <p>
+                {% if lang == 'en' %}
+                    Upgrade now to continue your learning journey without interruption!
+                {% else %}
+                    Améliorez maintenant pour continuer votre parcours d'apprentissage sans interruption !
+                {% endif %}
+            </p>
         </div>
         {% endif %}
         
+        <!-- RECOMMENDATION -->
+        <div class="recommendation">
+            <h3><i class="fas fa-star"></i> 
+                {% if lang == 'en' %}
+                    Why Choose Our Annual Plan?
+                {% else %}
+                    Pourquoi Choisir Notre Forfait Annuel ?
+                {% endif %}
+            </h3>
+            <p>
+                {% if lang == 'en' %}
+                    The Annual Plan offers the <strong>best value</strong> with <strong>25% savings</strong> compared to monthly payments. You get all premium features, personalized learning roadmaps, and quarterly progress reviews. Perfect for students committed to consistent improvement throughout the school year.
+                {% else %}
+                    Le Forfait Annuel offre le <strong>meilleur rapport qualité-prix</strong> avec <strong>25% d'économies</strong> par rapport aux paiements mensuels. Vous bénéficiez de toutes les fonctionnalités premium, des feuilles de route d'apprentissage personnalisées et des revues de progression trimestrielles. Parfait pour les élèves engagés dans une amélioration constante tout au long de l'année scolaire.
+                {% endif %}
+            </p>
+        </div>
+        
+        <!-- COMPARISON TABLE -->
+        <div style="overflow-x: auto; margin: 40px 0;">
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>{{ 'Features' if lang == 'en' else 'Fonctionnalités' }}</th>
+                        <th>{{ 'Weekly' if lang == 'en' else 'Hebdomadaire' }}<br><small>15$/week</small></th>
+                        <th>{{ 'Monthly' if lang == 'en' else 'Mensuel' }}<br><small>50$/month</small></th>
+                        <th>{{ 'Annual' if lang == 'en' else 'Annuel' }}<br><small>450$/year</small></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Virtual teacher assistance' if lang == 'en' else 'Assistance par enseignant virtuel' }}</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Socratic questioning guidance' if lang == 'en' else 'Guidage par questionnement socratique' }}</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'All subjects & levels' if lang == 'en' else 'Toutes les matières & niveaux' }}</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Progress tracking & reports' if lang == 'en' else 'Suivi de progression & rapports' }}</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Personalized remediations' if lang == 'en' else 'Remédiations personnalisées' }}</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</td>
+                        <td class="cross">✗</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Personalized learning roadmap' if lang == 'en' else 'Feuille de route personnalisée' }}</td>
+                        <td class="cross">✗</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Quarterly progress reviews' if lang == 'en' else 'Revues trimestrielles' }}</td>
+                        <td class="cross">✗</td>
+                        <td class="cross">✗</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Monthly savings' if lang == 'en' else 'Économies mensuelles' }}</td>
+                        <td>0%</td>
+                        <td>17%</td>
+                        <td><strong>25%</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Effective monthly cost' if lang == 'en' else 'Coût mensuel effectif' }}</td>
+                        <td><strong>$65</strong></td>
+                        <td><strong>$50</strong></td>
+                        <td><strong>$37.50</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">{{ 'Annual cost' if lang == 'en' else 'Coût annuel' }}</td>
+                        <td><strong>$780</strong></td>
+                        <td><strong>$600</strong></td>
+                        <td><strong>$450</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
         <div class="plans-container">
-            <!-- Plan Annuel -->
-            <div class="plan-card popular">
-                <div class="plan-icon">
-                    <i class="fas fa-crown"></i>
+            <!-- Plan Hebdomadaire -->
+            <div class="plan-card weekly">
+                <div class="plan-badge weekly">{{ 'FLEXIBLE' if lang == 'en' else 'FLEXIBLE' }}</div>
+                <div class="plan-icon weekly">
+                    <i class="fas fa-calendar-week"></i>
                 </div>
-                <h2 class="plan-name">{% if lang == 'en' %}Annual Plan{% else %}Forfait Annuel{% endif %}</h2>
-                <div class="plan-price">129$<span class="plan-period">{% if lang == 'en' %}/year{% else %}/an{% endif %}</span></div>
+                <h2 class="plan-name">{{ 'Weekly' if lang == 'en' else 'Hebdomadaire' }}</h2>
+                <div class="plan-price weekly">15$</div>
+                <div class="plan-period">{{ 'per week' if lang == 'en' else 'par semaine' }}</div>
+                <div class="effective-price">≈ $65/month</div>
                 <ul class="plan-features">
-                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Full platform access{% else %}Accès complet à la plateforme{% endif %}</li>
-                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}All subjects and levels{% else %}Toutes les matières et niveaux{% endif %}</li>
-                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Virtual teacher 24/7{% else %}Enseignant virtuel 24h/24{% endif %}</li>
-                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Progress tracking{% else %}Suivi de progression{% endif %}</li>
-                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Personalized remediations{% else %}Remédiations personnalisées{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Perfect for trying out' if lang == 'en' else 'Parfait pour tester' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Virtual teacher 24/7' if lang == 'en' else 'Enseignant virtuel 24h/24' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Socratic questioning' if lang == 'en' else 'Questionnement socratique' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'All subjects included' if lang == 'en' else 'Toutes les matières incluses' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulation à tout moment' }}</li>
+                    <li><i class="fas fa-times feature-excluded"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
                 </ul>
-                <a href="/paiement-direct?type=annuel" class="upgrade-btn popular">
+                <a href="/paiement-direct?type=hebdomadaire" class="upgrade-btn weekly">
                     <i class="fas fa-bolt"></i>
-                    {% if lang == 'en' %}Get Annual Plan{% else %}Choisir le Forfait Annuel{% endif %}
+                    {% if lang == 'en' %}Choose Weekly{% else %}Choisir Hebdomadaire{% endif %}
                 </a>
             </div>
             
             <!-- Plan Mensuel -->
-            <div class="plan-card">
-                <div class="plan-icon">
-                    <i class="fas fa-star"></i>
+            <div class="plan-card monthly">
+                <div class="plan-badge monthly">{{ 'POPULAR' if lang == 'en' else 'POPULAIRE' }}</div>
+                <div class="plan-icon monthly">
+                    <i class="fas fa-calendar-alt"></i>
                 </div>
-                <h2 class="plan-name">{% if lang == 'en' %}Monthly Plan{% else %}Forfait Mensuel{% endif %}</h2>
-                <div class="plan-price">15$<span class="plan-period">{% if lang == 'en' %}/month{% else %}/mois{% endif %}</span></div>
+                <h2 class="plan-name">{{ 'Monthly' if lang == 'en' else 'Mensuel' }}</h2>
+                <div class="plan-price monthly">50$</div>
+                <div class="plan-period">{{ 'per month' if lang == 'en' else 'par mois' }}</div>
+                <div class="plan-savings">{{ 'SAVE 17%' if lang == 'en' else 'ÉCONOMISEZ 17%' }}</div>
                 <ul class="plan-features">
-                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Full platform access{% else %}Accès complet à la plateforme{% endif %}</li>
-                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}All subjects and levels{% else %}Toutes les matières et niveaux{% endif %}</li>
-                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Virtual teacher 24/7{% else %}Enseignant virtuel 24h/24{% endif %}</li>
-                    <li><i class="fas fa-times feature-excluded"></i> {% if lang == 'en' %}Progress tracking{% else %}Suivi de progression{% endif %}</li>
-                    <li><i class="fas fa-times feature-excluded"></i> {% if lang == 'en' %}Personalized remediations{% else %}Remédiations personnalisées{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Best for regular learners' if lang == 'en' else 'Idéal pour apprenants réguliers' }}</strong></li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'All weekly features' if lang == 'en' else 'Toutes fonctionnalités hebdo' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Monthly progress reports' if lang == 'en' else 'Rapports mensuels de progression' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Personalized learning path' if lang == 'en' else 'Parcours d\'apprentissage personnalisé' }}</li>
+                    <li><i class="fas fa-times feature-excluded"></i> {{ 'Quarterly reviews' if lang == 'en' else 'Revues trimestrielles' }}</li>
                 </ul>
-                <a href="/paiement-direct?type=mensuel" class="upgrade-btn">
-                    <i class="fas fa-calendar"></i>
-                    {% if lang == 'en' %}Get Monthly Plan{% else %}Choisir le Forfait Mensuel{% endif %}
+                <a href="/paiement-direct?type=mensuel" class="upgrade-btn monthly">
+                    <i class="fas fa-star"></i>
+                    {% if lang == 'en' %}Choose Monthly{% else %}Choisir Mensuel{% endif %}
+                </a>
+            </div>
+            
+            <!-- Plan Annuel (Populaire) -->
+            <div class="plan-card annual popular">
+                <div class="plan-badge annual">{{ 'BEST VALUE' if lang == 'en' else 'MEILLEUR RAPPORT' }}</div>
+                <div class="plan-icon annual">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <h2 class="plan-name">{{ 'Annual' if lang == 'en' else 'Annuel' }}</h2>
+                <div class="plan-price annual">450$</div>
+                <div class="plan-period">{{ 'per year' if lang == 'en' else 'par an' }}</div>
+                <div class="plan-savings">{{ 'SAVE 25%' if lang == 'en' else 'ÉCONOMISEZ 25%' }}</div>
+                <div class="effective-price">≈ $37.50/month</div>
+                <ul class="plan-features">
+                    <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Best for serious students' if lang == 'en' else 'Idéal pour élèves sérieux' }}</strong></li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'All monthly features' if lang == 'en' else 'Toutes fonctionnalités mensuelles' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly progress reviews' if lang == 'en' else 'Revues trimestrielles' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Premium virtual teacher' if lang == 'en' else 'Enseignant virtuel premium' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Personalized roadmap' if lang == 'en' else 'Feuille de route personnalisée' }}</li>
+                    <li><i class="fas fa-check feature-included"></i> {{ 'Save $240/year' if lang == 'en' else 'Économisez 240$/an' }}</li>
+                </ul>
+                <a href="/paiement-direct?type=annuel" class="upgrade-btn annual">
+                    <i class="fas fa-crown"></i>
+                    {% if lang == 'en' %}Choose Annual{% else %}Choisir Annuel{% endif %}
                 </a>
             </div>
         </div>
         
-        <div style="text-align: center;">
+        <!-- SAVINGS CALCULATOR -->
+        <div class="recommendation" style="background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 20px; margin: 40px 0;">
+            <h3><i class="fas fa-calculator"></i> 
+                {% if lang == 'en' %}
+                    See How Much You Save
+                {% else %}
+                    Voyez Combien Vous Économisez
+                {% endif %}
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px;">
+                <div style="text-align: center; color: white;">
+                    <div style="font-size: 2.5rem; font-weight: 800; color: var(--bronze);">$780</div>
+                    <div>{{ 'Weekly cost per year' if lang == 'en' else 'Coût hebdo par an' }}</div>
+                </div>
+                <div style="text-align: center; color: white;">
+                    <div style="font-size: 2.5rem; font-weight: 800; color: var(--silver);">$600</div>
+                    <div>{{ 'Monthly cost per year' if lang == 'en' else 'Coût mensuel par an' }}</div>
+                </div>
+                <div style="text-align: center; color: white;">
+                    <div style="font-size: 2.5rem; font-weight: 800; color: var(--gold);">$450</div>
+                    <div>{{ 'Annual plan cost' if lang == 'en' else 'Coût forfait annuel' }}</div>
+                </div>
+            </div>
+            <p style="margin-top: 25px; font-size: 1.2rem;">
+                {% if lang == 'en' %}
+                    <strong>Choose Annual and save $330 per year</strong> compared to weekly billing!
+                {% else %}
+                    <strong>Choisissez Annuel et économisez 330$ par an</strong> par rapport au paiement hebdomadaire !
+                {% endif %}
+            </p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 40px;">
             <a href="/dashboard-eleve" class="back-btn">
                 <i class="fas fa-arrow-left"></i>
                 {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
@@ -300,13 +755,78 @@
             const cards = document.querySelectorAll('.plan-card');
             cards.forEach((card, index) => {
                 card.style.opacity = '0';
-                card.style.transform = 'translateY(30px)';
+                card.style.transform = 'translateY(40px)';
                 
                 setTimeout(() => {
-                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
                 }, 200 * index);
+            });
+            
+            // Calcul dynamique des économies
+            const weeklyCost = 15;
+            const monthlyCost = 50;
+            const annualCost = 450;
+            
+            // Coûts annuels
+            const weeklyAnnualCost = weeklyCost * 52; // 52 semaines par an
+            const monthlyAnnualCost = monthlyCost * 12;
+            
+            // Calcul des pourcentages d'économie
+            const monthlySavings = ((weeklyCost * 4 - monthlyCost) / (weeklyCost * 4) * 100).toFixed(0);
+            const annualSavings = ((weeklyAnnualCost - annualCost) / weeklyAnnualCost * 100).toFixed(0);
+            
+            // Mettre à jour les textes d'économie
+            document.querySelectorAll('.plan-savings').forEach(el => {
+                if (el.textContent.includes('17%')) {
+                    el.textContent = el.textContent.replace('17%', monthlySavings + '%');
+                }
+                if (el.textContent.includes('25%')) {
+                    el.textContent = el.textContent.replace('25%', annualSavings + '%');
+                }
+            });
+            
+            // Mettre à jour le tableau comparatif
+            document.querySelectorAll('.comparison-table td:nth-child(3)').forEach(td => {
+                if (td.textContent === '17%') {
+                    td.textContent = monthlySavings + '%';
+                }
+            });
+            
+            document.querySelectorAll('.comparison-table td:nth-child(4)').forEach(td => {
+                if (td.textContent === '25%') {
+                    td.textContent = annualSavings + '%';
+                }
+            });
+            
+            // Mettre à jour les coûts annuels dans la calculatrice
+            document.querySelectorAll('.recommendation div:nth-child(1) div:first-child').forEach((el, index) => {
+                if (index === 0) {
+                    el.textContent = '$' + weeklyAnnualCost;
+                } else if (index === 1) {
+                    el.textContent = '$' + monthlyAnnualCost;
+                } else if (index === 2) {
+                    el.textContent = '$' + annualCost;
+                }
+            });
+            
+            // Calculer l'économie totale
+            const totalSavings = weeklyAnnualCost - annualCost;
+            document.querySelector('.recommendation p strong').innerHTML = 
+                "{{ 'Choose Annual and save $' if lang == 'en' else 'Choisissez Annuel et économisez $' }}" + 
+                totalSavings + 
+                "{{ ' per year' if lang == 'en' else ' par an' }}";
+        });
+        
+        // Animation hover pour les cartes
+        document.querySelectorAll('.plan-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.zIndex = '10';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.zIndex = '1';
             });
         });
     </script>

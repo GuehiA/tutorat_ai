@@ -1192,15 +1192,19 @@ def creer_exercice_ia():
         exemple = request.form.get("exemple", "").strip()
 
         # Vérification des champs requis
-        if not all([niveau_id, matiere_id, unite_id, lecon_id, objectif, difficulte, nb_exercices]):
+        if not all([niveau_id, matiere_id, unite_id, lecon_id, objectif, difficulte]):
             return "Tous les champs obligatoires ne sont pas remplis.", 400
+        
+        # ✅ Validation du nombre d'exercices (1 à 5)
+        if nb_exercices < 1 or nb_exercices > 5:
+            return "Le nombre d'exercices doit être entre 1 et 5.", 400
 
         niveau = Niveau.query.get(niveau_id)
         matiere = Matiere.query.get(matiere_id)
         unite = Unite.query.get(unite_id)
         lecon = Lecon.query.get(lecon_id)
 
-        # ✅ Prompt amélioré
+        # ✅ Prompt amélioré avec spécification claire du nombre
         prompt = f"""
 Tu es un générateur d'exercices pédagogiques.
 
@@ -1213,7 +1217,8 @@ Contexte pédagogique :
 - Difficulté : {difficulte}
 
 Consigne :
-Génère {nb_exercices} exercices clairs, variés et bien structurés, adaptés au niveau donné.
+Génère exactement {nb_exercices} exercices distincts, clairs, variés et bien structurés, adaptés au niveau donné.
+Les exercices doivent être diversifiés (types différents, approches différentes).
 Si un exemple est fourni, inspire-toi du style mais ne le copie pas.
 
 ⚠️ Important :
@@ -1224,17 +1229,19 @@ Si un exemple est fourni, inspire-toi du style mais ne le copie pas.
 Format strict attendu :
 [
   {{
-    "question_fr": "...",
-    "question_en": "...",
-    "reponse_fr": "...",
-    "reponse_en": "...",
-    "explication_fr": "...",
-    "explication_en": "..."
+    "question_fr": "Question en français ici...",
+    "question_en": "Question in English here...",
+    "reponse_fr": "Réponse en français ici...",
+    "reponse_en": "Answer in English here...",
+    "explication_fr": "Explication détaillée en français...",
+    "explication_en": "Detailed explanation in English..."
   }},
-  ...
+  ... (exactement {nb_exercices} exercices)
 ]
 
 {f"Exemple à titre d'inspiration : {exemple}" if exemple else ""}
+
+💡 Astuce : Crée des exercices complémentaires qui couvrent différents aspects de l'objectif pédagogique.
 """
 
         # 🧠 Appel à l'API OpenAI
@@ -1242,10 +1249,10 @@ Format strict attendu :
             response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
-                    {"role": "system", "content": "Tu es un générateur d'exercices pédagogiques JSON pur."},
+                    {"role": "system", "content": "Tu es un générateur d'exercices pédagogiques JSON pur. Génère toujours le nombre exact d'exercices demandé."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=2500,
+                max_tokens=3500,  # Augmenté pour plusieurs exercices
                 temperature=0.7,
             )
         except Exception as e:
@@ -1266,12 +1273,17 @@ Format strict attendu :
 
             # 🧩 Parsing JSON
             data = json.loads(json_text)
+            
+            # ✅ Vérification du nombre d'exercices générés
+            if len(data) != nb_exercices:
+                print(f"⚠️ GPT a généré {len(data)} exercices au lieu de {nb_exercices}")
 
         except Exception as e:
             print("❌ Erreur JSON :", e)
             return f"Erreur de parsing JSON : {e}<br><br>Réponse brute de l'IA :<pre>{contenu}</pre>", 500
 
         # 💾 Enregistrement des exercices générés
+        exercices_crees = []
         for ex in data:
             exercice = Exercice(
                 lecon_id=lecon.id,
@@ -1284,16 +1296,19 @@ Format strict attendu :
                 temps=60
             )
             db.session.add(exercice)
+            db.session.flush()  # Pour obtenir l'ID
+            exercices_crees.append(exercice)
 
         db.session.commit()
 
-        # ✅ Afficher la page de confirmation existante
+        # ✅ Afficher la page de confirmation
         return render_template(
-            "exercices_crees.html",  # Votre template existant
-            nombre=len(data),
+            "exercices_crees.html",
+            nombre=len(exercices_crees),
             lecon=lecon,
+            exercices=exercices_crees,  # Passer les exercices pour affichage
             lang=session.get("lang", "fr"),
-            dashboard_url=dashboard_url  # Passer l'URL du dashboard
+            dashboard_url=dashboard_url
         )
 
     # Si GET → afficher le formulaire
@@ -2759,7 +2774,7 @@ def connexion():
     return render_template("connexion.html", lang=lang)
 
 
-import datetime
+from datetime import timedelta
 import stripe
 import traceback
 from flask import request, render_template, redirect, url_for, flash, session
@@ -2807,7 +2822,6 @@ def inscription_eleve():
                 statut_paiement="essai_gratuit",
                 inscrit_par_admin=False,
                 accepte_cgu=form.accepte_cgu.data,
-                # CORRECTION ICI : datetime.now() au lieu de datetime.datetime.now()
                 date_acceptation_cgu=datetime.now() if form.accepte_cgu.data else None
             )
             
@@ -2849,13 +2863,36 @@ def inscription_eleve():
                 if not stripe.api_key:
                     raise Exception("Stripe non configuré")
                 
-                # Déterminer le prix selon le plan
-                if plan_type == 'monthly':
-                    amount = 1500  # 15.00 CAD
-                    description = "Abonnement mensuel"
-                else:
-                    amount = 12900  # 129.00 CAD
-                    description = "Abonnement annuel"
+                # NOUVEAUX TARIFS : Déterminer le prix selon le plan
+                plan_config = {
+                    'weekly': {
+                        'amount': 1500,  # 15.00 CAD
+                        'description': "Abonnement hebdomadaire - Tutorat intelligent avec enseignant virtuel IA",
+                        'product_name': "Forfait Hebdomadaire (15$/semaine)"
+                    },
+                    'monthly': {
+                        'amount': 5000,  # 50.00 CAD
+                        'description': "Abonnement mensuel - Tutorat intelligent avec enseignant virtuel IA",
+                        'product_name': "Forfait Mensuel (50$/mois)"
+                    },
+                    'annual': {
+                        'amount': 45000,  # 450.00 CAD
+                        'description': "Abonnement annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 25%",
+                        'product_name': "Forfait Annuel (450$/an) - Meilleur rapport"
+                    }
+                }
+                
+                plan_info = plan_config.get(plan_type, plan_config['annual'])
+                
+                # Traduire les descriptions si nécessaire
+                lang = session.get('lang', 'fr')
+                if lang == 'fr':
+                    plan_info['description'] = plan_info['description'].replace('Tutorat intelligent', 'Tutorat intelligent')
+                    if plan_type == 'annual':
+                        plan_info['description'] = "Abonnement annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 25%"
+                
+                # Calculer le montant en sous (cents)
+                amount = plan_info['amount']  # Montant en cents
                 
                 checkout_session = stripe.checkout.Session.create(
                     payment_method_types=['card'],
@@ -2863,48 +2900,89 @@ def inscription_eleve():
                         'price_data': {
                             'currency': 'cad',
                             'product_data': {
-                                'name': f'Abonnement {plan_type.capitalize()} - Tutorat IA',
-                                'description': description
+                                'name': plan_info['product_name'],
+                                'description': plan_info['description'],
+                                'metadata': {
+                                    'plan_type': plan_type,
+                                    'lang': lang
+                                }
                             },
                             'unit_amount': amount,
+                            'recurring': {
+                                'interval': 'month' if plan_type == 'monthly' else 'year' if plan_type == 'annual' else 'week',
+                                'interval_count': 1
+                            }
                         },
                         'quantity': 1,
                     }],
-                    mode='payment',
+                    mode='subscription',
+                    subscription_data={
+                        'metadata': {
+                            'eleve_id': eleve.id,
+                            'plan_type': plan_type,
+                            'lang': lang
+                        }
+                    },
                     success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
-                    cancel_url=url_for('inscription_eleve', _external=True),
+                    cancel_url=url_for('inscription_eleve', _external=True) + f'?cancel=true',
                     customer_email=form.email.data,
                     metadata={
                         'eleve_id': eleve.id,
+                        'plan_type': plan_type,
+                        'lang': lang,
                         'type': f'abonnement_{plan_type}'
+                    },
+                    allow_promotion_codes=True,
+                    billing_address_collection='required',
+                    phone_number_collection={
+                        'enabled': True
                     }
                 )
                 
                 return redirect(checkout_session.url)
                 
             except Exception as e:
-                print(f"❌ Stripe échoue, essai gratuit de 48h activé: {e}")
-                traceback.print_exc()  # Ajout pour debug
+                print(f"❌ Erreur Stripe, essai gratuit de 48h activé: {e}")
+                import traceback
+                traceback.print_exc()
                 
-                # Connexion automatique avec essai
+                # Connexion automatique avec essai gratuit
                 session['eleve_id'] = eleve.id
                 session['eleve_username'] = eleve.username
+                session['eleve_nom_complet'] = eleve.nom_complet
+                session['role'] = 'élève'
                 
                 # Nettoyer les sessions pending
                 session.pop('pending_plan_type', None)
                 session.pop('pending_eleve_id', None)
                 
-                temps_restant = eleve.temps_restant_essai()
-                heures_restantes = int(temps_restant.total_seconds() / 3600) if temps_restant else 0
+                # Mettre à jour le statut de paiement
+                eleve.statut_paiement = "essai_gratuit"
+                eleve.date_debut_essai = datetime.now()
+                eleve.date_fin_essai = datetime.now() + timedelta(hours=48)
+                db.session.commit()
                 
-                flash(f"Essai gratuit de 48h activé ! Il vous reste {heures_restantes} heures.", "success")
+                temps_restant = eleve.temps_restant_essai()
+                heures_restantes = int(temps_restant.total_seconds() / 3600) if temps_restant else 48
+                
+                flash_message = f"✅ Inscription réussie ! Essai gratuit de 48h activé. Il vous reste {heures_restantes} heures." if lang == 'fr' else f"✅ Registration successful! 48-hour free trial activated. You have {heures_restantes} hours remaining."
+                flash(flash_message, "success")
+                
                 return redirect(url_for('dashboard_eleve'))
                 
         except Exception as e:
             db.session.rollback()
             print(f"❌ Erreur création élève/parent: {e}")
-            traceback.print_exc()  # Ajout pour debug
-            flash("Une erreur est survenue lors de la création du compte", "error")
+            import traceback
+            traceback.print_exc()
+            
+            error_message = "Une erreur est survenue lors de la création du compte" if session.get('lang', 'fr') == 'fr' else "An error occurred while creating your account"
+            flash(error_message, "error")
+    
+    # Afficher un message d'annulation si l'utilisateur revient de Stripe
+    if request.args.get('cancel') == 'true':
+        cancel_message = "Paiement annulé. Vous pouvez réessayer ou choisir un autre forfait." if session.get('lang', 'fr') == 'fr' else "Payment cancelled. You can try again or choose a different plan."
+        flash(cancel_message, "warning")
     
     lang = session.get('lang', 'fr')
     return render_template("inscription_eleve.html", form=form, lang=lang)
@@ -2932,38 +3010,101 @@ def creer_session_paiement():
         return jsonify({"error": "Accès non autorisé"}), 403
     
     try:
-        # Créer une session de paiement Stripe
+        # Récupérer le type de plan depuis le formulaire
+        data = request.get_json()
+        plan_type = data.get('plan_type', 'annual')  # weekly, monthly, annual
+        
+        # NOUVEAUX TARIFS : Configuration des plans
+        plan_config = {
+            'weekly': {
+                'amount': 1500,  # 15.00 CAD
+                'description_fr': "Forfait hebdomadaire - Tutorat intelligent avec enseignant virtuel IA",
+                'description_en': "Weekly plan - Intelligent tutoring with AI virtual teacher",
+                'product_name_fr': "Forfait Hebdomadaire (15$/semaine)",
+                'product_name_en': "Weekly Plan (15$/week)",
+                'interval': 'week'
+            },
+            'monthly': {
+                'amount': 5000,  # 50.00 CAD
+                'description_fr': "Forfait mensuel - Tutorat intelligent avec enseignant virtuel IA",
+                'description_en': "Monthly plan - Intelligent tutoring with AI virtual teacher",
+                'product_name_fr': "Forfait Mensuel (50$/mois)",
+                'product_name_en': "Monthly Plan (50$/month)",
+                'interval': 'month'
+            },
+            'annual': {
+                'amount': 45000,  # 450.00 CAD
+                'description_fr': "Forfait annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 25%",
+                'description_en': "Annual plan - Intelligent tutoring with AI virtual teacher - Save 25%",
+                'product_name_fr': "Forfait Annuel (450$/an) - Meilleur rapport",
+                'product_name_en': "Annual Plan (450$/year) - Best value",
+                'interval': 'year'
+            }
+        }
+        
+        plan_info = plan_config.get(plan_type, plan_config['annual'])
+        lang = session.get("lang", "fr")
+        
+        # Sélectionner les textes selon la langue
+        product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
+        description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
+        
+        # Créer une session de paiement Stripe (mode subscription)
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
                     'currency': 'cad',
                     'product_data': {
-                        'name': 'Abonnement Annuel - Tutorat IA',
-                        'description': 'Accès complet à la plateforme pour 1 an'
+                        'name': product_name,
+                        'description': description,
+                        'metadata': {
+                            'plan_type': plan_type,
+                            'lang': lang
+                        }
                     },
-                    'unit_amount': 12900,  # 129.00 CAD
+                    'unit_amount': plan_info['amount'],
+                    'recurring': {
+                        'interval': plan_info['interval'],
+                        'interval_count': 1
+                    }
                 },
                 'quantity': 1,
             }],
-            mode='payment',
-            success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}',
-            cancel_url=url_for('upgrade_options', _external=True),
+            mode='subscription',
+            subscription_data={
+                'metadata': {
+                    'eleve_id': eleve.id,
+                    'plan_type': plan_type,
+                    'lang': lang
+                }
+            },
+            success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
+            cancel_url=url_for('upgrade_options', _external=True) + '?cancel=true',
             customer_email=eleve.email,
             metadata={
                 'eleve_id': eleve.id,
-                'type': 'abonnement_annuel'
-            }
+                'plan_type': plan_type,
+                'lang': lang,
+                'type': f'abonnement_{plan_type}'
+            },
+            allow_promotion_codes=True,
+            billing_address_collection='required',
+            phone_number_collection={'enabled': True}
         )
         
-        # ⬅️ RETOURNER L'URL DE LA SESSION STRIPE
+        # Retourner l'URL de la session Stripe
         return jsonify({
             "session_id": checkout_session.id,
-            "session_url": checkout_session.url  # ⬅️ IMPORTANT !
+            "session_url": checkout_session.url,
+            "plan_type": plan_type,
+            "amount": plan_info['amount']
         })
         
     except Exception as e:
         print(f"❌ Erreur création session Stripe: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
     
 @app.route("/paiement-direct")
@@ -2975,38 +3116,86 @@ def paiement_direct():
     if not eleve or eleve.role != "élève":
         return redirect(url_for("login_eleve"))
     
-    plan_type = request.args.get("type", "annuel")
+    plan_type = request.args.get("type", "annual")
     
     try:
-        # Prix selon le type de plan
-        if plan_type == "mensuel":
-            amount = 1500  # 15.00 CAD
-            description = "Abonnement mensuel"
-        else:
-            amount = 12900  # 129.00 CAD
-            description = "Abonnement annuel"
+        # NOUVEAUX TARIFS : Configuration des plans
+        plan_config = {
+            'weekly': {
+                'amount': 1500,  # 15.00 CAD
+                'description_fr': "Forfait hebdomadaire - Tutorat intelligent avec enseignant virtuel IA",
+                'description_en': "Weekly plan - Intelligent tutoring with AI virtual teacher",
+                'product_name_fr': "Forfait Hebdomadaire (15$/semaine)",
+                'product_name_en': "Weekly Plan (15$/week)",
+                'interval': 'week'
+            },
+            'monthly': {
+                'amount': 5000,  # 50.00 CAD
+                'description_fr': "Forfait mensuel - Tutorat intelligent avec enseignant virtuel IA",
+                'description_en': "Monthly plan - Intelligent tutoring with AI virtual teacher",
+                'product_name_fr': "Forfait Mensuel (50$/mois)",
+                'product_name_en': "Monthly Plan (50$/month)",
+                'interval': 'month'
+            },
+            'annual': {
+                'amount': 45000,  # 450.00 CAD
+                'description_fr': "Forfait annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 25%",
+                'description_en': "Annual plan - Intelligent tutoring with AI virtual teacher - Save 25%",
+                'product_name_fr': "Forfait Annuel (450$/an) - Meilleur rapport",
+                'product_name_en': "Annual Plan (450$/year) - Best value",
+                'interval': 'year'
+            }
+        }
         
+        plan_info = plan_config.get(plan_type, plan_config['annual'])
+        lang = session.get("lang", "fr")
+        
+        # Sélectionner les textes selon la langue
+        product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
+        description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
+        
+        # Créer une session de paiement Stripe
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
                     'currency': 'cad',
                     'product_data': {
-                        'name': f'Abonnement {plan_type.capitalize()} - Tutorat IA',
-                        'description': description
+                        'name': product_name,
+                        'description': description,
+                        'metadata': {
+                            'plan_type': plan_type,
+                            'lang': lang
+                        }
                     },
-                    'unit_amount': amount,
+                    'unit_amount': plan_info['amount'],
+                    'recurring': {
+                        'interval': plan_info['interval'],
+                        'interval_count': 1
+                    }
                 },
                 'quantity': 1,
             }],
-            mode='payment',
-            success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}',
-            cancel_url=url_for('upgrade_options', _external=True),
+            mode='subscription',
+            subscription_data={
+                'metadata': {
+                    'eleve_id': eleve.id,
+                    'plan_type': plan_type,
+                    'lang': lang
+                }
+            },
+            success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
+            cancel_url=url_for('upgrade_options', _external=True) + '?cancel=true',
             customer_email=eleve.email,
             metadata={
                 'eleve_id': eleve.id,
+                'plan_type': plan_type,
+                'lang': lang,
                 'type': f'abonnement_{plan_type}'
-            }
+            },
+            allow_promotion_codes=True,
+            billing_address_collection='required',
+            phone_number_collection={'enabled': True}
         )
         
         # Redirection directe vers Stripe
@@ -3014,7 +3203,11 @@ def paiement_direct():
         
     except Exception as e:
         print(f"❌ Erreur paiement direct: {e}")
-        flash("Erreur lors de la création du paiement", "error")
+        import traceback
+        traceback.print_exc()
+        
+        error_msg = "Erreur lors de la création du paiement" if session.get('lang', 'fr') == 'fr' else "Error creating payment"
+        flash(error_msg, "error")
         return redirect(url_for('upgrade_options'))
     
 
@@ -3023,6 +3216,7 @@ def paiement_success():
     try:
         session_id = request.args.get('session_id')
         eleve_id = request.args.get('eleve_id')
+        plan_type = request.args.get('plan_type', 'annual')
         
         if not session_id or not eleve_id:
             flash("Paramètres de paiement manquants", "error")
@@ -3031,20 +3225,54 @@ def paiement_success():
         # Vérifier la session Stripe
         stripe_session = stripe.checkout.Session.retrieve(session_id)
         
-        if stripe_session.payment_status == 'paid':
+        if stripe_session.payment_status == 'paid' or stripe_session.mode == 'subscription':
             # Activer le compte élève
             from models import User, db
             
             eleve = User.query.get(eleve_id)
             if eleve:
-                eleve.marquer_comme_paye(session_id, stripe_session.payment_intent)
+                # Déterminer la durée de l'abonnement selon le plan
+                plan_durations = {
+                    'weekly': 7,  # 7 jours
+                    'monthly': 30, # 30 jours
+                    'annual': 365  # 365 jours
+                }
+                duration_days = plan_durations.get(plan_type, 365)
+                
+                # Activer l'abonnement
+                eleve.activer_abonnement(
+                    session_id=session_id,
+                    payment_intent=stripe_session.payment_intent,
+                    duree_jours=duration_days,
+                    plan_type=plan_type
+                )
                 db.session.commit()
                 
                 # Connexion automatique
                 session['eleve_id'] = eleve.id
                 session['eleve_username'] = eleve.username
+                session['eleve_nom_complet'] = eleve.nom_complet
                 
-                flash("Paiement confirmé ! Votre compte a été activé pour 1 an.", "success")
+                # Messages de succès selon la langue
+                lang = session.get('lang', 'fr')
+                success_messages = {
+                    'weekly': {
+                        'fr': "Paiement confirmé ! Votre abonnement hebdomadaire (15$/semaine) est activé.",
+                        'en': "Payment confirmed! Your weekly subscription (15$/week) is activated."
+                    },
+                    'monthly': {
+                        'fr': "Paiement confirmé ! Votre abonnement mensuel (50$/mois) est activé.",
+                        'en': "Payment confirmed! Your monthly subscription (50$/month) is activated."
+                    },
+                    'annual': {
+                        'fr': "Paiement confirmé ! Votre abonnement annuel (450$/an) est activé pour 1 an.",
+                        'en': "Payment confirmed! Your annual subscription (450$/year) is activated for 1 year."
+                    }
+                }
+                
+                message = success_messages.get(plan_type, success_messages['annual']).get(lang, success_messages['annual']['fr'])
+                flash(message, "success")
+                
                 return redirect(url_for('dashboard_eleve'))
             else:
                 flash("Élève non trouvé", "error")
@@ -3053,7 +3281,11 @@ def paiement_success():
             
     except Exception as e:
         print(f"❌ Erreur confirmation paiement: {e}")
-        flash("Erreur lors de la confirmation du paiement", "error")
+        import traceback
+        traceback.print_exc()
+        
+        error_msg = "Erreur lors de la confirmation du paiement" if session.get('lang', 'fr') == 'fr' else "Error confirming payment"
+        flash(error_msg, "error")
     
     return redirect(url_for('inscription_eleve'))
 
@@ -3062,24 +3294,39 @@ def paiement_cancel():
     """Page d'annulation de paiement Stripe"""
     try:
         eleve_id = request.args.get('eleve_id')
-        print(f"❌ Paiement annulé - Élève: {eleve_id}")
+        plan_type = request.args.get('plan_type', 'annual')
+        
+        print(f"❌ Paiement annulé - Élève: {eleve_id}, Plan: {plan_type}")
         
         if eleve_id:
-            # Option 1: Supprimer l'élève
             from models import User, db
             eleve = User.query.get(eleve_id)
-            if eleve and eleve.statut == "en_attente_paiement":
-                db.session.delete(eleve)
-                db.session.commit()
-                print(f"🗑️ Élève {eleve_id} supprimé (paiement annulé)")
-                
-        flash("Paiement annulé. Vous pouvez réessayer quand vous voulez.", "info")
+            if eleve:
+                # Ne pas supprimer l'élève, mais laisser l'essai gratuit actif
+                if eleve.statut_paiement == "essai_gratuit":
+                    print(f"⚠️ Essai gratuit maintenu pour l'élève {eleve_id}")
+                else:
+                    print(f"ℹ️ Paiement annulé pour l'élève {eleve_id}")
+        
+        # Message d'annulation selon la langue
+        lang = session.get('lang', 'fr')
+        cancel_messages = {
+            'fr': "Paiement annulé. Votre essai gratuit reste actif. Vous pouvez réessayer quand vous voulez.",
+            'en': "Payment cancelled. Your free trial remains active. You can try again whenever you want."
+        }
+        
+        flash(cancel_messages.get(lang, cancel_messages['fr']), "info")
         
     except Exception as e:
         print(f"❌ Erreur annulation: {e}")
-        # Ne pas rollback - l'élève peut réessayer
+        import traceback
+        traceback.print_exc()
+        
+        # Message d'erreur
+        error_msg = "Erreur lors de l'annulation" if session.get('lang', 'fr') == 'fr' else "Error during cancellation"
+        flash(error_msg, "error")
     
-    return redirect(url_for('inscription_eleve'))
+    return redirect(url_for('upgrade_options'))
 
 @app.route('/admin/inscrire-eleve', methods=['GET', 'POST'])
 def admin_inscrire_eleve():

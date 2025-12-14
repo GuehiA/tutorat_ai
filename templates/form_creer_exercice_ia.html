@@ -339,6 +339,15 @@
       text-align: center;
     }
 
+    .number-info {
+      margin-top: 5px;
+      font-size: 0.85rem;
+      color: var(--gray);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
     .loading {
       display: inline-block;
       width: 20px;
@@ -551,10 +560,14 @@
                 <label class="required">{% if lang == 'en' %}Number of Exercises{% else %}Nombre d'exercices{% endif %} :</label>
                 <div class="number-selector">
                   <button type="button" class="number-btn" id="decrease-btn">-</button>
-                  <div class="number-display" id="number-display">1</div>
+                  <div class="number-display" id="number-display">2</div>
                   <button type="button" class="number-btn" id="increase-btn">+</button>
                 </div>
-                <input type="hidden" name="nb_exercices" id="nb_exercices" value="1" required>
+                <input type="hidden" name="nb_exercices" id="nb_exercices" value="2" required>
+                <div class="number-info">
+                  <i class="fas fa-info-circle"></i>
+                  {% if lang == 'en' %}Select 1 to 5 exercises to generate at once{% else %}Sélectionnez 1 à 5 exercices à générer en une fois{% endif %}
+                </div>
               </div>
             </div>
           </div>
@@ -587,7 +600,7 @@
             <div class="ai-feature">
               <i class="fas fa-bolt"></i>
               <h4>{% if lang == 'en' %}Fast Generation{% else %}Génération rapide{% endif %}</h4>
-              <p>{% if lang == 'en' %}Create exercises in seconds{% else %}Créez des exercices en quelques secondes{% endif %}</p>
+              <p>{% if lang == 'en' %}Create up to 5 exercises in seconds{% else %}Créez jusqu'à 5 exercices en quelques secondes{% endif %}</p>
             </div>
             <div class="ai-feature">
               <i class="fas fa-graduation-cap"></i>
@@ -598,6 +611,11 @@
               <i class="fas fa-palette"></i>
               <h4>{% if lang == 'en' %}Customizable{% else %}Personnalisable{% endif %}</h4>
               <p>{% if lang == 'en' %}Adapt to your specific needs{% else %}Adapté à vos besoins spécifiques{% endif %}</p>
+            </div>
+            <div class="ai-feature">
+              <i class="fas fa-layer-group"></i>
+              <h4>{% if lang == 'en' %}Multiple Exercises{% else %}Multiples exercices{% endif %}</h4>
+              <p>{% if lang == 'en' %}Generate 1 to 5 exercises at once{% else %}Générez 1 à 5 exercices en une fois{% endif %}</p>
             </div>
           </div>
 
@@ -675,19 +693,29 @@
       const numberDisplay = document.getElementById('number-display');
       const hiddenInput = document.getElementById('nb_exercices');
       
-      let count = 1;
+      let count = 2; // Valeur par défaut à 2
       
       decreaseBtn.addEventListener('click', () => {
         if (count > 1) {
           count--;
           updateNumberDisplay();
+        } else {
+          showNotification(
+            langJs === 'en' ? 'Minimum 1 exercise required' : 'Minimum 1 exercice requis',
+            'error'
+          );
         }
       });
       
       increaseBtn.addEventListener('click', () => {
-        if (count < 20) {
+        if (count < 5) {
           count++;
           updateNumberDisplay();
+        } else {
+          showNotification(
+            langJs === 'en' ? 'Maximum 5 exercises allowed' : 'Maximum 5 exercices autorisés',
+            'error'
+          );
         }
       });
       
@@ -695,7 +723,19 @@
         numberDisplay.textContent = count;
         hiddenInput.value = count;
         updatePromptPreview();
+        
+        // Changer la couleur selon le nombre
+        if (count === 1) {
+          numberDisplay.style.color = '#e74c3c';
+        } else if (count === 5) {
+          numberDisplay.style.color = '#2ecc71';
+        } else {
+          numberDisplay.style.color = 'var(--primary)';
+        }
       }
+      
+      // Initialiser l'affichage
+      updateNumberDisplay();
     }
 
     // Initialiser le toggle d'exemple
@@ -735,7 +775,7 @@
       const leconText = document.querySelector('#lecon option:checked')?.textContent || '';
       const objectif = document.getElementById('objectif')?.value || '';
       const difficulte = document.getElementById('difficulte')?.value || '';
-      const nbExercices = document.getElementById('nb_exercices')?.value || '1';
+      const nbExercices = document.getElementById('nb_exercices')?.value || '2';
       const exemple = document.getElementById('exemple')?.value || '';
       
       let promptText = '';
@@ -753,7 +793,8 @@ Learning objective: ${objectif}`;
           promptText += `\n\nExample exercise to follow:\n${exemple}`;
         }
       } else {
-        promptText = `Générer ${nbExercices} exercices de niveau ${difficulte} pour :
+        const difficulteText = difficulte === 'facile' ? 'facile' : difficulte === 'moyen' ? 'moyen' : 'difficile';
+        promptText = `Générer ${nbExercices} exercices de niveau ${difficulteText} pour :
 - Niveau : ${niveauText}
 - Matière : ${matiereText}
 - Unité : ${uniteText}
@@ -884,12 +925,24 @@ Objectif pédagogique : ${objectif}`;
         }
       });
       
-      if (!isValid) {
-        e.preventDefault();
+      // Validation du nombre d'exercices
+      const nbExercices = parseInt(document.getElementById('nb_exercices').value);
+      if (nbExercices < 1 || nbExercices > 5) {
+        isValid = false;
         showNotification(
-          langJs === 'en' ? 'Please fill in all required fields' : 'Veuillez remplir tous les champs obligatoires', 
+          langJs === 'en' ? 'Number of exercises must be between 1 and 5' : 'Le nombre d\'exercices doit être entre 1 et 5',
           'error'
         );
+      }
+      
+      if (!isValid) {
+        e.preventDefault();
+        if (!notification.classList.contains('show')) {
+          showNotification(
+            langJs === 'en' ? 'Please fill in all required fields' : 'Veuillez remplir tous les champs obligatoires', 
+            'error'
+          );
+        }
         return;
       }
       

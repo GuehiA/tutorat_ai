@@ -15,6 +15,9 @@
             --dark: #2b2d42;
             --light: #f8f9fa;
             --border: #e9ecef;
+            --gold: #ffd700;
+            --silver: #c0c0c0;
+            --bronze: #cd7f32;
         }
 
         * {
@@ -39,7 +42,7 @@
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 800px;
+            max-width: 1000px;
             animation: slideUp 0.5s ease-out;
             position: relative;
         }
@@ -205,18 +208,24 @@
         }
 
         .payment-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 30px;
             color: var(--dark);
             text-align: center;
         }
 
         .plan-cards {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 992px) {
+            .plan-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         @media (max-width: 768px) {
@@ -226,18 +235,22 @@
         }
 
         .plan-card {
-            border: 2px solid var(--border);
-            border-radius: 15px;
-            padding: 20px;
+            border: 3px solid var(--border);
+            border-radius: 20px;
+            padding: 30px 25px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.4s ease;
             position: relative;
+            background: white;
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
         }
 
         .plan-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-5px);
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
         }
 
         .plan-card.selected {
@@ -245,82 +258,171 @@
             background: linear-gradient(135deg, #f8f9ff, #e8f2ff);
         }
 
+        .plan-card.weekly {
+            border-color: var(--bronze);
+        }
+
+        .plan-card.monthly {
+            border-color: var(--silver);
+        }
+
+        .plan-card.annual {
+            border-color: var(--gold);
+        }
+
         .plan-card.popular {
-            border-color: var(--success);
+            border-width: 4px;
         }
 
         .plan-card.popular::before {
-            content: '{{ "POPULAR" if lang == "en" else "POPULAIRE" }}';
+            content: '{{ "BEST VALUE" if lang == "en" else "MEILLEUR RAPPORT" }}';
             position: absolute;
-            top: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--success);
+            top: 20px;
+            right: -35px;
+            background: linear-gradient(135deg, var(--gold), #ffa500);
             color: white;
-            padding: 4px 15px;
-            border-radius: 15px;
-            font-size: 0.7rem;
+            padding: 8px 40px;
+            font-size: 0.8rem;
             font-weight: bold;
+            transform: rotate(45deg);
+            z-index: 1;
+        }
+
+        .plan-header {
+            margin-bottom: 20px;
+        }
+
+        .plan-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .plan-icon.weekly {
+            background: linear-gradient(135deg, var(--bronze), #b5651d);
+        }
+
+        .plan-icon.monthly {
+            background: linear-gradient(135deg, var(--silver), #a0a0a0);
+        }
+
+        .plan-icon.annual {
+            background: linear-gradient(135deg, var(--gold), #ffa500);
         }
 
         .plan-name {
-            font-size: 1.1rem;
-            font-weight: 600;
+            font-size: 1.4rem;
+            font-weight: 700;
             margin-bottom: 10px;
             color: var(--dark);
         }
 
         .plan-price {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 5px;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 15px 0;
+            line-height: 1;
+        }
+
+        .plan-price.weekly {
+            color: var(--bronze);
+        }
+
+        .plan-price.monthly {
+            color: var(--silver);
+        }
+
+        .plan-price.annual {
+            color: var(--gold);
         }
 
         .plan-period {
-            font-size: 0.9rem;
+            font-size: 1rem;
             color: #6c757d;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .plan-savings {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--success), #05a67c);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 20px;
         }
 
         .plan-features {
             list-style: none;
             text-align: left;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: #495057;
+            flex-grow: 1;
+            margin-bottom: 25px;
         }
 
         .plan-features li {
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             display: flex;
-            align-items: center;
-            gap: 8px;
+            align-items: flex-start;
+            gap: 12px;
+            line-height: 1.4;
         }
 
         .plan-features li i {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .feature-included {
             color: var(--success);
-            font-size: 0.8rem;
+        }
+
+        .feature-excluded {
+            color: #dee2e6;
+        }
+
+        .plan-footer {
+            margin-top: auto;
         }
 
         .trial-info {
             background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-            border: 1px solid var(--warning);
-            border-radius: 10px;
-            padding: 15px;
+            border: 2px solid var(--warning);
+            border-radius: 15px;
+            padding: 20px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
         }
 
         .trial-info i {
             color: var(--warning);
-            margin-right: 8px;
+            font-size: 1.2rem;
+        }
+
+        .trial-info strong {
+            color: var(--dark);
+            font-size: 1.1rem;
         }
 
         /* COORDONNÉES DU PARENT */
         .parent-section {
             background: linear-gradient(135deg, #f8f9ff, #f0f4ff);
             border-radius: 15px;
-            padding: 25px;
+            padding: 30px;
             margin: 30px 0;
             border: 2px solid var(--border);
         }
@@ -329,17 +431,17 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .parent-header i {
             color: var(--primary);
-            font-size: 1.2rem;
+            font-size: 1.3rem;
         }
 
         .parent-header h3 {
             color: var(--dark);
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             margin: 0;
         }
 
@@ -356,7 +458,7 @@
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 20px;
         }
 
         @media (max-width: 768px) {
@@ -369,6 +471,80 @@
             height: 2px;
             background: linear-gradient(90deg, transparent, var(--border), transparent);
             margin: 30px 0;
+        }
+
+        .platform-description {
+            background: linear-gradient(135deg, #e8f4ff, #d4edff);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            border: 2px solid var(--primary);
+        }
+
+        .platform-description h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .platform-description ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .platform-description li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .platform-description li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th, .comparison-table td {
+            padding: 15px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .comparison-table .check {
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .comparison-table .cross {
+            color: var(--danger);
+            font-weight: bold;
+            font-size: 1.2rem;
         }
     </style>
 </head>
@@ -385,9 +561,33 @@
                 <i class="fas fa-user-graduate"></i>
             </div>
             <h2>{{ 'Student Registration' if lang == 'en' else 'Inscription Élève' }}</h2>
-            <p style="color: #6c757d; margin-top: 10px;">
-                {{ 'Create your student account to access our tutoring platform' if lang == 'en' else 'Créez votre compte élève pour accéder à notre plateforme de tutorat' }}
+            <p style="color: #6c757d; margin-top: 10px; font-size: 1.1rem;">
+                {{ 'Create your student account to access our intelligent tutoring platform' if lang == 'en' else 'Créez votre compte élève pour accéder à notre plateforme de tutorat intelligent' }}
             </p>
+        </div>
+
+        <!-- DESCRIPTION DE LA PLATEFORME -->
+        <div class="platform-description">
+            <h3><i class="fas fa-brain"></i> {{ 'Intelligent Tutoring Platform' if lang == 'en' else 'Plateforme de Tutorat Intelligent' }}</h3>
+            {% if lang == 'en' %}
+                <p>Our AI-powered platform features a virtual teacher that uses <strong>Socratic questioning</strong> to guide students through exercises. When you're stuck, our intelligent assistant helps you discover the answers yourself through thoughtful questioning, just like a real tutor would.</p>
+                <ul>
+                    <li>Personalized learning path based on your level</li>
+                    <li>Interactive exercises with step-by-step guidance</li>
+                    <li>Virtual teacher available 24/7 for help</li>
+                    <li>Progress tracking and performance analytics</li>
+                    <li>Adaptive difficulty based on your performance</li>
+                </ul>
+            {% else %}
+                <p>Notre plateforme alimentée par IA dispose d'un enseignant virtuel qui utilise le <strong>questionnement socratique</strong> pour guider les élèves dans les exercices. Quand vous êtes bloqué, notre assistant intelligent vous aide à découvrir les réponses par vous-même à travers un questionnement réfléchi, comme le ferait un vrai tuteur.</p>
+                <ul>
+                    <li>Parcours d'apprentissage personnalisé selon votre niveau</li>
+                    <li>Exercices interactifs avec guidage étape par étape</li>
+                    <li>Enseignant virtuel disponible 24h/24 pour vous aider</li>
+                    <li>Suivi de progression et analyse des performances</li>
+                    <li>Difficulté adaptative basée sur vos résultats</li>
+                </ul>
+            {% endif %}
         </div>
 
         <form method="POST" id="studentForm">
@@ -536,50 +736,160 @@
             <!-- SECTION OPTIONS DE PAIEMENT -->
             <div class="payment-options">
                 <div class="payment-title">
-                    {{ 'Choose Your Plan' if lang == 'en' else 'Choisissez Votre Forfait' }}
+                    {{ 'Choose Your Subscription Plan' if lang == 'en' else 'Choisissez Votre Forfait d\'Abonnement' }}
                 </div>
 
                 <div class="trial-info">
                     <i class="fas fa-gift"></i>
                     <strong>
-                        {{ '🎁 48-hour FREE trial included with both plans!' if lang == 'en' else '🎁 Essai GRATUIT de 48h inclus avec les deux forfaits !' }}
+                        {{ '🎁 48-hour FREE trial included with all plans!' if lang == 'en' else '🎁 Essai GRATUIT de 48h inclus avec tous les forfaits !' }}
                     </strong>
                 </div>
 
+                <!-- TABLEAU COMPARATIF SIMPLIFIÉ -->
+                <div style="overflow-x: auto; margin-bottom: 30px;">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>{{ 'Features' if lang == 'en' else 'Fonctionnalités' }}</th>
+                                <th>{{ 'Weekly' if lang == 'en' else 'Hebdomadaire' }}<br><small>15$/week</small></th>
+                                <th>{{ 'Monthly' if lang == 'en' else 'Mensuel' }}<br><small>50$/month</small></th>
+                                <th>{{ 'Annual' if lang == 'en' else 'Annuel' }}<br><small>450$/year</small></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="text-align: left;">{{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;">{{ 'All subjects & levels' if lang == 'en' else 'Toutes les matières & niveaux' }}</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;">{{ 'Virtual teacher assistance' if lang == 'en' else 'Assistance par enseignant virtuel' }}</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;">{{ 'Socratic questioning guidance' if lang == 'en' else 'Guidage par questionnement socratique' }}</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;">{{ 'Progress tracking & reports' if lang == 'en' else 'Suivi de progression & rapports' }}</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;">{{ 'Personalized remediations' if lang == 'en' else 'Remédiations personnalisées' }}</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;">{{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</td>
+                                <td class="cross">✗</td>
+                                <td class="check">✓</td>
+                                <td class="check">✓</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;">{{ 'Monthly savings' if lang == 'en' else 'Économies mensuelles' }}</td>
+                                <td>{{ '0%' if lang == 'en' else '0%' }}</td>
+                                <td>{{ '17%' if lang == 'en' else '17%' }}</td>
+                                <td>{{ '25%' if lang == 'en' else '25%' }}</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;">{{ 'Effective monthly cost' if lang == 'en' else 'Coût mensuel effectif' }}</td>
+                                <td><strong>$65</strong></td>
+                                <td><strong>$50</strong></td>
+                                <td><strong>$37.50</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
                 <div class="plan-cards">
-                    <!-- Plan Mensuel -->
-                    <div class="plan-card" onclick="selectPlan('monthly')" id="monthlyPlan">
-                        <div class="plan-name">
-                            {{ 'Monthly Plan' if lang == 'en' else 'Forfait Mensuel' }}
-                        </div>
-                        <div class="plan-price">15$</div>
-                        <div class="plan-period">
-                            {{ 'per month' if lang == 'en' else 'par mois' }}
+                    <!-- Plan Hebdomadaire -->
+                    <div class="plan-card weekly" onclick="selectPlan('weekly')" id="weeklyPlan">
+                        <div class="plan-header">
+                            <div class="plan-icon weekly">
+                                <i class="fas fa-calendar-week"></i>
+                            </div>
+                            <h3 class="plan-name">{{ 'Weekly Plan' if lang == 'en' else 'Forfait Hebdomadaire' }}</h3>
+                            <div class="plan-price weekly">15$</div>
+                            <div class="plan-period">{{ 'per week' if lang == 'en' else 'par semaine' }}</div>
                         </div>
                         <ul class="plan-features">
-                            <li><i class="fas fa-check"></i> {{ 'Full access' if lang == 'en' else 'Accès complet' }}</li>
-                            <li><i class="fas fa-check"></i> {{ 'All subjects' if lang == 'en' else 'Toutes les matières' }}</li>
-                            <li><i class="fas fa-check"></i> {{ 'Virtual teacher' if lang == 'en' else 'Enseignant virtuel' }}</li>
-                            <li><i class="fas fa-check"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulation à tout moment' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Try before committing' if lang == 'en' else 'Testez avant de vous engager' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Virtual teacher available 24/7' if lang == 'en' else 'Enseignant virtuel disponible 24h/24' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Socratic questioning when stuck' if lang == 'en' else 'Questionnement socratique quand bloqué' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Flexible, cancel anytime' if lang == 'en' else 'Flexible, annulez à tout moment' }}</li>
                         </ul>
+                        <div class="plan-footer">
+                            <div style="margin-bottom: 15px; color: var(--bronze); font-weight: 600;">
+                                {{ 'Perfect for trying out' if lang == 'en' else 'Parfait pour tester' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Plan Mensuel -->
+                    <div class="plan-card monthly" onclick="selectPlan('monthly')" id="monthlyPlan">
+                        <div class="plan-header">
+                            <div class="plan-icon monthly">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <h3 class="plan-name">{{ 'Monthly Plan' if lang == 'en' else 'Forfait Mensuel' }}</h3>
+                            <div class="plan-price monthly">50$</div>
+                            <div class="plan-period">{{ 'per month' if lang == 'en' else 'par mois' }}</div>
+                        </div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Save 17% vs weekly' if lang == 'en' else 'Économisez 17% vs hebdo' }}</strong></li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'All weekly features included' if lang == 'en' else 'Toutes les fonctionnalités hebdo' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Progress reports for parents' if lang == 'en' else 'Rapports de progression pour parents' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Priority support access' if lang == 'en' else 'Accès au support prioritaire' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Monthly learning assessment' if lang == 'en' else 'Évaluation mensuelle des acquis' }}</li>
+                        </ul>
+                        <div class="plan-footer">
+                            <div style="margin-bottom: 15px; color: var(--silver); font-weight: 600;">
+                                {{ 'Most popular choice' if lang == 'en' else 'Choix le plus populaire' }}
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Plan Annuel (Populaire) -->
-                    <div class="plan-card popular selected" onclick="selectPlan('annual')" id="annualPlan">
-                        <div class="plan-name">
-                            {{ 'Annual Plan' if lang == 'en' else 'Forfait Annuel' }}
-                        </div>
-                        <div class="plan-price">129$</div>
-                        <div class="plan-period">
-                            {{ 'per year' if lang == 'en' else 'par an' }}
+                    <div class="plan-card annual popular selected" onclick="selectPlan('annual')" id="annualPlan">
+                        <div class="plan-header">
+                            <div class="plan-icon annual">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <h3 class="plan-name">{{ 'Annual Plan' if lang == 'en' else 'Forfait Annuel' }}</h3>
+                            <div class="plan-price annual">450$</div>
+                            <div class="plan-period">{{ 'per year' if lang == 'en' else 'par an' }}</div>
+                            <div class="plan-savings">
+                                {{ 'SAVE 25%' if lang == 'en' else 'ÉCONOMISEZ 25%' }}
+                            </div>
                         </div>
                         <ul class="plan-features">
-                            <li><i class="fas fa-check"></i> {{ 'Full access' if lang == 'en' else 'Accès complet' }}</li>
-                            <li><i class="fas fa-check"></i> {{ 'All subjects' if lang == 'en' else 'Toutes les matières' }}</li>
-                            <li><i class="fas fa-check"></i> {{ 'Virtual teacher' if lang == 'en' else 'Enseignant virtuel' }}</li>
-                            <li><i class="fas fa-check"></i> {{ 'Save 33%' if lang == 'en' else 'Économisez 33%' }}</li>
-                            <li><i class="fas fa-crown"></i> {{ 'Best value' if lang == 'en' else 'Meilleur rapport' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Best value - Save $240/year' if lang == 'en' else 'Meilleur rapport - Économisez 240$/an' }}</strong></li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'All monthly features included' if lang == 'en' else 'Toutes les fonctionnalités mensuelles' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Premium virtual teacher features' if lang == 'en' else 'Fonctionnalités premium enseignant virtuel' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Personalized learning roadmap' if lang == 'en' else 'Feuille de route d\'apprentissage personnalisée' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly parent-teacher meetings' if lang == 'en' else 'Rencontres trimestrielles parents-prof' }}</li>
                         </ul>
+                        <div class="plan-footer">
+                            <div style="margin-bottom: 15px; color: var(--gold); font-weight: 600;">
+                                {{ 'Best for consistent learning' if lang == 'en' else 'Idéal pour un apprentissage régulier' }}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -610,9 +920,11 @@
             </div>
 
             <!-- SUBMIT BUTTON -->
-            <button type="submit" class="btn-submit">
+            <button type="submit" class="btn-submit" id="submitButton">
                 <i class="fas fa-user-plus"></i>
-                {{ 'Continue to Payment' if lang == 'en' else 'Continuer vers le Paiement' }}
+                <span id="submitText">
+                    {{ 'Continue with Annual Plan (450$/year)' if lang == 'en' else 'Continuer avec le Forfait Annuel (450$/an)' }}
+                </span>
             </button>
         </form>
 
@@ -643,25 +955,48 @@
             document.getElementById('planType').value = planType;
             
             // Mettre à jour le texte du bouton
-            const button = document.querySelector('.btn-submit');
-            if (planType === 'annual') {
-                button.innerHTML = '<i class="fas fa-crown"></i> {{ "Continue to Payment - 129$/year" if lang == "en" else "Continuer vers le Paiement - 129$/an" }}';
-            } else {
-                button.innerHTML = '<i class="fas fa-calendar"></i> {{ "Continue to Payment - 15$/month" if lang == "en" else "Continuer vers le Paiement - 15$/mois" }}';
-            }
+            const submitText = document.getElementById('submitText');
+            const planNames = {
+                'weekly': {
+                    en: 'Continue with Weekly Plan (15$/week)',
+                    fr: 'Continuer avec le Forfait Hebdomadaire (15$/semaine)'
+                },
+                'monthly': {
+                    en: 'Continue with Monthly Plan (50$/month)',
+                    fr: 'Continuer avec le Forfait Mensuel (50$/mois)'
+                },
+                'annual': {
+                    en: 'Continue with Annual Plan (450$/year)',
+                    fr: 'Continuer avec le Forfait Annuel (450$/an)'
+                }
+            };
+            
+            const langJs = "{{ lang }}";
+            submitText.textContent = planNames[planType][langJs];
         }
 
         // Animation de soumission
         document.getElementById('studentForm').addEventListener('submit', function(e) {
-            const btn = this.querySelector('.btn-submit');
+            const btn = document.getElementById('submitButton');
             const planType = document.getElementById('planType').value;
+            const langJs = "{{ lang }}";
             
-            if (planType === 'annual') {
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Processing Annual Plan..." if lang == "en" else "Traitement du forfait annuel..." }}';
-            } else {
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Processing Monthly Plan..." if lang == "en" else "Traitement du forfait mensuel..." }}';
-            }
+            const processingText = {
+                'weekly': {
+                    en: 'Processing Weekly Plan...',
+                    fr: 'Traitement du forfait hebdomadaire...'
+                },
+                'monthly': {
+                    en: 'Processing Monthly Plan...',
+                    fr: 'Traitement du forfait mensuel...'
+                },
+                'annual': {
+                    en: 'Processing Annual Plan...',
+                    fr: 'Traitement du forfait annuel...'
+                }
+            };
             
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${processingText[planType][langJs]}`;
             btn.disabled = true;
         });
 
@@ -670,13 +1005,47 @@
             const planCards = document.querySelectorAll('.plan-card');
             planCards.forEach((card, index) => {
                 card.style.opacity = '0';
-                card.style.transform = 'translateY(20px)';
+                card.style.transform = 'translateY(30px)';
                 
                 setTimeout(() => {
                     card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
                 }, 300 + (index * 100));
+            });
+            
+            // Calcul et affichage des économies
+            const weeklyCost = 15;
+            const monthlyCost = 50;
+            const annualCost = 450;
+            
+            // Calcul des économies mensuelles
+            const weeklyMonthlyCost = weeklyCost * 4; // ~4 semaines par mois
+            const monthlySavings = ((weeklyMonthlyCost - monthlyCost) / weeklyMonthlyCost * 100).toFixed(0);
+            const annualMonthlyCost = annualCost / 12;
+            const annualSavings = ((weeklyMonthlyCost - annualMonthlyCost) / weeklyMonthlyCost * 100).toFixed(0);
+            
+            // Mettre à jour les textes d'économie
+            document.querySelectorAll('.plan-savings').forEach(el => {
+                if (el.textContent.includes('17%')) {
+                    el.textContent = el.textContent.replace('17%', monthlySavings + '%');
+                }
+                if (el.textContent.includes('25%')) {
+                    el.textContent = el.textContent.replace('25%', annualSavings + '%');
+                }
+            });
+            
+            // Mettre à jour le tableau comparatif
+            document.querySelectorAll('.comparison-table td:nth-child(3)').forEach((td, index) => {
+                if (td.textContent === '17%') {
+                    td.textContent = monthlySavings + '%';
+                }
+            });
+            
+            document.querySelectorAll('.comparison-table td:nth-child(4)').forEach((td, index) => {
+                if (td.textContent === '25%') {
+                    td.textContent = annualSavings + '%';
+                }
             });
         });
 
