@@ -2774,7 +2774,6 @@ def connexion():
     return render_template("connexion.html", lang=lang)
 
 
-from datetime import timedelta
 import stripe
 import traceback
 from flask import request, render_template, redirect, url_for, flash, session
@@ -2783,6 +2782,7 @@ from flask import request, render_template, redirect, url_for, flash, session
 def inscription_eleve():
     from forms import InscriptionEleveForm
     from models import Niveau, User, Parent, ParentEleve, db
+    from datetime import datetime, timedelta
     
     form = InscriptionEleveForm()
     
@@ -2791,6 +2791,8 @@ def inscription_eleve():
     form.niveau.choices = [(n.id, n.nom) for n in niveaux]
     
     if request.method == 'POST' and form.validate_on_submit():
+        plan_type = request.form.get('plan_type', 'annual')
+        print(f"📋 Plan reçu depuis le formulaire: {plan_type}")
         # Vérifier les doublons
         if User.query.filter_by(email=form.email.data).first():
             flash("Cet email est déjà utilisé", "error")
@@ -2800,8 +2802,9 @@ def inscription_eleve():
             flash("Ce nom d'utilisateur est déjà utilisé", "error")
             return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'))
         
-        # Récupérer le type de plan choisi
+        # Récupérer le type de plan choisi - CORRECTION ICI
         plan_type = request.form.get('plan_type', 'annual')
+        print(f"📋 Plan choisi par l'utilisateur: {plan_type}")  # Debug
         
         # Récupérer les données du parent
         parent_nom_complet = request.form.get('parent_nom_complet')
@@ -2868,17 +2871,20 @@ def inscription_eleve():
                     'weekly': {
                         'amount': 1500,  # 15.00 CAD
                         'description': "Abonnement hebdomadaire - Tutorat intelligent avec enseignant virtuel IA",
-                        'product_name': "Forfait Hebdomadaire (15$/semaine)"
+                        'product_name': "Forfait Hebdomadaire (15$/semaine)",
+                        'interval': 'week'
                     },
                     'monthly': {
                         'amount': 5000,  # 50.00 CAD
                         'description': "Abonnement mensuel - Tutorat intelligent avec enseignant virtuel IA",
-                        'product_name': "Forfait Mensuel (50$/mois)"
+                        'product_name': "Forfait Mensuel (50$/mois)",
+                        'interval': 'month'
                     },
                     'annual': {
                         'amount': 45000,  # 450.00 CAD
                         'description': "Abonnement annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 25%",
-                        'product_name': "Forfait Annuel (450$/an) - Meilleur rapport"
+                        'product_name': "Forfait Annuel (450$/an) - Meilleur rapport",
+                        'interval': 'year'
                     }
                 }
                 
@@ -2887,12 +2893,17 @@ def inscription_eleve():
                 # Traduire les descriptions si nécessaire
                 lang = session.get('lang', 'fr')
                 if lang == 'fr':
-                    plan_info['description'] = plan_info['description'].replace('Tutorat intelligent', 'Tutorat intelligent')
-                    if plan_type == 'annual':
+                    # Pour le français, ajuster les descriptions
+                    if plan_type == 'weekly':
+                        plan_info['description'] = "Abonnement hebdomadaire - Tutorat intelligent avec enseignant virtuel IA"
+                    elif plan_type == 'monthly':
+                        plan_info['description'] = "Abonnement mensuel - Tutorat intelligent avec enseignant virtuel IA"
+                    elif plan_type == 'annual':
                         plan_info['description'] = "Abonnement annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 25%"
                 
                 # Calculer le montant en sous (cents)
                 amount = plan_info['amount']  # Montant en cents
+                print(f"💰 Montant Stripe pour {plan_type}: {amount/100}$ CAD")  # Debug
                 
                 checkout_session = stripe.checkout.Session.create(
                     payment_method_types=['card'],
@@ -2909,7 +2920,7 @@ def inscription_eleve():
                             },
                             'unit_amount': amount,
                             'recurring': {
-                                'interval': 'month' if plan_type == 'monthly' else 'year' if plan_type == 'annual' else 'week',
+                                'interval': plan_info.get('interval', 'year'),
                                 'interval_count': 1
                             }
                         },
@@ -2939,6 +2950,7 @@ def inscription_eleve():
                     }
                 )
                 
+                print(f"🔗 Session Stripe créée pour le plan: {plan_type}")  # Debug
                 return redirect(checkout_session.url)
                 
             except Exception as e:
@@ -3117,6 +3129,7 @@ def paiement_direct():
         return redirect(url_for("login_eleve"))
     
     plan_type = request.args.get("type", "annual")
+    print(f"📋 Paiement direct - Plan demandé: {plan_type}")  # Debug
     
     try:
         # NOUVEAUX TARIFS : Configuration des plans
@@ -3153,6 +3166,8 @@ def paiement_direct():
         # Sélectionner les textes selon la langue
         product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
         description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
+        
+        print(f"💰 Paiement direct - Montant pour {plan_type}: {plan_info['amount']/100}$ CAD")  # Debug
         
         # Créer une session de paiement Stripe
         checkout_session = stripe.checkout.Session.create(
