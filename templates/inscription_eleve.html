@@ -669,18 +669,10 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="niveau">{{ 'Level' if lang == 'en' else 'Niveau' }}</label>
-                    <select name="niveau" id="niveau" class="form-select">
+                    <select name="niveau" id="niveau" class="form-select" required>
                         <option value="">{{ 'Select your level' if lang == 'en' else 'Sélectionnez votre niveau' }}</option>
-                        {% for niveau in form.niveau.choices %}
-                            {% set niveau_id, niveau_nom = niveau %}
-                            {% set niveau_obj = Niveau.query.get(niveau_id) if 'Niveau' in globals() else None %}
-                            <option value="{{ niveau_id }}">
-                                {% if niveau_obj and lang == 'en' and niveau_obj.nom_en %}
-                                    {{ niveau_obj.nom_en }}
-                                {% else %}
-                                    {{ niveau_nom }}
-                                {% endif %}
-                            </option>
+                        {% for niveau_id, niveau_nom in form.niveau.choices %}
+                            <option value="{{ niveau_id }}">{{ niveau_nom }}</option>
                         {% endfor %}
                     </select>
                     {% if form.niveau.errors %}

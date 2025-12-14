@@ -3239,13 +3239,16 @@ def paiement_success():
                 }
                 duration_days = plan_durations.get(plan_type, 365)
                 
-                # Activer l'abonnement
-                eleve.activer_abonnement(
-                    session_id=session_id,
-                    payment_intent=stripe_session.payment_intent,
-                    duree_jours=duration_days,
-                    plan_type=plan_type
+                # ⬇️ UTILISER LA MÉTHODE EXISTANTE au lieu de activer_abonnement()
+                eleve.marquer_comme_paye(
+                    stripe_session_id=session_id,
+                    stripe_payment_intent=stripe_session.payment_intent
                 )
+                
+                # ⬇️ AJOUTER LA DATE DE FIN D'ABONNEMENT
+                from datetime import datetime, timedelta
+                eleve.date_fin_abonnement = datetime.utcnow() + timedelta(days=duration_days)
+                
                 db.session.commit()
                 
                 # Connexion automatique
@@ -4190,6 +4193,16 @@ def choisir_sequence():
     )
 
 
+from datetime import datetime, timedelta
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import io
+import base64
+from flask import request, render_template, redirect, url_for, flash, session
+from sqlalchemy.orm import joinedload
+from sqlalchemy import and_
+
 @app.route("/dashboard-eleve")
 def dashboard_eleve():
     if "eleve_id" not in session:
@@ -4200,10 +4213,10 @@ def dashboard_eleve():
         return "Accès non autorisé", 403
 
     # 🚨 VÉRIFICATION ACCÈS - ESSAI GRATUIT EXPIRÉ
+    # NE PAS DÉCONNECTER L'ÉLÈVE, LE REDIRIGER VERS L'UPGRADE
     if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
-        session.clear()
-        flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner pour continuer.", "error")
-        return redirect(url_for('login_eleve'))
+        flash("Votre période d'essai gratuit de 48h est terminée. Veuillez choisir un abonnement pour continuer.", "warning")
+        return redirect(url_for('upgrade_options'))
 
     # ✅ CORRECTION : Stocker pour l'enseignant virtuel
     session['current_student'] = eleve.username
@@ -4220,12 +4233,7 @@ def dashboard_eleve():
 
     # 📊 Statistiques
     from sqlalchemy.sql import func
-    from datetime import datetime, timedelta
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    import io, base64
-
+    
     reponses_eleve = StudentResponse.query.filter_by(user_id=eleve.id).order_by(StudentResponse.timestamp).all()
     total_reponses = len(reponses_eleve)
 
@@ -4314,7 +4322,6 @@ def dashboard_eleve():
 
     # 🎯 OBJECTIFS DU JOUR - CODE SIMPLIFIÉ SANS ENSEIGNANT VIRTUEL
     # Compter les remédiations complétées
-    from sqlalchemy import and_
     remediations_completees = RemediationSuggestion.query.filter(
         and_(
             RemediationSuggestion.user_id == eleve.id,
@@ -4363,6 +4370,14 @@ def dashboard_eleve():
         'total': total_objectifs,
         'percent': progression_percent
     }
+    
+    # ✅ NOUVEAU : AJOUTER LE STATUT DE PAIEMENT POUR LE TEMPLATE
+    statut_paiement_info = {
+        'est_en_essai': eleve.est_en_essai_gratuit(),
+        'est_paye': eleve.statut_paiement == "paye",
+        'essai_expire': eleve.essai_est_expire(),
+        'jours_restants_abonnement': eleve.jours_restants_abonnement() if hasattr(eleve, 'jours_restants_abonnement') else 0
+    }
 
     return render_template(
         "dashboard_eleve.html",
@@ -4379,7 +4394,9 @@ def dashboard_eleve():
         objectifs_du_jour=objectifs_du_jour,
         progression_quotidienne=progression_quotidienne,
         remediations_completees=remediations_completees,
-        date_du_jour=datetime.utcnow()
+        date_du_jour=datetime.utcnow(),
+        # ✅ NOUVEAU : INFORMATION DE PAIEMENT
+        statut_paiement_info=statut_paiement_info
     )
 
 @app.route("/reset-admin-password")
@@ -5964,8 +5981,11 @@ def login_eleve():
         if eleve and eleve.verifier_mot_de_passe(mot_de_passe):
             # Vérifier si l'essai est expiré
             if eleve.essai_est_expire():
-                flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner.", "error")
-                return render_template("login_eleve.html", lang=session.get('lang', 'fr'))
+                # 🔴 MODIFICATION ICI : Redirection vers upgrade_options
+                session['eleve_id'] = eleve.id
+                session['eleve_username'] = eleve.username
+                flash("Votre période d'essai gratuit de 48h est terminée. Veuillez choisir un abonnement.", "warning")
+                return redirect(url_for('upgrade_options'))
             
             # Afficher le temps restant pour l'essai
             if eleve.est_en_essai_gratuit():
