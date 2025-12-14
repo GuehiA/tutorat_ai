@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <!-- Favicon VirtuEduc -->
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -11,6 +12,7 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
     <meta name="msapplication-TileColor" content="#4361ee">
     <meta name="theme-color" content="#4361ee">
+    
     <title>{% if lang == 'en' %}Student Registration{% else %}Inscription Élève{% endif %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -135,12 +137,12 @@
             font-size: 14px;
         }
 
-        label::after {
+        label.required::after {
             content: " *";
             color: var(--danger);
         }
 
-        .optional label::after {
+        label.optional::after {
             content: " ({{ 'optional' if lang == 'en' else 'optionnel' }})";
             color: #6c757d;
         }
@@ -191,6 +193,13 @@
         .btn-submit:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
         .login-link {
@@ -294,6 +303,14 @@
             font-weight: bold;
             transform: rotate(45deg);
             z-index: 1;
+        }
+
+        @media (max-width: 768px) {
+            .plan-card.popular::before {
+                right: -25px;
+                padding: 6px 30px;
+                font-size: 0.7rem;
+            }
         }
 
         .plan-header {
@@ -440,6 +457,7 @@
             align-items: center;
             gap: 10px;
             margin-bottom: 25px;
+            flex-wrap: wrap;
         }
 
         .parent-header i {
@@ -472,6 +490,10 @@
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
+            }
+            
+            .registration-box {
+                padding: 20px;
             }
         }
 
@@ -554,6 +576,28 @@
             font-weight: bold;
             font-size: 1.2rem;
         }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox-group label {
+            font-weight: normal;
+            margin-bottom: 0;
+        }
+
+        .checkbox-group label::after {
+            content: none !important;
+        }
     </style>
 </head>
 <body>
@@ -599,9 +643,7 @@
         </div>
 
         <form method="POST" id="studentForm">
-            <!-- NE PAS UTILISER form.hidden_tag() car il crée des champs cachés -->
-            <!-- À la place, utilisez csrf_token seulement -->
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {{ form.hidden_tag() }}
             
             <!-- SECTION INFORMATIONS ÉLÈVE -->
             <div class="parent-header">
@@ -611,7 +653,7 @@
 
             <!-- USERNAME -->
             <div class="form-group">
-                <label for="username">{{ 'Username' if lang == 'en' else 'Nom d\'utilisateur' }}</label>
+                <label for="username" class="required">{{ 'Username' if lang == 'en' else 'Nom d\'utilisateur' }}</label>
                 {{ form.username(class="form-control", placeholder="john_doe") }}
                 {% if form.username.errors %}
                     <div class="error-message">
@@ -624,7 +666,7 @@
 
             <!-- EMAIL -->
             <div class="form-group">
-                <label for="email">{{ 'Email' if lang == 'en' else 'Email' }}</label>
+                <label for="email" class="required">{{ 'Email' if lang == 'en' else 'Email' }}</label>
                 {{ form.email(class="form-control", placeholder="email@example.com") }}
                 {% if form.email.errors %}
                     <div class="error-message">
@@ -637,7 +679,7 @@
 
             <!-- FULL NAME -->
             <div class="form-group">
-                <label for="nom_complet">{{ 'Full Name' if lang == 'en' else 'Nom Complet' }}</label>
+                <label for="nom_complet" class="required">{{ 'Full Name' if lang == 'en' else 'Nom Complet' }}</label>
                 {{ form.nom_complet(class="form-control", placeholder="John Doe") }}
                 {% if form.nom_complet.errors %}
                     <div class="error-message">
@@ -651,7 +693,7 @@
             <!-- PASSWORDS -->
             <div class="form-row">
                 <div class="form-group">
-                    <label for="mot_de_passe">{{ 'Password' if lang == 'en' else 'Mot de Passe' }}</label>
+                    <label for="mot_de_passe" class="required">{{ 'Password' if lang == 'en' else 'Mot de Passe' }}</label>
                     {{ form.mot_de_passe(class="form-control", placeholder="••••••") }}
                     {% if form.mot_de_passe.errors %}
                         <div class="error-message">
@@ -663,7 +705,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="confirmer_mot_de_passe">{{ 'Confirm Password' if lang == 'en' else 'Confirmer le Mot de Passe' }}</label>
+                    <label for="confirmer_mot_de_passe" class="required">{{ 'Confirm Password' if lang == 'en' else 'Confirmer le Mot de Passe' }}</label>
                     {{ form.confirmer_mot_de_passe(class="form-control", placeholder="••••••") }}
                     {% if form.confirmer_mot_de_passe.errors %}
                         <div class="error-message">
@@ -678,7 +720,7 @@
             <!-- LEVEL AND PHONE -->
             <div class="form-row">
                 <div class="form-group">
-                    <label for="niveau">{{ 'Level' if lang == 'en' else 'Niveau' }}</label>
+                    <label for="niveau" class="required">{{ 'Level' if lang == 'en' else 'Niveau' }}</label>
                     <select name="niveau" id="niveau" class="form-select" required>
                         <option value="">{{ 'Select your level' if lang == 'en' else 'Sélectionnez votre niveau' }}</option>
                         {% for niveau_id, niveau_nom in form.niveau.choices %}
@@ -694,8 +736,8 @@
                     {% endif %}
                 </div>
 
-                <div class="form-group optional">
-                    <label for="telephone">{{ 'Phone (Optional)' if lang == 'en' else 'Téléphone (Optionnel)' }}</label>
+                <div class="form-group">
+                    <label for="telephone" class="optional">{{ 'Phone (Optional)' if lang == 'en' else 'Téléphone (Optionnel)' }}</label>
                     {{ form.telephone(class="form-control", placeholder="+1 (555) 123-4567") }}
                 </div>
             </div>
@@ -709,27 +751,27 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="parent_nom_complet">{{ 'Parent Full Name' if lang == 'en' else 'Nom Complet du Parent' }}</label>
+                    <label for="parent_nom_complet" class="optional">{{ 'Parent Full Name' if lang == 'en' else 'Nom Complet du Parent' }}</label>
                     <input type="text" class="form-control" id="parent_nom_complet" name="parent_nom_complet" 
                            placeholder="{{ 'Jane Doe' if lang == 'en' else 'Jane Doe' }}">
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="parent_email">{{ 'Parent Email' if lang == 'en' else 'Email du Parent' }}</label>
+                        <label for="parent_email" class="optional">{{ 'Parent Email' if lang == 'en' else 'Email du Parent' }}</label>
                         <input type="email" class="form-control" id="parent_email" name="parent_email" 
                                placeholder="parent@example.com">
                     </div>
 
                     <div class="form-group">
-                        <label for="parent_telephone">{{ 'Parent Phone' if lang == 'en' else 'Téléphone du Parent' }}</label>
+                        <label for="parent_telephone" class="optional">{{ 'Parent Phone' if lang == 'en' else 'Téléphone du Parent' }}</label>
                         <input type="tel" class="form-control" id="parent_telephone" name="parent_telephone" 
                                placeholder="+1 (555) 123-4567">
                     </div>
                 </div>
 
-                <div class="form-group optional">
-                    <label for="parent_telephone2">{{ 'Secondary Phone (Optional)' if lang == 'en' else 'Téléphone Secondaire (Optionnel)' }}</label>
+                <div class="form-group">
+                    <label for="parent_telephone2" class="optional">{{ 'Secondary Phone (Optional)' if lang == 'en' else 'Téléphone Secondaire (Optionnel)' }}</label>
                     <input type="tel" class="form-control" id="parent_telephone2" name="parent_telephone2" 
                            placeholder="+1 (555) 987-6543">
                 </div>
@@ -748,7 +790,7 @@
                     </strong>
                 </div>
 
-                <!-- TABLEAU COMPARATIF SIMPLIFIÉ -->
+                <!-- TABLEAU COMPARATIF -->
                 <div style="overflow-x: auto; margin-bottom: 30px;">
                     <table class="comparison-table">
                         <thead>
@@ -895,23 +937,15 @@
                     </div>
                 </div>
 
-                <!-- UTILISEZ LE CHAMP WTForms POUR plan_type -->
-                {{ form.plan_type(id="planType", value="annual") }}
-                
-                <!-- Champ de débogage (visible uniquement en développement) -->
-                <div id="debugInfo" style="display: none; background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 12px; color: #666;">
-                    <div>DEBUG INFO:</div>
-                    <div>Champ plan_type: <span id="debugPlanType">annual</span></div>
-                    <div>Plan sélectionné: <span id="debugPlanSelected">annual</span></div>
-                    <div>Valeur du champ: <span id="debugPlanValue">annual</span></div>
-                </div>
+                <!-- CHAMP CACHÉ POUR LE PLAN (WTForms) -->
+                {{ form.plan_type(id="planType", class="form-control", style="display: none;") }}
             </div>
 
             <!-- CGU CHECKBOX -->
             <div class="form-group">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    {{ form.accepte_cgu(class="form-control", style="width: auto;") }}
-                    <label for="accepte_cgu" style="margin-bottom: 0; font-weight: normal;">
+                <div class="checkbox-group">
+                    {{ form.accepte_cgu() }}
+                    <label for="accepte_cgu" style="font-weight: normal;">
                         {{ 'I accept the Terms and Conditions' if lang == 'en' else 'J\'accepte les Conditions Générales d\'Utilisation' }}
                     </label>
                     <small style="color: #6c757d;">
@@ -963,18 +997,18 @@
             // Ajouter la classe selected au plan choisi
             document.getElementById(planType + 'Plan').classList.add('selected');
             
-            // Mettre à jour le champ caché WTForms
-            const hiddenInput = document.getElementById('planType');
-            if (hiddenInput) {
-                hiddenInput.value = planType;
-                console.log(`📝 Champ WTForms mis à jour: ${hiddenInput.value}`);
-                console.log(`📝 Nom du champ: ${hiddenInput.name}`);
-                console.log(`📝 ID du champ: ${hiddenInput.id}`);
-            } else {
-                console.error('❌ Champ planType non trouvé!');
+            // Mettre à jour le champ WTForms
+            const planTypeInput = document.getElementById('planType');
+            if (planTypeInput) {
+                planTypeInput.value = planType;
+                console.log(`📝 Champ WTForms mis à jour: ${planTypeInput.value}`);
             }
             
             // Mettre à jour le texte du bouton
+            updateSubmitButton(planType);
+        }
+
+        function updateSubmitButton(planType) {
             const submitText = document.getElementById('submitText');
             const planNames = {
                 'weekly': {
@@ -993,84 +1027,29 @@
             
             const langJs = "{{ lang }}";
             submitText.textContent = planNames[planType][langJs];
-            
-            // Mettre à jour le débogage
-            if (document.getElementById('debugPlanType')) {
-                document.getElementById('debugPlanType').textContent = planType;
-                document.getElementById('debugPlanSelected').textContent = planType;
-                document.getElementById('debugPlanValue').textContent = hiddenInput ? hiddenInput.value : 'non trouvé';
-            }
-            
-            // DEBUG: Vérifier TOUS les champs cachés
-            console.log('🔍 Tous les champs cachés:');
-            document.querySelectorAll('input[type="hidden"]').forEach(input => {
-                console.log(`  - name="${input.name}", value="${input.value}", id="${input.id}"`);
-            });
         }
-
-        // Test: Afficher toutes les données du formulaire avant soumission
-        document.getElementById('studentForm').addEventListener('submit', function(e) {
-            console.log("=== DONNÉES DU FORMULAIRE AVANT SOUMISSION ===");
-            const formData = new FormData(this);
-            for (let [key, value] of formData.entries()) {
-                console.log(`${key}: ${value}`);
-            }
-            console.log("=== FIN DES DONNÉES ===");
-            
-            const btn = document.getElementById('submitButton');
-            const planType = document.getElementById('planType').value;
-            const langJs = "{{ lang }}";
-            
-            console.log(`🔄 Soumission du formulaire avec plan_type: ${planType}`);
-            
-            const processingText = {
-                'weekly': {
-                    en: 'Processing Weekly Plan...',
-                    fr: 'Traitement du forfait hebdomadaire...'
-                },
-                'monthly': {
-                    en: 'Processing Monthly Plan...',
-                    fr: 'Traitement du forfait mensuel...'
-                },
-                'annual': {
-                    en: 'Processing Annual Plan...',
-                    fr: 'Traitement du forfait annuel...'
-                }
-            };
-            
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${processingText[planType][langJs]}`;
-            btn.disabled = true;
-        });
 
         // Animation au chargement
         document.addEventListener('DOMContentLoaded', function() {
             console.log("=== INITIALISATION DU FORMULAIRE ===");
             
-            // Afficher les informations de débogage si en mode développement
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('debug') || window.location.hostname === 'localhost') {
-                document.getElementById('debugInfo').style.display = 'block';
-            }
-            
-            // Vérifier tous les champs cachés
-            const allHiddenInputs = document.querySelectorAll('input[type="hidden"]');
-            console.log(`🔍 ${allHiddenInputs.length} champs cachés trouvés:`);
-            allHiddenInputs.forEach((input, index) => {
-                console.log(`   ${index}: name="${input.name}", value="${input.value}", id="${input.id}"`);
-            });
-            
-            // Vérifier spécifiquement le champ plan_type
+            // Vérifier que le champ plan_type existe
             const planTypeInput = document.getElementById('planType');
-            if (planTypeInput) {
-                console.log(`✅ Champ plan_type trouvé:`, {
-                    name: planTypeInput.name,
-                    value: planTypeInput.value,
-                    id: planTypeInput.id
-                });
-            } else {
+            if (!planTypeInput) {
                 console.error('❌ Champ plan_type NON TROUVÉ!');
+                // Créer le champ s'il n'existe pas
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'plan_type';
+                hiddenInput.id = 'planType';
+                hiddenInput.value = 'annual';
+                document.getElementById('studentForm').appendChild(hiddenInput);
+                console.log('✅ Champ plan_type créé dynamiquement');
+            } else {
+                console.log('✅ Champ plan_type trouvé:', planTypeInput.value);
             }
             
+            // Animation des cartes de plan
             const planCards = document.querySelectorAll('.plan-card');
             planCards.forEach((card, index) => {
                 card.style.opacity = '0';
@@ -1083,7 +1062,13 @@
                 }, 300 + (index * 100));
             });
             
-            // Calcul et affichage des économies
+            // Calcul des économies dynamiques
+            calculateSavings();
+            
+            console.log("=== FIN DE L'INITIALISATION ===");
+        });
+
+        function calculateSavings() {
             const weeklyCost = 15;
             const monthlyCost = 50;
             const annualCost = 450;
@@ -1116,31 +1101,53 @@
                     td.textContent = annualSavings + '%';
                 }
             });
-            
-            console.log("=== FIN DE L'INITIALISATION ===");
-        });
+        }
 
-        // Gestion optionnelle des coordonnées du parent
-        document.getElementById('parent_nom_complet').addEventListener('input', function() {
-            const parentSection = document.querySelector('.parent-section');
-            if (this.value.trim() !== '') {
-                parentSection.style.background = 'linear-gradient(135deg, #e8f5e8, #d4edda)';
-                parentSection.style.borderColor = 'var(--success)';
-            } else {
-                parentSection.style.background = 'linear-gradient(135deg, #f8f9ff, #f0f4ff)';
-                parentSection.style.borderColor = 'var(--border)';
+        // Gestion du formulaire avant soumission
+        document.getElementById('studentForm').addEventListener('submit', function(e) {
+            const planTypeInput = document.getElementById('planType');
+            if (!planTypeInput || !planTypeInput.value) {
+                alert('{{ "Please select a subscription plan" if lang == "en" else "Veuillez sélectionner un forfait d\'abonnement" }}');
+                e.preventDefault();
+                return;
             }
+            
+            // Vérifier que les CGU sont acceptées
+            const cguCheckbox = document.getElementById('accepte_cgu');
+            if (cguCheckbox && !cguCheckbox.checked) {
+                alert('{{ "You must accept the Terms and Conditions" if lang == "en" else "Vous devez accepter les Conditions Générales d\'Utilisation" }}');
+                e.preventDefault();
+                return;
+            }
+            
+            console.log("=== DONNÉES DU FORMULAIRE ===");
+            const formData = new FormData(this);
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+            console.log("=== FIN DES DONNÉES ===");
+            
+            // Désactiver le bouton pendant le traitement
+            const btn = document.getElementById('submitButton');
+            const originalHTML = btn.innerHTML;
+            
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> {{ 'Processing...' if lang == 'en' else 'Traitement en cours...' }}`;
+            btn.disabled = true;
+            
+            // Réactiver le bouton après 10 secondes au cas où
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }, 10000);
         });
 
         // Vérification de l'accès admin
         document.addEventListener('DOMContentLoaded', function() {
             const adminBackBtn = document.querySelector('.admin-back-btn');
-            // Vérifier si on vient du dashboard admin (via session ou URL)
             const urlParams = new URLSearchParams(window.location.search);
             const fromAdmin = urlParams.get('from_admin') === 'true';
             
             if (!fromAdmin) {
-                // Cacher le bouton admin si on ne vient pas du dashboard admin
                 adminBackBtn.style.display = 'none';
             }
         });
