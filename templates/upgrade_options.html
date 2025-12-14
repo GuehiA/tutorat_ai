@@ -479,10 +479,39 @@
                 font-size: 1.1rem;
             }
         }
+        
+        /* DEBUG INFO */
+        .debug-info {
+            background: rgba(0, 0, 0, 0.1);
+            border: 2px dashed #ff4444;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: white;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .debug-info.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- DEBUG INFO (visible seulement avec ?debug dans l'URL) -->
+        <div id="debugInfo" class="debug-info">
+            <h4><i class="fas fa-bug"></i> DEBUG INFORMATION</h4>
+            <p><strong>Plan Parameter Mapping:</strong></p>
+            <ul style="list-style: none; padding-left: 0;">
+                <li>Weekly → <code>/paiement-direct?type=weekly</code></li>
+                <li>Monthly → <code>/paiement-direct?type=monthly</code></li>
+                <li>Annual → <code>/paiement-direct?type=annual</code></li>
+            </ul>
+            <p><strong>Current Language:</strong> {{ lang }}</p>
+            <p><strong>Student Status:</strong> {{ eleve.statut_paiement }}</p>
+        </div>
+
         <div class="header">
             <h1>{% if lang == 'en' %}Upgrade Your Learning Experience{% else %}Améliorez Votre Expérience d'Apprentissage{% endif %}</h1>
             <p>
@@ -653,7 +682,8 @@
                     <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulation à tout moment' }}</li>
                     <li><i class="fas fa-times feature-excluded"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
                 </ul>
-                <a href="/paiement-direct?type=hebdomadaire" class="upgrade-btn weekly">
+                <!-- CORRECTION ICI : type=weekly au lieu de type=hebdomadaire -->
+                <a href="{{ url_for('paiement_direct') }}?type=weekly" class="upgrade-btn weekly" id="upgradeWeekly">
                     <i class="fas fa-bolt"></i>
                     {% if lang == 'en' %}Choose Weekly{% else %}Choisir Hebdomadaire{% endif %}
                 </a>
@@ -677,7 +707,8 @@
                     <li><i class="fas fa-check feature-included"></i> {{ 'Personalized learning path' if lang == 'en' else 'Parcours d\'apprentissage personnalisé' }}</li>
                     <li><i class="fas fa-times feature-excluded"></i> {{ 'Quarterly reviews' if lang == 'en' else 'Revues trimestrielles' }}</li>
                 </ul>
-                <a href="/paiement-direct?type=mensuel" class="upgrade-btn monthly">
+                <!-- CORRECTION ICI : type=monthly au lieu de type=mensuel -->
+                <a href="{{ url_for('paiement_direct') }}?type=monthly" class="upgrade-btn monthly" id="upgradeMonthly">
                     <i class="fas fa-star"></i>
                     {% if lang == 'en' %}Choose Monthly{% else %}Choisir Mensuel{% endif %}
                 </a>
@@ -702,7 +733,8 @@
                     <li><i class="fas fa-check feature-included"></i> {{ 'Personalized roadmap' if lang == 'en' else 'Feuille de route personnalisée' }}</li>
                     <li><i class="fas fa-check feature-included"></i> {{ 'Save $240/year' if lang == 'en' else 'Économisez 240$/an' }}</li>
                 </ul>
-                <a href="/paiement-direct?type=annuel" class="upgrade-btn annual">
+                <!-- CORRECTION ICI : type=annual au lieu de type=annuel -->
+                <a href="{{ url_for('paiement_direct') }}?type=annual" class="upgrade-btn annual" id="upgradeAnnual">
                     <i class="fas fa-crown"></i>
                     {% if lang == 'en' %}Choose Annual{% else %}Choisir Annuel{% endif %}
                 </a>
@@ -742,7 +774,7 @@
         </div>
         
         <div style="text-align: center; margin-top: 40px;">
-            <a href="/dashboard-eleve" class="back-btn">
+            <a href="{{ url_for('dashboard_eleve') }}" class="back-btn">
                 <i class="fas fa-arrow-left"></i>
                 {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
             </a>
@@ -752,6 +784,25 @@
     <script>
         // Animation au chargement
         document.addEventListener('DOMContentLoaded', function() {
+            console.log("=== UPGRADE OPTIONS LOADED ===");
+            console.log("Current language:", "{{ lang }}");
+            
+            // Afficher les informations de débogage si en mode développement
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('debug') || window.location.hostname === 'localhost') {
+                document.getElementById('debugInfo').classList.add('show');
+                console.log("Debug mode enabled");
+            }
+            
+            // DEBUG: Vérifier les liens des plans
+            const weeklyLink = document.getElementById('upgradeWeekly');
+            const monthlyLink = document.getElementById('upgradeMonthly');
+            const annualLink = document.getElementById('upgradeAnnual');
+            
+            console.log("Weekly link:", weeklyLink ? weeklyLink.href : "N/A");
+            console.log("Monthly link:", monthlyLink ? monthlyLink.href : "N/A");
+            console.log("Annual link:", annualLink ? annualLink.href : "N/A");
+            
             const cards = document.querySelectorAll('.plan-card');
             cards.forEach((card, index) => {
                 card.style.opacity = '0';
@@ -776,6 +827,9 @@
             // Calcul des pourcentages d'économie
             const monthlySavings = ((weeklyCost * 4 - monthlyCost) / (weeklyCost * 4) * 100).toFixed(0);
             const annualSavings = ((weeklyAnnualCost - annualCost) / weeklyAnnualCost * 100).toFixed(0);
+            
+            console.log("Monthly savings:", monthlySavings + "%");
+            console.log("Annual savings:", annualSavings + "%");
             
             // Mettre à jour les textes d'économie
             document.querySelectorAll('.plan-savings').forEach(el => {
@@ -813,10 +867,15 @@
             
             // Calculer l'économie totale
             const totalSavings = weeklyAnnualCost - annualCost;
-            document.querySelector('.recommendation p strong').innerHTML = 
-                "{{ 'Choose Annual and save $' if lang == 'en' else 'Choisissez Annuel et économisez $' }}" + 
-                totalSavings + 
-                "{{ ' per year' if lang == 'en' else ' par an' }}";
+            const savingsText = document.querySelector('.recommendation p strong');
+            if (savingsText) {
+                savingsText.innerHTML = 
+                    "{{ 'Choose Annual and save $' if lang == 'en' else 'Choisissez Annuel et économisez $' }}" + 
+                    totalSavings + 
+                    "{{ ' per year' if lang == 'en' else ' par an' }}";
+            }
+            
+            console.log("Total savings (Annual vs Weekly): $" + totalSavings);
         });
         
         // Animation hover pour les cartes
@@ -829,6 +888,25 @@
                 this.style.zIndex = '1';
             });
         });
+        
+        // Ajouter des logs pour le clic sur les boutons
+        document.querySelectorAll('.upgrade-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const planType = this.id.replace('upgrade', '').toLowerCase();
+                console.log(`🎯 Upgrade button clicked: ${planType}`);
+                console.log(`🔗 Redirecting to: ${this.href}`);
+            });
+        });
+        
+        // Vérifier si des messages flash doivent être affichés
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('cancel') && urlParams.get('cancel') === 'true') {
+            console.log("⚠️ User returned from cancelled payment");
+            // Vous pouvez ajouter ici une notification visuelle
+            setTimeout(() => {
+                alert("{{ 'Payment was cancelled. You can try again or choose a different plan.' if lang == 'en' else 'Paiement annulé. Vous pouvez réessayer ou choisir un autre forfait.' }}");
+            }, 500);
+        }
     </script>
 </body>
 </html>

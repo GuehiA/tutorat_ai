@@ -591,8 +591,10 @@
         </div>
 
         <form method="POST" id="studentForm">
-            {{ form.hidden_tag() }}
-
+            <!-- NE PAS UTILISER form.hidden_tag() car il crée des champs cachés -->
+            <!-- À la place, utilisez csrf_token seulement -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
             <!-- SECTION INFORMATIONS ÉLÈVE -->
             <div class="parent-header">
                 <i class="fas fa-user"></i>
@@ -885,14 +887,15 @@
                     </div>
                 </div>
 
-                <!-- Champ caché pour le type de plan -->
-                <input type="hidden" name="plan_type" id="planType" value="annual">
+                <!-- UTILISEZ LE CHAMP WTForms POUR plan_type -->
+                {{ form.plan_type(id="planType", value="annual") }}
                 
                 <!-- Champ de débogage (visible uniquement en développement) -->
                 <div id="debugInfo" style="display: none; background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 12px; color: #666;">
                     <div>DEBUG INFO:</div>
                     <div>Champ plan_type: <span id="debugPlanType">annual</span></div>
                     <div>Plan sélectionné: <span id="debugPlanSelected">annual</span></div>
+                    <div>Valeur du champ: <span id="debugPlanValue">annual</span></div>
                 </div>
             </div>
 
@@ -942,7 +945,7 @@
     <script>
         // Gestion de la sélection du plan
         function selectPlan(planType) {
-            console.log(`🎯 Plan sélectionné: ${planType}`); // Debug
+            console.log(`🎯 Plan sélectionné: ${planType}`);
             
             // Retirer la classe selected de tous les plans
             document.querySelectorAll('.plan-card').forEach(card => {
@@ -952,10 +955,16 @@
             // Ajouter la classe selected au plan choisi
             document.getElementById(planType + 'Plan').classList.add('selected');
             
-            // Mettre à jour le champ caché
+            // Mettre à jour le champ caché WTForms
             const hiddenInput = document.getElementById('planType');
-            hiddenInput.value = planType;
-            console.log(`📝 Champ caché mis à jour: ${hiddenInput.value}`); // Debug
+            if (hiddenInput) {
+                hiddenInput.value = planType;
+                console.log(`📝 Champ WTForms mis à jour: ${hiddenInput.value}`);
+                console.log(`📝 Nom du champ: ${hiddenInput.name}`);
+                console.log(`📝 ID du champ: ${hiddenInput.id}`);
+            } else {
+                console.error('❌ Champ planType non trouvé!');
+            }
             
             // Mettre à jour le texte du bouton
             const submitText = document.getElementById('submitText');
@@ -978,17 +987,33 @@
             submitText.textContent = planNames[planType][langJs];
             
             // Mettre à jour le débogage
-            document.getElementById('debugPlanType').textContent = planType;
-            document.getElementById('debugPlanSelected').textContent = planType;
+            if (document.getElementById('debugPlanType')) {
+                document.getElementById('debugPlanType').textContent = planType;
+                document.getElementById('debugPlanSelected').textContent = planType;
+                document.getElementById('debugPlanValue').textContent = hiddenInput ? hiddenInput.value : 'non trouvé';
+            }
+            
+            // DEBUG: Vérifier TOUS les champs cachés
+            console.log('🔍 Tous les champs cachés:');
+            document.querySelectorAll('input[type="hidden"]').forEach(input => {
+                console.log(`  - name="${input.name}", value="${input.value}", id="${input.id}"`);
+            });
         }
 
-        // Animation de soumission
+        // Test: Afficher toutes les données du formulaire avant soumission
         document.getElementById('studentForm').addEventListener('submit', function(e) {
+            console.log("=== DONNÉES DU FORMULAIRE AVANT SOUMISSION ===");
+            const formData = new FormData(this);
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+            console.log("=== FIN DES DONNÉES ===");
+            
             const btn = document.getElementById('submitButton');
             const planType = document.getElementById('planType').value;
             const langJs = "{{ lang }}";
             
-            console.log(`🔄 Soumission du formulaire avec plan_type: ${planType}`); // Debug
+            console.log(`🔄 Soumission du formulaire avec plan_type: ${planType}`);
             
             const processingText = {
                 'weekly': {
@@ -1011,10 +1036,31 @@
 
         // Animation au chargement
         document.addEventListener('DOMContentLoaded', function() {
+            console.log("=== INITIALISATION DU FORMULAIRE ===");
+            
             // Afficher les informations de débogage si en mode développement
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('debug') || window.location.hostname === 'localhost') {
                 document.getElementById('debugInfo').style.display = 'block';
+            }
+            
+            // Vérifier tous les champs cachés
+            const allHiddenInputs = document.querySelectorAll('input[type="hidden"]');
+            console.log(`🔍 ${allHiddenInputs.length} champs cachés trouvés:`);
+            allHiddenInputs.forEach((input, index) => {
+                console.log(`   ${index}: name="${input.name}", value="${input.value}", id="${input.id}"`);
+            });
+            
+            // Vérifier spécifiquement le champ plan_type
+            const planTypeInput = document.getElementById('planType');
+            if (planTypeInput) {
+                console.log(`✅ Champ plan_type trouvé:`, {
+                    name: planTypeInput.name,
+                    value: planTypeInput.value,
+                    id: planTypeInput.id
+                });
+            } else {
+                console.error('❌ Champ plan_type NON TROUVÉ!');
             }
             
             const planCards = document.querySelectorAll('.plan-card');
@@ -1063,13 +1109,7 @@
                 }
             });
             
-            // Debug: Vérifier que le champ caché existe
-            const planTypeInput = document.getElementById('planType');
-            console.log(`🔍 Champ caché détecté:`, {
-                exists: !!planTypeInput,
-                name: planTypeInput ? planTypeInput.name : 'N/A',
-                value: planTypeInput ? planTypeInput.value : 'N/A'
-            });
+            console.log("=== FIN DE L'INITIALISATION ===");
         });
 
         // Gestion optionnelle des coordonnées du parent

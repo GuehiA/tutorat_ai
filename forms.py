@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SelectField, TextAreaField, DateField, BooleanField, SubmitField  
+from wtforms import StringField, PasswordField, SelectField, TextAreaField, DateField, BooleanField, SubmitField, HiddenField  
 from wtforms.validators import DataRequired, Email, Length, Optional, EqualTo, ValidationError
 from datetime import datetime
 from models import User, Parent  # Ajoutez ces imports si nécessaires
@@ -41,9 +41,14 @@ class InscriptionEleveForm(FlaskForm):
         Length(max=20, message="Le numéro de téléphone ne peut pas dépasser 20 caractères")
     ])
     
-    # 🆕 CHAMP NIVEAU AJOUTÉ
+    # CHAMP NIVEAU
     niveau = SelectField('Niveau', coerce=int, validators=[
         DataRequired(message="Veuillez sélectionner un niveau")
+    ])
+    
+    # CHAMP PLAN TYPE (AJOUTÉ) - très important!
+    plan_type = HiddenField('Type de plan', default='annual', validators=[
+        DataRequired(message="Le type de plan est requis")
     ])
     
     accepte_cgu = BooleanField('J\'accepte les conditions d\'utilisation', validators=[
@@ -62,6 +67,12 @@ class InscriptionEleveForm(FlaskForm):
         user = User.query.filter_by(email=email.data).first()
         if user:
             raise ValidationError('Cet email est déjà utilisé. Veuillez en choisir un autre.')
+
+    def validate_plan_type(self, plan_type):
+        # Validation pour s'assurer que le type de plan est valide
+        valid_plans = ['weekly', 'monthly', 'annual']
+        if plan_type.data not in valid_plans:
+            raise ValidationError('Type de plan invalide. Veuillez sélectionner un forfait valide.')
 
 # =====================
 # FORMULAIRE ADMIN (Avec parent)
