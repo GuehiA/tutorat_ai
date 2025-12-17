@@ -41,7 +41,6 @@
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
 
   <style>
-    /* Votre CSS reste inchangé */
     :root {
       --primary: #3498db;
       --primary-dark: #2980b9;
@@ -229,6 +228,18 @@
       font-size: 1.1rem;
       line-height: 1.6;
       white-space: pre-wrap;
+      /* Important: Gestion des espaces et tabulations */
+      white-space-collapse: collapse;
+      text-wrap: wrap;
+    }
+
+    .answer-text pre {
+      margin: 0;
+      padding: 0;
+      font-family: inherit;
+      white-space: pre-wrap;
+      background: transparent;
+      border: none;
     }
 
     .stars-container {
@@ -282,6 +293,18 @@
       font-size: 1.1rem;
       line-height: 1.6;
       white-space: pre-wrap;
+      /* Important: Gestion des espaces et tabulations */
+      white-space-collapse: collapse;
+      text-wrap: wrap;
+    }
+
+    .analysis-text pre {
+      margin: 0;
+      padding: 0;
+      font-family: inherit;
+      white-space: pre-wrap;
+      background: transparent;
+      border: none;
     }
 
     /* Styles pour le rendu MathJax */
@@ -474,8 +497,8 @@
             {{ 'Énoncé' if lang == 'fr' else 'Question' }}
           </div>
           <div class="question-text math-content">
-            {# Important: Utilisez |safe pour échapper correctement le LaTeX #}
-            {{ exercice.question_fr if lang == 'fr' else exercice.question_en | replace("\\", "\\\\") }}
+            {# Important: Nettoyer les tabulations et espaces superflus #}
+            {{ exercice.question_fr if lang == 'fr' else exercice.question_en | replace("\\", "\\\\") | trim | replace("\t", " ") }}
           </div>
 
           {% if exercice.chemin_image %}
@@ -491,8 +514,8 @@
             {{ 'Ta réponse' if lang == 'fr' else 'Your answer' }}
           </div>
           <div class="answer-text math-content">
-            {# Important: Utilisez |safe pour échapper correctement le LaTeX #}
-            {{ r.reponse_eleve | replace("\\", "\\\\") }}
+            {# Important: Nettoyer les tabulations et espaces superflus #}
+            {{ r.reponse_eleve | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") }}
           </div>
         </div>
 
@@ -523,8 +546,8 @@
             {{ 'Analyse détaillée' if lang == 'fr' else 'Detailed Analysis' }}
           </div>
           <div class="analysis-text math-content">
-            {# Important: Utilisez |safe pour échapper correctement le LaTeX #}
-            {{ r.analyse_ia | replace("\\", "\\\\") }}
+            {# Important: Nettoyer les tabulations et espaces superflus #}
+            {{ r.analyse_ia | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") }}
           </div>
         </div>
       </div>
@@ -566,6 +589,27 @@
       card.style.animationDelay = `${index * 0.1}s`;
     });
 
+    // Fonction pour nettoyer les tabulations et espaces superflus
+    function cleanTextContent(element) {
+      if (!element) return;
+      
+      // Pour les éléments .answer-text et .analysis-text
+      if (element.classList.contains('answer-text') || element.classList.contains('analysis-text')) {
+        // Remplacer les tabulations multiples par un seul espace
+        let text = element.textContent || element.innerText;
+        text = text
+          .replace(/\t+/g, ' ')        // Remplacer les tabulations par espaces
+          .replace(/  +/g, ' ')        // Remplacer les espaces multiples
+          .replace(/^\s+|\s+$/g, '')   // Supprimer les espaces en début/fin
+          .replace(/\n\s*\n\s*\n/g, '\n\n'); // Normaliser les sauts de ligne
+        
+        element.textContent = text;
+      }
+    }
+
+    // Nettoyer toutes les réponses et analyses
+    document.querySelectorAll('.answer-text, .analysis-text').forEach(cleanTextContent);
+
     // Fonction pour échapper correctement le LaTeX
     function escapeLaTeX(text) {
       if (!text) return '';
@@ -579,28 +623,40 @@
     // Traiter tous les éléments avec contenu mathématique
     const mathElements = document.querySelectorAll('.math-content');
     mathElements.forEach(element => {
-      // Remplacer les caractères Unicode par leur équivalent LaTeX
+      // Nettoyer d'abord le texte
+      cleanTextContent(element);
+      
+      // Remplacer les fractions Unicode par du LaTeX
       let content = element.innerHTML;
       
       // Remplacer les fractions Unicode par du LaTeX
-      content = content.replace(/¼/g, '\\frac{1}{4}');
-      content = content.replace(/½/g, '\\frac{1}{2}');
-      content = content.replace(/¾/g, '\\frac{3}{4}');
-      content = content.replace(/⅓/g, '\\frac{1}{3}');
-      content = content.replace(/⅔/g, '\\frac{2}{3}');
-      content = content.replace(/⅕/g, '\\frac{1}{5}');
-      content = content.replace(/⅖/g, '\\frac{2}{5}');
-      content = content.replace(/⅗/g, '\\frac{3}{5}');
-      content = content.replace(/⅘/g, '\\frac{4}{5}');
-      content = content.replace(/⅙/g, '\\frac{1}{6}');
-      content = content.replace(/⅚/g, '\\frac{5}{6}');
-      content = content.replace(/⅛/g, '\\frac{1}{8}');
-      content = content.replace(/⅜/g, '\\frac{3}{8}');
-      content = content.replace(/⅝/g, '\\frac{5}{8}');
-      content = content.replace(/⅞/g, '\\frac{7}{8}');
+      const fractionMap = {
+        '¼': '\\frac{1}{4}',
+        '½': '\\frac{1}{2}',
+        '¾': '\\frac{3}{4}',
+        '⅓': '\\frac{1}{3}',
+        '⅔': '\\frac{2}{3}',
+        '⅕': '\\frac{1}{5}',
+        '⅖': '\\frac{2}{5}',
+        '⅗': '\\frac{3}{5}',
+        '⅘': '\\frac{4}{5}',
+        '⅙': '\\frac{1}{6}',
+        '⅚': '\\frac{5}{6}',
+        '⅛': '\\frac{1}{8}',
+        '⅜': '\\frac{3}{8}',
+        '⅝': '\\frac{5}{8}',
+        '⅞': '\\frac{7}{8}'
+      };
+      
+      for (const [unicode, latex] of Object.entries(fractionMap)) {
+        content = content.replace(new RegExp(unicode, 'g'), latex);
+      }
       
       // Remplacer le symbole de division
       content = content.replace(/∕/g, '/');
+      
+      // Normaliser les espaces autour des formules LaTeX
+      content = content.replace(/\s*\\/g, ' \\').replace(/\\\s*/g, '\\ ');
       
       element.innerHTML = content;
     });
