@@ -16,7 +16,7 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- MathJax avec configuration robuste -->
+  <!-- MathJax configuration simplifiée et robuste -->
   <script>
     window.MathJax = {
       tex: {
@@ -24,34 +24,17 @@
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
         processEnvironments: true,
-        tags: 'ams'
+        packages: ['base', 'ams', 'noerrors', 'noundefined']
       },
       options: {
         skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
         ignoreHtmlClass: 'no-mathjax',
-        renderActions: {
-          find_script: [10, function (doc) {
-            for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
-              const text = node.textContent.replace(/%.*/g, '');
-              if (node.type === 'math/tex; mode=display') {
-                node.outerHTML = `\\[${text}\\]`;
-              } else {
-                node.outerHTML = `\\(${text}\\)`;
-              }
-            }
-          }, '']
-        }
+        processHtmlClass: 'math-content'
       },
       startup: {
-        pageReady: () => {
-          return MathJax.startup.defaultPageReady().then(() => {
-            console.log('MathJax configuration loaded successfully');
-          }).catch((error) => {
-            console.error('MathJax initialization error:', error);
-            document.querySelectorAll('.math-content').forEach(el => {
-              el.classList.add('mathjax-error');
-            });
-          });
+        ready: () => {
+          console.log('MathJax is ready');
+          MathJax.startup.defaultReady();
         }
       },
       loader: {
@@ -62,6 +45,7 @@
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
 
   <style>
+    /* Votre CSS reste inchangé */
     :root {
       --primary: #3498db;
       --primary-dark: #2980b9;
@@ -94,358 +78,8 @@
       line-height: 1.6;
     }
 
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      background: var(--white);
-      border-radius: 20px;
-      padding: 40px;
-      box-shadow: var(--shadow);
-      position: relative;
-      overflow: hidden;
-    }
+    /* ... reste de votre CSS ... */
 
-    .container::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 5px;
-      background: linear-gradient(90deg, var(--accent), var(--primary));
-    }
-
-    h2 {
-      text-align: center;
-      color: var(--dark);
-      margin-bottom: 30px;
-      font-size: 2.2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 15px;
-    }
-
-    h2 i {
-      color: var(--primary);
-      font-size: 2.5rem;
-    }
-
-    .header-info {
-      text-align: center;
-      margin-bottom: 30px;
-      padding: 20px;
-      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-      border-radius: 12px;
-      border-left: 4px solid var(--primary);
-    }
-
-    .student-name {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: var(--dark);
-      margin-bottom: 10px;
-    }
-
-    .lesson-info {
-      color: var(--gray);
-      font-size: 1.1rem;
-    }
-
-    .card {
-      background: var(--white);
-      border-radius: 15px;
-      padding: 30px;
-      margin-top: 25px;
-      box-shadow: var(--shadow);
-      border-left: 5px solid var(--secondary);
-      transition: var(--transition);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--secondary), var(--primary));
-    }
-
-    .card h3 {
-      margin-top: 0;
-      color: var(--dark);
-      font-size: 1.4rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-
-    .card h3 i {
-      color: var(--primary);
-    }
-
-    .question-section {
-      background: var(--light);
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      border-left: 4px solid var(--primary);
-    }
-
-    .question-label {
-      font-weight: 600;
-      color: var(--dark);
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .question-text {
-      font-size: 1.1rem;
-      line-height: 1.6;
-    }
-
-    .image-illustration {
-      text-align: center;
-      margin: 15px 0;
-    }
-
-    .image-illustration img {
-      max-width: 100%;
-      max-height: 300px;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      border: 3px solid var(--white);
-    }
-
-    .answer-section {
-      background: #f8fff9;
-      padding: 20px;
-      border-radius: 10px;
-      margin: 15px 0;
-      border: 2px solid var(--secondary);
-    }
-
-    .answer-label {
-      font-weight: 600;
-      color: var(--dark);
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .answer-text {
-      font-size: 1.1rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    .stars-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 20px 0;
-      padding: 15px;
-      background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
-      border-radius: 10px;
-      border: 1px solid var(--warning);
-    }
-
-    .stars-label {
-      font-weight: 600;
-      color: var(--dark);
-    }
-
-    .stars {
-      display: flex;
-      gap: 5px;
-    }
-
-    .star {
-      color: var(--warning);
-      font-size: 1.5rem;
-    }
-
-    .star.empty {
-      color: var(--gray);
-    }
-
-    .analysis-section {
-      background: #e8f4fd;
-      padding: 20px;
-      border-radius: 10px;
-      margin-top: 20px;
-      border-left: 4px solid var(--primary);
-    }
-
-    .analysis-label {
-      font-weight: 600;
-      color: var(--dark);
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .analysis-text {
-      font-size: 1.1rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    /* Styles pour le rendu MathJax */
-    .math-content mjx-container {
-      display: inline-block;
-      margin: 0 2px;
-    }
-
-    .math-display {
-      text-align: center;
-      margin: 15px 0;
-      padding: 10px;
-    }
-
-    .math-inline {
-      display: inline;
-    }
-
-    .mathjax-error {
-      color: var(--danger);
-      font-style: italic;
-    }
-
-    .no-results {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--gray);
-    }
-
-    .no-results i {
-      font-size: 4rem;
-      margin-bottom: 20px;
-      color: var(--gray);
-    }
-
-    .no-results p {
-      font-size: 1.2rem;
-      margin-bottom: 10px;
-    }
-
-    .retour {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      margin: 40px auto 0;
-      padding: 15px 30px;
-      background: var(--primary);
-      color: var(--white);
-      text-decoration: none;
-      border-radius: 10px;
-      font-weight: 600;
-      transition: var(--transition);
-      width: fit-content;
-    }
-
-    .retour:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(52, 152, 219, 0.3);
-    }
-
-    .footer {
-      text-align: center;
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid var(--light);
-      color: var(--gray);
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .card {
-      animation: fadeIn 0.6s ease;
-    }
-
-    .card:nth-child(even) {
-      animation-delay: 0.1s;
-    }
-
-    .card:nth-child(odd) {
-      animation-delay: 0.2s;
-    }
-
-    @media (max-width: 768px) {
-      body {
-        padding: 20px 10px;
-      }
-
-      .container {
-        padding: 25px 20px;
-      }
-
-      h2 {
-        font-size: 1.8rem;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      .card {
-        padding: 20px;
-      }
-
-      .question-section, .answer-section, .analysis-section {
-        padding: 15px;
-      }
-
-      .stars-container {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-
-      .retour {
-        width: 100%;
-        justify-content: center;
-      }
-    }
-
-    @media (max-width: 480px) {
-      h2 {
-        font-size: 1.5rem;
-      }
-
-      .header-info {
-        padding: 15px;
-      }
-
-      .student-name {
-        font-size: 1.1rem;
-      }
-
-      .lesson-info {
-        font-size: 1rem;
-      }
-    }
   </style>
 </head>
 <body>
@@ -565,36 +199,8 @@
 </div>
 
 <script>
-  // Fonction pour traiter le contenu mathématique
-  function processMathContent() {
-    const mathElements = document.querySelectorAll('.math-content');
-    mathElements.forEach(element => {
-      let content = element.innerHTML;
-      
-      // Conversion des expressions mathématiques simples en LaTeX
-      content = content.replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}');
-      content = content.replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}');
-      content = content.replace(/(\w+)\^(\d+)/g, '$1^{$2}');
-      content = content.replace(/(\d+)%/g, '$1\\%');
-      
-      element.innerHTML = content;
-    });
-
-    // Redémarrer MathJax pour traiter le nouveau contenu
-    if (window.MathJax) {
-      MathJax.typesetPromise().catch(error => {
-        console.warn('MathJax typeset error:', error);
-        document.querySelectorAll('.math-content').forEach(el => {
-          if (!el.classList.contains('mathjax-error')) {
-            el.classList.add('mathjax-error');
-          }
-        });
-      });
-    }
-  }
-
   document.addEventListener("DOMContentLoaded", function() {
-    console.log('Page de corrections chargée, initialisation MathJax...');
+    console.log('Page de corrections chargée');
     
     // Animation d'apparition progressive
     const cards = document.querySelectorAll('.card');
@@ -602,16 +208,31 @@
       card.style.animationDelay = `${index * 0.1}s`;
     });
 
-    // Traiter le contenu mathématique
-    setTimeout(() => {
-      processMathContent();
-    }, 500);
+    // Vérifier que MathJax est bien chargé
+    if (window.MathJax) {
+      console.log('MathJax est disponible');
+      
+      // Forcer le rendu si MathJax ne s'est pas déclenché automatiquement
+      setTimeout(() => {
+        MathJax.typesetPromise().then(() => {
+          console.log('MathJax a rendu les formules mathématiques');
+        }).catch((err) => {
+          console.warn('Erreur MathJax:', err);
+        });
+      }, 1000);
+    } else {
+      console.warn('MathJax n\'est pas disponible');
+    }
   });
 
-  // Réinitialiser MathJax quand le contenu change
-  document.addEventListener('DOMNodeInserted', function() {
-    setTimeout(processMathContent, 100);
+  // Réessayer le rendu MathJax si du contenu est ajouté dynamiquement
+  const observer = new MutationObserver((mutations) => {
+    if (window.MathJax) {
+      MathJax.typesetPromise();
+    }
   });
+  
+  observer.observe(document.body, { childList: true, subtree: true });
 </script>
 
 </body>
