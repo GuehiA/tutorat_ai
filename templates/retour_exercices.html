@@ -16,7 +16,7 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- MathJax configuration simplifiée et robuste -->
+  <!-- MathJax avec configuration robuste -->
   <script>
     window.MathJax = {
       tex: {
@@ -24,21 +24,17 @@
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
         processEnvironments: true,
-        packages: ['base', 'ams', 'noerrors', 'noundefined']
+        packages: ['base', 'ams']
       },
       options: {
         skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-        ignoreHtmlClass: 'no-mathjax',
-        processHtmlClass: 'math-content'
+        ignoreHtmlClass: 'no-mathjax'
       },
       startup: {
-        ready: () => {
-          console.log('MathJax is ready');
-          MathJax.startup.defaultReady();
+        pageReady: () => {
+          console.log('MathJax configuration loaded');
+          return MathJax.startup.defaultPageReady();
         }
-      },
-      loader: {
-        load: ['[tex]/ams']
       }
     };
   </script>
@@ -78,8 +74,363 @@
       line-height: 1.6;
     }
 
-    /* ... reste de votre CSS ... */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--white);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
 
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+    }
+
+    h2 {
+      text-align: center;
+      color: var(--dark);
+      margin-bottom: 30px;
+      font-size: 2.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    h2 i {
+      color: var(--primary);
+      font-size: 2.5rem;
+    }
+
+    .header-info {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 12px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .student-name {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
+
+    .lesson-info {
+      color: var(--gray);
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: 15px;
+      padding: 30px;
+      margin-top: 25px;
+      box-shadow: var(--shadow);
+      border-left: 5px solid var(--secondary);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--secondary), var(--primary));
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: var(--dark);
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .card h3 i {
+      color: var(--primary);
+    }
+
+    .question-section {
+      background: var(--light);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .question-label {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .question-text {
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+
+    .image-illustration {
+      text-align: center;
+      margin: 15px 0;
+    }
+
+    .image-illustration img {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      border: 3px solid var(--white);
+    }
+
+    .answer-section {
+      background: #f8fff9;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 15px 0;
+      border: 2px solid var(--secondary);
+    }
+
+    .answer-label {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .answer-text {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .stars-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0;
+      padding: 15px;
+      background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+      border-radius: 10px;
+      border: 1px solid var(--warning);
+    }
+
+    .stars-label {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .stars {
+      display: flex;
+      gap: 5px;
+    }
+
+    .star {
+      color: var(--warning);
+      font-size: 1.5rem;
+    }
+
+    .star.empty {
+      color: var(--gray);
+    }
+
+    .analysis-section {
+      background: #e8f4fd;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .analysis-label {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .analysis-text {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    /* Styles pour le rendu MathJax */
+    .math-content {
+      font-family: 'Times New Roman', Times, serif;
+    }
+
+    .math-content mjx-container {
+      display: inline-block;
+      margin: 0 2px;
+      vertical-align: middle;
+    }
+
+    .math-display {
+      text-align: center;
+      margin: 15px 0;
+      padding: 10px;
+    }
+
+    .math-inline {
+      display: inline;
+    }
+
+    .mathjax-error {
+      color: var(--danger);
+      font-style: italic;
+    }
+
+    .no-results {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray);
+    }
+
+    .no-results i {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      color: var(--gray);
+    }
+
+    .no-results p {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+
+    .retour {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 40px auto 0;
+      padding: 15px 30px;
+      background: var(--primary);
+      color: var(--white);
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: var(--transition);
+      width: fit-content;
+    }
+
+    .retour:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--light);
+      color: var(--gray);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card {
+      animation: fadeIn 0.6s ease;
+    }
+
+    .card:nth-child(even) {
+      animation-delay: 0.1s;
+    }
+
+    .card:nth-child(odd) {
+      animation-delay: 0.2s;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 10px;
+      }
+
+      .container {
+        padding: 25px 20px;
+      }
+
+      h2 {
+        font-size: 1.8rem;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .question-section, .answer-section, .analysis-section {
+        padding: 15px;
+      }
+
+      .stars-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .retour {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h2 {
+        font-size: 1.5rem;
+      }
+
+      .header-info {
+        padding: 15px;
+      }
+
+      .student-name {
+        font-size: 1.1rem;
+      }
+
+      .lesson-info {
+        font-size: 1rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -123,7 +474,8 @@
             {{ 'Énoncé' if lang == 'fr' else 'Question' }}
           </div>
           <div class="question-text math-content">
-            {{ exercice.question_fr if lang == 'fr' else exercice.question_en }}
+            {# Important: Utilisez |safe pour échapper correctement le LaTeX #}
+            {{ exercice.question_fr if lang == 'fr' else exercice.question_en | replace("\\", "\\\\") }}
           </div>
 
           {% if exercice.chemin_image %}
@@ -138,7 +490,10 @@
             <i class="fas fa-edit"></i>
             {{ 'Ta réponse' if lang == 'fr' else 'Your answer' }}
           </div>
-          <div class="answer-text math-content">{{ r.reponse_eleve }}</div>
+          <div class="answer-text math-content">
+            {# Important: Utilisez |safe pour échapper correctement le LaTeX #}
+            {{ r.reponse_eleve | replace("\\", "\\\\") }}
+          </div>
         </div>
 
         <div class="stars-container">
@@ -167,7 +522,10 @@
             <i class="fas fa-robot"></i>
             {{ 'Analyse détaillée' if lang == 'fr' else 'Detailed Analysis' }}
           </div>
-          <div class="analysis-text math-content">{{ r.analyse_ia }}</div>
+          <div class="analysis-text math-content">
+            {# Important: Utilisez |safe pour échapper correctement le LaTeX #}
+            {{ r.analyse_ia | replace("\\", "\\\\") }}
+          </div>
         </div>
       </div>
     {% endif %}
@@ -208,31 +566,75 @@
       card.style.animationDelay = `${index * 0.1}s`;
     });
 
-    // Vérifier que MathJax est bien chargé
-    if (window.MathJax) {
-      console.log('MathJax est disponible');
+    // Fonction pour échapper correctement le LaTeX
+    function escapeLaTeX(text) {
+      if (!text) return '';
+      return text
+        .replace(/\\/g, '\\\\')  // Échapper les backslashes
+        .replace(/\$/g, '\\$')   // Échapper les dollars
+        .replace(/{/g, '\\{')    // Échapper les accolades
+        .replace(/}/g, '\\}');   // Échapper les accolades
+    }
+
+    // Traiter tous les éléments avec contenu mathématique
+    const mathElements = document.querySelectorAll('.math-content');
+    mathElements.forEach(element => {
+      // Remplacer les caractères Unicode par leur équivalent LaTeX
+      let content = element.innerHTML;
       
-      // Forcer le rendu si MathJax ne s'est pas déclenché automatiquement
+      // Remplacer les fractions Unicode par du LaTeX
+      content = content.replace(/¼/g, '\\frac{1}{4}');
+      content = content.replace(/½/g, '\\frac{1}{2}');
+      content = content.replace(/¾/g, '\\frac{3}{4}');
+      content = content.replace(/⅓/g, '\\frac{1}{3}');
+      content = content.replace(/⅔/g, '\\frac{2}{3}');
+      content = content.replace(/⅕/g, '\\frac{1}{5}');
+      content = content.replace(/⅖/g, '\\frac{2}{5}');
+      content = content.replace(/⅗/g, '\\frac{3}{5}');
+      content = content.replace(/⅘/g, '\\frac{4}{5}');
+      content = content.replace(/⅙/g, '\\frac{1}{6}');
+      content = content.replace(/⅚/g, '\\frac{5}{6}');
+      content = content.replace(/⅛/g, '\\frac{1}{8}');
+      content = content.replace(/⅜/g, '\\frac{3}{8}');
+      content = content.replace(/⅝/g, '\\frac{5}{8}');
+      content = content.replace(/⅞/g, '\\frac{7}{8}');
+      
+      // Remplacer le symbole de division
+      content = content.replace(/∕/g, '/');
+      
+      element.innerHTML = content;
+    });
+
+    // Configurer MathJax pour re-rendre après nos modifications
+    if (window.MathJax) {
+      console.log('MathJax disponible, re-rendu des formules...');
+      
+      // Donner le temps au DOM de se mettre à jour
       setTimeout(() => {
         MathJax.typesetPromise().then(() => {
-          console.log('MathJax a rendu les formules mathématiques');
+          console.log('Formules mathématiques rendues avec succès');
         }).catch((err) => {
-          console.warn('Erreur MathJax:', err);
+          console.warn('Erreur lors du rendu MathJax:', err);
         });
-      }, 1000);
-    } else {
-      console.warn('MathJax n\'est pas disponible');
+      }, 500);
     }
   });
 
-  // Réessayer le rendu MathJax si du contenu est ajouté dynamiquement
+  // Observer les changements dans le DOM pour re-rendre MathJax si nécessaire
   const observer = new MutationObserver((mutations) => {
-    if (window.MathJax) {
-      MathJax.typesetPromise();
-    }
+    mutations.forEach((mutation) => {
+      if (mutation.addedNodes.length && window.MathJax) {
+        setTimeout(() => {
+          MathJax.typesetPromise();
+        }, 100);
+      }
+    });
   });
-  
-  observer.observe(document.body, { childList: true, subtree: true });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
 </script>
 
 </body>
