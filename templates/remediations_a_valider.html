@@ -12,127 +12,181 @@
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
   <title>{{ 'Remédiations à valider' if lang == 'fr' else 'Remediations to validate' }}</title>
+  
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
     :root {
-      --primary: #3498db;
-      --primary-dark: #2980b9;
-      --secondary: #2c3e50;
-      --success: #27ae60;
-      --warning: #f39c12;
-      --danger: #e74c3c;
+      --primary: #4361ee;
+      --primary-dark: #3a0ca3;
+      --secondary: #4cc9f0;
+      --accent: #f72585;
+      --success: #38b000;
+      --warning: #ff9e00;
+      --danger: #e63946;
       --light: #f8f9fa;
-      --dark: #343a40;
+      --dark: #212529;
       --gray: #6c757d;
-      --border-radius: 12px;
-      --box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      --light-gray: #e9ecef;
+      --white: #ffffff;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       --transition: all 0.3s ease;
     }
-
+    
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-
+    
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       min-height: 100vh;
-      padding: 40px 20px;
       color: var(--dark);
       line-height: 1.6;
+      padding: 20px;
     }
-
+    
     .container {
-      background: white;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
-      padding: 40px;
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 0 auto;
+      background: var(--white);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 40px;
       position: relative;
       overflow: hidden;
     }
-
+    
     .container::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, var(--primary), var(--warning), var(--success));
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
     }
-
+    
     .header {
       text-align: center;
       margin-bottom: 40px;
     }
-
+    
     h2 {
-      color: var(--secondary);
+      color: var(--primary-dark);
       font-size: 2.2rem;
+      position: relative;
+      padding-bottom: 15px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 15px;
-      margin-bottom: 10px;
     }
-
-    h2 i {
-      color: var(--warning);
-      font-size: 2.5rem;
+    
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--secondary), var(--accent));
+      border-radius: 2px;
     }
-
+    
     .subtitle {
       color: var(--gray);
       font-size: 1.1rem;
+      margin-top: 10px;
     }
-
-    .stats-card {
+    
+    /* En-tête avec statistiques */
+    .stats-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: white;
-      border-radius: var(--border-radius);
-      padding: 20px;
+      padding: 20px 25px;
+      border-radius: 15px;
       margin-bottom: 30px;
-      text-align: center;
-      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+      flex-wrap: wrap;
+      gap: 15px;
     }
-
-    .stats-number {
-      font-size: 2.5rem;
-      font-weight: bold;
-      margin-bottom: 5px;
+    
+    .stats-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
     }
-
-    .stats-label {
-      font-size: 1rem;
-      opacity: 0.9;
+    
+    .stats-info i {
+      font-size: 1.4rem;
     }
-
+    
+    .filter-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .filter-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: var(--transition);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .filter-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+    
+    /* Grille de cartes */
     .remediations-grid {
       display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(550px, 1fr));
       gap: 25px;
       margin-bottom: 40px;
     }
-
+    
+    @media (max-width: 1200px) {
+      .remediations-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    /* Cartes de remédiation */
     .remediation-card {
-      background: white;
-      border-radius: var(--border-radius);
+      background: var(--white);
+      border-radius: 15px;
       padding: 25px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-      border: 1px solid #e9ecef;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--light-gray);
       transition: var(--transition);
       position: relative;
       overflow: hidden;
+      border-left: 5px solid var(--primary);
     }
-
+    
     .remediation-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     }
-
+    
     .remediation-card::before {
       content: '';
       position: absolute;
@@ -140,194 +194,261 @@
       left: 0;
       width: 5px;
       height: 100%;
-      background: linear-gradient(to bottom, var(--primary), var(--warning));
+      background: linear-gradient(to bottom, var(--primary), var(--secondary));
     }
-
+    
+    /* Badge de priorité */
+    .priority-badge {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: linear-gradient(135deg, var(--warning), #e85d04);
+      color: white;
+      padding: 6px 15px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 3px 8px rgba(255, 158, 0, 0.3);
+    }
+    
+    /* En-tête de carte */
     .card-header {
       display: flex;
-      justify-content: between;
       align-items: flex-start;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
       gap: 15px;
     }
-
+    
+    .student-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.8rem;
+      box-shadow: 0 4px 10px rgba(76, 201, 240, 0.3);
+      flex-shrink: 0;
+    }
+    
     .student-info {
       flex: 1;
     }
-
+    
     .student-name {
       font-size: 1.3rem;
       font-weight: 600;
-      color: var(--secondary);
+      color: var(--dark);
       margin-bottom: 5px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-
-    .student-name i {
-      color: var(--primary);
-    }
-
+    
     .meta-info {
       display: flex;
       flex-wrap: wrap;
-      gap: 15px;
+      gap: 12px;
       margin-top: 10px;
     }
-
+    
     .meta-tag {
-      background: var(--light);
+      background: linear-gradient(135deg, var(--light), #f1f3f4);
       padding: 6px 12px;
-      border-radius: 20px;
+      border-radius: 15px;
       font-size: 0.85rem;
       color: var(--gray);
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
+      border: 1px solid var(--light-gray);
     }
-
+    
     .meta-tag i {
       color: var(--primary);
     }
-
+    
+    /* Contenu de la carte */
     .card-content {
       margin: 20px 0;
     }
-
+    
     .content-section {
       margin-bottom: 20px;
     }
-
+    
     .section-title {
       font-size: 1rem;
       font-weight: 600;
-      color: var(--secondary);
-      margin-bottom: 8px;
+      color: var(--primary-dark);
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-
+    
     .section-title i {
+      width: 18px;
       color: var(--primary);
-      width: 16px;
     }
-
+    
     .message-content, .exercise-content {
       background: var(--light);
       padding: 15px;
-      border-radius: 8px;
+      border-radius: 10px;
       border-left: 4px solid var(--primary);
       font-size: 0.95rem;
       line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
     }
-
+    
     .exercise-content {
       background: #fff9e6;
-      border-left-color: var(--warning);
-      font-family: 'Courier New', monospace;
-      white-space: pre-wrap;
+      border-left: 4px solid var(--warning);
+      font-family: 'Courier New', Consolas, monospace;
     }
-
+    
+    /* Actions de la carte */
     .card-actions {
       display: flex;
       justify-content: flex-end;
       gap: 15px;
-      margin-top: 20px;
+      margin-top: 25px;
       padding-top: 20px;
-      border-top: 1px solid #e9ecef;
+      border-top: 1px solid var(--light-gray);
     }
-
-    .btn {
+    
+    .action-btn {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       padding: 10px 20px;
-      border-radius: 8px;
+      border-radius: 10px;
       text-decoration: none;
       font-weight: 600;
+      font-size: 0.95rem;
       transition: var(--transition);
       border: none;
       cursor: pointer;
-      font-size: 0.95rem;
+      min-width: 140px;
+      justify-content: center;
     }
-
-    .btn-primary {
+    
+    .validate-btn {
+      background: linear-gradient(135deg, var(--success), #2a9134);
+      color: white;
+      box-shadow: 0 4px 12px rgba(56, 176, 0, 0.3);
+    }
+    
+    .validate-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(56, 176, 0, 0.4);
+      background: linear-gradient(135deg, #2a9134, var(--success));
+    }
+    
+    .view-btn {
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: white;
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
     }
-
-    .btn-primary:hover {
+    
+    .view-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(52, 152, 219, 0.3);
+      box-shadow: 0 6px 15px rgba(67, 97, 238, 0.4);
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
     }
-
-    .btn-success {
-      background: linear-gradient(135deg, var(--success), #219150);
-      color: white;
+    
+    .action-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5), 0 0 0 6px rgba(67, 97, 238, 0.2);
     }
-
-    .btn-success:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(39, 174, 96, 0.3);
-    }
-
+    
+    /* État vide */
     .empty-state {
       text-align: center;
-      padding: 60px 20px;
+      padding: 80px 20px;
       color: var(--gray);
+      background: var(--white);
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      margin: 40px 0;
     }
-
+    
     .empty-state i {
       font-size: 4rem;
-      color: #e9ecef;
       margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-
+    
     .empty-state h3 {
-      color: var(--secondary);
+      color: var(--dark);
       margin-bottom: 10px;
       font-size: 1.5rem;
     }
-
+    
     .empty-state p {
       font-size: 1.1rem;
       margin-bottom: 25px;
+      color: var(--gray);
     }
-
+    
+    .refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      padding: 12px 24px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    }
+    
+    .refresh-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(67, 97, 238, 0.4);
+    }
+    
+    /* Navigation */
     .navigation {
       text-align: center;
       margin-top: 40px;
       padding-top: 30px;
-      border-top: 2px solid #e9ecef;
+      border-top: 2px solid var(--light-gray);
     }
-
-    .btn-back {
-      background: linear-gradient(135deg, var(--secondary), #1a252f);
+    
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--dark), #1a252f);
       color: white;
       padding: 12px 30px;
-      font-size: 1rem;
-    }
-
-    .btn-back:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(44, 62, 80, 0.3);
-    }
-
-    .priority-badge {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      background: linear-gradient(135deg, var(--warning), #e67e22);
-      color: white;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 0.8rem;
+      border-radius: 10px;
+      text-decoration: none;
       font-weight: 600;
+      transition: var(--transition);
+      box-shadow: 0 4px 12px rgba(33, 37, 41, 0.3);
     }
-
-    @keyframes fadeIn {
+    
+    .back-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(33, 37, 41, 0.4);
+      background: linear-gradient(135deg, #1a252f, var(--dark));
+    }
+    
+    /* Animations */
+    @keyframes fadeInUp {
       from {
         opacity: 0;
         transform: translateY(20px);
@@ -337,203 +458,291 @@
         transform: translateY(0);
       }
     }
-
+    
     .remediation-card {
-      animation: fadeIn 0.6s ease;
+      animation: fadeInUp 0.5s ease forwards;
     }
-
-    .remediation-card:nth-child(even) {
-      animation-delay: 0.1s;
-    }
-
-    .remediation-card:nth-child(odd) {
-      animation-delay: 0.2s;
-    }
-
-    /* Responsive Design */
+    
+    .remediation-card:nth-child(2) { animation-delay: 0.1s; }
+    .remediation-card:nth-child(3) { animation-delay: 0.2s; }
+    .remediation-card:nth-child(4) { animation-delay: 0.3s; }
+    .remediation-card:nth-child(5) { animation-delay: 0.4s; }
+    
+    /* Responsive */
     @media (max-width: 768px) {
       body {
-        padding: 20px 10px;
+        padding: 10px;
       }
-
+      
       .container {
         padding: 25px 20px;
       }
-
+      
       h2 {
         font-size: 1.8rem;
         flex-direction: column;
+        text-align: center;
         gap: 10px;
       }
-
+      
+      .stats-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+      }
+      
+      .filter-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      
       .card-header {
         flex-direction: column;
         align-items: flex-start;
       }
-
+      
+      .student-avatar {
+        align-self: center;
+      }
+      
       .meta-info {
         flex-direction: column;
         gap: 8px;
       }
-
+      
       .card-actions {
         flex-direction: column;
       }
-
-      .btn {
+      
+      .action-btn {
         width: 100%;
-        justify-content: center;
+      }
+      
+      .remediations-grid {
+        grid-template-columns: 1fr;
       }
     }
-
+    
     @media (max-width: 480px) {
       h2 {
         font-size: 1.5rem;
       }
-
-      .stats-number {
-        font-size: 2rem;
+      
+      .stats-info {
+        font-size: 1rem;
       }
-
+      
       .remediation-card {
         padding: 20px 15px;
+      }
+      
+      .action-btn {
+        padding: 10px 15px;
+        min-width: 120px;
       }
     }
   </style>
 </head>
 <body>
-
-<div class="container">
-  <div class="header">
-    <h2>
-      <i class="fas fa-tools"></i>
-      {{ 'Remédiations à valider' if lang == 'fr' else 'Remediations to validate' }}
-    </h2>
-    <p class="subtitle">
-      {{ 'Gérez et validez les suggestions de remédiation de vos élèves' if lang == 'fr' else 'Manage and validate remediation suggestions from your students' }}
-    </p>
-  </div>
-
-  {% if remediations %}
-    <div class="stats-card">
-      <div class="stats-number">{{ remediations|length }}</div>
-      <div class="stats-label">
-        {{ 'remédiation(s) en attente' if lang == 'fr' else 'remediation(s) pending' }}
-      </div>
-    </div>
-
-    <div class="remediations-grid">
-      {% for r in remediations %}
-        <div class="remediation-card">
-          <div class="priority-badge">
-            <i class="fas fa-clock"></i>
-            {{ 'À traiter' if lang == 'fr' else 'Pending' }}
-          </div>
-
-          <div class="card-header">
-            <div class="student-info">
-              <div class="student-name">
-                <i class="fas fa-user-graduate"></i>
-                {{ r.user.nom_complet }}
-              </div>
-              <div class="meta-info">
-                <div class="meta-tag">
-                  <i class="fas fa-tag"></i>
-                  {{ r.theme }}
-                </div>
-                <div class="meta-tag">
-                  <i class="fas fa-book"></i>
-                  {{ r.lecon }}
-                </div>
-                {% if r.date_soumission %}
-                <div class="meta-tag">
-                  <i class="fas fa-calendar"></i>
-                  {{ r.date_soumission.strftime('%d/%m/%Y') if lang == 'fr' else r.date_soumission.strftime('%m/%d/%Y') }}
-                </div>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-
-          <div class="card-content">
-            <div class="content-section">
-              <div class="section-title">
-                <i class="fas fa-comment-dots"></i>
-                {{ 'Message' if lang == 'fr' else 'Message' }}
-              </div>
-              <div class="message-content">
-                {{ r.message }}
-              </div>
-            </div>
-
-            <div class="content-section">
-              <div class="section-title">
-                <i class="fas fa-lightbulb"></i>
-                {{ 'Exercice suggéré' if lang == 'fr' else 'Suggested exercise' }}
-              </div>
-              <div class="exercise-content">
-                {{ r.exercice_suggere }}
-              </div>
-            </div>
-          </div>
-
-          <div class="card-actions">
-            <a href="{{ url_for('valider_remediation', remediation_id=r.id) }}" class="btn btn-success">
-              <i class="fas fa-check-circle"></i>
-              {{ 'Valider et répondre' if lang == 'fr' else 'Validate and reply' }}
-            </a>
-            <a href="{{ url_for('valider_remediation', remediation_id=r.id) }}?action=view" class="btn btn-primary">
-              <i class="fas fa-eye"></i>
-              {{ 'Voir les détails' if lang == 'fr' else 'View details' }}
-            </a>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="empty-state">
-      <i class="fas fa-inbox"></i>
-      <h3>{{ 'Aucune remédiation en attente' if lang == 'fr' else 'No pending remediations' }}</h3>
-      <p>
-        {{ 'Toutes les remédiations ont été traitées. Vous serez notifié lorsque de nouvelles suggestions arriveront.' if lang == 'fr' else 'All remediations have been processed. You will be notified when new suggestions arrive.' }}
+  <div class="container">
+    <div class="header">
+      <h2>
+        <i class="fas fa-tools"></i>
+        {{ 'Remédiations à valider' if lang == 'fr' else 'Remediations to validate' }}
+      </h2>
+      <p class="subtitle">
+        {{ 'Gérez et validez les suggestions de remédiation de vos élèves' if lang == 'fr' else 'Manage and validate remediation suggestions from your students' }}
       </p>
-      <div class="card-actions" style="justify-content: center; border-top: none; padding-top: 0;">
-        <a href="{{ url_for('dashboard_enseignant') }}" class="btn btn-primary">
-          <i class="fas fa-sync"></i>
-          {{ 'Actualiser' if lang == 'fr' else 'Refresh' }}
-        </a>
-      </div>
     </div>
-  {% endif %}
-
-  <div class="navigation">
-    <a href="{{ url_for('dashboard_enseignant') }}" class="btn btn-back">
-      <i class="fas fa-arrow-left"></i>
-      {{ 'Retour au tableau de bord' if lang == 'fr' else 'Back to dashboard' }}
-    </a>
+    
+    {% if remediations %}
+      <div class="stats-header">
+        <div class="stats-info">
+          <i class="fas fa-clipboard-list"></i>
+          {{ remediations|length }} {{ 'remédiation(s) en attente' if lang == 'fr' else 'remediation(s) pending' }}
+        </div>
+        
+        <div class="filter-actions">
+          <a href="#" class="filter-btn">
+            <i class="fas fa-filter"></i>
+            {{ 'Filtrer' if lang == 'fr' else 'Filter' }}
+          </a>
+          <a href="#" class="filter-btn">
+            <i class="fas fa-sort"></i>
+            {{ 'Trier' if lang == 'fr' else 'Sort' }}
+          </a>
+        </div>
+      </div>
+      
+      <div class="remediations-grid">
+        {% for r in remediations %}
+          <div class="remediation-card">
+            <div class="priority-badge">
+              <i class="fas fa-clock"></i>
+              {{ 'À traiter' if lang == 'fr' else 'Pending' }}
+            </div>
+            
+            <div class="card-header">
+              <div class="student-avatar">
+                <i class="fas fa-user-graduate"></i>
+              </div>
+              
+              <div class="student-info">
+                <div class="student-name">
+                  {{ r.user.nom_complet }}
+                </div>
+                
+                <div class="meta-info">
+                  <div class="meta-tag">
+                    <i class="fas fa-tag"></i>
+                    {{ r.theme }}
+                  </div>
+                  <div class="meta-tag">
+                    <i class="fas fa-book"></i>
+                    {{ r.lecon }}
+                  </div>
+                  {% if r.date_soumission %}
+                  <div class="meta-tag">
+                    <i class="fas fa-calendar-alt"></i>
+                    {{ r.date_soumission.strftime('%d/%m/%Y') if lang == 'fr' else r.date_soumission.strftime('%m/%d/%Y') }}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <div class="card-content">
+              <div class="content-section">
+                <div class="section-title">
+                  <i class="fas fa-comment-dots"></i>
+                  {{ 'Message' if lang == 'fr' else 'Message' }}
+                </div>
+                <div class="message-content">
+                  {{ r.message | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") }}
+                </div>
+              </div>
+              
+              <div class="content-section">
+                <div class="section-title">
+                  <i class="fas fa-lightbulb"></i>
+                  {{ 'Exercice suggéré' if lang == 'fr' else 'Suggested exercise' }}
+                </div>
+                <div class="exercise-content">
+                  {{ r.exercice_suggere | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") }}
+                </div>
+              </div>
+            </div>
+            
+            <div class="card-actions">
+              <a href="{{ url_for('valider_remediation', remediation_id=r.id) }}" 
+                 class="action-btn validate-btn"
+                 title="{{ 'Valider cette remédiation et répondre à l\'élève' if lang == 'fr' else 'Validate this remediation and reply to student' }}">
+                <i class="fas fa-check-circle"></i>
+                {{ 'Valider' if lang == 'fr' else 'Validate' }}
+              </a>
+              <a href="{{ url_for('valider_remediation', remediation_id=r.id) }}?action=view" 
+                 class="action-btn view-btn"
+                 title="{{ 'Voir les détails de cette remédiation' if lang == 'fr' else 'View remediation details' }}">
+                <i class="fas fa-eye"></i>
+                {{ 'Détails' if lang == 'fr' else 'Details' }}
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h3>{{ 'Aucune remédiation en attente' if lang == 'fr' else 'No pending remediations' }}</h3>
+        <p>
+          {{ 'Toutes les remédiations ont été traitées. Vous serez notifié lorsque de nouvelles suggestions arriveront.' if lang == 'fr' else 'All remediations have been processed. You will be notified when new suggestions arrive.' }}
+        </p>
+        <div style="text-align: center;">
+          <a href="{{ url_for('dashboard_enseignant') }}" class="refresh-btn">
+            <i class="fas fa-sync-alt"></i>
+            {{ 'Actualiser' if lang == 'fr' else 'Refresh' }}
+          </a>
+        </div>
+      </div>
+    {% endif %}
+    
+    <div class="navigation">
+      <a href="{{ url_for('dashboard_enseignant') }}" class="back-btn">
+        <i class="fas fa-arrow-left"></i>
+        {{ 'Retour au tableau de bord' if lang == 'fr' else 'Back to dashboard' }}
+      </a>
+    </div>
   </div>
-</div>
-
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
-    // Animation d'apparition progressive
-    const cards = document.querySelectorAll('.remediation-card');
-    cards.forEach((card, index) => {
-      card.style.animationDelay = `${index * 0.1}s`;
-    });
-
-    // Effet de survol amélioré
-    cards.forEach(card => {
-      card.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-3px)';
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      console.log('Page des remédiations à valider chargée');
+      
+      // Animation des cartes
+      const cards = document.querySelectorAll('.remediation-card');
+      cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
       });
       
-      card.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateY(0)';
+      // Effets de hover améliorés
+      cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-5px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0)';
+        });
+      });
+      
+      // Effets sur les boutons d'action
+      const actionButtons = document.querySelectorAll('.action-btn');
+      actionButtons.forEach(button => {
+        button.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-2px)';
+        });
+        
+        button.addEventListener('mouseleave', function() {
+          if (!this.closest('.remediation-card:hover')) {
+            this.style.transform = 'translateY(0)';
+          }
+        });
+        
+        button.addEventListener('focus', function() {
+          this.style.outline = 'none';
+        });
+      });
+      
+      // Nettoyage du contenu mathématique
+      function cleanMathContent() {
+        const contentElements = document.querySelectorAll('.message-content, .exercise-content');
+        contentElements.forEach(element => {
+          let content = element.innerHTML;
+          
+          // Nettoyer les tabulations et espaces
+          content = content
+            .replace(/\t+/g, ' ')
+            .replace(/  +/g, ' ')
+            .replace(/^\s+|\s+$/g, '')
+            .replace(/\n\s*\n\s*\n/g, '\n\n');
+          
+          element.innerHTML = content;
+        });
+      }
+      
+      // Exécuter le nettoyage
+      setTimeout(cleanMathContent, 200);
+      
+      // Fonctionnalité de filtre (placeholder)
+      const filterButtons = document.querySelectorAll('.filter-btn');
+      filterButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          alert('⚠️ {{ 'Fonctionnalité de filtrage en développement' if lang == 'fr' else 'Filter functionality under development' }}');
+        });
       });
     });
-  });
-</script>
-
+  </script>
 </body>
 </html>

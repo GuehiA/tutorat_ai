@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -10,237 +11,753 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  <title>Suggestions de remédiation</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <title>🧠 Suggestions de remédiation - VirtuEduc</title>
+  
+  <!-- Font Awesome pour les icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
     :root {
-      --primary-color: #4361ee;
-      --secondary-color: #3f37c9;
-      --success-color: #2ecc71;
-      --warning-color: #f39c12;
-      --danger-color: #e74c3c;
-      --light-color: #f8f9fa;
-      --dark-color: #212529;
-      --border-color: #dee2e6;
-      --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-      --radius-sm: 4px;
-      --radius-md: 8px;
+      --primary: #4361ee;
+      --primary-dark: #3a0ca3;
+      --secondary: #4cc9f0;
+      --accent: #f72585;
+      --success: #38b000;
+      --warning: #ff9e00;
+      --danger: #e63946;
+      --info: #7209b7;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --white: #ffffff;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
     }
-
-    body {
-      font-family: 'Roboto', Arial, sans-serif;
-      background-color: #f5f7fa;
-      color: var(--dark-color);
-      line-height: 1.6;
-      padding: 30px;
+    
+    * {
       margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-
-    h2 {
-      color: var(--primary-color);
-      text-align: center;
-      margin-bottom: 30px;
-      font-weight: 500;
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      color: var(--dark);
+      line-height: 1.6;
+      padding: 20px;
     }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: white;
-      border-radius: var(--radius-md);
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: var(--white);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 40px;
+      position: relative;
       overflow: hidden;
-      box-shadow: var(--shadow-md);
     }
-
-    th {
-      background-color: var(--primary-color);
+    
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+    }
+    
+    h2 {
+      text-align: center;
+      color: var(--primary-dark);
+      margin-bottom: 30px;
+      font-size: 2.2rem;
+      position: relative;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+    
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--secondary), var(--accent));
+      border-radius: 2px;
+    }
+    
+    /* En-tête avec statistiques */
+    .header-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: white;
-      padding: 14px;
+      padding: 20px 25px;
+      border-radius: 15px;
+      margin-bottom: 30px;
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .stats-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    
+    .stats-badge i {
+      font-size: 1.4rem;
+    }
+    
+    .export-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--info), #5a189a);
+      color: white;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: var(--transition);
+      box-shadow: 0 4px 12px rgba(114, 9, 183, 0.3);
+      border: 2px solid transparent;
+    }
+    
+    .export-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(114, 9, 183, 0.4);
+      background: linear-gradient(135deg, #5a189a, var(--info));
+    }
+    
+    .export-btn:focus {
+      outline: none;
+      border-color: white;
+      box-shadow: 0 0 0 3px rgba(114, 9, 183, 0.5);
+    }
+    
+    /* Tableau élégant */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+      margin-bottom: 40px;
+    }
+    
+    .elegant-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+      min-width: 1200px;
+    }
+    
+    .elegant-table thead {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: white;
+    }
+    
+    .elegant-table th {
+      padding: 20px;
       text-align: left;
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 1.1rem;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
     }
-
-    td {
-      padding: 14px;
-      border-bottom: 1px solid var(--border-color);
+    
+    .elegant-table tbody tr {
+      transition: var(--transition);
+      border-bottom: 1px solid var(--light-gray);
+    }
+    
+    .elegant-table tbody tr:hover {
+      background: linear-gradient(90deg, rgba(76, 201, 240, 0.05), rgba(67, 97, 238, 0.05));
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    }
+    
+    .elegant-table td {
+      padding: 20px;
       vertical-align: top;
+      border-bottom: 1px solid var(--light-gray);
     }
-
-    tr:nth-child(even) {
-      background-color: #f9fafb;
+    
+    /* Carte élève */
+    .student-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
-
-    tr:hover {
-      background-color: #f1f3f8;
+    
+    .student-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.4rem;
+      box-shadow: 0 4px 8px rgba(76, 201, 240, 0.3);
     }
-
-    .timestamp {
-      color: #6c757d;
-      font-size: 0.85em;
+    
+    .student-info h4 {
+      color: var(--dark);
+      font-size: 1.1rem;
+      margin-bottom: 4px;
+    }
+    
+    .student-info .username {
+      color: var(--gray);
+      font-size: 0.9rem;
       display: block;
-      margin-top: 4px;
     }
-
-    .exercice {
+    
+    /* Badge niveau */
+    .level-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      color: white;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 3px 8px rgba(76, 201, 240, 0.3);
+    }
+    
+    /* Contenu analyse et exercice */
+    .content-container {
+      max-width: 400px;
+    }
+    
+    .message-box {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid var(--primary);
+      margin-bottom: 15px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    
+    .message-box strong {
+      color: var(--primary-dark);
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+    
+    .message-content {
+      color: var(--dark);
+      font-size: 0.95rem;
+      line-height: 1.5;
       white-space: pre-wrap;
-      font-family: 'Roboto Mono', monospace;
-      font-size: 0.9em;
-      background-color: #f8f9fa;
-      padding: 10px;
-      border-radius: var(--radius-sm);
-      border-left: 3px solid var(--primary-color);
-      margin-top: 8px;
     }
-
-    .actions {
+    
+    .exercise-box {
+      background: linear-gradient(135deg, #e8f4f8, #d4edf9);
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid var(--secondary);
+    }
+    
+    .exercise-box strong {
+      color: var(--primary-dark);
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+    
+    .exercise-content {
+      font-family: 'Courier New', Consolas, monospace;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      color: var(--dark);
+    }
+    
+    /* Date stylisée */
+    .date-card {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 5px;
+      min-width: 120px;
     }
-
-    .btn {
-      padding: 8px 12px;
-      font-size: 0.85em;
+    
+    .date-main {
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+    
+    .date-time {
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+    
+    /* Actions avec liens très visibles */
+    .actions-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 150px;
+    }
+    
+    .action-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: var(--transition);
       border: none;
-      border-radius: var(--radius-sm);
       cursor: pointer;
       text-align: center;
-      transition: all 0.2s ease;
-      font-weight: 500;
       width: 100%;
     }
-
-    .btn-valider {
-      background-color: var(--success-color);
+    
+    .validate-button {
+      background: linear-gradient(135deg, var(--success), #2a9134);
       color: white;
+      box-shadow: 0 4px 12px rgba(56, 176, 0, 0.3);
     }
-
-    .btn-modifier {
-      background-color: var(--warning-color);
+    
+    .validate-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(56, 176, 0, 0.4);
+      background: linear-gradient(135deg, #2a9134, var(--success));
+    }
+    
+    .modify-button {
+      background: linear-gradient(135deg, var(--warning), #e85d04);
       color: white;
+      box-shadow: 0 4px 12px rgba(255, 158, 0, 0.3);
     }
-
-    .btn-refuser {
-      background-color: var(--danger-color);
+    
+    .modify-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(255, 158, 0, 0.4);
+      background: linear-gradient(135deg, #e85d04, var(--warning));
+    }
+    
+    .reject-button {
+      background: linear-gradient(135deg, var(--danger), #c1121f);
       color: white;
+      box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
     }
-
-    .btn-valider:hover {
-      background-color: #27ae60;
-      transform: translateY(-1px);
+    
+    .reject-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(230, 57, 70, 0.4);
+      background: linear-gradient(135deg, #c1121f, var(--danger));
     }
-
-    .btn-modifier:hover {
-      background-color: #e67e22;
-      transform: translateY(-1px);
+    
+    .action-button:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5), 0 0 0 6px rgba(67, 97, 238, 0.2);
     }
-
-    .btn-refuser:hover {
-      background-color: #c0392b;
-      transform: translateY(-1px);
-    }
-
-    .no-data {
+    
+    /* État vide */
+    .empty-state {
       text-align: center;
-      color: #6c757d;
+      padding: 80px 20px;
+      color: var(--gray);
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
       margin: 40px 0;
-      font-size: 1.1em;
     }
-
-    .export-pdf {
-      text-align: center;
-      margin: 30px 0;
+    
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-
-    .export-pdf a {
-      background-color: var(--secondary-color);
-      color: white;
-      padding: 12px 24px;
-      text-decoration: none;
-      border-radius: var(--radius-sm);
-      display: inline-block;
-      transition: all 0.2s ease;
+    
+    .empty-state p {
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      color: var(--dark);
+      font-weight: 500;
     }
-
-    .export-pdf a:hover {
-      background-color: #362f9f;
-      transform: translateY(-1px);
+    
+    .empty-state .subtext {
+      font-size: 1rem;
+      color: var(--gray);
+      margin-top: 10px;
     }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
+    
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .container {
+        padding: 30px 20px;
+      }
+      
+      .header-stats {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+      }
+      
+      .export-btn {
+        justify-content: center;
+      }
     }
-
+    
     @media (max-width: 768px) {
       body {
-        padding: 15px;
+        padding: 10px;
       }
-      table {
-        display: block;
-        overflow-x: auto;
+      
+      h2 {
+        font-size: 1.8rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
       }
+      
+      .table-container {
+        border-radius: 10px;
+      }
+      
+      .elegant-table th,
+      .elegant-table td {
+        padding: 15px 10px;
+        font-size: 0.95rem;
+      }
+      
+      .student-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      
+      .student-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+      }
+      
+      .content-container {
+        max-width: 300px;
+      }
+      
+      .actions-container {
+        min-width: 120px;
+      }
+      
+      .action-button {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      h2 {
+        font-size: 1.5rem;
+      }
+      
+      .stats-badge {
+        font-size: 1rem;
+      }
+      
+      .message-box,
+      .exercise-box {
+        max-height: 120px;
+      }
+      
+      .date-card {
+        min-width: 100px;
+      }
+    }
+    
+    /* Animation */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .elegant-table tbody tr {
+      animation: fadeIn 0.4s ease forwards;
+    }
+    
+    .elegant-table tbody tr:nth-child(2) { animation-delay: 0.05s; }
+    .elegant-table tbody tr:nth-child(3) { animation-delay: 0.1s; }
+    .elegant-table tbody tr:nth-child(4) { animation-delay: 0.15s; }
+    .elegant-table tbody tr:nth-child(5) { animation-delay: 0.2s; }
+    
+    /* Styles pour contenu mathématique */
+    .math-content {
+      font-family: 'Times New Roman', Times, serif;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>🧠 Suggestions de remédiation générées</h2>
-
-    {% if suggestions %}
-      <table>
-        <thead>
-          <tr>
-            <th>Élève</th>
-            <th>Niveau</th>
-            <th>Thème</th>
-            <th>Leçon</th>
-            <th>Analyse & Exercice</th>
-            <th>Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for s in suggestions %}
-          <tr>
-            <td>
-              {{ s.user.nom_complet }}
-              <span class="timestamp">{{ s.user.username }}</span>
-            </td>
-            <td>{{ s.user.niveau.nom }}</td>
-            <td>{{ s.theme }}</td>
-            <td>{{ s.lecon }}</td>
-            <td>
-              <strong>Message :</strong><br>{{ s.message }}
-              <div class="exercice">{{ s.exercice_suggere }}</div>
-            </td>
-            <td>{{ s.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td>
-              <div class="actions">
-                <form action="{{ url_for('valider_remediation', id=s.id) }}" method="POST">
-                  <button type="submit" class="btn btn-valider">✅ Valider</button>
-                </form>
-                <form action="{{ url_for('modifier_remediation_form', id=s.id) }}" method="GET">
-                  <button type="submit" class="btn btn-modifier">✏️ Modifier</button>
-                </form>
-                <form action="{{ url_for('refuser_remediation', id=s.id) }}" method="POST">
-                  <button type="submit" class="btn btn-refuser">🗑 Refuser</button>
-                </form>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="no-data">Aucune suggestion de remédiation trouvée.</p>
-    {% endif %}
-
-    <div class="export-pdf">
-      <a href="#">Exporter en PDF</a>
+    <h2>
+      <i class="fas fa-brain"></i>
+      🧠 Suggestions de remédiation générées
+    </h2>
+    
+    <!-- En-tête avec statistiques et export -->
+    <div class="header-stats">
+      <div class="stats-badge">
+        <i class="fas fa-clipboard-list"></i>
+        {% if suggestions %}
+          {{ suggestions|length }} suggestion(s) de remédiation
+        {% else %}
+          Aucune suggestion disponible
+        {% endif %}
+      </div>
+      
+      <a href="#" class="export-btn">
+        <i class="fas fa-file-pdf"></i>
+        Exporter en PDF
+      </a>
     </div>
+    
+    {% if suggestions %}
+      <div class="table-container">
+        <table class="elegant-table">
+          <thead>
+            <tr>
+              <th><i class="fas fa-user-graduate"></i> Élève</th>
+              <th><i class="fas fa-graduation-cap"></i> Niveau</th>
+              <th><i class="fas fa-book"></i> Thème</th>
+              <th><i class="fas fa-graduation-cap"></i> Leçon</th>
+              <th><i class="fas fa-comment-dots"></i> Analyse & Exercice</th>
+              <th><i class="fas fa-calendar-alt"></i> Date</th>
+              <th><i class="fas fa-gears"></i> Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in suggestions %}
+            <tr>
+              <td>
+                <div class="student-card">
+                  <div class="student-avatar">
+                    <i class="fas fa-user-graduate"></i>
+                  </div>
+                  <div class="student-info">
+                    <h4>{{ s.user.nom_complet }}</h4>
+                    <span class="username">@{{ s.user.username }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="level-badge">
+                  <i class="fas fa-graduation-cap"></i>
+                  {{ s.user.niveau.nom }}
+                </span>
+              </td>
+              <td>
+                <strong>{{ s.theme }}</strong>
+              </td>
+              <td>
+                {{ s.lecon }}
+              </td>
+              <td>
+                <div class="content-container">
+                  <div class="message-box">
+                    <strong>Message :</strong>
+                    <div class="message-content math-content">
+                      {{ s.message | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") }}
+                    </div>
+                  </div>
+                  <div class="exercise-box">
+                    <strong>Exercice suggéré :</strong>
+                    <div class="exercise-content math-content">
+                      {{ s.exercice_suggere | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="date-card">
+                  <span class="date-main">{{ s.timestamp.strftime('%d/%m/%Y') }}</span>
+                  <span class="date-time">{{ s.timestamp.strftime('%H:%M') }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="actions-container">
+                  <form action="{{ url_for('valider_remediation', id=s.id) }}" method="POST">
+                    <button type="submit" 
+                            class="action-button validate-button"
+                            title="Valider cette suggestion">
+                      <i class="fas fa-check-circle"></i>
+                      Valider
+                    </button>
+                  </form>
+                  <form action="{{ url_for('modifier_remediation_form', id=s.id) }}" method="GET">
+                    <button type="submit" 
+                            class="action-button modify-button"
+                            title="Modifier cette suggestion">
+                      <i class="fas fa-edit"></i>
+                      Modifier
+                    </button>
+                  </form>
+                  <form action="{{ url_for('refuser_remediation', id=s.id) }}" method="POST"
+                        onsubmit="return confirm('Êtes-vous sûr de vouloir refuser cette suggestion ?');">
+                    <button type="submit" 
+                            class="action-button reject-button"
+                            title="Refuser cette suggestion">
+                      <i class="fas fa-times-circle"></i>
+                      Refuser
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-search"></i>
+        <p>📭 Aucune suggestion de remédiation trouvée</p>
+        <p class="subtext">
+          <i class="fas fa-info-circle"></i>
+          Les suggestions générées par l'IA apparaîtront ici.
+        </p>
+      </div>
+    {% endif %}
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Page des suggestions de remédiation chargée');
+      
+      // Animation des lignes du tableau
+      const tableRows = document.querySelectorAll('.elegant-table tbody tr');
+      tableRows.forEach((row, index) => {
+        row.style.animationDelay = `${index * 0.05}s`;
+      });
+      
+      // Effets de hover sur les boutons
+      const buttons = document.querySelectorAll('.action-button');
+      buttons.forEach(button => {
+        button.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-2px)';
+        });
+        
+        button.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0)';
+        });
+        
+        button.addEventListener('focus', function() {
+          this.style.outline = 'none';
+        });
+      });
+      
+      // Effet de hover sur le bouton d'export
+      const exportBtn = document.querySelector('.export-btn');
+      if (exportBtn) {
+        exportBtn.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-2px)';
+        });
+        
+        exportBtn.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0)';
+        });
+      }
+      
+      // Nettoyage du contenu mathématique
+      function cleanMathContent() {
+        const mathElements = document.querySelectorAll('.math-content');
+        mathElements.forEach(element => {
+          let content = element.innerHTML;
+          
+          // Remplacer les fractions Unicode par du LaTeX
+          const fractionMap = {
+            '¼': '\\frac{1}{4}',
+            '½': '\\frac{1}{2}', 
+            '¾': '\\frac{3}{4}',
+            '⅓': '\\frac{1}{3}',
+            '⅔': '\\frac{2}{3}',
+            '⅕': '\\frac{1}{5}',
+            '⅖': '\\frac{2}{5}',
+            '⅗': '\\frac{3}{5}',
+            '⅘': '\\frac{4}{5}',
+            '⅙': '\\frac{1}{6}',
+            '⅚': '\\frac{5}{6}',
+            '⅛': '\\frac{1}{8}',
+            '⅜': '\\frac{3}{8}',
+            '⅝': '\\frac{5}{8}',
+            '⅞': '\\frac{7}{8}'
+          };
+          
+          for (const [unicode, latex] of Object.entries(fractionMap)) {
+            content = content.replace(new RegExp(unicode, 'g'), latex);
+          }
+          
+          // Nettoyer les tabulations et espaces
+          content = content
+            .replace(/\t+/g, ' ')
+            .replace(/  +/g, ' ')
+            .replace(/^\s+|\s+$/g, '')
+            .replace(/\n\s*\n\s*\n/g, '\n\n');
+          
+          element.innerHTML = content;
+        });
+      }
+      
+      // Exécuter le nettoyage
+      setTimeout(cleanMathContent, 200);
+      
+      // Confirmation pour les actions de refus
+      const rejectForms = document.querySelectorAll('form[action*="refuser_remediation"]');
+      rejectForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+          const isConfirmed = confirm('⚠️ Cette action refusera la suggestion de remédiation.\n\nVoulez-vous continuer ?');
+          if (!isConfirmed) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        });
+      });
+      
+      // Fonction pour l'export PDF (placeholder)
+      if (exportBtn) {
+        exportBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          alert('⚠️ Fonctionnalité d\'export PDF en cours de développement.\n\nCette fonction sera disponible prochainement !');
+        });
+      }
+    });
+  </script>
 </body>
 </html>

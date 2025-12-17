@@ -987,8 +987,8 @@
         {{ 'Exercice suivant' if lang == 'fr' else 'Next Exercise' }}
       </a>
       {% else %}
-      <a href="/tableau-de-bord?username={{ eleve.username }}&lang={{ lang }}&message=sequence_complete" 
-         class="action-btn">
+      <a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}?message=sequence_complete" 
+   class="action-btn">
         <i class="fas fa-trophy"></i>
         {{ 'Terminer la séquence' if lang == 'fr' else 'Finish Sequence' }}
       </a>
