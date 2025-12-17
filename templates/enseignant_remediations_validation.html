@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -10,157 +11,708 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  <title>Remédiations à valider</title>
+  <title>🧠 Remédiations à valider - VirtuEduc</title>
+  
+  <!-- Font Awesome pour les icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 40px;
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a0ca3;
+      --secondary: #4cc9f0;
+      --accent: #f72585;
+      --success: #38b000;
+      --warning: #ff9e00;
+      --danger: #e63946;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --white: #ffffff;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
     }
-
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      color: var(--dark);
+      line-height: 1.6;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      background: var(--white);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+    }
+    
     h2 {
       text-align: center;
-      color: #2c3e50;
+      color: var(--primary-dark);
+      margin-bottom: 30px;
+      font-size: 2.2rem;
+      position: relative;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
     }
-
-    form {
-      text-align: center;
-      margin-bottom: 20px;
+    
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--secondary), var(--accent));
+      border-radius: 2px;
     }
-
-    select {
-      padding: 8px;
-      font-size: 14px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
+    
+    /* Filtre élégant */
+    .filter-container {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      padding: 20px 25px;
+      border-radius: 15px;
+      margin-bottom: 30px;
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 15px;
     }
-
-    table {
+    
+    .filter-label {
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .filter-select {
+      padding: 12px 20px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: white;
+      color: var(--dark);
+      font-size: 1rem;
+      font-weight: 500;
+      min-width: 250px;
+      transition: var(--transition);
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--secondary);
+      box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.3);
+    }
+    
+    .filter-select option {
+      padding: 10px;
+      font-size: 1rem;
+    }
+    
+    /* Tableau élégant */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+      margin-bottom: 40px;
+    }
+    
+    .elegant-table {
       width: 100%;
-      background: #fff;
-      border-collapse: collapse;
-      margin-top: 20px;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
     }
-
-    th, td {
-      padding: 12px;
-      border: 1px solid #ddd;
+    
+    .elegant-table thead {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: white;
+    }
+    
+    .elegant-table th {
+      padding: 20px;
       text-align: left;
+      font-weight: 600;
+      font-size: 1.1rem;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .elegant-table tbody tr {
+      transition: var(--transition);
+      border-bottom: 1px solid var(--light-gray);
+    }
+    
+    .elegant-table tbody tr:hover {
+      background: linear-gradient(90deg, rgba(76, 201, 240, 0.05), rgba(67, 97, 238, 0.05));
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    }
+    
+    .elegant-table td {
+      padding: 20px;
       vertical-align: top;
+      border-bottom: 1px solid var(--light-gray);
     }
-
-    th {
-      background: #3498db;
+    
+    /* Carte élève */
+    .student-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .student-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: white;
+      font-size: 1.4rem;
+      box-shadow: 0 4px 8px rgba(76, 201, 240, 0.3);
     }
-
-    tr:nth-child(even) {
-      background: #f9f9f9;
+    
+    .student-info h4 {
+      color: var(--dark);
+      font-size: 1.1rem;
+      margin-bottom: 4px;
     }
-
-    .button {
-      display: inline-block;
+    
+    .student-info small {
+      color: var(--gray);
+      font-size: 0.9rem;
+      display: block;
+    }
+    
+    /* Badge niveau */
+    .level-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      color: white;
       padding: 8px 15px;
-      background-color: #3498db;
-      color: white;
-      border-radius: 5px;
-      text-decoration: none;
-      font-size: 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 3px 8px rgba(76, 201, 240, 0.3);
     }
-
-    .button:hover {
-      background-color: #2980b9;
+    
+    /* Message avec contraste */
+    .message-content {
+      background: var(--light);
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid var(--primary);
+      max-height: 150px;
+      overflow-y: auto;
+      font-family: 'Courier New', Consolas, monospace;
+      font-size: 0.95rem;
+      line-height: 1.5;
     }
-
-    .delete-button {
-      background-color: #e74c3c;
-    }
-
-    .delete-button:hover {
-      background-color: #c0392b;
-    }
-
-    .actions {
+    
+    /* Actions avec liens très visibles */
+    .actions-container {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 10px;
+      min-width: 150px;
     }
-
-    .no-data {
+    
+    .action-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
       text-align: center;
-      color: #666;
-      margin-top: 40px;
     }
-
+    
+    .validate-button {
+      background: linear-gradient(135deg, var(--success), #2a9134);
+      color: white;
+      box-shadow: 0 4px 12px rgba(56, 176, 0, 0.3);
+    }
+    
+    .validate-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(56, 176, 0, 0.4);
+      background: linear-gradient(135deg, #2a9134, var(--success));
+    }
+    
+    .delete-button {
+      background: linear-gradient(135deg, var(--danger), #c1121f);
+      color: white;
+      box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+    }
+    
+    .delete-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(230, 57, 70, 0.4);
+      background: linear-gradient(135deg, #c1121f, var(--danger));
+    }
+    
+    .action-button:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5), 0 0 0 6px rgba(67, 97, 238, 0.2);
+    }
+    
+    /* État vide */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray);
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      margin: 40px 0;
+    }
+    
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .empty-state p {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      color: var(--dark);
+    }
+    
+    .empty-state .subtext {
+      font-size: 1rem;
+      color: var(--gray);
+      margin-top: 10px;
+    }
+    
+    /* Bouton retour */
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 15px 30px;
+      border-radius: 50px;
+      transition: var(--transition);
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+      border: 2px solid transparent;
+      font-size: 1.1rem;
+    }
+    
+    .back-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    }
+    
+    .back-button:focus {
+      outline: none;
+      border-color: white;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.5);
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .container {
+        padding: 25px 20px;
+      }
+      
+      .filter-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .filter-select {
+        width: 100%;
+      }
+      
+      .elegant-table {
+        min-width: 800px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      h2 {
+        font-size: 1.8rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+      }
+      
+      .table-container {
+        border-radius: 10px;
+      }
+      
+      .elegant-table th,
+      .elegant-table td {
+        padding: 15px 10px;
+        font-size: 0.95rem;
+      }
+      
+      .actions-container {
+        min-width: 120px;
+      }
+      
+      .action-button {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      h2 {
+        font-size: 1.5rem;
+      }
+      
+      .filter-label {
+        font-size: 1rem;
+      }
+      
+      .student-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      
+      .student-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+      }
+      
+      .back-button {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+    
+    /* Animation */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .elegant-table tbody tr {
+      animation: fadeIn 0.4s ease forwards;
+    }
+    
+    .elegant-table tbody tr:nth-child(2) { animation-delay: 0.05s; }
+    .elegant-table tbody tr:nth-child(3) { animation-delay: 0.1s; }
+    .elegant-table tbody tr:nth-child(4) { animation-delay: 0.15s; }
+    .elegant-table tbody tr:nth-child(5) { animation-delay: 0.2s; }
+    
+    /* MathJax styles */
     .mathjax {
       white-space: pre-wrap;
+      font-family: 'Times New Roman', Times, serif;
+    }
+    
+    .mathjax mjx-container {
+      display: inline-block;
+      margin: 0 2px;
+      vertical-align: middle;
     }
   </style>
 
-  <!-- MathJax for math rendering -->
+  <!-- MathJax Configuration -->
   <script>
     window.MathJax = {
-      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
-      svg: { fontCache: 'global' }
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true,
+        packages: ['base', 'ams']
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        ignoreHtmlClass: 'no-mathjax'
+      },
+      startup: {
+        pageReady: () => {
+          console.log('MathJax configuration loaded');
+          return MathJax.startup.defaultPageReady();
+        }
+      }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
 </head>
 <body>
-
-  <h2>🧠 Remédiations à valider</h2>
-
-  <form method="GET">
-    <label for="niveau">🎓 Filtrer par niveau :</label>
-    <select name="niveau" id="niveau" onchange="this.form.submit()">
-      <option value="">-- Tous les niveaux --</option>
-      {% for n in niveaux %}
-        <option value="{{ n }}" {% if n == niveau_filtre %}selected{% endif %}>{{ n }}</option>
-      {% endfor %}
-    </select>
-  </form>
-
-  {% if suggestions %}
-    <table>
-      <thead>
-        <tr>
-          <th>Élève</th>
-          <th>Niveau</th>
-          <th>Thème</th>
-          <th>Leçon</th>
-          <th>Message</th>
-          <th>Date</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in suggestions %}
-        <tr>
-          <td>{{ s.user.nom_complet }}<br><small>{{ s.user.username }}</small></td>
-          <td>{{ s.user.niveau.nom }}</td>
-          <td>{{ s.theme }}</td>
-          <td>{{ s.lecon }}</td>
-          <td><div class="mathjax">{{ s.message }}</div></td>
-          <td>{{ s.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
-          <td>
-            <div class="actions">
-              <a class="button" href="/enseignant/valider-remediation/{{ s.id }}">✏️ Valider</a>
-              <form method="POST" action="/enseignant/supprimer-remediation/{{ s.id }}" onsubmit="return confirm('Confirmer la suppression ?')">
-                <button type="submit" class="button delete-button">🗑 Supprimer</button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="no-data">Aucune remédiation à valider pour ce niveau.</p>
-  {% endif %}
-
-  <div style="text-align:center; margin-top: 30px;">
-    <a href="/dashboard-enseignant" class="button">← Retour au tableau de bord</a>
+  <div class="container">
+    <h2>
+      <i class="fas fa-brain"></i>
+      🧠 Remédiations à valider
+    </h2>
+    
+    <!-- Filtre élégant -->
+    <div class="filter-container">
+      <div class="filter-label">
+        <i class="fas fa-filter"></i>
+        🎓 Filtrer par niveau :
+      </div>
+      <form method="GET" style="flex: 1;">
+        <select name="niveau" id="niveau" class="filter-select" onchange="this.form.submit()">
+          <option value="">-- Tous les niveaux --</option>
+          {% for n in niveaux %}
+            <option value="{{ n }}" {% if n == niveau_filtre %}selected{% endif %}>
+              {{ n }}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+      
+      {% if suggestions %}
+        <div style="color: rgba(255, 255, 255, 0.9); font-weight: 500;">
+          <i class="fas fa-list-check"></i>
+          {{ suggestions|length }} remédiation(s) à valider
+        </div>
+      {% endif %}
+    </div>
+    
+    {% if suggestions %}
+      <div class="table-container">
+        <table class="elegant-table">
+          <thead>
+            <tr>
+              <th><i class="fas fa-user-graduate"></i> Élève</th>
+              <th><i class="fas fa-graduation-cap"></i> Niveau</th>
+              <th><i class="fas fa-book"></i> Thème</th>
+              <th><i class="fas fa-graduation-cap"></i> Leçon</th>
+              <th><i class="fas fa-message"></i> Message</th>
+              <th><i class="fas fa-calendar-alt"></i> Date</th>
+              <th><i class="fas fa-gears"></i> Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in suggestions %}
+            <tr>
+              <td>
+                <div class="student-card">
+                  <div class="student-avatar">
+                    <i class="fas fa-user-graduate"></i>
+                  </div>
+                  <div class="student-info">
+                    <h4>{{ s.user.nom_complet }}</h4>
+                    <small>@{{ s.user.username }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="level-badge">
+                  <i class="fas fa-graduation-cap"></i>
+                  {{ s.user.niveau.nom }}
+                </span>
+              </td>
+              <td>
+                <strong>{{ s.theme }}</strong>
+              </td>
+              <td>
+                {{ s.lecon }}
+              </td>
+              <td>
+                <div class="message-content mathjax">
+                  {{ s.message | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}
+                </div>
+              </td>
+              <td>
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                  <span style="font-weight: 600; color: var(--primary);">
+                    {{ s.timestamp.strftime('%d/%m/%Y') }}
+                  </span>
+                  <span style="color: var(--gray); font-size: 0.9rem;">
+                    {{ s.timestamp.strftime('%H:%M') }}
+                  </span>
+                </div>
+              </td>
+              <td>
+                <div class="actions-container">
+                  <a href="/enseignant/valider-remediation/{{ s.id }}" 
+                     class="action-button validate-button"
+                     title="Valider cette remédiation">
+                    <i class="fas fa-check-circle"></i>
+                    Valider
+                  </a>
+                  <form method="POST" action="/enseignant/supprimer-remediation/{{ s.id }}" 
+                        onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette remédiation ? Cette action est irréversible.');"
+                        style="width: 100%;">
+                    <button type="submit" 
+                            class="action-button delete-button"
+                            title="Supprimer cette remédiation">
+                      <i class="fas fa-trash-can"></i>
+                      Supprimer
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-clipboard-check"></i>
+        <p>✅ Toutes les remédiations sont validées !</p>
+        <p class="subtext">
+          <i class="fas fa-info-circle"></i>
+          {% if niveau_filtre %}
+            Aucune remédiation à valider pour le niveau "{{ niveau_filtre }}".
+          {% else %}
+            Aucune remédiation en attente de validation.
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+    
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/dashboard-enseignant" class="back-button">
+        <i class="fas fa-arrow-left"></i>
+        Retour au tableau de bord
+      </a>
+    </div>
   </div>
 
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Page de validation des remédiations chargée');
+      
+      // Animation des lignes du tableau
+      const tableRows = document.querySelectorAll('.elegant-table tbody tr');
+      tableRows.forEach((row, index) => {
+        row.style.animationDelay = `${index * 0.05}s`;
+      });
+      
+      // Effets de hover sur les boutons
+      const buttons = document.querySelectorAll('.action-button');
+      buttons.forEach(button => {
+        button.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-2px)';
+        });
+        
+        button.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0)';
+        });
+        
+        button.addEventListener('focus', function() {
+          this.style.outline = 'none';
+        });
+      });
+      
+      // Traitement du contenu MathJax
+      function processMathContent() {
+        const mathElements = document.querySelectorAll('.mathjax');
+        mathElements.forEach(element => {
+          // Nettoyer le texte
+          let content = element.innerHTML;
+          content = content
+            .replace(/\t+/g, ' ')
+            .replace(/  +/g, ' ')
+            .replace(/^\s+|\s+$/g, '');
+          element.innerHTML = content;
+        });
+        
+        // Redémarrer MathJax si nécessaire
+        if (window.MathJax) {
+          setTimeout(() => {
+            MathJax.typesetPromise().catch(err => {
+              console.warn('Erreur MathJax:', err);
+            });
+          }, 300);
+        }
+      }
+      
+      // Exécuter le traitement MathJax
+      setTimeout(processMathContent, 200);
+      
+      // Confirmation améliorée pour la suppression
+      const deleteForms = document.querySelectorAll('form[action*="supprimer-remediation"]');
+      deleteForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+          const isConfirmed = confirm('⚠️ ATTENTION : Cette action supprimera définitivement la remédiation.\n\nÊtes-vous ABSOLUMENT sûr de vouloir continuer ?');
+          if (!isConfirmed) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        });
+      });
+    });
+    
+    // Observer les changements pour re-rendre MathJax
+    const observer = new MutationObserver(() => {
+      if (window.MathJax) {
+        setTimeout(() => {
+          MathJax.typesetPromise();
+        }, 100);
+      }
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  </script>
 </body>
 </html>
