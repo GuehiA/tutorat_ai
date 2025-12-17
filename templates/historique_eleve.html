@@ -183,11 +183,24 @@
     .mathjax-block {
       white-space: pre-wrap;
       background: white;
-      padding: 10px 15px;
+      padding: 15px;
       border-radius: 8px;
       border: 1px solid var(--light-gray);
       margin-bottom: 15px;
-      font-family: 'Courier New', monospace;
+      font-family: inherit;
+      /* Nettoyage des espaces et tabulations */
+      white-space-collapse: collapse;
+      text-wrap: wrap;
+      overflow-wrap: break-word;
+    }
+    
+    .mathjax-block pre {
+      margin: 0;
+      padding: 0;
+      font-family: inherit;
+      white-space: pre-wrap;
+      background: transparent;
+      border: none;
     }
     
     /* ✅ BOUTON UNIQUE INTELLIGENT */
@@ -310,29 +323,24 @@
     }
   </style>
 
-  <!-- MathJax Configuration pour toutes les syntaxes LaTeX -->
+  <!-- MathJax Configuration simplifiée et robuste -->
   <script>
     window.MathJax = {
       tex: {
         inlineMath: [['$', '$'], ['\\(', '\\)']],
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
-        processEnvironments: true
+        processEnvironments: true,
+        packages: ['base', 'ams']
       },
       options: {
         skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-        renderActions: {
-          addMenu: [0, '', '']
-        }
-      },
-      svg: {
-        fontCache: 'global'
+        ignoreHtmlClass: 'no-mathjax'
       },
       startup: {
         pageReady: () => {
-          return MathJax.startup.defaultPageReady().then(() => {
-            console.log('MathJax est prêt à interpréter les formules LaTeX');
-          });
+          console.log('MathJax configuration loaded');
+          return MathJax.startup.defaultPageReady();
         }
       }
     };
@@ -384,13 +392,13 @@
           <div class="reponse">
             <div class="reponse-content">
               <p><strong>{{ 'Énoncé :' if lang == 'fr' else 'Prompt:' }}</strong></p>
-              <div class="mathjax-block">{{ r.enonce | e }}</div>
+              <div class="mathjax-block math-content">{{ r.enonce | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
 
               <p><strong>{{ 'Réponse de l\'élève :' if lang == 'fr' else "Student's Answer:" }}</strong></p>
-              <div class="mathjax-block">{{ r.reponse_eleve | e }}</div>
+              <div class="mathjax-block math-content">{{ r.reponse_eleve | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
 
               <p><strong>{{ 'Analyse IA :' if lang == 'fr' else 'AI Feedback:' }}</strong></p>
-              <div class="mathjax-block">{{ r.analyse_ia | e }}</div>
+              <div class="mathjax-block math-content">{{ r.analyse_ia | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
 
               <p><strong>{{ 'Note :' if lang == 'fr' else 'Score:' }}</strong>
                 <span class="etoiles">{{ r.etoiles }} <i class="fas fa-star"></i></span>
@@ -430,28 +438,14 @@
           <div class="reponse">
             <div class="reponse-content">
               <p><strong>{{ 'Question :' if lang == 'fr' else 'Question:' }}</strong></p>
-              <div class="mathjax-block">{{ t.question | e }}</div>
+              <div class="mathjax-block math-content">{{ t.question | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
 
               <p><strong>{{ 'Réponse :' if lang == 'fr' else 'Answer:' }}</strong></p>
-              <div class="mathjax-block">{{ t.reponse_eleve | e }}</div>
+              <div class="mathjax-block math-content">{{ t.reponse_eleve | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
 
               <p><strong>{{ 'Analyse IA :' if lang == 'fr' else 'AI Feedback:' }}</strong></p>
-              <div class="mathjax-block">
-                {% for line in t.analyse_ia.split('\n') %}
-                  {% set l = line.strip() %}
-                  {% if l.lower().startswith("analyse") %}
-                    <p><strong><i class="fas fa-brain"></i> {{ 'Analyse' if lang == 'fr' else 'Analysis' }}</strong></p>
-                  {% elif l.lower().startswith("note") or l.lower().startswith("score") %}
-                    {% set note = l[-1]|int %}
-                    <p class="etoiles"><i class="fas fa-star"></i> {{ 'Note' if lang == 'fr' else 'Score' }} : {{ note }}</p>
-                  {% elif "résolution experte" in l.lower() or "expert resolution" in l.lower() %}
-                    <p><strong><i class="fas fa-user-tie"></i> {{ 'Méthode de l\'expert' if lang == 'fr' else "Expert's method" }}</strong></p>
-                  {% elif "résultat final" in l.lower() or "final answer" in l.lower() %}
-                    <p><strong><i class="fas fa-check-circle"></i> {{ 'Résultat final' if lang == 'fr' else "Final Answer" }}</strong></p>
-                  {% elif '\\' in l or 'frac' in l or 'sqrt' in l or '^' in l or 'tan' in l or 'cos' in l or 'sin' in l %}
-                    <p>$$ {{ l }} $$</p>
-                  {% endif %}
-                {% endfor %}
+              <div class="mathjax-block math-content">
+                {{ t.analyse_ia | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}
               </div>
 
               <p><strong>{{ 'Note :' if lang == 'fr' else 'Score:' }}</strong>
@@ -493,21 +487,111 @@
   <!-- Script pour traiter le contenu MathJax après le chargement -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Réinitialiser MathJax pour traiter le contenu dynamique
-      if (window.MathJax) {
-        MathJax.typesetPromise && MathJax.typesetPromise();
-      }
+      console.log('Page historique chargée');
       
+      // Fonction pour nettoyer les tabulations et espaces superflus
+      function cleanTextContent(element) {
+        if (!element || !element.classList.contains('mathjax-block')) return;
+        
+        // Remplacer les tabulations multiples par un seul espace
+        let text = element.textContent || element.innerText;
+        text = text
+          .replace(/\t+/g, ' ')        // Remplacer les tabulations par espaces
+          .replace(/  +/g, ' ')        // Remplacer les espaces multiples
+          .replace(/^\s+|\s+$/g, '')   // Supprimer les espaces en début/fin
+          .replace(/\n\s*\n\s*\n/g, '\n\n'); // Normaliser les sauts de ligne
+        
+        element.textContent = text;
+      }
+
+      // Nettoyer tous les blocs de contenu
+      document.querySelectorAll('.mathjax-block').forEach(cleanTextContent);
+
+      // Fonction pour convertir les fractions Unicode en LaTeX
+      function convertUnicodeFractions(element) {
+        if (!element || !element.classList.contains('math-content')) return;
+        
+        let content = element.innerHTML;
+        
+        // Remplacer les fractions Unicode par du LaTeX
+        const fractionMap = {
+          '¼': '\\frac{1}{4}',
+          '½': '\\frac{1}{2}', 
+          '¾': '\\frac{3}{4}',
+          '⅓': '\\frac{1}{3}',
+          '⅔': '\\frac{2}{3}',
+          '⅕': '\\frac{1}{5}',
+          '⅖': '\\frac{2}{5}',
+          '⅗': '\\frac{3}{5}',
+          '⅘': '\\frac{4}{5}',
+          '⅙': '\\frac{1}{6}',
+          '⅚': '\\frac{5}{6}',
+          '⅛': '\\frac{1}{8}',
+          '⅜': '\\frac{3}{8}',
+          '⅝': '\\frac{5}{8}',
+          '⅞': '\\frac{7}{8}'
+        };
+        
+        for (const [unicode, latex] of Object.entries(fractionMap)) {
+          content = content.replace(new RegExp(unicode, 'g'), latex);
+        }
+        
+        // Remplacer le symbole de division Unicode
+        content = content.replace(/∕/g, '/');
+        
+        // Normaliser les espaces autour des formules LaTeX
+        content = content.replace(/\s*\\/g, ' \\').replace(/\\\s*/g, '\\ ');
+        
+        element.innerHTML = content;
+      }
+
+      // Convertir les fractions dans tous les éléments mathématiques
+      document.querySelectorAll('.math-content').forEach(convertUnicodeFractions);
+      
+      // Configurer MathJax pour traiter les formules
+      if (window.MathJax) {
+        console.log('MathJax disponible, traitement des formules...');
+        
+        setTimeout(() => {
+          MathJax.typesetPromise().then(() => {
+            console.log('Formules mathématiques rendues avec succès');
+          }).catch((err) => {
+            console.warn('Erreur lors du rendu MathJax:', err);
+          });
+        }, 500);
+      }
+
       // Réappliquer MathJax quand on ouvre les détails
       document.querySelectorAll('details').forEach(detail => {
         detail.addEventListener('toggle', function() {
           if (this.open && window.MathJax) {
+            // Nettoyer et convertir le contenu nouvellement visible
+            this.querySelectorAll('.math-content').forEach(convertUnicodeFractions);
+            
             setTimeout(() => {
-              MathJax.typesetPromise && MathJax.typesetPromise([this]);
+              MathJax.typesetPromise([this]).catch(err => {
+                console.warn('Erreur MathJax dans détail:', err);
+              });
             }, 100);
           }
         });
       });
+    });
+
+    // Observer les changements dans le DOM
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes.length && window.MathJax) {
+          setTimeout(() => {
+            MathJax.typesetPromise();
+          }, 100);
+        }
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
     });
   </script>
 </body>
