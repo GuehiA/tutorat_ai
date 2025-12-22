@@ -5577,7 +5577,7 @@ import os
 from models import db, Niveau, Exercice
 
 
-@app.route("/ajouter-exercices", methods=["GET", "POST"])
+@app.route("/admin/ajouter-exercices", methods=["GET", "POST"])
 def ajouter_exercices():
     # 🌍 Langue
     lang = session.get("lang", "fr")
