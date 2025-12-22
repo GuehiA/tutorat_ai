@@ -5658,7 +5658,8 @@ def ajouter_exercice():
                              count=index-1)
 
     niveaux = Niveau.query.all()
-    return render_template("ajouter_exercice_multiple.html", 
+    # Utiliser le template existant au lieu du nouveau
+    return render_template("ajouter_exercice.html", 
                          niveaux=niveaux, 
                          lang=session.get("lang", "fr"), 
                          dashboard_url=dashboard_url)
