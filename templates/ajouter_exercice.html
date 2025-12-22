@@ -965,6 +965,42 @@
       }
     });
 
+    // FONCTION CORRIGÉE POUR LES ONGLETS DE LANGUE
+    function initLanguageTabs() {
+      // Délégation d'événements pour gérer tous les onglets
+      document.addEventListener('click', function(e) {
+        // Vérifier si le clic est sur un onglet (.tab)
+        if (e.target && e.target.classList.contains('tab')) {
+          const tab = e.target;
+          const exercise = tab.closest('.exercise-card');
+          if (!exercise) return;
+          
+          const tabId = tab.getAttribute('data-tab');
+          
+          // Désactiver tous les onglets de cet exercice
+          const allTabsInExercise = exercise.querySelectorAll('.tab');
+          allTabsInExercise.forEach(t => t.classList.remove('active'));
+          
+          // Activer l'onglet cliqué
+          tab.classList.add('active');
+          
+          // Masquer tous les contenus de cet exercice
+          const allContentsInExercise = exercise.querySelectorAll('.tab-content');
+          allContentsInExercise.forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Afficher le contenu correspondant
+          // data-tab="french-1" -> id="french-content-1"
+          const contentId = tabId.replace('-', '-content-');
+          const targetContent = document.getElementById(contentId);
+          if (targetContent) {
+            targetContent.classList.add('active');
+          }
+        }
+      });
+    }
+
     // Fonctions pour la gestion des exercices multiples
     function addExercise() {
       exerciseCount++;
@@ -981,8 +1017,7 @@
         });
       }
       
-      // Initialiser les onglets et éditeurs mathématiques pour le nouvel exercice
-      initLanguageTabsForExercise(exerciseCount);
+      // Initialiser les champs mathématiques
       initMathFieldsForExercise(exerciseCount);
       
       // Afficher une notification
@@ -1065,30 +1100,6 @@
       });
     }
 
-    function initLanguageTabsForExercise(exerciseIndex) {
-      const exercise = document.querySelector(`.exercise-card[data-exercise="${exerciseIndex}"]`);
-      if (!exercise) return;
-      
-      const tabs = exercise.querySelectorAll('.tab');
-      tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          const tabId = tab.getAttribute('data-tab');
-          
-          // Retirer active de tous les onglets
-          tabs.forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          
-          // Masquer tous les contenus
-          exercise.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-          });
-          
-          // Afficher le contenu correspondant
-          document.getElementById(tabId.replace('-', '-content-')).classList.add('active');
-        });
-      });
-    }
-
     function initMathFieldsForExercise(exerciseIndex) {
       const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en'];
       
@@ -1142,31 +1153,6 @@
         langJs === 'en' ? 'Applied to all exercises' : 'Appliqué à tous les exercices',
         'success'
       );
-    }
-
-    // Initialisation des onglets de langue
-    function initLanguageTabs() {
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-          const exercise = this.closest('.exercise-card');
-          if (!exercise) return;
-          
-          const tabId = this.getAttribute('data-tab');
-          const exerciseIndex = exercise.getAttribute('data-exercise');
-          
-          // Retirer active de tous les onglets de cet exercice
-          exercise.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          this.classList.add('active');
-          
-          // Masquer tous les contenus de cet exercice
-          exercise.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-          });
-          
-          // Afficher le contenu correspondant
-          document.getElementById(tabId.replace('-', '-content-')).classList.add('active');
-        });
-      });
     }
 
     // Initialiser les champs mathématiques
