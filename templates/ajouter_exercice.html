@@ -120,7 +120,7 @@
       color: #e74c3c;
     }
 
-    textarea, input, select {
+    textarea, input, select, math-field {
       width: 100%;
       padding: 12px 15px;
       border: 1px solid var(--light-gray);
@@ -130,7 +130,7 @@
       transition: var(--transition);
     }
 
-    textarea:focus, input:focus, select:focus {
+    textarea:focus, input:focus, select:focus, math-field:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
@@ -143,20 +143,8 @@
     }
 
     math-field {
-      width: 100%;
       min-height: 3.5em;
       margin-top: 5px;
-      padding: 12px 15px;
-      border: 1px solid var(--light-gray);
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 1rem;
-    }
-
-    math-field:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
     }
 
     .math-editor-container {
@@ -539,6 +527,7 @@
       }
     }
   </style>
+  <script defer src="https://unpkg.com/mathlive"></script>
 </head>
 <body>
   <div class="container">
@@ -645,9 +634,9 @@
                     <label for="question_fr_1" class="required">Question <span class="required-badge">Requis</span>:</label>
                     <textarea name="exercises[1][question_fr]" id="question_fr_1" placeholder="Saisissez la question en français" required></textarea>
                     <div class="math-editor-container">
-                      <div id="math-field-container-1" class="math-field-container"></div>
+                      <math-field id="question_fr_field_1" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
                     </div>
-                    <button type="button" class="math-insert-btn" onclick="insererLatex('question_fr_1', 1)">
+                    <button type="button" class="math-insert-btn" onclick="insererLatex('question_fr_1')">
                       <i class="fas fa-plus"></i> Insérer une formule
                     </button>
                   </div>
@@ -663,9 +652,9 @@
                       <label for="reponse_fr_1">Réponse <span class="optional-badge">Facultatif</span>:</label>
                       <textarea name="exercises[1][reponse_fr]" id="reponse_fr_1" placeholder="Saisissez la réponse correcte (optionnel)"></textarea>
                       <div class="math-editor-container">
-                        <div id="math-field-container-reponse-fr-1" class="math-field-container"></div>
+                        <math-field id="reponse_fr_field_1" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
                       </div>
-                      <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_fr_1', 1)">
+                      <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_fr_1')">
                         <i class="fas fa-plus"></i> Insérer une formule
                       </button>
                     </div>
@@ -674,9 +663,9 @@
                       <label for="explication_fr_1">Explication <span class="optional-badge">Facultatif</span>:</label>
                       <textarea name="exercises[1][explication_fr]" id="explication_fr_1" placeholder="Expliquez la solution ou le raisonnement (optionnel)"></textarea>
                       <div class="math-editor-container">
-                        <div id="math-field-container-explication-fr-1" class="math-field-container"></div>
+                        <math-field id="explication_fr_field_1" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
                       </div>
-                      <button type="button" class="math-insert-btn" onclick="insererLatex('explication_fr_1', 1)">
+                      <button type="button" class="math-insert-btn" onclick="insererLatex('explication_fr_1')">
                         <i class="fas fa-plus"></i> Insérer une formule
                       </button>
                     </div>
@@ -685,9 +674,9 @@
                       <label for="options_fr_1">Options (séparées par des virgules) <span class="optional-badge">Facultatif</span>:</label>
                       <textarea name="exercises[1][options_fr]" id="options_fr_1" placeholder="Option 1, Option 2, Option 3, ... (optionnel)"></textarea>
                       <div class="math-editor-container">
-                        <div id="math-field-container-options-fr-1" class="math-field-container"></div>
+                        <math-field id="options_fr_field_1" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
                       </div>
-                      <button type="button" class="math-insert-btn" onclick="insererLatex('options_fr_1', 1)">
+                      <button type="button" class="math-insert-btn" onclick="insererLatex('options_fr_1')">
                         <i class="fas fa-plus"></i> Insérer une formule
                       </button>
                     </div>
@@ -725,9 +714,9 @@
                     <label for="question_en_1" class="required">Question <span class="required-badge">Required</span>:</label>
                     <textarea name="exercises[1][question_en]" id="question_en_1" placeholder="Enter the question in English" required></textarea>
                     <div class="math-editor-container">
-                      <div id="math-field-container-en-1" class="math-field-container"></div>
+                      <math-field id="question_en_field_1" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
                     </div>
-                    <button type="button" class="math-insert-btn" onclick="insererLatex('question_en_1', 1)">
+                    <button type="button" class="math-insert-btn" onclick="insererLatex('question_en_1')">
                       <i class="fas fa-plus"></i> Insert formula
                     </button>
                   </div>
@@ -738,9 +727,9 @@
                       <label for="reponse_en_1">Answer <span class="optional-badge">Optional</span>:</label>
                       <textarea name="exercises[1][reponse_en]" id="reponse_en_1" placeholder="Enter the correct answer (optional)"></textarea>
                       <div class="math-editor-container">
-                        <div id="math-field-container-reponse-en-1" class="math-field-container"></div>
+                        <math-field id="reponse_en_field_1" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
                       </div>
-                      <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_en_1', 1)">
+                      <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_en_1')">
                         <i class="fas fa-plus"></i> Insert formula
                       </button>
                     </div>
@@ -749,9 +738,9 @@
                       <label for="explication_en_1">Explanation <span class="optional-badge">Optional</span>:</label>
                       <textarea name="exercises[1][explication_en]" id="explication_en_1" placeholder="Explain the solution or reasoning (optional)"></textarea>
                       <div class="math-editor-container">
-                        <div id="math-field-container-explication-en-1" class="math-field-container"></div>
+                        <math-field id="explication_en_field_1" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
                       </div>
-                      <button type="button" class="math-insert-btn" onclick="insererLatex('explication_en_1', 1)">
+                      <button type="button" class="math-insert-btn" onclick="insererLatex('explication_en_1')">
                         <i class="fas fa-plus"></i> Insert formula
                       </button>
                     </div>
@@ -760,9 +749,9 @@
                       <label for="options_en_1">Options (comma-separated) <span class="optional-badge">Optional</span>:</label>
                       <textarea name="exercises[1][options_en]" id="options_en_1" placeholder="Option 1, Option 2, Option 3, ... (optional)"></textarea>
                       <div class="math-editor-container">
-                        <div id="math-field-container-options-en-1" class="math-field-container"></div>
+                        <math-field id="options_en_field_1" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
                       </div>
-                      <button type="button" class="math-insert-btn" onclick="insererLatex('options_en_1', 1)">
+                      <button type="button" class="math-insert-btn" onclick="insererLatex('options_en_1')">
                         <i class="fas fa-plus"></i> Insert formula
                       </button>
                     </div>
@@ -794,151 +783,101 @@
   <!-- Notification -->
   <div class="notification" id="notification"></div>
 
-  <!-- Charger MathLive après le DOM -->
-  <script src="https://unpkg.com/mathlive"></script>
   <script>
     // Variables globales
     let exerciseCount = 1;
     const langJs = "{{ lang }}";
     const notification = document.getElementById("notification");
     const submitBtn = document.getElementById("submitBtn");
-    
-    // Stocker les instances MathLive
-    const mathFields = new Map();
 
-    // Initialiser MathLive après le chargement
-    document.addEventListener("DOMContentLoaded", async () => {
-      console.log("📐 Initialisation de MathLive...");
-      
-      // Attendre que MathLive soit chargé
-      if (typeof MathLive === 'undefined') {
-        console.log("⏳ En attente de MathLive...");
-        await new Promise(resolve => {
-          const checkMathLive = setInterval(() => {
-            if (typeof MathLive !== 'undefined') {
-              clearInterval(checkMathLive);
-              resolve();
+    // FONCTION CORRIGÉE : Réindexation OBLIGATOIRE
+    function reindexExercises() {
+        const cards = document.querySelectorAll(".exercise-card");
+
+        cards.forEach((card, index) => {
+            const newIndex = index + 1;
+
+            // Mettre à jour l'attribut data-exercise
+            card.setAttribute("data-exercise", newIndex);
+
+            // Mettre à jour le numéro affiché
+            const exerciseNumber = card.querySelector(".exercise-number");
+            if (exerciseNumber) {
+                exerciseNumber.textContent = newIndex;
             }
-          }, 100);
-        });
-      }
-      
-      console.log("✅ MathLive chargé");
-      
-      // Initialiser le premier exercice
-      initMathFieldsForExercise(1);
-      initLanguageTabs();
-      setupNavigation();
-      initFileUploads();
-      
-      // Charger la hiérarchie pédagogique
-      const niveau = document.getElementById("niveau");
-      const matiere = document.getElementById("matiere");
-      const unite = document.getElementById("unite");
-      const lecon = document.getElementById("lecon");
-      
-      // Gestion des changements de niveau
-      if (niveau) {
-        niveau.addEventListener("change", async function() {
-          await loadMatieres(this.value, matiere);
-        });
-      }
-      
-      // Gestion des changements de matière
-      if (matiere) {
-        matiere.addEventListener("change", async function() {
-          await loadUnites(this.value, unite);
-        });
-      }
-      
-      // Gestion des changements d'unité
-      if (unite) {
-        unite.addEventListener("change", async function() {
-          await loadLecons(this.value, lecon);
-        });
-      }
-    });
 
-    // Initialiser les champs MathLive pour un exercice
-    function initMathFieldsForExercise(exerciseIndex) {
-      console.log(`📐 Initialisation des champs MathLive pour l'exercice ${exerciseIndex}`);
-      
-      const mathFieldConfigs = [
-        { 
-          containerId: `math-field-container-${exerciseIndex}`, 
-          textAreaId: `question_fr_${exerciseIndex}`,
-          placeholder: "Écrivez des formules mathématiques ici"
-        },
-        { 
-          containerId: `math-field-container-reponse-fr-${exerciseIndex}`, 
-          textAreaId: `reponse_fr_${exerciseIndex}`,
-          placeholder: "Écrivez des formules mathématiques ici"
-        },
-        { 
-          containerId: `math-field-container-explication-fr-${exerciseIndex}`, 
-          textAreaId: `explication_fr_${exerciseIndex}`,
-          placeholder: "Écrivez des formules mathématiques ici"
-        },
-        { 
-          containerId: `math-field-container-options-fr-${exerciseIndex}`, 
-          textAreaId: `options_fr_${exerciseIndex}`,
-          placeholder: "Écrivez des formules mathématiques ici"
-        },
-        { 
-          containerId: `math-field-container-en-${exerciseIndex}`, 
-          textAreaId: `question_en_${exerciseIndex}`,
-          placeholder: "Write math formulas here"
-        },
-        { 
-          containerId: `math-field-container-reponse-en-${exerciseIndex}`, 
-          textAreaId: `reponse_en_${exerciseIndex}`,
-          placeholder: "Write math formulas here"
-        },
-        { 
-          containerId: `math-field-container-explication-en-${exerciseIndex}`, 
-          textAreaId: `explication_en_${exerciseIndex}`,
-          placeholder: "Write math formulas here"
-        },
-        { 
-          containerId: `math-field-container-options-en-${exerciseIndex}`, 
-          textAreaId: `options_en_${exerciseIndex}`,
-          placeholder: "Write math formulas here"
-        }
-      ];
-      
-      mathFieldConfigs.forEach(config => {
-        const container = document.getElementById(config.containerId);
-        const textArea = document.getElementById(config.textAreaId);
-        
-        if (container && textArea) {
-          // Nettoyer le container
-          container.innerHTML = '';
-          
-          // Créer le champ MathLive
-          const mathField = document.createElement('math-field');
-          mathField.setAttribute('virtual-keyboard-mode', 'onfocus');
-          mathField.setAttribute('placeholder', config.placeholder);
-          
-          // Synchroniser avec le textarea
-          if (textArea.value) {
-            mathField.value = textArea.value;
-          }
-          
-          // Ajouter l'événement de changement
-          mathField.addEventListener('input', () => {
-            textArea.value = mathField.value;
-            console.log(`🔄 MathLive ${config.textAreaId} → ${mathField.value.substring(0, 50)}`);
-          });
-          
-          container.appendChild(mathField);
-          
-          // Stocker la référence
-          const key = `${config.textAreaId}_math`;
-          mathFields.set(key, mathField);
-          
-          console.log(`✅ Champ MathLive créé: ${config.containerId}`);
-        }
-      });
+            // Mettre à jour tous les champs avec name="exercises[...]"
+            card.querySelectorAll("[name^='exercises[']").forEach(input => {
+                const oldName = input.name;
+                const newName = oldName.replace(
+                    /exercises\[\d+\]/,
+                    `exercises[${newIndex}]`
+                );
+                input.name = newName;
+                
+                // Mettre à jour l'ID si nécessaire
+                if (input.id) {
+                    input.id = input.id.replace(/\d+$/, newIndex);
+                }
+            });
+
+            // Mettre à jour le champ d'image
+            const fileInput = card.querySelector("input[type='file']");
+            if (fileInput) {
+                fileInput.name = `image_exercice_${newIndex}`;
+                fileInput.id = `image_exercice_${newIndex}`;
+            }
+
+            // Mettre à jour les onglets de langue
+            const tabs = card.querySelectorAll(".tab");
+            tabs.forEach(tab => {
+                const oldTab = tab.getAttribute("data-tab");
+                if (oldTab) {
+                    const newTab = oldTab.replace(/\d+$/, newIndex);
+                    tab.setAttribute("data-tab", newTab);
+                }
+            });
+
+            // Mettre à jour les contenus des onglets
+            const tabContents = card.querySelectorAll(".tab-content");
+            tabContents.forEach(content => {
+                const oldId = content.id;
+                if (oldId) {
+                    const newId = oldId.replace(/\d+$/, newIndex);
+                    content.id = newId;
+                }
+            });
+
+            // Mettre à jour les champs mathématiques
+            const mathFields = card.querySelectorAll("math-field");
+            mathFields.forEach(mathField => {
+                const oldId = mathField.id;
+                if (oldId) {
+                    const newId = oldId.replace(/\d+$/, newIndex);
+                    mathField.id = newId;
+                }
+            });
+
+            // Mettre à jour les aperçus d'image
+            const imagePreview = card.querySelector(".image-preview");
+            if (imagePreview) {
+                imagePreview.id = `imagePreview-${newIndex}`;
+            }
+
+            // Mettre à jour les boutons onclick
+            const buttons = card.querySelectorAll("button");
+            buttons.forEach(button => {
+                const onclick = button.getAttribute("onclick");
+                if (onclick) {
+                    const newOnclick = onclick.replace(/\d+/g, newIndex);
+                    button.setAttribute("onclick", newOnclick);
+                }
+            });
+        });
+
+        // Mettre à jour le compteur
+        document.getElementById("exerciseCounter").textContent = cards.length;
+        exerciseCount = cards.length;
     }
 
     // Données du template pour les nouveaux exercices
@@ -961,9 +900,9 @@
           <label for="question_fr_{{index}}" class="required">Question <span class="required-badge">Requis</span>:</label>
           <textarea name="exercises[{{index}}][question_fr]" id="question_fr_{{index}}" placeholder="Saisissez la question en français" required></textarea>
           <div class="math-editor-container">
-            <div id="math-field-container-{{index}}" class="math-field-container"></div>
+            <math-field id="question_fr_field_{{index}}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
           </div>
-          <button type="button" class="math-insert-btn" onclick="insererLatex('question_fr_{{index}}', {{index}})">
+          <button type="button" class="math-insert-btn" onclick="insererLatex('question_fr_{{index}}')">
             <i class="fas fa-plus"></i> Insérer une formule
           </button>
         </div>
@@ -978,9 +917,9 @@
             <label for="reponse_fr_{{index}}">Réponse <span class="optional-badge">Facultatif</span>:</label>
             <textarea name="exercises[{{index}}][reponse_fr]" id="reponse_fr_{{index}}" placeholder="Saisissez la réponse correcte (optionnel)"></textarea>
             <div class="math-editor-container">
-              <div id="math-field-container-reponse-fr-{{index}}" class="math-field-container"></div>
+              <math-field id="reponse_fr_field_{{index}}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_fr_{{index}}', {{index}})">
+            <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_fr_{{index}}')">
               <i class="fas fa-plus"></i> Insérer une formule
             </button>
           </div>
@@ -989,9 +928,9 @@
             <label for="explication_fr_{{index}}">Explication <span class="optional-badge">Facultatif</span>:</label>
             <textarea name="exercises[{{index}}][explication_fr]" id="explication_fr_{{index}}" placeholder="Expliquez la solution ou le raisonnement (optionnel)"></textarea>
             <div class="math-editor-container">
-              <div id="math-field-container-explication-fr-{{index}}" class="math-field-container"></div>
+              <math-field id="explication_fr_field_{{index}}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('explication_fr_{{index}}', {{index}})">
+            <button type="button" class="math-insert-btn" onclick="insererLatex('explication_fr_{{index}}')">
               <i class="fas fa-plus"></i> Insérer une formule
             </button>
           </div>
@@ -1000,9 +939,9 @@
             <label for="options_fr_{{index}}">Options (séparées par des virgules) <span class="optional-badge">Facultatif</span>:</label>
             <textarea name="exercises[{{index}}][options_fr]" id="options_fr_{{index}}" placeholder="Option 1, Option 2, Option 3, ... (optionnel)"></textarea>
             <div class="math-editor-container">
-              <div id="math-field-container-options-fr-{{index}}" class="math-field-container"></div>
+              <math-field id="options_fr_field_{{index}}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('options_fr_{{index}}', {{index}})">
+            <button type="button" class="math-insert-btn" onclick="insererLatex('options_fr_{{index}}')">
               <i class="fas fa-plus"></i> Insérer une formule
             </button>
           </div>
@@ -1038,9 +977,9 @@
           <label for="question_en_{{index}}" class="required">Question <span class="required-badge">Required</span>:</label>
           <textarea name="exercises[{{index}}][question_en]" id="question_en_{{index}}" placeholder="Enter the question in English" required></textarea>
           <div class="math-editor-container">
-            <div id="math-field-container-en-{{index}}" class="math-field-container"></div>
+            <math-field id="question_en_field_{{index}}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
           </div>
-          <button type="button" class="math-insert-btn" onclick="insererLatex('question_en_{{index}}', {{index}})">
+          <button type="button" class="math-insert-btn" onclick="insererLatex('question_en_{{index}}')">
             <i class="fas fa-plus"></i> Insert formula
           </button>
         </div>
@@ -1050,9 +989,9 @@
             <label for="reponse_en_{{index}}">Answer <span class="optional-badge">Optional</span>:</label>
             <textarea name="exercises[{{index}}][reponse_en]" id="reponse_en_{{index}}" placeholder="Enter the correct answer (optional)"></textarea>
             <div class="math-editor-container">
-              <div id="math-field-container-reponse-en-{{index}}" class="math-field-container"></div>
+              <math-field id="reponse_en_field_{{index}}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_en_{{index}}', {{index}})">
+            <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_en_{{index}}')">
               <i class="fas fa-plus"></i> Insert formula
             </button>
           </div>
@@ -1061,9 +1000,9 @@
             <label for="explication_en_{{index}}">Explanation <span class="optional-badge">Optional</span>:</label>
             <textarea name="exercises[{{index}}][explication_en]" id="explication_en_{{index}}" placeholder="Explain the solution or reasoning (optional)"></textarea>
             <div class="math-editor-container">
-              <div id="math-field-container-explication-en-{{index}}" class="math-field-container"></div>
+              <math-field id="explication_en_field_{{index}}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('explication_en_{{index}}', {{index}})">
+            <button type="button" class="math-insert-btn" onclick="insererLatex('explication_en_{{index}}')">
               <i class="fas fa-plus"></i> Insert formula
             </button>
           </div>
@@ -1072,9 +1011,9 @@
             <label for="options_en_{{index}}">Options (comma-separated) <span class="optional-badge">Optional</span>:</label>
             <textarea name="exercises[{{index}}][options_en]" id="options_en_{{index}}" placeholder="Option 1, Option 2, Option 3, ... (optional)"></textarea>
             <div class="math-editor-container">
-              <div id="math-field-container-options-en-{{index}}" class="math-field-container"></div>
+              <math-field id="options_en_field_{{index}}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('options_en_{{index}}', {{index}})">
+            <button type="button" class="math-insert-btn" onclick="insererLatex('options_en_{{index}}')">
               <i class="fas fa-plus"></i> Insert formula
             </button>
           </div>
@@ -1082,165 +1021,46 @@
       </div>
     </div>`;
 
-    // FONCTION CORRIGÉE POUR AJOUTER UN EXERCICE
-    function addExercise() {
-        const cards = document.querySelectorAll('.exercise-card');
-        const nextIndex = cards.length + 1;
-        
-        console.log(`➕ Ajout de l'exercice ${nextIndex}`);
-        const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, nextIndex);
-        document.getElementById("exercisesContainer").insertAdjacentHTML('beforeend', newExercise);
-        
-        // Réindexer TOUS les exercices
-        reindexExercises();
-        
-        // Initialiser les champs MathLive pour le nouvel exercice
-        setTimeout(() => {
-          initMathFieldsForExercise(nextIndex);
-          console.log(`✅ Champs MathLive initialisés pour l'exercice ${nextIndex}`);
-        }, 100);
-        
-        // Afficher tous les boutons de suppression
-        document.querySelectorAll('.remove-exercise').forEach(btn => {
-            btn.style.display = 'flex';
+    // Initialisation
+    document.addEventListener("DOMContentLoaded", () => {
+      initLanguageTabs();
+      initMathFields();
+      setupNavigation();
+      initFileUploads();
+      
+      // Charger la hiérarchie pédagogique
+      const niveau = document.getElementById("niveau");
+      const matiere = document.getElementById("matiere");
+      const unite = document.getElementById("unite");
+      const lecon = document.getElementById("lecon");
+      
+      // Gestion des changements de niveau
+      if (niveau) {
+        niveau.addEventListener("change", async function() {
+          await loadMatieres(this.value, matiere);
         });
-        
-        // Afficher une notification
-        showNotification(
-            langJs === 'en' ? `Exercise ${nextIndex} added` : `Exercice ${nextIndex} ajouté`,
-            'success'
-        );
-    }
-
-    // FONCTION AMÉLIORÉE : Réindexation
-    function reindexExercises() {
-        const cards = document.querySelectorAll(".exercise-card");
-        console.log(`🔧 Réindexation de ${cards.length} exercices`);
-        
-        cards.forEach((card, index) => {
-            const newIndex = index + 1;
-            const oldIndex = card.getAttribute("data-exercise");
-            
-            if (newIndex === parseInt(oldIndex)) {
-                return;
-            }
-            
-            console.log(`  🔄 Exercice ${oldIndex} → ${newIndex}`);
-            
-            // Mettre à jour l'attribut data-exercise
-            card.setAttribute("data-exercise", newIndex);
-            
-            // Mettre à jour le numéro affiché
-            const exerciseNumber = card.querySelector(".exercise-number");
-            if (exerciseNumber) {
-                exerciseNumber.textContent = newIndex;
-            }
-            
-            // Mettre à jour TOUS les champs avec name="exercises[...]"
-            updateFieldNames(card, oldIndex, newIndex);
-            
-            // Mettre à jour les IDs
-            updateIdsInCard(card, oldIndex, newIndex);
-        });
-        
-        // Mettre à jour le compteur
-        document.getElementById("exerciseCounter").textContent = cards.length;
-        exerciseCount = cards.length;
-        
-        console.log(`✅ Réindexation terminée. ${cards.length} exercices.`);
-    }
-
-    function updateFieldNames(card, oldIndex, newIndex) {
-        // Mettre à jour les noms des champs
-        const allInputs = card.querySelectorAll("[name^='exercises[']");
-        allInputs.forEach(input => {
-            const oldName = input.name;
-            if (oldName.includes("exercises[")) {
-                const newName = oldName.replace(
-                    /exercises\[\d+\]/,
-                    `exercises[${newIndex}]`
-                );
-                input.name = newName;
-            }
-        });
-        
-        // Mettre à jour le champ d'image
-        const fileInputs = card.querySelectorAll("input[type='file']");
-        fileInputs.forEach(fileInput => {
-            fileInput.name = `image_exercice_${newIndex}`;
-        });
-    }
-
-    function updateIdsInCard(card, oldIndex, newIndex) {
-        // Mettre à jour tous les IDs
-        const elementsWithId = card.querySelectorAll("[id]");
-        elementsWithId.forEach(element => {
-            const oldId = element.id;
-            // Remplacer le vieil index par le nouveau dans l'ID
-            const newId = oldId.replace(
-                new RegExp(`_${oldIndex}(?![0-9])`, 'g'), 
-                `_${newIndex}`
-            ).replace(
-                new RegExp(`-${oldIndex}(?![0-9])`, 'g'), 
-                `-${newIndex}`
-            );
-            
-            if (oldId !== newId) {
-                element.id = newId;
-            }
-        });
-        
-        // Mettre à jour les attributs data-tab
-        const tabs = card.querySelectorAll("[data-tab]");
-        tabs.forEach(tab => {
-            const oldTab = tab.getAttribute("data-tab");
-            const newTab = oldTab.replace(
-                new RegExp(`-${oldIndex}$`), 
-                `-${newIndex}`
-            );
-            tab.setAttribute("data-tab", newTab);
-        });
-        
-        // Mettre à jour les onclick
-        const buttons = card.querySelectorAll("button");
-        buttons.forEach(button => {
-            const onclick = button.getAttribute("onclick");
-            if (onclick) {
-                const newOnclick = onclick.replace(
-                    new RegExp(`\\(${oldIndex}\\)`, 'g'), 
-                    `(${newIndex})`
-                );
-                button.setAttribute("onclick", newOnclick);
-            }
-        });
-    }
-
-    // FONCTION CORRIGÉE POUR SUPPRIMER UN EXERCICE
-    function removeExercise(index) {
-      console.log(`🗑️ Suppression de l'exercice ${index}`);
-      const exercise = document.querySelector(`.exercise-card[data-exercise="${index}"]`);
-      if (exercise && exerciseCount > 1) {
-        exercise.remove();
-        
-        // Réindexer TOUS les exercices restants
-        reindexExercises();
-        
-        // Cacher le bouton de suppression s'il n'y a qu'un exercice
-        const remainingCards = document.querySelectorAll('.exercise-card');
-        if (remainingCards.length === 1) {
-          document.querySelector('.remove-exercise').style.display = 'none';
-        }
-        
-        showNotification(
-          langJs === 'en' ? 'Exercise removed' : 'Exercice supprimé',
-          'success'
-        );
       }
-    }
+      
+      // Gestion des changements de matière
+      if (matiere) {
+        matiere.addEventListener("change", async function() {
+          await loadUnites(this.value, unite);
+        });
+      }
+      
+      // Gestion des changements d'unité
+      if (unite) {
+        unite.addEventListener("change", async function() {
+          await loadLecons(this.value, lecon);
+        });
+      }
+    });
 
     // FONCTION CORRIGÉE POUR LES ONGLETS DE LANGUE
     function initLanguageTabs() {
+      // Délégation d'événements pour gérer tous les onglets
       document.addEventListener('click', function(e) {
+        // Vérifier si le clic est sur un onglet (.tab)
         if (e.target && e.target.classList.contains('tab')) {
           const tab = e.target;
           const exercise = tab.closest('.exercise-card');
@@ -1262,11 +1082,72 @@
           });
           
           // Afficher le contenu correspondant
+          // data-tab="french-1" -> id="french-content-1"
           const contentId = tabId.replace('-', '-content-');
           const targetContent = exercise.querySelector(`#${contentId}`);
           if (targetContent) {
             targetContent.classList.add('active');
           }
+        }
+      });
+    }
+
+    // FONCTION CORRIGÉE POUR AJOUTER UN EXERCICE
+    function addExercise() {
+      exerciseCount++;
+      const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, exerciseCount);
+      document.getElementById("exercisesContainer").insertAdjacentHTML('beforeend', newExercise);
+      
+      // Réindexer TOUS les exercices
+      reindexExercises();
+      
+      // Initialiser les champs mathématiques pour le nouvel exercice
+      initMathFieldsForExercise(exerciseCount);
+      
+      // Afficher tous les boutons de suppression
+      document.querySelectorAll('.remove-exercise').forEach(btn => {
+        btn.style.display = 'flex';
+      });
+      
+      // Afficher une notification
+      showNotification(
+        langJs === 'en' ? `Exercise added` : `Exercice ajouté`,
+        'success'
+      );
+    }
+
+    // FONCTION CORRIGÉE POUR SUPPRIMER UN EXERCICE
+    function removeExercise(index) {
+      const exercise = document.querySelector(`.exercise-card[data-exercise="${index}"]`);
+      if (exercise && exerciseCount > 1) {
+        exercise.remove();
+        
+        // Réindexer TOUS les exercices restants
+        reindexExercises();
+        
+        // Cacher le bouton de suppression s'il n'y a qu'un exercice
+        if (exerciseCount === 1) {
+          document.querySelector('.remove-exercise').style.display = 'none';
+        }
+        
+        showNotification(
+          langJs === 'en' ? 'Exercise removed' : 'Exercice supprimé',
+          'success'
+        );
+      }
+    }
+
+    function initMathFieldsForExercise(exerciseIndex) {
+      const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en', 'explication_en', 'options_en'];
+      
+      fields.forEach(field => {
+        const mathField = document.getElementById(`${field}_field_${exerciseIndex}`);
+        const textArea = document.getElementById(`${field}_${exerciseIndex}`);
+        
+        if (mathField && textArea) {
+          mathField.addEventListener('input', () => {
+            textArea.value = mathField.value;
+          });
         }
       });
     }
@@ -1311,13 +1192,30 @@
       );
     }
 
+    // Initialiser les champs mathématiques
+    function initMathFields() {
+      const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en', 'explication_en', 'options_en'];
+      
+      fields.forEach(field => {
+        const mathField = document.getElementById(`${field}_field_1`);
+        const textArea = document.getElementById(`${field}_1`);
+        
+        if (mathField && textArea) {
+          mathField.addEventListener('input', () => {
+            textArea.value = mathField.value;
+          });
+        }
+      });
+    }
+
     // Initialiser l'upload de fichier
     function initFileUploads() {
       document.querySelectorAll('.exercise-image').forEach(input => {
-        input.addEventListener('change', function() {
-          const exerciseIndex = this.id.match(/\d+/)[0];
-          previewImage(this, exerciseIndex);
-        });
+        if (input.id === 'image_exercice_1') {
+          input.addEventListener('change', function() {
+            previewImage(this, 1);
+          });
+        }
       });
     }
 
@@ -1341,31 +1239,26 @@
     }
 
     // Insérer du LaTeX dans un champ de texte
-    function insererLatex(fieldId, exerciseIndex) {
+    function insererLatex(fieldId) {
       const textarea = document.getElementById(fieldId);
-      const mathFieldKey = `${fieldId}_math`;
-      const mathField = mathFields.get(mathFieldKey);
+      const mathFieldId = fieldId + "_field";
+      const mathField = document.getElementById(mathFieldId);
       
-      if (textarea && mathField) {
+      if (textarea && mathField && mathField.value.trim()) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const before = textarea.value.substring(0, start);
         const after = textarea.value.substring(end);
-        const insertion = mathField.value.trim() || "\\frac{a}{b}";
+        const insertion = mathField.value.trim();
         
         textarea.value = before + insertion + after;
         textarea.selectionStart = textarea.selectionEnd = start + insertion.length;
         textarea.focus();
         
-        // Mettre à jour le champ MathLive
-        mathField.value = textarea.value;
-        
         showNotification(
           langJs === 'en' ? 'Formula inserted!' : 'Formule insérée !',
           'success'
         );
-      } else {
-        console.warn(`⚠️ Champ MathLive non trouvé pour ${fieldId}`);
       }
     }
 
@@ -1454,83 +1347,77 @@
       }
     }
 
-    // Gestion de la soumission du formulaire
+    // Gestion de la soumission du formulaire - AVEC RÉINDEXATION OBLIGATOIRE
     document.getElementById('exerciseForm').addEventListener('submit', function(e) {
-        console.log("🚀 Début de la soumission du formulaire");
+      // Réindexer AVANT la soumission
+      reindexExercises();
+      
+      // Debug: afficher les données du formulaire avant envoi
+      console.log('=== DEBUG FORM DATA BEFORE SUBMIT ===');
+      console.log('Number of exercise cards:', document.querySelectorAll('.exercise-card').length);
+      
+      // Validation du niveau/leçon
+      const niveauSelect = document.getElementById('niveau');
+      const leconSelect = document.getElementById('lecon');
+      
+      if (!niveauSelect || !niveauSelect.value) {
+        e.preventDefault();
+        showNotification(
+          langJs === 'en' ? 'Please select a level' : 'Veuillez sélectionner un niveau',
+          'error'
+        );
+        niveauSelect.focus();
+        return;
+      }
+      
+      if (!leconSelect || !leconSelect.value) {
+        e.preventDefault();
+        showNotification(
+          langJs === 'en' ? 'Please select a lesson' : 'Veuillez sélectionner une leçon',
+          'error'
+        );
+        leconSelect.focus();
+        return;
+      }
+      
+      // Validation des questions uniquement (champ obligatoire)
+      let isValid = true;
+      const exerciseCards = document.querySelectorAll('.exercise-card');
+      
+      exerciseCards.forEach((exercise, index) => {
+        const exerciseIndex = index + 1;
+        const questionFr = document.getElementById(`question_fr_${exerciseIndex}`);
+        const questionEn = document.getElementById(`question_en_${exerciseIndex}`);
         
-        // 1. Réindexer
-        reindexExercises();
-        
-        // 2. Validation du niveau/leçon
-        const niveauSelect = document.getElementById('niveau');
-        const leconSelect = document.getElementById('lecon');
-        
-        if (!niveauSelect || !niveauSelect.value) {
-            e.preventDefault();
-            showNotification(
-                langJs === 'en' ? 'Please select a level' : 'Veuillez sélectionner un niveau',
-                'error'
-            );
-            niveauSelect.focus();
-            return;
+        if (!questionFr || !questionFr.value.trim()) {
+          isValid = false;
+          questionFr.style.borderColor = '#e74c3c';
+        } else {
+          questionFr.style.borderColor = '';
         }
         
-        if (!leconSelect || !leconSelect.value) {
-            e.preventDefault();
-            showNotification(
-                langJs === 'en' ? 'Please select a lesson' : 'Veuillez sélectionner une leçon',
-                'error'
-            );
-            leconSelect.focus();
-            return;
+        if (!questionEn || !questionEn.value.trim()) {
+          isValid = false;
+          questionEn.style.borderColor = '#e74c3c';
+        } else {
+          questionEn.style.borderColor = '';
         }
-        
-        // 3. Validation des questions
-        let isValid = true;
-        const exerciseCards = document.querySelectorAll('.exercise-card');
-        let emptyExercises = [];
-        
-        exerciseCards.forEach((exercise, index) => {
-            const exerciseIndex = index + 1;
-            const questionFr = document.getElementById(`question_fr_${exerciseIndex}`);
-            const questionEn = document.getElementById(`question_en_${exerciseIndex}`);
-            
-            const frValue = questionFr ? questionFr.value.trim() : '';
-            const enValue = questionEn ? questionEn.value.trim() : '';
-            
-            console.log(`Exercice ${exerciseIndex}: FR="${frValue.substring(0, 30)}...", EN="${enValue.substring(0, 30)}..."`);
-            
-            if (!frValue && !enValue) {
-                console.log(`  ❌ Exercice ${exerciseIndex} vide`);
-                isValid = false;
-                emptyExercises.push(exerciseIndex);
-                if (questionFr) questionFr.style.borderColor = '#e74c3c';
-                if (questionEn) questionEn.style.borderColor = '#e74c3c';
-            } else {
-                if (questionFr) questionFr.style.borderColor = '';
-                if (questionEn) questionEn.style.borderColor = '';
-            }
-        });
-        
-        if (!isValid) {
-            e.preventDefault();
-            showNotification(
-                `Exercices ${emptyExercises.join(', ')}: veuillez remplir au moins une question`,
-                'error'
-            );
-            return;
-        }
-        
-        console.log("✅ Validation réussie, envoi des données...");
-        console.log(`🎯 ${exerciseCards.length} exercice(s) à enregistrer`);
-        
-        // 4. Préparer l'indicateur de chargement
-        submitBtn.innerHTML = `<span class="loading"></span> ${
-            langJs === 'en' ? 'Saving...' : 'Enregistrement...'
-        }`;
-        submitBtn.disabled = true;
-        
-        console.log("✅ Formulaire prêt à être envoyé au serveur");
+      });
+      
+      if (!isValid) {
+        e.preventDefault();
+        showNotification(
+          langJs === 'en' ? 'Please fill the question for each exercise' : 'Veuillez remplir la question pour chaque exercice',
+          'error'
+        );
+        return;
+      }
+      
+      // Afficher un indicateur de chargement
+      submitBtn.innerHTML = `<span class="loading"></span> ${
+        langJs === 'en' ? 'Saving...' : 'Enregistrement...'
+      }`;
+      submitBtn.disabled = true;
     });
   </script>
 </body>
