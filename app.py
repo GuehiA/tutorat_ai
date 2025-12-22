@@ -5596,84 +5596,97 @@ def ajouter_exercice():
         
         temps_commun = request.form.get("temps_commun", 60)
         
-        # DEBUG: Afficher toutes les données reçues
+        # DEBUG: Voir ce qui est reçu
         print("=" * 50)
-        print("DEBUG FORM DATA:")
-        for key in request.form.keys():
+        print("DEBUG FORM DATA RECEIVED:")
+        for key, value in request.form.items():
             if 'exercises' in key:
-                print(f"  {key}: {request.form.get(key)[:100]}...")
-        
-        print("DEBUG FILES:")
-        for key in request.files.keys():
-            file = request.files[key]
-            print(f"  {key}: {file.filename if file.filename else 'No file'}")
+                print(f"  {key}: {value[:100] if value else 'EMPTY'}...")
         print("=" * 50)
         
-        # Méthode simple : utiliser le champ exercise_count
+        # Récupérer le nombre d'exercices du champ caché
         exercise_count = int(request.form.get("exercise_count", 1))
+        print(f"DEBUG: Exercise count from hidden field: {exercise_count}")
+        
         exercises_created = []
         
+        # Parcourir tous les exercices
         for i in range(1, exercise_count + 1):
-            question_fr = request.form.get(f"exercises[{i}][question_fr]", "").strip()
+            # Les clés avec crochets ne fonctionnent pas bien avec Flask
+            # On doit utiliser une approche différente
             
-            # Vérifier si l'exercice a une question
-            if question_fr:
-                print(f"Processing exercise {i}: {question_fr[:50]}...")
+            # Solution: passer par request.form.to_dict() pour voir toutes les données
+            form_data = request.form.to_dict(flat=False)
+            
+            # Construire les clés manuellement
+            question_fr_key = f"exercises[{i}][question_fr]"
+            question_en_key = f"exercises[{i}][question_en]"
+            
+            # Récupérer les valeurs
+            question_fr = request.form.get(question_fr_key, "").strip()
+            question_en = request.form.get(question_en_key, "").strip()
+            
+            if question_fr:  # Champ obligatoire
+                print(f"DEBUG: Found exercise {i}: {question_fr[:50]}...")
                 
-                # Pour les fichiers, Flask a du mal avec les crochets, donc on utilise une clé différente
-                # Essayez plusieurs formats de clés
-                image_file = None
+                # Récupérer les autres champs
+                reponse_fr = request.form.get(f"exercises[{i}][reponse_fr]", "").strip() or None
+                reponse_en = request.form.get(f"exercises[{i}][reponse_en]", "").strip() or None
+                explication_fr = request.form.get(f"exercises[{i}][explication_fr]", "").strip() or None
+                explication_en = request.form.get(f"exercises[{i}][explication_en]", "").strip() or None
+                options_fr = request.form.get(f"exercises[{i}][options_fr]", "").strip() or None
+                options_en = request.form.get(f"exercises[{i}][options_en]", "").strip() or None
                 
-                # Essayer différents formats de clés
-                possible_keys = [
-                    f"image_exercice_{i}",  # Nouveau format
-                    f"exercises[{i}][image_exercice]",  # Ancien format
-                    f"exercises_{i}_image"  # Format alternatif
-                ]
-                
-                for key in possible_keys:
-                    if key in request.files:
-                        image_file = request.files[key]
-                        print(f"  Found image with key: {key}, filename: {image_file.filename}")
-                        break
-                
-                chemin_image = None
-                if image_file and image_file.filename:
-                    nom_fichier = secure_filename(image_file.filename)
-                    dossier = os.path.join("static", "uploads", "images")
-                    os.makedirs(dossier, exist_ok=True)
-                    chemin_absolu = os.path.join(dossier, nom_fichier)
-                    image_file.save(chemin_absolu)
-                    chemin_image = f"uploads/images/{nom_fichier}"
-                    print(f"  Image saved: {chemin_image}")
-                
-                # Récupérer les autres données
+                # Temps
                 temps_specifique = request.form.get(f"exercises[{i}][temps]")
                 temps = int(temps_specifique) if temps_specifique else (int(temps_commun) if temps_commun else 60)
                 
+                # Gestion des fichiers - PROBLÈME PRINCIPAL ICI
+                # Flask ne gère pas bien les noms avec crochets pour les fichiers
+                chemin_image = None
+                
+                # Essayer de trouver le fichier avec différentes clés
+                file_keys = [f"exercises[{i}][image_exercice]", f"image_exercice_{i}"]
+                
+                for file_key in file_keys:
+                    if file_key in request.files:
+                        fichier = request.files[file_key]
+                        if fichier and fichier.filename:
+                            nom_fichier = secure_filename(fichier.filename)
+                            dossier = os.path.join("static", "uploads", "images")
+                            os.makedirs(dossier, exist_ok=True)
+                            chemin_absolu = os.path.join(dossier, nom_fichier)
+                            fichier.save(chemin_absolu)
+                            chemin_image = f"uploads/images/{nom_fichier}"
+                            print(f"DEBUG: Image saved for exercise {i}: {chemin_image}")
+                            break
+                
+                # Créer l'exercice
                 exercice = Exercice(
                     lecon_id=lecon_id,
                     question_fr=question_fr,
-                    question_en=request.form.get(f"exercises[{i}][question_en]", "").strip(),
-                    reponse_fr=request.form.get(f"exercises[{i}][reponse_fr]", "").strip() or None,
-                    reponse_en=request.form.get(f"exercises[{i}][reponse_en]", "").strip() or None,
-                    explication_fr=request.form.get(f"exercises[{i}][explication_fr]", "").strip() or None,
-                    explication_en=request.form.get(f"exercises[{i}][explication_en]", "").strip() or None,
-                    options_fr=request.form.get(f"exercises[{i}][options_fr]", "").strip() or None,
-                    options_en=request.form.get(f"exercises[{i}][options_en]", "").strip() or None,
+                    question_en=question_en,
+                    reponse_fr=reponse_fr,
+                    reponse_en=reponse_en,
+                    explication_fr=explication_fr,
+                    explication_en=explication_en,
+                    options_fr=options_fr,
+                    options_en=options_en,
                     temps=temps,
                     chemin_image=chemin_image
                 )
                 
                 db.session.add(exercice)
                 exercises_created.append(exercice)
-                print(f"  Exercise {i} added to database")
+                print(f"DEBUG: Exercise {i} prepared for database")
         
         try:
             db.session.commit()
             print(f"SUCCESS: {len(exercises_created)} exercises saved to database")
         except Exception as e:
             print(f"ERROR: Failed to save exercises: {e}")
+            import traceback
+            traceback.print_exc()
             db.session.rollback()
             return jsonify({"error": "Database error"}), 500
         

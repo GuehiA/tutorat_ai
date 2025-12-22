@@ -1323,8 +1323,25 @@
       }
     }
 
-    // Gestion de la soumission du formulaire
+    // Gestion de la soumission du formulaire - AVEC DEBUG
     document.getElementById('exerciseForm').addEventListener('submit', function(e) {
+      // Debug: afficher les données du formulaire avant envoi
+      console.log('=== DEBUG FORM DATA BEFORE SUBMIT ===');
+      
+      // Afficher tous les champs de formulaire
+      const formData = new FormData(this);
+      console.log('Form entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value instanceof File ? `FILE - ${value.name} (${value.size} bytes)` : value.substring(0, 100) + (value.length > 100 ? '...' : '')}`);
+      }
+      
+      // Afficher le nombre d'exercices détectés
+      const exercises = document.querySelectorAll('.exercise-card');
+      console.log(`Number of exercise cards: ${exercises.length}`);
+      
+      // Ne pas empêcher l'envoi - juste logger
+      console.log('=== END DEBUG ===');
+      
       // Validation du niveau/leçon
       const niveauSelect = document.getElementById('niveau');
       const matiereSelect = document.getElementById('matiere');
@@ -1353,9 +1370,9 @@
       
       // Validation des questions uniquement (champ obligatoire)
       let isValid = true;
-      const exercises = document.querySelectorAll('.exercise-card');
+      const exerciseCards = document.querySelectorAll('.exercise-card');
       
-      exercises.forEach((exercise, index) => {
+      exerciseCards.forEach((exercise, index) => {
         const exerciseIndex = index + 1;
         const questionFr = document.getElementById(`question_fr_${exerciseIndex}`);
         const questionEn = document.getElementById(`question_en_${exerciseIndex}`);
@@ -1363,11 +1380,15 @@
         if (!questionFr || !questionFr.value.trim()) {
           isValid = false;
           questionFr.style.borderColor = '#e74c3c';
+        } else {
+          questionFr.style.borderColor = '';
         }
         
         if (!questionEn || !questionEn.value.trim()) {
           isValid = false;
           questionEn.style.borderColor = '#e74c3c';
+        } else {
+          questionEn.style.borderColor = '';
         }
       });
       
@@ -1387,24 +1408,5 @@
       submitBtn.disabled = true;
     });
   </script>
-  // Debug: afficher les données du formulaire avant envoi
-document.getElementById('exerciseForm').addEventListener('submit', function(e) {
-    console.log('=== DEBUG FORM DATA ===');
-    
-    // Afficher tous les champs de formulaire
-    const formData = new FormData(this);
-    for (let [key, value] of formData.entries()) {
-        if (key.includes('exercises') || key.includes('image')) {
-            console.log(`${key}: ${value instanceof File ? value.name : value}`);
-        }
-    }
-    
-    // Afficher le nombre d'exercices détectés
-    const exercises = document.querySelectorAll('.exercise-card');
-    console.log(`Number of exercise cards: ${exercises.length}`);
-    
-    // Validation (gardez votre validation existante)
-    // ...
-});
 </body>
 </html>
