@@ -5576,124 +5576,90 @@ from werkzeug.utils import secure_filename
 import os
 from models import db, Niveau, Exercice
 
-@app.route("/admin/ajouter-exercice", methods=["GET", "POST"])
-def ajouter_exercice():
-    if not session.get("enseignant_id") and not session.get("is_admin"):
-        return redirect("/login-enseignant")
 
-    # Dashboard de retour
-    if session.get("is_admin"):
-        dashboard_url = "/admin/dashboard"
-    elif session.get("enseignant_id"):
-        dashboard_url = "/dashboard-enseignant"
-    else:
-        dashboard_url = "/"
+@app.route("/ajouter-exercices", methods=["GET", "POST"])
+def ajouter_exercices():
+
+    # 🌍 Langue
+    lang = session.get("lang", "fr")
 
     if request.method == "POST":
+
+        # 🔢 Nombre d'exercices
+        exercise_count = int(request.form.get("exercise_count", 1))
+
+        # 📚 Leçon
         lecon_id = request.form.get("lecon_id")
+        temps_commun = request.form.get("temps_commun") or 60
+
         if not lecon_id:
-            return jsonify({"error": "Aucune leçon sélectionnée"}), 400
+            flash(
+                "Leçon manquante" if lang == "fr" else "Lesson missing",
+                "danger"
+            )
+            return redirect(request.url)
 
-        temps_commun = int(request.form.get("temps_commun", 60))
+        exercices_crees = 0
 
-        # ==========================
-        # 🔥 DÉTECTION DES EXERCICES RÉELS
-        # ==========================
-        form_data = request.form.to_dict(flat=False)
-        exercise_indexes = set()
+        # 📂 Création du dossier image si nécessaire
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-        for key in form_data.keys():
-            if key.startswith("exercises["):
-                try:
-                    index = int(key.split("[")[1].split("]")[0])
-                    exercise_indexes.add(index)
-                except ValueError:
-                    pass
+        for i in range(1, exercise_count + 1):
 
-        exercise_indexes = sorted(exercise_indexes)
+            question_fr = request.form.get(f"exercises[{i}][question_fr]")
+            question_en = request.form.get(f"exercises[{i}][question_en]")
 
-        print("DEBUG — Exercices détectés :", exercise_indexes)
-
-        exercises_created = []
-
-        for i in exercise_indexes:
-            question_fr = request.form.get(f"exercises[{i}][question_fr]", "").strip()
-            question_en = request.form.get(f"exercises[{i}][question_en]", "").strip()
-
-            if not question_fr:
-                continue  # sécurité
-
-            reponse_fr = request.form.get(f"exercises[{i}][reponse_fr]") or None
-            reponse_en = request.form.get(f"exercises[{i}][reponse_en]") or None
-            explication_fr = request.form.get(f"exercises[{i}][explication_fr]") or None
-            explication_en = request.form.get(f"exercises[{i}][explication_en]") or None
-            options_fr = request.form.get(f"exercises[{i}][options_fr]") or None
-            options_en = request.form.get(f"exercises[{i}][options_en]") or None
-
-            temps_specifique = request.form.get(f"exercises[{i}][temps]")
-            temps = int(temps_specifique) if temps_specifique else temps_commun
-
-            # ==========================
-            # 📷 IMAGE
-            # ==========================
-            chemin_image = None
-            file_key = f"image_exercice_{i}"
-
-            if file_key in request.files:
-                fichier = request.files[file_key]
-                if fichier and fichier.filename:
-                    nom_fichier = secure_filename(fichier.filename)
-                    dossier = os.path.join("static", "uploads", "images")
-                    os.makedirs(dossier, exist_ok=True)
-                    chemin_absolu = os.path.join(dossier, nom_fichier)
-                    fichier.save(chemin_absolu)
-                    chemin_image = f"uploads/images/{nom_fichier}"
+            # 🛑 Sécurité minimale
+            if not question_fr or not question_en:
+                continue
 
             exercice = Exercice(
                 lecon_id=lecon_id,
                 question_fr=question_fr,
                 question_en=question_en,
-                reponse_fr=reponse_fr,
-                reponse_en=reponse_en,
-                explication_fr=explication_fr,
-                explication_en=explication_en,
-                options_fr=options_fr,
-                options_en=options_en,
-                temps=temps,
-                chemin_image=chemin_image
+                reponse_fr=request.form.get(f"exercises[{i}][reponse_fr]"),
+                reponse_en=request.form.get(f"exercises[{i}][reponse_en]"),
+                explication_fr=request.form.get(f"exercises[{i}][explication_fr]"),
+                explication_en=request.form.get(f"exercises[{i}][explication_en]"),
+                options_fr=request.form.get(f"exercises[{i}][options_fr]"),
+                options_en=request.form.get(f"exercises[{i}][options_en]"),
+                temps=int(
+                    request.form.get(f"exercises[{i}][temps]") or temps_commun
+                ),
+                date_creation=datetime.utcnow()
             )
 
+            # 📷 Image (optionnelle)
+            image = request.files.get(f"image_exercice_{i}")
+            if image and image.filename:
+                filename = secure_filename(image.filename)
+                filename = f"{lecon_id}_{i}_{filename}"
+                image_path = os.path.join(UPLOAD_FOLDER, filename)
+                image.save(image_path)
+                exercice.image = image_path
+
             db.session.add(exercice)
-            exercises_created.append(exercice)
+            exercices_crees += 1
 
-        try:
-            db.session.commit()
-            print(f"✅ {len(exercises_created)} exercices enregistrés")
-        except Exception as e:
-            db.session.rollback()
-            print("❌ Erreur DB :", e)
-            return jsonify({"error": "Erreur base de données"}), 500
+        db.session.commit()
 
-        # Génération auto des descriptions
-        for ex in exercises_created:
-            if ex.chemin_image:
-                try:
-                    generer_description_auto(ex.id)
-                except Exception as e:
-                    print(f"⚠️ Description image échouée pour {ex.id} :", e)
-
-        return render_template(
-            "exercice_ajoute.html",
-            dashboard_url=dashboard_url,
-            count=len(exercises_created)
+        flash(
+            f"{exercices_crees} exercice(s) ajouté(s) avec succès"
+            if lang == "fr"
+            else f"{exercices_crees} exercise(s) successfully added",
+            "success"
         )
 
+        return redirect(url_for("dashboard"))
+
+    # 🔹 GET
     niveaux = Niveau.query.all()
+
     return render_template(
-        "ajouter_exercice.html",
+        "ajouter_exercices.html",
         niveaux=niveaux,
-        lang=session.get("lang", "fr"),
-        dashboard_url=dashboard_url
+        lang=lang,
+        dashboard_url=url_for("dashboard")
     )
 
 

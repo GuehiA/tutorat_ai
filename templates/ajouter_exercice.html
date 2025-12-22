@@ -790,6 +790,96 @@
     const notification = document.getElementById("notification");
     const submitBtn = document.getElementById("submitBtn");
 
+    // FONCTION CORRIGÉE : Réindexation OBLIGATOIRE
+    function reindexExercises() {
+        const cards = document.querySelectorAll(".exercise-card");
+
+        cards.forEach((card, index) => {
+            const newIndex = index + 1;
+
+            // Mettre à jour l'attribut data-exercise
+            card.setAttribute("data-exercise", newIndex);
+
+            // Mettre à jour le numéro affiché
+            const exerciseNumber = card.querySelector(".exercise-number");
+            if (exerciseNumber) {
+                exerciseNumber.textContent = newIndex;
+            }
+
+            // Mettre à jour tous les champs avec name="exercises[...]"
+            card.querySelectorAll("[name^='exercises[']").forEach(input => {
+                const oldName = input.name;
+                const newName = oldName.replace(
+                    /exercises\[\d+\]/,
+                    `exercises[${newIndex}]`
+                );
+                input.name = newName;
+                
+                // Mettre à jour l'ID si nécessaire
+                if (input.id) {
+                    input.id = input.id.replace(/\d+$/, newIndex);
+                }
+            });
+
+            // Mettre à jour le champ d'image
+            const fileInput = card.querySelector("input[type='file']");
+            if (fileInput) {
+                fileInput.name = `image_exercice_${newIndex}`;
+                fileInput.id = `image_exercice_${newIndex}`;
+            }
+
+            // Mettre à jour les onglets de langue
+            const tabs = card.querySelectorAll(".tab");
+            tabs.forEach(tab => {
+                const oldTab = tab.getAttribute("data-tab");
+                if (oldTab) {
+                    const newTab = oldTab.replace(/\d+$/, newIndex);
+                    tab.setAttribute("data-tab", newTab);
+                }
+            });
+
+            // Mettre à jour les contenus des onglets
+            const tabContents = card.querySelectorAll(".tab-content");
+            tabContents.forEach(content => {
+                const oldId = content.id;
+                if (oldId) {
+                    const newId = oldId.replace(/\d+$/, newIndex);
+                    content.id = newId;
+                }
+            });
+
+            // Mettre à jour les champs mathématiques
+            const mathFields = card.querySelectorAll("math-field");
+            mathFields.forEach(mathField => {
+                const oldId = mathField.id;
+                if (oldId) {
+                    const newId = oldId.replace(/\d+$/, newIndex);
+                    mathField.id = newId;
+                }
+            });
+
+            // Mettre à jour les aperçus d'image
+            const imagePreview = card.querySelector(".image-preview");
+            if (imagePreview) {
+                imagePreview.id = `imagePreview-${newIndex}`;
+            }
+
+            // Mettre à jour les boutons onclick
+            const buttons = card.querySelectorAll("button");
+            buttons.forEach(button => {
+                const onclick = button.getAttribute("onclick");
+                if (onclick) {
+                    const newOnclick = onclick.replace(/\d+/g, newIndex);
+                    button.setAttribute("onclick", newOnclick);
+                }
+            });
+        });
+
+        // Mettre à jour le compteur
+        document.getElementById("exerciseCounter").textContent = cards.length;
+        exerciseCount = cards.length;
+    }
+
     // Données du template pour les nouveaux exercices
     const exerciseTemplate = `
     <div class="exercise-card" data-exercise="{{index}}">
@@ -1008,24 +1098,20 @@
       const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, exerciseCount);
       document.getElementById("exercisesContainer").insertAdjacentHTML('beforeend', newExercise);
       
-      // Mettre à jour le compteur visuel
-      document.getElementById("exerciseCounter").textContent = exerciseCount;
-      // Mettre à jour le champ caché
-      document.getElementById("exerciseCountInput").value = exerciseCount;
+      // Réindexer TOUS les exercices
+      reindexExercises();
       
-      // Afficher le bouton de suppression pour tous les exercices sauf le premier
-      if (exerciseCount > 1) {
-        document.querySelectorAll('.remove-exercise').forEach(btn => {
-          btn.style.display = 'flex';
-        });
-      }
-      
-      // Initialiser les champs mathématiques
+      // Initialiser les champs mathématiques pour le nouvel exercice
       initMathFieldsForExercise(exerciseCount);
+      
+      // Afficher tous les boutons de suppression
+      document.querySelectorAll('.remove-exercise').forEach(btn => {
+        btn.style.display = 'flex';
+      });
       
       // Afficher une notification
       showNotification(
-        langJs === 'en' ? `Exercise ${exerciseCount} added` : `Exercice ${exerciseCount} ajouté`,
+        langJs === 'en' ? `Exercise added` : `Exercice ajouté`,
         'success'
       );
     }
@@ -1035,23 +1121,9 @@
       const exercise = document.querySelector(`.exercise-card[data-exercise="${index}"]`);
       if (exercise && exerciseCount > 1) {
         exercise.remove();
-        exerciseCount--;
         
-        // Mettre à jour le compteur visuel
-        document.getElementById("exerciseCounter").textContent = exerciseCount;
-        // Mettre à jour le champ caché
-        document.getElementById("exerciseCountInput").value = exerciseCount;
-        
-        // Reorganiser les numéros
-        const exercises = document.querySelectorAll('.exercise-card');
-        exercises.forEach((ex, i) => {
-          const newIndex = i + 1;
-          ex.setAttribute('data-exercise', newIndex);
-          ex.querySelector('.exercise-number').textContent = newIndex;
-          
-          // Mettre à jour tous les IDs et names
-          updateExerciseIds(ex, newIndex);
-        });
+        // Réindexer TOUS les exercices restants
+        reindexExercises();
         
         // Cacher le bouton de suppression s'il n'y a qu'un exercice
         if (exerciseCount === 1) {
@@ -1065,56 +1137,8 @@
       }
     }
 
-    function updateExerciseIds(exerciseElement, newIndex) {
-      // Mettre à jour tous les IDs et noms dans l'élément d'exercice
-      const inputs = exerciseElement.querySelectorAll('input, textarea, math-field, select');
-      inputs.forEach(input => {
-        const oldId = input.id;
-        const oldName = input.name;
-        
-        if (oldId) {
-          input.id = oldId.replace(/\d+$/, newIndex);
-        }
-        if (oldName) {
-          input.name = oldName.replace(/\[\d+\]/, `[${newIndex}]`);
-        }
-      });
-      
-      // Mettre à jour les IDs des onglets et contenus
-      const tabs = exerciseElement.querySelectorAll('.tab');
-      tabs.forEach(tab => {
-        tab.setAttribute('data-tab', tab.getAttribute('data-tab').replace(/\d+$/, newIndex));
-      });
-      
-      const tabContents = exerciseElement.querySelectorAll('.tab-content');
-      tabContents.forEach(content => {
-        content.id = content.id.replace(/\d+$/, newIndex);
-      });
-      
-      // Mettre à jour les IDs des champs optionnels
-      const optionalFields = exerciseElement.querySelector('.optional-fields');
-      if (optionalFields) {
-        optionalFields.id = optionalFields.id.replace(/\d+$/, newIndex);
-      }
-      
-      // Mettre à jour les IDs des aperçus d'image
-      const imagePreviews = exerciseElement.querySelectorAll('.image-preview');
-      imagePreviews.forEach(preview => {
-        preview.id = preview.id.replace(/\d+$/, newIndex);
-      });
-      
-      // Mettre à jour les fonctions onclick
-      const buttons = exerciseElement.querySelectorAll('button');
-      buttons.forEach(button => {
-        const onclick = button.getAttribute('onclick');
-        if (onclick) {
-          button.setAttribute('onclick', onclick.replace(/\d+/g, newIndex));
-        }
-      });
-    }
-
     function initMathFieldsForExercise(exerciseIndex) {
-      const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en'];
+      const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en', 'explication_en', 'options_en'];
       
       fields.forEach(field => {
         const mathField = document.getElementById(`${field}_field_${exerciseIndex}`);
@@ -1170,11 +1194,11 @@
 
     // Initialiser les champs mathématiques
     function initMathFields() {
-      const ids = ['question_fr_1', 'reponse_fr_1', 'options_fr_1', 'explication_fr_1', 'question_en_1', 'reponse_en_1'];
+      const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en', 'explication_en', 'options_en'];
       
-      ids.forEach(id => {
-        const mathField = document.getElementById(id + '_field');
-        const textArea = document.getElementById(id);
+      fields.forEach(field => {
+        const mathField = document.getElementById(`${field}_field_1`);
+        const textArea = document.getElementById(`${field}_1`);
         
         if (mathField && textArea) {
           mathField.addEventListener('input', () => {
@@ -1187,10 +1211,11 @@
     // Initialiser l'upload de fichier
     function initFileUploads() {
       document.querySelectorAll('.exercise-image').forEach(input => {
-        input.addEventListener('change', function() {
-          const exerciseIndex = this.id.match(/\d+/)[0];
-          previewImage(this, exerciseIndex);
-        });
+        if (input.id === 'image_exercice_1') {
+          input.addEventListener('change', function() {
+            previewImage(this, 1);
+          });
+        }
       });
     }
 
@@ -1216,7 +1241,8 @@
     // Insérer du LaTeX dans un champ de texte
     function insererLatex(fieldId) {
       const textarea = document.getElementById(fieldId);
-      const mathField = document.getElementById(fieldId + "_field");
+      const mathFieldId = fieldId + "_field";
+      const mathField = document.getElementById(mathFieldId);
       
       if (textarea && mathField && mathField.value.trim()) {
         const start = textarea.selectionStart;
@@ -1321,29 +1347,17 @@
       }
     }
 
-    // Gestion de la soumission du formulaire - AVEC DEBUG
+    // Gestion de la soumission du formulaire - AVEC RÉINDEXATION OBLIGATOIRE
     document.getElementById('exerciseForm').addEventListener('submit', function(e) {
+      // Réindexer AVANT la soumission
+      reindexExercises();
+      
       // Debug: afficher les données du formulaire avant envoi
       console.log('=== DEBUG FORM DATA BEFORE SUBMIT ===');
-      
-      // Afficher tous les champs de formulaire
-      const formData = new FormData(this);
-      console.log('Form entries:');
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value instanceof File ? `FILE - ${value.name} (${value.size} bytes)` : value.substring(0, 100) + (value.length > 100 ? '...' : '')}`);
-      }
-      
-      // Afficher le nombre d'exercices détectés
-      const exercises = document.querySelectorAll('.exercise-card');
-      console.log(`Number of exercise cards: ${exercises.length}`);
-      
-      // Ne pas empêcher l'envoi - juste logger
-      console.log('=== END DEBUG ===');
+      console.log('Number of exercise cards:', document.querySelectorAll('.exercise-card').length);
       
       // Validation du niveau/leçon
       const niveauSelect = document.getElementById('niveau');
-      const matiereSelect = document.getElementById('matiere');
-      const uniteSelect = document.getElementById('unite');
       const leconSelect = document.getElementById('lecon');
       
       if (!niveauSelect || !niveauSelect.value) {
