@@ -795,45 +795,38 @@
     const notification = document.getElementById("notification");
     const submitBtn = document.getElementById("submitBtn");
 
-    // FONCTION ESSENTIELLE : Forcer la réindexation complète
-    function forceReindexBeforeSubmit() {
-        console.log("🔧 FORCE REINDEX BEFORE SUBMIT");
+    // FONCTION CORRIGÉE : Synchroniser les champs mathématiques avec les textareas
+    function syncMathFieldsToTextareas() {
+        console.log("🔄 Synchronisation des champs mathématiques...");
         
         const cards = document.querySelectorAll(".exercise-card");
-        console.log(`Nombre de cartes exercice: ${cards.length}`);
-        
-        // Réindexer tous les exercices
-        reindexExercises();
-        
-        // FORCER la mise à jour des valeurs des champs mathématiques
         cards.forEach((card, index) => {
-            const newIndex = index + 1;
+            const exerciseIndex = index + 1;
             
-            // Mettre à jour les valeurs des champs mathématiques vers les textareas
-            const mathFields = card.querySelectorAll("math-field");
-            mathFields.forEach(mathField => {
-                const mathFieldId = mathField.id;
-                if (mathFieldId) {
-                    // Trouver le textarea correspondant (enlever "_field" de l'ID)
-                    const textAreaId = mathFieldId.replace("_field", "");
-                    const textArea = document.getElementById(textAreaId);
-                    if (textArea) {
-                        // Forcer la copie de la valeur
-                        textArea.value = mathField.value;
-                        console.log(`📝 Copié math-field ${mathFieldId} -> textarea ${textAreaId}: ${mathField.value.substring(0, 50)}...`);
-                    }
+            // Liste de tous les champs mathématiques possibles
+            const mathFieldPairs = [
+                { math: 'question_fr_field', text: 'question_fr' },
+                { math: 'reponse_fr_field', text: 'reponse_fr' },
+                { math: 'explication_fr_field', text: 'explication_fr' },
+                { math: 'options_fr_field', text: 'options_fr' },
+                { math: 'question_en_field', text: 'question_en' },
+                { math: 'reponse_en_field', text: 'reponse_en' },
+                { math: 'explication_en_field', text: 'explication_en' },
+                { math: 'options_en_field', text: 'options_en' }
+            ];
+            
+            // Copier chaque champ mathématique vers le textarea correspondant
+            mathFieldPairs.forEach(pair => {
+                const mathField = document.getElementById(`${pair.math}_${exerciseIndex}`);
+                const textArea = document.getElementById(`${pair.text}_${exerciseIndex}`);
+                
+                if (mathField && textArea) {
+                    // Copier la valeur du champ mathématique vers le textarea
+                    textArea.value = mathField.value;
+                    console.log(`  ✅ ${pair.math}_${exerciseIndex} → ${pair.text}_${exerciseIndex}: ${mathField.value.substring(0, 50)}...`);
                 }
             });
         });
-        
-        // Afficher le debug
-        console.log("=== DONNÉES FINALES DU FORMULAIRE ===");
-        const formData = new FormData(document.getElementById('exerciseForm'));
-        for (let [key, value] of formData.entries()) {
-            if (key.includes('exercises[') || key.includes('image_exercice')) {
-                console.log(`${key} = ${value instanceof File ? `FICHIER: ${value.name}` : value.substring(0, 100)}`);
-            }
-        }
     }
 
     // FONCTION AMÉLIORÉE : Réindexation OBLIGATOIRE
@@ -841,8 +834,12 @@
         const cards = document.querySelectorAll(".exercise-card");
         console.log(`🔧 Réindexation de ${cards.length} exercices`);
         
+        // D'abord, synchroniser TOUTES les valeurs avant réindexation
+        syncMathFieldsToTextareas();
+        
         cards.forEach((card, index) => {
             const newIndex = index + 1;
+            const oldIndex = card.getAttribute("data-exercise");
             
             // 1. Mettre à jour l'attribut data-exercise
             card.setAttribute("data-exercise", newIndex);
@@ -853,11 +850,11 @@
                 exerciseNumber.textContent = newIndex;
             }
             
-            // 3. Mettre à jour TOUS les champs d'entrée
-            const allInputs = card.querySelectorAll("input, textarea, select");
+            // 3. Mettre à jour TOUS les champs avec name="exercises[...]"
+            const allInputs = card.querySelectorAll("[name^='exercises[']");
             allInputs.forEach(input => {
                 const oldName = input.name;
-                if (oldName && oldName.includes("exercises[")) {
+                if (oldName.includes("exercises[")) {
                     // Mettre à jour le nom
                     const newName = oldName.replace(
                         /exercises\[\d+\]/,
@@ -867,27 +864,32 @@
                     
                     // Mettre à jour l'ID
                     if (input.id) {
-                        input.id = input.id.replace(/\d+$/, newIndex);
+                        input.id = input.id.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
                     }
-                    
-                    console.log(`  🔄 ${oldName} -> ${newName}`);
                 }
             });
             
-            // 4. Mettre à jour le champ d'image (CRITIQUE)
+            // 4. Mettre à jour les textareas sans name="exercises[...]"
+            const textareas = card.querySelectorAll("textarea:not([name^='exercises['])");
+            textareas.forEach(textarea => {
+                if (textarea.id) {
+                    textarea.id = textarea.id.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
+                }
+            });
+            
+            // 5. Mettre à jour le champ d'image
             const fileInputs = card.querySelectorAll("input[type='file']");
             fileInputs.forEach(fileInput => {
                 fileInput.name = `image_exercice_${newIndex}`;
                 fileInput.id = `image_exercice_${newIndex}`;
-                console.log(`  📷 image: ${fileInput.name}`);
             });
             
-            // 5. Mettre à jour les onglets et contenus
+            // 6. Mettre à jour les onglets et contenus
             const tabs = card.querySelectorAll(".tab");
             tabs.forEach(tab => {
                 const oldTab = tab.getAttribute("data-tab");
                 if (oldTab) {
-                    const newTab = oldTab.replace(/\d+$/, newIndex);
+                    const newTab = oldTab.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
                     tab.setAttribute("data-tab", newTab);
                 }
             });
@@ -896,49 +898,55 @@
             tabContents.forEach(content => {
                 const oldId = content.id;
                 if (oldId) {
-                    const newId = oldId.replace(/\d+$/, newIndex);
+                    const newId = oldId.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
                     content.id = newId;
                 }
             });
             
-            // 6. Mettre à jour les IDs mathématiques
+            // 7. Mettre à jour les champs mathématiques
             const mathFields = card.querySelectorAll("math-field");
             mathFields.forEach(mathField => {
                 const oldId = mathField.id;
                 if (oldId) {
-                    const newId = oldId.replace(/\d+$/, newIndex);
+                    const newId = oldId.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
                     mathField.id = newId;
                 }
             });
             
-            // 7. Mettre à jour les boutons onclick
+            // 8. Mettre à jour les boutons onclick
             const buttons = card.querySelectorAll("button");
             buttons.forEach(button => {
                 const onclick = button.getAttribute("onclick");
                 if (onclick) {
-                    const newOnclick = onclick.replace(/\d+/g, newIndex);
+                    const newOnclick = onclick.replace(new RegExp(oldIndex, 'g'), newIndex);
                     button.setAttribute("onclick", newOnclick);
                 }
             });
             
-            // 8. Mettre à jour les IDs des champs optionnels
+            // 9. Mettre à jour les IDs des champs optionnels
             const optionalFields = card.querySelector(".optional-fields");
             if (optionalFields && optionalFields.id) {
-                optionalFields.id = optionalFields.id.replace(/\d+$/, newIndex);
+                optionalFields.id = optionalFields.id.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
             }
             
-            // 9. Mettre à jour les aperçus d'image
+            // 10. Mettre à jour les aperçus d'image
             const imagePreviews = card.querySelectorAll(".image-preview");
             imagePreviews.forEach(preview => {
                 if (preview.id) {
-                    preview.id = preview.id.replace(/\d+$/, newIndex);
+                    preview.id = preview.id.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
                 }
             });
+            
+            console.log(`  🔄 Exercice ${oldIndex} → ${newIndex}`);
         });
         
         // Mettre à jour le compteur
         document.getElementById("exerciseCounter").textContent = cards.length;
         exerciseCount = cards.length;
+        
+        // RE-synchroniser après réindexation
+        setTimeout(syncMathFieldsToTextareas, 100);
+        
         console.log(`✅ Réindexation terminée. ${cards.length} exercices.`);
     }
 
@@ -1085,8 +1093,9 @@
 
     // Initialisation
     document.addEventListener("DOMContentLoaded", () => {
+      // Initialiser la synchronisation des champs mathématiques pour le premier exercice
+      initMathFieldsForExercise(1);
       initLanguageTabs();
-      initMathFields();
       setupNavigation();
       initFileUploads();
       
@@ -1117,6 +1126,36 @@
         });
       }
     });
+
+    // Initialiser les champs mathématiques pour un exercice
+    function initMathFieldsForExercise(exerciseIndex) {
+        const mathFieldPairs = [
+            { math: 'question_fr_field', text: 'question_fr' },
+            { math: 'reponse_fr_field', text: 'reponse_fr' },
+            { math: 'explication_fr_field', text: 'explication_fr' },
+            { math: 'options_fr_field', text: 'options_fr' },
+            { math: 'question_en_field', text: 'question_en' },
+            { math: 'reponse_en_field', text: 'reponse_en' },
+            { math: 'explication_en_field', text: 'explication_en' },
+            { math: 'options_en_field', text: 'options_en' }
+        ];
+        
+        mathFieldPairs.forEach(pair => {
+            const mathField = document.getElementById(`${pair.math}_${exerciseIndex}`);
+            const textArea = document.getElementById(`${pair.text}_${exerciseIndex}`);
+            
+            if (mathField && textArea) {
+                // Synchroniser à chaque changement
+                mathField.addEventListener('input', () => {
+                    textArea.value = mathField.value;
+                    console.log(`🔄 ${pair.math}_${exerciseIndex} → ${pair.text}_${exerciseIndex}`);
+                });
+                
+                // Synchroniser la valeur initiale
+                textArea.value = mathField.value;
+            }
+        });
+    }
 
     // FONCTION CORRIGÉE POUR LES ONGLETS DE LANGUE
     function initLanguageTabs() {
@@ -1159,6 +1198,7 @@
         const cards = document.querySelectorAll('.exercise-card');
         const nextIndex = cards.length + 1;
         
+        console.log(`➕ Ajout de l'exercice ${nextIndex}`);
         const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, nextIndex);
         document.getElementById("exercisesContainer").insertAdjacentHTML('beforeend', newExercise);
         
@@ -1182,6 +1222,7 @@
 
     // FONCTION CORRIGÉE POUR SUPPRIMER UN EXERCICE
     function removeExercise(index) {
+      console.log(`🗑️ Suppression de l'exercice ${index}`);
       const exercise = document.querySelector(`.exercise-card[data-exercise="${index}"]`);
       if (exercise && exerciseCount > 1) {
         exercise.remove();
@@ -1190,7 +1231,8 @@
         reindexExercises();
         
         // Cacher le bouton de suppression s'il n'y a qu'un exercice
-        if (exerciseCount === 1) {
+        const remainingCards = document.querySelectorAll('.exercise-card');
+        if (remainingCards.length === 1) {
           document.querySelector('.remove-exercise').style.display = 'none';
         }
         
@@ -1199,21 +1241,6 @@
           'success'
         );
       }
-    }
-
-    function initMathFieldsForExercise(exerciseIndex) {
-      const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en', 'explication_en', 'options_en'];
-      
-      fields.forEach(field => {
-        const mathField = document.getElementById(`${field}_field_${exerciseIndex}`);
-        const textArea = document.getElementById(`${field}_${exerciseIndex}`);
-        
-        if (mathField && textArea) {
-          mathField.addEventListener('input', () => {
-            textArea.value = mathField.value;
-          });
-        }
-      });
     }
 
     function toggleOptionalFields(exerciseIndex, button) {
@@ -1256,30 +1283,13 @@
       );
     }
 
-    // Initialiser les champs mathématiques
-    function initMathFields() {
-      const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en', 'explication_en', 'options_en'];
-      
-      fields.forEach(field => {
-        const mathField = document.getElementById(`${field}_field_1`);
-        const textArea = document.getElementById(`${field}_1`);
-        
-        if (mathField && textArea) {
-          mathField.addEventListener('input', () => {
-            textArea.value = mathField.value;
-          });
-        }
-      });
-    }
-
     // Initialiser l'upload de fichier
     function initFileUploads() {
       document.querySelectorAll('.exercise-image').forEach(input => {
-        if (input.id === 'image_exercice_1') {
-          input.addEventListener('change', function() {
-            previewImage(this, 1);
-          });
-        }
+        input.addEventListener('change', function() {
+          const exerciseIndex = this.id.match(/\d+/)[0];
+          previewImage(this, exerciseIndex);
+        });
       });
     }
 
@@ -1414,38 +1424,64 @@
     // Fonction de test des données
     function testFormData() {
         console.log("🧪 TEST DES DONNÉES DU FORMULAIRE");
-        forceReindexBeforeSubmit();
         
-        // Compter combien d'exercices ont des questions
-        const cards = document.querySelectorAll('.exercise-card');
-        let exercicesAvecQuestionsFR = 0;
-        let exercicesAvecQuestionsEN = 0;
+        // 1. Synchroniser les champs mathématiques
+        syncMathFieldsToTextareas();
         
-        cards.forEach((card, index) => {
-            const exerciseIndex = index + 1;
-            const questionFr = document.getElementById(`question_fr_${exerciseIndex}`);
-            const questionEn = document.getElementById(`question_en_${exerciseIndex}`);
-            
-            if (questionFr && questionFr.value.trim()) exercicesAvecQuestionsFR++;
-            if (questionEn && questionEn.value.trim()) exercicesAvecQuestionsEN++;
+        // 2. Réindexer
+        reindexExercises();
+        
+        // 3. Afficher les données finales
+        console.log("=== DONNÉES FINALES À ENVOYER ===");
+        const formData = new FormData(document.getElementById('exerciseForm'));
+        
+        let exerciseCount = 0;
+        const exercisesData = {};
+        
+        for (let [key, value] of formData.entries()) {
+            if (key.includes('exercises[')) {
+                // Extraire l'index de l'exercice
+                const match = key.match(/exercises\[(\d+)\]/);
+                if (match) {
+                    const exIndex = match[1];
+                    if (!exercisesData[exIndex]) {
+                        exercisesData[exIndex] = {};
+                        exerciseCount++;
+                    }
+                    
+                    // Extraire le nom du champ
+                    const fieldMatch = key.match(/\[(\w+)\]$/);
+                    const fieldName = fieldMatch ? fieldMatch[1] : 'unknown';
+                    
+                    exercisesData[exIndex][fieldName] = value instanceof File ? `FILE: ${value.name}` : value.substring(0, 100);
+                }
+                console.log(`${key} = ${value instanceof File ? `FILE: ${value.name}` : value.substring(0, 100)}`);
+            }
+        }
+        
+        console.log(`📊 Résumé: ${exerciseCount} exercice(s) détecté(s)`);
+        Object.keys(exercisesData).forEach(index => {
+            console.log(`  Exercice ${index}:`);
+            Object.keys(exercisesData[index]).forEach(field => {
+                console.log(`    ${field}: ${exercisesData[index][field]}`);
+            });
         });
         
-        console.log(`📊 ${cards.length} cartes exercice`);
-        console.log(`📊 ${exercicesAvecQuestionsFR} questions FR remplies`);
-        console.log(`📊 ${exercicesAvecQuestionsEN} questions EN remplies`);
-        
-        alert(`Test terminé. Voir la console pour les détails.\n${cards.length} exercices détectés.\n${exercicesAvecQuestionsFR} questions FR remplies\n${exercicesAvecQuestionsEN} questions EN remplies`);
+        alert(`Test terminé. Voir la console pour les détails.\n${exerciseCount} exercice(s) détecté(s).`);
     }
 
     // Gestion de la soumission du formulaire - VERSION CORRIGÉE
     document.getElementById('exerciseForm').addEventListener('submit', function(e) {
-        // 1. FORCER la réindexation COMPLÈTE
-        forceReindexBeforeSubmit();
+        console.log("🚀 Début de la soumission du formulaire");
         
-        // 2. Validation du niveau/leçon
+        // 1. SYNCHRONISER les champs mathématiques AVANT toute réindexation
+        syncMathFieldsToTextareas();
+        
+        // 2. Réindexer les exercices
+        reindexExercises();
+        
+        // 3. Validation du niveau/leçon
         const niveauSelect = document.getElementById('niveau');
-        const matiereSelect = document.getElementById('matiere');
-        const uniteSelect = document.getElementById('unite');
         const leconSelect = document.getElementById('lecon');
         
         if (!niveauSelect || !niveauSelect.value) {
@@ -1468,8 +1504,9 @@
             return;
         }
         
-        // 3. Validation des questions
+        // 4. Validation des questions - VERSION SIMPLIFIÉE
         let isValid = true;
+        let missingExercises = [];
         const exerciseCards = document.querySelectorAll('.exercise-card');
         
         exerciseCards.forEach((exercise, index) => {
@@ -1477,48 +1514,53 @@
             const questionFr = document.getElementById(`question_fr_${exerciseIndex}`);
             const questionEn = document.getElementById(`question_en_${exerciseIndex}`);
             
-            // DEBUG: Vérifier ce qui est dans les champs
-            console.log(`Exercice ${exerciseIndex}:`);
-            console.log(`  FR: ${questionFr ? questionFr.value.substring(0, 50) : 'NULL'}`);
-            console.log(`  EN: ${questionEn ? questionEn.value.substring(0, 50) : 'NULL'}`);
+            // DEBUG
+            const frValue = questionFr ? questionFr.value.trim() : '';
+            const enValue = questionEn ? questionEn.value.trim() : '';
             
-            if (!questionFr || !questionFr.value.trim()) {
-                console.log(`  ❌ Exercice ${exerciseIndex} manque question FR`);
+            console.log(`Exercice ${exerciseIndex}: FR="${frValue.substring(0, 30)}...", EN="${enValue.substring(0, 30)}..."`);
+            
+            if (!frValue && !enValue) {
+                console.log(`  ❌ Exercice ${exerciseIndex} manque les deux questions`);
                 isValid = false;
+                missingExercises.push(exerciseIndex);
                 if (questionFr) questionFr.style.borderColor = '#e74c3c';
-            } else {
+                if (questionEn) questionEn.style.borderColor = '#e74c3c';
+            } else if (!frValue) {
+                console.log(`  ⚠️ Exercice ${exerciseIndex} manque question FR`);
+                if (questionFr) questionFr.style.borderColor = '#e74c3c';
+                if (questionEn) questionEn.style.borderColor = '';
+            } else if (!enValue) {
+                console.log(`  ⚠️ Exercice ${exerciseIndex} manque question EN`);
                 if (questionFr) questionFr.style.borderColor = '';
-            }
-            
-            if (!questionEn || !questionEn.value.trim()) {
-                console.log(`  ❌ Exercice ${exerciseIndex} manque question EN`);
-                isValid = false;
                 if (questionEn) questionEn.style.borderColor = '#e74c3c';
             } else {
+                if (questionFr) questionFr.style.borderColor = '';
                 if (questionEn) questionEn.style.borderColor = '';
             }
         });
         
         if (!isValid) {
             e.preventDefault();
-            showNotification(
-                langJs === 'en' ? 'Please fill the question for each exercise' : 'Veuillez remplir la question pour chaque exercice',
-                'error'
-            );
+            const message = missingExercises.length > 0 
+                ? `Exercices ${missingExercises.join(', ')}: veuillez remplir au moins une question (FR ou EN)`
+                : 'Veuillez remplir les questions manquantes';
+            showNotification(message, 'error');
             return;
         }
         
-        // 4. Préparer l'indicateur de chargement
+        // 5. DEBUG FINAL: Afficher ce qui sera envoyé
+        console.log("✅ Validation réussie, envoi des données...");
+        console.log(`🎯 ${exerciseCards.length} exercice(s) à enregistrer`);
+        
+        // 6. Préparer l'indicateur de chargement
         submitBtn.innerHTML = `<span class="loading"></span> ${
             langJs === 'en' ? 'Saving...' : 'Enregistrement...'
         }`;
         submitBtn.disabled = true;
         
-        // 5. DEBUG FINAL: Envoyer les données au serveur pour vérification
-        setTimeout(() => {
-            console.log("✅ Formulaire en cours d'envoi...");
-            console.log(`🎯 Nombre d'exercices détectés: ${exerciseCards.length}`);
-        }, 100);
+        // 7. Autoriser l'envoi
+        console.log("✅ Formulaire prêt à être envoyé au serveur");
     });
   </script>
 </body>
