@@ -5579,15 +5579,28 @@ from models import db, Niveau, Exercice
 
 @app.route("/ajouter-exercices", methods=["GET", "POST"])
 def ajouter_exercices():
-
     # 🌍 Langue
     lang = session.get("lang", "fr")
 
     if request.method == "POST":
-
-        # 🔢 Nombre d'exercices
-        exercise_count = int(request.form.get("exercise_count", 1))
-
+        # 🔢 DÉTECTION AUTOMATIQUE du nombre d'exercices
+        # NE PAS utiliser exercise_count - détecter dynamiquement
+        exercises_data = {}
+        
+        # 🔍 Parcourir toutes les clés du formulaire pour détecter les exercices
+        for key in request.form.keys():
+            if key.startswith("exercises[") and "][question_fr]" in key:
+                # Extraire l'index: exercises[1][question_fr] -> 1
+                match = re.search(r'\[(\d+)\]', key)
+                if match:
+                    index = match.group(1)
+                    if index not in exercises_data:
+                        exercises_data[index] = {}
+        
+        # Si aucun exercice détecté, utiliser au moins 1
+        if not exercises_data:
+            exercises_data = {"1": {}}
+        
         # 📚 Leçon
         lecon_id = request.form.get("lecon_id")
         temps_commun = request.form.get("temps_commun") or 60
@@ -5604,42 +5617,44 @@ def ajouter_exercices():
         # 📂 Création du dossier image si nécessaire
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-        for i in range(1, exercise_count + 1):
+        # 📝 Traiter chaque exercice détecté
+        for index in exercises_data.keys():
+            question_fr = request.form.get(f"exercises[{index}][question_fr]")
+            question_en = request.form.get(f"exercises[{index}][question_en]")
 
-            question_fr = request.form.get(f"exercises[{i}][question_fr]")
-            question_en = request.form.get(f"exercises[{i}][question_en]")
-
-            # 🛑 Sécurité minimale
+            # 🛑 Sécurité minimale - les deux questions doivent être remplies
             if not question_fr or not question_en:
+                print(f"Exercice {index} ignoré: question manquante")
                 continue
 
             exercice = Exercice(
                 lecon_id=lecon_id,
-                question_fr=question_fr,
-                question_en=question_en,
-                reponse_fr=request.form.get(f"exercises[{i}][reponse_fr]"),
-                reponse_en=request.form.get(f"exercises[{i}][reponse_en]"),
-                explication_fr=request.form.get(f"exercises[{i}][explication_fr]"),
-                explication_en=request.form.get(f"exercises[{i}][explication_en]"),
-                options_fr=request.form.get(f"exercises[{i}][options_fr]"),
-                options_en=request.form.get(f"exercises[{i}][options_en]"),
+                question_fr=question_fr.strip(),
+                question_en=question_en.strip(),
+                reponse_fr=request.form.get(f"exercises[{index}][reponse_fr]", "").strip(),
+                reponse_en=request.form.get(f"exercises[{index}][reponse_en]", "").strip(),
+                explication_fr=request.form.get(f"exercises[{index}][explication_fr]", "").strip(),
+                explication_en=request.form.get(f"exercises[{index}][explication_en]", "").strip(),
+                options_fr=request.form.get(f"exercises[{index}][options_fr]", "").strip(),
+                options_en=request.form.get(f"exercises[{index}][options_en]", "").strip(),
                 temps=int(
-                    request.form.get(f"exercises[{i}][temps]") or temps_commun
+                    request.form.get(f"exercises[{index}][temps]") or temps_commun
                 ),
                 date_creation=datetime.utcnow()
             )
 
             # 📷 Image (optionnelle)
-            image = request.files.get(f"image_exercice_{i}")
+            image = request.files.get(f"image_exercice_{index}")
             if image and image.filename:
                 filename = secure_filename(image.filename)
-                filename = f"{lecon_id}_{i}_{filename}"
+                filename = f"{lecon_id}_{index}_{filename}"
                 image_path = os.path.join(UPLOAD_FOLDER, filename)
                 image.save(image_path)
                 exercice.image = image_path
 
             db.session.add(exercice)
             exercices_crees += 1
+            print(f"Exercice {index} créé: {question_fr[:50]}...")
 
         db.session.commit()
 
@@ -5652,11 +5667,11 @@ def ajouter_exercices():
 
         return redirect(url_for("dashboard"))
 
-    # 🔹 GET
+    # 🔹 GET - Afficher le formulaire
     niveaux = Niveau.query.all()
 
     return render_template(
-        "ajouter_exercices.html",
+        "ajouter_exercice.html",  # ⚠️ CHANGEZ ICI : sans 's' à la fin
         niveaux=niveaux,
         lang=lang,
         dashboard_url=url_for("dashboard")
