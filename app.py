@@ -5577,6 +5577,7 @@ from werkzeug.utils import secure_filename
 import os
 from models import db, Niveau, Exercice
 
+
 @app.route("/admin/ajouter-exercice", methods=["GET", "POST"])
 def ajouter_exercice():
     if not session.get("enseignant_id") and not session.get("is_admin"):
@@ -5597,20 +5598,17 @@ def ajouter_exercice():
 
         temps_commun = int(request.form.get("temps_commun", 60))
 
-        # ==========================
-        # 🔥 CORRECTION : DÉTECTION DES EXERCICES RÉELS
-        # ==========================
+        # Détection des exercices envoyés
         exercise_indexes = set()
-        
-        # 1. Chercher dans les données du formulaire
+
+        # 1. Chercher dans les questions (français et anglais)
         for key in request.form.keys():
-            if "exercises[" in key and "][question_fr]" in key:
-                # Extraire l'index entre crochets
+            if "exercises[" in key and ("[question_fr]" in key or "[question_en]" in key):
                 match = re.search(r'\[(\d+)\]', key)
                 if match:
                     index = match.group(1)
                     exercise_indexes.add(int(index))
-        
+
         # 2. Si rien trouvé, chercher dans les fichiers images
         if not exercise_indexes:
             for key in request.files.keys():
@@ -5620,64 +5618,39 @@ def ajouter_exercice():
                         exercise_indexes.add(index)
                     except:
                         pass
-        
+
         # 3. Si toujours rien, supposer qu'il y a au moins 1 exercice
         if not exercise_indexes:
             exercise_indexes = {1}
-        
-        exercise_indexes = sorted(exercise_indexes)
-        
-        print(f"🔍 DEBUG — Exercices détectés : {exercise_indexes}")
-        print(f"🔍 DEBUG — Données brutes du formulaire :")
-        for key, value in request.form.items():
-            if "exercises[" in key:
-                print(f"   {key} = {value[:50]}...")
 
+        exercise_indexes = sorted(exercise_indexes)
         exercises_created = []
 
         for i in exercise_indexes:
             question_fr = request.form.get(f"exercises[{i}][question_fr]", "").strip()
             question_en = request.form.get(f"exercises[{i}][question_en]", "").strip()
 
-            # DEBUG
-            print(f"📝 Exercice {i} - question_fr: {question_fr[:30]}...")
-            print(f"📝 Exercice {i} - question_en: {question_en[:30]}...")
-
-            # ✅ CORRECTION : Ne pas ignorer si question_fr est vide
-            # Certains exercices peuvent n'avoir que la version anglaise
+            # Ignorer si aucune question n'est fournie
             if not question_fr and not question_en:
-                print(f"⚠️ Exercice {i} ignoré: aucune question")
                 continue
 
-            reponse_fr = request.form.get(f"exercises[{i}][reponse_fr]") or None
-            reponse_en = request.form.get(f"exercises[{i}][reponse_en]") or None
-            explication_fr = request.form.get(f"exercises[{i}][explication_fr]") or None
-            explication_en = request.form.get(f"exercises[{i}][explication_en]") or None
-            options_fr = request.form.get(f"exercises[{i}][options_fr]") or None
-            options_en = request.form.get(f"exercises[{i}][options_en]") or None
+            reponse_fr = request.form.get(f"exercises[{i}][reponse_fr]")
+            reponse_en = request.form.get(f"exercises[{i}][reponse_en]")
+            explication_fr = request.form.get(f"exercises[{i}][explication_fr]")
+            explication_en = request.form.get(f"exercises[{i}][explication_en]")
+            options_fr = request.form.get(f"exercises[{i}][options_fr]")
+            options_en = request.form.get(f"exercises[{i}][options_en]")
 
             temps_specifique = request.form.get(f"exercises[{i}][temps]")
             temps = int(temps_specifique) if temps_specifique else temps_commun
 
-            # ==========================
-            # 📷 IMAGE
-            # ==========================
+            # Gestion de l'image
             chemin_image = None
             file_key = f"image_exercice_{i}"
-            
-            # Vérifier aussi les variantes possibles
-            if file_key not in request.files:
-                # Chercher d'autres formats
-                for fkey in request.files.keys():
-                    if f"image_exercice_{i}" in fkey:
-                        file_key = fkey
-                        break
-
             if file_key in request.files:
                 fichier = request.files[file_key]
                 if fichier and fichier.filename:
                     nom_fichier = secure_filename(fichier.filename)
-                    # Ajouter un timestamp pour éviter les conflits
                     timestamp = int(datetime.now().timestamp())
                     nom_fichier = f"{timestamp}_{i}_{nom_fichier}"
                     dossier = os.path.join("static", "uploads", "images")
@@ -5685,42 +5658,38 @@ def ajouter_exercice():
                     chemin_absolu = os.path.join(dossier, nom_fichier)
                     fichier.save(chemin_absolu)
                     chemin_image = f"uploads/images/{nom_fichier}"
-                    print(f"📷 Image sauvegardée pour exercice {i}: {chemin_image}")
 
+            # Création de l'exercice
             exercice = Exercice(
                 lecon_id=lecon_id,
-                question_fr=question_fr if question_fr else "",  # Toujours une chaîne, pas None
-                question_en=question_en if question_en else "",  # Toujours une chaîne
-                reponse_fr=reponse_fr,
-                reponse_en=reponse_en,
-                explication_fr=explication_fr,
-                explication_en=explication_en,
-                options_fr=options_fr,
-                options_en=options_en,
+                question_fr=question_fr,
+                question_en=question_en,
+                reponse_fr=reponse_fr if reponse_fr else None,
+                reponse_en=reponse_en if reponse_en else None,
+                explication_fr=explication_fr if explication_fr else None,
+                explication_en=explication_en if explication_en else None,
+                options_fr=options_fr if options_fr else None,
+                options_en=options_en if options_en else None,
                 temps=temps,
                 chemin_image=chemin_image
             )
 
             db.session.add(exercice)
             exercises_created.append(exercice)
-            print(f"✅ Exercice {i} préparé pour enregistrement")
 
         try:
             db.session.commit()
-            print(f"🎉 {len(exercises_created)} exercices enregistrés avec succès")
         except Exception as e:
             db.session.rollback()
-            print("❌ Erreur DB :", e)
-            print("❌ Détails :", str(e))
             return jsonify({"error": f"Erreur base de données: {str(e)}"}), 500
 
-        # Génération auto des descriptions
+        # Génération auto des descriptions pour les images
         for ex in exercises_created:
             if ex.chemin_image:
                 try:
                     generer_description_auto(ex.id)
                 except Exception as e:
-                    print(f"⚠️ Description image échouée pour {ex.id} :", e)
+                    print(f"Description image échouée pour {ex.id} :", e)
 
         return render_template(
             "exercice_ajoute.html",
@@ -5735,6 +5704,7 @@ def ajouter_exercice():
         lang=session.get("lang", "fr"),
         dashboard_url=dashboard_url
     )
+
 
 @app.route("/admin/ajouter-niveau", methods=["GET", "POST"])
 @admin_required
