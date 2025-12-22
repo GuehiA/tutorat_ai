@@ -5590,59 +5590,78 @@ def ajouter_exercice():
         dashboard_url = "/"
 
     if request.method == "POST":
-        # 🖼️ Traitement de l'image facultative
-        fichier = request.files.get("image_exercice")
-        chemin_image = None
-        if fichier and fichier.filename:
-            nom_fichier = secure_filename(fichier.filename)
-            dossier = os.path.join("static", "uploads", "images")
-            os.makedirs(dossier, exist_ok=True)
-            chemin_absolu = os.path.join(dossier, nom_fichier)
-            fichier.save(chemin_absolu)
-            chemin_image = f"uploads/images/{nom_fichier}"
-
-        try:
-            temps = int(request.form.get("temps", 60))
-        except ValueError:
-            temps = 60
-
         lecon_id = request.form.get("lecon_id")
         if not lecon_id:
-            return "Erreur : aucune leçon sélectionnée", 400
-
-        print("📌 lecon_id reçu :", lecon_id)  # Debug facultatif
-
-        # 🔢 Création de l'exercice
-        exercice = Exercice(
-            lecon_id=lecon_id,
-            question_fr=request.form["question_fr"].strip(),
-            question_en=request.form["question_en"].strip(),
-            reponse_fr=request.form["reponse_fr"].strip(),
-            reponse_en=request.form["reponse_en"].strip(),
-            explication_fr=request.form.get("explication_fr", "").strip(),
-            explication_en=request.form.get("explication_en", "").strip(),
-            options_fr=request.form.get("options_fr", "").strip(),
-            options_en=request.form.get("options_en", "").strip(),
-            temps=temps,
-            chemin_image=chemin_image
-        )
-
-        db.session.add(exercice)
+            return jsonify({"error": "Aucune leçon sélectionnée"}), 400
+        
+        temps_commun = request.form.get("temps_commun", 60)
+        
+        # Récupérer tous les exercices
+        exercises = []
+        index = 1
+        
+        while True:
+            # Vérifier si cet exercice existe
+            question_fr = request.form.get(f"exercises[{index}][question_fr]")
+            if not question_fr:
+                break  # Plus d'exercices
+            
+            # 🖼️ Traitement de l'image pour cet exercice
+            fichier = request.files.get(f"exercises[{index}][image_exercice]")
+            chemin_image = None
+            if fichier and fichier.filename:
+                nom_fichier = secure_filename(fichier.filename)
+                dossier = os.path.join("static", "uploads", "images")
+                os.makedirs(dossier, exist_ok=True)
+                chemin_absolu = os.path.join(dossier, nom_fichier)
+                fichier.save(chemin_absolu)
+                chemin_image = f"uploads/images/{nom_fichier}"
+            
+            # Utiliser le temps spécifique ou le temps commun
+            temps_specifique = request.form.get(f"exercises[{index}][temps]")
+            temps = int(temps_specifique) if temps_specifique else (int(temps_commun) if temps_commun else 60)
+            
+            exercice_data = {
+                "lecon_id": lecon_id,
+                "question_fr": question_fr.strip(),
+                "question_en": request.form.get(f"exercises[{index}][question_en]", "").strip(),
+                "reponse_fr": request.form.get(f"exercises[{index}][reponse_fr]", "").strip() or None,
+                "reponse_en": request.form.get(f"exercises[{index}][reponse_en]", "").strip() or None,
+                "explication_fr": request.form.get(f"exercises[{index}][explication_fr]", "").strip() or None,
+                "explication_en": request.form.get(f"exercises[{index}][explication_en]", "").strip() or None,
+                "options_fr": request.form.get(f"exercises[{index}][options_fr]", "").strip() or None,
+                "options_en": request.form.get(f"exercises[{index}][options_en]", "").strip() or None,
+                "temps": temps,
+                "chemin_image": chemin_image
+            }
+            
+            # Créer l'exercice dans la base de données
+            exercice = Exercice(**exercice_data)
+            db.session.add(exercice)
+            
+            index += 1
+        
         db.session.commit()
-
-        # ✅ GÉNÉRATION AUTOMATIQUE DE LA DESCRIPTION SI IMAGE PRÉSENTE
-        if chemin_image:
-            try:
-                generer_description_auto(exercice.id)
-                print(f"✅ Description générée pour le nouvel exercice {exercice.id}")
-            except Exception as e:
-                print(f"⚠️ Erreur lors de la génération de la description: {e}")
-                # On continue même si la génération échoue
-
-        return render_template("exercice_ajoute.html", dashboard_url=dashboard_url)
+        
+        # ✅ GÉNÉRATION AUTOMATIQUE DES DESCRIPTIONS POUR LES EXERCICES AVEC IMAGES
+        exercises_created = Exercice.query.filter_by(lecon_id=lecon_id).order_by(Exercice.id.desc()).limit(index-1).all()
+        for exercice in exercises_created:
+            if exercice.chemin_image:
+                try:
+                    generer_description_auto(exercice.id)
+                    print(f"✅ Description générée pour l'exercice {exercice.id}")
+                except Exception as e:
+                    print(f"⚠️ Erreur lors de la génération de la description pour l'exercice {exercice.id}: {e}")
+        
+        return render_template("exercice_ajoute.html", 
+                             dashboard_url=dashboard_url,
+                             count=index-1)
 
     niveaux = Niveau.query.all()
-    return render_template("ajouter_exercice.html", niveaux=niveaux, lang=session.get("lang", "fr"), dashboard_url=dashboard_url)
+    return render_template("ajouter_exercice_multiple.html", 
+                         niveaux=niveaux, 
+                         lang=session.get("lang", "fr"), 
+                         dashboard_url=dashboard_url)
 
 @app.route("/admin/ajouter-niveau", methods=["GET", "POST"])
 @admin_required
