@@ -767,7 +767,7 @@
           </div>
 
           <!-- Bouton de test temporaire -->
-          <button type="button" onclick="testFormData()" style="background: #f39c12; color: white; padding: 10px; margin: 10px; border-radius: 5px; width: 100%;">
+          <button type="button" onclick="safeTestFormData()" style="background: #f39c12; color: white; padding: 10px; margin: 10px; border-radius: 5px; width: 100%;">
             🔍 TESTER LES DONNÉES (Vérifier la console)
           </button>
 
@@ -795,51 +795,21 @@
     const notification = document.getElementById("notification");
     const submitBtn = document.getElementById("submitBtn");
 
-    // FONCTION CORRIGÉE : Synchroniser les champs mathématiques avec les textareas
-    function syncMathFieldsToTextareas() {
-        console.log("🔄 Synchronisation des champs mathématiques...");
-        
-        const cards = document.querySelectorAll(".exercise-card");
-        cards.forEach((card, index) => {
-            const exerciseIndex = index + 1;
-            
-            // Liste de tous les champs mathématiques possibles
-            const mathFieldPairs = [
-                { math: 'question_fr_field', text: 'question_fr' },
-                { math: 'reponse_fr_field', text: 'reponse_fr' },
-                { math: 'explication_fr_field', text: 'explication_fr' },
-                { math: 'options_fr_field', text: 'options_fr' },
-                { math: 'question_en_field', text: 'question_en' },
-                { math: 'reponse_en_field', text: 'reponse_en' },
-                { math: 'explication_en_field', text: 'explication_en' },
-                { math: 'options_en_field', text: 'options_en' }
-            ];
-            
-            // Copier chaque champ mathématique vers le textarea correspondant
-            mathFieldPairs.forEach(pair => {
-                const mathField = document.getElementById(`${pair.math}_${exerciseIndex}`);
-                const textArea = document.getElementById(`${pair.text}_${exerciseIndex}`);
-                
-                if (mathField && textArea) {
-                    // Copier la valeur du champ mathématique vers le textarea
-                    textArea.value = mathField.value;
-                    console.log(`  ✅ ${pair.math}_${exerciseIndex} → ${pair.text}_${exerciseIndex}: ${mathField.value.substring(0, 50)}...`);
-                }
-            });
-        });
-    }
-
-    // FONCTION AMÉLIORÉE : Réindexation OBLIGATOIRE
+    // FONCTION SIMPLIFIÉE : Réindexation SANS toucher aux valeurs
     function reindexExercises() {
         const cards = document.querySelectorAll(".exercise-card");
         console.log(`🔧 Réindexation de ${cards.length} exercices`);
         
-        // D'abord, synchroniser TOUTES les valeurs avant réindexation
-        syncMathFieldsToTextareas();
-        
         cards.forEach((card, index) => {
             const newIndex = index + 1;
             const oldIndex = card.getAttribute("data-exercise");
+            
+            if (newIndex === parseInt(oldIndex)) {
+                // Même index, rien à faire
+                return;
+            }
+            
+            console.log(`  🔄 Exercice ${oldIndex} → ${newIndex}`);
             
             // 1. Mettre à jour l'attribut data-exercise
             card.setAttribute("data-exercise", newIndex);
@@ -861,93 +831,69 @@
                         `exercises[${newIndex}]`
                     );
                     input.name = newName;
-                    
-                    // Mettre à jour l'ID
-                    if (input.id) {
-                        input.id = input.id.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
-                    }
                 }
             });
             
-            // 4. Mettre à jour les textareas sans name="exercises[...]"
-            const textareas = card.querySelectorAll("textarea:not([name^='exercises['])");
-            textareas.forEach(textarea => {
-                if (textarea.id) {
-                    textarea.id = textarea.id.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
-                }
-            });
-            
-            // 5. Mettre à jour le champ d'image
+            // 4. Mettre à jour le champ d'image
             const fileInputs = card.querySelectorAll("input[type='file']");
             fileInputs.forEach(fileInput => {
                 fileInput.name = `image_exercice_${newIndex}`;
-                fileInput.id = `image_exercice_${newIndex}`;
             });
             
-            // 6. Mettre à jour les onglets et contenus
-            const tabs = card.querySelectorAll(".tab");
-            tabs.forEach(tab => {
-                const oldTab = tab.getAttribute("data-tab");
-                if (oldTab) {
-                    const newTab = oldTab.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
-                    tab.setAttribute("data-tab", newTab);
-                }
-            });
-            
-            const tabContents = card.querySelectorAll(".tab-content");
-            tabContents.forEach(content => {
-                const oldId = content.id;
-                if (oldId) {
-                    const newId = oldId.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
-                    content.id = newId;
-                }
-            });
-            
-            // 7. Mettre à jour les champs mathématiques
-            const mathFields = card.querySelectorAll("math-field");
-            mathFields.forEach(mathField => {
-                const oldId = mathField.id;
-                if (oldId) {
-                    const newId = oldId.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
-                    mathField.id = newId;
-                }
-            });
-            
-            // 8. Mettre à jour les boutons onclick
-            const buttons = card.querySelectorAll("button");
-            buttons.forEach(button => {
-                const onclick = button.getAttribute("onclick");
-                if (onclick) {
-                    const newOnclick = onclick.replace(new RegExp(oldIndex, 'g'), newIndex);
-                    button.setAttribute("onclick", newOnclick);
-                }
-            });
-            
-            // 9. Mettre à jour les IDs des champs optionnels
-            const optionalFields = card.querySelector(".optional-fields");
-            if (optionalFields && optionalFields.id) {
-                optionalFields.id = optionalFields.id.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
-            }
-            
-            // 10. Mettre à jour les aperçus d'image
-            const imagePreviews = card.querySelectorAll(".image-preview");
-            imagePreviews.forEach(preview => {
-                if (preview.id) {
-                    preview.id = preview.id.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
-                }
-            });
-            
-            console.log(`  🔄 Exercice ${oldIndex} → ${newIndex}`);
+            // 5. Mettre à jour les IDs (sans toucher aux valeurs)
+            updateIdsInCard(card, oldIndex, newIndex);
         });
         
         // Mettre à jour le compteur
         document.getElementById("exerciseCounter").textContent = cards.length;
         exerciseCount = cards.length;
         
-        // RE-synchroniser après réindexation
-        setTimeout(syncMathFieldsToTextareas, 100);
-        
         console.log(`✅ Réindexation terminée. ${cards.length} exercices.`);
+    }
+
+    // Mettre à jour les IDs sans affecter les valeurs
+    function updateIdsInCard(card, oldIndex, newIndex) {
+        // Textareas
+        const textareas = card.querySelectorAll("textarea");
+        textareas.forEach(textarea => {
+            if (textarea.id && textarea.id.includes(`_${oldIndex}`)) {
+                textarea.id = textarea.id.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
+            }
+        });
+        
+        // Inputs
+        const inputs = card.querySelectorAll("input:not([type='file'])");
+        inputs.forEach(input => {
+            if (input.id && input.id.includes(`_${oldIndex}`)) {
+                input.id = input.id.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
+            }
+        });
+        
+        // Champs mathématiques
+        const mathFields = card.querySelectorAll("math-field");
+        mathFields.forEach(mathField => {
+            if (mathField.id && mathField.id.includes(`_${oldIndex}`)) {
+                mathField.id = mathField.id.replace(new RegExp(`_${oldIndex}$`), `_${newIndex}`);
+            }
+        });
+        
+        // Autres éléments
+        const elements = card.querySelectorAll("[id]");
+        elements.forEach(element => {
+            if (element.id.includes(`-${oldIndex}`)) {
+                element.id = element.id.replace(new RegExp(`-${oldIndex}$`), `-${newIndex}`);
+            }
+        });
+        
+        // Mettre à jour les onclick
+        const buttons = card.querySelectorAll("button");
+        buttons.forEach(button => {
+            const onclick = button.getAttribute("onclick");
+            if (onclick) {
+                const newOnclick = onclick.replace(new RegExp(`\\(${oldIndex}\\)`), `(${newIndex})`);
+                button.setAttribute("onclick", newOnclick);
+            }
+        });
     }
 
     // Données du template pour les nouveaux exercices
@@ -1093,8 +1039,8 @@
 
     // Initialisation
     document.addEventListener("DOMContentLoaded", () => {
-      // Initialiser la synchronisation des champs mathématiques pour le premier exercice
-      initMathFieldsForExercise(1);
+      // Initialiser la liaison des champs mathématiques pour le premier exercice
+      initMathFieldSync(1);
       initLanguageTabs();
       setupNavigation();
       initFileUploads();
@@ -1127,8 +1073,8 @@
       }
     });
 
-    // Initialiser les champs mathématiques pour un exercice
-    function initMathFieldsForExercise(exerciseIndex) {
+    // Initialiser la synchronisation des champs mathématiques
+    function initMathFieldSync(exerciseIndex) {
         const mathFieldPairs = [
             { math: 'question_fr_field', text: 'question_fr' },
             { math: 'reponse_fr_field', text: 'reponse_fr' },
@@ -1145,14 +1091,15 @@
             const textArea = document.getElementById(`${pair.text}_${exerciseIndex}`);
             
             if (mathField && textArea) {
-                // Synchroniser à chaque changement
-                mathField.addEventListener('input', () => {
-                    textArea.value = mathField.value;
-                    console.log(`🔄 ${pair.math}_${exerciseIndex} → ${pair.text}_${exerciseIndex}`);
+                // Synchroniser du textarea vers le champ mathématique
+                textArea.addEventListener('input', () => {
+                    mathField.value = textArea.value;
                 });
                 
-                // Synchroniser la valeur initiale
-                textArea.value = mathField.value;
+                // Initialiser avec la valeur du textarea (si elle existe)
+                if (textArea.value) {
+                    mathField.value = textArea.value;
+                }
             }
         });
     }
@@ -1202,11 +1149,11 @@
         const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, nextIndex);
         document.getElementById("exercisesContainer").insertAdjacentHTML('beforeend', newExercise);
         
+        // Initialiser la synchronisation pour le nouvel exercice
+        initMathFieldSync(nextIndex);
+        
         // Réindexer TOUS les exercices
         reindexExercises();
-        
-        // Initialiser les champs mathématiques pour le nouvel exercice
-        initMathFieldsForExercise(nextIndex);
         
         // Afficher tous les boutons de suppression
         document.querySelectorAll('.remove-exercise').forEach(btn => {
@@ -1318,16 +1265,19 @@
       const mathFieldId = fieldId + "_field";
       const mathField = document.getElementById(mathFieldId);
       
-      if (textarea && mathField && mathField.value.trim()) {
+      if (textarea && mathField) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const before = textarea.value.substring(0, start);
         const after = textarea.value.substring(end);
-        const insertion = mathField.value.trim();
+        const insertion = mathField.value.trim() || "\\frac{a}{b}"; // Valeur par défaut
         
         textarea.value = before + insertion + after;
         textarea.selectionStart = textarea.selectionEnd = start + insertion.length;
         textarea.focus();
+        
+        // Mettre à jour le champ mathématique aussi
+        mathField.value = textarea.value;
         
         showNotification(
           langJs === 'en' ? 'Formula inserted!' : 'Formule insérée !',
@@ -1421,19 +1371,17 @@
       }
     }
 
-    // Fonction de test des données
-    function testFormData() {
-        console.log("🧪 TEST DES DONNÉES DU FORMULAIRE");
+    // Fonction de test SÉCURISÉE (ne touche pas aux valeurs)
+    function safeTestFormData() {
+        console.log("🧪 TEST SÉCURISÉ DES DONNÉES");
         
-        // 1. Synchroniser les champs mathématiques
-        syncMathFieldsToTextareas();
-        
-        // 2. Réindexer
+        // 1. Réindexer (sans toucher aux valeurs)
         reindexExercises();
         
-        // 3. Afficher les données finales
-        console.log("=== DONNÉES FINALES À ENVOYER ===");
-        const formData = new FormData(document.getElementById('exerciseForm'));
+        // 2. Afficher les données actuelles
+        console.log("=== DONNÉES ACTUELLES ===");
+        const form = document.getElementById('exerciseForm');
+        const formData = new FormData(form);
         
         let exerciseCount = 0;
         const exercisesData = {};
@@ -1467,20 +1415,34 @@
             });
         });
         
-        alert(`Test terminé. Voir la console pour les détails.\n${exerciseCount} exercice(s) détecté(s).`);
+        // 3. Vérifier la validation
+        const exerciseCards = document.querySelectorAll('.exercise-card');
+        let validExercises = 0;
+        
+        exerciseCards.forEach((exercise, index) => {
+            const exerciseIndex = index + 1;
+            const questionFr = document.getElementById(`question_fr_${exerciseIndex}`);
+            const questionEn = document.getElementById(`question_en_${exerciseIndex}`);
+            
+            const frValue = questionFr ? questionFr.value.trim() : '';
+            const enValue = questionEn ? questionEn.value.trim() : '';
+            
+            if (frValue || enValue) {
+                validExercises++;
+            }
+        });
+        
+        alert(`Test terminé. Voir la console.\n${exerciseCards.length} exercice(s) affiché(s)\n${validExercises} exercice(s) valide(s)\n${exerciseCount} exercice(s) détecté(s) dans le formulaire`);
     }
 
-    // Gestion de la soumission du formulaire - VERSION CORRIGÉE
+    // Gestion de la soumission du formulaire - VERSION SIMPLIFIÉE
     document.getElementById('exerciseForm').addEventListener('submit', function(e) {
         console.log("🚀 Début de la soumission du formulaire");
         
-        // 1. SYNCHRONISER les champs mathématiques AVANT toute réindexation
-        syncMathFieldsToTextareas();
-        
-        // 2. Réindexer les exercices
+        // 1. Réindexer SANS toucher aux valeurs
         reindexExercises();
         
-        // 3. Validation du niveau/leçon
+        // 2. Validation du niveau/leçon
         const niveauSelect = document.getElementById('niveau');
         const leconSelect = document.getElementById('lecon');
         
@@ -1504,35 +1466,26 @@
             return;
         }
         
-        // 4. Validation des questions - VERSION SIMPLIFIÉE
+        // 3. Validation des questions - PLUS SIMPLE
         let isValid = true;
-        let missingExercises = [];
         const exerciseCards = document.querySelectorAll('.exercise-card');
+        let emptyExercises = [];
         
         exerciseCards.forEach((exercise, index) => {
             const exerciseIndex = index + 1;
             const questionFr = document.getElementById(`question_fr_${exerciseIndex}`);
             const questionEn = document.getElementById(`question_en_${exerciseIndex}`);
             
-            // DEBUG
             const frValue = questionFr ? questionFr.value.trim() : '';
             const enValue = questionEn ? questionEn.value.trim() : '';
             
             console.log(`Exercice ${exerciseIndex}: FR="${frValue.substring(0, 30)}...", EN="${enValue.substring(0, 30)}..."`);
             
             if (!frValue && !enValue) {
-                console.log(`  ❌ Exercice ${exerciseIndex} manque les deux questions`);
+                console.log(`  ❌ Exercice ${exerciseIndex} vide`);
                 isValid = false;
-                missingExercises.push(exerciseIndex);
+                emptyExercises.push(exerciseIndex);
                 if (questionFr) questionFr.style.borderColor = '#e74c3c';
-                if (questionEn) questionEn.style.borderColor = '#e74c3c';
-            } else if (!frValue) {
-                console.log(`  ⚠️ Exercice ${exerciseIndex} manque question FR`);
-                if (questionFr) questionFr.style.borderColor = '#e74c3c';
-                if (questionEn) questionEn.style.borderColor = '';
-            } else if (!enValue) {
-                console.log(`  ⚠️ Exercice ${exerciseIndex} manque question EN`);
-                if (questionFr) questionFr.style.borderColor = '';
                 if (questionEn) questionEn.style.borderColor = '#e74c3c';
             } else {
                 if (questionFr) questionFr.style.borderColor = '';
@@ -1542,24 +1495,22 @@
         
         if (!isValid) {
             e.preventDefault();
-            const message = missingExercises.length > 0 
-                ? `Exercices ${missingExercises.join(', ')}: veuillez remplir au moins une question (FR ou EN)`
-                : 'Veuillez remplir les questions manquantes';
-            showNotification(message, 'error');
+            showNotification(
+                `Exercices ${emptyExercises.join(', ')}: veuillez remplir au moins une question`,
+                'error'
+            );
             return;
         }
         
-        // 5. DEBUG FINAL: Afficher ce qui sera envoyé
         console.log("✅ Validation réussie, envoi des données...");
         console.log(`🎯 ${exerciseCards.length} exercice(s) à enregistrer`);
         
-        // 6. Préparer l'indicateur de chargement
+        // 4. Préparer l'indicateur de chargement
         submitBtn.innerHTML = `<span class="loading"></span> ${
             langJs === 'en' ? 'Saving...' : 'Enregistrement...'
         }`;
         submitBtn.disabled = true;
         
-        // 7. Autoriser l'envoi
         console.log("✅ Formulaire prêt à être envoyé au serveur");
     });
   </script>
