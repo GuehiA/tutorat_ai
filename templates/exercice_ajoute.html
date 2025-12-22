@@ -1,55 +1,156 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang }}">
 <head>
-  <meta charset="UTF-8">
-  <!-- Favicon VirtuEduc -->
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
-  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-  <meta name="msapplication-TileColor" content="#4361ee">
-  <meta name="theme-color" content="#4361ee">
-  <title>Exercice ajouté</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 50px;
-      text-align: center;
-    }
-    .confirmation {
-      background: white;
-      padding: 30px;
-      max-width: 500px;
-      margin: auto;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h2 {
-      color: #2ecc71;
-      font-size: 24px;
-    }
-    a {
-      display: inline-block;
-      margin-top: 20px;
-      padding: 10px 20px;
-      text-decoration: none;
-      background-color: #3498db;
-      color: white;
-      border-radius: 5px;
-      font-size: 16px;
-    }
-    a:hover {
-      background-color: #2980b9;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if lang == 'en' %}Exercise Added{% else %}Exercice ajouté{% endif %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3498db;
+            --success: #2ecc71;
+            --light: #f8f9fa;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .success-box {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .success-icon {
+            background: var(--success);
+            color: white;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 2.5rem;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        p {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+        }
+        
+        .count-badge {
+            background: var(--primary);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+    </style>
 </head>
 <body>
-  <div class="confirmation">
-    <h2>✅ Exercice ajouté avec succès !</h2>
-    <a href="/admin/ajouter-exercice">➕ Ajouter un autre exercice</a><br><br>
-    <a href="/admin/dashboard">🏠 Retour au tableau de bord</a>
-  </div>
+    <div class="success-box">
+        <div class="success-icon">
+            <i class="fas fa-check"></i>
+        </div>
+        
+        <h1>
+            {% if lang == 'en' %}
+                Exercise{% if count > 1 %}s{% endif %} Added Successfully!
+            {% else %}
+                Exercice{% if count > 1 %}s{% endif %} ajouté{% if count > 1 %}s{% endif %} avec succès !
+            {% endif %}
+        </h1>
+        
+        <p>
+            {% if lang == 'en' %}
+                <span class="count-badge">{{ count }}</span> exercise{% if count > 1 %}s were{% else %} was{% endif %} successfully created and saved to the database.
+                {% if count > 1 %}
+                    All exercises are now available for your students.
+                {% else %}
+                    The exercise is now available for your students.
+                {% endif %}
+            {% else %}
+                <span class="count-badge">{{ count }}</span> exercice{% if count > 1 %}s ont été{% else %} a été{% endif %} créé{% if count > 1 %}s{% endif %} et sauvegardé{% if count > 1 %}s{% endif %} avec succès.
+                {% if count > 1 %}
+                    Tous les exercices sont maintenant disponibles pour vos étudiants.
+                {% else %}
+                    L'exercice est maintenant disponible pour vos étudiants.
+                {% endif %}
+            {% endif %}
+        </p>
+        
+        <div class="button-group">
+            <a href="/admin/ajouter-exercice" class="btn btn-success">
+                <i class="fas fa-plus"></i>
+                {% if lang == 'en' %}Add More Exercises{% else %}Ajouter d'autres exercices{% endif %}
+            </a>
+            
+            <a href="{{ dashboard_url }}" class="btn btn-primary">
+                <i class="fas fa-home"></i>
+                {% if lang == 'en' %}Back to Dashboard{% else %}Retour au tableau de bord{% endif %}
+            </a>
+        </div>
+    </div>
 </body>
 </html>

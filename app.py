@@ -5596,55 +5596,53 @@ def ajouter_exercice():
         
         temps_commun = request.form.get("temps_commun", 60)
         
-        # Récupérer tous les exercices
-        exercises = []
-        index = 1
+        # Récupérer le nombre d'exercices depuis le champ caché
+        exercise_count = int(request.form.get("exercise_count", 1))
         
-        while True:
-            # Vérifier si cet exercice existe
-            question_fr = request.form.get(f"exercises[{index}][question_fr]")
-            if not question_fr:
-                break  # Plus d'exercices
+        exercises_created = []
+        
+        # Parcourir tous les exercices
+        for i in range(1, exercise_count + 1):
+            question_fr = request.form.get(f"exercises[{i}][question_fr]", "").strip()
+            question_en = request.form.get(f"exercises[{i}][question_en]", "").strip()
             
-            # 🖼️ Traitement de l'image pour cet exercice
-            fichier = request.files.get(f"exercises[{index}][image_exercice]")
-            chemin_image = None
-            if fichier and fichier.filename:
-                nom_fichier = secure_filename(fichier.filename)
-                dossier = os.path.join("static", "uploads", "images")
-                os.makedirs(dossier, exist_ok=True)
-                chemin_absolu = os.path.join(dossier, nom_fichier)
-                fichier.save(chemin_absolu)
-                chemin_image = f"uploads/images/{nom_fichier}"
-            
-            # Utiliser le temps spécifique ou le temps commun
-            temps_specifique = request.form.get(f"exercises[{index}][temps]")
-            temps = int(temps_specifique) if temps_specifique else (int(temps_commun) if temps_commun else 60)
-            
-            exercice_data = {
-                "lecon_id": lecon_id,
-                "question_fr": question_fr.strip(),
-                "question_en": request.form.get(f"exercises[{index}][question_en]", "").strip(),
-                "reponse_fr": request.form.get(f"exercises[{index}][reponse_fr]", "").strip() or None,
-                "reponse_en": request.form.get(f"exercises[{index}][reponse_en]", "").strip() or None,
-                "explication_fr": request.form.get(f"exercises[{index}][explication_fr]", "").strip() or None,
-                "explication_en": request.form.get(f"exercises[{index}][explication_en]", "").strip() or None,
-                "options_fr": request.form.get(f"exercises[{index}][options_fr]", "").strip() or None,
-                "options_en": request.form.get(f"exercises[{index}][options_en]", "").strip() or None,
-                "temps": temps,
-                "chemin_image": chemin_image
-            }
-            
-            # Créer l'exercice dans la base de données
-            exercice = Exercice(**exercice_data)
-            db.session.add(exercice)
-            
-            index += 1
+            # Vérifier si cet exercice a une question (champ obligatoire)
+            if question_fr:
+                # 🖼️ Traitement de l'image pour cet exercice
+                fichier = request.files.get(f"exercises[{i}][image_exercice]")
+                chemin_image = None
+                if fichier and fichier.filename:
+                    nom_fichier = secure_filename(fichier.filename)
+                    dossier = os.path.join("static", "uploads", "images")
+                    os.makedirs(dossier, exist_ok=True)
+                    chemin_absolu = os.path.join(dossier, nom_fichier)
+                    fichier.save(chemin_absolu)
+                    chemin_image = f"uploads/images/{nom_fichier}"
+                
+                # Utiliser le temps spécifique ou le temps commun
+                temps_specifique = request.form.get(f"exercises[{i}][temps]")
+                temps = int(temps_specifique) if temps_specifique else (int(temps_commun) if temps_commun else 60)
+                
+                exercice = Exercice(
+                    lecon_id=lecon_id,
+                    question_fr=question_fr,
+                    question_en=question_en,
+                    reponse_fr=request.form.get(f"exercises[{i}][reponse_fr]", "").strip() or None,
+                    reponse_en=request.form.get(f"exercises[{i}][reponse_en]", "").strip() or None,
+                    explication_fr=request.form.get(f"exercises[{i}][explication_fr]", "").strip() or None,
+                    explication_en=request.form.get(f"exercises[{i}][explication_en]", "").strip() or None,
+                    options_fr=request.form.get(f"exercises[{i}][options_fr]", "").strip() or None,
+                    options_en=request.form.get(f"exercises[{i}][options_en]", "").strip() or None,
+                    temps=temps,
+                    chemin_image=chemin_image
+                )
+                
+                db.session.add(exercice)
+                exercises_created.append(exercice)
         
         db.session.commit()
         
         # ✅ GÉNÉRATION AUTOMATIQUE DES DESCRIPTIONS POUR LES EXERCICES AVEC IMAGES
-        exercises_created = Exercice.query.filter_by(lecon_id=lecon_id).order_by(Exercice.id.desc()).limit(index-1).all()
         for exercice in exercises_created:
             if exercice.chemin_image:
                 try:
@@ -5655,10 +5653,9 @@ def ajouter_exercice():
         
         return render_template("exercice_ajoute.html", 
                              dashboard_url=dashboard_url,
-                             count=index-1)
+                             count=len(exercises_created))
 
     niveaux = Niveau.query.all()
-    # Utiliser le template existant au lieu du nouveau
     return render_template("ajouter_exercice.html", 
                          niveaux=niveaux, 
                          lang=session.get("lang", "fr"), 

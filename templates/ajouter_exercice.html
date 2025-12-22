@@ -554,6 +554,9 @@
 
       <div class="form-body">
         <form method="POST" enctype="multipart/form-data" id="exerciseForm">
+          <!-- CHAMP CACHÉ POUR LE NOMBRE D'EXERCICES -->
+          <input type="hidden" name="exercise_count" id="exerciseCountInput" value="1">
+          
           <!-- Section Catégorisation (commune à tous les exercices) -->
           <div class="form-section">
             <h3 class="form-section-title"><i class="fas fa-folder-open"></i> {% if lang == 'en' %}Common Settings{% else %}Paramètres communs{% endif %}</h3>
@@ -1007,8 +1010,10 @@
       const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, exerciseCount);
       document.getElementById("exercisesContainer").insertAdjacentHTML('beforeend', newExercise);
       
-      // Mettre à jour le compteur
+      // Mettre à jour le compteur visuel
       document.getElementById("exerciseCounter").textContent = exerciseCount;
+      // Mettre à jour le champ caché
+      document.getElementById("exerciseCountInput").value = exerciseCount;
       
       // Afficher le bouton de suppression pour tous les exercices sauf le premier
       if (exerciseCount > 1) {
@@ -1034,8 +1039,10 @@
         exercise.remove();
         exerciseCount--;
         
-        // Mettre à jour le compteur
+        // Mettre à jour le compteur visuel
         document.getElementById("exerciseCounter").textContent = exerciseCount;
+        // Mettre à jour le champ caché
+        document.getElementById("exerciseCountInput").value = exerciseCount;
         
         // Reorganiser les numéros
         const exercises = document.querySelectorAll('.exercise-card');
