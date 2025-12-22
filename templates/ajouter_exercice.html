@@ -690,7 +690,7 @@
                         {% if lang == 'en' %}Upload image (optional){% else %}Télécharger une image (facultative){% endif %} <span class="optional-badge">Facultatif</span>
                       </label>
                       <div class="file-upload">
-                        <input type="file" name="exercises[1][image_exercice]" id="image_exercice_1" accept="image/*" class="exercise-image">
+                        <input type="file" name="image_exercice_1" id="image_exercice_1" accept="image/*" class="exercise-image">
                         <label for="image_exercice_1" class="file-upload-label">
                           <i class="fas fa-cloud-upload-alt"></i>
                           <span class="file-name">{% if lang == 'en' %}Choose an image...{% else %}Choisir une image...{% endif %}</span>
@@ -864,7 +864,7 @@
               ${langJs === 'en' ? 'Upload image (optional)' : 'Télécharger une image (facultative)'} <span class="optional-badge">Facultatif</span>
             </label>
             <div class="file-upload">
-              <input type="file" name="exercises[{{index}}][image_exercice]" id="image_exercice_{{index}}" accept="image/*" class="exercise-image" onchange="previewImage(this, {{index}})">
+              <input type="file" name="image_exercice_{{index}}" id="image_exercice_{{index}}" accept="image/*" class="exercise-image" onchange="previewImage(this, {{index}})">
               <label for="image_exercice_{{index}}" class="file-upload-label">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <span class="file-name">${langJs === 'en' ? 'Choose an image...' : 'Choisir une image...'}</span>
