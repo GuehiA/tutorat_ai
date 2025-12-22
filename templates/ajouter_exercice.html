@@ -993,7 +993,7 @@
           // Afficher le contenu correspondant
           // data-tab="french-1" -> id="french-content-1"
           const contentId = tabId.replace('-', '-content-');
-          const targetContent = document.getElementById(contentId);
+          const targetContent = exercise.querySelector(`#${contentId}`);
           if (targetContent) {
             targetContent.classList.add('active');
           }
@@ -1001,7 +1001,7 @@
       });
     }
 
-    // Fonctions pour la gestion des exercices multiples
+    // FONCTION CORRIGÉE POUR AJOUTER UN EXERCICE
     function addExercise() {
       exerciseCount++;
       const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, exerciseCount);
@@ -1027,11 +1027,15 @@
       );
     }
 
+    // FONCTION CORRIGÉE POUR SUPPRIMER UN EXERCICE
     function removeExercise(index) {
       const exercise = document.querySelector(`.exercise-card[data-exercise="${index}"]`);
       if (exercise && exerciseCount > 1) {
         exercise.remove();
         exerciseCount--;
+        
+        // Mettre à jour le compteur
+        document.getElementById("exerciseCounter").textContent = exerciseCount;
         
         // Reorganiser les numéros
         const exercises = document.querySelectorAll('.exercise-card');
@@ -1043,8 +1047,6 @@
           // Mettre à jour tous les IDs et names
           updateExerciseIds(ex, newIndex);
         });
-        
-        document.getElementById("exerciseCounter").textContent = exerciseCount;
         
         // Cacher le bouton de suppression s'il n'y a qu'un exercice
         if (exerciseCount === 1) {
@@ -1089,6 +1091,12 @@
       if (optionalFields) {
         optionalFields.id = optionalFields.id.replace(/\d+$/, newIndex);
       }
+      
+      // Mettre à jour les IDs des aperçus d'image
+      const imagePreviews = exerciseElement.querySelectorAll('.image-preview');
+      imagePreviews.forEach(preview => {
+        preview.id = preview.id.replace(/\d+$/, newIndex);
+      });
       
       // Mettre à jour les fonctions onclick
       const buttons = exerciseElement.querySelectorAll('button');
