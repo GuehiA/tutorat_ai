@@ -5596,75 +5596,84 @@ def ajouter_exercice():
         
         temps_commun = request.form.get("temps_commun", 60)
         
-        print(f"DEBUG: Form keys: {list(request.form.keys())}")
-        print(f"DEBUG: Files keys: {list(request.files.keys())}")
+        # DEBUG: Afficher toutes les données reçues
+        print("=" * 50)
+        print("DEBUG FORM DATA:")
+        for key in request.form.keys():
+            if 'exercises' in key:
+                print(f"  {key}: {request.form.get(key)[:100]}...")
         
-        # Récupérer tous les exercices via la méthode des clés du formulaire
+        print("DEBUG FILES:")
+        for key in request.files.keys():
+            file = request.files[key]
+            print(f"  {key}: {file.filename if file.filename else 'No file'}")
+        print("=" * 50)
+        
+        # Méthode simple : utiliser le champ exercise_count
+        exercise_count = int(request.form.get("exercise_count", 1))
         exercises_created = []
         
-        # Première méthode : utiliser les clés du formulaire
-        for key in request.form.keys():
-            if key.startswith("exercises[") and "][question_fr]" in key:
-                try:
-                    # Extraire l'index : exercises[1][question_fr] -> 1
-                    start = key.find('[') + 1
-                    end = key.find(']', start)
-                    index = int(key[start:end])
-                    
-                    question_fr = request.form.get(f"exercises[{index}][question_fr]", "").strip()
-                    question_en = request.form.get(f"exercises[{index}][question_en]", "").strip()
-                    
-                    if question_fr:  # Champ obligatoire
-                        print(f"DEBUG: Processing exercise {index}")
-                        
-                        # Récupérer l'image (attention: les fichiers sont dans request.files)
-                        # Pour les images, on utilise un nom différent car Flask a des problèmes avec les crochets
-                        image_key = f"image_exercice_{index}"
-                        fichier = request.files.get(image_key)
-                        chemin_image = None
-                        
-                        if fichier and fichier.filename and fichier.filename != '':
-                            nom_fichier = secure_filename(fichier.filename)
-                            dossier = os.path.join("static", "uploads", "images")
-                            os.makedirs(dossier, exist_ok=True)
-                            chemin_absolu = os.path.join(dossier, nom_fichier)
-                            fichier.save(chemin_absolu)
-                            chemin_image = f"uploads/images/{nom_fichier}"
-                            print(f"DEBUG: Image saved for exercise {index}: {chemin_image}")
-                        
-                        # Utiliser le temps spécifique ou le temps commun
-                        temps_specifique = request.form.get(f"exercises[{index}][temps]")
-                        temps = int(temps_specifique) if temps_specifique else (int(temps_commun) if temps_commun else 60)
-                        
-                        exercice = Exercice(
-                            lecon_id=lecon_id,
-                            question_fr=question_fr,
-                            question_en=question_en,
-                            reponse_fr=request.form.get(f"exercises[{index}][reponse_fr]", "").strip() or None,
-                            reponse_en=request.form.get(f"exercises[{index}][reponse_en]", "").strip() or None,
-                            explication_fr=request.form.get(f"exercises[{index}][explication_fr]", "").strip() or None,
-                            explication_en=request.form.get(f"exercises[{index}][explication_en]", "").strip() or None,
-                            options_fr=request.form.get(f"exercises[{index}][options_fr]", "").strip() or None,
-                            options_en=request.form.get(f"exercises[{index}][options_en]", "").strip() or None,
-                            temps=temps,
-                            chemin_image=chemin_image
-                        )
-                        
-                        db.session.add(exercice)
-                        exercises_created.append(exercice)
-                        print(f"DEBUG: Exercise {index} added to session")
-                        
-                except Exception as e:
-                    print(f"ERROR processing exercise {key}: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    continue
+        for i in range(1, exercise_count + 1):
+            question_fr = request.form.get(f"exercises[{i}][question_fr]", "").strip()
+            
+            # Vérifier si l'exercice a une question
+            if question_fr:
+                print(f"Processing exercise {i}: {question_fr[:50]}...")
+                
+                # Pour les fichiers, Flask a du mal avec les crochets, donc on utilise une clé différente
+                # Essayez plusieurs formats de clés
+                image_file = None
+                
+                # Essayer différents formats de clés
+                possible_keys = [
+                    f"image_exercice_{i}",  # Nouveau format
+                    f"exercises[{i}][image_exercice]",  # Ancien format
+                    f"exercises_{i}_image"  # Format alternatif
+                ]
+                
+                for key in possible_keys:
+                    if key in request.files:
+                        image_file = request.files[key]
+                        print(f"  Found image with key: {key}, filename: {image_file.filename}")
+                        break
+                
+                chemin_image = None
+                if image_file and image_file.filename:
+                    nom_fichier = secure_filename(image_file.filename)
+                    dossier = os.path.join("static", "uploads", "images")
+                    os.makedirs(dossier, exist_ok=True)
+                    chemin_absolu = os.path.join(dossier, nom_fichier)
+                    image_file.save(chemin_absolu)
+                    chemin_image = f"uploads/images/{nom_fichier}"
+                    print(f"  Image saved: {chemin_image}")
+                
+                # Récupérer les autres données
+                temps_specifique = request.form.get(f"exercises[{i}][temps]")
+                temps = int(temps_specifique) if temps_specifique else (int(temps_commun) if temps_commun else 60)
+                
+                exercice = Exercice(
+                    lecon_id=lecon_id,
+                    question_fr=question_fr,
+                    question_en=request.form.get(f"exercises[{i}][question_en]", "").strip(),
+                    reponse_fr=request.form.get(f"exercises[{i}][reponse_fr]", "").strip() or None,
+                    reponse_en=request.form.get(f"exercises[{i}][reponse_en]", "").strip() or None,
+                    explication_fr=request.form.get(f"exercises[{i}][explication_fr]", "").strip() or None,
+                    explication_en=request.form.get(f"exercises[{i}][explication_en]", "").strip() or None,
+                    options_fr=request.form.get(f"exercises[{i}][options_fr]", "").strip() or None,
+                    options_en=request.form.get(f"exercises[{i}][options_en]", "").strip() or None,
+                    temps=temps,
+                    chemin_image=chemin_image
+                )
+                
+                db.session.add(exercice)
+                exercises_created.append(exercice)
+                print(f"  Exercise {i} added to database")
         
         try:
             db.session.commit()
-            print(f"DEBUG: Successfully committed {len(exercises_created)} exercises")
+            print(f"SUCCESS: {len(exercises_created)} exercises saved to database")
         except Exception as e:
-            print(f"ERROR committing to database: {e}")
+            print(f"ERROR: Failed to save exercises: {e}")
             db.session.rollback()
             return jsonify({"error": "Database error"}), 500
         

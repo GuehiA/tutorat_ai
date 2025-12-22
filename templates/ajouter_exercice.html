@@ -1387,5 +1387,24 @@
       submitBtn.disabled = true;
     });
   </script>
+  // Debug: afficher les données du formulaire avant envoi
+document.getElementById('exerciseForm').addEventListener('submit', function(e) {
+    console.log('=== DEBUG FORM DATA ===');
+    
+    // Afficher tous les champs de formulaire
+    const formData = new FormData(this);
+    for (let [key, value] of formData.entries()) {
+        if (key.includes('exercises') || key.includes('image')) {
+            console.log(`${key}: ${value instanceof File ? value.name : value}`);
+        }
+    }
+    
+    // Afficher le nombre d'exercices détectés
+    const exercises = document.querySelectorAll('.exercise-card');
+    console.log(`Number of exercise cards: ${exercises.length}`);
+    
+    // Validation (gardez votre validation existante)
+    // ...
+});
 </body>
 </html>
