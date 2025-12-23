@@ -513,15 +513,15 @@
         flex-direction: column;
         align-items: stretch;
       }
-
+      
       .form-grid {
         grid-template-columns: 1fr;
       }
-
+      
       .form-body {
         padding: 20px;
       }
-
+      
       .batch-options {
         flex-direction: column;
       }
@@ -554,10 +554,11 @@
 
       <div class="form-body">
         <form method="POST" enctype="multipart/form-data" id="exerciseForm">
+          
           <!-- Section Catégorisation (commune à tous les exercices) -->
           <div class="form-section">
             <h3 class="form-section-title"><i class="fas fa-folder-open"></i> {% if lang == 'en' %}Common Settings{% else %}Paramètres communs{% endif %}</h3>
-
+            
             <div class="form-grid">
               <div class="form-group">
                 <label for="niveau" class="required">{% if lang == 'en' %}Level{% else %}Niveau{% endif %} <span class="required-badge">Requis</span>:</label>
@@ -571,14 +572,14 @@
 
               <div class="form-group">
                 <label for="matiere" class="required">{% if lang == 'en' %}Subject{% else %}Matière{% endif %} <span class="required-badge">Requis</span>:</label>
-                <select id="matiere" name="matiere_id" required disabled>
+                <select id="matiere" required disabled>
                   <option value="">{% if lang == 'en' %}-- Choose subject --{% else %}-- Choisir une matière --{% endif %}</option>
                 </select>
               </div>
 
               <div class="form-group">
                 <label for="unite" class="required">{% if lang == 'en' %}Unit{% else %}Unité{% endif %} <span class="required-badge">Requis</span>:</label>
-                <select id="unite" name="unite_id" required disabled>
+                <select id="unite" required disabled>
                   <option value="">{% if lang == 'en' %}-- Choose unit --{% else %}-- Choisir une unité --{% endif %}</option>
                 </select>
               </div>
@@ -602,7 +603,7 @@
           <div class="form-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
               <h3 class="form-section-title"><i class="fas fa-tasks"></i> {% if lang == 'en' %}Exercises{% else %}Exercices{% endif %} <span class="counter-badge" id="exerciseCounter">1</span></h3>
-
+              
               <!-- Options de lot -->
               <div class="batch-options">
                 <button type="button" class="batch-option-btn" onclick="applyToAll('temps')">
@@ -687,7 +688,7 @@
                         {% if lang == 'en' %}Upload image (optional){% else %}Télécharger une image (facultative){% endif %} <span class="optional-badge">Facultatif</span>
                       </label>
                       <div class="file-upload">
-                        <input type="file" name="image_exercice_1" id="image_exercice_1" accept="image/*" class="exercise-image">
+                        <input type="file" name="image_exercice_1" id="image_exercice_1" accept="image/*" class="exercise-image" onchange="previewImage(this, 1)">
                         <label for="image_exercice_1" class="file-upload-label">
                           <i class="fas fa-cloud-upload-alt"></i>
                           <span class="file-name">{% if lang == 'en' %}Choose an image...{% else %}Choisir une image...{% endif %}</span>
@@ -789,81 +790,7 @@
     const notification = document.getElementById("notification");
     const submitBtn = document.getElementById("submitBtn");
 
-    // FONCTION CORRIGÉE : Réindexation OBLIGATOIRE
-    function reindexExercises() {
-      const cards = document.querySelectorAll(".exercise-card");
-      cards.forEach((card, index) => {
-        const newIndex = index + 1;
-        card.setAttribute("data-exercise", newIndex);
-        const exerciseNumber = card.querySelector(".exercise-number");
-        if (exerciseNumber) exerciseNumber.textContent = newIndex;
-
-        // Mettre à jour tous les champs avec name="exercises[...]"
-        card.querySelectorAll("[name^='exercises[']").forEach(input => {
-          const oldName = input.name;
-          const newName = oldName.replace(/exercises\[\d+\]/, `exercises[${newIndex}]`);
-          input.name = newName;
-          if (input.id) input.id = input.id.replace(/\d+$/, newIndex);
-        });
-
-        // Mettre à jour le champ d'image
-        const fileInput = card.querySelector("input[type='file']");
-        if (fileInput) {
-          fileInput.name = `image_exercice_${newIndex}`;
-          fileInput.id = `image_exercice_${newIndex}`;
-        }
-
-        // Mettre à jour les onglets de langue
-        const tabs = card.querySelectorAll(".tab");
-        tabs.forEach(tab => {
-          const oldTab = tab.getAttribute("data-tab");
-          if (oldTab) {
-            const newTab = oldTab.replace(/\d+$/, newIndex);
-            tab.setAttribute("data-tab", newTab);
-          }
-        });
-
-        // Mettre à jour les contenus des onglets
-        const tabContents = card.querySelectorAll(".tab-content");
-        tabContents.forEach(content => {
-          const oldId = content.id;
-          if (oldId) {
-            const newId = oldId.replace(/\d+$/, newIndex);
-            content.id = newId;
-          }
-        });
-
-        // Mettre à jour les champs mathématiques
-        const mathFields = card.querySelectorAll("math-field");
-        mathFields.forEach(mathField => {
-          const oldId = mathField.id;
-          if (oldId) {
-            const newId = oldId.replace(/\d+$/, newIndex);
-            mathField.id = newId;
-          }
-        });
-
-        // Mettre à jour les aperçus d'image
-        const imagePreview = card.querySelector(".image-preview");
-        if (imagePreview) imagePreview.id = `imagePreview-${newIndex}`;
-
-        // Mettre à jour les boutons onclick
-        const buttons = card.querySelectorAll("button");
-        buttons.forEach(button => {
-          const onclick = button.getAttribute("onclick");
-          if (onclick) {
-            const newOnclick = onclick.replace(/\d+/g, newIndex);
-            button.setAttribute("onclick", newOnclick);
-          }
-        });
-      });
-
-      // Mettre à jour le compteur
-      document.getElementById("exerciseCounter").textContent = cards.length;
-      exerciseCount = cards.length;
-    }
-
-    // Données du template pour les nouveaux exercices
+    // Template pour un nouvel exercice
     const exerciseTemplate = `
       <div class="exercise-card" data-exercise="{{index}}">
         <div class="exercise-header">
@@ -1002,34 +929,36 @@
             </div>
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
 
     // Initialisation
     document.addEventListener("DOMContentLoaded", () => {
       initLanguageTabs();
       initMathFields();
       setupNavigation();
-      initFileUploads();
-
+      updateExerciseCounter();
+      
       // Charger la hiérarchie pédagogique
       const niveau = document.getElementById("niveau");
       const matiere = document.getElementById("matiere");
       const unite = document.getElementById("unite");
       const lecon = document.getElementById("lecon");
-
+      
+      // Gestion des changements de niveau
       if (niveau) {
         niveau.addEventListener("change", async function() {
           await loadMatieres(this.value, matiere);
         });
       }
-
+      
+      // Gestion des changements de matière
       if (matiere) {
         matiere.addEventListener("change", async function() {
           await loadUnites(this.value, unite);
         });
       }
-
+      
+      // Gestion des changements d'unité
       if (unite) {
         unite.addEventListener("change", async function() {
           await loadLecons(this.value, lecon);
@@ -1037,112 +966,262 @@
       }
     });
 
-    // FONCTION CORRIGÉE POUR LES ONGLETS DE LANGUE
+    // Fonction pour ajouter un exercice
+    function addExercise() {
+      exerciseCount++;
+      const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, exerciseCount);
+      document.getElementById("exercisesContainer").insertAdjacentHTML('beforeend', newExercise);
+      
+      // Mettre à jour le compteur
+      updateExerciseCounter();
+      
+      // Initialiser les onglets pour le nouvel exercice
+      initLanguageTabsForExercise(exerciseCount);
+      
+      // Initialiser les champs mathématiques
+      initMathFieldsForExercise(exerciseCount);
+      
+      // Afficher le bouton de suppression pour tous les exercices
+      document.querySelectorAll('.remove-exercise').forEach(btn => {
+        btn.style.display = 'flex';
+      });
+      
+      // Faire défiler jusqu'au nouvel exercice
+      const newCard = document.querySelector(`[data-exercise="${exerciseCount}"]`);
+      newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      
+      showNotification(
+        langJs === 'en' ? `Exercise ${exerciseCount} added` : `Exercice ${exerciseCount} ajouté`,
+        'success'
+      );
+    }
+
+    // Fonction pour supprimer un exercice
+    function removeExercise(index) {
+      const exercise = document.querySelector(`.exercise-card[data-exercise="${index}"]`);
+      if (exercise && exerciseCount > 1) {
+        exercise.remove();
+        
+        // Réindexer tous les exercices
+        reindexExercises();
+        
+        // Mettre à jour le compteur
+        updateExerciseCounter();
+        
+        // Cacher le bouton de suppression s'il n'y a qu'un exercice
+        if (exerciseCount === 1) {
+          document.querySelector('.remove-exercise').style.display = 'none';
+        }
+        
+        showNotification(
+          langJs === 'en' ? 'Exercise removed' : 'Exercice supprimé',
+          'success'
+        );
+      }
+    }
+
+    // Réindexer tous les exercices après suppression
+    function reindexExercises() {
+      const cards = document.querySelectorAll('.exercise-card');
+      let newIndex = 1;
+      
+      cards.forEach(card => {
+        const oldIndex = parseInt(card.getAttribute('data-exercise'));
+        card.setAttribute('data-exercise', newIndex);
+        
+        // Mettre à jour le numéro d'exercice affiché
+        const numberElement = card.querySelector('.exercise-number');
+        if (numberElement) {
+          numberElement.textContent = newIndex;
+        }
+        
+        // Mettre à jour tous les IDs et noms
+        updateElementIdsAndNames(card, oldIndex, newIndex);
+        
+        newIndex++;
+      });
+      
+      exerciseCount = cards.length;
+    }
+
+    // Mettre à jour les IDs et noms des éléments
+    function updateElementIdsAndNames(card, oldIndex, newIndex) {
+      // Mettre à jour les IDs
+      card.querySelectorAll('[id]').forEach(element => {
+        if (element.id.includes(oldIndex)) {
+          element.id = element.id.replace(`${oldIndex}`, `${newIndex}`);
+        }
+      });
+      
+      // Mettre à jour les noms
+      card.querySelectorAll('[name]').forEach(element => {
+        if (element.name.includes(`[${oldIndex}]`)) {
+          element.name = element.name.replace(`[${oldIndex}]`, `[${newIndex}]`);
+        }
+      });
+      
+      // Mettre à jour les attributs data-tab
+      card.querySelectorAll('[data-tab]').forEach(element => {
+        if (element.getAttribute('data-tab').includes(`-${oldIndex}`)) {
+          element.setAttribute('data-tab', element.getAttribute('data-tab').replace(`-${oldIndex}`, `-${newIndex}`));
+        }
+      });
+      
+      // Mettre à jour les onclick
+      card.querySelectorAll('[onclick]').forEach(element => {
+        const onclick = element.getAttribute('onclick');
+        if (onclick) {
+          const newOnclick = onclick.replace(new RegExp(`\\(${oldIndex}\\)`, 'g'), `(${newIndex})`);
+          element.setAttribute('onclick', newOnclick);
+        }
+      });
+    }
+
+    // Initialiser les onglets de langue pour un exercice spécifique
+    function initLanguageTabsForExercise(exerciseIndex) {
+      const exerciseCard = document.querySelector(`.exercise-card[data-exercise="${exerciseIndex}"]`);
+      if (!exerciseCard) return;
+      
+      const tabs = exerciseCard.querySelectorAll('.tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          const tabId = this.getAttribute('data-tab');
+          
+          // Désactiver tous les onglets de cet exercice
+          tabs.forEach(t => t.classList.remove('active'));
+          
+          // Activer l'onglet cliqué
+          this.classList.add('active');
+          
+          // Masquer tous les contenus de cet exercice
+          const allContents = exerciseCard.querySelectorAll('.tab-content');
+          allContents.forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Afficher le contenu correspondant
+          const contentId = tabId.replace('-', '-content-');
+          const targetContent = exerciseCard.querySelector(`#${contentId}`);
+          if (targetContent) {
+            targetContent.classList.add('active');
+          }
+        });
+      });
+    }
+
+    // Initialiser les onglets de langue
     function initLanguageTabs() {
       document.addEventListener('click', function(e) {
         if (e.target && e.target.classList.contains('tab')) {
           const tab = e.target;
           const exercise = tab.closest('.exercise-card');
           if (!exercise) return;
-
+          
           const tabId = tab.getAttribute('data-tab');
+          
+          // Désactiver tous les onglets de cet exercice
           const allTabsInExercise = exercise.querySelectorAll('.tab');
           allTabsInExercise.forEach(t => t.classList.remove('active'));
+          
+          // Activer l'onglet cliqué
           tab.classList.add('active');
-
+          
+          // Masquer tous les contenus de cet exercice
           const allContentsInExercise = exercise.querySelectorAll('.tab-content');
-          allContentsInExercise.forEach(content => content.classList.remove('active'));
-
+          allContentsInExercise.forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Afficher le contenu correspondant
           const contentId = tabId.replace('-', '-content-');
           const targetContent = exercise.querySelector(`#${contentId}`);
-          if (targetContent) targetContent.classList.add('active');
+          if (targetContent) {
+            targetContent.classList.add('active');
+          }
         }
       });
     }
 
-    // FONCTION CORRIGÉE POUR AJOUTER UN EXERCICE
-    function addExercise() {
-      exerciseCount++;
-      const newExercise = exerciseTemplate.replace(/\{\{index\}\}/g, exerciseCount);
-      document.getElementById("exercisesContainer").insertAdjacentHTML('beforeend', newExercise);
-      reindexExercises();
-      initMathFieldsForExercise(exerciseCount);
-      document.querySelectorAll('.remove-exercise').forEach(btn => btn.style.display = 'flex');
-      showNotification(langJs === 'en' ? `Exercise added` : `Exercice ajouté`, 'success');
-    }
-
-    // FONCTION CORRIGÉE POUR SUPPRIMER UN EXERCICE
-    function removeExercise(index) {
-      const exercise = document.querySelector(`.exercise-card[data-exercise="${index}"]`);
-      if (exercise && exerciseCount > 1) {
-        exercise.remove();
-        reindexExercises();
-        if (exerciseCount === 1) document.querySelector('.remove-exercise').style.display = 'none';
-        showNotification(langJs === 'en' ? 'Exercise removed' : 'Exercice supprimé', 'success');
-      }
-    }
-
+    // Initialiser les champs mathématiques pour un exercice
     function initMathFieldsForExercise(exerciseIndex) {
       const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en', 'explication_en', 'options_en'];
+      
       fields.forEach(field => {
         const mathField = document.getElementById(`${field}_field_${exerciseIndex}`);
         const textArea = document.getElementById(`${field}_${exerciseIndex}`);
+        
         if (mathField && textArea) {
-          mathField.addEventListener('input', () => textArea.value = mathField.value);
+          mathField.addEventListener('input', () => {
+            textArea.value = mathField.value;
+          });
         }
       });
     }
 
-    function toggleOptionalFields(exerciseIndex, button) {
-      const optionalFields = document.getElementById(`optional-fields-${exerciseIndex}`);
-      const icon = button.querySelector('i');
-      if (optionalFields.classList.contains('show')) {
-        optionalFields.classList.remove('show');
-        icon.className = 'fas fa-plus-circle';
-        button.innerHTML = `<i class="fas fa-plus-circle"></i> ${langJs === 'en' ? 'Show additional fields (optional)' : 'Afficher les champs supplémentaires (facultatifs)'}`;
-      } else {
-        optionalFields.classList.add('show');
-        icon.className = 'fas fa-minus-circle';
-        button.innerHTML = `<i class="fas fa-minus-circle"></i> ${langJs === 'en' ? 'Hide additional fields' : 'Masquer les champs supplémentaires'}`;
-      }
-    }
-
-    function applyToAll(type) {
-      const commonTime = document.getElementById('temps_commun').value;
-      const exercises = document.querySelectorAll('.exercise-card');
-      exercises.forEach((exercise, index) => {
-        const exerciseIndex = index + 1;
-        if (type === 'temps') {
-          const timeInput = document.getElementById(`temps_${exerciseIndex}`);
-          if (timeInput) timeInput.value = commonTime;
-        }
-      });
-      showNotification(langJs === 'en' ? 'Applied to all exercises' : 'Appliqué à tous les exercices', 'success');
-    }
-
+    // Initialiser tous les champs mathématiques
     function initMathFields() {
       const fields = ['question_fr', 'reponse_fr', 'options_fr', 'explication_fr', 'question_en', 'reponse_en', 'explication_en', 'options_en'];
+      
       fields.forEach(field => {
         const mathField = document.getElementById(`${field}_field_1`);
         const textArea = document.getElementById(`${field}_1`);
+        
         if (mathField && textArea) {
-          mathField.addEventListener('input', () => textArea.value = mathField.value);
+          mathField.addEventListener('input', () => {
+            textArea.value = mathField.value;
+          });
         }
       });
     }
 
-    function initFileUploads() {
-      document.querySelectorAll('.exercise-image').forEach(input => {
-        if (input.id === 'image_exercice_1') {
-          input.addEventListener('change', function() { previewImage(this, 1); });
-        }
-      });
+    // Basculer les champs optionnels
+    function toggleOptionalFields(exerciseIndex, button) {
+      const optionalFields = document.getElementById(`optional-fields-${exerciseIndex}`);
+      const icon = button.querySelector('i');
+      
+      if (optionalFields.classList.contains('show')) {
+        optionalFields.classList.remove('show');
+        icon.className = 'fas fa-plus-circle';
+        button.innerHTML = `<i class="fas fa-plus-circle"></i> ${
+          langJs === 'en' ? 'Show additional fields (optional)' : 'Afficher les champs supplémentaires (facultatifs)'
+        }`;
+      } else {
+        optionalFields.classList.add('show');
+        icon.className = 'fas fa-minus-circle';
+        button.innerHTML = `<i class="fas fa-minus-circle"></i> ${
+          langJs === 'en' ? 'Hide additional fields' : 'Masquer les champs supplémentaires'
+        }`;
+      }
     }
 
+    // Appliquer à tous les exercices
+    function applyToAll(type) {
+      const commonTime = document.getElementById('temps_commun').value;
+      const exercises = document.querySelectorAll('.exercise-card');
+      
+      exercises.forEach((exercise, index) => {
+        const exerciseIndex = index + 1;
+        
+        if (type === 'temps') {
+          const timeInput = document.getElementById(`temps_${exerciseIndex}`);
+          if (timeInput) {
+            timeInput.value = commonTime;
+          }
+        }
+      });
+      
+      showNotification(
+        langJs === 'en' ? 'Applied to all exercises' : 'Appliqué à tous les exercices',
+        'success'
+      );
+    }
+
+    // Prévisualiser l'image
     function previewImage(input, exerciseIndex) {
       const preview = document.getElementById(`imagePreview-${exerciseIndex}`);
       const previewImage = preview.querySelector('.previewImage');
       const fileName = input.closest('.file-upload').querySelector('.file-name');
+      
       if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -1157,38 +1236,62 @@
       }
     }
 
+    // Insérer du LaTeX
     function insererLatex(fieldId) {
       const textarea = document.getElementById(fieldId);
       const mathFieldId = fieldId + "_field";
       const mathField = document.getElementById(mathFieldId);
+      
       if (textarea && mathField && mathField.value.trim()) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const before = textarea.value.substring(0, start);
         const after = textarea.value.substring(end);
         const insertion = mathField.value.trim();
+        
         textarea.value = before + insertion + after;
         textarea.selectionStart = textarea.selectionEnd = start + insertion.length;
         textarea.focus();
-        showNotification(langJs === 'en' ? 'Formula inserted!' : 'Formule insérée !', 'success');
+        
+        showNotification(
+          langJs === 'en' ? 'Formula inserted!' : 'Formule insérée !',
+          'success'
+        );
       }
     }
 
+    // Mettre à jour le compteur d'exercices
+    function updateExerciseCounter() {
+      const count = document.querySelectorAll('.exercise-card').length;
+      document.getElementById('exerciseCounter').textContent = count;
+      exerciseCount = count;
+    }
+
+    // Afficher une notification
     function showNotification(message, type) {
       notification.textContent = message;
       notification.className = `notification ${type} show`;
-      setTimeout(() => notification.classList.remove('show'), 3000);
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
     }
 
+    // Fonctions pour charger la hiérarchie pédagogique
     async function loadMatieres(niveauId, matiereSelect) {
       if (!niveauId) return;
+      
       matiereSelect.innerHTML = `<option value="">${langJs === 'en' ? 'Loading...' : 'Chargement...'}</option>`;
       matiereSelect.disabled = true;
+      
       try {
         const res = await fetch(`/api/matieres?niveau_id=${niveauId}`);
         const matieres = await res.json();
+        
         matiereSelect.innerHTML = `<option value="">${langJs === 'en' ? '-- Choose subject --' : '-- Choisir une matière --'}</option>`;
-        matieres.forEach(m => matiereSelect.innerHTML += `<option value="${m.id}">${m.nom_en || m.nom}</option>`);
+        matieres.forEach(m => {
+          matiereSelect.innerHTML += `<option value="${m.id}">${m.nom_en || m.nom}</option>`;
+        });
         matiereSelect.disabled = false;
       } catch (error) {
         console.error('Error loading subjects:', error);
@@ -1198,13 +1301,18 @@
 
     async function loadUnites(matiereId, uniteSelect) {
       if (!matiereId) return;
+      
       uniteSelect.innerHTML = `<option value="">${langJs === 'en' ? 'Loading...' : 'Chargement...'}</option>`;
       uniteSelect.disabled = true;
+      
       try {
         const res = await fetch(`/api/unites?matiere_id=${matiereId}`);
         const unites = await res.json();
+        
         uniteSelect.innerHTML = `<option value="">${langJs === 'en' ? '-- Choose unit --' : '-- Choisir une unité --'}</option>`;
-        unites.forEach(u => uniteSelect.innerHTML += `<option value="${u.id}">${u.nom_en || u.nom}</option>`);
+        unites.forEach(u => {
+          uniteSelect.innerHTML += `<option value="${u.id}">${u.nom_en || u.nom}</option>`;
+        });
         uniteSelect.disabled = false;
       } catch (error) {
         console.error('Error loading units:', error);
@@ -1214,13 +1322,18 @@
 
     async function loadLecons(uniteId, leconSelect) {
       if (!uniteId) return;
+      
       leconSelect.innerHTML = `<option value="">${langJs === 'en' ? 'Loading...' : 'Chargement...'}</option>`;
       leconSelect.disabled = true;
+      
       try {
         const res = await fetch(`/api/lecons?unite_id=${uniteId}&lang=${langJs}`);
         const lecons = await res.json();
+        
         leconSelect.innerHTML = `<option value="">${langJs === 'en' ? '-- Choose lesson --' : '-- Choisir une leçon --'}</option>`;
-        lecons.forEach(l => leconSelect.innerHTML += `<option value="${l.id}">${l.titre}</option>`);
+        lecons.forEach(l => {
+          leconSelect.innerHTML += `<option value="${l.id}">${l.titre}</option>`;
+        });
         leconSelect.disabled = false;
       } catch (error) {
         console.error('Error loading lessons:', error);
@@ -1228,50 +1341,91 @@
       }
     }
 
+    // Configuration de la navigation
     function setupNavigation() {
       const backLink = document.querySelector('.back-link a');
-      if (backLink) backLink.addEventListener('click', function(e) { e.preventDefault(); window.location.href = this.href; });
+      if (backLink) {
+        backLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          window.location.href = this.href;
+        });
+      }
     }
 
-    // Gestion de la soumission du formulaire - AVEC RÉINDEXATION OBLIGATOIRE
+    // Gestion de la soumission du formulaire
     document.getElementById('exerciseForm').addEventListener('submit', function(e) {
-      reindexExercises();
+      // Valider les champs obligatoires
       const niveauSelect = document.getElementById('niveau');
       const leconSelect = document.getElementById('lecon');
+      
       if (!niveauSelect || !niveauSelect.value) {
         e.preventDefault();
-        showNotification(langJs === 'en' ? 'Please select a level' : 'Veuillez sélectionner un niveau', 'error');
+        showNotification(
+          langJs === 'en' ? 'Please select a level' : 'Veuillez sélectionner un niveau',
+          'error'
+        );
         niveauSelect.focus();
         return;
       }
+      
       if (!leconSelect || !leconSelect.value) {
         e.preventDefault();
-        showNotification(langJs === 'en' ? 'Please select a lesson' : 'Veuillez sélectionner une leçon', 'error');
+        showNotification(
+          langJs === 'en' ? 'Please select a lesson' : 'Veuillez sélectionner une leçon',
+          'error'
+        );
         leconSelect.focus();
         return;
       }
+      
+      // Valider les questions pour chaque exercice
       let isValid = true;
       const exerciseCards = document.querySelectorAll('.exercise-card');
+      
       exerciseCards.forEach((exercise, index) => {
         const exerciseIndex = index + 1;
         const questionFr = document.getElementById(`question_fr_${exerciseIndex}`);
         const questionEn = document.getElementById(`question_en_${exerciseIndex}`);
+        
         if (!questionFr || !questionFr.value.trim()) {
           isValid = false;
           questionFr.style.borderColor = '#e74c3c';
-        } else questionFr.style.borderColor = '';
+        } else {
+          questionFr.style.borderColor = '';
+        }
+        
         if (!questionEn || !questionEn.value.trim()) {
           isValid = false;
           questionEn.style.borderColor = '#e74c3c';
-        } else questionEn.style.borderColor = '';
+        } else {
+          questionEn.style.borderColor = '';
+        }
       });
+      
       if (!isValid) {
         e.preventDefault();
-        showNotification(langJs === 'en' ? 'Please fill the question for each exercise' : 'Veuillez remplir la question pour chaque exercice', 'error');
+        showNotification(
+          langJs === 'en' ? 'Please fill the question for each exercise' : 'Veuillez remplir la question pour chaque exercice',
+          'error'
+        );
         return;
       }
-      submitBtn.innerHTML = `<span class="loading"></span> ${langJs === 'en' ? 'Saving...' : 'Enregistrement...'}`;
+      
+      // Afficher un indicateur de chargement
+      submitBtn.innerHTML = `<span class="loading"></span> ${
+        langJs === 'en' ? 'Saving...' : 'Enregistrement...'
+      }`;
       submitBtn.disabled = true;
+      
+      // Log de debug avant envoi
+      console.log('=== SUBMITTING FORM DATA ===');
+      exerciseCards.forEach((exercise, index) => {
+        const exerciseIndex = index + 1;
+        const questionFr = document.getElementById(`question_fr_${exerciseIndex}`).value;
+        const questionEn = document.getElementById(`question_en_${exerciseIndex}`).value;
+        console.log(`Exercice ${exerciseIndex} - FR: ${questionFr.substring(0, 30)}...`);
+        console.log(`Exercice ${exerciseIndex} - EN: ${questionEn.substring(0, 30)}...`);
+      });
     });
   </script>
 </body>
