@@ -6134,29 +6134,61 @@ def before_request():
 @app.route("/admin/exercices")
 @admin_required
 def liste_exercices():
-    """Affiche tous les exercices organisés par leçon"""
+    """Affiche tous les exercices organisés par matière, unité et leçon"""
     page = request.args.get('page', 1, type=int)
-    per_page = 10  # 10 leçons par page
+    per_page = 10  # 10 matières par page
     
-    # Récupérer les leçons avec leurs exercices et relations
-    lecons_query = Lecon.query.options(
-        db.joinedload(Lecon.exercices),
-        db.joinedload(Lecon.unite).joinedload(Unite.matiere).joinedload(Matiere.niveau)
-    ).filter(Lecon.exercices.any())  # Seulement les leçons qui ont des exercices
+    # Récupérer les matières qui ont des exercices (via leurs unités et leçons)
+    matieres_query = Matiere.query\
+        .join(Niveau)\
+        .join(Unite)\
+        .join(Lecon)\
+        .join(Exercice)\
+        .options(
+            db.joinedload(Matiere.niveau),
+            db.joinedload(Matiere.unites).joinedload(Unite.lecons).joinedload(Lecon.exercices)
+        )\
+        .distinct()
     
-    # Pagination des leçons
-    lecons_paginated = lecons_query.order_by(Lecon.id.desc()).paginate(
+    # Pagination des matières
+    matieres_paginated = matieres_query.order_by(Niveau.ordre.asc(), Matiere.nom.asc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
     # Récupérer tous les niveaux et matières pour les filtres
-    niveaux = Niveau.query.all()
+    niveaux = Niveau.query.order_by(Niveau.ordre.asc()).all()
     matieres_par_niveau = {}
     for niveau in niveaux:
         matieres_par_niveau[niveau.id] = [
             {'id': matiere.id, 'nom': matiere.nom} 
             for matiere in niveau.matieres
         ]
+    
+    # Calculer le nombre total d'exercices pour chaque matière et unité
+    for matiere in matieres_paginated.items:
+        total_exercices_matiere = 0
+        # Filtrer les unités qui ont des exercices
+        unites_avec_exercices = []
+        for unite in matiere.unites:
+            lecons_avec_exercices = []
+            total_exercices_unite = 0
+            
+            # Filtrer les leçons qui ont des exercices
+            for lecon in unite.lecons:
+                if lecon.exercices:
+                    lecons_avec_exercices.append(lecon)
+                    total_exercices_unite += len(lecon.exercices)
+            
+            # Ne garder que les unités avec des exercices
+            if lecons_avec_exercices:
+                unite.lecons_avec_exercices = lecons_avec_exercices
+                unite.total_exercices = total_exercices_unite
+                unites_avec_exercices.append(unite)
+                total_exercices_matiere += total_exercices_unite
+        
+        # Mettre à jour la matière avec seulement les unités qui ont des exercices
+        matiere.unites_avec_exercices = unites_avec_exercices
+        matiere.total_exercices = total_exercices_matiere
     
     # Statistiques
     total_exercices = Exercice.query.count()
@@ -6165,7 +6197,7 @@ def liste_exercices():
     total_matieres = Matiere.query.count()
     
     return render_template("liste_exercices.html", 
-                         lecons_avec_exercices=lecons_paginated.items,
+                         matieres_avec_exercices=matieres_paginated.items,
                          total_exercices=total_exercices,
                          total_lecons=total_lecons,
                          total_unites=total_unites,
@@ -6173,7 +6205,7 @@ def liste_exercices():
                          niveaux=niveaux,
                          matieres_par_niveau=matieres_par_niveau,
                          page=page,
-                         has_next=lecons_paginated.has_next,
+                         has_next=matieres_paginated.has_next,
                          per_page=per_page,
                          lang=session.get("lang", "fr"))
 
