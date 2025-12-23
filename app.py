@@ -6150,13 +6150,13 @@ def liste_exercices():
         )\
         .distinct()
     
-    # Pagination des matières
-    matieres_paginated = matieres_query.order_by(Niveau.ordre.asc(), Matiere.nom.asc()).paginate(
+    # Tri par id du niveau puis par nom de matière
+    matieres_paginated = matieres_query.order_by(Niveau.id.asc(), Matiere.nom.asc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
     # Récupérer tous les niveaux et matières pour les filtres
-    niveaux = Niveau.query.order_by(Niveau.ordre.asc()).all()
+    niveaux = Niveau.query.order_by(Niveau.id.asc()).all()
     matieres_par_niveau = {}
     for niveau in niveaux:
         matieres_par_niveau[niveau.id] = [
@@ -6181,6 +6181,7 @@ def liste_exercices():
             
             # Ne garder que les unités avec des exercices
             if lecons_avec_exercices:
+                # Créer un attribut temporaire pour les leçons avec exercices
                 unite.lecons_avec_exercices = lecons_avec_exercices
                 unite.total_exercices = total_exercices_unite
                 unites_avec_exercices.append(unite)
