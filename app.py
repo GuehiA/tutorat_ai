@@ -5701,6 +5701,32 @@ def ajouter_exercice():
         dashboard_url=dashboard_url
     )
 
+@app.route("/api/exercice/<int:exercice_id>", methods=["GET"])
+def api_get_exercice(exercice_id):
+    """API pour récupérer les détails d'un exercice pour l'aperçu"""
+    if not session.get("enseignant_id") and not session.get("is_admin"):
+        return jsonify({"error": "Non autorisé"}), 401
+    
+    exercice = Exercice.query.get(exercice_id)
+    if not exercice:
+        return jsonify({"error": "Exercice non trouvé"}), 404
+    
+    # Retourner les données de l'exercice
+    return jsonify({
+        "id": exercice.id,
+        "question_fr": exercice.question_fr or "",
+        "question_en": exercice.question_en or "",
+        "reponse_fr": exercice.reponse_fr or "",
+        "reponse_en": exercice.reponse_en or "",
+        "explication_fr": exercice.explication_fr or "",
+        "explication_en": exercice.explication_en or "",
+        "options_fr": exercice.options_fr or "",
+        "options_en": exercice.options_en or "",
+        "temps": exercice.temps,
+        "chemin_image": exercice.chemin_image or "",
+        "created_at": exercice.created_at.strftime("%d/%m/%Y") if exercice.created_at else "",
+        "lecon_id": exercice.lecon_id
+    })
 
 @app.route("/admin/ajouter-niveau", methods=["GET", "POST"])
 @admin_required

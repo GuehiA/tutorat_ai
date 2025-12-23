@@ -151,7 +151,7 @@
             }
             
             .exercise-actions {
-                opacity: 1; /* Toujours visible sur mobile */
+                opacity: 1;
                 margin-top: 10px;
             }
             
@@ -168,6 +168,51 @@
             background: #f8f9fa;
             border-radius: 8px;
             margin: 15px;
+        }
+        
+        /* Style pour le modal d'aperçu */
+        .preview-question {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .preview-answer {
+            background-color: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .preview-explanation {
+            background-color: #e3f2fd;
+            border-left: 4px solid #17a2b8;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-style: italic;
+        }
+        
+        .preview-image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .preview-metadata {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -315,7 +360,7 @@
                         <div class="accordion-body p-0">
                             {% if lecon.exercices %}
                                 {% for exercice in lecon.exercices %}
-                                <div class="exercise-item p-3 exercise-card">
+                                <div class="exercise-item p-3 exercise-card" data-exercice-id="{{ exercice.id }}">
                                     <div class="row align-items-center">
                                         <div class="col-md-8">
                                             <div class="d-flex align-items-start">
@@ -366,7 +411,7 @@
                                                     {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
                                                 </button>
                                             </form>
-                                            <button class="btn btn-info btn-sm preview-btn" data-bs-toggle="modal" data-bs-target="#previewModal" data-exercice-id="{{ exercice.id }}">
+                                            <button class="btn btn-info btn-sm preview-btn" onclick="showExercisePreview({{ exercice.id }}, '{{ exercice.question_fr|escapejs }}', '{{ exercice.question_en|escapejs }}', '{{ exercice.reponse_fr|escapejs if exercice.reponse_fr else '' }}', '{{ exercice.reponse_en|escapejs if exercice.reponse_en else '' }}', '{{ exercice.explication_fr|escapejs if exercice.explication_fr else '' }}', '{{ exercice.explication_en|escapejs if exercice.explication_en else '' }}', '{{ exercice.chemin_image if exercice.chemin_image else '' }}', {{ exercice.temps }}, '{{ exercice.created_at.strftime('%d/%m/%Y') if exercice.created_at else '' }}')">
                                                 <i class="fas fa-eye"></i>
                                                 {% if lang == 'en' %}Preview{% else %}Aperçu{% endif %}
                                             </button>
@@ -445,6 +490,7 @@
                     <h5 class="modal-title" id="previewModalLabel">
                         <i class="fas fa-eye"></i>
                         {% if lang == 'en' %}Exercise Preview{% else %}Aperçu de l'exercice{% endif %}
+                        <span id="previewExerciseId" class="badge bg-primary ms-2"></span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -456,6 +502,10 @@
                         <i class="fas fa-times"></i>
                         {% if lang == 'en' %}Close{% else %}Fermer{% endif %}
                     </button>
+                    <a href="#" id="editExerciseLink" class="btn btn-warning">
+                        <i class="fas fa-edit"></i>
+                        {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
+                    </a>
                 </div>
             </div>
         </div>
@@ -463,6 +513,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Variables globales
+        const langJs = "{{ lang }}";
+        let currentExerciseId = null;
+
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
             // Ouvrir le premier accordéon par défaut
@@ -470,7 +524,116 @@
             if (firstAccordion && document.querySelectorAll('.accordion-item').length > 0) {
                 firstAccordion.click();
             }
+            
+            // Initialiser les boutons d'aperçu
+            initPreviewButtons();
         });
+
+        // Initialiser les boutons d'aperçu
+        function initPreviewButtons() {
+            // Les boutons sont maintenant gérés par l'attribut onclick
+            // Cette fonction n'est plus nécessaire avec l'approche directe
+        }
+
+        // Fonction pour afficher l'aperçu d'un exercice
+        function showExercisePreview(exerciceId, questionFr, questionEn, reponseFr, reponseEn, explicationFr, explicationEn, cheminImage, temps, createdDate) {
+            currentExerciseId = exerciceId;
+            
+            // Mettre à jour le titre du modal
+            document.getElementById('previewExerciseId').textContent = `#${exerciceId}`;
+            
+            // Mettre à jour le lien d'édition
+            document.getElementById('editExerciseLink').href = `/admin/modifier-exercice/${exerciceId}`;
+            
+            // Construire le contenu de l'aperçu
+            let html = `
+                <div class="preview-metadata">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong><i class="fas fa-stopwatch"></i> ${langJs === 'en' ? 'Time' : 'Temps'}:</strong>
+                            <span class="ms-2">${temps} ${langJs === 'en' ? 'seconds' : 'secondes'}</span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong><i class="fas fa-calendar"></i> ${langJs === 'en' ? 'Created' : 'Créé le'}:</strong>
+                            <span class="ms-2">${createdDate || (langJs === 'en' ? 'Unknown' : 'Inconnu')}</span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong><i class="fas fa-image"></i> ${langJs === 'en' ? 'Image' : 'Image'}:</strong>
+                            <span class="ms-2">${cheminImage ? (langJs === 'en' ? 'Yes' : 'Oui') : (langJs === 'en' ? 'No' : 'Non')}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-flag"></i> ${langJs === 'en' ? 'French Version' : 'Version Française'}</h5>
+                        <div class="preview-question">
+                            <strong>${langJs === 'en' ? 'Question:' : 'Question :'}</strong>
+                            <p class="mt-2">${questionFr || `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</p>
+                        </div>
+                        
+                        ${reponseFr ? `
+                            <div class="preview-answer">
+                                <strong>${langJs === 'en' ? 'Answer:' : 'Réponse :'}</strong>
+                                <p class="mt-2 mb-0">${reponseFr}</p>
+                            </div>
+                        ` : ''}
+                        
+                        ${explicationFr ? `
+                            <div class="preview-explanation">
+                                <strong>${langJs === 'en' ? 'Explanation:' : 'Explication :'}</strong>
+                                <p class="mt-2 mb-0">${explicationFr}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-flag-usa"></i> ${langJs === 'en' ? 'English Version' : 'Version Anglaise'}</h5>
+                        <div class="preview-question">
+                            <strong>${langJs === 'en' ? 'Question:' : 'Question :'}</strong>
+                            <p class="mt-2">${questionEn || `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</p>
+                        </div>
+                        
+                        ${reponseEn ? `
+                            <div class="preview-answer">
+                                <strong>${langJs === 'en' ? 'Answer:' : 'Réponse :'}</strong>
+                                <p class="mt-2 mb-0">${reponseEn}</p>
+                            </div>
+                        ` : ''}
+                        
+                        ${explicationEn ? `
+                            <div class="preview-explanation">
+                                <strong>${langJs === 'en' ? 'Explanation:' : 'Explication :'}</strong>
+                                <p class="mt-2 mb-0">${explicationEn}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            // Ajouter l'image si elle existe
+            if (cheminImage) {
+                html += `
+                    <div class="preview-image-container mt-4">
+                        <h5><i class="fas fa-image"></i> ${langJs === 'en' ? 'Exercise Image' : 'Image de l\'exercice'}</h5>
+                        <img src="/static/${cheminImage}" 
+                             alt="${langJs === 'en' ? 'Exercise image' : 'Image de l\'exercice'}" 
+                             class="preview-image mt-2"
+                             onerror="this.style.display='none';">
+                        <p class="text-muted mt-2">
+                            <small>${cheminImage}</small>
+                        </p>
+                    </div>
+                `;
+            }
+            
+            // Afficher le contenu dans le modal
+            document.getElementById('previewContent').innerHTML = html;
+            
+            // Afficher le modal
+            const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+            previewModal.show();
+        }
 
         // Contrôles des accordéons
         document.getElementById('expandAllBtn').addEventListener('click', function() {
@@ -593,8 +756,8 @@
                 message.className = 'alert alert-warning mt-3';
                 message.innerHTML = `
                     <i class="fas fa-search me-2"></i>
-                    <strong>{% if lang == 'en' %}No results found for "{{search}}"{% else %}Aucun résultat trouvé pour "{{search}}"{% endif %}</strong>
-                    <p class="mb-0 mt-2">{% if lang == 'en' %}Try different keywords or filters{% else %}Essayez d'autres mots-clés ou filtres{% endif %}</p>
+                    <strong>${langJs === 'en' ? 'No results found' : 'Aucun résultat trouvé'}</strong>
+                    <p class="mb-0 mt-2">${langJs === 'en' ? 'Try different keywords or filters' : 'Essayez d\'autres mots-clés ou filtres'}</p>
                 `;
                 document.querySelector('.accordion').prepend(message);
             }
@@ -615,11 +778,10 @@
             const matiereSelect = document.getElementById('matiereFilter');
             
             // Réinitialiser les matières
-            matiereSelect.innerHTML = '<option value="">{% if lang == 'en' %}All Subjects{% else %}Toutes les matières{% endif %}</option>';
+            matiereSelect.innerHTML = '<option value="">' + (langJs === 'en' ? 'All Subjects' : 'Toutes les matières') + '</option>';
             
             if (niveauId) {
-                // Ici vous pourriez faire un appel AJAX pour récupérer les matières du niveau
-                // Pour l'instant, on utilise les données existantes
+                // Utiliser les données passées depuis le template
                 const matieres = {{ matieres_par_niveau|tojson }};
                 if (matieres[niveauId]) {
                     matieres[niveauId].forEach(matiere => {
@@ -632,94 +794,19 @@
             }
         });
 
-        // Aperçu des exercices
-        document.querySelectorAll('.preview-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const exerciceId = this.getAttribute('data-exercice-id');
-                loadExercisePreview(exerciceId);
-            });
-        });
-
-        function loadExercisePreview(exerciceId) {
-            const previewContent = document.getElementById('previewContent');
-            previewContent.innerHTML = `
-                <div class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2">{% if lang == 'en' %}Loading preview...{% else %}Chargement de l'aperçu...{% endif %}</p>
-                </div>
-            `;
-            
-            // Simuler un chargement (à remplacer par un appel AJAX réel)
-            setTimeout(() => {
-                // Ceci est un exemple - à remplacer par un appel à votre API
-                fetch(`/api/exercice/${exerciceId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        previewContent.innerHTML = `
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>{% if lang == 'en' %}French Version{% else %}Version Française{% endif %}</h6>
-                                    <div class="card mb-3">
-                                        <div class="card-body">
-                                            <h5 class="card-title">Question</h5>
-                                            <p>${data.question_fr || 'Non disponible'}</p>
-                                            
-                                            ${data.reponse_fr ? `
-                                                <h5 class="card-title mt-3">Réponse</h5>
-                                                <p>${data.reponse_fr}</p>
-                                            ` : ''}
-                                            
-                                            ${data.explication_fr ? `
-                                                <h5 class="card-title mt-3">Explication</h5>
-                                                <p>${data.explication_fr}</p>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>{% if lang == 'en' %}English Version{% else %}Version Anglaise{% endif %}</h6>
-                                    <div class="card mb-3">
-                                        <div class="card-body">
-                                            <h5 class="card-title">Question</h5>
-                                            <p>${data.question_en || 'Not available'}</p>
-                                            
-                                            ${data.reponse_en ? `
-                                                <h5 class="card-title mt-3">Answer</h5>
-                                                <p>${data.reponse_en}</p>
-                                            ` : ''}
-                                            
-                                            ${data.explication_en ? `
-                                                <h5 class="card-title mt-3">Explanation</h5>
-                                                <p>${data.explication_en}</p>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            ${data.chemin_image ? `
-                                <div class="mt-3">
-                                    <h6>{% if lang == 'en' %}Image{% else %}Image{% endif %}</h6>
-                                    <img src="/static/${data.chemin_image}" alt="Exercise image" class="img-fluid rounded" style="max-height: 300px;">
-                                </div>
-                            ` : ''}
-                        `;
-                    })
-                    .catch(error => {
-                        previewContent.innerHTML = `
-                            <div class="alert alert-danger">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                ${langJs === 'en' ? 'Error loading preview' : 'Erreur lors du chargement de l\'aperçu'}
-                            </div>
-                        `;
-                    });
-            }, 500);
-        }
-
-        // Variables globales
-        const langJs = "{{ lang }}";
+        // Gestion des erreurs d'image
+        document.addEventListener('error', function(e) {
+            if (e.target.tagName === 'IMG' && e.target.classList.contains('preview-image')) {
+                e.target.style.display = 'none';
+                const container = e.target.closest('.preview-image-container');
+                if (container) {
+                    const errorMsg = document.createElement('p');
+                    errorMsg.className = 'text-danger mt-2';
+                    errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${langJs === 'en' ? 'Image not found or failed to load' : 'Image non trouvée ou échec du chargement'}`;
+                    container.appendChild(errorMsg);
+                }
+            }
+        }, true);
     </script>
 </body>
 </html>
