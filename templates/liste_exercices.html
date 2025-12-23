@@ -6,56 +6,168 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .lesson-card {
-            border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .lesson-header {
+        /* Styles pour les accordéons */
+        .accordion-button {
             background: linear-gradient(135deg, #4361ee 0%, #3a56d4 100%);
             color: white;
+            font-weight: 600;
             padding: 15px 20px;
-            border-radius: 10px 10px 0 0;
         }
+        
+        .accordion-button:not(.collapsed) {
+            background: linear-gradient(135deg, #3a56d4 0%, #2f46b8 100%);
+            color: white;
+            box-shadow: none;
+        }
+        
+        .accordion-button::after {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+        }
+        
+        .accordion-button:not(.collapsed)::after {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+        }
+        
+        .lesson-info {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 5px;
+        }
+        
+        .lesson-stats {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        
         .exercise-card {
             border-left: 4px solid #4361ee;
-            margin: 10px 15px;
+            margin: 10px 0;
             transition: all 0.3s ease;
             background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
         }
+        
         .exercise-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
+        
         .exercise-actions {
             opacity: 0;
             transition: opacity 0.3s;
         }
+        
         .exercise-item:hover .exercise-actions {
             opacity: 1;
         }
+        
         .badge-ai {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
+        
         .badge-image {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
+        
         .empty-state {
             text-align: center;
             padding: 40px 20px;
             color: #6c757d;
         }
+        
         .hierarchy-path {
             font-size: 0.85rem;
             color: #6c757d;
             margin-bottom: 5px;
         }
-        .lesson-stats {
-            background: rgba(255,255,255,0.1);
+        
+        .exercise-preview {
+            max-height: 80px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .exercise-preview::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 20px;
+            background: linear-gradient(to bottom, transparent, white);
+        }
+        
+        /* Contrôles d'accordéon globaux */
+        .accordion-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: flex-end;
+        }
+        
+        .accordion-controls .btn-sm {
             padding: 5px 10px;
-            border-radius: 20px;
             font-size: 0.8rem;
+        }
+        
+        /* Style pour le premier accordéon ouvert */
+        .accordion-item:first-child .accordion-button {
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        
+        .accordion-item:last-child .accordion-button.collapsed {
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+        
+        .accordion-item:last-child .accordion-collapse {
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+        
+        /* Animation fluide */
+        .accordion-collapse {
+            transition: all 0.3s ease;
+        }
+        
+        /* Style responsive */
+        @media (max-width: 768px) {
+            .accordion-button {
+                padding: 12px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .lesson-info {
+                font-size: 0.75rem;
+            }
+            
+            .lesson-stats {
+                display: none;
+            }
+            
+            .exercise-actions {
+                opacity: 1; /* Toujours visible sur mobile */
+                margin-top: 10px;
+            }
+            
+            .exercise-actions .btn {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+        
+        /* Style pour les exercices sans contenu */
+        .no-exercises-message {
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 15px;
         }
     </style>
 </head>
@@ -152,46 +264,58 @@
             </div>
         </div>
 
-        <!-- Liste organisée par leçons -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-sitemap me-2"></i>
-                    {% if lang == 'en' %}Exercises by Lesson{% else %}Exercices par Leçon{% endif %}
-                </h5>
-                <span class="badge bg-primary">
-                    {{ total_lecons }} {% if lang == 'en' %}lessons{% else %}leçons{% endif %}
-                </span>
-            </div>
-            <div class="card-body">
-                {% if lecons_avec_exercices %}
-                    {% for lecon in lecons_avec_exercices %}
-                    <div class="lesson-card" data-niveau="{{ lecon.unite.matiere.niveau_id }}" data-matiere="{{ lecon.unite.matiere_id }}">
-                        <div class="lesson-header d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">
+        <!-- Contrôles des accordéons -->
+        <div class="accordion-controls">
+            <button class="btn btn-sm btn-outline-primary" id="expandAllBtn">
+                <i class="fas fa-expand-alt"></i>
+                {% if lang == 'en' %}Expand All{% else %}Tout développer{% endif %}
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="collapseAllBtn">
+                <i class="fas fa-compress-alt"></i>
+                {% if lang == 'en' %}Collapse All{% else %}Tout réduire{% endif %}
+            </button>
+            <button class="btn btn-sm btn-outline-info" id="expandWithExercisesBtn">
+                <i class="fas fa-filter"></i>
+                {% if lang == 'en' %}Expand with Exercises{% else %}Développer avec exercices{% endif %}
+            </button>
+        </div>
+
+        <!-- Liste organisée par leçons avec accordéons -->
+        <div class="accordion" id="lessonsAccordion">
+            {% if lecons_avec_exercices %}
+                {% for lecon in lecons_avec_exercices %}
+                <div class="accordion-item" data-niveau="{{ lecon.unite.matiere.niveau_id }}" data-matiere="{{ lecon.unite.matiere_id }}">
+                    <h2 class="accordion-header" id="heading{{ lecon.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#collapse{{ lecon.id }}" aria-expanded="false" 
+                                aria-controls="collapse{{ lecon.id }}">
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <div>
                                     <i class="fas fa-file-alt me-2"></i>
                                     {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
-                                </h6>
-                                <div class="hierarchy-path text-white-50">
-                                    <small>
-                                        <i class="fas fa-layer-group"></i> {{ lecon.unite.matiere.niveau.nom }} 
-                                        → <i class="fas fa-book"></i> {{ lecon.unite.matiere.nom }} 
-                                        → <i class="fas fa-cube"></i> {{ lecon.unite.nom }}
-                                    </small>
+                                    <div class="lesson-info">
+                                        <small>
+                                            <i class="fas fa-layer-group"></i> {{ lecon.unite.matiere.niveau.nom }} 
+                                            → <i class="fas fa-book"></i> {{ lecon.unite.matiere.nom }} 
+                                            → <i class="fas fa-cube"></i> {{ lecon.unite.nom }}
+                                        </small>
+                                    </div>
                                 </div>
+                                <span class="lesson-stats">
+                                    <i class="fas fa-edit me-1"></i>
+                                    {{ lecon.exercices|length }} 
+                                    {% if lang == 'en' %}exercise{% else %}exercice{% endif %}{% if lecon.exercices|length > 1 %}{% if lang == 'en' %}s{% else %}s{% endif %}{% endif %}
+                                </span>
                             </div>
-                            <div class="lesson-stats">
-                                <i class="fas fa-edit me-1"></i>
-                                {{ lecon.exercices|length }} 
-                                {% if lang == 'en' %}exercise{% else %}exercice{% endif %}{% if lecon.exercices|length > 1 %}{% if lang == 'en' %}s{% else %}s{% endif %}{% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="lesson-body">
+                        </button>
+                    </h2>
+                    
+                    <div id="collapse{{ lecon.id }}" class="accordion-collapse collapse" 
+                         aria-labelledby="heading{{ lecon.id }}" data-bs-parent="#lessonsAccordion">
+                        <div class="accordion-body p-0">
                             {% if lecon.exercices %}
                                 {% for exercice in lecon.exercices %}
-                                <div class="exercise-item card exercise-card p-3">
+                                <div class="exercise-item p-3 exercise-card">
                                     <div class="row align-items-center">
                                         <div class="col-md-8">
                                             <div class="d-flex align-items-start">
@@ -219,9 +343,13 @@
                                                             {% if lang == 'en' %}AI Description{% else %}Description IA{% endif %}
                                                         </span>
                                                         {% endif %}
-                                                        <span class="badge bg-secondary">
+                                                        <span class="badge bg-secondary me-1">
                                                             <i class="fas fa-clock"></i>
                                                             {{ exercice.created_at.strftime('%d/%m/%Y') if exercice.created_at }}
+                                                        </span>
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-stopwatch"></i>
+                                                            {{ exercice.temps }}s
                                                         </span>
                                                     </div>
                                                 </div>
@@ -238,15 +366,19 @@
                                                     {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
                                                 </button>
                                             </form>
+                                            <button class="btn btn-info btn-sm preview-btn" data-bs-toggle="modal" data-bs-target="#previewModal" data-exercice-id="{{ exercice.id }}">
+                                                <i class="fas fa-eye"></i>
+                                                {% if lang == 'en' %}Preview{% else %}Aperçu{% endif %}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
                                 {% endfor %}
                             {% else %}
-                                <div class="empty-state p-4">
-                                    <i class="fas fa-inbox fa-2x mb-3"></i>
-                                    <p class="mb-0">{% if lang == 'en' %}No exercises in this lesson{% else %}Aucun exercice dans cette leçon{% endif %}</p>
-                                    <a href="/admin/ajouter-exercice?lecon_id={{ lecon.id }}" class="btn btn-sm btn-primary mt-2">
+                                <div class="no-exercises-message">
+                                    <i class="fas fa-inbox fa-2x mb-3 text-muted"></i>
+                                    <p class="mb-2">{% if lang == 'en' %}No exercises in this lesson{% else %}Aucun exercice dans cette leçon{% endif %}</p>
+                                    <a href="/admin/ajouter-exercice?lecon_id={{ lecon.id }}" class="btn btn-sm btn-primary">
                                         <i class="fas fa-plus"></i>
                                         {% if lang == 'en' %}Add Exercise{% else %}Ajouter un exercice{% endif %}
                                     </a>
@@ -254,59 +386,139 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% endfor %}
+                </div>
+                {% endfor %}
 
-                    <!-- Pagination -->
-                    {% if lecons_avec_exercices|length >= per_page %}
-                    <nav aria-label="Page navigation" class="mt-4">
-                        <ul class="pagination justify-content-center">
-                            {% if page > 1 %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('liste_exercices', page=page-1) }}">
-                                    <i class="fas fa-chevron-left"></i>
-                                    {% if lang == 'en' %}Previous{% else %}Précédent{% endif %}
-                                </a>
-                            </li>
-                            {% endif %}
-                            
-                            <li class="page-item active">
-                                <span class="page-link">Page {{ page }}</span>
-                            </li>
-                            
-                            {% if has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('liste_exercices', page=page+1) }}">
-                                    {% if lang == 'en' %}Next{% else %}Suivant{% endif %}
-                                    <i class="fas fa-chevron-right"></i>
-                                </a>
-                            </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-                    {% endif %}
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h5>{% if lang == 'en' %}No lessons with exercises found{% else %}Aucune leçon avec exercices trouvée{% endif %}</h5>
-                        <p class="text-muted mb-3">{% if lang == 'en' %}Start by creating your first lesson and exercise.{% else %}Commencez par créer votre première leçon et exercice.{% endif %}</p>
-                        <div>
-                            <a href="/admin/ajouter-lecon" class="btn btn-primary me-2">
-                                <i class="fas fa-file-alt"></i>
-                                {% if lang == 'en' %}Add Lesson{% else %}Ajouter une leçon{% endif %}
+                <!-- Pagination -->
+                {% if lecons_avec_exercices|length >= per_page %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('liste_exercices', page=page-1) }}">
+                                <i class="fas fa-chevron-left"></i>
+                                {% if lang == 'en' %}Previous{% else %}Précédent{% endif %}
                             </a>
-                            <a href="/admin/ajouter-exercice" class="btn btn-success">
-                                <i class="fas fa-plus"></i>
-                                {% if lang == 'en' %}Add Exercise{% else %}Ajouter un exercice{% endif %}
+                        </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">Page {{ page }}</span>
+                        </li>
+                        
+                        {% if has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('liste_exercices', page=page+1) }}">
+                                {% if lang == 'en' %}Next{% else %}Suivant{% endif %}
+                                <i class="fas fa-chevron-right"></i>
                             </a>
-                        </div>
-                    </div>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
                 {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5>{% if lang == 'en' %}No lessons with exercises found{% else %}Aucune leçon avec exercices trouvée{% endif %}</h5>
+                    <p class="text-muted mb-3">{% if lang == 'en' %}Start by creating your first lesson and exercise.{% else %}Commencez par créer votre première leçon et exercice.{% endif %}</p>
+                    <div>
+                        <a href="/admin/ajouter-lecon" class="btn btn-primary me-2">
+                            <i class="fas fa-file-alt"></i>
+                            {% if lang == 'en' %}Add Lesson{% else %}Ajouter une leçon{% endif %}
+                        </a>
+                        <a href="/admin/ajouter-exercice" class="btn btn-success">
+                            <i class="fas fa-plus"></i>
+                            {% if lang == 'en' %}Add Exercise{% else %}Ajouter un exercice{% endif %}
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal pour l'aperçu -->
+    <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="previewModalLabel">
+                        <i class="fas fa-eye"></i>
+                        {% if lang == 'en' %}Exercise Preview{% else %}Aperçu de l'exercice{% endif %}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="previewContent">
+                    <!-- Le contenu sera chargé dynamiquement -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i>
+                        {% if lang == 'en' %}Close{% else %}Fermer{% endif %}
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ouvrir le premier accordéon par défaut
+            const firstAccordion = document.querySelector('.accordion-item:first-child .accordion-button');
+            if (firstAccordion && document.querySelectorAll('.accordion-item').length > 0) {
+                firstAccordion.click();
+            }
+        });
+
+        // Contrôles des accordéons
+        document.getElementById('expandAllBtn').addEventListener('click', function() {
+            const accordions = document.querySelectorAll('.accordion-button.collapsed');
+            accordions.forEach(btn => {
+                if (!btn.classList.contains('collapsed')) return;
+                const collapseId = btn.getAttribute('data-bs-target');
+                const collapseElement = document.querySelector(collapseId);
+                if (collapseElement) {
+                    new bootstrap.Collapse(collapseElement, { toggle: true });
+                }
+            });
+        });
+
+        document.getElementById('collapseAllBtn').addEventListener('click', function() {
+            const accordions = document.querySelectorAll('.accordion-button:not(.collapsed)');
+            accordions.forEach(btn => {
+                if (btn.classList.contains('collapsed')) return;
+                const collapseId = btn.getAttribute('data-bs-target');
+                const collapseElement = document.querySelector(collapseId);
+                if (collapseElement) {
+                    new bootstrap.Collapse(collapseElement, { toggle: true });
+                }
+            });
+        });
+
+        document.getElementById('expandWithExercisesBtn').addEventListener('click', function() {
+            const accordions = document.querySelectorAll('.accordion-item');
+            accordions.forEach(item => {
+                const hasExercises = item.querySelector('.exercise-item');
+                const button = item.querySelector('.accordion-button');
+                
+                if (hasExercises && button.classList.contains('collapsed')) {
+                    const collapseId = button.getAttribute('data-bs-target');
+                    const collapseElement = document.querySelector(collapseId);
+                    if (collapseElement) {
+                        new bootstrap.Collapse(collapseElement, { toggle: true });
+                    }
+                } else if (!hasExercises && !button.classList.contains('collapsed')) {
+                    const collapseId = button.getAttribute('data-bs-target');
+                    const collapseElement = document.querySelector(collapseId);
+                    if (collapseElement) {
+                        new bootstrap.Collapse(collapseElement, { toggle: true });
+                    }
+                }
+            });
+        });
+
         // Filtrage par niveau et matière
         document.getElementById('niveauFilter').addEventListener('change', function() {
             filterLessons();
@@ -328,7 +540,7 @@
         function filterLessons() {
             const niveauId = document.getElementById('niveauFilter').value;
             const matiereId = document.getElementById('matiereFilter').value;
-            const lessons = document.querySelectorAll('.lesson-card');
+            const lessons = document.querySelectorAll('.accordion-item');
             
             lessons.forEach(lesson => {
                 const lessonNiveau = lesson.getAttribute('data-niveau');
@@ -344,6 +556,7 @@
         function filterExercises() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const exerciseTexts = document.querySelectorAll('.exercise-text');
+            let foundAny = false;
             
             exerciseTexts.forEach(textElement => {
                 const exerciseItem = textElement.closest('.exercise-item');
@@ -351,10 +564,49 @@
                 
                 if (textContent.includes(searchTerm)) {
                     exerciseItem.style.display = 'block';
+                    foundAny = true;
+                    
+                    // Ouvrir l'accordéon parent si fermé
+                    const accordionItem = exerciseItem.closest('.accordion-item');
+                    const button = accordionItem.querySelector('.accordion-button');
+                    if (button && button.classList.contains('collapsed')) {
+                        button.click();
+                    }
                 } else {
                     exerciseItem.style.display = 'none';
                 }
             });
+            
+            // Si aucun exercice trouvé, afficher un message
+            if (!foundAny && searchTerm) {
+                showNoResultsMessage(searchTerm);
+            } else {
+                hideNoResultsMessage();
+            }
+        }
+
+        function showNoResultsMessage(searchTerm) {
+            let message = document.getElementById('noResultsMessage');
+            if (!message) {
+                message = document.createElement('div');
+                message.id = 'noResultsMessage';
+                message.className = 'alert alert-warning mt-3';
+                message.innerHTML = `
+                    <i class="fas fa-search me-2"></i>
+                    <strong>{% if lang == 'en' %}No results found for "{{search}}"{% else %}Aucun résultat trouvé pour "{{search}}"{% endif %}</strong>
+                    <p class="mb-0 mt-2">{% if lang == 'en' %}Try different keywords or filters{% else %}Essayez d'autres mots-clés ou filtres{% endif %}</p>
+                `;
+                document.querySelector('.accordion').prepend(message);
+            }
+            message.querySelector('strong').textContent = 
+                langJs === 'en' ? `No results found for "${searchTerm}"` : `Aucun résultat trouvé pour "${searchTerm}"`;
+        }
+
+        function hideNoResultsMessage() {
+            const message = document.getElementById('noResultsMessage');
+            if (message) {
+                message.remove();
+            }
         }
 
         // Charger les matières basées sur le niveau sélectionné
@@ -379,6 +631,95 @@
                 }
             }
         });
+
+        // Aperçu des exercices
+        document.querySelectorAll('.preview-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const exerciceId = this.getAttribute('data-exercice-id');
+                loadExercisePreview(exerciceId);
+            });
+        });
+
+        function loadExercisePreview(exerciceId) {
+            const previewContent = document.getElementById('previewContent');
+            previewContent.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">{% if lang == 'en' %}Loading preview...{% else %}Chargement de l'aperçu...{% endif %}</p>
+                </div>
+            `;
+            
+            // Simuler un chargement (à remplacer par un appel AJAX réel)
+            setTimeout(() => {
+                // Ceci est un exemple - à remplacer par un appel à votre API
+                fetch(`/api/exercice/${exerciceId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        previewContent.innerHTML = `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>{% if lang == 'en' %}French Version{% else %}Version Française{% endif %}</h6>
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Question</h5>
+                                            <p>${data.question_fr || 'Non disponible'}</p>
+                                            
+                                            ${data.reponse_fr ? `
+                                                <h5 class="card-title mt-3">Réponse</h5>
+                                                <p>${data.reponse_fr}</p>
+                                            ` : ''}
+                                            
+                                            ${data.explication_fr ? `
+                                                <h5 class="card-title mt-3">Explication</h5>
+                                                <p>${data.explication_fr}</p>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>{% if lang == 'en' %}English Version{% else %}Version Anglaise{% endif %}</h6>
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Question</h5>
+                                            <p>${data.question_en || 'Not available'}</p>
+                                            
+                                            ${data.reponse_en ? `
+                                                <h5 class="card-title mt-3">Answer</h5>
+                                                <p>${data.reponse_en}</p>
+                                            ` : ''}
+                                            
+                                            ${data.explication_en ? `
+                                                <h5 class="card-title mt-3">Explanation</h5>
+                                                <p>${data.explication_en}</p>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${data.chemin_image ? `
+                                <div class="mt-3">
+                                    <h6>{% if lang == 'en' %}Image{% else %}Image{% endif %}</h6>
+                                    <img src="/static/${data.chemin_image}" alt="Exercise image" class="img-fluid rounded" style="max-height: 300px;">
+                                </div>
+                            ` : ''}
+                        `;
+                    })
+                    .catch(error => {
+                        previewContent.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                ${langJs === 'en' ? 'Error loading preview' : 'Erreur lors du chargement de l\'aperçu'}
+                            </div>
+                        `;
+                    });
+            }, 500);
+        }
+
+        // Variables globales
+        const langJs = "{{ lang }}";
     </script>
 </body>
 </html>
