@@ -114,25 +114,47 @@
             font-size: 0.8rem;
         }
         
-        /* Style pour le premier accordéon ouvert */
-        .accordion-item:first-child .accordion-button {
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
+        /* Nouvelles classes pour l'organisation par matière/unité */
+        .matiere-section {
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
         }
         
-        .accordion-item:last-child .accordion-button.collapsed {
-            border-bottom-left-radius: 10px;
-            border-bottom-right-radius: 10px;
+        .matiere-header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
         }
         
-        .accordion-item:last-child .accordion-collapse {
-            border-bottom-left-radius: 10px;
-            border-bottom-right-radius: 10px;
+        .unite-section {
+            margin: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
         }
         
-        /* Animation fluide */
-        .accordion-collapse {
-            transition: all 0.3s ease;
+        .unite-header {
+            background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+            color: white;
+            padding: 12px 15px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        .accordion-item {
+            border: none;
+            margin-bottom: 5px;
+        }
+        
+        .accordion-item .accordion-button {
+            background: linear-gradient(135deg, #6f42c1 0%, #6610f2 100%);
+            border-radius: 6px !important;
         }
         
         /* Style pour les exercices sans contenu */
@@ -189,47 +211,6 @@
             margin-top: 20px;
         }
         
-        /* Nouvelles classes pour l'organisation par matière/unité */
-        .matiere-section {
-            margin-bottom: 30px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .matiere-header {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            padding: 15px 20px;
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-        
-        .unite-section {
-            margin: 15px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .unite-header {
-            background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
-            color: white;
-            padding: 12px 15px;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        .accordion-item {
-            border: none;
-            margin-bottom: 5px;
-        }
-        
-        .accordion-item .accordion-button {
-            background: linear-gradient(135deg, #6f42c1 0%, #6610f2 100%);
-            border-radius: 6px !important;
-        }
-        
         /* Style responsive */
         @media (max-width: 768px) {
             .accordion-button {
@@ -253,6 +234,11 @@
             .exercise-actions .btn {
                 width: 100%;
                 margin-bottom: 5px;
+            }
+            
+            .matiere-header, .unite-header {
+                padding: 10px 15px;
+                font-size: 1rem;
             }
         }
     </style>
@@ -335,6 +321,11 @@
                         <label class="form-label">{% if lang == 'en' %}Filter by Subject{% else %}Filtrer par Matière{% endif %}</label>
                         <select class="form-select" id="matiereFilter">
                             <option value="">{% if lang == 'en' %}All Subjects{% else %}Toutes les matières{% endif %}</option>
+                            {% for niveau in niveaux %}
+                                {% for matiere in matieres_par_niveau[niveau.id] %}
+                                <option value="{{ matiere.id }}" data-niveau="{{ niveau.id }}">{{ matiere.nom }}</option>
+                                {% endfor %}
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -369,7 +360,7 @@
         <!-- Structure organisée par matière → unité → leçon -->
         {% if matieres_avec_exercices %}
             {% for matiere in matieres_avec_exercices %}
-            <div class="matiere-section" data-niveau="{{ matiere.niveau_id }}">
+            <div class="matiere-section" data-niveau="{{ matiere.niveau_id }}" data-matiere-id="{{ matiere.id }}">
                 <div class="matiere-header">
                     <i class="fas fa-book me-2"></i>
                     {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
@@ -377,152 +368,185 @@
                         {{ matiere.niveau.nom }}
                     </span>
                     <span class="badge bg-info ms-2">
-                        {% set total_exercices_matiere = 0 %}
-                        {% for unite in matiere.unites %}
-                            {% for lecon in unite.lecons %}
-                                {% set total_exercices_matiere = total_exercices_matiere + lecon.exercices|length %}
-                            {% endfor %}
-                        {% endfor %}
-                        {{ total_exercices_matiere }} 
-                        {% if lang == 'en' %}exercise{% else %}exercice{% endif %}{% if total_exercices_matiere > 1 %}{% if lang == 'en' %}s{% else %}s{% endif %}{% endif %}
+                        {% if matiere.total_exercices is defined %}
+                            {{ matiere.total_exercices }}
+                        {% else %}
+                            0
+                        {% endif %}
+                        {% if lang == 'en' %}exercise{% else %}exercice{% endif %}
+                        {% if matiere.total_exercices is defined and matiere.total_exercices > 1 %}{% if lang == 'en' %}s{% else %}s{% endif %}{% endif %}
                     </span>
                 </div>
                 
-                {% for unite in matiere.unites %}
-                    {% if unite.lecons %}
+                {% if matiere.unites_avec_exercices %}
+                    {% for unite in matiere.unites_avec_exercices %}
                     <div class="unite-section" data-unite-id="{{ unite.id }}">
                         <div class="unite-header">
                             <i class="fas fa-cube me-2"></i>
                             {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
                             <span class="badge bg-light text-dark ms-2">
-                                {% set total_exercices_unite = 0 %}
-                                {% for lecon in unite.lecons %}
-                                    {% set total_exercices_unite = total_exercices_unite + lecon.exercices|length %}
-                                {% endfor %}
-                                {{ total_exercices_unite }} 
-                                {% if lang == 'en' %}exercise{% else %}exercice{% endif %}{% if total_exercices_unite > 1 %}{% if lang == 'en' %}s{% else %}s{% endif %}{% endif %}
+                                {% if unite.total_exercices is defined %}
+                                    {{ unite.total_exercices }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                                {% if lang == 'en' %}exercise{% else %}exercice{% endif %}
+                                {% if unite.total_exercices is defined and unite.total_exercices > 1 %}{% if lang == 'en' %}s{% else %}s{% endif %}{% endif %}
                             </span>
                         </div>
                         
                         <div class="accordion" id="accordionUnite{{ unite.id }}">
-                            {% for lecon in unite.lecons %}
-                            <div class="accordion-item" data-lecon-id="{{ lecon.id }}">
-                                <h2 class="accordion-header" id="heading{{ lecon.id }}">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                            data-bs-target="#collapse{{ lecon.id }}" aria-expanded="false" 
-                                            aria-controls="collapse{{ lecon.id }}">
-                                        <div class="d-flex justify-content-between align-items-center w-100">
-                                            <div>
-                                                <i class="fas fa-file-alt me-2"></i>
-                                                {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                            {% if unite.lecons_avec_exercices %}
+                                {% for lecon in unite.lecons_avec_exercices %}
+                                <div class="accordion-item" data-lecon-id="{{ lecon.id }}">
+                                    <h2 class="accordion-header" id="heading{{ lecon.id }}">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                                data-bs-target="#collapse{{ lecon.id }}" aria-expanded="false" 
+                                                aria-controls="collapse{{ lecon.id }}">
+                                            <div class="d-flex justify-content-between align-items-center w-100">
+                                                <div>
+                                                    <i class="fas fa-file-alt me-2"></i>
+                                                    {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                                                </div>
+                                                <span class="lesson-stats">
+                                                    <i class="fas fa-edit me-1"></i>
+                                                    {{ lecon.exercices|length }} 
+                                                    {% if lang == 'en' %}exercise{% else %}exercice{% endif %}
+                                                    {% if lecon.exercices|length > 1 %}{% if lang == 'en' %}s{% else %}s{% endif %}{% endif %}
+                                                </span>
                                             </div>
-                                            <span class="lesson-stats">
-                                                <i class="fas fa-edit me-1"></i>
-                                                {{ lecon.exercices|length }} 
-                                                {% if lang == 'en' %}exercise{% else %}exercice{% endif %}{% if lecon.exercices|length > 1 %}{% if lang == 'en' %}s{% else %}s{% endif %}{% endif %}
-                                            </span>
-                                        </div>
-                                    </button>
-                                </h2>
-                                
-                                <div id="collapse{{ lecon.id }}" class="accordion-collapse collapse" 
-                                     aria-labelledby="heading{{ lecon.id }}" data-bs-parent="#accordionUnite{{ unite.id }}">
-                                    <div class="accordion-body p-0">
-                                        {% if lecon.exercices %}
-                                            {% for exercice in lecon.exercices %}
-                                            <div class="exercise-item p-3 exercise-card" data-exercice-id="{{ exercice.id }}">
-                                                <div class="row align-items-center">
-                                                    <div class="col-md-8">
-                                                        <div class="d-flex align-items-start">
-                                                            <div class="me-3 text-muted">
-                                                                <small>#{{ exercice.id }}</small>
-                                                            </div>
-                                                            <div>
-                                                                <h6 class="mb-1 exercise-text">
-                                                                    {% if lang == 'en' %}
-                                                                        {{ exercice.question_en|striptags|truncate(120) }}
-                                                                    {% else %}
-                                                                        {{ exercice.question_fr|striptags|truncate(120) }}
-                                                                    {% endif %}
-                                                                </h6>
-                                                                <div class="mt-2">
-                                                                    {% if exercice.chemin_image %}
-                                                                    <span class="badge badge-image text-white me-1">
-                                                                        <i class="fas fa-image"></i>
-                                                                        {% if lang == 'en' %}Image{% else %}Image{% endif %}
-                                                                    </span>
-                                                                    {% endif %}
-                                                                    {% if exercice.image_description_fr %}
-                                                                    <span class="badge badge-ai text-white me-1">
-                                                                        <i class="fas fa-robot"></i>
-                                                                        {% if lang == 'en' %}AI Description{% else %}Description IA{% endif %}
-                                                                    </span>
-                                                                    {% endif %}
-                                                                    <span class="badge bg-secondary me-1">
-                                                                        <i class="fas fa-clock"></i>
-                                                                        {{ exercice.created_at.strftime('%d/%m/%Y') if exercice.created_at else 'N/A' }}
-                                                                    </span>
-                                                                    <span class="badge bg-info">
-                                                                        <i class="fas fa-stopwatch"></i>
-                                                                        {{ exercice.temps }}s
-                                                                    </span>
+                                        </button>
+                                    </h2>
+                                    
+                                    <div id="collapse{{ lecon.id }}" class="accordion-collapse collapse" 
+                                         aria-labelledby="heading{{ lecon.id }}" data-bs-parent="#accordionUnite{{ unite.id }}">
+                                        <div class="accordion-body p-0">
+                                            {% if lecon.exercices %}
+                                                {% for exercice in lecon.exercices %}
+                                                <div class="exercise-item p-3 exercise-card" data-exercice-id="{{ exercice.id }}">
+                                                    <div class="row align-items-center">
+                                                        <div class="col-md-8">
+                                                            <div class="d-flex align-items-start">
+                                                                <div class="me-3 text-muted">
+                                                                    <small>#{{ exercice.id }}</small>
+                                                                </div>
+                                                                <div>
+                                                                    <h6 class="mb-1 exercise-text">
+                                                                        {% if lang == 'en' %}
+                                                                            {{ exercice.question_en|striptags|truncate(120) }}
+                                                                        {% else %}
+                                                                            {{ exercice.question_fr|striptags|truncate(120) }}
+                                                                        {% endif %}
+                                                                    </h6>
+                                                                    <div class="mt-2">
+                                                                        {% if exercice.chemin_image %}
+                                                                        <span class="badge badge-image text-white me-1">
+                                                                            <i class="fas fa-image"></i>
+                                                                            {% if lang == 'en' %}Image{% else %}Image{% endif %}
+                                                                        </span>
+                                                                        {% endif %}
+                                                                        {% if exercice.image_description_fr %}
+                                                                        <span class="badge badge-ai text-white me-1">
+                                                                            <i class="fas fa-robot"></i>
+                                                                            {% if lang == 'en' %}AI Description{% else %}Description IA{% endif %}
+                                                                        </span>
+                                                                        {% endif %}
+                                                                        <span class="badge bg-secondary me-1">
+                                                                            <i class="fas fa-clock"></i>
+                                                                            {{ exercice.created_at.strftime('%d/%m/%Y') if exercice.created_at else 'N/A' }}
+                                                                        </span>
+                                                                        <span class="badge bg-info">
+                                                                            <i class="fas fa-stopwatch"></i>
+                                                                            {{ exercice.temps }}s
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div class="col-md-4 text-end exercise-actions">
-                                                        <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn btn-warning btn-sm" title="{% if lang == 'en' %}Edit{% else %}Modifier{% endif %}">
-                                                            <i class="fas fa-edit"></i>
-                                                            {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
-                                                        </a>
-                                                        <form method="POST" action="/admin/supprimer-exercice/{{ exercice.id }}" class="d-inline" onsubmit="return confirm('{% if lang == 'en' %}Delete this exercise?{% else %}Supprimer cet exercice ?{% endif %}')">
-                                                            <button type="submit" class="btn btn-danger btn-sm" title="{% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}">
-                                                                <i class="fas fa-trash"></i>
-                                                                {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
+                                                        <div class="col-md-4 text-end exercise-actions">
+                                                            <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn btn-warning btn-sm" title="{% if lang == 'en' %}Edit{% else %}Modifier{% endif %}">
+                                                                <i class="fas fa-edit"></i>
+                                                                {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
+                                                            </a>
+                                                            <form method="POST" action="/admin/supprimer-exercice/{{ exercice.id }}" class="d-inline" onsubmit="return confirm('{% if lang == 'en' %}Delete this exercise?{% else %}Supprimer cet exercice ?{% endif %}')">
+                                                                <button type="submit" class="btn btn-danger btn-sm" title="{% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}">
+                                                                    <i class="fas fa-trash"></i>
+                                                                    {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
+                                                                </button>
+                                                            </form>
+                                                            <button class="btn btn-info btn-sm preview-btn" 
+                                                                    data-exercice='{{ 
+                                                                        {
+                                                                            "id": exercice.id,
+                                                                            "question_fr": exercice.question_fr or "",
+                                                                            "question_en": exercice.question_en or "",
+                                                                            "reponse_fr": exercice.reponse_fr or "",
+                                                                            "reponse_en": exercice.reponse_en or "",
+                                                                            "explication_fr": exercice.explication_fr or "",
+                                                                            "explication_en": exercice.explication_en or "",
+                                                                            "chemin_image": exercice.chemin_image or "",
+                                                                            "temps": exercice.temps or 60,
+                                                                            "created_at": exercice.created_at.strftime("%d/%m/%Y") if exercice.created_at else "",
+                                                                            "image_description_fr": exercice.image_description_fr or "",
+                                                                            "image_description_en": exercice.image_description_en or ""
+                                                                        }|tojson|safe 
+                                                                    }}'>
+                                                                <i class="fas fa-eye"></i>
+                                                                {% if lang == 'en' %}Preview{% else %}Aperçu{% endif %}
                                                             </button>
-                                                        </form>
-                                                        <button class="btn btn-info btn-sm preview-btn" 
-                                                                data-exercice='{{ 
-                                                                    {
-                                                                        "id": exercice.id,
-                                                                        "question_fr": exercice.question_fr or "",
-                                                                        "question_en": exercice.question_en or "",
-                                                                        "reponse_fr": exercice.reponse_fr or "",
-                                                                        "reponse_en": exercice.reponse_en or "",
-                                                                        "explication_fr": exercice.explication_fr or "",
-                                                                        "explication_en": exercice.explication_en or "",
-                                                                        "chemin_image": exercice.chemin_image or "",
-                                                                        "temps": exercice.temps or 60,
-                                                                        "created_at": exercice.created_at.strftime("%d/%m/%Y") if exercice.created_at else "",
-                                                                        "image_description_fr": exercice.image_description_fr or "",
-                                                                        "image_description_en": exercice.image_description_en or ""
-                                                                    }|tojson|safe 
-                                                                }}'>
-                                                            <i class="fas fa-eye"></i>
-                                                            {% if lang == 'en' %}Preview{% else %}Aperçu{% endif %}
-                                                        </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            {% endfor %}
-                                        {% else %}
-                                            <div class="no-exercises-message">
-                                                <i class="fas fa-inbox fa-2x mb-3 text-muted"></i>
-                                                <p class="mb-2">{% if lang == 'en' %}No exercises in this lesson{% else %}Aucun exercice dans cette leçon{% endif %}</p>
-                                                <a href="/admin/ajouter-exercice?lecon_id={{ lecon.id }}" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-plus"></i>
-                                                    {% if lang == 'en' %}Add Exercise{% else %}Ajouter un exercice{% endif %}
-                                                </a>
-                                            </div>
-                                        {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <div class="no-exercises-message">
+                                                    <i class="fas fa-inbox fa-2x mb-3 text-muted"></i>
+                                                    <p class="mb-2">{% if lang == 'en' %}No exercises in this lesson{% else %}Aucun exercice dans cette leçon{% endif %}</p>
+                                                    <a href="/admin/ajouter-exercice?lecon_id={{ lecon.id }}" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-plus"></i>
+                                                        {% if lang == 'en' %}Add Exercise{% else %}Ajouter un exercice{% endif %}
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            {% endfor %}
+                                {% endfor %}
+                            {% else %}
+                                <div class="no-exercises-message">
+                                    <i class="fas fa-inbox fa-2x mb-3 text-muted"></i>
+                                    <p class="mb-2">{% if lang == 'en' %}No lessons with exercises in this unit{% else %}Aucune leçon avec exercices dans cette unité{% endif %}</p>
+                                    <a href="/admin/ajouter-lecon?unite_id={{ unite.id }}" class="btn btn-sm btn-warning me-2">
+                                        <i class="fas fa-file-alt"></i>
+                                        {% if lang == 'en' %}Add Lesson{% else %}Ajouter une leçon{% endif %}
+                                    </a>
+                                    <a href="/admin/ajouter-exercice?unite_id={{ unite.id }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-plus"></i>
+                                        {% if lang == 'en' %}Add Exercise{% else %}Ajouter un exercice{% endif %}
+                                    </a>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
-                {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    <div class="no-exercises-message">
+                        <i class="fas fa-inbox fa-2x mb-3 text-muted"></i>
+                        <p class="mb-2">{% if lang == 'en' %}No units with exercises in this subject{% else %}Aucune unité avec exercices dans cette matière{% endif %}</p>
+                        <a href="/admin/ajouter-unite?matiere_id={{ matiere.id }}" class="btn btn-sm btn-info me-2">
+                            <i class="fas fa-cube"></i>
+                            {% if lang == 'en' %}Add Unit{% else %}Ajouter une unité{% endif %}
+                        </a>
+                        <a href="/admin/ajouter-lecon?matiere_id={{ matiere.id }}" class="btn btn-sm btn-warning me-2">
+                            <i class="fas fa-file-alt"></i>
+                            {% if lang == 'en' %}Add Lesson{% else %}Ajouter une leçon{% endif %}
+                        </a>
+                        <a href="/admin/ajouter-exercice?matiere_id={{ matiere.id }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus"></i>
+                            {% if lang == 'en' %}Add Exercise{% else %}Ajouter un exercice{% endif %}
+                        </a>
+                    </div>
+                {% endif %}
             </div>
             {% endfor %}
 
@@ -625,7 +649,56 @@
             
             // Attacher les événements aux boutons d'aperçu
             attachPreviewEvents();
+            
+            // Initialiser le filtre des matières
+            initMatiereFilter();
         });
+
+        // Initialiser le filtre des matières
+        function initMatiereFilter() {
+            const matiereFilter = document.getElementById('matiereFilter');
+            const niveauFilter = document.getElementById('niveauFilter');
+            
+            // Stocker toutes les options de matière
+            const allMatiereOptions = Array.from(matiereFilter.options).map(option => ({
+                value: option.value,
+                text: option.textContent,
+                niveau: option.getAttribute('data-niveau')
+            }));
+            
+            // Écouter les changements du filtre de niveau
+            niveauFilter.addEventListener('change', function() {
+                const selectedNiveau = this.value;
+                
+                // Vider le filtre des matières
+                matiereFilter.innerHTML = '<option value="">' + (langJs === 'en' ? 'All Subjects' : 'Toutes les matières') + '</option>';
+                
+                if (selectedNiveau) {
+                    // Filtrer les matières par niveau
+                    allMatiereOptions.forEach(option => {
+                        if (option.niveau === selectedNiveau) {
+                            const newOption = document.createElement('option');
+                            newOption.value = option.value;
+                            newOption.textContent = option.text;
+                            newOption.setAttribute('data-niveau', option.niveau);
+                            matiereFilter.appendChild(newOption);
+                        }
+                    });
+                } else {
+                    // Afficher toutes les matières
+                    allMatiereOptions.forEach(option => {
+                        const newOption = document.createElement('option');
+                        newOption.value = option.value;
+                        newOption.textContent = option.text;
+                        newOption.setAttribute('data-niveau', option.niveau);
+                        matiereFilter.appendChild(newOption);
+                    });
+                }
+                
+                // Réappliquer le filtre
+                filterByMatiere();
+            });
+        }
 
         // Attacher les événements aux boutons d'aperçu
         function attachPreviewEvents() {
@@ -842,55 +915,7 @@
 
         // Filtrage par niveau et matière
         document.getElementById('niveauFilter').addEventListener('change', function() {
-            const niveauId = this.value;
-            const matiereFilter = document.getElementById('matiereFilter');
-            
-            // Réinitialiser les matières
-            matiereFilter.innerHTML = '<option value="">' + (langJs === 'en' ? 'All Subjects' : 'Toutes les matières') + '</option>';
-            
-            if (niveauId) {
-                // Filtrer les matières affichées
-                const matiereSections = document.querySelectorAll('.matiere-section');
-                matiereSections.forEach(section => {
-                    const sectionNiveau = section.getAttribute('data-niveau');
-                    if (niveauId === '' || sectionNiveau === niveauId) {
-                        section.style.display = 'block';
-                        
-                        // Ajouter la matière au filtre
-                        const matiereName = section.querySelector('.matiere-header').textContent.trim();
-                        const matiereId = section.querySelector('.matiere-header').getAttribute('data-matiere-id') || section.querySelector('.matiere-header').textContent;
-                        
-                        if (!Array.from(matiereFilter.options).some(opt => opt.value === matiereId)) {
-                            const option = document.createElement('option');
-                            option.value = matiereId;
-                            option.textContent = matiereName;
-                            matiereFilter.appendChild(option);
-                        }
-                    } else {
-                        section.style.display = 'none';
-                    }
-                });
-            } else {
-                // Afficher toutes les matières
-                const matiereSections = document.querySelectorAll('.matiere-section');
-                matiereSections.forEach(section => {
-                    section.style.display = 'block';
-                });
-                
-                // Remplir le filtre des matières avec toutes les matières
-                const matieres = {{ matieres_par_niveau|tojson }};
-                Object.values(matieres).forEach(matiereArray => {
-                    matiereArray.forEach(matiere => {
-                        const option = document.createElement('option');
-                        option.value = matiere.id;
-                        option.textContent = matiere.nom;
-                        matiereFilter.appendChild(option);
-                    });
-                });
-            }
-            
-            // Réappliquer le filtre de matière
-            filterByMatiere();
+            filterByNiveau();
         });
 
         document.getElementById('matiereFilter').addEventListener('change', function() {
@@ -906,14 +931,30 @@
             filterExercises();
         });
 
+        function filterByNiveau() {
+            const niveauId = document.getElementById('niveauFilter').value;
+            const matiereSections = document.querySelectorAll('.matiere-section');
+            
+            matiereSections.forEach(section => {
+                const sectionNiveau = section.getAttribute('data-niveau');
+                if (!niveauId || niveauId === '' || sectionNiveau === niveauId) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+            
+            // Réinitialiser le filtre de matière
+            document.getElementById('matiereFilter').value = '';
+            filterByMatiere();
+        }
+
         function filterByMatiere() {
             const matiereId = document.getElementById('matiereFilter').value;
             const matiereSections = document.querySelectorAll('.matiere-section');
             
             matiereSections.forEach(section => {
-                const matiereName = section.querySelector('.matiere-header').textContent.trim();
-                const sectionMatiereId = section.querySelector('.matiere-header').getAttribute('data-matiere-id') || matiereName;
-                
+                const sectionMatiereId = section.getAttribute('data-matiere-id');
                 if (!matiereId || matiereId === '' || sectionMatiereId === matiereId) {
                     section.style.display = 'block';
                 } else {
@@ -989,9 +1030,6 @@
                 message.remove();
             }
         }
-
-        // Initialiser le filtre des matières
-        document.getElementById('niveauFilter').dispatchEvent(new Event('change'));
     </script>
 </body>
 </html>

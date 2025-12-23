@@ -6167,29 +6167,27 @@ def liste_exercices():
     # Calculer le nombre total d'exercices pour chaque matière et unité
     for matiere in matieres_paginated.items:
         total_exercices_matiere = 0
-        # Filtrer les unités qui ont des exercices
         unites_avec_exercices = []
+        
         for unite in matiere.unites:
             lecons_avec_exercices = []
             total_exercices_unite = 0
             
-            # Filtrer les leçons qui ont des exercices
             for lecon in unite.lecons:
                 if lecon.exercices:
                     lecons_avec_exercices.append(lecon)
                     total_exercices_unite += len(lecon.exercices)
             
-            # Ne garder que les unités avec des exercices
             if lecons_avec_exercices:
-                # Créer un attribut temporaire pour les leçons avec exercices
-                unite.lecons_avec_exercices = lecons_avec_exercices
-                unite.total_exercices = total_exercices_unite
+                # Créer des attributs temporaires
+                setattr(unite, 'lecons_avec_exercices', lecons_avec_exercices)
+                setattr(unite, 'total_exercices', total_exercices_unite)
                 unites_avec_exercices.append(unite)
                 total_exercices_matiere += total_exercices_unite
         
-        # Mettre à jour la matière avec seulement les unités qui ont des exercices
-        matiere.unites_avec_exercices = unites_avec_exercices
-        matiere.total_exercices = total_exercices_matiere
+        # Créer des attributs temporaires pour la matière
+        setattr(matiere, 'unites_avec_exercices', unites_avec_exercices)
+        setattr(matiere, 'total_exercices', total_exercices_matiere)
     
     # Statistiques
     total_exercices = Exercice.query.count()
