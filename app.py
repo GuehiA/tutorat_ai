@@ -5578,12 +5578,6 @@ import os
 from models import db, Niveau, Exercice
 
 
-from flask import render_template, redirect, session, request, jsonify, flash
-from werkzeug.utils import secure_filename
-from datetime import datetime
-import os
-import re
-
 @app.route("/admin/ajouter-exercice", methods=["GET", "POST"])
 def ajouter_exercice():
     if not session.get("enseignant_id") and not session.get("is_admin"):
@@ -5599,95 +5593,61 @@ def ajouter_exercice():
 
     if request.method == "POST":
         lecon_id = request.form.get("lecon_id")
-        if not lecon_id:
-            return jsonify({"error": "Aucune leçon sélectionnée"}), 400
-
+        nb_exercices = int(request.form.get("nb_exercices", 1))
         temps_commun = int(request.form.get("temps_commun", 60))
         
-        # 🔍 DEBUG: Afficher toutes les données reçues
-        print("=== DEBUG FORM DATA ===")
-        for key, value in request.form.items():
-            print(f"{key}: {value}")
-        print("=======================")
+        print(f"=== DEBUG: Début traitement ===")
+        print(f"Leçon ID: {lecon_id}")
+        print(f"Nombre d'exercices demandé: {nb_exercices}")
         
-        # 🔍 Détecter le nombre d'exercices dans le formulaire
-        # Rechercher tous les indices d'exercices uniques
-        exercise_indices = set()
-        
-        # Méthode 1: Chercher dans les clés du formulaire
-        for key in request.form.keys():
-            if 'exercises[' in key:
-                # Extraire l'index entre les crochets
-                import re
-                match = re.search(r'\[(\d+)\]', key)
-                if match:
-                    exercise_indices.add(int(match.group(1)))
-        
-        # Méthode 2: Si aucune trouvée, vérifier les images
-        if not exercise_indices:
-            for key in request.files.keys():
-                if key.startswith("image_exercice_"):
-                    try:
-                        index = int(key.split("_")[-1])
-                        exercise_indices.add(index)
-                    except:
-                        pass
-        
-        # Si toujours rien, supposer qu'il y a au moins 1 exercice
-        if not exercise_indices:
-            exercise_indices = {1}
-        
-        # Trier les indices
-        exercise_indices = sorted(list(exercise_indices))
-        print(f"📊 Indices d'exercices détectés: {exercise_indices}")
+        if not lecon_id:
+            return jsonify({"error": "Aucune leçon sélectionnée"}), 400
         
         exercises_created = []
         
-        for index in exercise_indices:
-            # Récupérer les données pour cet exercice
-            question_fr = request.form.get(f"exercises[{index}][question_fr]", "").strip()
-            question_en = request.form.get(f"exercises[{index}][question_en]", "").strip()
+        # Pour chaque exercice de 1 à nb_exercices
+        for i in range(1, nb_exercices + 1):
+            print(f"\n--- Traitement exercice {i} ---")
             
-            # ✅ CORRECTION: Ne pas ignorer si une question est vide
-            # Certains exercices peuvent n'avoir qu'une seule langue
-            if not question_fr and not question_en:
-                print(f"⚠️ Exercice {index} ignoré: aucune question (fr ou en)")
-                continue
-            
-            # Récupérer les autres champs
-            reponse_fr = request.form.get(f"exercises[{index}][reponse_fr]", "").strip()
-            reponse_en = request.form.get(f"exercises[{index}][reponse_en]", "").strip()
-            explication_fr = request.form.get(f"exercises[{index}][explication_fr]", "").strip()
-            explication_en = request.form.get(f"exercises[{index}][explication_en]", "").strip()
-            options_fr = request.form.get(f"exercises[{index}][options_fr]", "").strip()
-            options_en = request.form.get(f"exercises[{index}][options_en]", "").strip()
+            # Récupérer les données avec des noms simples indexés
+            question_fr = request.form.get(f"question_fr_{i}", "").strip()
+            question_en = request.form.get(f"question_en_{i}", "").strip()
+            reponse_fr = request.form.get(f"reponse_fr_{i}", "").strip()
+            reponse_en = request.form.get(f"reponse_en_{i}", "").strip()
+            explication_fr = request.form.get(f"explication_fr_{i}", "").strip()
+            explication_en = request.form.get(f"explication_en_{i}", "").strip()
+            options_fr = request.form.get(f"options_fr_{i}", "").strip()
+            options_en = request.form.get(f"options_en_{i}", "").strip()
             
             # Temps spécifique ou temps commun
-            temps_specifique = request.form.get(f"exercises[{index}][temps]")
+            temps_specifique = request.form.get(f"temps_{i}")
             temps = int(temps_specifique) if temps_specifique else temps_commun
+            
+            print(f"Question FR: {question_fr[:50]}...")
+            print(f"Question EN: {question_en[:50]}...")
+            
+            # ✅ CORRECTION: Ne pas ignorer si une question est vide
+            if not question_fr and not question_en:
+                print(f"⚠️ Exercice {i} ignoré: aucune question")
+                continue
             
             # Gestion de l'image
             chemin_image = None
-            file_key = f"image_exercice_{index}"
+            file_key = f"image_exercice_{i}"
             
-            # Vérifier si ce fichier existe
             if file_key in request.files:
                 fichier = request.files[file_key]
                 if fichier and fichier.filename:
                     # Sauvegarder l'image
-                    from werkzeug.utils import secure_filename
-                    import os
-                    from datetime import datetime
-                    
                     nom_fichier = secure_filename(fichier.filename)
                     timestamp = int(datetime.now().timestamp())
-                    nom_fichier = f"{timestamp}_{index}_{nom_fichier}"
+                    nom_fichier = f"{timestamp}_{i}_{nom_fichier}"
                     dossier = os.path.join("static", "uploads", "images")
                     os.makedirs(dossier, exist_ok=True)
                     chemin_absolu = os.path.join(dossier, nom_fichier)
                     fichier.save(chemin_absolu)
                     chemin_image = f"uploads/images/{nom_fichier}"
-                    print(f"📷 Image sauvegardée pour exercice {index}: {chemin_image}")
+                    print(f"📷 Image sauvegardée: {chemin_image}")
             
             # Créer l'exercice
             exercice = Exercice(
@@ -5706,24 +5666,24 @@ def ajouter_exercice():
             
             db.session.add(exercice)
             exercises_created.append(exercice)
-            print(f"✅ Exercice {index} préparé: {question_fr[:30]}...")
+            print(f"✅ Exercice {i} préparé")
         
         try:
             db.session.commit()
-            print(f"🎉 {len(exercises_created)} exercices enregistrés avec succès")
+            print(f"\n🎉 {len(exercises_created)} exercices enregistrés avec succès")
         except Exception as e:
             db.session.rollback()
-            print(f"❌ Erreur lors de l'enregistrement: {e}")
+            print(f"\n❌ Erreur lors de l'enregistrement: {e}")
             return jsonify({"error": f"Erreur base de données: {str(e)}"}), 500
         
         # Génération automatique des descriptions si nécessaire
-        if hasattr(Exercice, 'generer_description_auto'):  # Vérifier si la fonction existe
+        if 'generer_description_auto' in globals():
             for ex in exercises_created:
                 if ex.chemin_image:
                     try:
                         generer_description_auto(ex.id)
                     except Exception as e:
-                        print(f"⚠️ Échec génération description pour exercice {ex.id}: {e}")
+                        print(f"⚠️ Échec génération description: {e}")
         
         return render_template(
             "exercice_ajoute.html",
