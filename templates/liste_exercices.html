@@ -135,32 +135,6 @@
             transition: all 0.3s ease;
         }
         
-        /* Style responsive */
-        @media (max-width: 768px) {
-            .accordion-button {
-                padding: 12px 15px;
-                font-size: 0.9rem;
-            }
-            
-            .lesson-info {
-                font-size: 0.75rem;
-            }
-            
-            .lesson-stats {
-                display: none;
-            }
-            
-            .exercise-actions {
-                opacity: 1;
-                margin-top: 10px;
-            }
-            
-            .exercise-actions .btn {
-                width: 100%;
-                margin-bottom: 5px;
-            }
-        }
-        
         /* Style pour les exercices sans contenu */
         .no-exercises-message {
             padding: 20px;
@@ -213,6 +187,32 @@
             padding: 15px;
             border-radius: 8px;
             margin-top: 20px;
+        }
+        
+        /* Style responsive */
+        @media (max-width: 768px) {
+            .accordion-button {
+                padding: 12px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .lesson-info {
+                font-size: 0.75rem;
+            }
+            
+            .lesson-stats {
+                display: none;
+            }
+            
+            .exercise-actions {
+                opacity: 1;
+                margin-top: 10px;
+            }
+            
+            .exercise-actions .btn {
+                width: 100%;
+                margin-bottom: 5px;
+            }
         }
     </style>
 </head>
@@ -390,7 +390,7 @@
                                                         {% endif %}
                                                         <span class="badge bg-secondary me-1">
                                                             <i class="fas fa-clock"></i>
-                                                            {{ exercice.created_at.strftime('%d/%m/%Y') if exercice.created_at }}
+                                                            {{ exercice.created_at.strftime('%d/%m/%Y') if exercice.created_at else 'N/A' }}
                                                         </span>
                                                         <span class="badge bg-info">
                                                             <i class="fas fa-stopwatch"></i>
@@ -411,7 +411,16 @@
                                                     {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
                                                 </button>
                                             </form>
-                                            <button class="btn btn-info btn-sm preview-btn" onclick="showExercisePreview({{ exercice.id }}, '{{ exercice.question_fr|escapejs }}', '{{ exercice.question_en|escapejs }}', '{{ exercice.reponse_fr|escapejs if exercice.reponse_fr else '' }}', '{{ exercice.reponse_en|escapejs if exercice.reponse_en else '' }}', '{{ exercice.explication_fr|escapejs if exercice.explication_fr else '' }}', '{{ exercice.explication_en|escapejs if exercice.explication_en else '' }}', '{{ exercice.chemin_image if exercice.chemin_image else '' }}', {{ exercice.temps }}, '{{ exercice.created_at.strftime('%d/%m/%Y') if exercice.created_at else '' }}')">
+                                            <button class="btn btn-info btn-sm preview-btn" onclick="showExercisePreview({{ exercice.id }}, 
+                                                {{ exercice.question_fr|tojson|safe }}, 
+                                                {{ exercice.question_en|tojson|safe }}, 
+                                                {{ exercice.reponse_fr|tojson|safe if exercice.reponse_fr else '""' }}, 
+                                                {{ exercice.reponse_en|tojson|safe if exercice.reponse_en else '""' }}, 
+                                                {{ exercice.explication_fr|tojson|safe if exercice.explication_fr else '""' }}, 
+                                                {{ exercice.explication_en|tojson|safe if exercice.explication_en else '""' }}, 
+                                                {{ exercice.chemin_image|tojson|safe if exercice.chemin_image else '""' }}, 
+                                                {{ exercice.temps }}, 
+                                                '{{ exercice.created_at.strftime("%d/%m/%Y") if exercice.created_at else "" }}')">
                                                 <i class="fas fa-eye"></i>
                                                 {% if lang == 'en' %}Preview{% else %}Aperçu{% endif %}
                                             </button>
@@ -524,16 +533,7 @@
             if (firstAccordion && document.querySelectorAll('.accordion-item').length > 0) {
                 firstAccordion.click();
             }
-            
-            // Initialiser les boutons d'aperçu
-            initPreviewButtons();
         });
-
-        // Initialiser les boutons d'aperçu
-        function initPreviewButtons() {
-            // Les boutons sont maintenant gérés par l'attribut onclick
-            // Cette fonction n'est plus nécessaire avec l'approche directe
-        }
 
         // Fonction pour afficher l'aperçu d'un exercice
         function showExercisePreview(exerciceId, questionFr, questionEn, reponseFr, reponseEn, explicationFr, explicationEn, cheminImage, temps, createdDate) {
@@ -544,6 +544,13 @@
             
             // Mettre à jour le lien d'édition
             document.getElementById('editExerciseLink').href = `/admin/modifier-exercice/${exerciceId}`;
+            
+            // Fonction pour nettoyer le texte (enlever les tags HTML)
+            function cleanText(text) {
+                if (!text) return '';
+                // Simple nettoyage - en pratique vous pourriez utiliser DOMPurify
+                return text.replace(/<[^>]*>/g, '');
+            }
             
             // Construire le contenu de l'aperçu
             let html = `
@@ -569,20 +576,20 @@
                         <h5><i class="fas fa-flag"></i> ${langJs === 'en' ? 'French Version' : 'Version Française'}</h5>
                         <div class="preview-question">
                             <strong>${langJs === 'en' ? 'Question:' : 'Question :'}</strong>
-                            <p class="mt-2">${questionFr || `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</p>
+                            <div class="mt-2 p-2 bg-light rounded">${cleanText(questionFr) || `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</div>
                         </div>
                         
-                        ${reponseFr ? `
+                        ${reponseFr && reponseFr.trim() ? `
                             <div class="preview-answer">
                                 <strong>${langJs === 'en' ? 'Answer:' : 'Réponse :'}</strong>
-                                <p class="mt-2 mb-0">${reponseFr}</p>
+                                <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">${cleanText(reponseFr)}</div>
                             </div>
                         ` : ''}
                         
-                        ${explicationFr ? `
+                        ${explicationFr && explicationFr.trim() ? `
                             <div class="preview-explanation">
                                 <strong>${langJs === 'en' ? 'Explanation:' : 'Explication :'}</strong>
-                                <p class="mt-2 mb-0">${explicationFr}</p>
+                                <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">${cleanText(explicationFr)}</div>
                             </div>
                         ` : ''}
                     </div>
@@ -591,20 +598,20 @@
                         <h5><i class="fas fa-flag-usa"></i> ${langJs === 'en' ? 'English Version' : 'Version Anglaise'}</h5>
                         <div class="preview-question">
                             <strong>${langJs === 'en' ? 'Question:' : 'Question :'}</strong>
-                            <p class="mt-2">${questionEn || `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</p>
+                            <div class="mt-2 p-2 bg-light rounded">${cleanText(questionEn) || `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</div>
                         </div>
                         
-                        ${reponseEn ? `
+                        ${reponseEn && reponseEn.trim() ? `
                             <div class="preview-answer">
                                 <strong>${langJs === 'en' ? 'Answer:' : 'Réponse :'}</strong>
-                                <p class="mt-2 mb-0">${reponseEn}</p>
+                                <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">${cleanText(reponseEn)}</div>
                             </div>
                         ` : ''}
                         
-                        ${explicationEn ? `
+                        ${explicationEn && explicationEn.trim() ? `
                             <div class="preview-explanation">
                                 <strong>${langJs === 'en' ? 'Explanation:' : 'Explication :'}</strong>
-                                <p class="mt-2 mb-0">${explicationEn}</p>
+                                <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">${cleanText(explicationEn)}</div>
                             </div>
                         ` : ''}
                     </div>
@@ -612,14 +619,18 @@
             `;
             
             // Ajouter l'image si elle existe
-            if (cheminImage) {
+            if (cheminImage && cheminImage.trim()) {
                 html += `
                     <div class="preview-image-container mt-4">
                         <h5><i class="fas fa-image"></i> ${langJs === 'en' ? 'Exercise Image' : 'Image de l\'exercice'}</h5>
                         <img src="/static/${cheminImage}" 
                              alt="${langJs === 'en' ? 'Exercise image' : 'Image de l\'exercice'}" 
                              class="preview-image mt-2"
-                             onerror="this.style.display='none';">
+                             onerror="this.style.display='none'; this.nextElementSibling && (this.nextElementSibling.style.display='block');">
+                        <p class="text-danger mt-2" style="display:none;">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            ${langJs === 'en' ? 'Image not found or failed to load' : 'Image non trouvée ou échec du chargement'}
+                        </p>
                         <p class="text-muted mt-2">
                             <small>${cheminImage}</small>
                         </p>
@@ -793,20 +804,6 @@
                 }
             }
         });
-
-        // Gestion des erreurs d'image
-        document.addEventListener('error', function(e) {
-            if (e.target.tagName === 'IMG' && e.target.classList.contains('preview-image')) {
-                e.target.style.display = 'none';
-                const container = e.target.closest('.preview-image-container');
-                if (container) {
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-danger mt-2';
-                    errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${langJs === 'en' ? 'Image not found or failed to load' : 'Image non trouvée ou échec du chargement'}`;
-                    container.appendChild(errorMsg);
-                }
-            }
-        }, true);
     </script>
 </body>
 </html>
