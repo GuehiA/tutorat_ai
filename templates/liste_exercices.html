@@ -411,16 +411,23 @@
                                                     {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
                                                 </button>
                                             </form>
-                                            <button class="btn btn-info btn-sm preview-btn" onclick="showExercisePreview({{ exercice.id }}, 
-                                                {{ exercice.question_fr|tojson|safe }}, 
-                                                {{ exercice.question_en|tojson|safe }}, 
-                                                {{ exercice.reponse_fr|tojson|safe if exercice.reponse_fr else '""' }}, 
-                                                {{ exercice.reponse_en|tojson|safe if exercice.reponse_en else '""' }}, 
-                                                {{ exercice.explication_fr|tojson|safe if exercice.explication_fr else '""' }}, 
-                                                {{ exercice.explication_en|tojson|safe if exercice.explication_en else '""' }}, 
-                                                {{ exercice.chemin_image|tojson|safe if exercice.chemin_image else '""' }}, 
-                                                {{ exercice.temps }}, 
-                                                '{{ exercice.created_at.strftime("%d/%m/%Y") if exercice.created_at else "" }}')">
+                                            <button class="btn btn-info btn-sm preview-btn" 
+                                                    data-exercice='{{ 
+                                                        {
+                                                            "id": exercice.id,
+                                                            "question_fr": exercice.question_fr or "",
+                                                            "question_en": exercice.question_en or "",
+                                                            "reponse_fr": exercice.reponse_fr or "",
+                                                            "reponse_en": exercice.reponse_en or "",
+                                                            "explication_fr": exercice.explication_fr or "",
+                                                            "explication_en": exercice.explication_en or "",
+                                                            "chemin_image": exercice.chemin_image or "",
+                                                            "temps": exercice.temps or 60,
+                                                            "created_at": exercice.created_at.strftime("%d/%m/%Y") if exercice.created_at else "",
+                                                            "image_description_fr": exercice.image_description_fr or "",
+                                                            "image_description_en": exercice.image_description_en or ""
+                                                        }|tojson|safe 
+                                                    }}'>
                                                 <i class="fas fa-eye"></i>
                                                 {% if lang == 'en' %}Preview{% else %}Aperçu{% endif %}
                                             </button>
@@ -524,7 +531,6 @@
     <script>
         // Variables globales
         const langJs = "{{ lang }}";
-        let currentExerciseId = null;
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
@@ -533,23 +539,57 @@
             if (firstAccordion && document.querySelectorAll('.accordion-item').length > 0) {
                 firstAccordion.click();
             }
+            
+            // Attacher les événements aux boutons d'aperçu
+            attachPreviewEvents();
         });
 
+        // Attacher les événements aux boutons d'aperçu
+        function attachPreviewEvents() {
+            document.querySelectorAll('.preview-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    try {
+                        const exerciceData = JSON.parse(this.getAttribute('data-exercice'));
+                        showExercisePreview(exerciceData);
+                    } catch (error) {
+                        console.error('Error parsing exercise data:', error);
+                        alert(langJs === 'en' ? 'Error loading exercise preview' : 'Erreur lors du chargement de l\'aperçu');
+                    }
+                });
+            });
+        }
+
         // Fonction pour afficher l'aperçu d'un exercice
-        function showExercisePreview(exerciceId, questionFr, questionEn, reponseFr, reponseEn, explicationFr, explicationEn, cheminImage, temps, createdDate) {
-            currentExerciseId = exerciceId;
+        function showExercisePreview(exercice) {
+            console.log('Showing preview for exercise:', exercice.id);
             
             // Mettre à jour le titre du modal
-            document.getElementById('previewExerciseId').textContent = `#${exerciceId}`;
+            document.getElementById('previewExerciseId').textContent = `#${exercice.id}`;
             
             // Mettre à jour le lien d'édition
-            document.getElementById('editExerciseLink').href = `/admin/modifier-exercice/${exerciceId}`;
+            document.getElementById('editExerciseLink').href = `/admin/modifier-exercice/${exercice.id}`;
             
-            // Fonction pour nettoyer le texte (enlever les tags HTML)
-            function cleanText(text) {
+            // Fonction pour nettoyer et formater le texte
+            function formatText(text) {
                 if (!text) return '';
-                // Simple nettoyage - en pratique vous pourriez utiliser DOMPurify
-                return text.replace(/<[^>]*>/g, '');
+                // Remplacer les balises br par des sauts de ligne
+                let formatted = text.replace(/<br\s*\/?>/gi, '\n');
+                // Enlever les autres balises HTML
+                formatted = formatted.replace(/<[^>]*>/g, '');
+                // Échapper le HTML pour l'affichage
+                formatted = formatted
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+                // Remplacer les sauts de ligne par des <br> pour l'affichage HTML
+                return formatted.replace(/\n/g, '<br>');
+            }
+            
+            // Fonction pour vérifier si un texte n'est pas vide
+            function hasContent(text) {
+                return text && text.trim().length > 0;
             }
             
             // Construire le contenu de l'aperçu
@@ -558,15 +598,15 @@
                     <div class="row">
                         <div class="col-md-4">
                             <strong><i class="fas fa-stopwatch"></i> ${langJs === 'en' ? 'Time' : 'Temps'}:</strong>
-                            <span class="ms-2">${temps} ${langJs === 'en' ? 'seconds' : 'secondes'}</span>
+                            <span class="ms-2">${exercice.temps || 60} ${langJs === 'en' ? 'seconds' : 'secondes'}</span>
                         </div>
                         <div class="col-md-4">
                             <strong><i class="fas fa-calendar"></i> ${langJs === 'en' ? 'Created' : 'Créé le'}:</strong>
-                            <span class="ms-2">${createdDate || (langJs === 'en' ? 'Unknown' : 'Inconnu')}</span>
+                            <span class="ms-2">${exercice.created_at || (langJs === 'en' ? 'Unknown' : 'Inconnu')}</span>
                         </div>
                         <div class="col-md-4">
                             <strong><i class="fas fa-image"></i> ${langJs === 'en' ? 'Image' : 'Image'}:</strong>
-                            <span class="ms-2">${cheminImage ? (langJs === 'en' ? 'Yes' : 'Oui') : (langJs === 'en' ? 'No' : 'Non')}</span>
+                            <span class="ms-2">${exercice.chemin_image ? (langJs === 'en' ? 'Yes' : 'Oui') : (langJs === 'en' ? 'No' : 'Non')}</span>
                         </div>
                     </div>
                 </div>
@@ -576,20 +616,27 @@
                         <h5><i class="fas fa-flag"></i> ${langJs === 'en' ? 'French Version' : 'Version Française'}</h5>
                         <div class="preview-question">
                             <strong>${langJs === 'en' ? 'Question:' : 'Question :'}</strong>
-                            <div class="mt-2 p-2 bg-light rounded">${cleanText(questionFr) || `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</div>
+                            <div class="mt-2 p-2 bg-light rounded">${hasContent(exercice.question_fr) ? formatText(exercice.question_fr) : `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</div>
                         </div>
                         
-                        ${reponseFr && reponseFr.trim() ? `
-                            <div class="preview-answer">
+                        ${hasContent(exercice.reponse_fr) ? `
+                            <div class="preview-answer mt-3">
                                 <strong>${langJs === 'en' ? 'Answer:' : 'Réponse :'}</strong>
-                                <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">${cleanText(reponseFr)}</div>
+                                <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">${formatText(exercice.reponse_fr)}</div>
                             </div>
                         ` : ''}
                         
-                        ${explicationFr && explicationFr.trim() ? `
-                            <div class="preview-explanation">
+                        ${hasContent(exercice.explication_fr) ? `
+                            <div class="preview-explanation mt-3">
                                 <strong>${langJs === 'en' ? 'Explanation:' : 'Explication :'}</strong>
-                                <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">${cleanText(explicationFr)}</div>
+                                <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">${formatText(exercice.explication_fr)}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${hasContent(exercice.image_description_fr) ? `
+                            <div class="preview-explanation mt-3">
+                                <strong>${langJs === 'en' ? 'Image Description:' : 'Description de l\'image :'}</strong>
+                                <div class="mt-2 p-2 bg-warning bg-opacity-10 rounded">${formatText(exercice.image_description_fr)}</div>
                             </div>
                         ` : ''}
                     </div>
@@ -598,20 +645,27 @@
                         <h5><i class="fas fa-flag-usa"></i> ${langJs === 'en' ? 'English Version' : 'Version Anglaise'}</h5>
                         <div class="preview-question">
                             <strong>${langJs === 'en' ? 'Question:' : 'Question :'}</strong>
-                            <div class="mt-2 p-2 bg-light rounded">${cleanText(questionEn) || `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</div>
+                            <div class="mt-2 p-2 bg-light rounded">${hasContent(exercice.question_en) ? formatText(exercice.question_en) : `<em class="text-muted">${langJs === 'en' ? 'No question available' : 'Aucune question disponible'}</em>`}</div>
                         </div>
                         
-                        ${reponseEn && reponseEn.trim() ? `
-                            <div class="preview-answer">
+                        ${hasContent(exercice.reponse_en) ? `
+                            <div class="preview-answer mt-3">
                                 <strong>${langJs === 'en' ? 'Answer:' : 'Réponse :'}</strong>
-                                <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">${cleanText(reponseEn)}</div>
+                                <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">${formatText(exercice.reponse_en)}</div>
                             </div>
                         ` : ''}
                         
-                        ${explicationEn && explicationEn.trim() ? `
-                            <div class="preview-explanation">
+                        ${hasContent(exercice.explication_en) ? `
+                            <div class="preview-explanation mt-3">
                                 <strong>${langJs === 'en' ? 'Explanation:' : 'Explication :'}</strong>
-                                <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">${cleanText(explicationEn)}</div>
+                                <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">${formatText(exercice.explication_en)}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${hasContent(exercice.image_description_en) ? `
+                            <div class="preview-explanation mt-3">
+                                <strong>${langJs === 'en' ? 'Image Description:' : 'Description de l\'image :'}</strong>
+                                <div class="mt-2 p-2 bg-warning bg-opacity-10 rounded">${formatText(exercice.image_description_en)}</div>
                             </div>
                         ` : ''}
                     </div>
@@ -619,31 +673,41 @@
             `;
             
             // Ajouter l'image si elle existe
-            if (cheminImage && cheminImage.trim()) {
+            if (hasContent(exercice.chemin_image)) {
                 html += `
                     <div class="preview-image-container mt-4">
                         <h5><i class="fas fa-image"></i> ${langJs === 'en' ? 'Exercise Image' : 'Image de l\'exercice'}</h5>
-                        <img src="/static/${cheminImage}" 
-                             alt="${langJs === 'en' ? 'Exercise image' : 'Image de l\'exercice'}" 
-                             class="preview-image mt-2"
-                             onerror="this.style.display='none'; this.nextElementSibling && (this.nextElementSibling.style.display='block');">
-                        <p class="text-danger mt-2" style="display:none;">
-                            <i class="fas fa-exclamation-triangle"></i> 
-                            ${langJs === 'en' ? 'Image not found or failed to load' : 'Image non trouvée ou échec du chargement'}
-                        </p>
-                        <p class="text-muted mt-2">
-                            <small>${cheminImage}</small>
+                        <div class="text-center">
+                            <img src="/static/${exercice.chemin_image}" 
+                                 alt="${langJs === 'en' ? 'Exercise image' : 'Image de l\'exercice'}" 
+                                 class="preview-image mt-2 img-fluid"
+                                 style="max-height: 300px; object-fit: contain;"
+                                 onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <p class="text-danger mt-2" style="display:none;">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                ${langJs === 'en' ? 'Image not found or failed to load' : 'Image non trouvée ou échec du chargement'}
+                            </p>
+                        </div>
+                        <p class="text-muted mt-2 text-center">
+                            <small>${exercice.chemin_image}</small>
                         </p>
                     </div>
                 `;
             }
             
             // Afficher le contenu dans le modal
-            document.getElementById('previewContent').innerHTML = html;
+            const previewContent = document.getElementById('previewContent');
+            previewContent.innerHTML = html;
             
             // Afficher le modal
-            const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
-            previewModal.show();
+            const previewModalElement = document.getElementById('previewModal');
+            if (previewModalElement) {
+                const previewModal = new bootstrap.Modal(previewModalElement);
+                previewModal.show();
+            } else {
+                console.error('Preview modal element not found');
+                alert(langJs === 'en' ? 'Error: Modal not found' : 'Erreur : Fenêtre modale non trouvée');
+            }
         }
 
         // Contrôles des accordéons
