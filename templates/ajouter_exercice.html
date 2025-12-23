@@ -458,6 +458,79 @@
       box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
     }
 
+    /* Styles pour les champs masquables */
+    .toggle-optional-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 15px 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: var(--transition);
+    }
+
+    .toggle-optional-btn:hover {
+      background-color: rgba(52, 152, 219, 0.1);
+    }
+
+    .optional-fields {
+      display: none;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid var(--warning);
+      margin-top: 10px;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    .optional-fields.show {
+      display: block;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .compact-view .optional-fields {
+      display: none !important;
+    }
+
+    .expand-all-btn {
+      background: var(--light-gray);
+      border: none;
+      border-radius: 8px;
+      padding: 10px 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition);
+      margin-left: auto;
+    }
+
+    .expand-all-btn:hover {
+      background: #e9ecef;
+    }
+
+    .compact-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
     @media (max-width: 768px) {
       .header {
         flex-direction: column;
@@ -470,6 +543,16 @@
       
       .form-body {
         padding: 20px;
+      }
+      
+      .compact-controls {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      
+      .expand-all-btn {
+        margin-left: 0;
       }
     }
   </style>
@@ -572,7 +655,14 @@
 
           <!-- Section des exercices (générée dynamiquement) -->
           <div class="form-section" id="exercisesSection" style="display: none;">
-            <h3 class="form-section-title"><i class="fas fa-edit"></i> {% if lang == 'en' %}Exercises Details{% else %}Détails des exercices{% endif %} <span id="exerciseCounter"></span></h3>
+            <div class="compact-controls">
+              <h3 class="form-section-title"><i class="fas fa-edit"></i> {% if lang == 'en' %}Exercises Details{% else %}Détails des exercices{% endif %} <span id="exerciseCounter"></span></h3>
+              
+              <button type="button" class="expand-all-btn" onclick="toggleAllOptionalFields()">
+                <i class="fas fa-expand-alt"></i>
+                <span id="expandAllText">{% if lang == 'en' %}Show all optional fields{% else %}Afficher tous les champs facultatifs{% endif %}</span>
+              </button>
+            </div>
             
             <div class="exercises-container" id="exercisesContainer">
               <!-- Les formulaires d'exercices seront générés ici -->
@@ -604,12 +694,17 @@
     const exercisesSection = document.getElementById("exercisesSection");
     
     let exerciseCount = 1;
+    let allExpanded = false;
 
-    // Template pour un exercice (simplifié)
+    // Template pour un exercice (avec champs masquables)
     const exerciseTemplate = (index) => `
       <div class="exercise-card" data-exercise="${index}">
         <div class="exercise-header">
           <div class="exercise-number">${index}</div>
+          <button type="button" class="toggle-optional-btn" onclick="toggleOptionalFields(${index})">
+            <i class="fas fa-plus-circle"></i>
+            <span id="toggleText-${index}">${langJs === 'en' ? 'Show optional fields' : 'Afficher les champs facultatifs'}</span>
+          </button>
         </div>
 
         <div class="language-tabs">
@@ -630,61 +725,64 @@
             </button>
           </div>
 
-          <div class="form-group">
-            <label for="reponse_fr_${index}">Réponse <span class="optional-badge">Facultatif</span>:</label>
-            <textarea name="reponse_fr_${index}" id="reponse_fr_${index}" placeholder="Saisissez la réponse correcte (optionnel)"></textarea>
-            <div class="math-editor-container">
-              <math-field id="reponse_fr_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
+          <!-- Champs facultatifs masqués par défaut -->
+          <div class="optional-fields" id="optional-fr-${index}">
+            <div class="form-group">
+              <label for="reponse_fr_${index}">Réponse <span class="optional-badge">Facultatif</span>:</label>
+              <textarea name="reponse_fr_${index}" id="reponse_fr_${index}" placeholder="Saisissez la réponse correcte (optionnel)"></textarea>
+              <div class="math-editor-container">
+                <math-field id="reponse_fr_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
+              </div>
+              <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_fr_${index}')">
+                <i class="fas fa-plus"></i> Insérer une formule
+              </button>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_fr_${index}')">
-              <i class="fas fa-plus"></i> Insérer une formule
-            </button>
-          </div>
 
-          <div class="form-group">
-            <label for="explication_fr_${index}">Explication <span class="optional-badge">Facultatif</span>:</label>
-            <textarea name="explication_fr_${index}" id="explication_fr_${index}" placeholder="Expliquez la solution ou le raisonnement (optionnel)"></textarea>
-            <div class="math-editor-container">
-              <math-field id="explication_fr_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
+            <div class="form-group">
+              <label for="explication_fr_${index}">Explication <span class="optional-badge">Facultatif</span>:</label>
+              <textarea name="explication_fr_${index}" id="explication_fr_${index}" placeholder="Expliquez la solution ou le raisonnement (optionnel)"></textarea>
+              <div class="math-editor-container">
+                <math-field id="explication_fr_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
+              </div>
+              <button type="button" class="math-insert-btn" onclick="insererLatex('explication_fr_${index}')">
+                <i class="fas fa-plus"></i> Insérer une formule
+              </button>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('explication_fr_${index}')">
-              <i class="fas fa-plus"></i> Insérer une formule
-            </button>
-          </div>
 
-          <div class="form-group">
-            <label for="options_fr_${index}">Options (séparées par des virgules) <span class="optional-badge">Facultatif</span>:</label>
-            <textarea name="options_fr_${index}" id="options_fr_${index}" placeholder="Option 1, Option 2, Option 3, ... (optionnel)"></textarea>
-            <div class="math-editor-container">
-              <math-field id="options_fr_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
+            <div class="form-group">
+              <label for="options_fr_${index}">Options (séparées par des virgules) <span class="optional-badge">Facultatif</span>:</label>
+              <textarea name="options_fr_${index}" id="options_fr_${index}" placeholder="Option 1, Option 2, Option 3, ... (optionnel)"></textarea>
+              <div class="math-editor-container">
+                <math-field id="options_fr_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Écrivez des formules mathématiques ici"></math-field>
+              </div>
+              <button type="button" class="math-insert-btn" onclick="insererLatex('options_fr_${index}')">
+                <i class="fas fa-plus"></i> Insérer une formule
+              </button>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('options_fr_${index}')">
-              <i class="fas fa-plus"></i> Insérer une formule
-            </button>
-          </div>
 
-          <div class="form-group">
-            <label for="image_exercice_${index}">
-              <i class="fas fa-image"></i>
-              ${langJs === 'en' ? 'Upload image (optional)' : 'Télécharger une image (facultative)'} <span class="optional-badge">Facultatif</span>
-            </label>
-            <div class="file-upload">
-              <input type="file" name="image_exercice_${index}" id="image_exercice_${index}" accept="image/*" onchange="previewImage(this, ${index})">
-              <label for="image_exercice_${index}" class="file-upload-label">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <span class="file-name">${langJs === 'en' ? 'Choose an image...' : 'Choisir une image...'}</span>
+            <div class="form-group">
+              <label for="image_exercice_${index}">
+                <i class="fas fa-image"></i>
+                ${langJs === 'en' ? 'Upload image (optional)' : 'Télécharger une image (facultative)'} <span class="optional-badge">Facultatif</span>
               </label>
+              <div class="file-upload">
+                <input type="file" name="image_exercice_${index}" id="image_exercice_${index}" accept="image/*" onchange="previewImage(this, ${index})">
+                <label for="image_exercice_${index}" class="file-upload-label">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <span class="file-name">${langJs === 'en' ? 'Choose an image...' : 'Choisir une image...'}</span>
+                </label>
+              </div>
+              <div class="image-preview" id="imagePreview-${index}">
+                <strong>${langJs === 'en' ? 'Preview:' : 'Aperçu :'}</strong>
+                <img class="previewImage" src="#" alt="Preview">
+              </div>
             </div>
-            <div class="image-preview" id="imagePreview-${index}">
-              <strong>${langJs === 'en' ? 'Preview:' : 'Aperçu :'}</strong>
-              <img class="previewImage" src="#" alt="Preview">
-            </div>
-          </div>
 
-          <div class="form-group">
-            <label for="temps_${index}">${langJs === 'en' ? 'Time (seconds)' : 'Temps (secondes)'} <span class="optional-badge">Facultatif</span>:</label>
-            <input type="number" name="temps_${index}" id="temps_${index}" value="60" min="10" max="600">
-            <div class="instruction-text">${langJs === 'en' ? 'Overrides common time. Default: 60 seconds.' : 'Remplace le temps commun. Par défaut : 60 secondes.'}</div>
+            <div class="form-group">
+              <label for="temps_${index}">${langJs === 'en' ? 'Time (seconds)' : 'Temps (secondes)'} <span class="optional-badge">Facultatif</span>:</label>
+              <input type="number" name="temps_${index}" id="temps_${index}" value="60" min="10" max="600">
+              <div class="instruction-text">${langJs === 'en' ? 'Overrides common time. Default: 60 seconds.' : 'Remplace le temps commun. Par défaut : 60 secondes.'}</div>
+            </div>
           </div>
         </div>
 
@@ -701,37 +799,40 @@
             </button>
           </div>
 
-          <div class="form-group">
-            <label for="reponse_en_${index}">Answer <span class="optional-badge">Optional</span>:</label>
-            <textarea name="reponse_en_${index}" id="reponse_en_${index}" placeholder="Enter the correct answer (optional)"></textarea>
-            <div class="math-editor-container">
-              <math-field id="reponse_en_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
+          <!-- Champs facultatifs masqués par défaut -->
+          <div class="optional-fields" id="optional-en-${index}">
+            <div class="form-group">
+              <label for="reponse_en_${index}">Answer <span class="optional-badge">Optional</span>:</label>
+              <textarea name="reponse_en_${index}" id="reponse_en_${index}" placeholder="Enter the correct answer (optional)"></textarea>
+              <div class="math-editor-container">
+                <math-field id="reponse_en_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
+              </div>
+              <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_en_${index}')">
+                <i class="fas fa-plus"></i> Insert formula
+              </button>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('reponse_en_${index}')">
-              <i class="fas fa-plus"></i> Insert formula
-            </button>
-          </div>
 
-          <div class="form-group">
-            <label for="explication_en_${index}">Explanation <span class="optional-badge">Optional</span>:</label>
-            <textarea name="explication_en_${index}" id="explication_en_${index}" placeholder="Explain the solution or reasoning (optional)"></textarea>
-            <div class="math-editor-container">
-              <math-field id="explication_en_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
+            <div class="form-group">
+              <label for="explication_en_${index}">Explanation <span class="optional-badge">Optional</span>:</label>
+              <textarea name="explication_en_${index}" id="explication_en_${index}" placeholder="Explain the solution or reasoning (optional)"></textarea>
+              <div class="math-editor-container">
+                <math-field id="explication_en_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
+              </div>
+              <button type="button" class="math-insert-btn" onclick="insererLatex('explication_en_${index}')">
+                <i class="fas fa-plus"></i> Insert formula
+              </button>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('explication_en_${index}')">
-              <i class="fas fa-plus"></i> Insert formula
-            </button>
-          </div>
 
-          <div class="form-group">
-            <label for="options_en_${index}">Options (comma-separated) <span class="optional-badge">Optional</span>:</label>
-            <textarea name="options_en_${index}" id="options_en_${index}" placeholder="Option 1, Option 2, Option 3, ... (optional)"></textarea>
-            <div class="math-editor-container">
-              <math-field id="options_en_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
+            <div class="form-group">
+              <label for="options_en_${index}">Options (comma-separated) <span class="optional-badge">Optional</span>:</label>
+              <textarea name="options_en_${index}" id="options_en_${index}" placeholder="Option 1, Option 2, Option 3, ... (optional)"></textarea>
+              <div class="math-editor-container">
+                <math-field id="options_en_field_${index}" virtual-keyboard-mode="onfocus" placeholder="Write math formulas here"></math-field>
+              </div>
+              <button type="button" class="math-insert-btn" onclick="insererLatex('options_en_${index}')">
+                <i class="fas fa-plus"></i> Insert formula
+              </button>
             </div>
-            <button type="button" class="math-insert-btn" onclick="insererLatex('options_en_${index}')">
-              <i class="fas fa-plus"></i> Insert formula
-            </button>
           </div>
         </div>
       </div>`;
@@ -853,6 +954,10 @@
       // Initialiser les champs mathématiques
       initMathFields();
       
+      // Réinitialiser l'état d'expansion
+      allExpanded = false;
+      updateExpandAllButton();
+      
       // Faire défiler jusqu'aux exercices
       exercisesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       
@@ -860,6 +965,98 @@
         langJs === 'en' ? `${exerciseCount} exercise forms generated` : `${exerciseCount} formulaires d'exercices générés`,
         'success'
       );
+    }
+
+    // Basculer les champs facultatifs pour un exercice
+    function toggleOptionalFields(exerciseIndex) {
+      const toggleBtn = document.querySelector(`[onclick="toggleOptionalFields(${exerciseIndex})"]`);
+      const toggleIcon = toggleBtn.querySelector('i');
+      const toggleText = document.getElementById(`toggleText-${exerciseIndex}`);
+      
+      // Basculer les champs français
+      const optionalFr = document.getElementById(`optional-fr-${exerciseIndex}`);
+      const optionalEn = document.getElementById(`optional-en-${exerciseIndex}`);
+      
+      const isCurrentlyExpanded = optionalFr.classList.contains('show');
+      
+      if (isCurrentlyExpanded) {
+        // Masquer
+        optionalFr.classList.remove('show');
+        optionalEn.classList.remove('show');
+        toggleIcon.className = 'fas fa-plus-circle';
+        toggleText.textContent = langJs === 'en' ? 'Show optional fields' : 'Afficher les champs facultatifs';
+      } else {
+        // Afficher
+        optionalFr.classList.add('show');
+        optionalEn.classList.add('show');
+        toggleIcon.className = 'fas fa-minus-circle';
+        toggleText.textContent = langJs === 'en' ? 'Hide optional fields' : 'Masquer les champs facultatifs';
+      }
+      
+      // Vérifier si tous sont maintenant étendus ou réduits
+      updateExpandAllState();
+    }
+
+    // Basculer tous les champs facultatifs
+    function toggleAllOptionalFields() {
+      allExpanded = !allExpanded;
+      
+      // Pour chaque exercice
+      for (let i = 1; i <= exerciseCount; i++) {
+        const optionalFr = document.getElementById(`optional-fr-${i}`);
+        const optionalEn = document.getElementById(`optional-en-${i}`);
+        const toggleBtn = document.querySelector(`[onclick="toggleOptionalFields(${i})"]`);
+        const toggleIcon = toggleBtn?.querySelector('i');
+        const toggleText = document.getElementById(`toggleText-${i}`);
+        
+        if (optionalFr && optionalEn && toggleBtn && toggleIcon && toggleText) {
+          if (allExpanded) {
+            // Afficher
+            optionalFr.classList.add('show');
+            optionalEn.classList.add('show');
+            toggleIcon.className = 'fas fa-minus-circle';
+            toggleText.textContent = langJs === 'en' ? 'Hide optional fields' : 'Masquer les champs facultatifs';
+          } else {
+            // Masquer
+            optionalFr.classList.remove('show');
+            optionalEn.classList.remove('show');
+            toggleIcon.className = 'fas fa-plus-circle';
+            toggleText.textContent = langJs === 'en' ? 'Show optional fields' : 'Afficher les champs facultatifs';
+          }
+        }
+      }
+      
+      updateExpandAllButton();
+    }
+
+    // Mettre à jour l'état du bouton "Tout afficher/masquer"
+    function updateExpandAllState() {
+      let allExpandedNow = true;
+      
+      for (let i = 1; i <= exerciseCount; i++) {
+        const optionalFr = document.getElementById(`optional-fr-${i}`);
+        if (optionalFr && !optionalFr.classList.contains('show')) {
+          allExpandedNow = false;
+          break;
+        }
+      }
+      
+      allExpanded = allExpandedNow;
+      updateExpandAllButton();
+    }
+
+    // Mettre à jour le texte du bouton "Tout afficher/masquer"
+    function updateExpandAllButton() {
+      const expandAllText = document.getElementById('expandAllText');
+      const expandAllIcon = document.querySelector('.expand-all-btn i');
+      
+      if (allExpanded) {
+        expandAllText.textContent = langJs === 'en' ? 'Hide all optional fields' : 'Masquer tous les champs facultatifs';
+        expandAllIcon.className = 'fas fa-compress-alt';
+      } else {
+        expandAllText.textContent = langJs === 'en' ? 'Show all optional fields' : 'Afficher tous les champs facultatifs';
+        expandAllIcon.className = 'fas fa-expand-alt';
+      }
     }
 
     // Initialiser les onglets de langue
