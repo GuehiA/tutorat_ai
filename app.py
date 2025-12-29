@@ -5207,7 +5207,7 @@ def reset_contest(reponse_id):
 def soumettre_sequentiel():
     from datetime import datetime, timezone
     import re
-    import json  # Ajout pour le JSON structuré
+    import json  # IMPORT CRITIQUE
 
     print("=== 📝 SOUMISSION SÉQUENTIELLE ===")
     
@@ -5227,7 +5227,7 @@ def soumettre_sequentiel():
     print(f"Username: {username}")
     print(f"Leçon ID: {lecon_id}")
     print(f"Exercice ID: {exercice_id}")
-    print(f"Réponse: {reponse_eleve[:100]}...")
+    print(f"Réponse longueur: {len(reponse_eleve)} caractères")
     print(f"Index: {index}")
     print(f"Action: {action}")
     print(f"Is Contestation: {is_contestation}")
@@ -5243,6 +5243,8 @@ def soumettre_sequentiel():
     # VARIABLES POUR LE TRAITEMENT
     reponse_id = None
     derniere_reponse = None
+    analyse_ia = ""
+    etoiles = 0
     
     # Si c'est une nouvelle soumission (pas une modification)
     if action == "submit" and reponse_eleve and not is_contestation:
@@ -5311,7 +5313,7 @@ Correction :
             chat_completion = client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,  # Plus cohérent
+                temperature=0.3,
             )
             analyse_ia = chat_completion.choices[0].message.content.strip()
             print("✅ Analyse IA reçue avec succès")
@@ -5347,27 +5349,34 @@ Correction :
                     etoiles = 0
                 print(f"⭐ Note estimée par analyse: {etoiles}/5")
 
-        # NOUVEAU : Structurer le feedback en JSON pour supporter les contestations
-        feedback_json = {
-            "original": analyse_ia,
-            "history": [],
-            "current_stars": etoiles,
-            "current_feedback": analyse_ia,
-            "metadata": {
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "exercise_id": exercice.id,
-                "student_id": eleve.id,
-                "language": lang
-            }
-        }
-
-        # Sauvegarde réponse STRUCTURÉE
+        # ============================================
+        # SECTION CRITIQUE : STRUCTURATION JSON
+        # ============================================
         try:
+            # NOUVEAU : Structurer le feedback en JSON pour supporter les contestations
+            feedback_json = {
+                "original": analyse_ia,
+                "history": [],  # Liste vide correcte
+                "current_stars": etoiles,
+                "current_feedback": analyse_ia,
+                "metadata": {
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "exercise_id": exercice.id,
+                    "student_id": eleve.id,
+                    "language": lang
+                }
+            }
+
+            # CONVERTIR EN JSON STRING
+            feedback_json_str = json.dumps(feedback_json, ensure_ascii=False, indent=2)
+            print(f"✅ JSON créé - Taille: {len(feedback_json_str)} caractères")
+            
+            # Sauvegarde réponse STRUCTURÉE
             nouvelle = StudentResponse(
                 user_id=eleve.id,
                 exercice_id=exercice.id,
                 reponse_eleve=reponse_eleve,
-                analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),  # JSON structuré
+                analyse_ia=feedback_json_str,  # JSON structuré
                 etoiles=etoiles,
                 timestamp=datetime.now(timezone.utc)
             )
@@ -5377,7 +5386,8 @@ Correction :
             print(f"✅ Réponse sauvegardée (ID: {reponse_id}) avec JSON structuré")
             
         except Exception as e:
-            print(f"❌ Erreur lors de la sauvegarde: {e}")
+            print(f"❌ Erreur lors de la sauvegarde avec JSON: {e}")
+            
             # Fallback : sauvegarde sans JSON
             try:
                 nouvelle = StudentResponse(
@@ -5392,8 +5402,10 @@ Correction :
                 db.session.commit()
                 reponse_id = nouvelle.id
                 print(f"✅ Réponse sauvegardée (fallback texte simple)")
-            except:
-                return f"Erreur base de données: {e}", 500
+            except Exception as fallback_error:
+                print(f"❌ Erreur lors du fallback: {fallback_error}")
+                return f"Erreur base de données: {fallback_error}", 500
+        # ============================================
 
         # ✅ REMÉDIATION si note < 3/5 (0, 1 ou 2/5)
         if etoiles < 3:
@@ -5472,60 +5484,18 @@ Indice : ...
 
         print("=== ✅ RÉPONSE SÉQUENTIELLE SAUVEGARDÉE ===")
     
-    # TRAITEMENT SPÉCIAL POUR LES CONTESTATIONS
+    # TRAITEMENT SPÉCIAL POUR LES CONTESTATIONS (via API)
     elif is_contestation and contestation_data:
         try:
             contest_data = json.loads(contestation_data)
-            print(f"📝 Traitement contestation: {contest_data}")
+            print(f"📝 Traitement contestation directe: {contest_data}")
             
-            # Récupérer la réponse existante
-            reponse_id = contest_data.get('reponse_id')
-            reponse = StudentResponse.query.get(reponse_id)
+            # Utiliser l'API contest-evaluation pour le traitement
+            # Cette partie sera gérée par le JavaScript
+            pass
             
-            if reponse:
-                # Analyser la justification
-                justification_analysis = analyze_student_justification(
-                    contest_data.get('justification', ''),
-                    contest_data.get('student_answer', ''),
-                    reponse.analyse_ia
-                )
-                
-                # Décider de l'ajustement
-                current_stars = reponse.etoiles or 0
-                should_adjust, adjustment_reason, new_stars = evaluate_contestation(
-                    justification_analysis,
-                    current_stars,
-                    contest_data.get('proposed_stars', current_stars)
-                )
-                
-                # Générer la réponse de l'IA
-                ai_response = generate_ai_response(
-                    should_adjust,
-                    adjustment_reason,
-                    new_stars,
-                    contest_data.get('justification', ''),
-                    reponse.analyse_ia
-                )
-                
-                # Mettre à jour la réponse
-                reponse.analyse_ia = update_analysis_with_contestation(
-                    reponse.analyse_ia,
-                    contest_data.get('justification', ''),
-                    contest_data.get('proposed_stars', current_stars),
-                    ai_response,
-                    new_stars
-                )
-                
-                if should_adjust:
-                    reponse.etoiles = new_stars
-                
-                db.session.commit()
-                print(f"✅ Contestation traitée. Nouvelle note: {new_stars}/5")
-                
         except Exception as e:
             print(f"❌ Erreur traitement contestation: {e}")
-            import traceback
-            traceback.print_exc()
 
     # Récupérer tous les exercices pour déterminer s'il y a un suivant
     exercices = Exercice.query.filter_by(lecon_id=lecon_id).all()
@@ -5547,16 +5517,16 @@ Indice : ...
         if is_contestation and reponse_id:
             derniere_reponse = db.session.get(StudentResponse, reponse_id)
 
-    # NOUVEAU : Gérer l'affichage du feedback après contestation
+    # Gérer l'affichage du feedback
     show_feedback = False
     if action == "submit" and reponse_eleve:
         show_feedback = True
     elif is_contestation:
-        show_feedback = True  # Toujours montrer le feedback après contestation
+        show_feedback = True
 
     # Afficher le template avec les options appropriées
     return render_template(
-        "exercice_sequentiel.html",  # Utiliser le nouveau template
+        "exercice_sequentiel.html",  # Utiliser le nouveau template avec contestation
         exercice=exercice,
         eleve=eleve,
         lecon=lecon,
@@ -5568,7 +5538,7 @@ Indice : ...
         has_next=has_next,
         next_index=next_index,
         current_reponse=reponse_eleve,
-        is_contestation=is_contestation  # Nouveau paramètre
+        is_contestation=is_contestation
     )
 
 from datetime import datetime, timezone
