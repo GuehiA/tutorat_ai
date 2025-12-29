@@ -4867,10 +4867,347 @@ def supprimer_remediation(id):
 
     return redirect(url_for("remediations_en_attente", lang=session.get("lang", "fr")))
 
+
+# ============================================
+# NOUVELLES ROUTES POUR LE SYSTÈME DE CONTESTATION
+# ============================================
+
+import json
+import re
+from datetime import datetime
+from flask import request, jsonify
+from flask_login import login_required, current_user  # AJOUT IMPORT MANQUANT
+
+# Fonctions utilitaires pour le système de contestation
+def parse_analysis_json(analysis_text):
+    """Parse le champ analyse_ia qui peut être du texte ou du JSON"""
+    if not analysis_text:
+        return {
+            "original": "",
+            "history": [],
+            "current_stars": None,
+            "current_feedback": ""
+        }
+    
+    try:
+        # Essayer de parser comme JSON
+        data = json.loads(analysis_text)
+        # S'assurer que la structure est complète
+        if isinstance(data, dict):
+            return {
+                "original": data.get("original", analysis_text),
+                "history": data.get("history", []),
+                "current_stars": data.get("current_stars"),
+                "current_feedback": data.get("current_feedback", analysis_text)
+            }
+    except json.JSONDecodeError:
+        # Si ce n'est pas du JSON, c'est du texte simple
+        return {
+            "original": analysis_text,
+            "history": [],
+            "current_stars": None,
+            "current_feedback": analysis_text
+        }
+
+def update_analysis_with_contestation(analysis_text, student_justification, proposed_stars, ai_response, final_stars):
+    """Mettre à jour l'analyse avec une nouvelle contestation"""
+    current_data = parse_analysis_json(analysis_text)
+    
+    # Ajouter la contestation à l'historique
+    new_entry = {
+        "type": "contestation",
+        "date": datetime.utcnow().isoformat(),
+        "student_justification": student_justification,
+        "proposed_stars": proposed_stars,
+        "ai_response": ai_response,
+        "final_stars": final_stars
+    }
+    
+    current_data["history"].append(new_entry)
+    current_data["current_stars"] = final_stars
+    current_data["current_feedback"] = ai_response
+    
+    # Convertir en JSON
+    return json.dumps(current_data, ensure_ascii=False, indent=2)
+
+def get_current_feedback(analysis_text):
+    """Obtenir le feedback actuel (peut être texte simple ou JSON)"""
+    data = parse_analysis_json(analysis_text)
+    return data["current_feedback"] or data["original"]
+
+def get_current_stars(analysis_text):
+    """Obtenir les étoiles actuelles"""
+    data = parse_analysis_json(analysis_text)
+    return data["current_stars"]
+
+def analyze_student_justification(justification, student_answer, ai_feedback):
+    """Analyser la justification de l'élève avec des règles simples"""
+    
+    # Convertir en minuscules pour la recherche
+    justification_lower = justification.lower() if justification else ""
+    
+    # Détecter les arguments valides
+    valid_arguments = []
+    
+    # Arguments mathématiques
+    if any(word in justification_lower for word in ['équivalent', 'equivalent', 'même résultat', 'same result', 'égal', 'equal']):
+        valid_arguments.append('Réponse équivalente')
+    
+    if any(word in justification_lower for word in ['méthode différente', 'different method', 'autre méthode', 'alternative', 'approche']):
+        valid_arguments.append('Méthode alternative valide')
+    
+    if any(word in justification_lower for word in ['unité implicite', 'unit implicit', 'contexte', 'context', 'sous-entendu']):
+        valid_arguments.append('Contexte implicite')
+    
+    if any(word in justification_lower for word in ['erreur de frappe', 'typo', 'faute d\'orthographe', 'spelling', 'inattention']):
+        valid_arguments.append('Erreur mineure')
+    
+    if any(word in justification_lower for word in ['approximation', 'arrondi', 'rounding', 'décimales', 'decimals', 'précision']):
+        valid_arguments.append('Approximation acceptable')
+    
+    if any(word in justification_lower for word in ['formule', 'formula', 'équation', 'equation']):
+        valid_arguments.append('Justification mathématique')
+    
+    if any(word in justification_lower for word in ['simplifié', 'simplified', 'factorisé', 'factored']):
+        valid_arguments.append('Forme simplifiée')
+    
+    # Compter les arguments mathématiques
+    math_keywords = ['formule', 'formula', 'équation', 'equation', 'calcul', 'calculation', 
+                     'théorème', 'theorem', 'propriété', 'property', 'règle', 'rule']
+    math_count = sum(1 for word in math_keywords if word in justification_lower)
+    
+    return {
+        'valid_arguments': valid_arguments,
+        'math_keywords_count': math_count,
+        'argument_count': len(valid_arguments),
+        'has_math_justification': math_count > 0
+    }
+
+def evaluate_contestation(analysis, current_stars, proposed_stars):
+    """Évaluer si on doit ajuster la note"""
+    
+    # Règles simples
+    adjustment_needed = False
+    reason = ""
+    
+    # Règle 1: L'élève a-t-il des arguments valides?
+    if analysis['argument_count'] == 0:
+        return False, "Aucun argument valide fourni.", current_stars
+    
+    # Règle 2: La proposition est-elle raisonnable?
+    star_difference = proposed_stars - current_stars
+    if star_difference > 2:  # Limiter à +2 étoiles max
+        proposed_stars = current_stars + 2
+        reason = "Limite: ajustement maximum de +2 étoiles"
+        adjustment_needed = True
+    elif star_difference > 0:
+        adjustment_needed = True
+        reason = f"Arguments valides détectés: {', '.join(analysis['valid_arguments'][:3])}"
+    else:
+        return False, "Proposition inférieure ou égale à la note actuelle.", current_stars
+    
+    # Calculer la nouvelle note (compromis)
+    if adjustment_needed:
+        # Base: ajouter 0.5 à 1.5 étoiles selon la force des arguments
+        argument_strength = min(analysis['argument_count'] * 0.3 + analysis['math_keywords_count'] * 0.2, 1.5)
+        new_stars = min(current_stars + max(0.5, argument_strength), 5)
+        new_stars = round(new_stars)
+        
+        return True, reason, new_stars
+    
+    return False, reason, current_stars
+
+def generate_ai_response(adjusted, reason, new_stars, student_justification, original_feedback):
+    """Générer une réponse de l'IA"""
+    
+    # Obtenir la note actuelle depuis le feedback original
+    current_data = parse_analysis_json(original_feedback)
+    original_stars = current_data.get('current_stars', '?')
+    
+    if adjusted:
+        return f"""🎯 **Réévaluation effectuée**
+
+📝 **Votre justification :**
+"{student_justification[:200]}..."
+
+✅ **Décision :** Note ajustée de {original_stars} à {new_stars}/5 ⭐
+
+📋 **Raison :** {reason}
+
+💡 **Pour améliorer :** Continuez à justifier vos réponses de manière précise !
+
+---
+📄 **Correction originale :**
+{get_current_feedback(original_feedback)[:500]}..."""
+    else:
+        return f"""🎯 **Réévaluation effectuée**
+
+📝 **Votre justification :**
+"{student_justification[:200]}..."
+
+⚠️ **Décision :** Note maintenue à {new_stars}/5 ⭐
+
+📋 **Raison :** {reason}
+
+💡 **Conseil :** {get_improvement_tip(student_justification)}
+
+---
+📄 **Correction originale :**
+{get_current_feedback(original_feedback)[:500]}..."""
+
+def get_improvement_tip(justification):
+    """Donner un conseil personnalisé"""
+    if not justification:
+        return "Pour une meilleure évaluation, soyez précis dans vos justifications mathématiques."
+    
+    justification_lower = justification.lower()
+    
+    if any(word in justification_lower for word in ['unité', 'unit', 'cm', 'm', 'km']):
+        return "N'oubliez pas que les unités font partie intégrante de la réponse en sciences."
+    elif any(word in justification_lower for word in ['méthode', 'method', 'approche', 'approch']):
+        return "Assurez-vous que votre méthode alternative est bien expliquée et justifiée."
+    elif any(word in justification_lower for word in ['approximation', 'arrondi', 'rounding', 'décimal']):
+        return "Précisez toujours le degré de précision attendu dans vos réponses."
+    elif any(word in justification_lower for word in ['équivalent', 'equivalent', 'égal', 'equal']):
+        return "Pour les réponses équivalentes, montrez clairement l'équivalence étape par étape."
+    else:
+        return "Pour une meilleure évaluation, soyez précis dans vos justifications mathématiques."
+
+@app.route('/api/contest-evaluation', methods=['POST'])
+def contest_evaluation():
+    """Gérer une contestation SANS modifier la structure de la BD"""
+    try:
+        data = request.json
+        print(f"=== 📝 CONTESTATION REÇUE ===")
+        print(f"Réponse ID: {data.get('reponse_id')}")
+        print(f"Proposed stars: {data.get('proposed_stars')}")
+        print(f"Justification: {data.get('justification', '')[:100]}...")
+        
+        # 1. Récupérer la réponse existante
+        reponse = StudentResponse.query.get(data['reponse_id'])
+        if not reponse:
+            print("❌ Réponse non trouvée")
+            return jsonify({'success': False, 'message': 'Réponse non trouvée'})
+        
+        # 2. Analyser la justification (règles simples)
+        justification_analysis = analyze_student_justification(
+            data.get('justification', ''),
+            data.get('student_answer', ''),
+            reponse.analyse_ia
+        )
+        
+        print(f"✅ Analyse justification: {justification_analysis}")
+        
+        # 3. Décider de l'ajustement
+        current_stars = reponse.etoiles or 0
+        should_adjust, adjustment_reason, new_stars = evaluate_contestation(
+            justification_analysis,
+            current_stars,
+            data.get('proposed_stars', current_stars)
+        )
+        
+        print(f"✅ Décision: ajuster={should_adjust}, raison={adjustment_reason}, nouvelles étoiles={new_stars}")
+        
+        # 4. Générer la réponse de l'IA
+        ai_response = generate_ai_response(
+            should_adjust,
+            adjustment_reason,
+            new_stars,
+            data.get('justification', ''),
+            reponse.analyse_ia
+        )
+        
+        print(f"✅ Réponse IA générée: {ai_response[:200]}...")
+        
+        # 5. Mettre à jour la réponse EXISTANTE (pas de nouvelles tables)
+        reponse.analyse_ia = update_analysis_with_contestation(
+            reponse.analyse_ia,
+            data.get('justification', ''),
+            data.get('proposed_stars', current_stars),
+            ai_response,
+            new_stars
+        )
+        
+        # Mettre à jour les étoiles si nécessaire
+        if should_adjust:
+            reponse.etoiles = new_stars
+        
+        db.session.commit()
+        print("✅ Base de données mise à jour")
+        
+        return jsonify({
+            'success': True,
+            'new_stars': new_stars,
+            'new_feedback': ai_response,
+            'message': 'Contestation enregistrée avec succès'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erreur dans contest_evaluation: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Erreur: {str(e)}'})
+
+# Route pour récupérer l'historique des contestations
+@app.route('/api/contest-history/<int:reponse_id>', methods=['GET'])
+def get_contest_history(reponse_id):
+    """Récupérer l'historique des contestations pour une réponse"""
+    try:
+        reponse = StudentResponse.query.get(reponse_id)
+        if not reponse:
+            return jsonify({'success': False, 'message': 'Réponse non trouvée'})
+        
+        data = parse_analysis_json(reponse.analyse_ia)
+        
+        return jsonify({
+            'success': True,
+            'history': data.get('history', []),
+            'current_stars': data.get('current_stars'),
+            'original_feedback': data.get('original', '')
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erreur: {str(e)}'})
+
+# Route pour réinitialiser une contestation (admin seulement)
+@app.route('/api/reset-contest/<int:reponse_id>', methods=['POST'])
+@login_required
+def reset_contest(reponse_id):
+    """Réinitialiser une contestation (admin seulement)"""
+    try:
+        # Vérifier que l'utilisateur est admin
+        if not hasattr(current_user, 'role') or current_user.role != 'admin':
+            return jsonify({'success': False, 'message': 'Accès non autorisé'})
+        
+        reponse = StudentResponse.query.get(reponse_id)
+        if not reponse:
+            return jsonify({'success': False, 'message': 'Réponse non trouvée'})
+        
+        data = parse_analysis_json(reponse.analyse_ia)
+        
+        # Réinitialiser aux valeurs originales
+        original_stars = data.get('current_stars', 3)
+        reponse.etoiles = original_stars  # Remettre la note d'origine
+        reponse.analyse_ia = data.get('original', reponse.analyse_ia)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Contestation réinitialisée avec succès'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erreur reset_contest: {str(e)}")
+        return jsonify({'success': False, 'message': f'Erreur: {str(e)}'})
+
 @app.route("/soumettre-sequentiel", methods=["POST"])
 def soumettre_sequentiel():
     from datetime import datetime, timezone
     import re
+    import json  # Ajout pour le JSON structuré
 
     print("=== 📝 SOUMISSION SÉQUENTIELLE ===")
     
@@ -4882,13 +5219,18 @@ def soumettre_sequentiel():
     reponse_eleve = request.form.get("reponse_eleve", "").strip()
     index = int(request.form.get("index", 0))
     action = request.form.get("action", "submit")
+    
+    # NOUVEAU : Vérifier si c'est une contestation
+    is_contestation = request.form.get("is_contestation") == "true"
+    contestation_data = request.form.get("contestation_data", None)
 
     print(f"Username: {username}")
     print(f"Leçon ID: {lecon_id}")
     print(f"Exercice ID: {exercice_id}")
-    print(f"Réponse: {reponse_eleve}")
+    print(f"Réponse: {reponse_eleve[:100]}...")
     print(f"Index: {index}")
     print(f"Action: {action}")
+    print(f"Is Contestation: {is_contestation}")
 
     # CORRECTION : Utilisation de méthodes non dépréciées
     eleve = User.query.filter_by(username=username).first()
@@ -4898,8 +5240,12 @@ def soumettre_sequentiel():
     if not eleve or not lecon or not exercice:
         return "Élève, leçon ou exercice non trouvé", 404
 
+    # VARIABLES POUR LE TRAITEMENT
+    reponse_id = None
+    derniere_reponse = None
+    
     # Si c'est une nouvelle soumission (pas une modification)
-    if action == "submit" and reponse_eleve:
+    if action == "submit" and reponse_eleve and not is_contestation:
         question = exercice.question_en if lang == "en" else exercice.question_fr
 
         # ✅ PROMPT de correction - BARÈME SUR 5
@@ -4961,52 +5307,93 @@ Correction :
 """.strip()
 
         try:
-            print("🤖 Appel à l'API OpenAI...")
+            print("🤖 Appel à l'API OpenAI pour correction...")
             chat_completion = client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,  # Plus cohérent
             )
             analyse_ia = chat_completion.choices[0].message.content.strip()
             print("✅ Analyse IA reçue avec succès")
         except Exception as e:
-            analyse_ia = f"Erreur IA : {e}"
+            analyse_ia = f"Erreur IA : {str(e)[:200]}"
             print(f"❌ Erreur lors de l'appel IA: {e}")
 
-        # Extraction de la note sur 5
+        # Extraction de la note sur 5 avec amélioration
         etoiles = 0
-        match = re.search(r"(Note|Score)\s*:\s*(\d)/5", analyse_ia, re.IGNORECASE)
+        match = re.search(r"(Note|Score)\s*:\s*(\d)(?:\s*/?\s*5)?", analyse_ia, re.IGNORECASE)
         if match:
             etoiles = int(match.group(2))
             print(f"⭐ Note extraite: {etoiles}/5")
         else:
-            # Fallback si le format /5 n'est pas respecté
-            match = re.search(r"(Note|Score)\s*:\s*(\d)", analyse_ia, re.IGNORECASE)
+            # Recherche plus large
+            match = re.search(r"\b(\d)(?:\s*[/\\]\s*5)?\s*(?:⭐|stars|étoiles|points)", analyse_ia, re.IGNORECASE)
             if match:
-                etoiles = min(int(match.group(2)), 5)  # Limite à 5 maximum
-                print(f"⭐ Note extraite (sans /5): {etoiles}/5")
+                etoiles = min(int(match.group(1)), 5)
+                print(f"⭐ Note extraite (format alternatif): {etoiles}/5")
             else:
-                print("⚠️ Impossible d'extraire la note de l'analyse IA")
+                # Fallback : analyser le texte pour estimer la note
+                if "excellent" in analyse_ia.lower() or "5" in analyse_ia:
+                    etoiles = 5
+                elif "très bon" in analyse_ia.lower() or "very good" in analyse_ia.lower():
+                    etoiles = 4
+                elif "bon" in analyse_ia.lower() or "good" in analyse_ia.lower():
+                    etoiles = 3
+                elif "partiel" in analyse_ia.lower() or "partial" in analyse_ia.lower():
+                    etoiles = 2
+                elif "fragmented" in analyse_ia.lower() or "ébauchée" in analyse_ia.lower():
+                    etoiles = 1
+                else:
+                    etoiles = 0
+                print(f"⭐ Note estimée par analyse: {etoiles}/5")
 
-        # Sauvegarde réponse
+        # NOUVEAU : Structurer le feedback en JSON pour supporter les contestations
+        feedback_json = {
+            "original": analyse_ia,
+            "history": [],
+            "current_stars": etoiles,
+            "current_feedback": analyse_ia,
+            "metadata": {
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "exercise_id": exercice.id,
+                "student_id": eleve.id,
+                "language": lang
+            }
+        }
+
+        # Sauvegarde réponse STRUCTURÉE
         try:
             nouvelle = StudentResponse(
                 user_id=eleve.id,
                 exercice_id=exercice.id,
                 reponse_eleve=reponse_eleve,
-                analyse_ia=analyse_ia,
+                analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),  # JSON structuré
                 etoiles=etoiles,
                 timestamp=datetime.now(timezone.utc)
             )
             db.session.add(nouvelle)
             db.session.commit()
-            print("✅ Réponse sauvegardée en base de données")
-            
-            # Stocker l'ID de la réponse pour la réutiliser
             reponse_id = nouvelle.id
+            print(f"✅ Réponse sauvegardée (ID: {reponse_id}) avec JSON structuré")
             
         except Exception as e:
             print(f"❌ Erreur lors de la sauvegarde: {e}")
-            return f"Erreur base de données: {e}", 500
+            # Fallback : sauvegarde sans JSON
+            try:
+                nouvelle = StudentResponse(
+                    user_id=eleve.id,
+                    exercice_id=exercice.id,
+                    reponse_eleve=reponse_eleve,
+                    analyse_ia=analyse_ia,  # Texte simple
+                    etoiles=etoiles,
+                    timestamp=datetime.now(timezone.utc)
+                )
+                db.session.add(nouvelle)
+                db.session.commit()
+                reponse_id = nouvelle.id
+                print(f"✅ Réponse sauvegardée (fallback texte simple)")
+            except:
+                return f"Erreur base de données: {e}", 500
 
         # ✅ REMÉDIATION si note < 3/5 (0, 1 ou 2/5)
         if etoiles < 3:
@@ -5058,28 +5445,87 @@ Indice : ...
                 remediation_completion = client.chat.completions.create(
                     model="gpt-4",
                     messages=[{"role": "user", "content": remediation_prompt}],
+                    temperature=0.7,
                 )
                 remediation_content = remediation_completion.choices[0].message.content.strip()
                 print("✅ Remédiation générée")
             except Exception as e:
-                remediation_content = f"Erreur IA lors de la génération de la remédiation : {e}"
+                remediation_content = f"Erreur IA lors de la génération de la remédiation : {str(e)[:200]}"
                 print(f"❌ Erreur génération remédiation: {e}")
 
             # Création de la suggestion de remédiation
-            nouvelle_suggestion = RemediationSuggestion(
-                user_id=eleve.id,
-                theme=exercice.theme,
-                lecon=lecon.titre_fr,
-                message=f"Exercice de remédiation proposé automatiquement (note: {etoiles}/5).",
-                exercice_suggere=remediation_content,
-                statut="en_attente",
-                timestamp=datetime.now(timezone.utc)
-            )
-            db.session.add(nouvelle_suggestion)
-            db.session.commit()
-            print(f"✅ Suggestion de remédiation sauvegardée (note: {etoiles}/5)")
+            try:
+                nouvelle_suggestion = RemediationSuggestion(
+                    user_id=eleve.id,
+                    theme=exercice.theme,
+                    lecon=lecon.titre_fr,
+                    message=f"Exercice de remédiation proposé automatiquement (note: {etoiles}/5).",
+                    exercice_suggere=remediation_content,
+                    statut="en_attente",
+                    timestamp=datetime.now(timezone.utc)
+                )
+                db.session.add(nouvelle_suggestion)
+                db.session.commit()
+                print(f"✅ Suggestion de remédiation sauvegardée (note: {etoiles}/5)")
+            except Exception as e:
+                print(f"⚠️ Erreur sauvegarde remédiation: {e}")
 
         print("=== ✅ RÉPONSE SÉQUENTIELLE SAUVEGARDÉE ===")
+    
+    # TRAITEMENT SPÉCIAL POUR LES CONTESTATIONS
+    elif is_contestation and contestation_data:
+        try:
+            contest_data = json.loads(contestation_data)
+            print(f"📝 Traitement contestation: {contest_data}")
+            
+            # Récupérer la réponse existante
+            reponse_id = contest_data.get('reponse_id')
+            reponse = StudentResponse.query.get(reponse_id)
+            
+            if reponse:
+                # Analyser la justification
+                justification_analysis = analyze_student_justification(
+                    contest_data.get('justification', ''),
+                    contest_data.get('student_answer', ''),
+                    reponse.analyse_ia
+                )
+                
+                # Décider de l'ajustement
+                current_stars = reponse.etoiles or 0
+                should_adjust, adjustment_reason, new_stars = evaluate_contestation(
+                    justification_analysis,
+                    current_stars,
+                    contest_data.get('proposed_stars', current_stars)
+                )
+                
+                # Générer la réponse de l'IA
+                ai_response = generate_ai_response(
+                    should_adjust,
+                    adjustment_reason,
+                    new_stars,
+                    contest_data.get('justification', ''),
+                    reponse.analyse_ia
+                )
+                
+                # Mettre à jour la réponse
+                reponse.analyse_ia = update_analysis_with_contestation(
+                    reponse.analyse_ia,
+                    contest_data.get('justification', ''),
+                    contest_data.get('proposed_stars', current_stars),
+                    ai_response,
+                    new_stars
+                )
+                
+                if should_adjust:
+                    reponse.etoiles = new_stars
+                
+                db.session.commit()
+                print(f"✅ Contestation traitée. Nouvelle note: {new_stars}/5")
+                
+        except Exception as e:
+            print(f"❌ Erreur traitement contestation: {e}")
+            import traceback
+            traceback.print_exc()
 
     # Récupérer tous les exercices pour déterminer s'il y a un suivant
     exercices = Exercice.query.filter_by(lecon_id=lecon_id).all()
@@ -5088,19 +5534,29 @@ Indice : ...
     has_next = next_index < total_exercices
 
     # Récupérer la dernière réponse si elle existe
-    derniere_reponse = None
-    if action == "submit" and reponse_eleve:
-        derniere_reponse = db.session.get(StudentResponse, reponse_id)
+    if action == "submit" and reponse_eleve and not is_contestation:
+        derniere_reponse = db.session.get(StudentResponse, reponse_id) if reponse_id else None
     else:
         # Chercher la dernière réponse existante
         derniere_reponse = StudentResponse.query.filter_by(
             user_id=eleve.id, 
             exercice_id=exercice.id
         ).order_by(StudentResponse.timestamp.desc()).first()
+        
+        # Si contestation, utiliser la réponse contestée
+        if is_contestation and reponse_id:
+            derniere_reponse = db.session.get(StudentResponse, reponse_id)
+
+    # NOUVEAU : Gérer l'affichage du feedback après contestation
+    show_feedback = False
+    if action == "submit" and reponse_eleve:
+        show_feedback = True
+    elif is_contestation:
+        show_feedback = True  # Toujours montrer le feedback après contestation
 
     # Afficher le template avec les options appropriées
     return render_template(
-        "exercice_sequentiel.html",
+        "exercice_sequentiel.html",  # Utiliser le nouveau template
         exercice=exercice,
         eleve=eleve,
         lecon=lecon,
@@ -5108,10 +5564,11 @@ Indice : ...
         index=index,
         total=total_exercices,
         reponse=derniere_reponse,
-        show_feedback=(action == "submit" and reponse_eleve),
+        show_feedback=show_feedback,
         has_next=has_next,
         next_index=next_index,
-        current_reponse=reponse_eleve
+        current_reponse=reponse_eleve,
+        is_contestation=is_contestation  # Nouveau paramètre
     )
 
 from datetime import datetime, timezone
@@ -6207,6 +6664,8 @@ def liste_exercices():
                          has_next=matieres_paginated.has_next,
                          per_page=per_page,
                          lang=session.get("lang", "fr"))
+
+
 
 @app.route("/exercice")
 def liste_exercice():
