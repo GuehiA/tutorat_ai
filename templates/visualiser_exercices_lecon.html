@@ -14,7 +14,7 @@
   <title>{% if lang == 'en' %}Exercises of the Lesson{% else %}Exercices de la leçon{% endif %}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- MathJax avec configuration robuste -->
+  <!-- MathJax avec configuration optimisée -->
   <script>
     window.MathJax = {
       tex: {
@@ -22,38 +22,28 @@
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
         processEnvironments: true,
-        tags: 'ams'
+        packages: {'[+]': ['ams', 'bbox', 'boldsymbol']}
       },
       options: {
         skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-        ignoreHtmlClass: 'no-mathjax',
-        renderActions: {
-          find_script: [10, function (doc) {
-            for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
-              const text = node.textContent.replace(/%.*/g, '');
-              if (node.type === 'math/tex; mode=display') {
-                node.outerHTML = `\\[${text}\\]`;
-              } else {
-                node.outerHTML = `\\(${text}\\)`;
-              }
-            }
-          }, '']
-        }
+        ignoreHtmlClass: 'no-mathjax'
       },
       startup: {
-        pageReady: () => {
-          return MathJax.startup.defaultPageReady().then(() => {
-            console.log('MathJax configuration loaded successfully');
-          }).catch((error) => {
-            console.error('MathJax initialization error:', error);
-            document.querySelectorAll('.math-content').forEach(el => {
-              el.classList.add('mathjax-error');
-            });
-          });
+        ready: () => {
+          console.log('MathJax is loaded and ready');
+          MathJax.startup.defaultReady();
+          // Forcer le rendu après un court délai
+          setTimeout(() => {
+            if (MathJax.typesetPromise) {
+              MathJax.typesetPromise().catch(err => {
+                console.error('MathJax initial typeset error:', err);
+              });
+            }
+          }, 100);
         }
       },
       loader: {
-        load: ['[tex]/ams']
+        load: ['[tex]/ams', '[tex]/bbox', '[tex]/boldsymbol']
       }
     };
   </script>
@@ -246,6 +236,7 @@
       border: 1px solid var(--light-gray);
       font-size: 1rem;
       line-height: 1.6;
+      min-height: 20px;
     }
 
     /* Styles pour le rendu MathJax */
@@ -271,6 +262,24 @@
       padding: 10px;
       border-radius: 4px;
       border-left: 3px solid var(--danger);
+    }
+
+    /* Indicateur de chargement */
+    .math-content.loading {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Style pour le contenu LaTeX non rendu */
+    .math-content .MathJax_Preview {
+      color: #666;
+      font-style: italic;
     }
 
     .empty-state {
@@ -563,21 +572,21 @@
                 {% if ex.question_fr %}
                   <div class="exercise-section">
                     <h4><i class="fas fa-question-circle"></i> {% if lang == 'en' %}Question (FR){% else %}Question (FR){% endif %}</h4>
-                    <div class="math-content">{{ ex.question_fr | safe }}</div>
+                    <div class="math-content" data-math-content="true">{{ ex.question_fr | safe }}</div>
                   </div>
                 {% endif %}
 
                 {% if ex.reponse_fr %}
                   <div class="exercise-section">
                     <h4><i class="fas fa-check-circle"></i> {% if lang == 'en' %}Answer (FR){% else %}Réponse (FR){% endif %}</h4>
-                    <div class="math-content">{{ ex.reponse_fr | safe }}</div>
+                    <div class="math-content" data-math-content="true">{{ ex.reponse_fr | safe }}</div>
                   </div>
                 {% endif %}
 
                 {% if ex.explication_fr %}
                   <div class="exercise-section">
                     <h4><i class="fas fa-lightbulb"></i> {% if lang == 'en' %}Explanation (FR){% else %}Explication (FR){% endif %}</h4>
-                    <div class="math-content">{{ ex.explication_fr | safe }}</div>
+                    <div class="math-content" data-math-content="true">{{ ex.explication_fr | safe }}</div>
                   </div>
                 {% endif %}
               </div>
@@ -587,21 +596,21 @@
                 {% if ex.question_en %}
                   <div class="exercise-section">
                     <h4><i class="fas fa-question-circle"></i> {% if lang == 'en' %}Question (EN){% else %}Question (EN){% endif %}</h4>
-                    <div class="math-content">{{ ex.question_en | safe }}</div>
+                    <div class="math-content" data-math-content="true">{{ ex.question_en | safe }}</div>
                   </div>
                 {% endif %}
 
                 {% if ex.reponse_en %}
                   <div class="exercise-section">
                     <h4><i class="fas fa-check-circle"></i> {% if lang == 'en' %}Answer (EN){% else %}Réponse (EN){% endif %}</h4>
-                    <div class="math-content">{{ ex.reponse_en | safe }}</div>
+                    <div class="math-content" data-math-content="true">{{ ex.reponse_en | safe }}</div>
                   </div>
                 {% endif %}
 
                 {% if ex.explication_en %}
                   <div class="exercise-section">
                     <h4><i class="fas fa-lightbulb"></i> {% if lang == 'en' %}Explanation (EN){% else %}Explication (EN){% endif %}</h4>
-                    <div class="math-content">{{ ex.explication_en | safe }}</div>
+                    <div class="math-content" data-math-content="true">{{ ex.explication_en | safe }}</div>
                   </div>
                 {% endif %}
               </div>
@@ -661,32 +670,55 @@
   </div>
 
   <script>
-    // Fonction pour traiter le contenu mathématique
+    // Fonction pour traiter le contenu mathématique avec MathJax
     function processMathContent() {
-      const mathElements = document.querySelectorAll('.math-content');
-      mathElements.forEach(element => {
-        let content = element.innerHTML;
-        
-        // Conversion des expressions mathématiques simples en LaTeX
-        content = content.replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}');
-        content = content.replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}');
-        content = content.replace(/(\w+)\^(\d+)/g, '$1^{$2}');
-        content = content.replace(/(\d+)%/g, '$1\\%');
-        
-        element.innerHTML = content;
-      });
-
-      // Redémarrer MathJax pour traiter le nouveau contenu
-      if (window.MathJax) {
-        MathJax.typesetPromise().catch(error => {
-          console.warn('MathJax typeset error:', error);
+      console.log('Processing math content...');
+      
+      // Ne pas modifier le HTML - MathJax le fera automatiquement
+      if (window.MathJax && MathJax.typesetPromise) {
+        return MathJax.typesetPromise().then(() => {
+          console.log('MathJax rendering complete');
+          return true;
+        }).catch(err => {
+          console.error('MathJax rendering error:', err);
+          // Marquer les erreurs
           document.querySelectorAll('.math-content').forEach(el => {
-            if (!el.classList.contains('mathjax-error')) {
+            if (el.innerHTML.includes('$') || el.innerHTML.includes('\\(') || 
+                el.innerHTML.includes('\\[') || el.innerHTML.includes('\\frac')) {
               el.classList.add('mathjax-error');
             }
           });
+          return false;
         });
+      } else {
+        console.warn('MathJax not available yet');
+        return Promise.resolve(false);
       }
+    }
+
+    // Fonction pour initialiser MathJax
+    function initMathJax() {
+      return new Promise((resolve) => {
+        if (window.MathJax && MathJax.startup) {
+          console.log('MathJax already loaded');
+          processMathContent().then(resolve);
+        } else {
+          console.log('Waiting for MathJax to load...');
+          const checkMathJax = setInterval(() => {
+            if (window.MathJax && MathJax.startup) {
+              clearInterval(checkMathJax);
+              processMathContent().then(resolve);
+            }
+          }, 100);
+          
+          // Timeout après 5 secondes
+          setTimeout(() => {
+            clearInterval(checkMathJax);
+            console.warn('MathJax loading timeout');
+            resolve();
+          }, 5000);
+        }
+      });
     }
 
     // Gestion des onglets de langue
@@ -730,15 +762,47 @@
         card.style.animationDelay = `${index * 0.1}s`;
       });
 
-      // Traiter le contenu mathématique initial
+      // Initialiser MathJax après un délai
       setTimeout(() => {
-        processMathContent();
-      }, 500);
+        initMathJax().then(() => {
+          console.log('MathJax initialization complete');
+          
+          // Fallback après 2 secondes pour vérifier si tout est rendu
+          setTimeout(() => {
+            const unrendered = document.querySelectorAll('.math-content[data-math-content="true"]');
+            let hasUnrenderedMath = false;
+            
+            unrendered.forEach(el => {
+              const content = el.innerHTML;
+              if ((content.includes('$') || content.includes('\\(') || 
+                   content.includes('\\[') || content.includes('\\frac')) &&
+                  !el.querySelector('mjx-container')) {
+                hasUnrenderedMath = true;
+                console.warn('Unrendered math found:', content.substring(0, 100));
+              }
+            });
+            
+            if (hasUnrenderedMath) {
+              console.log('Retrying MathJax rendering...');
+              processMathContent();
+            }
+          }, 2000);
+        });
+      }, 300);
     });
 
     // Réinitialiser MathJax quand le contenu change
-    document.addEventListener('DOMNodeInserted', function() {
-      setTimeout(processMathContent, 100);
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes.length) {
+          setTimeout(processMathContent, 100);
+        }
+      });
+    });
+
+    // Observer les changements dans le contenu mathématique
+    document.querySelectorAll('.math-content').forEach(el => {
+      observer.observe(el, { childList: true, subtree: true });
     });
   </script>
 </body>
