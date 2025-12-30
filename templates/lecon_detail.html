@@ -12,6 +12,33 @@
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
   <title>{{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }} - VirtuEduc</title>
+  
+  <!-- MathJax pour le rendu mathématique -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        ignoreHtmlClass: 'no-mathjax'
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady().then(() => {
+            console.log('MathJax configuration loaded successfully');
+          }).catch((error) => {
+            console.error('MathJax initialization error:', error);
+          });
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
+  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -158,6 +185,32 @@
       color: var(--dark);
       line-height: 1.7;
       padding-left: 75px;
+    }
+
+    /* Math content styles */
+    .math-content {
+      font-size: 1.1rem;
+      line-height: 1.8;
+    }
+
+    .math-content mjx-container {
+      display: inline-block;
+      margin: 0 2px;
+      vertical-align: middle;
+    }
+
+    .math-inline {
+      display: inline;
+      font-size: 1.1em;
+    }
+
+    .math-display {
+      text-align: center;
+      margin: 15px 0;
+      padding: 10px;
+      background: rgba(67, 97, 238, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid var(--primary);
     }
 
     /* Exercises Section */
@@ -558,8 +611,18 @@
             {% if lang == 'fr' %}🎯 Objectif pédagogique{% else %}🎯 Learning Objective{% endif %}
           </h3>
         </div>
-        <div class="objective-content">
-          {{ lecon.objectif_fr if lang == 'fr' else lecon.objectif_en }}
+        <div class="objective-content math-content">
+          {# Nettoyer le LaTeX pour MathJax #}
+          {% set objective_text = lecon.objectif_fr if lang == 'fr' else lecon.objectif_en %}
+          {% set clean_objective = objective_text
+            |replace('\\[', '$$')
+            |replace('\\]', '$$')
+            |replace('\\(', '$')
+            |replace('\\)', '$')
+            |replace('\\"', '"')
+            |replace('\\\\', '\\')
+          %}
+          {{ clean_objective|safe }}
         </div>
       </div>
 
@@ -578,8 +641,33 @@
           <div class="exercises-grid">
             {% for ex in lecon.exercices %}
               <div class="exercise-card">
-                <div class="exercise-question">
-                  {{ ex.question_fr[:200] if lang == 'fr' else ex.question_en[:200] }}...
+                <div class="exercise-question math-content">
+                  {# Nettoyer et tronquer le texte avec LaTeX #}
+                  {% set question_text = ex.question_fr if lang == 'fr' else ex.question_en %}
+                  {% set clean_question = question_text
+                    |replace('\\[', '$$')
+                    |replace('\\]', '$$')
+                    |replace('\\(', '$')
+                    |replace('\\)', '$')
+                    |replace('\\"', '"')
+                    |replace('\\\\', '\\')
+                  %}
+                  
+                  {# Tronquer à 200 caractères sans couper les balises LaTeX #}
+                  {% if clean_question|length > 200 %}
+                    {% set truncated = clean_question[:200] %}
+                    {% if '$' in truncated %}
+                      {# Compter les $ pour vérifier si on coupe au milieu d'une équation #}
+                      {% set dollar_count = truncated.count('$') %}
+                      {% if dollar_count % 2 == 1 %}
+                        {# Nombre impair de $, on est au milieu d'une équation #}
+                        {% set truncated = clean_question[:clean_question.find('$', 200)] + '$' %}
+                      {% endif %}
+                    {% endif %}
+                    {{ truncated|safe }}...
+                  {% else %}
+                    {{ clean_question|safe }}
+                  {% endif %}
                 </div>
                 
                 <div class="exercise-meta">
@@ -620,9 +708,9 @@
           {% if lang == 'fr' %}Retour aux leçons{% else %}Back to lessons{% endif %}
         </a>
         {% if lecon.exercices %}
-          <a href="/exercice/{{ lecon.exercices[0].id }}?username={{ username }}&lang={{ lang }}" class="btn btn-primary">
+          <a href="/exercice-sequentiel-progressif?username={{ username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index=0" class="btn btn-primary">
             <i class="fas fa-play"></i>
-            {% if lang == 'fr' %}Commencer le premier exercice{% else %}Start first exercise{% endif %}
+            {% if lang == 'fr' %}Commencer la séquence{% else %}Start sequence{% endif %}
           </a>
         {% endif %}
       </div>
@@ -707,6 +795,17 @@
           }
         });
       });
+      
+      // Trigger MathJax rendering after all content is loaded
+      if (window.MathJax) {
+        setTimeout(() => {
+          MathJax.typesetPromise().then(() => {
+            console.log('MathJax rendering complete');
+          }).catch(err => {
+            console.error('MathJax rendering error:', err);
+          });
+        }, 500);
+      }
     });
     
     // Add some interactive particles in background for visual appeal
