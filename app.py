@@ -4941,88 +4941,189 @@ def get_current_stars(analysis_text):
     return data["current_stars"]
 
 def analyze_student_justification(justification, student_answer, ai_feedback):
-    """Analyser la justification de l'élève avec des règles simples"""
+    """Analyser la justification de l'élève avec des règles plus intelligentes"""
     
-    # Convertir en minuscules pour la recherche
-    justification_lower = justification.lower() if justification else ""
+    if not justification or justification.strip() == "":
+        return {
+            'valid_arguments': [],
+            'math_keywords_count': 0,
+            'argument_count': 0,
+            'has_math_justification': False,
+            'raw_text': justification or ""
+        }
     
-    # Détecter les arguments valides
+    justification_lower = justification.lower().strip()
+    justification_original = justification.strip()
+    
+    # Détecter les arguments valides - règles PLUS LARGES
     valid_arguments = []
     
-    # Arguments mathématiques
-    if any(word in justification_lower for word in ['équivalent', 'equivalent', 'même résultat', 'same result', 'égal', 'equal']):
+    # 1. Vérifier si l'élève dit avoir la même solution/résultat
+    if any(phrase in justification_lower for phrase in [
+        'même solution', 'même résultat', 'same solution', 'same result',
+        'solution identique', 'resultat identique', 'identical solution',
+        'solution égale', 'equal solution', 'résultat égal', 'equal result'
+    ]):
+        valid_arguments.append('Solution identique')
+    
+    # 2. Vérifier si l'élève dit avoir le même raisonnement/méthode
+    if any(phrase in justification_lower for phrase in [
+        'même raisonnement', 'même méthode', 'same reasoning', 'same method',
+        'raisonnement identique', 'méthode identique', 'identical reasoning',
+        'même démarche', 'same approach', 'même logique', 'same logic'
+    ]):
+        valid_arguments.append('Raisonnement identique')
+    
+    # 3. Vérifier les équivalences mathématiques
+    if any(word in justification_lower for word in [
+        'équivalent', 'equivalent', 'égal', 'equal', 'identique', 'identical',
+        'correspond', 'corresponds', 'équivaut', 'equivalent'
+    ]):
         valid_arguments.append('Réponse équivalente')
     
-    if any(word in justification_lower for word in ['méthode différente', 'different method', 'autre méthode', 'alternative', 'approche']):
-        valid_arguments.append('Méthode alternative valide')
+    # 4. Vérifier les méthodes alternatives
+    if any(phrase in justification_lower for phrase in [
+        'méthode différente', 'different method', 'autre méthode', 'autre façon',
+        'alternative', 'approche différente', 'different approach'
+    ]):
+        valid_arguments.append('Méthode alternative')
     
-    if any(word in justification_lower for word in ['unité implicite', 'unit implicit', 'contexte', 'context', 'sous-entendu']):
-        valid_arguments.append('Contexte implicite')
-    
-    if any(word in justification_lower for word in ['erreur de frappe', 'typo', 'faute d\'orthographe', 'spelling', 'inattention']):
+    # 5. Vérifier les erreurs mineures
+    if any(phrase in justification_lower for phrase in [
+        'erreur de frappe', 'typo', 'faute', 'mistake', 'inattention',
+        'petite erreur', 'small error', 'erreur mineure', 'minor error'
+    ]):
         valid_arguments.append('Erreur mineure')
     
-    if any(word in justification_lower for word in ['approximation', 'arrondi', 'rounding', 'décimales', 'decimals', 'précision']):
-        valid_arguments.append('Approximation acceptable')
+    # 6. ANALYSE SÉMANTIQUE SIMPLE - Vérifier le sens
+    # Si l'élève mentionne explicitement qu'il a la même solution
+    if ('même' in justification_lower and any(word in justification_lower for word in ['solution', 'résultat', 'result'])) or \
+       ('same' in justification_lower and any(word in justification_lower for word in ['solution', 'result', 'answer'])):
+        valid_arguments.append('Réponse correcte selon élève')
     
-    if any(word in justification_lower for word in ['formule', 'formula', 'équation', 'equation']):
-        valid_arguments.append('Justification mathématique')
+    # 7. Compter les mots-clés mathématiques AVEC pondération
+    math_keywords = {
+        'solution': 1, 'résultat': 1, 'result': 1, 
+        'équation': 2, 'equation': 2, 'formule': 2, 'formula': 2,
+        'calcul': 1, 'calculation': 1, 'raisonnement': 2, 'reasoning': 2,
+        'méthode': 2, 'method': 2, 'logique': 1, 'logic': 1,
+        'algèbre': 3, 'algebra': 3, 'math': 1, 'maths': 1,
+        'vérifier': 1, 'verify': 1, 'prouver': 2, 'prove': 2
+    }
     
-    if any(word in justification_lower for word in ['simplifié', 'simplified', 'factorisé', 'factored']):
-        valid_arguments.append('Forme simplifiée')
+    math_count = 0
+    for keyword, weight in math_keywords.items():
+        if keyword in justification_lower:
+            math_count += weight
     
-    # Compter les arguments mathématiques
-    math_keywords = ['formule', 'formula', 'équation', 'equation', 'calcul', 'calculation', 
-                     'théorème', 'theorem', 'propriété', 'property', 'règle', 'rule']
-    math_count = sum(1 for word in math_keywords if word in justification_lower)
+    # 8. ANALYSE DE LONGUEUR ET COHÉRENCE
+    # Une justification de plus de 10 mots qui contient "solution" ou "résultat" est valide
+    word_count = len(justification_original.split())
+    if word_count > 10 and any(word in justification_lower for word in ['solution', 'résultat', 'result', 'answer', 'réponse']):
+        valid_arguments.append('Justification détaillée')
+    
+    # Éliminer les doublons
+    valid_arguments = list(set(valid_arguments))
     
     return {
         'valid_arguments': valid_arguments,
         'math_keywords_count': math_count,
         'argument_count': len(valid_arguments),
-        'has_math_justification': math_count > 0
+        'has_math_justification': math_count > 0,
+        'word_count': word_count,
+        'mentions_solution': any(word in justification_lower for word in ['solution', 'résultat', 'result']),
+        'mentions_method': any(word in justification_lower for word in ['méthode', 'method', 'raisonnement', 'reasoning']),
+        'raw_text': justification_original
     }
 
 def evaluate_contestation(analysis, current_stars, proposed_stars):
-    """Évaluer si on doit ajuster la note"""
+    """Évaluer si on doit ajuster la note - version plus juste"""
     
-    # Règles simples
+    # Règles améliorées
     adjustment_needed = False
     reason = ""
     
-    # Règle 1: L'élève a-t-il des arguments valides?
+    # RÈGLE 0: Si l'élève propose une note inférieure, refuser
+    if proposed_stars < current_stars:
+        return False, "Vous proposez une note inférieure à celle actuelle.", current_stars
+    
+    # RÈGLE 1: L'élève a-t-il des arguments valides?
     if analysis['argument_count'] == 0:
-        return False, "Aucun argument valide fourni.", current_stars
+        # Vérifier quand même s'il a mentionné une solution ou méthode
+        if analysis['mentions_solution'] or analysis['mentions_method']:
+            reason = "Argument simple mais valide: l'élève mentionne une solution/méthode"
+            adjustment_needed = True
+        else:
+            return False, "Aucun argument mathématique identifiable fourni.", current_stars
     
-    # Règle 2: La proposition est-elle raisonnable?
+    # RÈGLE 2: La proposition est-elle raisonnable?
     star_difference = proposed_stars - current_stars
-    if star_difference > 2:  # Limiter à +2 étoiles max
-        proposed_stars = current_stars + 2
-        reason = "Limite: ajustement maximum de +2 étoiles"
-        adjustment_needed = True
-    elif star_difference > 0:
-        adjustment_needed = True
-        reason = f"Arguments valides détectés: {', '.join(analysis['valid_arguments'][:3])}"
-    else:
-        return False, "Proposition inférieure ou égale à la note actuelle.", current_stars
     
-    # Calculer la nouvelle note (compromis)
+    # Si l'élève a des arguments raisonnables, permettre un ajustement
+    if analysis['argument_count'] > 0 or analysis['mentions_solution']:
+        
+        # Différents niveaux d'ajustement selon la force des arguments
+        if 'Solution identique' in analysis['valid_arguments'] or 'Raisonnement identique' in analysis['valid_arguments']:
+            # Arguments forts : permettre +1 à +2 étoiles
+            max_adjustment = min(star_difference, 2)
+            adjustment_needed = True
+            reason = f"Argument convaincant: {', '.join(analysis['valid_arguments'][:2])}"
+            
+        elif analysis['argument_count'] >= 2:
+            # Arguments multiples : permettre +1 étoile
+            max_adjustment = min(star_difference, 1)
+            adjustment_needed = True
+            reason = f"Plusieurs arguments valides: {', '.join(analysis['valid_arguments'][:2])}"
+            
+        else:
+            # Argument simple : permettre +0.5 étoile (arrondi à +1)
+            max_adjustment = min(star_difference, 1)
+            adjustment_needed = True
+            reason = f"Argument valide: {analysis['valid_arguments'][0] if analysis['valid_arguments'] else 'Justification fournie'}"
+    
+    # RÈGLE 3: Calculer la nouvelle note
     if adjustment_needed:
-        # Base: ajouter 0.5 à 1.5 étoiles selon la force des arguments
-        argument_strength = min(analysis['argument_count'] * 0.3 + analysis['math_keywords_count'] * 0.2, 1.5)
-        new_stars = min(current_stars + max(0.5, argument_strength), 5)
+        # Calcul basé sur la force des arguments
+        argument_strength = 0
+        
+        if 'Solution identique' in analysis['valid_arguments']:
+            argument_strength += 1.5
+        if 'Raisonnement identique' in analysis['valid_arguments']:
+            argument_strength += 1.5
+        if 'Réponse équivalente' in analysis['valid_arguments']:
+            argument_strength += 1.0
+        if 'Méthode alternative' in analysis['valid_arguments']:
+            argument_strength += 0.5
+        
+        # Ajouter basé sur les mots-clés mathématiques
+        argument_strength += min(analysis['math_keywords_count'] * 0.1, 1.0)
+        
+        # Limiter l'ajustement
+        max_increase = min(argument_strength, 2.0)  # Max +2 étoiles
+        new_stars = min(current_stars + max_increase, 5)
         new_stars = round(new_stars)
+        
+        # S'assurer qu'on ne baisse pas la note
+        if new_stars < current_stars:
+            new_stars = current_stars
+        
+        # Si l'élève demande spécifiquement 5/5 et a de bons arguments
+        if proposed_stars == 5 and argument_strength > 1.5:
+            new_stars = min(5, current_stars + 2)  # Max +2 même pour 5/5
         
         return True, reason, new_stars
     
     return False, reason, current_stars
 
 def generate_ai_response(adjusted, reason, new_stars, student_justification, original_feedback):
-    """Générer une réponse de l'IA"""
+    """Générer une réponse de l'IA pertinente"""
     
     # Obtenir la note actuelle depuis le feedback original
     current_data = parse_analysis_json(original_feedback)
     original_stars = current_data.get('current_stars', '?')
+    
+    # Obtenir un conseil PERTINENT
+    relevant_tip = get_improvement_tip(student_justification, original_feedback)
     
     if adjusted:
         return f"""🎯 **Réévaluation effectuée**
@@ -5034,7 +5135,7 @@ def generate_ai_response(adjusted, reason, new_stars, student_justification, ori
 
 📋 **Raison :** {reason}
 
-💡 **Pour améliorer :** Continuez à justifier vos réponses de manière précise !
+💡 **Pour progresser :** {relevant_tip}
 
 ---
 📄 **Correction originale :**
@@ -5049,97 +5150,231 @@ def generate_ai_response(adjusted, reason, new_stars, student_justification, ori
 
 📋 **Raison :** {reason}
 
-💡 **Conseil :** {get_improvement_tip(student_justification)}
+💡 **Conseil pour améliorer votre note :** {relevant_tip}
 
 ---
 📄 **Correction originale :**
 {get_current_feedback(original_feedback)[:500]}..."""
 
-def get_improvement_tip(justification):
-    """Donner un conseil personnalisé"""
+def get_improvement_tip(justification, ai_feedback=""):
+    """Donner un conseil personnalisé PERTINENT"""
     if not justification:
-        return "Pour une meilleure évaluation, soyez précis dans vos justifications mathématiques."
+        return "Pour une meilleure évaluation, expliquez précisément pourquoi votre réponse est correcte."
     
     justification_lower = justification.lower()
+    ai_feedback_lower = ai_feedback.lower() if ai_feedback else ""
     
-    if any(word in justification_lower for word in ['unité', 'unit', 'cm', 'm', 'km']):
-        return "N'oubliez pas que les unités font partie intégrante de la réponse en sciences."
-    elif any(word in justification_lower for word in ['méthode', 'method', 'approche', 'approch']):
-        return "Assurez-vous que votre méthode alternative est bien expliquée et justifiée."
-    elif any(word in justification_lower for word in ['approximation', 'arrondi', 'rounding', 'décimal']):
-        return "Précisez toujours le degré de précision attendu dans vos réponses."
-    elif any(word in justification_lower for word in ['équivalent', 'equivalent', 'égal', 'equal']):
-        return "Pour les réponses équivalentes, montrez clairement l'équivalence étape par étape."
+    # Analyser le contexte de l'exercice depuis le feedback IA
+    if any(word in ai_feedback_lower for word in ['équation', 'equation', 'algèbre', 'algebra', 'mathématique', 'mathematical']):
+        # Exercice de maths
+        if any(word in justification_lower for word in ['solution', 'résultat', 'result']):
+            return "Pour les équations, montrez étape par étape comment vous arrivez à votre solution."
+        else:
+            return "Précisez chaque étape de votre raisonnement mathématique."
+    
+    elif any(word in ai_feedback_lower for word in ['géométrie', 'geometry', 'angle', 'triangle', 'cercle', 'circle']):
+        # Exercice de géométrie
+        return "En géométrie, précisez toujours les théorèmes ou propriétés utilisés."
+    
+    elif any(word in ai_feedback_lower for word in ['unité', 'unit', 'cm', 'm', 'km', 'gramme', 'gram', 'litre', 'liter']):
+        # Exercice avec unités
+        return "N'oubliez pas d'inclure les unités dans votre réponse finale."
+    
+    elif any(word in justification_lower for word in ['même', 'same', 'identique', 'identical']):
+        # L'élève dit avoir la même chose
+        return "Pour prouver l'équivalence, montrez la transformation étape par étape."
+    
+    elif any(word in justification_lower for word in ['méthode', 'method', 'raisonnement', 'reasoning']):
+        # L'élève parle de sa méthode
+        return "Décrivez clairement votre méthode de résolution."
+    
     else:
-        return "Pour une meilleure évaluation, soyez précis dans vos justifications mathématiques."
-
+        # Conseil général
+        return "Soyez précis : indiquez quelle partie de votre réponse est correcte et pourquoi."
+    
 @app.route('/api/contest-evaluation', methods=['POST'])
 def contest_evaluation():
-    """Gérer une contestation SANS modifier la structure de la BD"""
+    """Gérer une contestation AVEC réévaluation par l'IA"""
     try:
         data = request.json
-        print(f"=== 📝 CONTESTATION REÇUE ===")
-        print(f"Réponse ID: {data.get('reponse_id')}")
-        print(f"Proposed stars: {data.get('proposed_stars')}")
-        print(f"Justification: {data.get('justification', '')[:100]}...")
+        print(f"=== 📝 CONTESTATION REÇUE POUR RÉÉVALUATION IA ===")
         
         # 1. Récupérer la réponse existante
         reponse = StudentResponse.query.get(data['reponse_id'])
         if not reponse:
-            print("❌ Réponse non trouvée")
             return jsonify({'success': False, 'message': 'Réponse non trouvée'})
         
-        # 2. Analyser la justification (règles simples)
-        justification_analysis = analyze_student_justification(
-            data.get('justification', ''),
-            data.get('student_answer', ''),
-            reponse.analyse_ia
-        )
+        # 2. Récupérer l'exercice et les informations
+        exercice = Exercice.query.get(reponse.exercice_id)
+        eleve = User.query.get(reponse.user_id)
         
-        print(f"✅ Analyse justification: {justification_analysis}")
+        if not exercice or not eleve:
+            return jsonify({'success': False, 'message': 'Exercice ou élève non trouvé'})
         
-        # 3. Décider de l'ajustement
-        current_stars = reponse.etoiles or 0
-        should_adjust, adjustment_reason, new_stars = evaluate_contestation(
-            justification_analysis,
-            current_stars,
-            data.get('proposed_stars', current_stars)
-        )
+        # 3. PRÉPARER LE PROMPT POUR L'IA - RÉÉVALUATION COMPLÈTE
+        lang = data.get('lang', 'fr')
+        question = exercice.question_fr if lang == 'fr' else exercice.question_en
         
-        print(f"✅ Décision: ajuster={should_adjust}, raison={adjustment_reason}, nouvelles étoiles={new_stars}")
+        if lang == 'en':
+            prompt = f"""
+RE-EVALUATE a student's answer considering their contestation arguments.
+
+📘 ORIGINAL PROBLEM:
+{question}
+
+📜 STUDENT'S ORIGINAL ANSWER:
+{reponse.reponse_eleve}
+
+🎯 ORIGINAL AI CORRECTION (current grade: {reponse.etoiles}/5):
+{parse_analysis_json(reponse.analyse_ia).get('original', reponse.analyse_ia)}
+
+📝 STUDENT'S CONTESTATION ARGUMENTS:
+"{data.get('justification', '')}"
+
+⭐ STUDENT'S PROPOSED GRADE: {data.get('proposed_stars', reponse.etoiles)}/5
+
+🔍 YOUR TASK:
+1. RE-EVALUATE the student's answer considering their arguments
+2. Decide if their arguments are valid and justify your decision
+3. Adjust the grade if warranted (0-5 stars)
+4. Provide detailed feedback explaining your decision
+
+🎯 IMPORTANT CONSIDERATIONS:
+- If the student shows their answer is equivalent to the expected answer, adjust the grade
+- If they demonstrate a valid alternative method, acknowledge it
+- If they point out a minor error that doesn't invalidate the reasoning, consider partial credit
+- Be fair: reward good reasoning even with minor calculation errors
+
+📤 FORMAT:
+Analysis of contestation: [...]
+New grade: X/5
+Decision: [Grade increased/maintained/decreased] because [...]
+Detailed feedback: [...]
+""".strip()
+        else:
+            prompt = f"""
+RÉÉVALUEZ la réponse d'un élève en considérant ses arguments de contestation.
+
+📘 PROBLÈME ORIGINAL :
+{question}
+
+📜 RÉPONSE ORIGINALE DE L'ÉLÈVE :
+{reponse.reponse_eleve}
+
+🎯 CORRECTION IA ORIGINALE (note actuelle : {reponse.etoiles}/5) :
+{parse_analysis_json(reponse.analyse_ia).get('original', reponse.analyse_ia)}
+
+📝 ARGUMENTS DE CONTESTATION DE L'ÉLÈVE :
+"{data.get('justification', '')}"
+
+⭐ NOTE PROPOSÉE PAR L'ÉLÈVE : {data.get('proposed_stars', reponse.etoiles)}/5
+
+🔍 VOTRE TÂCHE :
+1. RÉÉVALUER la réponse de l'élève en considérant ses arguments
+2. Décider si ses arguments sont valides et justifier votre décision
+3. Ajuster la note si justifié (0-5 étoiles)
+4. Fournir un feedback détaillé expliquant votre décision
+
+🎯 CONSIDÉRATIONS IMPORTANTES :
+- Si l'élève montre que sa réponse est équivalente à la réponse attendue, ajustez la note
+- S'il démontre une méthode alternative valide, reconnaissez-la
+- S'il pointe une erreur mineure qui n'invalide pas le raisonnement, considérez des points partiels
+- Soyez juste : récompensez le bon raisonnement même avec des erreurs de calcul mineures
+
+📤 FORMAT :
+Analyse de la contestation : [...]
+Nouvelle note : X/5
+Décision : [Note augmentée/maintenue/diminuée] car [...]
+Feedback détaillé : [...]
+""".strip()
         
-        # 4. Générer la réponse de l'IA
-        ai_response = generate_ai_response(
-            should_adjust,
-            adjustment_reason,
-            new_stars,
-            data.get('justification', ''),
-            reponse.analyse_ia
-        )
+        print(f"🤖 Envoi à l'IA pour réévaluation...")
         
-        print(f"✅ Réponse IA générée: {ai_response[:200]}...")
+        # 4. APPEL À L'IA POUR RÉÉVALUATION
+        try:
+            chat_completion = client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+            )
+            new_analysis = chat_completion.choices[0].message.content.strip()
+            print("✅ Réévaluation IA reçue avec succès")
+            
+            # 5. EXTRACTION DE LA NOUVELLE NOTE
+            new_stars = reponse.etoiles  # Par défaut, garder l'ancienne
+            import re
+            
+            # Chercher la nouvelle note dans la réponse de l'IA
+            match = re.search(r"(?:New grade|Nouvelle note|Grade|Note)\s*:\s*(\d)(?:\s*/?\s*5)?", new_analysis, re.IGNORECASE)
+            if match:
+                new_stars = int(match.group(1))
+                print(f"⭐ Nouvelle note extraite: {new_stars}/5")
+            else:
+                # Fallback
+                match = re.search(r"\b(\d)(?:\s*[/\\]\s*5)?\s*(?:⭐|stars|étoiles)", new_analysis, re.IGNORECASE)
+                if match:
+                    new_stars = min(int(match.group(1)), 5)
+                    print(f"⭐ Nouvelle note extraite (format alternatif): {new_stars}/5")
+            
+        except Exception as e:
+            print(f"❌ Erreur lors de l'appel IA: {e}")
+            # Fallback aux règles simples
+            justification_analysis = analyze_student_justification(
+                data.get('justification', ''),
+                data.get('student_answer', ''),
+                reponse.analyse_ia
+            )
+            
+            current_stars = reponse.etoiles or 0
+            should_adjust, adjustment_reason, new_stars = evaluate_contestation(
+                justification_analysis,
+                current_stars,
+                data.get('proposed_stars', current_stars)
+            )
+            
+            new_analysis = generate_ai_response(
+                should_adjust,
+                adjustment_reason,
+                new_stars,
+                data.get('justification', ''),
+                reponse.analyse_ia
+            )
         
-        # 5. Mettre à jour la réponse EXISTANTE (pas de nouvelles tables)
+        # 6. METTRE À JOUR LA BASE DE DONNÉES
         reponse.analyse_ia = update_analysis_with_contestation(
             reponse.analyse_ia,
             data.get('justification', ''),
-            data.get('proposed_stars', current_stars),
-            ai_response,
+            data.get('proposed_stars', reponse.etoiles),
+            new_analysis,
             new_stars
         )
         
-        # Mettre à jour les étoiles si nécessaire
-        if should_adjust:
-            reponse.etoiles = new_stars
-        
+        reponse.etoiles = new_stars
         db.session.commit()
-        print("✅ Base de données mise à jour")
+        print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5")
+        
+        # 7. PRÉPARER LA RÉPONSE
+        stars_changed = new_stars != (reponse.etoiles or 0)
+        
+        if lang == 'en':
+            if stars_changed:
+                message = f"Grade changed from {reponse.etoiles} to {new_stars}/5 stars!"
+            else:
+                message = f"Grade maintained at {new_stars}/5 stars."
+        else:
+            if stars_changed:
+                message = f"Note changée de {reponse.etoiles} à {new_stars}/5 étoiles !"
+            else:
+                message = f"Note maintenue à {new_stars}/5 étoiles."
         
         return jsonify({
             'success': True,
             'new_stars': new_stars,
-            'new_feedback': ai_response,
-            'message': 'Contestation enregistrée avec succès'
+            'new_feedback': new_analysis,
+            'old_stars': reponse.etoiles,
+            'stars_changed': stars_changed,
+            'message': message,
+            'has_ai_reassessment': True
         })
         
     except Exception as e:
