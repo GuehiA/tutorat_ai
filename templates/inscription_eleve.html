@@ -219,7 +219,7 @@
             color: var(--primary-dark);
         }
 
-        /* OPTIONS DE PAIEMENT */
+        /* OPTIONS D'ACCÈS */
         .payment-options {
             margin: 30px 0;
         }
@@ -234,20 +234,18 @@
 
         .plan-cards {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 25px;
             margin-bottom: 30px;
-        }
-
-        @media (max-width: 992px) {
-            .plan-cards {
-                grid-template-columns: repeat(2, 1fr);
-            }
         }
 
         @media (max-width: 768px) {
             .plan-cards {
                 grid-template-columns: 1fr;
+            }
+            
+            .registration-box {
+                padding: 20px;
             }
         }
 
@@ -275,42 +273,23 @@
             background: linear-gradient(135deg, #f8f9ff, #e8f2ff);
         }
 
-        .plan-card.weekly {
-            border-color: var(--bronze);
+        /* Styles pour les nouvelles options */
+        .plan-card.free-trial {
+            border-color: var(--success);
         }
 
-        .plan-card.monthly {
-            border-color: var(--silver);
+        .plan-card.free-trial.selected {
+            border-color: var(--success);
+            background: linear-gradient(135deg, #f0fff4, #e8f8ef);
         }
 
-        .plan-card.annual {
-            border-color: var(--gold);
+        .plan-card.immediate-payment {
+            border-color: var(--primary);
         }
 
-        .plan-card.popular {
-            border-width: 4px;
-        }
-
-        .plan-card.popular::before {
-            content: '{{ "BEST VALUE" if lang == "en" else "MEILLEUR RAPPORT" }}';
-            position: absolute;
-            top: 20px;
-            right: -35px;
-            background: linear-gradient(135deg, var(--gold), #ffa500);
-            color: white;
-            padding: 8px 40px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            transform: rotate(45deg);
-            z-index: 1;
-        }
-
-        @media (max-width: 768px) {
-            .plan-card.popular::before {
-                right: -25px;
-                padding: 6px 30px;
-                font-size: 0.7rem;
-            }
+        .plan-card.immediate-payment.selected {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #f8f9ff, #e8f2ff);
         }
 
         .plan-header {
@@ -329,16 +308,12 @@
             color: white;
         }
 
-        .plan-icon.weekly {
-            background: linear-gradient(135deg, var(--bronze), #b5651d);
+        .plan-icon.free-trial {
+            background: linear-gradient(135deg, var(--success), #05a67c);
         }
 
-        .plan-icon.monthly {
-            background: linear-gradient(135deg, var(--silver), #a0a0a0);
-        }
-
-        .plan-icon.annual {
-            background: linear-gradient(135deg, var(--gold), #ffa500);
+        .plan-icon.immediate-payment {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         }
 
         .plan-name {
@@ -355,16 +330,12 @@
             line-height: 1;
         }
 
-        .plan-price.weekly {
-            color: var(--bronze);
+        .plan-price.free-trial {
+            color: var(--success);
         }
 
-        .plan-price.monthly {
-            color: var(--silver);
-        }
-
-        .plan-price.annual {
-            color: var(--gold);
+        .plan-price.immediate-payment {
+            color: var(--primary);
         }
 
         .plan-period {
@@ -372,17 +343,6 @@
             color: #6c757d;
             margin-bottom: 20px;
             font-weight: 500;
-        }
-
-        .plan-savings {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--success), #05a67c);
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 20px;
         }
 
         .plan-features {
@@ -419,28 +379,22 @@
             margin-top: auto;
         }
 
-        .trial-info {
-            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-            border: 2px solid var(--warning);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
+        /* Style pour le sélecteur de plan dans l'option paiement */
+        .plan-card.immediate-payment .form-select {
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 14px;
+            width: 100%;
+            background: white;
+            cursor: pointer;
+            margin-bottom: 20px;
         }
 
-        .trial-info i {
-            color: var(--warning);
-            font-size: 1.2rem;
-        }
-
-        .trial-info strong {
-            color: var(--dark);
-            font-size: 1.1rem;
+        .plan-card.immediate-payment .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+            outline: none;
         }
 
         /* COORDONNÉES DU PARENT */
@@ -491,10 +445,6 @@
             .form-row {
                 grid-template-columns: 1fr;
             }
-            
-            .registration-box {
-                padding: 20px;
-            }
         }
 
         .section-divider {
@@ -537,44 +487,6 @@
             left: 0;
             color: var(--success);
             font-weight: bold;
-        }
-
-        .comparison-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        .comparison-table th, .comparison-table td {
-            padding: 15px;
-            text-align: center;
-            border: 1px solid var(--border);
-        }
-
-        .comparison-table th {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            font-weight: 600;
-        }
-
-        .comparison-table tr:nth-child(even) {
-            background: #f8f9fa;
-        }
-
-        .comparison-table .check {
-            color: var(--success);
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
-
-        .comparison-table .cross {
-            color: var(--danger);
-            font-weight: bold;
-            font-size: 1.2rem;
         }
 
         .checkbox-group {
@@ -777,168 +689,80 @@
                 </div>
             </div>
 
-            <!-- SECTION OPTIONS DE PAIEMENT -->
+            <!-- SECTION OPTIONS D'ACCÈS -->
             <div class="payment-options">
                 <div class="payment-title">
-                    {{ 'Choose Your Subscription Plan' if lang == 'en' else 'Choisissez Votre Forfait d\'Abonnement' }}
-                </div>
-
-                <div class="trial-info">
-                    <i class="fas fa-gift"></i>
-                    <strong>
-                        {{ '🎁 48-hour FREE trial included with all plans!' if lang == 'en' else '🎁 Essai GRATUIT de 48h inclus avec tous les forfaits !' }}
-                    </strong>
-                </div>
-
-                <!-- TABLEAU COMPARATIF -->
-                <div style="overflow-x: auto; margin-bottom: 30px;">
-                    <table class="comparison-table">
-                        <thead>
-                            <tr>
-                                <th>{{ 'Features' if lang == 'en' else 'Fonctionnalités' }}</th>
-                                <th>{{ 'Weekly' if lang == 'en' else 'Hebdomadaire' }}<br><small>15$/week</small></th>
-                                <th>{{ 'Monthly' if lang == 'en' else 'Mensuel' }}<br><small>50$/month</small></th>
-                                <th>{{ 'Annual' if lang == 'en' else 'Annuel' }}<br><small>450$/year</small></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style="text-align: left;">{{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: left;">{{ 'All subjects & levels' if lang == 'en' else 'Toutes les matières & niveaux' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: left;">{{ 'Virtual teacher assistance' if lang == 'en' else 'Assistance par enseignant virtuel' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: left;">{{ 'Socratic questioning guidance' if lang == 'en' else 'Guidage par questionnement socratique' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: left;">{{ 'Progress tracking & reports' if lang == 'en' else 'Suivi de progression & rapports' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: left;">{{ 'Personalized remediations' if lang == 'en' else 'Remédiations personnalisées' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: left;">{{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</td>
-                                <td class="cross">✗</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: left;">{{ 'Monthly savings' if lang == 'en' else 'Économies mensuelles' }}</td>
-                                <td>{{ '0%' if lang == 'en' else '0%' }}</td>
-                                <td>{{ '17%' if lang == 'en' else '17%' }}</td>
-                                <td>{{ '25%' if lang == 'en' else '25%' }}</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: left;">{{ 'Effective monthly cost' if lang == 'en' else 'Coût mensuel effectif' }}</td>
-                                <td><strong>$65</strong></td>
-                                <td><strong>$50</strong></td>
-                                <td><strong>$37.50</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    {{ 'Choose Your Access Option' if lang == 'en' else 'Choisissez Votre Option d\'Accès' }}
                 </div>
 
                 <div class="plan-cards">
-                    <!-- Plan Hebdomadaire -->
-                    <div class="plan-card weekly" onclick="selectPlan('weekly')" id="weeklyPlan">
+                    <!-- Option Essai Gratuit -->
+                    <div class="plan-card free-trial selected" onclick="selectAccessOption('trial')" id="trialOption">
                         <div class="plan-header">
-                            <div class="plan-icon weekly">
-                                <i class="fas fa-calendar-week"></i>
+                            <div class="plan-icon free-trial">
+                                <i class="fas fa-gift"></i>
                             </div>
-                            <h3 class="plan-name">{{ 'Weekly Plan' if lang == 'en' else 'Forfait Hebdomadaire' }}</h3>
-                            <div class="plan-price weekly">15$</div>
-                            <div class="plan-period">{{ 'per week' if lang == 'en' else 'par semaine' }}</div>
+                            <h3 class="plan-name">{{ 'Free Trial' if lang == 'en' else 'Essai Gratuit' }}</h3>
+                            <div class="plan-price free-trial" style="color: var(--success);">0$</div>
+                            <div class="plan-period">{{ '1 hour free' if lang == 'en' else '1 heure gratuite' }}</div>
                         </div>
                         <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Try before committing' if lang == 'en' else 'Testez avant de vous engager' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Virtual teacher available 24/7' if lang == 'en' else 'Enseignant virtuel disponible 24h/24' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Socratic questioning when stuck' if lang == 'en' else 'Questionnement socratique quand bloqué' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Flexible, cancel anytime' if lang == 'en' else 'Flexible, annulez à tout moment' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Full platform access for 1 hour' if lang == 'en' else 'Accès complet à la plateforme pendant 1 heure' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Test all features' if lang == 'en' else 'Testez toutes les fonctionnalités' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Virtual teacher available' if lang == 'en' else 'Enseignant virtuel disponible' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'No credit card required' if lang == 'en' else 'Aucune carte de crédit requise' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Convert to paid plan anytime' if lang == 'en' else 'Passez au forfait payant à tout moment' }}</li>
                         </ul>
                         <div class="plan-footer">
-                            <div style="margin-bottom: 15px; color: var(--bronze); font-weight: 600;">
-                                {{ 'Perfect for trying out' if lang == 'en' else 'Parfait pour tester' }}
+                            <div style="margin-bottom: 15px; color: var(--success); font-weight: 600;">
+                                {{ 'Perfect to discover the platform' if lang == 'en' else 'Parfait pour découvrir la plateforme' }}
                             </div>
                         </div>
                     </div>
 
-                    <!-- Plan Mensuel -->
-                    <div class="plan-card monthly" onclick="selectPlan('monthly')" id="monthlyPlan">
+                    <!-- Option Abonnement Immédiat -->
+                    <div class="plan-card immediate-payment" onclick="selectAccessOption('pay_now')" id="payNowOption">
                         <div class="plan-header">
-                            <div class="plan-icon monthly">
-                                <i class="fas fa-calendar-alt"></i>
+                            <div class="plan-icon immediate-payment">
+                                <i class="fas fa-bolt"></i>
                             </div>
-                            <h3 class="plan-name">{{ 'Monthly Plan' if lang == 'en' else 'Forfait Mensuel' }}</h3>
-                            <div class="plan-price monthly">50$</div>
-                            <div class="plan-period">{{ 'per month' if lang == 'en' else 'par mois' }}</div>
+                            <h3 class="plan-name">{{ 'Immediate Access' if lang == 'en' else 'Accès Immédiat' }}</h3>
+                            <div class="plan-price immediate-payment" style="color: var(--primary);">
+                                <span id="selectedPlanPrice">450$</span>
+                            </div>
+                            <div class="plan-period" id="selectedPlanPeriod">{{ 'per year' if lang == 'en' else 'par an' }}</div>
                         </div>
+                        
+                        <!-- Sélecteur de plan pour paiement -->
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label for="paymentPlanType" style="font-weight: 600; margin-bottom: 10px;">
+                                {{ 'Select your subscription plan:' if lang == 'en' else 'Sélectionnez votre forfait :' }}
+                            </label>
+                            <select id="paymentPlanType" class="form-select" onchange="updatePaymentPlan()">
+                                <option value="weekly">{{ 'Weekly - 15$/week' if lang == 'en' else 'Hebdomadaire - 15$/semaine' }}</option>
+                                <option value="monthly">{{ 'Monthly - 50$/month' if lang == 'en' else 'Mensuel - 50$/mois' }}</option>
+                                <option value="annual" selected>{{ 'Annual - 450$/year (Save 25%)' if lang == 'en' else 'Annuel - 450$/an (Économisez 25%)' }}</option>
+                            </select>
+                        </div>
+                        
                         <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Save 17% vs weekly' if lang == 'en' else 'Économisez 17% vs hebdo' }}</strong></li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'All weekly features included' if lang == 'en' else 'Toutes les fonctionnalités hebdo' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Progress reports for parents' if lang == 'en' else 'Rapports de progression pour parents' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Priority support access' if lang == 'en' else 'Accès au support prioritaire' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Monthly learning assessment' if lang == 'en' else 'Évaluation mensuelle des acquis' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Unlimited access from the start' if lang == 'en' else 'Accès illimité dès le début' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'All premium features' if lang == 'en' else 'Toutes les fonctionnalités premium' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Secure payment with Stripe' if lang == 'en' else 'Paiement sécurisé avec Stripe' }}</li>
                         </ul>
                         <div class="plan-footer">
-                            <div style="margin-bottom: 15px; color: var(--silver); font-weight: 600;">
-                                {{ 'Most popular choice' if lang == 'en' else 'Choix le plus populaire' }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Plan Annuel (Populaire) -->
-                    <div class="plan-card annual popular selected" onclick="selectPlan('annual')" id="annualPlan">
-                        <div class="plan-header">
-                            <div class="plan-icon annual">
-                                <i class="fas fa-crown"></i>
-                            </div>
-                            <h3 class="plan-name">{{ 'Annual Plan' if lang == 'en' else 'Forfait Annuel' }}</h3>
-                            <div class="plan-price annual">450$</div>
-                            <div class="plan-period">{{ 'per year' if lang == 'en' else 'par an' }}</div>
-                            <div class="plan-savings">
-                                {{ 'SAVE 25%' if lang == 'en' else 'ÉCONOMISEZ 25%' }}
-                            </div>
-                        </div>
-                        <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Best value - Save $240/year' if lang == 'en' else 'Meilleur rapport - Économisez 240$/an' }}</strong></li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'All monthly features included' if lang == 'en' else 'Toutes les fonctionnalités mensuelles' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Premium virtual teacher features' if lang == 'en' else 'Fonctionnalités premium enseignant virtuel' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Personalized learning roadmap' if lang == 'en' else 'Feuille de route d\'apprentissage personnalisée' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly parent-teacher meetings' if lang == 'en' else 'Rencontres trimestrielles parents-prof' }}</li>
-                        </ul>
-                        <div class="plan-footer">
-                            <div style="margin-bottom: 15px; color: var(--gold); font-weight: 600;">
-                                {{ 'Best for consistent learning' if lang == 'en' else 'Idéal pour un apprentissage régulier' }}
+                            <div style="margin-bottom: 15px; color: var(--primary); font-weight: 600;">
+                                {{ 'Get started immediately' if lang == 'en' else 'Commencez immédiatement' }}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- CHAMP CACHÉ POUR LE PLAN (WTForms) -->
-                {{ form.plan_type(id="planType", class="form-control", style="display: none;") }}
+                <!-- Champs cachés pour WTForms -->
+                {{ form.plan_type(id="planType", class="form-control", style="display: none;", value="trial") }}
+                <input type="hidden" id="paymentOption" name="payment_option" value="trial">
             </div>
 
             <!-- CGU CHECKBOX -->
@@ -965,9 +789,9 @@
 
             <!-- SUBMIT BUTTON -->
             <button type="submit" class="btn-submit" id="submitButton">
-                <i class="fas fa-user-plus"></i>
+                <i class="fas fa-gift"></i>
                 <span id="submitText">
-                    {{ 'Continue with Annual Plan (450$/year)' if lang == 'en' else 'Continuer avec le Forfait Annuel (450$/an)' }}
+                    {{ 'Start 1-Hour Free Trial' if lang == 'en' else 'Commencer l\'Essai Gratuit de 1 Heure' }}
                 </span>
             </button>
         </form>
@@ -985,71 +809,160 @@
     </div>
 
     <script>
-        // Gestion de la sélection du plan
-        function selectPlan(planType) {
-            console.log(`🎯 Plan sélectionné: ${planType}`);
+        // Configuration des prix
+        const planPrices = {
+            'weekly': {
+                price: '15$',
+                period: '{{ "per week" if lang == "en" else "par semaine" }}',
+                amount: 1500
+            },
+            'monthly': {
+                price: '50$',
+                period: '{{ "per month" if lang == "en" else "par mois" }}',
+                amount: 5000
+            },
+            'annual': {
+                price: '450$',
+                period: '{{ "per year" if lang == "en" else "par an" }}',
+                amount: 45000
+            }
+        };
+
+        // Gestion de la sélection de l'option d'accès
+        function selectAccessOption(option) {
+            console.log(`🎯 Option sélectionnée: ${option}`);
             
-            // Retirer la classe selected de tous les plans
+            // Retirer la classe selected de toutes les options
             document.querySelectorAll('.plan-card').forEach(card => {
                 card.classList.remove('selected');
             });
             
-            // Ajouter la classe selected au plan choisi
-            document.getElementById(planType + 'Plan').classList.add('selected');
+            // Ajouter la classe selected à l'option choisie
+            const selectedCard = option === 'trial' ? 
+                document.getElementById('trialOption') : 
+                document.getElementById('payNowOption');
+            selectedCard.classList.add('selected');
             
-            // Mettre à jour le champ WTForms
-            const planTypeInput = document.getElementById('planType');
-            if (planTypeInput) {
-                planTypeInput.value = planType;
-                console.log(`📝 Champ WTForms mis à jour: ${planTypeInput.value}`);
+            // Mettre à jour les champs cachés
+            const paymentOptionInput = document.getElementById('paymentOption');
+            if (paymentOptionInput) {
+                paymentOptionInput.value = option;
+                console.log(`📝 Option de paiement: ${paymentOptionInput.value}`);
             }
             
-            // Mettre à jour le texte du bouton
-            updateSubmitButton(planType);
+            // Mettre à jour le bouton de soumission
+            updateSubmitButton(option);
         }
 
-        function updateSubmitButton(planType) {
-            const submitText = document.getElementById('submitText');
-            const planNames = {
-                'weekly': {
-                    en: 'Continue with Weekly Plan (15$/week)',
-                    fr: 'Continuer avec le Forfait Hebdomadaire (15$/semaine)'
-                },
-                'monthly': {
-                    en: 'Continue with Monthly Plan (50$/month)',
-                    fr: 'Continuer avec le Forfait Mensuel (50$/mois)'
-                },
-                'annual': {
-                    en: 'Continue with Annual Plan (450$/year)',
-                    fr: 'Continuer avec le Forfait Annuel (450$/an)'
-                }
-            };
+        // Mettre à jour le plan de paiement sélectionné
+        function updatePaymentPlan() {
+            const planSelect = document.getElementById('paymentPlanType');
+            const selectedPlan = planSelect.value;
             
-            const langJs = "{{ lang }}";
-            submitText.textContent = planNames[planType][langJs];
+            // Mettre à jour l'affichage du prix
+            document.getElementById('selectedPlanPrice').textContent = planPrices[selectedPlan].price;
+            document.getElementById('selectedPlanPeriod').textContent = planPrices[selectedPlan].period;
+            
+            // Mettre à jour le champ plan_type
+            const planTypeInput = document.getElementById('planType');
+            if (planTypeInput) {
+                planTypeInput.value = selectedPlan;
+                console.log(`📝 Plan de paiement mis à jour: ${planTypeInput.value}`);
+            }
+            
+            // Mettre à jour le bouton si l'option paiement est sélectionnée
+            const paymentOption = document.getElementById('paymentOption').value;
+            if (paymentOption === 'pay_now') {
+                updateSubmitButton('pay_now');
+            }
         }
 
-        // Animation au chargement
+        function updateSubmitButton(option) {
+            const submitText = document.getElementById('submitText');
+            const submitButton = document.getElementById('submitButton');
+            const submitIcon = submitButton.querySelector('i');
+            const langJs = "{{ lang }}";
+            
+            if (option === 'trial') {
+                submitText.textContent = langJs === 'en' ? 
+                    'Start 1-Hour Free Trial' : 
+                    'Commencer l\'Essai Gratuit de 1 Heure';
+                submitIcon.className = 'fas fa-gift';
+                submitButton.style.background = 'linear-gradient(135deg, var(--success), #05a67c)';
+                submitButton.onmouseover = function() {
+                    this.style.background = 'linear-gradient(135deg, #05a67c, var(--success))';
+                };
+                submitButton.onmouseout = function() {
+                    this.style.background = 'linear-gradient(135deg, var(--success), #05a67c)';
+                };
+            } else {
+                // Récupérer le plan sélectionné
+                const planSelect = document.getElementById('paymentPlanType');
+                const selectedPlan = planSelect.value;
+                const planInfo = planPrices[selectedPlan];
+                
+                const planNames = {
+                    'weekly': {
+                        en: 'Weekly Plan (15$/week)',
+                        fr: 'Forfait Hebdomadaire (15$/semaine)'
+                    },
+                    'monthly': {
+                        en: 'Monthly Plan (50$/month)',
+                        fr: 'Forfait Mensuel (50$/mois)'
+                    },
+                    'annual': {
+                        en: 'Annual Plan (450$/year)',
+                        fr: 'Forfait Annuel (450$/an)'
+                    }
+                };
+                
+                submitText.textContent = langJs === 'en' ? 
+                    `Subscribe Now - ${planNames[selectedPlan].en}` : 
+                    `S'abonner Maintenant - ${planNames[selectedPlan].fr}`;
+                submitIcon.className = 'fas fa-credit-card';
+                submitButton.style.background = 'linear-gradient(135deg, var(--primary), var(--primary-dark))';
+                submitButton.onmouseover = function() {
+                    this.style.background = 'linear-gradient(135deg, var(--primary-dark), var(--primary))';
+                };
+                submitButton.onmouseout = function() {
+                    this.style.background = 'linear-gradient(135deg, var(--primary), var(--primary-dark))';
+                };
+            }
+        }
+
+        // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
             console.log("=== INITIALISATION DU FORMULAIRE ===");
             
-            // Vérifier que le champ plan_type existe
+            // Vérifier les champs cachés
             const planTypeInput = document.getElementById('planType');
+            const paymentOptionInput = document.getElementById('paymentOption');
+            
             if (!planTypeInput) {
                 console.error('❌ Champ plan_type NON TROUVÉ!');
-                // Créer le champ s'il n'existe pas
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';
                 hiddenInput.name = 'plan_type';
                 hiddenInput.id = 'planType';
-                hiddenInput.value = 'annual';
+                hiddenInput.value = 'trial';
                 document.getElementById('studentForm').appendChild(hiddenInput);
                 console.log('✅ Champ plan_type créé dynamiquement');
-            } else {
-                console.log('✅ Champ plan_type trouvé:', planTypeInput.value);
             }
             
-            // Animation des cartes de plan
+            if (!paymentOptionInput) {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'payment_option';
+                hiddenInput.id = 'paymentOption';
+                hiddenInput.value = 'trial';
+                document.getElementById('studentForm').appendChild(hiddenInput);
+                console.log('✅ Champ payment_option créé dynamiquement');
+            }
+            
+            // Initialiser le sélecteur de plan
+            updatePaymentPlan();
+            
+            // Animation des cartes
             const planCards = document.querySelectorAll('.plan-card');
             planCards.forEach((card, index) => {
                 card.style.opacity = '0';
@@ -1062,70 +975,54 @@
                 }, 300 + (index * 100));
             });
             
-            // Calcul des économies dynamiques
-            calculateSavings();
+            // Vérification de l'accès admin
+            const adminBackBtn = document.querySelector('.admin-back-btn');
+            const urlParams = new URLSearchParams(window.location.search);
+            const fromAdmin = urlParams.get('from_admin') === 'true';
+            
+            if (!fromAdmin) {
+                adminBackBtn.style.display = 'none';
+            }
             
             console.log("=== FIN DE L'INITIALISATION ===");
         });
 
-        function calculateSavings() {
-            const weeklyCost = 15;
-            const monthlyCost = 50;
-            const annualCost = 450;
-            
-            // Calcul des économies mensuelles
-            const weeklyMonthlyCost = weeklyCost * 4; // ~4 semaines par mois
-            const monthlySavings = ((weeklyMonthlyCost - monthlyCost) / weeklyMonthlyCost * 100).toFixed(0);
-            const annualMonthlyCost = annualCost / 12;
-            const annualSavings = ((weeklyMonthlyCost - annualMonthlyCost) / weeklyMonthlyCost * 100).toFixed(0);
-            
-            // Mettre à jour les textes d'économie
-            document.querySelectorAll('.plan-savings').forEach(el => {
-                if (el.textContent.includes('17%')) {
-                    el.textContent = el.textContent.replace('17%', monthlySavings + '%');
-                }
-                if (el.textContent.includes('25%')) {
-                    el.textContent = el.textContent.replace('25%', annualSavings + '%');
-                }
-            });
-            
-            // Mettre à jour le tableau comparatif
-            document.querySelectorAll('.comparison-table td:nth-child(3)').forEach((td, index) => {
-                if (td.textContent === '17%') {
-                    td.textContent = monthlySavings + '%';
-                }
-            });
-            
-            document.querySelectorAll('.comparison-table td:nth-child(4)').forEach((td, index) => {
-                if (td.textContent === '25%') {
-                    td.textContent = annualSavings + '%';
-                }
-            });
-        }
-
-        // Gestion du formulaire avant soumission
+        // Gestion de la soumission du formulaire
         document.getElementById('studentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const paymentOption = document.getElementById('paymentOption').value;
             const planTypeInput = document.getElementById('planType');
-            if (!planTypeInput || !planTypeInput.value) {
-                alert('{{ "Please select a subscription plan" if lang == "en" else "Veuillez sélectionner un forfait d\'abonnement" }}');
-                e.preventDefault();
-                return;
-            }
+            
+            console.log(`🚀 Soumission avec option: ${paymentOption}, plan: ${planTypeInput.value}`);
             
             // Vérifier que les CGU sont acceptées
             const cguCheckbox = document.getElementById('accepte_cgu');
             if (cguCheckbox && !cguCheckbox.checked) {
                 alert('{{ "You must accept the Terms and Conditions" if lang == "en" else "Vous devez accepter les Conditions Générales d\'Utilisation" }}');
-                e.preventDefault();
                 return;
             }
             
-            console.log("=== DONNÉES DU FORMULAIRE ===");
-            const formData = new FormData(this);
-            for (let [key, value] of formData.entries()) {
-                console.log(`${key}: ${value}`);
+            // Si option essai gratuit, soumettre normalement
+            if (paymentOption === 'trial') {
+                // Désactiver le bouton pendant le traitement
+                const btn = document.getElementById('submitButton');
+                const originalHTML = btn.innerHTML;
+                
+                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> {{ 'Processing...' if lang == 'en' else 'Traitement en cours...' }}`;
+                btn.disabled = true;
+                
+                // Soumettre le formulaire
+                this.submit();
+                return;
             }
-            console.log("=== FIN DES DONNÉES ===");
+            
+            // Si option paiement, valider d'abord le formulaire côté client
+            if (!this.checkValidity()) {
+                // Afficher les erreurs de validation
+                this.reportValidity();
+                return;
+            }
             
             // Désactiver le bouton pendant le traitement
             const btn = document.getElementById('submitButton');
@@ -1134,22 +1031,10 @@
             btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> {{ 'Processing...' if lang == 'en' else 'Traitement en cours...' }}`;
             btn.disabled = true;
             
-            // Réactiver le bouton après 10 secondes au cas où
+            // Soumettre le formulaire pour paiement
             setTimeout(() => {
-                btn.innerHTML = originalHTML;
-                btn.disabled = false;
-            }, 10000);
-        });
-
-        // Vérification de l'accès admin
-        document.addEventListener('DOMContentLoaded', function() {
-            const adminBackBtn = document.querySelector('.admin-back-btn');
-            const urlParams = new URLSearchParams(window.location.search);
-            const fromAdmin = urlParams.get('from_admin') === 'true';
-            
-            if (!fromAdmin) {
-                adminBackBtn.style.display = 'none';
-            }
+                this.submit();
+            }, 1000);
         });
     </script>
 </body>
