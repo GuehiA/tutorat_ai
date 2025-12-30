@@ -509,13 +509,45 @@
     }
 
     .feedback-text p {
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
 
     .feedback-text br {
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
       content: "";
+    }
+
+    /* Style pour les rubriques dans le feedback */
+    .feedback-rubric {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .feedback-rubric:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .feedback-rubric-title {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 8px;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .feedback-rubric-title i {
+      margin-right: 8px;
+      color: var(--accent);
+    }
+
+    .feedback-rubric-content {
+      line-height: 1.5;
+      padding-left: 10px;
     }
 
     .feedback-actions {
@@ -1305,22 +1337,8 @@
             {% endif %}
             
             {% if extracted_text %}
-              {% set clean_text = extracted_text
-                |replace('\\"', '"')
-                |replace('\\\\', '\\')
-                |replace('\\n\\n\\n', '<br><br>')
-                |replace('\\n\\n', '<br><br>')
-                |replace('\\n', ' ')
-                |replace('  ', ' ')
-                |replace('\\t', ' ')
-                |replace('\\[', '$$')
-                |replace('\\]', '$$')
-                |replace('\\(', '$')
-                |replace('\\)', '$')
-              %}
-              
-              <div class="feedback-text">
-                {{ clean_text|safe }}
+              <div class="feedback-text" id="structuredFeedback">
+                {{ process_contest_feedback(extracted_text)|safe }}
               </div>
               
             {% else %}
@@ -1329,20 +1347,8 @@
                 {% if parts|length > 1 %}
                   {% set subparts = parts[1].split('",') %}
                   {% if subparts|length > 0 %}
-                    {% set clean_text = subparts[0]
-                      |replace('\\"', '"')
-                      |replace('\\\\', '\\')
-                      |replace('\\n\\n\\n', '<br><br>')
-                      |replace('\\n\\n', '<br><br>')
-                      |replace('\\n', ' ')
-                      |replace('  ', ' ')
-                      |replace('\\[', '$$')
-                      |replace('\\]', '$$')
-                      |replace('\\(', '$')
-                      |replace('\\)', '$')
-                    %}
-                    <div class="feedback-text">
-                      {{ clean_text|safe }}
+                    <div class="feedback-text" id="structuredFeedback">
+                      {{ process_contest_feedback(subparts[0])|safe }}
                     </div>
                   {% endif %}
                 {% endif %}
@@ -1351,20 +1357,8 @@
                 {% if parts|length > 1 %}
                   {% set subparts = parts[1].split('",') %}
                   {% if subparts|length > 0 %}
-                    {% set clean_text = subparts[0]
-                      |replace('\\"', '"')
-                      |replace('\\\\', '\\')
-                      |replace('\\n\\n\\n', '<br><br>')
-                      |replace('\\n\\n', '<br><br>')
-                      |replace('\\n', ' ')
-                      |replace('  ', ' ')
-                      |replace('\\[', '$$')
-                      |replace('\\]', '$$')
-                      |replace('\\(', '$')
-                      |replace('\\)', '$')
-                    %}
-                    <div class="feedback-text">
-                      {{ clean_text|safe }}
+                    <div class="feedback-text" id="structuredFeedback">
+                      {{ process_contest_feedback(subparts[0])|safe }}
                     </div>
                   {% endif %}
                 {% endif %}
@@ -1381,20 +1375,8 @@
             {% endif %}
             
           {% else %}
-            {% set clean_text = feedback_content
-              |replace('\\[', '$$')
-              |replace('\\]', '$$')
-              |replace('\\(', '$')
-              |replace('\\)', '$')
-              |replace('\\"', '"')
-              |replace('\\\\', '\\')
-              |replace('\\n\\n\\n', '<br><br>')
-              |replace('\\n\\n', '<br><br>')
-              |replace('\\n', ' ')
-              |replace('  ', ' ')
-            %}
-            <div class="feedback-text">
-              {{ clean_text|safe }}
+            <div class="feedback-text" id="structuredFeedback">
+              {{ process_contest_feedback(feedback_content)|safe }}
             </div>
           {% endif %}
           
@@ -1520,22 +1502,123 @@
     document.getElementById('progressText').textContent = `${currentIndex + 1}/${total}`;
   }
 
+  // Fonction pour structurer le feedback après contestation
+  function structureContestFeedback(text) {
+    if (!text) return '';
+    
+    let structuredHTML = '';
+    
+    // Nettoyage de base
+    text = text
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+      .replace(/\\t/g, ' ')
+      .replace(/\\\[/g, '$$')
+      .replace(/\\\]/g, '$$')
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$')
+      .replace(/\s\s+/g, ' ');
+    
+    // Détection des rubriques
+    const rubrics = {
+      'Analyse de la contestation :': { icon: 'fa-search', lang: { fr: 'Analyse de la contestation', en: 'Contest Analysis' } },
+      'Nouvelle note :': { icon: 'fa-star', lang: { fr: 'Nouvelle note', en: 'New Grade' } },
+      'Décision :': { icon: 'fa-gavel', lang: { fr: 'Décision', en: 'Decision' } },
+      'Feedback détaillé :': { icon: 'fa-comment-dots', lang: { fr: 'Feedback détaillé', en: 'Detailed Feedback' } },
+      'Contest Analysis:': { icon: 'fa-search', lang: { fr: 'Analyse de la contestation', en: 'Contest Analysis' } },
+      'New Grade:': { icon: 'fa-star', lang: { fr: 'Nouvelle note', en: 'New Grade' } },
+      'Decision:': { icon: 'fa-gavel', lang: { fr: 'Décision', en: 'Decision' } },
+      'Detailed Feedback:': { icon: 'fa-comment-dots', lang: { fr: 'Feedback détaillé', en: 'Detailed Feedback' } }
+    };
+    
+    // Chercher les rubriques
+    let currentPos = 0;
+    let foundRubrics = [];
+    
+    for (const [rubric, info] of Object.entries(rubrics)) {
+      const pos = text.indexOf(rubric);
+      if (pos !== -1) {
+        foundRubrics.push({
+          rubric: rubric,
+          info: info,
+          position: pos,
+          contentStart: pos + rubric.length
+        });
+      }
+    }
+    
+    // Trier par position
+    foundRubrics.sort((a, b) => a.position - b.position);
+    
+    if (foundRubrics.length > 0) {
+      // Traiter chaque rubrique
+      for (let i = 0; i < foundRubrics.length; i++) {
+        const current = foundRubrics[i];
+        const next = foundRubrics[i + 1];
+        
+        // Extraire le contenu de cette rubrique
+        const contentStart = current.contentStart;
+        const contentEnd = next ? next.position : text.length;
+        let content = text.substring(contentStart, contentEnd).trim();
+        
+        // Nettoyer le contenu
+        content = content
+          .replace(/\\n\\n\\n/g, '<br><br>')
+          .replace(/\\n\\n/g, '<br><br>')
+          .replace(/\\n/g, ' ');
+        
+        // Ajouter la rubrique structurée
+        const rubricTitle = current.info.lang['{{ lang }}'] || current.rubric.replace(':', '');
+        
+        structuredHTML += `
+          <div class="feedback-rubric">
+            <div class="feedback-rubric-title">
+              <i class="fas ${current.info.icon}"></i>
+              ${rubricTitle}
+            </div>
+            <div class="feedback-rubric-content">
+              ${content}
+            </div>
+          </div>
+        `;
+        
+        currentPos = contentEnd;
+      }
+    } else {
+      // Si pas de rubriques détectées, afficher le texte normalement
+      structuredHTML = text
+        .replace(/\\n\\n\\n/g, '<br><br>')
+        .replace(/\\n\\n/g, '<br><br>')
+        .replace(/\\n/g, ' ')
+        .replace(/\n\n\n/g, '<br><br>')
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+    }
+    
+    return structuredHTML;
+  }
+
   // Fonction pour nettoyer et formater le contenu mathématique
   function cleanAndFormatMathContent(elementId) {
     const element = document.getElementById(elementId);
     if (!element) return;
     
+    // Si c'est le feedback après contestation, appliquer la structure
+    if (elementId === 'aiAnalysisContent') {
+      const structuredElement = element.querySelector('#structuredFeedback');
+      if (structuredElement) {
+        const originalText = structuredElement.innerHTML;
+        structuredElement.innerHTML = structureContestFeedback(originalText);
+      }
+    }
+    
     let content = element.innerHTML;
     
     // Nettoyage agressif des espaces excessifs
     content = content
-      .replace(/\\n\\n\\n/g, '<br><br>')
-      .replace(/\\n\\n/g, '<br><br>')
-      .replace(/\\n/g, ' ')
-      .replace(/\s\s+/g, ' ')
       .replace(/\\"/g, '"')
-      .replace(/\\t/g, ' ')
       .replace(/\\\\/g, '\\')
+      .replace(/\\t/g, ' ')
       .replace(/\\\[/g, '$$')
       .replace(/\\\]/g, '$$')
       .replace(/\\\(/g, '$')
@@ -1580,24 +1663,14 @@
         // Extraire le texte à afficher
         const displayText = jsonData.current_feedback || jsonData.original || content;
         
-        // Nettoyer AGGRESSIVEMENT les espaces et sauts de ligne
-        let cleanText = displayText
-          .replace(/\\"/g, '"')
-          .replace(/\\\\/g, '\\')
-          .replace(/\\n\\n\\n/g, '<br><br>')
-          .replace(/\\n\\n/g, '<br><br>')
-          .replace(/\\n/g, ' ')
-          .replace(/\s\s+/g, ' ')
-          .replace(/\\t/g, ' ')
-          .replace(/\\\[/g, '$$')
-          .replace(/\\\]/g, '$$')
-          .replace(/\\\(/g, '$')
-          .replace(/\\\)/g, '$');
+        // Structurer le feedback
+        const structuredHTML = structureContestFeedback(displayText);
         
-        // Wrapper dans un div pour le styling
+        // Créer un wrapper pour le contenu structuré
         const wrapper = document.createElement('div');
         wrapper.className = 'feedback-text';
-        wrapper.innerHTML = cleanText;
+        wrapper.id = 'structuredFeedback';
+        wrapper.innerHTML = structuredHTML;
         
         // Remplacer le contenu
         element.innerHTML = '';
@@ -1613,7 +1686,7 @@
         }
       } catch (e) {
         console.error('Erreur parsing JSON:', e);
-        // Extraction manuelle avec nettoyage agressif
+        // Extraction manuelle avec structuration
         let cleanText = content;
         
         if (content.includes('"current_feedback": "')) {
@@ -1630,39 +1703,27 @@
           }
         }
         
-        // Nettoyage agressif
-        cleanText = cleanText
-          .replace(/\\"/g, '"')
-          .replace(/\\\\/g, '\\')
-          .replace(/\\n\\n\\n/g, '<br><br>')
-          .replace(/\\n\\n/g, '<br><br>')
-          .replace(/\\n/g, ' ')
-          .replace(/\s\s+/g, ' ')
-          .replace(/\\\[/g, '$$')
-          .replace(/\\\]/g, '$$')
-          .replace(/\\\(/g, '$')
-          .replace(/\\\)/g, '$');
+        // Structurer le feedback
+        const structuredHTML = structureContestFeedback(cleanText);
         
         const wrapper = document.createElement('div');
         wrapper.className = 'feedback-text';
-        wrapper.innerHTML = cleanText;
+        wrapper.id = 'structuredFeedback';
+        wrapper.innerHTML = structuredHTML;
         
         element.innerHTML = '';
         element.appendChild(wrapper);
       }
     } else {
-      // Si ce n'est pas du JSON mais a des \n excessifs, nettoyer aussi
-      let cleanText = content
-        .replace(/\\n\\n\\n/g, '<br><br>')
-        .replace(/\\n\\n/g, '<br><br>')
-        .replace(/\\n/g, ' ')
-        .replace(/\s\s+/g, ' ');
+      // Si ce n'est pas du JSON, structurer le feedback existant
+      const structuredHTML = structureContestFeedback(content);
       
       // Chercher et wrapper le texte dans .feedback-text si pas déjà fait
-      if (!element.querySelector('.feedback-text')) {
+      if (!element.querySelector('#structuredFeedback')) {
         const wrapper = document.createElement('div');
         wrapper.className = 'feedback-text';
-        wrapper.innerHTML = cleanText;
+        wrapper.id = 'structuredFeedback';
+        wrapper.innerHTML = structuredHTML;
         element.innerHTML = '';
         element.appendChild(wrapper);
       }
@@ -1919,27 +1980,29 @@
     // 2. Mettre à jour l'icône
     updateFeedbackIcon(newStars);
     
-    // 3. Mettre à jour le contenu avec un indicateur visuel discret
+    // 3. Mettre à jour le contenu avec structuration
     const feedbackElement = document.getElementById('aiAnalysisContent');
     if (feedbackElement) {
-      feedbackElement.innerHTML = newFeedback;
+      // Structurer le feedback
+      const structuredHTML = structureContestFeedback(newFeedback);
       
-      // Ajouter un message discret "Mise à jour"
-      const updateMessage = document.createElement('div');
-      updateMessage.className = 'update-message';
-      updateMessage.innerHTML = `
-        <i class="fas fa-sync-alt" style="color: #28a745;"></i>
-        <span>{{ "Correction mise à jour suite à votre contestation" if lang == "fr" else "Feedback updated following your contest" }}</span>
+      // Créer un nouveau contenu structuré
+      const newContent = `
+        <div class="update-message">
+          <i class="fas fa-sync-alt" style="color: #28a745;"></i>
+          <span>{{ "Correction mise à jour suite à votre contestation" if lang == "fr" else "Feedback updated following your contest" }}</span>
+        </div>
+        <div class="feedback-text" id="structuredFeedback">
+          ${structuredHTML}
+        </div>
       `;
-      feedbackElement.prepend(updateMessage);
       
-      // Ajouter une classe pour un indicateur visuel discret
+      feedbackElement.innerHTML = newContent;
       feedbackElement.classList.add('analysis-updated');
       
       // Appliquer le nettoyage MathJax
       setTimeout(() => {
         cleanAndFormatMathContent('aiAnalysisContent');
-        cleanJSONContent(); // Nettoyer aussi le JSON si présent
       }, 50);
     }
     
