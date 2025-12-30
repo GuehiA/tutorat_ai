@@ -32,8 +32,8 @@
             --trial: #06d6a0;
             --weekly: #7209b7;
             --monthly: #4361ee;
-            --annual: #ff9e00;
             --quarterly: #06b6d4;
+            --annual: #ff9e00;
         }
         
         * {
@@ -51,7 +51,7 @@
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
         
@@ -114,7 +114,7 @@
             transform: translateY(-2px);
         }
         
-        /* Navigation des options */
+        /* Navigation des options - 4 ONGLETS */
         .plan-tabs {
             display: flex;
             justify-content: center;
@@ -124,16 +124,17 @@
         }
         
         .plan-tab {
-            padding: 15px 30px;
+            padding: 15px 25px;
             border-radius: 50px;
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 1rem;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
             background: white;
             color: var(--dark);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            white-space: nowrap;
         }
         
         .plan-tab:hover {
@@ -147,15 +148,15 @@
             border-color: var(--primary);
         }
         
-        /* Plans container amélioré */
+        /* Plans container amélioré - 4 COLONNES */
         .plans-container {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
             margin-bottom: 60px;
         }
         
-        @media (max-width: 1200px) {
+        @media (max-width: 1400px) {
             .plans-container {
                 grid-template-columns: repeat(2, 1fr);
             }
@@ -165,13 +166,22 @@
             .plans-container {
                 grid-template-columns: 1fr;
             }
+            
+            .plan-tabs {
+                gap: 10px;
+            }
+            
+            .plan-tab {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+            }
         }
         
         /* Plan card redessiné */
         .plan-card {
             background: var(--white);
             border-radius: 25px;
-            padding: 40px 30px;
+            padding: 35px 25px;
             text-align: center;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -179,12 +189,12 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            min-height: 700px;
+            min-height: 680px;
             border: 2px solid transparent;
         }
         
         .plan-card:hover {
-            transform: translateY(-15px);
+            transform: translateY(-10px);
             box-shadow: 0 40px 60px rgba(0, 0, 0, 0.15);
         }
         
@@ -196,17 +206,36 @@
             border-color: var(--monthly);
         }
         
+        .plan-card.quarterly {
+            border-color: var(--quarterly);
+        }
+        
         .plan-card.annual {
             border-color: var(--annual);
         }
         
         .plan-card.popular {
-            transform: translateY(-10px);
+            transform: translateY(-5px);
             box-shadow: 0 30px 50px rgba(0, 0, 0, 0.15);
             border-width: 3px;
         }
         
         .plan-card.popular::before {
+            content: '{% if lang == "en" %}POPULAR{% else %}POPULAIRE{% endif %}';
+            position: absolute;
+            top: 20px;
+            right: -35px;
+            background: linear-gradient(135deg, var(--quarterly), #0891b2);
+            color: white;
+            padding: 10px 40px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transform: rotate(45deg);
+            letter-spacing: 1px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .plan-card.best-value::before {
             content: '{% if lang == "en" %}BEST VALUE{% else %}MEILLEUR RAPPORT{% endif %}';
             position: absolute;
             top: 20px;
@@ -242,20 +271,24 @@
             background: linear-gradient(135deg, var(--monthly), var(--primary-dark));
         }
         
+        .plan-badge.quarterly {
+            background: linear-gradient(135deg, var(--quarterly), #0891b2);
+        }
+        
         .plan-badge.annual {
             background: linear-gradient(135deg, var(--annual), #ff8c00);
         }
         
         .plan-icon {
-            width: 100px;
-            height: 100px;
+            width: 90px;
+            height: 90px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 20px auto 25px;
             color: white;
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
         
@@ -267,12 +300,16 @@
             background: linear-gradient(135deg, var(--monthly), var(--primary-dark));
         }
         
+        .plan-icon.quarterly {
+            background: linear-gradient(135deg, var(--quarterly), #0891b2);
+        }
+        
         .plan-icon.annual {
             background: linear-gradient(135deg, var(--annual), #ff8c00);
         }
         
         .plan-name {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 800;
             margin-bottom: 15px;
             color: var(--dark);
@@ -280,14 +317,14 @@
         }
         
         .plan-price-container {
-            margin: 25px 0;
+            margin: 20px 0;
             padding: 20px;
             background: linear-gradient(135deg, #f8f9ff, #f0f4ff);
             border-radius: 20px;
         }
         
         .plan-price {
-            font-size: 3.5rem;
+            font-size: 3rem;
             font-weight: 900;
             line-height: 1;
             display: flex;
@@ -297,7 +334,7 @@
         }
         
         .plan-price .currency {
-            font-size: 2rem;
+            font-size: 1.8rem;
             margin-top: 5px;
         }
         
@@ -309,14 +346,18 @@
             color: var(--monthly);
         }
         
+        .plan-price.quarterly {
+            color: var(--quarterly);
+        }
+        
         .plan-price.annual {
             color: var(--annual);
         }
         
         .plan-period {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #666;
-            margin-top: 10px;
+            margin-top: 8px;
             font-weight: 500;
         }
         
@@ -324,16 +365,16 @@
             display: inline-block;
             background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
             color: white;
-            padding: 8px 20px;
+            padding: 8px 18px;
             border-radius: 50px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 700;
             margin: 15px 0;
             box-shadow: 0 5px 15px rgba(6, 214, 160, 0.3);
         }
         
         .effective-price {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: #666;
             margin-bottom: 10px;
             font-weight: 600;
@@ -343,27 +384,29 @@
             background: linear-gradient(135deg, #fff8e1, #ffecb3);
             border: 2px solid var(--warning);
             border-radius: 15px;
-            padding: 15px;
-            margin: 20px 0;
+            padding: 12px;
+            margin: 15px 0;
             font-weight: 600;
             color: var(--dark);
             text-align: center;
+            font-size: 0.9rem;
         }
         
         .plan-features {
             list-style: none;
-            margin: 25px 0;
+            margin: 20px 0;
             text-align: left;
             flex-grow: 1;
+            padding: 0 5px;
         }
         
         .plan-features li {
-            padding: 12px 0;
+            padding: 10px 0;
             display: flex;
             align-items: flex-start;
-            gap: 15px;
-            font-size: 1rem;
-            line-height: 1.5;
+            gap: 12px;
+            font-size: 0.95rem;
+            line-height: 1.4;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
         
@@ -372,7 +415,7 @@
         }
         
         .plan-features li i {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             flex-shrink: 0;
             margin-top: 2px;
         }
@@ -388,10 +431,10 @@
         .upgrade-btn {
             display: inline-block;
             width: 100%;
-            padding: 20px 30px;
+            padding: 18px 25px;
             border-radius: 15px;
             font-weight: 700;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             border: none;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -400,7 +443,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             margin-top: auto;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         }
@@ -412,6 +455,11 @@
         
         .upgrade-btn.monthly {
             background: linear-gradient(135deg, var(--monthly), var(--primary-dark));
+            color: white;
+        }
+        
+        .upgrade-btn.quarterly {
+            background: linear-gradient(135deg, var(--quarterly), #0891b2);
             color: white;
         }
         
@@ -427,7 +475,7 @@
             text-decoration: none;
         }
         
-        /* Section des économies */
+        /* Section des économies - 4 COLONNES */
         .savings-section {
             background: linear-gradient(135deg, var(--light), #e9ecef);
             border-radius: 25px;
@@ -437,16 +485,22 @@
         }
         
         .savings-section h2 {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             margin-bottom: 30px;
             color: var(--dark);
         }
         
         .savings-cards {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
             margin-top: 30px;
+        }
+        
+        @media (max-width: 1200px) {
+            .savings-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
         
         @media (max-width: 768px) {
@@ -457,7 +511,7 @@
         
         .savings-card {
             background: white;
-            padding: 30px;
+            padding: 25px;
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
@@ -469,15 +523,15 @@
         }
         
         .savings-card h3 {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             margin-bottom: 15px;
             color: var(--dark);
         }
         
         .savings-amount {
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: 900;
-            margin: 20px 0;
+            margin: 15px 0;
             line-height: 1;
         }
         
@@ -489,18 +543,22 @@
             color: var(--monthly);
         }
         
+        .savings-amount.quarterly {
+            color: var(--quarterly);
+        }
+        
         .savings-amount.annual {
             color: var(--annual);
         }
         
-        /* Tableau comparatif amélioré */
+        /* Tableau comparatif amélioré - 5 COLONNES */
         .comparison-section {
             margin: 60px 0;
         }
         
         .comparison-section h2 {
             text-align: center;
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             margin-bottom: 40px;
             color: var(--dark);
         }
@@ -515,14 +573,14 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
-            min-width: 800px;
+            min-width: 1000px;
         }
         
         .comparison-table th {
-            padding: 25px 20px;
+            padding: 20px 15px;
             text-align: center;
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: white;
             border: none;
         }
@@ -542,12 +600,16 @@
         }
         
         .comparison-table th:nth-child(4) {
+            background: var(--quarterly);
+        }
+        
+        .comparison-table th:nth-child(5) {
             background: var(--annual);
             border-radius: 0 20px 0 0;
         }
         
         .comparison-table td {
-            padding: 20px;
+            padding: 18px 15px;
             text-align: center;
             border-bottom: 1px solid var(--light);
         }
@@ -569,13 +631,13 @@
         .comparison-table .check {
             color: var(--secondary);
             font-weight: bold;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
         }
         
         .comparison-table .cross {
             color: #dee2e6;
             font-weight: bold;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
         }
         
         /* Boutons de navigation */
@@ -664,15 +726,17 @@
             }
             
             .plan-card {
-                min-height: 650px;
-                padding: 30px 20px;
+                min-height: 620px;
+                padding: 25px 15px;
             }
             
-            .plan-card.popular {
+            .plan-card.popular,
+            .plan-card.best-value {
                 transform: none;
             }
             
-            .plan-card.popular::before {
+            .plan-card.popular::before,
+            .plan-card.best-value::before {
                 top: 15px;
                 right: -30px;
                 padding: 8px 35px;
@@ -684,19 +748,19 @@
             }
             
             .plan-price {
-                font-size: 2.8rem;
+                font-size: 2.5rem;
             }
             
             .savings-section {
-                padding: 30px 20px;
+                padding: 25px 15px;
             }
             
             .savings-section h2 {
-                font-size: 2rem;
+                font-size: 1.8rem;
             }
             
             .savings-amount {
-                font-size: 2.5rem;
+                font-size: 2.2rem;
             }
         }
         
@@ -835,7 +899,7 @@
                         <i class="fas fa-brain"></i>
                     </div>
                     <h3>{% if lang == 'en' %}Intelligent Guidance{% else %}Guidage Intelligent{% endif %}</h3>
-                    <p>{% if lang == 'en' %}AI teacher uses Socratic questioning to help you learn{% else %}Enseignant IA utilisant le questionnement socratique{% endif %}</p>
+                    <p>{% if lang == 'en' %}AI teacher uses Socratic questioning{% else %}Enseignant IA utilisant le questionnement socratique{% endif %}</p>
                 </div>
                 <div class="savings-card">
                     <div class="plan-icon monthly" style="width: 80px; height: 80px; font-size: 2rem; margin: 0 auto 20px;">
@@ -845,16 +909,23 @@
                     <p>{% if lang == 'en' %}Adaptive difficulty based on your performance{% else %}Difficulté adaptative selon vos résultats{% endif %}</p>
                 </div>
                 <div class="savings-card">
+                    <div class="plan-icon quarterly" style="width: 80px; height: 80px; font-size: 2rem; margin: 0 auto 20px;">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <h3>{% if lang == 'en' %}Quarterly Progress{% else %}Progression Trimestrielle{% endif %}</h3>
+                    <p>{% if lang == 'en' %}Detailed reviews every 3 months{% else %}Revues détaillées tous les 3 mois{% endif %}</p>
+                </div>
+                <div class="savings-card">
                     <div class="plan-icon annual" style="width: 80px; height: 80px; font-size: 2rem; margin: 0 auto 20px;">
                         <i class="fas fa-award"></i>
                     </div>
-                    <h3>{% if lang == 'en' %}Premium Support{% else %}Support Premium{% endif %}</h3>
-                    <p>{% if lang == 'en' %}Priority assistance and progress tracking{% else %}Assistance prioritaire et suivi de progression{% endif %}</p>
+                    <h3>{% if lang == 'en' %}Best Value{% else %}Meilleur Rapport{% endif %}</h3>
+                    <p>{% if lang == 'en' %}Maximum savings with annual plan{% else %}Économies maximales avec forfait annuel{% endif %}</p>
                 </div>
             </div>
         </div>
 
-        <!-- Onglets de sélection -->
+        <!-- Onglets de sélection - 4 ONGLETS -->
         <div class="plan-tabs fade-in-up">
             <div class="plan-tab" onclick="selectPlan('weekly')">
                 <i class="fas fa-calendar-week"></i> {% if lang == 'en' %}Weekly{% else %}Hebdomadaire{% endif %}
@@ -862,12 +933,15 @@
             <div class="plan-tab active" onclick="selectPlan('monthly')">
                 <i class="fas fa-calendar-alt"></i> {% if lang == 'en' %}Monthly{% else %}Mensuel{% endif %}
             </div>
+            <div class="plan-tab" onclick="selectPlan('quarterly')">
+                <i class="fas fa-calendar-check"></i> {% if lang == 'en' %}Quarterly{% else %}Trimestriel{% endif %}
+            </div>
             <div class="plan-tab" onclick="selectPlan('annual')">
                 <i class="fas fa-crown"></i> {% if lang == 'en' %}Annual{% else %}Annuel{% endif %}
             </div>
         </div>
 
-        <!-- Container des plans -->
+        <!-- Container des plans - 4 CARTES -->
         <div class="plans-container">
             <!-- Plan Hebdomadaire -->
             <div class="plan-card weekly">
@@ -896,13 +970,13 @@
                     <li><i class="fas fa-times feature-excluded"></i> <span class="tooltip">
                         {% if lang == 'en' %}Priority support{% else %}Support prioritaire{% endif %}
                         <span class="tooltip-text">
-                            {% if lang == 'en' %}Get faster responses with monthly/annual plans{% else %}Obtenez des réponses plus rapides avec les forfaits mensuels/annuels{% endif %}
+                            {% if lang == 'en' %}Get faster responses with monthly/quarterly/annual plans{% else %}Obtenez des réponses plus rapides avec les forfaits mensuels/trimestriels/annuels{% endif %}
                         </span>
                     </span></li>
                 </ul>
                 <a href="{{ url_for('paiement_direct') }}?type=weekly" class="upgrade-btn weekly" onclick="trackUpgrade('weekly')">
                     <i class="fas fa-bolt"></i>
-                    {% if lang == 'en' %}Choose Weekly Plan{% else %}Choisir Forfait Hebdo{% endif %}
+                    {% if lang == 'en' %}Choose Weekly{% else %}Choisir Hebdo{% endif %}
                 </a>
             </div>
             
@@ -938,12 +1012,49 @@
                 </ul>
                 <a href="{{ url_for('paiement_direct') }}?type=monthly" class="upgrade-btn monthly" onclick="trackUpgrade('monthly')">
                     <i class="fas fa-star"></i>
-                    {% if lang == 'en' %}Choose Monthly Plan{% else %}Choisir Forfait Mensuel{% endif %}
+                    {% if lang == 'en' %}Choose Monthly{% else %}Choisir Mensuel{% endif %}
+                </a>
+            </div>
+            
+            <!-- Plan Trimestriel (Nouveau - Best Deal) -->
+            <div class="plan-card quarterly popular">
+                <div class="plan-badge quarterly">
+                    <i class="fas fa-gem"></i> {% if lang == 'en' %}BEST DEAL{% else %}MEILLEUR RAPPORT{% endif %}
+                </div>
+                <div class="plan-icon quarterly">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h2 class="plan-name">{% if lang == 'en' %}Quarterly{% else %}Trimestriel{% endif %}</h2>
+                <div class="plan-price-container">
+                    <div class="plan-price quarterly">
+                        <span class="currency">$</span>120
+                    </div>
+                    <div class="plan-period">{% if lang == 'en' %}every 3 months{% else %}tous les 3 mois{% endif %}</div>
+                    <div class="plan-savings">
+                        <i class="fas fa-piggy-bank"></i> 
+                        {% if lang == 'en' %}SAVE 20%{% else %}ÉCONOMISEZ 20%{% endif %}
+                    </div>
+                    <div class="effective-price">≈ $40/{% if lang == 'en' %}month{% else %}mois{% endif %}</div>
+                </div>
+                <div class="plan-highlight">
+                    <i class="fas fa-fire"></i> 
+                    {% if lang == 'en' %}Perfect balance of value{% else %}Parfait équilibre qualité/prix{% endif %}
+                </div>
+                <ul class="plan-features">
+                    <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}All monthly features{% else %}Toutes fonctionnalités mensuelles{% endif %}</strong></li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Priority support{% else %}Support prioritaire{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Quarterly progress reviews{% else %}Revues trimestrielles{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Personalized learning path{% else %}Parcours personnalisé{% endif %}</li>
+                    <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}Save $60/year{% else %}Économisez 60$/an{% endif %}</strong></li>
+                </ul>
+                <a href="{{ url_for('paiement_direct') }}?type=quarterly" class="upgrade-btn quarterly" onclick="trackUpgrade('quarterly')">
+                    <i class="fas fa-calendar-check"></i>
+                    {% if lang == 'en' %}Choose Quarterly{% else %}Choisir Trimestriel{% endif %}
                 </a>
             </div>
             
             <!-- Plan Annuel (Meilleur rapport) -->
-            <div class="plan-card annual">
+            <div class="plan-card annual best-value">
                 <div class="plan-badge annual">
                     <i class="fas fa-crown"></i> {% if lang == 'en' %}BEST VALUE{% else %}MEILLEUR RAPPORT{% endif %}
                 </div>
@@ -967,7 +1078,7 @@
                     {% if lang == 'en' %}Perfect for serious students{% else %}Idéal pour élèves sérieux{% endif %}
                 </div>
                 <ul class="plan-features">
-                    <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}All monthly features{% else %}Toutes fonctionnalités mensuelles{% endif %}</strong></li>
+                    <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}All quarterly features{% else %}Toutes fonctionnalités trimestrielles{% endif %}</strong></li>
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Quarterly progress reviews{% else %}Revues trimestrielles{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Premium virtual teacher{% else %}Enseignant virtuel premium{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Personalized roadmap{% else %}Feuille de route personnalisée{% endif %}</li>
@@ -975,7 +1086,7 @@
                 </ul>
                 <a href="{{ url_for('paiement_direct') }}?type=annual" class="upgrade-btn annual" onclick="trackUpgrade('annual')">
                     <i class="fas fa-crown"></i>
-                    {% if lang == 'en' %}Choose Annual Plan{% else %}Choisir Forfait Annuel{% endif %}
+                    {% if lang == 'en' %}Choose Annual{% else %}Choisir Annuel{% endif %}
                 </a>
             </div>
         </div>
@@ -1002,6 +1113,15 @@
                     <div style="color: var(--secondary); font-weight: bold; margin-top: 10px;">
                         <i class="fas fa-arrow-down"></i> 
                         {% if lang == 'en' %}Save $180{% else %}Économisez 180${% endif %}
+                    </div>
+                </div>
+                <div class="savings-card">
+                    <h3>{% if lang == 'en' %}Quarterly Cost{% else %}Coût Trimestriel{% endif %}</h3>
+                    <div class="savings-amount quarterly">$480</div>
+                    <p>{% if lang == 'en' %}per year{% else %}par an{% endif %}</p>
+                    <div style="color: var(--secondary); font-weight: bold; margin-top: 10px;">
+                        <i class="fas fa-arrow-down"></i> 
+                        {% if lang == 'en' %}Save $300{% else %}Économisez 300${% endif %}
                     </div>
                 </div>
                 <div class="savings-card">
@@ -1040,6 +1160,7 @@
                             <th>{% if lang == 'en' %}Features{% else %}Fonctionnalités{% endif %}</th>
                             <th>{% if lang == 'en' %}Weekly{% else %}Hebdomadaire{% endif %}</th>
                             <th>{% if lang == 'en' %}Monthly{% else %}Mensuel{% endif %}</th>
+                            <th>{% if lang == 'en' %}Quarterly{% else %}Trimestriel{% endif %}</th>
                             <th>{% if lang == 'en' %}Annual{% else %}Annuel{% endif %}</th>
                         </tr>
                     </thead>
@@ -1049,9 +1170,11 @@
                             <td class="check">✓</td>
                             <td class="check">✓</td>
                             <td class="check">✓</td>
+                            <td class="check">✓</td>
                         </tr>
                         <tr>
                             <td>{% if lang == 'en' %}Socratic questioning{% else %}Questionnement socratique{% endif %}</td>
+                            <td class="check">✓</td>
                             <td class="check">✓</td>
                             <td class="check">✓</td>
                             <td class="check">✓</td>
@@ -1061,10 +1184,12 @@
                             <td class="check">✓</td>
                             <td class="check">✓</td>
                             <td class="check">✓</td>
+                            <td class="check">✓</td>
                         </tr>
                         <tr>
                             <td>{% if lang == 'en' %}Priority support{% else %}Support prioritaire{% endif %}</td>
                             <td class="cross">✗</td>
+                            <td class="check">✓</td>
                             <td class="check">✓</td>
                             <td class="check">✓</td>
                         </tr>
@@ -1073,10 +1198,12 @@
                             <td class="cross">✗</td>
                             <td class="check">✓</td>
                             <td class="check">✓</td>
+                            <td class="check">✓</td>
                         </tr>
                         <tr>
                             <td>{% if lang == 'en' %}Personalized roadmap{% else %}Feuille de route{% endif %}</td>
                             <td class="cross">✗</td>
+                            <td class="check">✓</td>
                             <td class="check">✓</td>
                             <td class="check">✓</td>
                         </tr>
@@ -1085,11 +1212,20 @@
                             <td class="cross">✗</td>
                             <td class="cross">✗</td>
                             <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>{% if lang == 'en' %}Advanced analytics{% else %}Analyses avancées{% endif %}</td>
+                            <td class="cross">✗</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
                         </tr>
                         <tr>
                             <td>{% if lang == 'en' %}Annual savings{% else %}Économies annuelles{% endif %}</td>
                             <td>0%</td>
                             <td>23%</td>
+                            <td>38%</td>
                             <td><strong>43%</strong></td>
                         </tr>
                     </tbody>
@@ -1103,7 +1239,7 @@
                 <i class="fas fa-arrow-left"></i>
                 {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
             </a>
-            <a href="{{ url_for('paiement_direct') }}?type=monthly" class="nav-btn continue-btn" onclick="trackUpgrade('monthly')">
+            <a href="{{ url_for('paiement_direct') }}?type=quarterly" class="nav-btn continue-btn" onclick="trackUpgrade('quarterly')">
                 <i class="fas fa-rocket"></i>
                 {% if lang == 'en' %}Upgrade Now{% else %}Améliorer Maintenant{% endif %}
             </a>
@@ -1135,6 +1271,9 @@
                     'warning'
                 );
             }
+            
+            // Par défaut, sélectionner le plan trimestriel
+            selectPlan('quarterly');
         });
         
         // Fonction pour sélectionner un plan
@@ -1143,23 +1282,23 @@
             document.querySelectorAll('.plan-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
+            
+            // Trouver et activer le bon onglet
             document.querySelectorAll('.plan-tab').forEach(tab => {
-                if (tab.textContent.includes(planType.charAt(0).toUpperCase() + planType.slice(1))) {
+                const text = tab.textContent.toLowerCase().trim();
+                if (text.includes(planType) || 
+                    (planType === 'weekly' && text.includes('hebdo')) ||
+                    (planType === 'monthly' && text.includes('mensuel')) ||
+                    (planType === 'quarterly' && text.includes('trimestriel')) ||
+                    (planType === 'annual' && text.includes('annuel'))) {
                     tab.classList.add('active');
                 }
             });
             
             // Mettre à jour les liens des boutons de navigation
             const upgradeBtn = document.querySelector('.continue-btn');
-            upgradeBtn.href = "{{ url_for('paiement_direct') }}?type=" + planType;
-            
-            // Animation visuelle
-            const planCard = document.getElementById(planType + 'Plan');
-            if (planCard) {
-                planCard.classList.add('pulse');
-                setTimeout(() => {
-                    planCard.classList.remove('pulse');
-                }, 1000);
+            if (upgradeBtn) {
+                upgradeBtn.href = "{{ url_for('paiement_direct') }}?type=" + planType;
             }
             
             console.log("Plan selected:", planType);
@@ -1169,23 +1308,30 @@
         function calculateSavings() {
             const weeklyCost = 15;
             const monthlyCost = 50;
+            const quarterlyCost = 120;
             const annualCost = 450;
             
             // Coûts annuels
             const weeklyAnnual = weeklyCost * 52;
             const monthlyAnnual = monthlyCost * 12;
+            const quarterlyAnnual = quarterlyCost * 4;
             
             // Pourcentages d'économie
             const monthlySavings = ((weeklyAnnual - monthlyAnnual) / weeklyAnnual * 100).toFixed(0);
+            const quarterlySavings = ((weeklyAnnual - quarterlyAnnual) / weeklyAnnual * 100).toFixed(0);
             const annualSavings = ((weeklyAnnual - annualCost) / weeklyAnnual * 100).toFixed(0);
             
             console.log("Monthly savings:", monthlySavings + "%");
+            console.log("Quarterly savings:", quarterlySavings + "%");
             console.log("Annual savings:", annualSavings + "%");
             
             // Mettre à jour les textes
             document.querySelectorAll('.plan-savings').forEach(el => {
                 if (el.textContent.includes('17%')) {
                     el.textContent = el.textContent.replace('17%', monthlySavings + '%');
+                }
+                if (el.textContent.includes('20%')) {
+                    el.textContent = el.textContent.replace('20%', quarterlySavings + '%');
                 }
                 if (el.textContent.includes('25%')) {
                     el.textContent = el.textContent.replace('25%', annualSavings + '%');
@@ -1196,6 +1342,9 @@
             document.querySelectorAll('.comparison-table td').forEach(td => {
                 if (td.textContent === '23%') {
                     td.textContent = monthlySavings + '%';
+                }
+                if (td.textContent === '38%') {
+                    td.textContent = quarterlySavings + '%';
                 }
                 if (td.textContent === '43%') {
                     td.textContent = annualSavings + '%';
