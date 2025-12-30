@@ -232,19 +232,46 @@
     }
 
     /* Styles pour le rendu MathJax */
+    .math-content {
+      line-height: 1.6;
+      font-size: 1.05rem;
+    }
+
     .math-content mjx-container {
       display: inline-block;
+      line-height: 0;
       margin: 0 2px;
     }
 
-    .math-display {
+    .math-content mjx-container[jax="CHTML"][display="true"] {
+      display: block;
       text-align: center;
-      margin: 15px 0;
-      padding: 10px;
+      margin: 1em 0;
     }
 
-    .math-inline {
-      display: inline;
+    /* Style pour les équations */
+    .equation {
+      text-align: center;
+      margin: 1em 0;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 5px;
+      border-left: 3px solid #4361ee;
+    }
+
+    /* Style pour les fractions */
+    .mjx-frac {
+      font-size: 1.1em;
+    }
+
+    /* Assurer que MathJax s'affiche bien */
+    .MathJax {
+      outline: none;
+    }
+
+    .MathJax_Display {
+      overflow-x: auto;
+      overflow-y: hidden;
     }
 
     /* Éditeur mathématique simplifié */
@@ -793,6 +820,17 @@
       animation: pulse 2s infinite;
     }
 
+    /* Notification "Mis à jour" pour le feedback */
+    .update-notice {
+      background: #28a745;
+      color: white;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 0.8em;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -1104,13 +1142,13 @@
   <div class="feedback-section {% if show_feedback %}active{% endif %}" id="feedbackSection">
     <div class="feedback-header">
       <div class="feedback-icon {% if reponse.etoiles < 2 %}warning{% endif %}">
-        <i class="fas fa-{% if reponse.etoiles >= 2 %}check-circle{% else %}lightbulb{% endif %}"></i>
+        <i class="fas fa-{% if reponse.etoiles >= 4 %}check-circle{% elif reponse.etoiles >= 2 %}lightbulb{% else %}exclamation-circle{% endif %}"></i>
       </div>
       <div class="feedback-content">
         <h3>{{ 'Rétroaction de l\'IA' if lang == 'fr' else 'AI Feedback' }}</h3>
         <div class="stars" id="starsDisplay">
           {% if reponse.etoiles is not none %}
-            {{ reponse.etoiles }}/5 ⭐
+            <strong>{{ reponse.etoiles }}/5 ⭐</strong>
           {% endif %}
         </div>
       </div>
@@ -1132,38 +1170,55 @@
         {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
       </div>
       <div class="analysis-content math-content" id="aiAnalysisContent">
-        {# SECTION CRITIQUE : PARSER LE JSON #}
-        {% if reponse.analyse_ia %}
-          {% if reponse.analyse_ia|trim|first == '{' %}
-            {# C'est du JSON - on doit le parser #}
-            {% set feedback_data = reponse.analyse_ia|tojson|safe %}
-            <script>
-              try {
-                const feedbackData = JSON.parse(`{{ reponse.analyse_ia|replace('`', '\\`')|replace('\n', '\\n')|replace('\r', '\\r')|safe }}`);
-                document.getElementById('aiAnalysisContent').innerHTML = feedbackData.current_feedback || feedbackData.original || `{{ reponse.analyse_ia|safe }}`;
-                
-                // Re-trigger MathJax après mise à jour
-                if (window.MathJax) {
-                  setTimeout(() => MathJax.typesetPromise([document.getElementById('aiAnalysisContent')]).catch(console.error), 100);
-                }
-              } catch(e) {
-                console.error('Erreur parsing JSON:', e);
-                document.getElementById('aiAnalysisContent').innerHTML = `{{ reponse.analyse_ia|safe }}`;
-              }
-            </script>
-            {# Contenu temporaire en attendant le JS #}
-            <div style="color: #666; font-style: italic;">
-              <i class="fas fa-spinner fa-spin"></i> 
-              {% if lang == 'fr' %}
-                Chargement de la correction...
-              {% else %}
-                Loading correction...
-              {% endif %}
-            </div>
+        {# SECTION CRITIQUE : GESTION INTELLIGENTE DU CONTENU #}
+        {% if reponse and reponse.analyse_ia %}
+          {% set feedback_content = reponse.analyse_ia %}
+          
+          {% if feedback_content|trim|first == '{' %}
+            {# C'est du JSON - parser IMMÉDIATEMENT avec Jinja2 #}
+            {% try %}
+              {% set feedback_json = feedback_content|fromjson %}
+              {% set display_text = feedback_json.current_feedback|default(feedback_json.original)|default(feedback_content) %}
+              
+              {# Nettoyer le texte pour MathJax #}
+              {% set cleaned_text = display_text|replace('\\[', '$$')|replace('\\]', '$$')|replace('\\(', '$')|replace('\\)', '$')|replace('\\\n', '<br>') %}
+              
+              {{ cleaned_text|safe }}
+              
+              {# JavaScript pour garantir le rendu MathJax #}
+              <script>
+                (function() {
+                  const element = document.getElementById('aiAnalysisContent');
+                  if (element && window.MathJax) {
+                    // Petit délai pour laisser le DOM se mettre à jour
+                    setTimeout(() => {
+                      MathJax.typesetPromise([element]).catch(err => {
+                        console.log('MathJax rendering complete (or error):', err);
+                      });
+                    }, 100);
+                  }
+                })();
+              </script>
+              
+            {% except %}
+              {# En cas d'erreur de parsing, afficher le contenu original #}
+              {{ feedback_content|safe }}
+            {% endtry %}
+            
           {% else %}
-            {# C'est du texte simple #}
-            {{ reponse.analyse_ia|safe }}
+            {# C'est du texte simple - afficher directement #}
+            {{ feedback_content|safe }}
           {% endif %}
+          
+        {% else %}
+          <div style="color: #666; font-style: italic;">
+            <i class="fas fa-info-circle"></i>
+            {% if lang == 'fr' %}
+              Aucune correction disponible pour le moment.
+            {% else %}
+              No correction available at the moment.
+            {% endif %}
+          </div>
         {% endif %}
       </div>
     </div>
@@ -1272,6 +1327,47 @@
     document.getElementById('progressText').textContent = `${currentIndex + 1}/${total}`;
   }
 
+  // Fonction pour nettoyer et formater le contenu mathématique
+  function cleanAndFormatMathContent(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    let content = element.innerHTML;
+    
+    // 1. Nettoyer les échappements JSON
+    content = content.replace(/\\"/g, '"')
+                     .replace(/\\n/g, '<br>')
+                     .replace(/\\t/g, ' ')
+                     .replace(/\\\\/g, '\\');
+    
+    // 2. Convertir le LaTeX pour MathJax
+    // Remplacer \[...\] par $$...$$
+    content = content.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$');
+    
+    // Remplacer \(...\) par $...$
+    content = content.replace(/\\\(/g, '$').replace(/\\\)/g, '$');
+    
+    // 3. Nettoyer les balises HTML indésirables
+    content = content.replace(/<[^>]*script[^>]*>/gi, '')
+                     .replace(/javascript:/gi, '')
+                     .replace(/on\w+="[^"]*"/gi, '')
+                     .replace(/on\w+='[^']*'/gi, '');
+    
+    // 4. Mettre à jour le contenu
+    element.innerHTML = content;
+    
+    // 5. Appliquer MathJax
+    if (window.MathJax) {
+      MathJax.typesetPromise([element]).then(() => {
+        console.log('Math content formatted successfully for', elementId);
+      }).catch(err => {
+        console.warn('MathJax formatting error:', err);
+      });
+    }
+    
+    return content;
+  }
+
   // Fonctions pour l'éditeur mathématique
   function insertSymbol(symbol) {
     const editor = document.getElementById('visualMathEditor');
@@ -1327,9 +1423,11 @@
   function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     const bgColor = type === 'success' ? 'var(--success)' : 
-                    type === 'error' ? 'var(--accent)' : 'var(--primary)';
+                    type === 'error' ? 'var(--accent)' : 
+                    type === 'warning' ? 'var(--warning)' : 'var(--primary)';
     const icon = type === 'success' ? 'check' : 
-                 type === 'error' ? 'exclamation-circle' : 'info';
+                 type === 'error' ? 'exclamation-circle' : 
+                 type === 'warning' ? 'exclamation-triangle' : 'info';
     
     notification.style.cssText = `
       position: fixed;
@@ -1468,10 +1566,17 @@
       return;
     }
     
-    // Afficher l'overlay d'attente
-    const waitingOverlay = document.getElementById('waitingOverlay');
-    if (waitingOverlay) {
-      waitingOverlay.classList.add('active');
+    // Afficher un message de traitement spécifique
+    showNotification(
+      "{{ 'Envoi de votre contestation à l\'IA pour réévaluation...' if lang == 'fr' else 'Sending your contest to AI for re-evaluation...' }}",
+      'info'
+    );
+    
+    // Désactiver le bouton
+    const submitBtn = document.querySelector('.contest-form .btn-submit');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Traitement en cours..." if lang == "fr" else "Processing..." }}';
     }
     
     // Envoyer la contestation
@@ -1485,104 +1590,116 @@
         justification: justification,
         proposed_stars: selectedContestStars,
         student_answer: document.querySelector('#studentAnswerContent').textContent.trim(),
-        current_stars: {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }}
+        current_stars: {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }},
+        lang: '{{ lang }}'
       })
     })
     .then(response => response.json())
     .then(data => {
-      // Cacher l'overlay
-      if (waitingOverlay) {
-        waitingOverlay.classList.remove('active');
+      // Réactiver le bouton
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {{ "Envoyer la contestation" if lang == "fr" else "Submit Contest" }}';
       }
       
       if (data.success) {
-        // Mettre à jour l'affichage
+        // METTRE À JOUR L'AFFICHAGE IMMÉDIATEMENT ET PROPREMENT
         updateDisplayAfterContest(data.new_stars, data.new_feedback);
         
+        // Afficher le résultat
         showNotification(
           data.message || 
-          "{{ 'Contestation enregistrée avec succès !' if lang == 'fr' else 'Contest recorded successfully!' }}",
+          "{{ 'Contestation traitée avec succès !' if lang == 'fr' else 'Contest processed successfully!' }}",
           'success'
         );
         
         // Masquer le formulaire de contestation
         hideContest();
+        
       } else {
         showNotification(
           data.message || 
-          "{{ 'Erreur lors de l\'envoi.' if lang == 'fr' else 'Error sending request.' }}",
+          "{{ 'Erreur lors du traitement.' if lang == 'fr' else 'Error during processing.' }}",
           'error'
         );
       }
     })
     .catch(error => {
       console.error('Erreur:', error);
-      if (waitingOverlay) {
-        waitingOverlay.classList.remove('active');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {{ "Envoyer la contestation" if lang == "fr" else "Submit Contest" }}';
       }
       showNotification(
-        "{{ 'Erreur de connexion.' if lang == 'fr' else 'Connection error.' }}",
+        "{{ 'Erreur de connexion au serveur.' if lang == 'fr' else 'Server connection error.' }}",
         'error'
       );
     });
   }
 
   function updateDisplayAfterContest(newStars, newFeedback) {
-    // Mettre à jour les étoiles
+    console.log('Mise à jour après contestation:', newStars, 'étoiles');
+    
+    // 1. Mettre à jour les étoiles
     const starsElement = document.getElementById('starsDisplay');
     if (starsElement) {
-      starsElement.textContent = `${newStars}/5 ⭐`;
+      starsElement.innerHTML = `<strong>${newStars}/5 ⭐</strong>`;
+      
+      // Animation visuelle si changement
+      if (newStars !== {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }}) {
+        starsElement.style.animation = 'pulse 0.5s ease 2';
+        setTimeout(() => starsElement.style.animation = '', 1000);
+      }
     }
     
-    // Mettre à jour le feedback
+    // 2. Mettre à jour le contenu de l'analyse
     const feedbackElement = document.getElementById('aiAnalysisContent');
     if (feedbackElement) {
+      // Nettoyer et formater le nouveau feedback
       feedbackElement.innerHTML = newFeedback;
       
-      // Re-trigger MathJax si nécessaire
-      if (window.MathJax) {
-        MathJax.typesetPromise([feedbackElement]).catch(console.error);
-      }
+      // Appliquer le nettoyage MathJax
+      setTimeout(() => {
+        cleanAndFormatMathContent('aiAnalysisContent');
+      }, 50);
+      
+      // Ajouter un badge de mise à jour
+      const updateBadge = document.createElement('div');
+      updateBadge.className = 'update-notice';
+      updateBadge.innerHTML = `
+        <span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 10px; font-size: 0.8em; margin-right: 10px;">
+          <i class="fas fa-sync-alt"></i> {{ "Mis à jour" if lang == "fr" else "Updated" }}
+        </span>
+      `;
+      feedbackElement.prepend(updateBadge);
     }
     
-    // Optionnel : ajouter un indicateur visuel
-    const feedbackSection = document.getElementById('feedbackSection');
-    if (feedbackSection) {
-      feedbackSection.classList.add('updated');
-      
-      // Ajouter une badge "Mis à jour" si elle n'existe pas déjà
-      const header = feedbackSection.querySelector('.feedback-header');
-      if (header && !header.querySelector('.updated-badge')) {
-        const badge = document.createElement('div');
-        badge.className = 'updated-badge';
-        badge.innerHTML = '<i class="fas fa-sync-alt"></i> {{ "Mis à jour" if lang == "fr" else "Updated" }}';
-        header.appendChild(badge);
-      }
+    // 3. Mettre à jour l'icône si nécessaire
+    updateFeedbackIcon(newStars);
+    
+    // 4. Si note maintenant 5/5, cacher la contestation
+    if (newStars >= 5) {
+      hideContest();
+      showNotification(
+        "{{ 'Félicitations ! Vous avez obtenu la note maximale. 🎉' if lang == 'fr' else 'Congratulations! You obtained the maximum grade. 🎉' }}",
+        'success'
+      );
     }
   }
 
-  // Fonction pour parser et afficher le JSON du feedback
-  function parseFeedbackJSON() {
-    const feedbackElement = document.getElementById('aiAnalysisContent');
-    if (!feedbackElement) return;
+  function updateFeedbackIcon(stars) {
+    const iconElement = document.querySelector('.feedback-icon');
+    if (!iconElement) return;
     
-    const content = feedbackElement.textContent.trim();
-    
-    // Si ça ressemble à du JSON
-    if (content.startsWith('{') && content.endsWith('}')) {
-      try {
-        const data = JSON.parse(content);
-        const displayText = data.current_feedback || data.original || content;
-        feedbackElement.innerHTML = displayText;
-        
-        // Re-trigger MathJax
-        if (window.MathJax) {
-          MathJax.typesetPromise([feedbackElement]).catch(console.error);
-        }
-      } catch(e) {
-        console.warn('Erreur parsing JSON du feedback:', e);
-        // Garder le contenu original
-      }
+    if (stars >= 4) {
+      iconElement.className = 'feedback-icon';
+      iconElement.innerHTML = '<i class="fas fa-check-circle"></i>';
+    } else if (stars >= 2) {
+      iconElement.className = 'feedback-icon warning';
+      iconElement.innerHTML = '<i class="fas fa-lightbulb"></i>';
+    } else {
+      iconElement.className = 'feedback-icon warning';
+      iconElement.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
     }
   }
 
@@ -1590,11 +1707,15 @@
   document.addEventListener("DOMContentLoaded", function() {
     updateProgress();
     
+    // Nettoyer et formater le contenu mathématique
+    setTimeout(() => {
+      cleanAndFormatMathContent('aiAnalysisContent');
+      cleanAndFormatMathContent('studentAnswerContent');
+      cleanAndFormatMathContent('questionContent');
+    }, 200);
+    
     // Traiter le contenu mathématique
     processMathContent();
-    
-    // Parser le JSON du feedback
-    setTimeout(parseFeedbackJSON, 100);
     
     // Mise à jour en temps réel de l'éditeur
     const visualEditor = document.getElementById('visualMathEditor');
