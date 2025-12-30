@@ -1267,19 +1267,14 @@
         {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
       </div>
       <div class="analysis-content math-content" id="aiAnalysisContent">
-        {# SECTION CRITIQUE : EXTRACTION PROPRE DU JSON AVEC RÉDUCTION DES ESPACES #}
         {% if reponse and reponse.analyse_ia %}
           {% set feedback_content = reponse.analyse_ia %}
           
-          {# Détection si c'est du JSON #}
           {% if feedback_content.startswith('{') and feedback_content.endswith('}') %}
-            {# C'est du JSON - extraction robuste #}
             {% set json_str = feedback_content %}
             {% set extracted_text = '' %}
             
-            {# Méthode prioritaire: extraction avec regex pour plus de robustesse #}
             {% if '"current_feedback":' in json_str %}
-              {# Chercher le texte entre "current_feedback": " et le prochain ", #}
               {% set pattern_current = '"current_feedback": "' %}
               {% set start_idx = json_str.find(pattern_current) %}
               {% if start_idx != -1 %}
@@ -1294,7 +1289,6 @@
               {% endif %}
             {% endif %}
             
-            {# Fallback: chercher "original": #}
             {% if not extracted_text and '"original":' in json_str %}
               {% set pattern_original = '"original": "' %}
               {% set start_idx = json_str.find(pattern_original) %}
@@ -1310,30 +1304,26 @@
               {% endif %}
             {% endif %}
             
-            {# Si extraction réussie, nettoyer et afficher #}
             {% if extracted_text %}
-              {# Nettoyage agressif des espaces et sauts de ligne excessifs #}
               {% set clean_text = extracted_text
                 |replace('\\"', '"')
                 |replace('\\\\', '\\')
-                |replace('\\n\\n\\n', '<br><br>')  # Réduire 3 sauts à 2
-                |replace('\\n\\n', '<br><br>')     # Garder 2 sauts
-                |replace('\\n', ' ')               # Remplacer simples sauts par espace
-                |replace('  ', ' ')                # Réduire doubles espaces
-                |replace('\\t', ' ')               # Tabs en espaces
+                |replace('\\n\\n\\n', '<br><br>')
+                |replace('\\n\\n', '<br><br>')
+                |replace('\\n', ' ')
+                |replace('  ', ' ')
+                |replace('\\t', ' ')
                 |replace('\\[', '$$')
                 |replace('\\]', '$$')
                 |replace('\\(', '$')
                 |replace('\\)', '$')
               %}
               
-              {# Formatage HTML propre #}
               <div class="feedback-text">
                 {{ clean_text|safe }}
               </div>
               
             {% else %}
-              {# Fallback: méthode simple #}
               {% if '"current_feedback": "' in json_str %}
                 {% set parts = json_str.split('"current_feedback": "') %}
                 {% if parts|length > 1 %}
@@ -1379,7 +1369,6 @@
                   {% endif %}
                 {% endif %}
               {% else %}
-                {# Afficher un message d'erreur propre #}
                 <div style="color: #dc3545; font-style: italic; padding: 15px;">
                   <i class="fas fa-exclamation-triangle"></i>
                   {% if lang == 'fr' %}
@@ -1392,7 +1381,6 @@
             {% endif %}
             
           {% else %}
-            {# Ce n'est pas du JSON, afficher directement avec nettoyage #}
             {% set clean_text = feedback_content
               |replace('\\[', '$$')
               |replace('\\]', '$$')
@@ -1443,7 +1431,6 @@
         {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
       </button>
       
-      <!-- NOUVEAU : Bouton pour retourner aux exercices de la leçon -->
       <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" 
          class="action-btn" style="background: #6c757d;">
         <i class="fas fa-list"></i>
@@ -1597,11 +1584,11 @@
         let cleanText = displayText
           .replace(/\\"/g, '"')
           .replace(/\\\\/g, '\\')
-          .replace(/\\n\\n\\n/g, '<br><br>')  // 3 sauts -> 2 sauts
-          .replace(/\\n\\n/g, '<br><br>')     // 2 sauts -> garder 2
-          .replace(/\\n/g, ' ')               // 1 saut -> espace
-          .replace(/\s\s+/g, ' ')             // Multiples espaces -> 1 espace
-          .replace(/\\t/g, ' ')               // Tabs -> espaces
+          .replace(/\\n\\n\\n/g, '<br><br>')
+          .replace(/\\n\\n/g, '<br><br>')
+          .replace(/\\n/g, ' ')
+          .replace(/\s\s+/g, ' ')
+          .replace(/\\t/g, ' ')
           .replace(/\\\[/g, '$$')
           .replace(/\\\]/g, '$$')
           .replace(/\\\(/g, '$')
