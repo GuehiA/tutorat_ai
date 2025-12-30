@@ -3032,9 +3032,9 @@ def creer_session_paiement():
     try:
         # Récupérer le type de plan depuis le formulaire
         data = request.get_json()
-        plan_type = data.get('plan_type', 'annual')  # weekly, monthly, annual
+        plan_type = data.get('plan_type', 'annual')  # weekly, monthly, quarterly, annual
         
-        # NOUVEAUX TARIFS : Configuration des plans
+        # CONFIGURATION DES PLANS - AJOUT DE QUARTERLY
         plan_config = {
             'weekly': {
                 'amount': 1500,  # 15.00 CAD
@@ -3052,6 +3052,15 @@ def creer_session_paiement():
                 'product_name_en': "Monthly Plan (50$/month)",
                 'interval': 'month'
             },
+            'quarterly': {
+                'amount': 12000,  # 120.00 CAD (40$/mois)
+                'description_fr': "Forfait trimestriel - Tutorat intelligent avec enseignant virtuel IA - Économisez 20%",
+                'description_en': "Quarterly plan - Intelligent tutoring with AI virtual teacher - Save 20%",
+                'product_name_fr': "Forfait Trimestriel (120$/3 mois)",
+                'product_name_en': "Quarterly Plan (120$/3 months)",
+                'interval': 'month',
+                'interval_count': 3
+            },
             'annual': {
                 'amount': 45000,  # 450.00 CAD
                 'description_fr': "Forfait annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 25%",
@@ -3062,14 +3071,24 @@ def creer_session_paiement():
             }
         }
         
-        plan_info = plan_config.get(plan_type, plan_config['annual'])
+        # Vérifier si le type de plan existe
+        if plan_type not in plan_config:
+            return jsonify({"error": "Type de plan invalide"}), 400
+        
+        plan_info = plan_config[plan_type]
         lang = session.get("lang", "fr")
         
         # Sélectionner les textes selon la langue
         product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
         description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
         
-        # Créer une session de paiement Stripe (mode subscription)
+        # Configurer le recurring (spécial pour quarterly)
+        recurring_config = {
+            'interval': plan_info['interval'],
+            'interval_count': plan_info.get('interval_count', 1)
+        }
+        
+        # Créer une session de paiement Stripe
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -3084,10 +3103,7 @@ def creer_session_paiement():
                         }
                     },
                     'unit_amount': plan_info['amount'],
-                    'recurring': {
-                        'interval': plan_info['interval'],
-                        'interval_count': 1
-                    }
+                    'recurring': recurring_config
                 },
                 'quantity': 1,
             }],
@@ -3137,10 +3153,15 @@ def paiement_direct():
         return redirect(url_for("login_eleve"))
     
     plan_type = request.args.get("type", "annual")
-    print(f"📋 Paiement direct - Plan demandé: {plan_type}")  # Debug
+    print(f"📋 Paiement direct - Plan demandé: {plan_type}")
+    
+    # Vérifier si le type de plan est valide
+    valid_plans = ['weekly', 'monthly', 'quarterly', 'annual']
+    if plan_type not in valid_plans:
+        plan_type = 'annual'  # Fallback au plan annuel
     
     try:
-        # NOUVEAUX TARIFS : Configuration des plans
+        # CONFIGURATION DES PLANS - AJOUT DE QUARTERLY
         plan_config = {
             'weekly': {
                 'amount': 1500,  # 15.00 CAD
@@ -3158,6 +3179,15 @@ def paiement_direct():
                 'product_name_en': "Monthly Plan (50$/month)",
                 'interval': 'month'
             },
+            'quarterly': {
+                'amount': 12000,  # 120.00 CAD (40$/mois)
+                'description_fr': "Forfait trimestriel - Tutorat intelligent avec enseignant virtuel IA - Économisez 20%",
+                'description_en': "Quarterly plan - Intelligent tutoring with AI virtual teacher - Save 20%",
+                'product_name_fr': "Forfait Trimestriel (120$/3 mois)",
+                'product_name_en': "Quarterly Plan (120$/3 months)",
+                'interval': 'month',
+                'interval_count': 3
+            },
             'annual': {
                 'amount': 45000,  # 450.00 CAD
                 'description_fr': "Forfait annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 25%",
@@ -3168,14 +3198,20 @@ def paiement_direct():
             }
         }
         
-        plan_info = plan_config.get(plan_type, plan_config['annual'])
+        plan_info = plan_config[plan_type]
         lang = session.get("lang", "fr")
         
         # Sélectionner les textes selon la langue
         product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
         description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
         
-        print(f"💰 Paiement direct - Montant pour {plan_type}: {plan_info['amount']/100}$ CAD")  # Debug
+        print(f"💰 Paiement direct - Montant pour {plan_type}: {plan_info['amount']/100}$ CAD")
+        
+        # Configurer le recurring (spécial pour quarterly)
+        recurring_config = {
+            'interval': plan_info['interval'],
+            'interval_count': plan_info.get('interval_count', 1)
+        }
         
         # Créer une session de paiement Stripe
         checkout_session = stripe.checkout.Session.create(
@@ -3192,10 +3228,7 @@ def paiement_direct():
                         }
                     },
                     'unit_amount': plan_info['amount'],
-                    'recurring': {
-                        'interval': plan_info['interval'],
-                        'interval_count': 1
-                    }
+                    'recurring': recurring_config
                 },
                 'quantity': 1,
             }],
@@ -3250,28 +3283,31 @@ def paiement_success():
         
         if stripe_session.payment_status == 'paid' or stripe_session.mode == 'subscription':
             # Activer le compte élève
-            from models import User, db
-            
             eleve = User.query.get(eleve_id)
             if eleve:
-                # Déterminer la durée de l'abonnement selon le plan
+                # Déterminer la durée de l'abonnement selon le plan (AJOUT DE QUARTERLY)
                 plan_durations = {
-                    'weekly': 7,  # 7 jours
-                    'monthly': 30, # 30 jours
-                    'annual': 365  # 365 jours
+                    'weekly': 7,      # 7 jours
+                    'monthly': 30,    # 30 jours
+                    'quarterly': 90,  # 90 jours (3 mois)
+                    'annual': 365     # 365 jours
                 }
                 duration_days = plan_durations.get(plan_type, 365)
                 
-                # ⬇️ UTILISER LA MÉTHODE EXISTANTE au lieu de activer_abonnement()
+                # Utiliser votre méthode existante sans modification
                 eleve.marquer_comme_paye(
                     stripe_session_id=session_id,
                     stripe_payment_intent=stripe_session.payment_intent
                 )
                 
-                # ⬇️ AJOUTER LA DATE DE FIN D'ABONNEMENT
+                # Ajouter la date de fin d'abonnement
                 from datetime import datetime, timedelta
                 eleve.date_fin_abonnement = datetime.utcnow() + timedelta(days=duration_days)
                 
+                # Stocker le type de plan dans les métadonnées existantes
+                # Pas besoin d'ajouter type_plan au modèle
+                
+                from models import db
                 db.session.commit()
                 
                 # Connexion automatique
@@ -3279,20 +3315,24 @@ def paiement_success():
                 session['eleve_username'] = eleve.username
                 session['eleve_nom_complet'] = eleve.nom_complet
                 
-                # Messages de succès selon la langue
+                # Messages de succès selon la langue (AJOUT DE QUARTERLY)
                 lang = session.get('lang', 'fr')
                 success_messages = {
                     'weekly': {
-                        'fr': "Paiement confirmé ! Votre abonnement hebdomadaire (15$/semaine) est activé.",
-                        'en': "Payment confirmed! Your weekly subscription (15$/week) is activated."
+                        'fr': "✅ Paiement confirmé ! Votre abonnement hebdomadaire (15$/semaine) est activé.",
+                        'en': "✅ Payment confirmed! Your weekly subscription (15$/week) is activated."
                     },
                     'monthly': {
-                        'fr': "Paiement confirmé ! Votre abonnement mensuel (50$/mois) est activé.",
-                        'en': "Payment confirmed! Your monthly subscription (50$/month) is activated."
+                        'fr': "✅ Paiement confirmé ! Votre abonnement mensuel (50$/mois) est activé.",
+                        'en': "✅ Payment confirmed! Your monthly subscription (50$/month) is activated."
+                    },
+                    'quarterly': {
+                        'fr': "✅ Paiement confirmé ! Votre abonnement trimestriel (120$/3 mois) est activé pour 3 mois.",
+                        'en': "✅ Payment confirmed! Your quarterly subscription (120$/3 months) is activated for 3 months."
                     },
                     'annual': {
-                        'fr': "Paiement confirmé ! Votre abonnement annuel (450$/an) est activé pour 1 an.",
-                        'en': "Payment confirmed! Your annual subscription (450$/year) is activated for 1 year."
+                        'fr': "✅ Paiement confirmé ! Votre abonnement annuel (450$/an) est activé pour 1 an.",
+                        'en': "✅ Payment confirmed! Your annual subscription (450$/year) is activated for 1 year."
                     }
                 }
                 
