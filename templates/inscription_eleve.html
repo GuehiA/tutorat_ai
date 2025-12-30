@@ -1078,7 +1078,7 @@
             <button type="submit" class="btn-submit" id="submitButton">
                 <i class="fas fa-gift"></i>
                 <span id="submitText">
-                    {{ 'Start 1-Hour Free Trial' if lang == 'en' else 'Commencer l\'Essai Gratuit de 1 Heure' }}
+                    {{ 'Start 1-Hour Free Trial' if lang == 'en' else "Commencer l'Essai Gratuit de 1 Heure" }}
                 </span>
             </button>
         </form>
@@ -1099,46 +1099,46 @@
         // Configuration des plans
         const plans = {
             'trial': {
-                name: '{{ "Free Trial" if lang == "en" else "Essai Gratuit" }}',
+                name: "{{ 'Free Trial' if lang == 'en' else 'Essai Gratuit' }}",
                 price: '0$',
-                period: '{{ "1 hour" if lang == "en" else "1 heure" }}',
-                buttonText: '{{ "Start 1-Hour Free Trial" if lang == "en" else "Commencer l\'Essai Gratuit de 1 Heure" }}',
+                period: "{{ '1 hour' if lang == 'en' else '1 heure' }}",
+                buttonText: "{{ 'Start 1-Hour Free Trial' if lang == 'en' else 'Commencer l\\'Essai Gratuit de 1 Heure' }}",
                 buttonIcon: 'fas fa-gift',
                 buttonColor: 'linear-gradient(135deg, var(--trial), #0da271)',
                 hoverColor: 'linear-gradient(135deg, #0da271, var(--trial))'
             },
             'weekly': {
-                name: '{{ "Weekly Plan" if lang == "en" else "Forfait Hebdomadaire" }}',
+                name: "{{ 'Weekly Plan' if lang == 'en' else 'Forfait Hebdomadaire' }}",
                 price: '15$',
-                period: '{{ "per week" if lang == "en" else "par semaine" }}',
-                buttonText: '{{ "Subscribe to Weekly Plan (15$/week)" if lang == "en" else "S\'abonner au Forfait Hebdo (15$/semaine)" }}',
+                period: "{{ 'per week' if lang == 'en' else 'par semaine' }}",
+                buttonText: "{{ 'Subscribe to Weekly Plan (15$/week)' if lang == 'en' else 'S\\'abonner au Forfait Hebdo (15$/semaine)' }}",
                 buttonIcon: 'fas fa-calendar-week',
                 buttonColor: 'linear-gradient(135deg, var(--weekly), #7c3aed)',
                 hoverColor: 'linear-gradient(135deg, #7c3aed, var(--weekly))'
             },
             'monthly': {
-                name: '{{ "Monthly Plan" if lang == "en" else "Forfait Mensuel" }}',
+                name: "{{ 'Monthly Plan' if lang == 'en' else 'Forfait Mensuel' }}",
                 price: '50$',
-                period: '{{ "per month" if lang == "en" else "par mois" }}',
-                buttonText: '{{ "Subscribe to Monthly Plan (50$/month)" if lang == "en" else "S\'abonner au Forfait Mensuel (50$/mois)" }}',
+                period: "{{ 'per month' if lang == 'en' else 'par mois' }}",
+                buttonText: "{{ 'Subscribe to Monthly Plan (50$/month)' if lang == 'en' else 'S\\'abonner au Forfait Mensuel (50$/mois)' }}",
                 buttonIcon: 'fas fa-calendar-alt',
                 buttonColor: 'linear-gradient(135deg, var(--monthly), #1d4ed8)',
                 hoverColor: 'linear-gradient(135deg, #1d4ed8, var(--monthly))'
             },
             'quarterly': {
-                name: '{{ "Quarterly Plan" if lang == "en" else "Forfait Trimestriel" }}',
+                name: "{{ 'Quarterly Plan' if lang == 'en' else 'Forfait Trimestriel' }}",
                 price: '120$',
-                period: '{{ "per 3 months" if lang == "en" else "par 3 mois" }}',
-                buttonText: '{{ "Subscribe to Quarterly Plan (120$/3 months)" if lang == "en" else "S\'abonner au Forfait Trimestriel (120$/3 mois)" }}',
+                period: "{{ 'per 3 months' if lang == 'en' else 'par 3 mois' }}",
+                buttonText: "{{ 'Subscribe to Quarterly Plan (120$/3 months)' if lang == 'en' else 'S\\'abonner au Forfait Trimestriel (120$/3 mois)' }}",
                 buttonIcon: 'fas fa-chart-line',
                 buttonColor: 'linear-gradient(135deg, var(--quarterly), #0891b2)',
                 hoverColor: 'linear-gradient(135deg, #0891b2, var(--quarterly))'
             },
             'annual': {
-                name: '{{ "Annual Plan" if lang == "en" else "Forfait Annuel" }}',
+                name: "{{ 'Annual Plan' if lang == 'en' else 'Forfait Annuel' }}",
                 price: '450$',
-                period: '{{ "per year" if lang == "en" else "par an" }}',
-                buttonText: '{{ "Subscribe to Annual Plan (450$/year)" if lang == "en" else "S\'abonner au Forfait Annuel (450$/an)" }}',
+                period: "{{ 'per year' if lang == 'en' else 'par an' }}",
+                buttonText: "{{ 'Subscribe to Annual Plan (450$/year)' if lang == 'en' else 'S\\'abonner au Forfait Annuel (450$/an)' }}",
                 buttonIcon: 'fas fa-crown',
                 buttonColor: 'linear-gradient(135deg, var(--annual), #d97706)',
                 hoverColor: 'linear-gradient(135deg, #d97706, var(--annual))'
@@ -1174,6 +1174,7 @@
             const submitButton = document.getElementById('submitButton');
             const submitIcon = submitButton.querySelector('i');
             
+            // Utiliser textContent au lieu de innerHTML pour éviter les problèmes d'apostrophe
             submitText.textContent = plan.buttonText;
             submitIcon.className = plan.buttonIcon;
             submitButton.style.background = plan.buttonColor;
@@ -1238,14 +1239,14 @@
             
             const planTypeInput = document.getElementById('planType');
             if (!planTypeInput || !planTypeInput.value) {
-                alert('{{ "Please select an access option" if lang == "en" else "Veuillez sélectionner une option d\'accès" }}');
+                alert("{{ 'Please select an access option' if lang == 'en' else 'Veuillez sélectionner une option d\\'accès' }}");
                 return;
             }
             
             // Vérifier que les CGU sont acceptées
             const cguCheckbox = document.getElementById('accepte_cgu');
             if (cguCheckbox && !cguCheckbox.checked) {
-                alert('{{ "You must accept the Terms and Conditions" if lang == "en" else "Vous devez accepter les Conditions Générales d\'Utilisation" }}');
+                alert("{{ 'You must accept the Terms and Conditions' if lang == 'en' else 'Vous devez accepter les Conditions Générales d\\'Utilisation' }}");
                 return;
             }
             
@@ -1256,7 +1257,7 @@
             const btn = document.getElementById('submitButton');
             const originalHTML = btn.innerHTML;
             
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> {{ 'Processing...' if lang == 'en' else 'Traitement en cours...' }}`;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Processing..." if lang == "en" else "Traitement en cours..." }}';
             btn.disabled = true;
             
             // Soumettre le formulaire
