@@ -5246,10 +5246,10 @@ RE-EVALUATE a student's answer considering their contestation arguments.
 - Be fair: reward good reasoning even with minor calculation errors
 
 📤 FORMAT:
-Analysis of contestation: [...]
-New grade: X/5
-Decision: [Grade increased/maintained/decreased] because [...]
-Detailed feedback: [...]
+**Analysis of contestation:** [...]
+**New grade:** X/5
+**Decision:** [Grade increased/maintained/decreased] because [...]
+**Detailed feedback:** [...]
 """.strip()
         else:
             prompt = f"""
@@ -5282,10 +5282,10 @@ RÉÉVALUEZ la réponse d'un élève en considérant ses arguments de contestati
 - Soyez juste : récompensez le bon raisonnement même avec des erreurs de calcul mineures
 
 📤 FORMAT :
-Analyse de la contestation : [...]
-Nouvelle note : X/5
-Décision : [Note augmentée/maintenue/diminuée] car [...]
-Feedback détaillé : [...]
+**Analyse de la contestation :** [...]
+**Nouvelle note :** X/5
+**Décision :** [Note augmentée/maintenue/diminuée] car [...]
+**Feedback détaillé :** [...]
 """.strip()
         
         print(f"🤖 Envoi à l'IA pour réévaluation...")
