@@ -764,64 +764,46 @@ function detectMatiereType() {
   });
 }
 
-// Fonction pour formater les extraits avec LaTeX - CORRIGEE
+// Fonction pour formater les extraits avec LaTeX
 function formatLatexExcerpts() {
   document.querySelectorAll('.excerpt-content').forEach(content => {
     let html = content.innerHTML;
     
-    console.log('Original HTML:', html);
-    
-    // D'abord, protéger les délimiteurs $ qui sont déjà échappés
-    html = html
-      .replace(/\\\$/g, '___ESCAPED_DOLLAR___')
-      .replace(/\\\(/g, '___ESCAPED_PAREN_OPEN___')
-      .replace(/\\\)/g, '___ESCAPED_PAREN_CLOSE___');
-    
-    // Ensuite, remplacer les délimiteurs LaTeX bruts par des délimiteurs MathJax
-    // S'assurer que les $$...$$ (display mode) sont traités correctement
+    // Remplacer les délimiteurs LaTeX bruts par des délimiteurs MathJax
     html = html
       .replace(/\\\[/g, '$$')
       .replace(/\\\]/g, '$$')
-      .replace(/\$\$(.*?)\$\$/gs, (match, equation) => {
-        // Nettoyer l'équation des échappements
-        equation = equation
-          .replace(/___ESCAPED_DOLLAR___/g, '$')
-          .replace(/___ESCAPED_PAREN_OPEN___/g, '(')
-          .replace(/___ESCAPED_PAREN_CLOSE___/g, ')');
-        return '$$' + equation + '$$';
-      })
-      .replace(/\$(.*?)\$/gs, (match, equation) => {
-        // Éviter les faux positifs comme les prix "$10.99"
-        if (equation.match(/^\d+\.?\d*$/) || equation.match(/^\d*\.?\d+$/)) {
-          return match; // C'est un prix, pas une équation
-        }
-        // Nettoyer l'équation des échappements
-        equation = equation
-          .replace(/___ESCAPED_DOLLAR___/g, '$')
-          .replace(/___ESCAPED_PAREN_OPEN___/g, '(')
-          .replace(/___ESCAPED_PAREN_CLOSE___/g, ')');
-        return '$' + equation + '$';
-      });
-    
-    // Restaurer les caractères échappés
-    html = html
-      .replace(/___ESCAPED_DOLLAR___/g, '$')
-      .replace(/___ESCAPED_PAREN_OPEN___/g, '(')
-      .replace(/___ESCAPED_PAREN_CLOSE___/g, ')');
-    
-    // Traiter les délimiteurs \(...\)
-    html = html
       .replace(/\\\(/g, '$')
-      .replace(/\\\)/g, '$');
+      .replace(/\\\)/g, '$')
+      .replace(/\\begin\{equation\*/g, '$$')
+      .replace(/\\end\{equation\*/g, '$$')
+      .replace(/\\begin\{align\*/g, '$$')
+      .replace(/\\end\{align\*/g, '$$')
+      .replace(/\\begin\{equation\}/g, '$$')
+      .replace(/\\end\{equation\}/g, '$$')
+      .replace(/\\begin\{align\}/g, '$$')
+      .replace(/\\end\{align\}/g, '$$');
     
-    // Protéger les caractères HTML spéciaux
+    // Protéger les caractères spéciaux HTML
     html = html
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
     
-    console.log('Formatted HTML:', html);
+    // Puis restaurer les caractères LaTeX importants
+    html = html
+      .replace(/&amp;#(36|92|95|123|125);/g, (match, p1) => {
+        const codes = { '36': '$', '92': '\\', '95': '_', '123': '{', '125': '}' };
+        return codes[p1] || match;
+      })
+      .replace(/\\\$/g, '$')
+      .replace(/\\\*/g, '*')
+      .replace(/\\_/g, '_')
+      .replace(/\\\{/g, '{')
+      .replace(/\\\}/g, '}');
+    
     content.innerHTML = html;
   });
 }
@@ -844,7 +826,6 @@ function renderMathExcerpts() {
           container.style.margin = '0';
           container.style.padding = '0';
           container.style.verticalAlign = 'middle';
-          container.style.fontSize = '0.9rem';
         });
       }).catch(err => {
         console.log('MathJax rendering error:', err.message);
@@ -902,33 +883,27 @@ document.addEventListener('DOMContentLoaded', function() {
     container.style.display = 'none';
   });
   
-  // Attendre que le DOM soit complètement chargé
-  setTimeout(() => {
-    // Formater et rendre le LaTeX
-    formatLatexExcerpts();
-    
-    // Attendre que MathJax soit chargé
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      setTimeout(renderMathExcerpts, 800);
-    } else {
-      // Si MathJax n'est pas encore chargé, attendre
-      const checkMathJax = setInterval(() => {
-        if (window.MathJax && window.MathJax.typesetPromise) {
-          clearInterval(checkMathJax);
-          renderMathExcerpts();
-        }
-      }, 200);
-    }
-  }, 300);
+  // Formater et rendre le LaTeX
+  formatLatexExcerpts();
+  
+  // Attendre que MathJax soit chargé
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    setTimeout(renderMathExcerpts, 500);
+  } else {
+    // Si MathJax n'est pas encore chargé, attendre
+    const checkMathJax = setInterval(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        clearInterval(checkMathJax);
+        renderMathExcerpts();
+      }
+    }, 100);
+  }
 });
 
 // Re-rendre le MathJax quand des sections sont ouvertes
 document.addEventListener('click', function(e) {
   if (e.target.closest('.toggle-matiere') || e.target.closest('.toggle-unite')) {
-    setTimeout(() => {
-      formatLatexExcerpts();
-      renderMathExcerpts();
-    }, 300);
+    setTimeout(renderMathExcerpts, 300);
   }
 });
 
@@ -936,21 +911,12 @@ document.addEventListener('click', function(e) {
 const observer = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-      setTimeout(() => {
-        formatLatexExcerpts();
-        renderMathExcerpts();
-      }, 200);
+      setTimeout(renderMathExcerpts, 100);
     }
   });
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
-
-// Forcer le re-rendu après un certain temps au cas où
-setTimeout(() => {
-  formatLatexExcerpts();
-  renderMathExcerpts();
-}, 2000);
 </script>
 </body>
 </html>
