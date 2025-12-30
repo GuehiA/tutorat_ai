@@ -692,11 +692,11 @@
               <!-- EXERCICES AVEC RENDU LaTeX -->
               {% for ex in lecon.exercices %}
               <div class="exercice">
-                <div class="exercice-content" id="excerpt-{{ ex.id }}">
+                <div class="exercice-content excerpt-content" data-excerpt-id="{{ ex.id }}">
                   {% if lang=='en' and ex.question_en %}
-                    {{ ex.question_en|truncate_html(100)|safe }}
+                    {{ (ex.question_en[:100] + '...') if ex.question_en|length > 100 else ex.question_en }}
                   {% else %}
-                    {{ ex.question_fr|truncate_html(100)|safe }}
+                    {{ (ex.question_fr[:100] + '...') if ex.question_fr|length > 100 else ex.question_fr }}
                   {% endif %}
                 </div>
                 <div class="exercice-status">
@@ -766,10 +766,10 @@ function detectMatiereType() {
 
 // Fonction pour formater les extraits avec LaTeX
 function formatLatexExcerpts() {
-  document.querySelectorAll('.exercice-content').forEach(content => {
+  document.querySelectorAll('.excerpt-content').forEach(content => {
     let html = content.innerHTML;
     
-    // Remplacer les délimiteurs LaTeX bruts
+    // Remplacer les délimiteurs LaTeX bruts par des délimiteurs MathJax
     html = html
       .replace(/\\\[/g, '$$')
       .replace(/\\\]/g, '$$')
@@ -784,8 +784,20 @@ function formatLatexExcerpts() {
       .replace(/\\begin\{align\}/g, '$$')
       .replace(/\\end\{align\}/g, '$$');
     
-    // Nettoyer les échappements
+    // Protéger les caractères spéciaux HTML
     html = html
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+    
+    // Puis restaurer les caractères LaTeX importants
+    html = html
+      .replace(/&amp;#(36|92|95|123|125);/g, (match, p1) => {
+        const codes = { '36': '$', '92': '\\', '95': '_', '123': '{', '125': '}' };
+        return codes[p1] || match;
+      })
       .replace(/\\\$/g, '$')
       .replace(/\\\*/g, '*')
       .replace(/\\_/g, '_')
@@ -800,7 +812,7 @@ function formatLatexExcerpts() {
 function renderMathExcerpts() {
   if (window.MathJax) {
     // Sélectionner tous les contenus d'exercice
-    const mathElements = document.querySelectorAll('.exercice-content');
+    const mathElements = document.querySelectorAll('.excerpt-content');
     
     if (mathElements.length > 0) {
       console.log('Rendering MathJax for', mathElements.length, 'excerpts');
@@ -809,7 +821,7 @@ function renderMathExcerpts() {
         console.log('MathJax rendering complete');
         
         // Ajuster la taille après rendu
-        document.querySelectorAll('.exercice-content mjx-container').forEach(container => {
+        document.querySelectorAll('.excerpt-content mjx-container').forEach(container => {
           container.style.display = 'inline-block';
           container.style.margin = '0';
           container.style.padding = '0';
