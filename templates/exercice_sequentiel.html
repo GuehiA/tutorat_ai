@@ -1165,63 +1165,55 @@
     </div>
 
     <div class="ai-analysis">
-      <div class="section-label">
-        <i class="fas fa-robot"></i>
-        {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
-      </div>
-      <div class="analysis-content math-content" id="aiAnalysisContent">
-        {# SECTION CRITIQUE : GESTION INTELLIGENTE DU CONTENU #}
-        {% if reponse and reponse.analyse_ia %}
-          {% set feedback_content = reponse.analyse_ia %}
-          
-          {% if feedback_content|trim|first == '{' %}
-            {# C'est du JSON - parser IMMÉDIATEMENT avec Jinja2 #}
-            {% try %}
-              {% set feedback_json = feedback_content|fromjson %}
-              {% set display_text = feedback_json.current_feedback|default(feedback_json.original)|default(feedback_content) %}
-              
-              {# Nettoyer le texte pour MathJax #}
-              {% set cleaned_text = display_text|replace('\\[', '$$')|replace('\\]', '$$')|replace('\\(', '$')|replace('\\)', '$')|replace('\\\n', '<br>') %}
-              
-              {{ cleaned_text|safe }}
-              
-              {# JavaScript pour garantir le rendu MathJax #}
-              <script>
-                (function() {
-                  const element = document.getElementById('aiAnalysisContent');
-                  if (element && window.MathJax) {
-                    // Petit délai pour laisser le DOM se mettre à jour
-                    setTimeout(() => {
-                      MathJax.typesetPromise([element]).catch(err => {
-                        console.log('MathJax rendering complete (or error):', err);
-                      });
-                    }, 100);
-                  }
-                })();
-              </script>
-              
-            {% except %}
-              {# En cas d'erreur de parsing, afficher le contenu original #}
-              {{ feedback_content|safe }}
-            {% endtry %}
-            
-          {% else %}
-            {# C'est du texte simple - afficher directement #}
-            {{ feedback_content|safe }}
-          {% endif %}
-          
+  <div class="section-label">
+    <i class="fas fa-robot"></i>
+    {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
+  </div>
+  <div class="analysis-content math-content" id="aiAnalysisContent">
+    {% if reponse and reponse.analyse_ia %}
+      {# Afficher directement avec nettoyage basique #}
+      {% set feedback_text = reponse.analyse_ia %}
+      
+      {# Nettoyer les échappements JSON courants #}
+      {% set clean_text = feedback_text
+        |replace('\\"', '"')
+        |replace('\\\\', '\\')
+        |replace('\\n', '<br>')
+        |replace('\\t', ' ')
+        |replace('\\[', '$$')
+        |replace('\\]', '$$')
+        |replace('\\(', '$')
+        |replace('\\)', '$')
+      %}
+      
+      {{ clean_text|safe }}
+      
+      {# Script pour MathJax #}
+      <script>
+        (function() {
+          const element = document.getElementById('aiAnalysisContent');
+          if (element && window.MathJax) {
+            setTimeout(() => {
+              MathJax.typesetPromise([element]).catch(err => {
+                console.log('MathJax rendering:', err ? err.message : 'success');
+              });
+            }, 100);
+          }
+        })();
+      </script>
+      
+    {% else %}
+      <div style="color: #666; font-style: italic;">
+        <i class="fas fa-info-circle"></i>
+        {% if lang == 'fr' %}
+          Aucune correction disponible pour le moment.
         {% else %}
-          <div style="color: #666; font-style: italic;">
-            <i class="fas fa-info-circle"></i>
-            {% if lang == 'fr' %}
-              Aucune correction disponible pour le moment.
-            {% else %}
-              No correction available at the moment.
-            {% endif %}
-          </div>
+          No correction available at the moment.
         {% endif %}
       </div>
-    </div>
+    {% endif %}
+  </div>
+</div>
 
     <div class="feedback-actions">
       {% if has_next %}
