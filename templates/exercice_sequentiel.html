@@ -12,6 +12,10 @@
   <meta name="theme-color" content="#4361ee">
   <title>{{ 'Exercice' if lang == 'en' else 'Exercice séquentiel' }}</title>
   
+  <!-- ✅ Mathlive CSS et JS complets -->
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.css">
+  <script defer src="https://unpkg.com/mathlive/dist/mathlive.min.js"></script>
+  
   <!-- MathJax avec configuration robuste -->
   <script>
     window.MathJax = {
@@ -67,7 +71,7 @@
     
     .container {
       max-width: 800px;
-      margin: 20px auto;
+      margin: 80px auto 20px;
       background: white;
       padding: 30px;
       border-radius: 20px;
@@ -530,11 +534,11 @@
       margin-right: 8px;
     }
 
-    /* Bouton retour */
+    /* Bouton retour en haut */
     .back-button {
-      position: absolute;
-      top: 30px;
-      left: 30px;
+      position: fixed;
+      top: 20px;
+      left: 20px;
       background: var(--light);
       border: 2px solid var(--primary);
       color: var(--primary);
@@ -547,6 +551,7 @@
       font-weight: 600;
       transition: all 0.3s ease;
       z-index: 100;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
     }
 
     .back-button:hover {
@@ -828,7 +833,7 @@
       box-shadow: 0 5px 15px rgba(249, 199, 79, 0.3);
     }
 
-    /* Badge "Mis à jour" - STYLE AMÉLIORÉ */
+    /* Badge "Mis à jour" */
     .feedback-updated-badge {
       position: absolute;
       top: -10px;
@@ -845,22 +850,6 @@
       z-index: 10;
       box-shadow: 0 3px 8px rgba(40, 167, 69, 0.3);
       animation: pulseSoft 2s infinite;
-    }
-
-    /* Indicateur visuel discret pour le contenu mis à jour */
-    .analysis-updated {
-      position: relative;
-    }
-
-    .analysis-updated::before {
-      content: '';
-      position: absolute;
-      left: -5px;
-      top: 0;
-      bottom: 0;
-      width: 3px;
-      background: linear-gradient(to bottom, #28a745, #20c997);
-      border-radius: 3px;
     }
 
     /* Message discret "Mise à jour" */
@@ -942,6 +931,7 @@
       
       .container {
         padding: 20px;
+        margin-top: 70px;
       }
       
       h2 {
@@ -977,11 +967,11 @@
       }
 
       .back-button {
-        position: relative;
-        top: auto;
-        left: auto;
-        margin-bottom: 20px;
-        align-self: flex-start;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        padding: 8px 15px;
+        font-size: 0.9rem;
       }
 
       .waiting-card {
@@ -1033,6 +1023,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+
+  <!-- Bouton retour en haut -->
+  <a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}" class="back-button">
+    <i class="fas fa-arrow-left"></i>
+    {{ 'Retour à l\'accueil' if lang == 'fr' else 'Back to Home' }}
+  </a>
 
   <!-- Overlay d'attente -->
   <div class="waiting-overlay" id="waitingOverlay">
@@ -1112,12 +1108,6 @@
       </div>
     </div>
   </div>
-
-<!-- Bouton retour -->
-<a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}" class="back-button">
-  <i class="fas fa-arrow-left"></i>
-  {{ 'Retour à l\'accueil' if lang == 'fr' else 'Back to Home' }}
-</a>
 
 <div class="container">
   <h2>
@@ -1258,83 +1248,128 @@
         {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
       </div>
       <div class="analysis-content math-content" id="aiAnalysisContent">
-        {# SECTION CRITIQUE : EXTRACTION PROPRE DU CONTENU - VERSION AMÉLIORÉE #}
+        {# SECTION CRITIQUE : EXTRACTION PROPRE DU JSON #}
         {% if reponse and reponse.analyse_ia %}
           {% set feedback_content = reponse.analyse_ia %}
           
-          {# Détection et extraction du JSON de manière robuste #}
+          {# Détection si c'est du JSON #}
           {% if feedback_content.startswith('{') and feedback_content.endswith('}') %}
-            {# C'est du JSON, essayons d'extraire le texte proprement #}
-            {% set json_content = feedback_content %}
+            {# C'est du JSON - extraction robuste #}
+            {% set json_str = feedback_content %}
             
-            {# Trouver le début du texte "current_feedback" #}
-            {% set cf_start = json_content.find('"current_feedback": "') %}
-            {% if cf_start == -1 %}
-              {% set cf_start = json_content.find('"original": "') %}
-            {% endif %}
+            {# Essayons d'extraire le texte de plusieurs manières #}
+            {% set extracted_text = '' %}
             
-            {% if cf_start != -1 %}
-              {% set text_start = cf_start + json_content[cf_start:].find('": "') + 4 %}
-              {% set text_end = json_content.rfind('",') %}
-              
-              {% if text_end > text_start %}
-                {% set extracted_text = json_content[text_start:text_end] %}
-                
-                {# Nettoyer le texte extrait #}
-                {% set clean_text = extracted_text
-                  |replace('\\"', '"')
-                  |replace('\\\\', '\\')
-                  |replace('\\n', '<br>')
-                  |replace('\\t', ' ')
-                  |replace('\\[', '$$')
-                  |replace('\\]', '$$')
-                  |replace('\\(', '$')
-                  |replace('\\)', '$')
-                %}
-                
-                {{ clean_text|safe }}
-              {% else %}
-                {# Fallback: extraire manuellement #}
-                {% if '"current_feedback":' in json_content %}
-                  {% set parts = json_content.split('"current_feedback": "') %}
-                  {% if parts|length > 1 %}
-                    {% set subparts = parts[1].split('",') %}
-                    {% if subparts|length > 0 %}
-                      {% set clean_text = subparts[0]
-                        |replace('\\"', '"')
-                        |replace('\\\\', '\\')
-                        |replace('\\n', '<br>')
-                        |replace('\\[', '$$')
-                        |replace('\\]', '$$')
-                        |replace('\\(', '$')
-                        |replace('\\)', '$')
-                      %}
-                      {{ clean_text|safe }}
-                    {% endif %}
+            {# Méthode 1: Chercher current_feedback #}
+            {% if '"current_feedback":' in json_str %}
+              {% set parts = json_str.split('"current_feedback":') %}
+              {% if parts|length > 1 %}
+                {% set after_current = parts[1] %}
+                {% if after_current.startswith(' "') %}
+                  {% set text_start = after_current.find('"') + 1 %}
+                  {% set text_end = after_current.find('",', text_start) %}
+                  {% if text_end == -1 %}
+                    {% set text_end = after_current.find('"}', text_start) %}
+                  {% endif %}
+                  {% if text_end > text_start %}
+                    {% set extracted_text = after_current[text_start:text_end] %}
                   {% endif %}
                 {% endif %}
               {% endif %}
-            {% else %}
-              {# JSON mais pas de champ attendu, afficher un message d'erreur #}
-              <div style="color: #dc3545; font-style: italic;">
-                <i class="fas fa-exclamation-triangle"></i>
-                {% if lang == 'fr' %}
-                  Erreur de format de correction. Veuillez réessayer.
-                {% else %}
-                  Correction format error. Please try again.
+            {% endif %}
+            
+            {# Méthode 2: Si current_feedback échoue, chercher original #}
+            {% if not extracted_text and '"original":' in json_str %}
+              {% set parts = json_str.split('"original":') %}
+              {% if parts|length > 1 %}
+                {% set after_original = parts[1] %}
+                {% if after_original.startswith(' "') %}
+                  {% set text_start = after_original.find('"') + 1 %}
+                  {% set text_end = after_original.find('",', text_start) %}
+                  {% if text_end == -1 %}
+                    {% set text_end = after_original.find('"}', text_start) %}
+                  {% endif %}
+                  {% if text_end > text_start %}
+                    {% set extracted_text = after_original[text_start:text_end] %}
+                  {% endif %}
                 {% endif %}
-              </div>
+              {% endif %}
+            {% endif %}
+            
+            {# Si extraction réussie, nettoyer et afficher #}
+            {% if extracted_text %}
+              {% set clean_text = extracted_text
+                |replace('\\"', '"')
+                |replace('\\\\', '\\')
+                |replace('\\n', '<br>')
+                |replace('\\t', ' ')
+                |replace('\\[', '$$')
+                |replace('\\]', '$$')
+                |replace('\\(', '$')
+                |replace('\\)', '$')
+              %}
+              {{ clean_text|safe }}
+            {% else %}
+              {# Fallback: extraction simple avec split #}
+              {% if '"current_feedback": "' in json_str %}
+                {% set parts = json_str.split('"current_feedback": "') %}
+                {% if parts|length > 1 %}
+                  {% set subparts = parts[1].split('",') %}
+                  {% if subparts|length > 0 %}
+                    {% set clean_text = subparts[0]
+                      |replace('\\"', '"')
+                      |replace('\\\\', '\\')
+                      |replace('\\n', '<br>')
+                      |replace('\\[', '$$')
+                      |replace('\\]', '$$')
+                      |replace('\\(', '$')
+                      |replace('\\)', '$')
+                    %}
+                    {{ clean_text|safe }}
+                  {% endif %}
+                {% endif %}
+              {% elif '"original": "' in json_str %}
+                {% set parts = json_str.split('"original": "') %}
+                {% if parts|length > 1 %}
+                  {% set subparts = parts[1].split('",') %}
+                  {% if subparts|length > 0 %}
+                    {% set clean_text = subparts[0]
+                      |replace('\\"', '"')
+                      |replace('\\\\', '\\')
+                      |replace('\\n', '<br>')
+                      |replace('\\[', '$$')
+                      |replace('\\]', '$$')
+                      |replace('\\(', '$')
+                      |replace('\\)', '$')
+                    %}
+                    {{ clean_text|safe }}
+                  {% endif %}
+                {% endif %}
+              {% else %}
+                {# Afficher un message d'erreur propre #}
+                <div style="color: #dc3545; font-style: italic;">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  {% if lang == 'fr' %}
+                    Erreur d'affichage de la correction. L'analyse IA est disponible mais le format est incorrect.
+                  {% else %}
+                    Correction display error. AI analysis is available but format is incorrect.
+                  {% endif %}
+                </div>
+              {% endif %}
             {% endif %}
             
           {% else %}
             {# Ce n'est pas du JSON, afficher directement #}
-            {{ feedback_content
+            {% set clean_text = feedback_content
               |replace('\\[', '$$')
               |replace('\\]', '$$')
               |replace('\\(', '$')
               |replace('\\)', '$')
-              |safe
-            }}
+              |replace('\\"', '"')
+              |replace('\\\\', '\\')
+              |replace('\\n', '<br>')
+            %}
+            {{ clean_text|safe }}
           {% endif %}
           
         {% else %}
@@ -1370,8 +1405,8 @@
         {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
       </button>
       
-      <!-- Bouton de navigation supplémentaire -->
-      <a href="{{ url_for('lecon_detail', lecon_id=lecon.id, username=eleve.username, lang=lang) }}" 
+      <!-- NOUVEAU : Bouton pour retourner aux exercices de la leçon -->
+      <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" 
          class="action-btn" style="background: #6c757d;">
         <i class="fas fa-list"></i>
         {{ 'Retour aux exercices' if lang == 'fr' else 'Back to Exercises' }}
@@ -1467,26 +1502,26 @@
     
     let content = element.innerHTML;
     
-    // Nettoyer les échappements JSON et LaTeX
+    // 1. Nettoyer les échappements JSON
     content = content.replace(/\\"/g, '"')
                      .replace(/\\n/g, '<br>')
                      .replace(/\\t/g, ' ')
-                     .replace(/\\\\/g, '\\')
-                     .replace(/\\\[/g, '$$')
-                     .replace(/\\\]/g, '$$')
-                     .replace(/\\\(/g, '$')
-                     .replace(/\\\)/g, '$');
+                     .replace(/\\\\/g, '\\');
     
-    // Nettoyer les balises HTML dangereuses
-    content = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // 2. Convertir le LaTeX pour MathJax
+    content = content.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$');
+    content = content.replace(/\\\(/g, '$').replace(/\\\)/g, '$');
+    
+    // 3. Nettoyer les balises HTML indésirables
+    content = content.replace(/<[^>]*script[^>]*>/gi, '')
                      .replace(/javascript:/gi, '')
                      .replace(/on\w+="[^"]*"/gi, '')
                      .replace(/on\w+='[^']*'/gi, '');
     
-    // Mettre à jour le contenu
+    // 4. Mettre à jour le contenu
     element.innerHTML = content;
     
-    // Appliquer MathJax
+    // 5. Appliquer MathJax
     if (window.MathJax) {
       setTimeout(() => {
         MathJax.typesetPromise([element]).then(() => {
@@ -1498,6 +1533,81 @@
     }
     
     return content;
+  }
+
+  // Fonction pour nettoyer automatiquement le contenu JSON
+  function cleanJSONContent() {
+    const element = document.getElementById('aiAnalysisContent');
+    if (!element) return;
+    
+    const content = element.innerHTML.trim();
+    
+    // Si le contenu commence par { et finit par }, c'est du JSON
+    if (content.startsWith('{') && content.endsWith('}')) {
+      try {
+        // Essayer de parser le JSON
+        const jsonData = JSON.parse(content);
+        
+        // Extraire le texte à afficher
+        const displayText = jsonData.current_feedback || jsonData.original || content;
+        
+        // Nettoyer les échappements
+        let cleanText = displayText
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\')
+          .replace(/\\n/g, '<br>')
+          .replace(/\\t/g, ' ')
+          .replace(/\\\[/g, '$$')
+          .replace(/\\\]/g, '$$')
+          .replace(/\\\(/g, '$')
+          .replace(/\\\)/g, '$');
+        
+        // Mettre à jour le contenu
+        element.innerHTML = cleanText;
+        
+        // Re-trigger MathJax
+        if (window.MathJax) {
+          setTimeout(() => {
+            MathJax.typesetPromise([element]).catch(err => {
+              console.log('MathJax re-rendered after JSON cleanup');
+            });
+          }, 100);
+        }
+      } catch (e) {
+        console.error('Erreur parsing JSON:', e);
+        // Si le parsing échoue, extraire manuellement
+        let cleanText = content;
+        
+        // Extraction manuelle de current_feedback
+        if (content.includes('"current_feedback": "')) {
+          const start = content.indexOf('"current_feedback": "') + 21;
+          const end = content.indexOf('",', start);
+          if (end > start) {
+            cleanText = content.substring(start, end);
+          }
+        } 
+        // Extraction manuelle de original
+        else if (content.includes('"original": "')) {
+          const start = content.indexOf('"original": "') + 13;
+          const end = content.indexOf('",', start);
+          if (end > start) {
+            cleanText = content.substring(start, end);
+          }
+        }
+        
+        // Nettoyer le texte extrait
+        cleanText = cleanText
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\')
+          .replace(/\\n/g, '<br>')
+          .replace(/\\\[/g, '$$')
+          .replace(/\\\]/g, '$$')
+          .replace(/\\\(/g, '$')
+          .replace(/\\\)/g, '$');
+        
+        element.innerHTML = cleanText;
+      }
+    }
   }
 
   // Fonctions pour l'éditeur mathématique
@@ -1736,7 +1846,7 @@
   function updateDisplayAfterContest(newStars, newFeedback) {
     console.log('Mise à jour après contestation:', newStars, 'étoiles');
     
-    // Mettre à jour les étoiles
+    // 1. Mettre à jour les étoiles
     const starsElement = document.getElementById('starsDisplay');
     if (starsElement) {
       starsElement.innerHTML = `<strong>${newStars}/5 ⭐</strong>`;
@@ -1747,10 +1857,10 @@
       }
     }
     
-    // Mettre à jour l'icône
+    // 2. Mettre à jour l'icône
     updateFeedbackIcon(newStars);
     
-    // Mettre à jour le contenu
+    // 3. Mettre à jour le contenu avec un indicateur visuel discret
     const feedbackElement = document.getElementById('aiAnalysisContent');
     if (feedbackElement) {
       feedbackElement.innerHTML = newFeedback;
@@ -1767,13 +1877,14 @@
       // Ajouter une classe pour un indicateur visuel discret
       feedbackElement.classList.add('analysis-updated');
       
-      // Nettoyer et formater le contenu
+      // Appliquer le nettoyage MathJax
       setTimeout(() => {
         cleanAndFormatMathContent('aiAnalysisContent');
+        cleanJSONContent(); // Nettoyer aussi le JSON si présent
       }, 50);
     }
     
-    // Ajouter un badge discret sur l'en-tête
+    // 4. Ajouter un badge discret sur l'en-tête
     const feedbackHeader = document.querySelector('.feedback-header');
     if (feedbackHeader && !feedbackHeader.querySelector('.feedback-updated-badge')) {
       const badge = document.createElement('div');
@@ -1782,7 +1893,7 @@
       feedbackHeader.appendChild(badge);
     }
     
-    // Si note maintenant 5/5, cacher la contestation
+    // 5. Si note maintenant 5/5, cacher la contestation
     if (newStars >= 5) {
       hideContest();
       showNotification(
@@ -1817,6 +1928,9 @@
       cleanAndFormatMathContent('aiAnalysisContent');
       cleanAndFormatMathContent('studentAnswerContent');
       cleanAndFormatMathContent('questionContent');
+      
+      // Nettoyer spécifiquement le contenu JSON
+      cleanJSONContent();
     }, 200);
     
     // Mise à jour en temps réel de l'éditeur
