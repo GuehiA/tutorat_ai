@@ -269,8 +269,8 @@
       font-weight: 600;
     }
     
-    /* Blocs de contenu mathématique */
-    .math-block {
+    /* Blocs de contenu */
+    .content-block {
       background: rgba(248, 249, 250, 0.8);
       padding: 20px;
       border-radius: 10px;
@@ -280,31 +280,47 @@
       overflow-x: auto;
       backdrop-filter: blur(10px);
       border: 1px solid rgba(67, 97, 238, 0.1);
-    }
-    
-    .math-block.math-content {
-      white-space: pre-wrap;
-      word-wrap: break-word;
       line-height: 1.8;
     }
     
-    /* Styles spécifiques pour MathJax */
-    .math-content mjx-container {
+    .content-block p {
+      margin: 0 0 10px 0;
+    }
+    
+    .content-block p:last-child {
+      margin-bottom: 0;
+    }
+    
+    /* Styles pour les formules LaTeX déjà rendues */
+    .content-block mjx-container {
       display: inline-block;
-      line-height: 0;
+      vertical-align: middle;
+    }
+    
+    /* Style pour le contenu JSON */
+    .json-content {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    
+    /* Style pour le texte extrait du JSON */
+    .extracted-feedback {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      line-height: 1.6;
+    }
+    
+    .extracted-feedback mjx-container {
+      display: inline-block;
       margin: 0 2px;
-    }
-    
-    .math-content mjx-container[jax="CHTML"][display="true"] {
-      display: block;
-      text-align: center;
-      margin: 1.5em 0;
-    }
-    
-    .MathJax_Display {
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding: 10px 0;
     }
     
     /* Bouton retour élégant */
@@ -398,41 +414,6 @@
       color: var(--gray);
     }
     
-    /* Badge pour les nouvelles réponses */
-    .new-badge {
-      display: inline-flex;
-      align-items: center;
-      background: linear-gradient(135deg, var(--accent), #ff2d95);
-      color: white;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin-left: 10px;
-      animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-    
-    /* Indicateur de chargement */
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(67, 97, 238, 0.3);
-      border-radius: 50%;
-      border-top-color: var(--primary);
-      animation: spin 1s ease-in-out infinite;
-      margin-left: 10px;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
     /* Responsive */
     @media (max-width: 768px) {
       body {
@@ -488,63 +469,36 @@
         padding: 14px 24px;
       }
       
-      .math-block {
+      .content-block {
         padding: 15px;
         font-size: 0.95rem;
       }
     }
-    
-    @media (max-width: 480px) {
-      .container {
-        padding: 20px 15px;
-      }
-      
-      h2 {
-        font-size: 1.7rem;
-      }
-      
-      .etoiles {
-        font-size: 1rem;
-      }
-      
-      .math-block {
-        padding: 12px;
-        font-size: 0.9rem;
-      }
-    }
   </style>
 
-  <!-- MathJax Configuration robuste -->
+  <!-- MathJax pour les formules en texte -->
   <script>
     window.MathJax = {
       tex: {
         inlineMath: [['$', '$'], ['\\(', '\\)']],
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
-        processEnvironments: true,
-        packages: ['base', 'ams', 'noerrors', 'noundefined']
+        processEnvironments: true
       },
       options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
         ignoreHtmlClass: 'no-mathjax',
         processHtmlClass: 'math-content'
       },
-      loader: {
-        load: ['input/tex', 'output/chtml', '[tex]/noerrors', '[tex]/noundefined']
-      },
       startup: {
-        ready: () => {
-          console.log('MathJax v3 initialized');
-          return MathJax.startup.defaultReady();
-        },
         pageReady: () => {
-          console.log('MathJax page ready');
+          console.log('MathJax ready');
           return MathJax.startup.defaultPageReady();
         }
       }
     };
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
   
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -592,19 +546,26 @@
                 <span class="etoiles">{{ r.etoiles or 0 }} <i class="fas fa-star"></i></span>
               </div>
               <div style="color: var(--gray); font-size: 0.95rem; font-weight: normal;">
-                {{ (r.enonce or "")[:80] }}...
+                {% if r.enonce %}
+                  {{ r.enonce[:80]|striptags|replace("\n", " ")|trim }}...
+                {% else %}
+                  ...
+                {% endif %}
               </div>
             </div>
           </summary>
           <div class="reponse-content">
             <p><strong>{{ '📋 Énoncé :' if lang == 'fr' else '📋 Prompt:' }}</strong></p>
-            <div class="math-block math-content">{{ r.enonce|default('', true)|trim|e }}</div>
+            <div class="content-block">{{ r.enonce|default('', true)|safe }}</div>
 
             <p><strong>{{ '✏️ Réponse de l\'élève :' if lang == 'fr' else '✏️ Student\'s Answer:' }}</strong></p>
-            <div class="math-block math-content">{{ r.reponse_eleve|default('', true)|trim|e }}</div>
+            <div class="content-block">{{ r.reponse_eleve|default('', true)|safe }}</div>
 
             <p><strong>{{ '🤖 Analyse IA :' if lang == 'fr' else '🤖 AI Feedback:' }}</strong></p>
-            <div class="math-block math-content">{{ r.analyse_ia|default('', true)|trim|e }}</div>
+            <div class="content-block" data-feedback-content="{{ r.analyse_ia|default('', true)|e }}">
+              {# Le contenu sera traité par JavaScript #}
+              {{ r.analyse_ia|default('', true)|safe }}
+            </div>
 
             <div style="display: flex; align-items: center; gap: 15px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
               <strong style="color: var(--dark);">{{ '⭐ Note :' if lang == 'fr' else '⭐ Score:' }}</strong>
@@ -621,15 +582,9 @@
         <i class="fas fa-clipboard-list"></i>
         <p>
           {% if lang == 'fr' %}
-            Aucun exercice complété pour le moment.<br>
-            <small style="color: var(--gray); margin-top: 10px; display: block;">
-              Commencez par résoudre des exercices pour voir votre historique ici.
-            </small>
+            Aucun exercice complété pour le moment.
           {% else %}
-            No exercises completed yet.<br>
-            <small style="color: var(--gray); margin-top: 10px; display: block;">
-              Start solving exercises to see your history here.
-            </small>
+            No exercises completed yet.
           {% endif %}
         </p>
       </div>
@@ -653,19 +608,25 @@
                 <span class="etoiles">{{ t.etoiles or 0 }} <i class="fas fa-star"></i></span>
               </div>
               <div style="color: var(--gray); font-size: 0.95rem; font-weight: normal;">
-                {{ (t.question or "")[:80] }}...
+                {% if t.question %}
+                  {{ t.question[:80]|striptags|replace("\n", " ")|trim }}...
+                {% else %}
+                  ...
+                {% endif %}
               </div>
             </div>
           </summary>
           <div class="reponse-content">
             <p><strong>{{ '❓ Question :' if lang == 'fr' else '❓ Question:' }}</strong></p>
-            <div class="math-block math-content">{{ t.question|default('', true)|trim|e }}</div>
+            <div class="content-block">{{ t.question|default('', true)|safe }}</div>
 
             <p><strong>{{ '✏️ Réponse :' if lang == 'fr' else '✏️ Answer:' }}</strong></p>
-            <div class="math-block math-content">{{ t.reponse_eleve|default('', true)|trim|e }}</div>
+            <div class="content-block">{{ t.reponse_eleve|default('', true)|safe }}</div>
 
             <p><strong>{{ '🤖 Analyse IA :' if lang == 'fr' else '🤖 AI Feedback:' }}</strong></p>
-            <div class="math-block math-content">{{ t.analyse_ia|default('', true)|trim|e }}</div>
+            <div class="content-block" data-feedback-content="{{ t.analyse_ia|default('', true)|e }}">
+              {{ t.analyse_ia|default('', true)|safe }}
+            </div>
 
             <div style="display: flex; align-items: center; gap: 15px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
               <strong style="color: var(--dark);">{{ '⭐ Note :' if lang == 'fr' else '⭐ Score:' }}</strong>
@@ -682,15 +643,9 @@
         <i class="fas fa-file-alt"></i>
         <p>
           {% if lang == 'fr' %}
-            Aucun test sommatif complété.<br>
-            <small style="color: var(--gray); margin-top: 10px; display: block;">
-              Les tests sommatifs apparaîtront ici après complétion.
-            </small>
+            Aucun test sommatif complété.
           {% else %}
-            No final tests completed yet.<br>
-            <small style="color: var(--gray); margin-top: 10px; display: block;">
-              Final tests will appear here upon completion.
-            </small>
+            No final tests completed yet.
           {% endif %}
         </p>
       </div>
@@ -712,117 +667,162 @@
     </div>
   </div>
 
-  <!-- Script pour le traitement MathJax amélioré -->
+  <!-- Script pour traiter les différents formats de contenu -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('📊 Page historique chargée');
+      console.log('📊 Page historique chargée - traitement du contenu');
       
-      // Fonction pour préparer le contenu pour MathJax
-      function prepareMathContent() {
-        const mathBlocks = document.querySelectorAll('.math-block.math-content');
+      // Fonction pour extraire et afficher le feedback du JSON
+      function processFeedbackContent() {
+        const feedbackBlocks = document.querySelectorAll('.content-block[data-feedback-content]');
         
-        mathBlocks.forEach(block => {
-          let content = block.innerHTML;
+        feedbackBlocks.forEach(block => {
+          let content = block.getAttribute('data-feedback-content') || block.innerHTML;
           
-          // 1. Nettoyer les encodages HTML problématiques
-          content = content
-            .replace(/&amp;amp;/g, '&')
-            .replace(/&amp;lt;/g, '<')
-            .replace(/&amp;gt;/g, '>')
-            .replace(/&amp;quot;/g, '"')
-            .replace(/&amp;#39;/g, "'")
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#039;/g, "'")
-            .replace(/&nbsp;/g, ' ');
-          
-          // 2. Remplacer les délimiteurs LaTeX encodés
-          content = content
-            .replace(/\\\\\[/g, '$$')
-            .replace(/\\\\\]/g, '$$')
-            .replace(/\\\\\(/g, '$')
-            .replace(/\\\\\)/g, '$')
-            .replace(/\\\[/g, '$$')
-            .replace(/\\\]/g, '$$')
-            .replace(/\\\(/g, '$')
-            .replace(/\\\)/g, '$');
-          
-          // 3. Nettoyer les sauts de ligne et espaces
-          content = content
-            .replace(/\\n/g, '\n')
-            .replace(/\\r/g, '')
-            .replace(/\\t/g, ' ')
-            .replace(/\s+/g, ' ')
-            .replace(/^\s+|\s+$/g, '');
-          
-          // 4. Protéger les caractères HTML pour MathJax
-          content = content
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-          
-          // 5. Rétablir les délimiteurs MathJax
-          content = content
-            .replace(/\$\$/g, '$$')
-            .replace(/\$/g, '$');
-          
-          block.innerHTML = content;
-          block.style.display = 'block';
+          // Si c'est du JSON, extraire le feedback
+          if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
+            try {
+              const jsonData = JSON.parse(content);
+              
+              // Chercher le feedback à afficher (priorité: current_feedback > original > texte brut)
+              let feedbackText = '';
+              
+              if (jsonData.current_feedback) {
+                feedbackText = jsonData.current_feedback;
+              } else if (jsonData.original) {
+                feedbackText = jsonData.original;
+              } else {
+                // Essayer de trouver d'autres champs possibles
+                feedbackText = jsonData.feedback || jsonData.analysis || content;
+              }
+              
+              // Nettoyer le texte
+              feedbackText = cleanFeedbackText(feedbackText);
+              
+              // Créer un conteneur pour le feedback
+              const feedbackContainer = document.createElement('div');
+              feedbackContainer.className = 'extracted-feedback';
+              feedbackContainer.innerHTML = feedbackText;
+              
+              // Remplacer le contenu du bloc
+              block.innerHTML = '';
+              block.appendChild(feedbackContainer);
+              
+              // Si c'est encore du JSON (imbriqué), réessayer
+              if (feedbackText.trim().startsWith('{')) {
+                processFeedbackContent();
+              }
+              
+            } catch (e) {
+              console.log('⚠️ Impossible de parser le JSON, affichage brut', e);
+              block.innerHTML = cleanFeedbackText(content);
+            }
+          } else {
+            // Nettoyer le contenu non-JSON
+            block.innerHTML = cleanFeedbackText(content);
+          }
         });
       }
       
-      // Initialiser MathJax après préparation
-      function initMathJax() {
-        if (window.MathJax && window.MathJax.typesetPromise) {
-          prepareMathContent();
+      // Fonction pour nettoyer le texte du feedback
+      function cleanFeedbackText(text) {
+        if (!text) return '';
+        
+        return text
+          // Décoder les entités HTML
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#039;/g, "'")
+          .replace(/&nbsp;/g, ' ')
           
-          // Attendre que le DOM soit prêt
-          setTimeout(() => {
-            MathJax.typesetPromise().then(() => {
-              console.log('✅ MathJax a rendu toutes les formules avec succès');
-              
-              // Ajouter une classe de confirmation
-              document.querySelectorAll('.math-block').forEach(block => {
-                block.classList.add('math-rendered');
-              });
-              
-            }).catch(err => {
-              console.warn('⚠️ Erreur MathJax:', err);
-              
-              // Fallback: réessayer avec une méthode plus simple
-              setTimeout(() => {
-                if (window.MathJax) {
-                  MathJax.typesetPromise();
-                }
-              }, 1000);
-            });
-          }, 300);
-        } else {
-          console.log('⏳ MathJax pas encore chargé, nouvelle tentative dans 500ms...');
-          setTimeout(initMathJax, 500);
-        }
+          // Nettoyer les sauts de ligne
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '')
+          .replace(/\\t/g, ' ')
+          
+          // Remplacer les délimiteurs LaTeX encodés
+          .replace(/\\\\\[/g, '$$')
+          .replace(/\\\\\]/g, '$$')
+          .replace(/\\\\\(/g, '$')
+          .replace(/\\\\\)/g, '$')
+          
+          // Nettoyer les espaces multiples
+          .replace(/\s+/g, ' ')
+          .replace(/^\s+|\s+$/g, '');
       }
       
-      // Démarrer l'initialisation
-      initMathJax();
+      // Fonction pour traiter le contenu MathJax déjà rendu
+      function preserveMathJaxContent() {
+        const blocks = document.querySelectorAll('.content-block');
+        
+        blocks.forEach(block => {
+          // Si le bloc contient déjà du MathJax rendu (<mjx-container>), le conserver tel quel
+          if (block.innerHTML.includes('<mjx-container')) {
+            // Ne rien faire, le contenu est déjà rendu
+            return;
+          }
+          
+          // Si le bloc contient des formules LaTeX en texte, les marquer pour MathJax
+          const content = block.innerHTML;
+          if (content.includes('$') || content.includes('\\(') || content.includes('$$')) {
+            block.classList.add('math-content');
+          }
+        });
+      }
+      
+      // Initialiser le traitement
+      function initContentProcessing() {
+        console.log('🔄 Traitement du contenu...');
+        
+        // 1. Préserver le MathJax déjà rendu
+        preserveMathJaxContent();
+        
+        // 2. Traiter le contenu des feedbacks
+        processFeedbackContent();
+        
+        // 3. Initialiser MathJax pour les formules en texte
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          setTimeout(() => {
+            MathJax.typesetPromise().then(() => {
+              console.log('✅ MathJax initialisé');
+            }).catch(err => {
+              console.warn('⚠️ Erreur MathJax:', err);
+            });
+          }, 500);
+        }
+        
+        // 4. Ajouter une classe pour indiquer le traitement terminé
+        setTimeout(() => {
+          document.querySelectorAll('.content-block').forEach(block => {
+            block.classList.add('processed');
+          });
+        }, 300);
+      }
+      
+      // Démarrer le traitement
+      initContentProcessing();
       
       // Gérer l'ouverture des détails
       document.querySelectorAll('details').forEach(detail => {
         detail.addEventListener('toggle', function() {
-          if (this.open && window.MathJax) {
-            // Préparer le contenu du détail ouvert
-            const mathBlocks = this.querySelectorAll('.math-block.math-content:not(.math-rendered)');
-            
-            if (mathBlocks.length > 0) {
-              setTimeout(() => {
-                MathJax.typesetPromise(mathBlocks).then(() => {
-                  mathBlocks.forEach(block => block.classList.add('math-rendered'));
-                });
-              }, 100);
-            }
+          if (this.open) {
+            // Traiter le contenu du détail ouvert
+            setTimeout(() => {
+              const feedbackBlocks = this.querySelectorAll('.content-block:not(.processed)');
+              if (feedbackBlocks.length > 0) {
+                processFeedbackContent();
+                preserveMathJaxContent();
+                
+                // Appliquer MathJax sur le nouveau contenu
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  setTimeout(() => {
+                    MathJax.typesetPromise(feedbackBlocks);
+                  }, 100);
+                }
+              }
+            }, 50);
           }
         });
       });
@@ -830,10 +830,15 @@
       // Observer les changements dans le DOM
       const observer = new MutationObserver((mutations) => {
         mutations.forEach(mutation => {
-          if (mutation.addedNodes.length > 0 && window.MathJax) {
+          if (mutation.addedNodes.length > 0) {
+            // Attendre que le contenu soit ajouté
             setTimeout(() => {
-              MathJax.typesetPromise();
-            }, 200);
+              const newBlocks = document.querySelectorAll('.content-block:not(.processed)');
+              if (newBlocks.length > 0) {
+                processFeedbackContent();
+                preserveMathJaxContent();
+              }
+            }, 100);
           }
         });
       });
@@ -843,21 +848,16 @@
         subtree: true
       });
       
-      // Forcer une réinitialisation si MathJax n'est pas chargé après 3 secondes
+      // Recharger MathJax si nécessaire
       setTimeout(() => {
         if (!window.MathJax || !window.MathJax.typesetPromise) {
-          console.log('🔄 Rechargement du script MathJax...');
-          const script = document.getElementById('MathJax-script');
-          if (script) {
-            script.remove();
-            const newScript = document.createElement('script');
-            newScript.id = 'MathJax-script';
-            newScript.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js';
-            newScript.defer = true;
-            document.head.appendChild(newScript);
-          }
+          console.log('🔄 MathJax non détecté, rechargement...');
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js';
+          script.defer = true;
+          document.head.appendChild(script);
         }
-      }, 3000);
+      }, 2000);
     });
   </script>
 </body>
