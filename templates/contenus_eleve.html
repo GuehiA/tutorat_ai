@@ -7,6 +7,49 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- MathJax pour le rendu des formules LaTeX -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true,
+        packages: ['base', 'ams', 'noerrors', 'noundefined']
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        ignoreHtmlClass: 'tex2jax_ignore',
+        processHtmlClass: 'tex2jax_process',
+        renderActions: {
+          find: [10, function (doc) {
+            for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+              const text = node.textContent.replace(/%.*/g, '');
+              if (node.type.match(/; *mode=display/)) {
+                const display = document.createElement('mjx-container');
+                display.className = 'MathJax_Display';
+                display.innerHTML = '\\[' + text + '\\]';
+                node.parentNode.replaceChild(display, node);
+              } else {
+                const inline = document.createElement('mjx-container');
+                inline.innerHTML = '\\(' + text + '\\)';
+                node.parentNode.replaceChild(inline, node);
+              }
+            }
+          }, '']
+        }
+      },
+      loader: { load: ['input/tex', 'output/chtml'] },
+      startup: {
+        ready: () => {
+          MathJax.startup.defaultReady();
+          console.log('MathJax initialized');
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
 
   <style>
   :root {
@@ -344,7 +387,7 @@
     color: var(--primary-dark);
   }
 
-  /* EXERCICE */
+  /* EXERCICE - STYLES AMELIORES */
   .exercice {
     background: #f8fafc;
     padding: 15px;
@@ -358,6 +401,50 @@
     line-height: 1.5;
     color: var(--text);
     margin-bottom: 12px;
+    min-height: 40px;
+  }
+
+  /* Style spécial pour le rendu MathJax */
+  .exercice-content .MathJax {
+    font-size: 0.9rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .exercice-content mjx-container {
+    display: inline-block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    vertical-align: middle !important;
+  }
+
+  .exercice-content mjx-math {
+    font-size: 0.9rem !important;
+  }
+
+  .exercice-content .mjx-chtml {
+    font-size: 0.9rem !important;
+  }
+
+  .exercice-content .MathJax_Display {
+    margin: 8px 0 !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 5px 0;
+  }
+
+  .exercice-content .MathJax_Display mjx-container {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Style pour les équations inline */
+  .exercice-content mjx-container[jax="CHTML"][display="false"] {
+    margin: 0 2px !important;
+  }
+
+  /* Style pour les fractions et structures mathématiques */
+  .exercice-content .mjx-frac {
+    font-size: 0.85rem !important;
   }
 
   .exercice-status {
@@ -602,14 +689,14 @@
                 {{ lecon.titre_en if lang=='en' and lecon.titre_en else lecon.titre_fr }}
               </a>
 
-              <!-- EXERCICES -->
+              <!-- EXERCICES AVEC RENDU LaTeX -->
               {% for ex in lecon.exercices %}
               <div class="exercice">
-                <div class="exercice-content">
+                <div class="exercice-content" id="excerpt-{{ ex.id }}">
                   {% if lang=='en' and ex.question_en %}
-                    {{ ex.question_en[:100] }}…
+                    {{ ex.question_en|truncate_html(100)|safe }}
                   {% else %}
-                    {{ ex.question_fr[:100] }}…
+                    {{ ex.question_fr|truncate_html(100)|safe }}
                   {% endif %}
                 </div>
                 <div class="exercice-status">
@@ -677,12 +764,82 @@ function detectMatiereType() {
   });
 }
 
+// Fonction pour formater les extraits avec LaTeX
+function formatLatexExcerpts() {
+  document.querySelectorAll('.exercice-content').forEach(content => {
+    let html = content.innerHTML;
+    
+    // Remplacer les délimiteurs LaTeX bruts
+    html = html
+      .replace(/\\\[/g, '$$')
+      .replace(/\\\]/g, '$$')
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$')
+      .replace(/\\begin\{equation\*/g, '$$')
+      .replace(/\\end\{equation\*/g, '$$')
+      .replace(/\\begin\{align\*/g, '$$')
+      .replace(/\\end\{align\*/g, '$$')
+      .replace(/\\begin\{equation\}/g, '$$')
+      .replace(/\\end\{equation\}/g, '$$')
+      .replace(/\\begin\{align\}/g, '$$')
+      .replace(/\\end\{align\}/g, '$$');
+    
+    // Nettoyer les échappements
+    html = html
+      .replace(/\\\$/g, '$')
+      .replace(/\\\*/g, '*')
+      .replace(/\\_/g, '_')
+      .replace(/\\\{/g, '{')
+      .replace(/\\\}/g, '}');
+    
+    content.innerHTML = html;
+  });
+}
+
+// Fonction pour exécuter MathJax sur les extraits
+function renderMathExcerpts() {
+  if (window.MathJax) {
+    // Sélectionner tous les contenus d'exercice
+    const mathElements = document.querySelectorAll('.exercice-content');
+    
+    if (mathElements.length > 0) {
+      console.log('Rendering MathJax for', mathElements.length, 'excerpts');
+      
+      MathJax.typesetPromise(mathElements).then(() => {
+        console.log('MathJax rendering complete');
+        
+        // Ajuster la taille après rendu
+        document.querySelectorAll('.exercice-content mjx-container').forEach(container => {
+          container.style.display = 'inline-block';
+          container.style.margin = '0';
+          container.style.padding = '0';
+          container.style.verticalAlign = 'middle';
+        });
+      }).catch(err => {
+        console.log('MathJax rendering error:', err.message);
+      });
+    }
+  } else {
+    console.log('MathJax not loaded yet, will retry...');
+    setTimeout(renderMathExcerpts, 500);
+  }
+}
+
 // Gestion des clics sur les matières
 document.querySelectorAll(".toggle-matiere").forEach(header => {
   header.onclick = () => {
     header.classList.toggle("active");
     const content = header.nextElementSibling;
-    content.style.display = content.style.display === "block" ? "none" : "block";
+    const isVisible = content.style.display === "block";
+    content.style.display = isVisible ? "none" : "block";
+    
+    // Si on ouvre une section, rendre le MathJax
+    if (!isVisible) {
+      setTimeout(() => {
+        formatLatexExcerpts();
+        renderMathExcerpts();
+      }, 100);
+    }
   };
 });
 
@@ -692,7 +849,16 @@ document.querySelectorAll(".toggle-unite").forEach(header => {
     header.classList.toggle("active");
     const targetId = header.getAttribute('data-target');
     const content = document.getElementById(targetId);
-    content.style.display = content.style.display === "block" ? "none" : "block";
+    const isVisible = content.style.display === "block";
+    content.style.display = isVisible ? "none" : "block";
+    
+    // Si on ouvre une section, rendre le MathJax
+    if (!isVisible) {
+      setTimeout(() => {
+        formatLatexExcerpts();
+        renderMathExcerpts();
+      }, 100);
+    }
   };
 });
 
@@ -704,7 +870,41 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.unites-container, .lecons-container').forEach(container => {
     container.style.display = 'none';
   });
+  
+  // Formater et rendre le LaTeX
+  formatLatexExcerpts();
+  
+  // Attendre que MathJax soit chargé
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    setTimeout(renderMathExcerpts, 500);
+  } else {
+    // Si MathJax n'est pas encore chargé, attendre
+    const checkMathJax = setInterval(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        clearInterval(checkMathJax);
+        renderMathExcerpts();
+      }
+    }, 100);
+  }
 });
+
+// Re-rendre le MathJax quand des sections sont ouvertes
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.toggle-matiere') || e.target.closest('.toggle-unite')) {
+    setTimeout(renderMathExcerpts, 300);
+  }
+});
+
+// Surveiller les changements dans le DOM pour re-rendre MathJax
+const observer = new MutationObserver((mutations) => {
+  mutations.forEach((mutation) => {
+    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+      setTimeout(renderMathExcerpts, 100);
+    }
+  });
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
 </script>
 </body>
 </html>
