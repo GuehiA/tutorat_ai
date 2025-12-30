@@ -849,11 +849,11 @@
             <!-- SECTION OPTIONS D'ACCÈS - 5 COLONNES -->
             <div class="payment-options">
                 <div class="payment-title">
-                    {{ 'Choose Your Access Option' if lang == 'en' else 'Choisissez Votre Option d\'Accès' }}
+                    {{ 'Choose Your Access Option' if lang == 'en' else "Choisissez Votre Option d'Accès" }}
                 </div>
 
                 <p style="text-align: center; color: #6c757d; margin-bottom: 30px; font-size: 1rem;">
-                    {{ 'Select the option that best fits your needs. All options include full platform access.' if lang == 'en' else 'Sélectionnez l\'option qui correspond le mieux à vos besoins. Toutes les options incluent l\'accès complet à la plateforme.' }}
+                    {{ 'Select the option that best fits your needs. All options include full platform access.' if lang == 'en' else "Sélectionnez l'option qui correspond le mieux à vos besoins. Toutes les options incluent l'accès complet à la plateforme." }}
                 </p>
 
                 <!-- TABLEAU COMPARATIF SIMPLIFIÉ -->
@@ -959,7 +959,7 @@
                             <div class="price-per-month">{{ '≈65$/month' if lang == 'en' else '≈65$/mois' }}</div>
                         </div>
                         <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> {{ 'All trial features' if lang == 'en' else 'Toutes les fonctionnalités d\'essai' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'All trial features' if lang == 'en' else "Toutes les fonctionnalités d'essai" }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Weekly progress reports' if lang == 'en' else 'Rapports de progression hebdo' }}</li>
@@ -1013,7 +1013,7 @@
                             <li><i class="fas fa-check feature-included"></i> {{ 'All monthly features' if lang == 'en' else 'Toutes les fonctionnalités mensuelles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly assessments' if lang == 'en' else 'Évaluations trimestrielles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Advanced analytics' if lang == 'en' else 'Analyses avancées' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Learning milestones' if lang == 'en' else 'Jalons d\'apprentissage' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Learning milestones' if lang == 'en' else "Jalons d'apprentissage" }}</li>
                         </ul>
                         <div class="plan-footer">
                             <div style="color: var(--quarterly); font-weight: 600;">
@@ -1038,7 +1038,7 @@
                             <li><i class="fas fa-check feature-included"></i> {{ 'All quarterly features' if lang == 'en' else 'Toutes les fonctionnalités trimestrielles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Premium teacher features' if lang == 'en' else 'Fonctionnalités premium' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly parent meetings' if lang == 'en' else 'Rencontres trimestrielles parents' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Annual learning certificate' if lang == 'en' else 'Certificat d\'apprentissage annuel' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Annual learning certificate' if lang == 'en' else "Certificat d'apprentissage annuel" }}</li>
                         </ul>
                         <div class="plan-footer">
                             <div style="color: var(--annual); font-weight: 600;">
@@ -1057,7 +1057,7 @@
                 <div class="checkbox-group">
                     {{ form.accepte_cgu() }}
                     <label for="accepte_cgu" style="font-weight: normal;">
-                        {{ 'I accept the Terms and Conditions' if lang == 'en' else 'J\'accepte les Conditions Générales d\'Utilisation' }}
+                        {{ 'I accept the Terms and Conditions' if lang == 'en' else "J'accepte les Conditions Générales d'Utilisation" }}
                     </label>
                     <small style="color: #6c757d;">
                         <a href="{{ url_for('cgu') if 'cgu' in url_for.__globals__ else '#' }}" target="_blank">
@@ -1078,7 +1078,11 @@
             <button type="submit" class="btn-submit" id="submitButton">
                 <i class="fas fa-gift"></i>
                 <span id="submitText">
-                    {{ 'Start 1-Hour Free Trial' if lang == 'en' else "Commencer l'Essai Gratuit de 1 Heure" }}
+                    {% if lang == 'en' %}
+                        Start 1-Hour Free Trial
+                    {% else %}
+                        Commencer l'Essai Gratuit de 1 Heure
+                    {% endif %}
                 </span>
             </button>
         </form>
@@ -1096,52 +1100,76 @@
     </div>
 
     <script>
-        // Configuration des plans
+        // Configuration des plans - version simplifiée sans Jinja2 dans JavaScript
         const plans = {
             'trial': {
-                name: "{{ 'Free Trial' if lang == 'en' else 'Essai Gratuit' }}",
+                name: 'Free Trial',
                 price: '0$',
-                period: "{{ '1 hour' if lang == 'en' else '1 heure' }}",
-                buttonText: "{{ 'Start 1-Hour Free Trial' if lang == 'en' else 'Commencer l\\'Essai Gratuit de 1 Heure' }}",
+                period: '1 hour',
+                buttonText: 'Start 1-Hour Free Trial',
                 buttonIcon: 'fas fa-gift',
                 buttonColor: 'linear-gradient(135deg, var(--trial), #0da271)',
                 hoverColor: 'linear-gradient(135deg, #0da271, var(--trial))'
             },
             'weekly': {
-                name: "{{ 'Weekly Plan' if lang == 'en' else 'Forfait Hebdomadaire' }}",
+                name: 'Weekly Plan',
                 price: '15$',
-                period: "{{ 'per week' if lang == 'en' else 'par semaine' }}",
-                buttonText: "{{ 'Subscribe to Weekly Plan (15$/week)' if lang == 'en' else 'S\\'abonner au Forfait Hebdo (15$/semaine)' }}",
+                period: 'per week',
+                buttonText: 'Subscribe to Weekly Plan (15$/week)',
                 buttonIcon: 'fas fa-calendar-week',
                 buttonColor: 'linear-gradient(135deg, var(--weekly), #7c3aed)',
                 hoverColor: 'linear-gradient(135deg, #7c3aed, var(--weekly))'
             },
             'monthly': {
-                name: "{{ 'Monthly Plan' if lang == 'en' else 'Forfait Mensuel' }}",
+                name: 'Monthly Plan',
                 price: '50$',
-                period: "{{ 'per month' if lang == 'en' else 'par mois' }}",
-                buttonText: "{{ 'Subscribe to Monthly Plan (50$/month)' if lang == 'en' else 'S\\'abonner au Forfait Mensuel (50$/mois)' }}",
+                period: 'per month',
+                buttonText: 'Subscribe to Monthly Plan (50$/month)',
                 buttonIcon: 'fas fa-calendar-alt',
                 buttonColor: 'linear-gradient(135deg, var(--monthly), #1d4ed8)',
                 hoverColor: 'linear-gradient(135deg, #1d4ed8, var(--monthly))'
             },
             'quarterly': {
-                name: "{{ 'Quarterly Plan' if lang == 'en' else 'Forfait Trimestriel' }}",
+                name: 'Quarterly Plan',
                 price: '120$',
-                period: "{{ 'per 3 months' if lang == 'en' else 'par 3 mois' }}",
-                buttonText: "{{ 'Subscribe to Quarterly Plan (120$/3 months)' if lang == 'en' else 'S\\'abonner au Forfait Trimestriel (120$/3 mois)' }}",
+                period: 'per 3 months',
+                buttonText: 'Subscribe to Quarterly Plan (120$/3 months)',
                 buttonIcon: 'fas fa-chart-line',
                 buttonColor: 'linear-gradient(135deg, var(--quarterly), #0891b2)',
                 hoverColor: 'linear-gradient(135deg, #0891b2, var(--quarterly))'
             },
             'annual': {
-                name: "{{ 'Annual Plan' if lang == 'en' else 'Forfait Annuel' }}",
+                name: 'Annual Plan',
                 price: '450$',
-                period: "{{ 'per year' if lang == 'en' else 'par an' }}",
-                buttonText: "{{ 'Subscribe to Annual Plan (450$/year)' if lang == 'en' else 'S\\'abonner au Forfait Annuel (450$/an)' }}",
+                period: 'per year',
+                buttonText: 'Subscribe to Annual Plan (450$/year)',
                 buttonIcon: 'fas fa-crown',
                 buttonColor: 'linear-gradient(135deg, var(--annual), #d97706)',
                 hoverColor: 'linear-gradient(135deg, #d97706, var(--annual))'
+            }
+        };
+
+        // Traductions en français
+        const frenchTranslations = {
+            'trial': {
+                name: 'Essai Gratuit',
+                buttonText: "Commencer l'Essai Gratuit de 1 Heure"
+            },
+            'weekly': {
+                name: 'Forfait Hebdomadaire',
+                buttonText: "S'abonner au Forfait Hebdo (15$/semaine)"
+            },
+            'monthly': {
+                name: 'Forfait Mensuel',
+                buttonText: "S'abonner au Forfait Mensuel (50$/mois)"
+            },
+            'quarterly': {
+                name: 'Forfait Trimestriel',
+                buttonText: "S'abonner au Forfait Trimestriel (120$/3 mois)"
+            },
+            'annual': {
+                name: 'Forfait Annuel',
+                buttonText: "S'abonner au Forfait Annuel (450$/an)"
             }
         };
 
@@ -1169,12 +1197,25 @@
         }
 
         function updateSubmitButton(planType) {
-            const plan = plans[planType];
+            const lang = document.documentElement.lang || 'en';
+            let plan;
+            
+            if (lang === 'fr') {
+                // Utiliser les traductions françaises
+                plan = {
+                    ...plans[planType],
+                    name: frenchTranslations[planType].name,
+                    buttonText: frenchTranslations[planType].buttonText
+                };
+            } else {
+                // Utiliser les versions anglaises
+                plan = plans[planType];
+            }
+            
             const submitText = document.getElementById('submitText');
             const submitButton = document.getElementById('submitButton');
             const submitIcon = submitButton.querySelector('i');
             
-            // Utiliser textContent au lieu de innerHTML pour éviter les problèmes d'apostrophe
             submitText.textContent = plan.buttonText;
             submitIcon.className = plan.buttonIcon;
             submitButton.style.background = plan.buttonColor;
@@ -1239,14 +1280,22 @@
             
             const planTypeInput = document.getElementById('planType');
             if (!planTypeInput || !planTypeInput.value) {
-                alert("{{ 'Please select an access option' if lang == 'en' else 'Veuillez sélectionner une option d\\'accès' }}");
+                const lang = document.documentElement.lang || 'en';
+                const message = lang === 'fr' 
+                    ? "Veuillez sélectionner une option d'accès" 
+                    : "Please select an access option";
+                alert(message);
                 return;
             }
             
             // Vérifier que les CGU sont acceptées
             const cguCheckbox = document.getElementById('accepte_cgu');
             if (cguCheckbox && !cguCheckbox.checked) {
-                alert("{{ 'You must accept the Terms and Conditions' if lang == 'en' else 'Vous devez accepter les Conditions Générales d\\'Utilisation' }}");
+                const lang = document.documentElement.lang || 'en';
+                const message = lang === 'fr' 
+                    ? "Vous devez accepter les Conditions Générales d'Utilisation" 
+                    : "You must accept the Terms and Conditions";
+                alert(message);
                 return;
             }
             
@@ -1257,7 +1306,9 @@
             const btn = document.getElementById('submitButton');
             const originalHTML = btn.innerHTML;
             
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Processing..." if lang == "en" else "Traitement en cours..." }}';
+            const lang = document.documentElement.lang || 'en';
+            const processingText = lang === 'fr' ? 'Traitement en cours...' : 'Processing...';
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${processingText}`;
             btn.disabled = true;
             
             // Soumettre le formulaire
