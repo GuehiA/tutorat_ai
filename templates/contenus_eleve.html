@@ -222,11 +222,6 @@
     box-shadow: 0 8px 20px rgba(139, 92, 246, 0.25);
   }
 
-  .matiere-header:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 15px 30px rgba(139, 92, 246, 0.35);
-  }
-
   .matiere-header.science {
     background: linear-gradient(135deg, var(--science-color), #0d9488);
     box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
@@ -764,11 +759,27 @@ function detectMatiereType() {
   });
 }
 
-// Fonction pour formater les extraits avec LaTeX
+// Fonction pour formater les extraits avec LaTeX - CORRIGÉE
 function formatLatexExcerpts() {
   document.querySelectorAll('.excerpt-content').forEach(content => {
     let html = content.innerHTML;
     
+    console.log('HTML original:', html);
+    
+    // D'abord, décoder les entités HTML incorrectes
+    html = html
+      .replace(/&amp;amp;/g, '&')  // Corriger les doubles encodages
+      .replace(/&amp;/g, '&')      // Corriger les simples encodages
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&nbsp;/g, ' ');
+    
+    // Remplacer les balises HTML échappées
+    html = html.replace(/&lt;br&gt;/g, '<br>');
+    
+    // Maintenant, traiter les délimiteurs LaTeX
     // Remplacer les délimiteurs LaTeX bruts par des délimiteurs MathJax
     html = html
       .replace(/\\\[/g, '$$')
@@ -784,26 +795,24 @@ function formatLatexExcerpts() {
       .replace(/\\begin\{align\}/g, '$$')
       .replace(/\\end\{align\}/g, '$$');
     
-    // Protéger les caractères spéciaux HTML
+    // Protéger à nouveau pour MathJax, mais seulement les caractères spéciaux LaTeX
+    // MathJax gère bien les caractères HTML normaux
     html = html
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replace(/>/g, '&gt;');
     
-    // Puis restaurer les caractères LaTeX importants
+    // Remplacer les symboles de comparaison échappés
     html = html
-      .replace(/&amp;#(36|92|95|123|125);/g, (match, p1) => {
-        const codes = { '36': '$', '92': '\\', '95': '_', '123': '{', '125': '}' };
-        return codes[p1] || match;
-      })
-      .replace(/\\\$/g, '$')
-      .replace(/\\\*/g, '*')
-      .replace(/\\_/g, '_')
-      .replace(/\\\{/g, '{')
-      .replace(/\\\}/g, '}');
+      .replace(/`&lt;`/g, '`<`')
+      .replace(/`&gt;`/g, '`>`')
+      .replace(/`=`/g, '`=`')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/`\\&lt;`/g, '`<`')
+      .replace(/`\\&gt;`/g, '`>`');
     
+    console.log('HTML après formatage:', html);
     content.innerHTML = html;
   });
 }
@@ -827,6 +836,11 @@ function renderMathExcerpts() {
           container.style.padding = '0';
           container.style.verticalAlign = 'middle';
         });
+        
+        // Vérifier visuellement le résultat
+        document.querySelectorAll('.excerpt-content').forEach(content => {
+          console.log('Contenu final:', content.innerHTML.substring(0, 100) + '...');
+        });
       }).catch(err => {
         console.log('MathJax rendering error:', err.message);
       });
@@ -835,6 +849,30 @@ function renderMathExcerpts() {
     console.log('MathJax not loaded yet, will retry...');
     setTimeout(renderMathExcerpts, 500);
   }
+}
+
+// Fonction pour nettoyer les encodages HTML avant l'affichage
+function cleanHtmlEncoding() {
+  document.querySelectorAll('.excerpt-content').forEach(content => {
+    // Remplacer les entités HTML incorrectes par les caractères corrects
+    const html = content.innerHTML;
+    const cleaned = html
+      .replace(/&amp;amp;lt;/g, '<')
+      .replace(/&amp;amp;gt;/g, '>')
+      .replace(/&amp;amp;/g, '&')
+      .replace(/&amp;lt;/g, '<')
+      .replace(/&amp;gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;br&gt;/g, '<br>')
+      .replace(/`&lt;`/g, '`<`')
+      .replace(/`&gt;`/g, '`>`')
+      .replace(/`=`/g, '`=`');
+    
+    if (html !== cleaned) {
+      console.log('Nettoyage HTML effectué');
+      content.innerHTML = cleaned;
+    }
+  });
 }
 
 // Gestion des clics sur les matières
@@ -848,8 +886,9 @@ document.querySelectorAll(".toggle-matiere").forEach(header => {
     // Si on ouvre une section, rendre le MathJax
     if (!isVisible) {
       setTimeout(() => {
-        formatLatexExcerpts();
-        renderMathExcerpts();
+        cleanHtmlEncoding(); // Nettoyer d'abord
+        formatLatexExcerpts(); // Puis formater le LaTeX
+        renderMathExcerpts(); // Enfin rendre le MathJax
       }, 100);
     }
   };
@@ -867,8 +906,9 @@ document.querySelectorAll(".toggle-unite").forEach(header => {
     // Si on ouvre une section, rendre le MathJax
     if (!isVisible) {
       setTimeout(() => {
-        formatLatexExcerpts();
-        renderMathExcerpts();
+        cleanHtmlEncoding(); // Nettoyer d'abord
+        formatLatexExcerpts(); // Puis formater le LaTeX
+        renderMathExcerpts(); // Enfin rendre le MathJax
       }, 100);
     }
   };
@@ -883,7 +923,10 @@ document.addEventListener('DOMContentLoaded', function() {
     container.style.display = 'none';
   });
   
-  // Formater et rendre le LaTeX
+  // Nettoyer les encodages HTML d'abord
+  cleanHtmlEncoding();
+  
+  // Puis formater et rendre le LaTeX
   formatLatexExcerpts();
   
   // Attendre que MathJax soit chargé
@@ -903,7 +946,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Re-rendre le MathJax quand des sections sont ouvertes
 document.addEventListener('click', function(e) {
   if (e.target.closest('.toggle-matiere') || e.target.closest('.toggle-unite')) {
-    setTimeout(renderMathExcerpts, 300);
+    setTimeout(() => {
+      cleanHtmlEncoding();
+      formatLatexExcerpts();
+      renderMathExcerpts();
+    }, 300);
   }
 });
 
@@ -911,7 +958,11 @@ document.addEventListener('click', function(e) {
 const observer = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-      setTimeout(renderMathExcerpts, 100);
+      setTimeout(() => {
+        cleanHtmlEncoding();
+        formatLatexExcerpts();
+        renderMathExcerpts();
+      }, 100);
     }
   });
 });
