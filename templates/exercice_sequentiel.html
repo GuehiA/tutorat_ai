@@ -20,8 +20,8 @@
   <script>
     window.MathJax = {
       tex: {
-        inlineMath: [['$', '$'], ['\(', '\)']],
-        displayMath: [['$$', '$$'], ['\[', '\]']],
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
         processEnvironments: true
       },
@@ -1132,7 +1132,39 @@
         {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
       </div>
       <div class="analysis-content math-content" id="aiAnalysisContent">
-        {{ reponse.analyse_ia }}
+        {# SECTION CRITIQUE : PARSER LE JSON #}
+        {% if reponse.analyse_ia %}
+          {% if reponse.analyse_ia|trim|first == '{' %}
+            {# C'est du JSON - on doit le parser #}
+            {% set feedback_data = reponse.analyse_ia|tojson|safe %}
+            <script>
+              try {
+                const feedbackData = JSON.parse(`{{ reponse.analyse_ia|replace('`', '\\`')|replace('\n', '\\n')|replace('\r', '\\r')|safe }}`);
+                document.getElementById('aiAnalysisContent').innerHTML = feedbackData.current_feedback || feedbackData.original || `{{ reponse.analyse_ia|safe }}`;
+                
+                // Re-trigger MathJax après mise à jour
+                if (window.MathJax) {
+                  setTimeout(() => MathJax.typesetPromise([document.getElementById('aiAnalysisContent')]).catch(console.error), 100);
+                }
+              } catch(e) {
+                console.error('Erreur parsing JSON:', e);
+                document.getElementById('aiAnalysisContent').innerHTML = `{{ reponse.analyse_ia|safe }}`;
+              }
+            </script>
+            {# Contenu temporaire en attendant le JS #}
+            <div style="color: #666; font-style: italic;">
+              <i class="fas fa-spinner fa-spin"></i> 
+              {% if lang == 'fr' %}
+                Chargement de la correction...
+              {% else %}
+                Loading correction...
+              {% endif %}
+            </div>
+          {% else %}
+            {# C'est du texte simple #}
+            {{ reponse.analyse_ia|safe }}
+          {% endif %}
+        {% endif %}
       </div>
     </div>
 
@@ -1158,7 +1190,7 @@
     </div>
 
     <!-- Section contestation (AJOUT NOUVEAU) -->
-    {% if reponse and reponse.etoiles and reponse.etoiles < 5 %}
+    {% if reponse and reponse.etoiles is not none and reponse.etoiles < 5 %}
     <div class="contest-container" id="contestContainer">
       <div class="contest-header">
         <h4><i class="fas fa-balance-scale"></i> 
@@ -1227,7 +1259,7 @@
 <script>
   // Variables globales
   let currentAnswer = '';
-  let selectedContestStars = {{ reponse.etoiles if reponse else 3 }};
+  let selectedContestStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 3 }};
 
   // Configuration initiale
   const total = {{ total }};
@@ -1453,7 +1485,7 @@
         justification: justification,
         proposed_stars: selectedContestStars,
         student_answer: document.querySelector('#studentAnswerContent').textContent.trim(),
-        current_stars: {{ reponse.etoiles if reponse else 0 }}
+        current_stars: {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }}
       })
     })
     .then(response => response.json())
@@ -1529,12 +1561,40 @@
     }
   }
 
+  // Fonction pour parser et afficher le JSON du feedback
+  function parseFeedbackJSON() {
+    const feedbackElement = document.getElementById('aiAnalysisContent');
+    if (!feedbackElement) return;
+    
+    const content = feedbackElement.textContent.trim();
+    
+    // Si ça ressemble à du JSON
+    if (content.startsWith('{') && content.endsWith('}')) {
+      try {
+        const data = JSON.parse(content);
+        const displayText = data.current_feedback || data.original || content;
+        feedbackElement.innerHTML = displayText;
+        
+        // Re-trigger MathJax
+        if (window.MathJax) {
+          MathJax.typesetPromise([feedbackElement]).catch(console.error);
+        }
+      } catch(e) {
+        console.warn('Erreur parsing JSON du feedback:', e);
+        // Garder le contenu original
+      }
+    }
+  }
+
   // Initialisation
   document.addEventListener("DOMContentLoaded", function() {
     updateProgress();
     
     // Traiter le contenu mathématique
     processMathContent();
+    
+    // Parser le JSON du feedback
+    setTimeout(parseFeedbackJSON, 100);
     
     // Mise à jour en temps réel de l'éditeur
     const visualEditor = document.getElementById('visualMathEditor');
@@ -1561,7 +1621,7 @@
     {% endif %}
     
     // Initialiser les étoiles de contestation
-    selectStar({{ reponse.etoiles + 1 if reponse and reponse.etoiles else 3 }});
+    selectStar({{ reponse.etoiles + 1 if reponse and reponse.etoiles is not none else 3 }});
   });
 
   // Styles d'animation pour les notifications
