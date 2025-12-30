@@ -689,17 +689,9 @@
               <div class="exercice">
                 <div class="exercice-content excerpt-content" data-excerpt-id="{{ ex.id }}">
                   {% if lang=='en' and ex.question_en %}
-                    {% if ex.question_en|length > 100 %}
-                      {{ ex.question_en[:100]|safe }}...
-                    {% else %}
-                      {{ ex.question_en|safe }}
-                    {% endif %}
+                    {{ (ex.question_en[:100] + '...') if ex.question_en|length > 100 else ex.question_en }}
                   {% else %}
-                    {% if ex.question_fr|length > 100 %}
-                      {{ ex.question_fr[:100]|safe }}...
-                    {% else %}
-                      {{ ex.question_fr|safe }}
-                    {% endif %}
+                    {{ (ex.question_fr[:100] + '...') if ex.question_fr|length > 100 else ex.question_fr }}
                   {% endif %}
                 </div>
                 <div class="exercice-status">
@@ -767,78 +759,120 @@ function detectMatiereType() {
   });
 }
 
-// Fonction simplifiée et efficace pour traiter le LaTeX
-function processLatexContent() {
+// Fonction pour formater les extraits avec LaTeX - CORRIGÉE
+function formatLatexExcerpts() {
   document.querySelectorAll('.excerpt-content').forEach(content => {
     let html = content.innerHTML;
     
-    // 1. Nettoyer les encodages HTML
+    console.log('HTML original:', html);
+    
+    // D'abord, décoder les entités HTML incorrectes
     html = html
-      .replace(/&amp;amp;/g, '&')
-      .replace(/&amp;lt;/g, '<')
-      .replace(/&amp;gt;/g, '>')
-      .replace(/&amp;quot;/g, '"')
-      .replace(/&amp;#39;/g, "'")
-      .replace(/&amp;nbsp;/g, ' ')
+      .replace(/&amp;amp;/g, '&')  // Corriger les doubles encodages
+      .replace(/&amp;/g, '&')      // Corriger les simples encodages
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&#039;/g, "'")
       .replace(/&nbsp;/g, ' ');
     
-    // 2. Assurer que les délimiteurs LaTeX sont corrects pour MathJax
+    // Remplacer les balises HTML échappées
+    html = html.replace(/&lt;br&gt;/g, '<br>');
+    
+    // Maintenant, traiter les délimiteurs LaTeX
+    // Remplacer les délimiteurs LaTeX bruts par des délimiteurs MathJax
     html = html
       .replace(/\\\[/g, '$$')
       .replace(/\\\]/g, '$$')
       .replace(/\\\(/g, '$')
       .replace(/\\\)/g, '$')
-      .replace(/`&lt;`/g, '`<`')
-      .replace(/`&gt;`/g, '`>`')
-      .replace(/`=`/g, '`=`')
-      .replace(/&lt;br&gt;/g, '<br>');
+      .replace(/\\begin\{equation\*/g, '$$')
+      .replace(/\\end\{equation\*/g, '$$')
+      .replace(/\\begin\{align\*/g, '$$')
+      .replace(/\\end\{align\*/g, '$$')
+      .replace(/\\begin\{equation\}/g, '$$')
+      .replace(/\\end\{equation\}/g, '$$')
+      .replace(/\\begin\{align\}/g, '$$')
+      .replace(/\\end\{align\}/g, '$$');
     
-    // 3. Protéger les caractères spéciaux HTML (nécessaire pour MathJax)
+    // Protéger à nouveau pour MathJax, mais seulement les caractères spéciaux LaTeX
+    // MathJax gère bien les caractères HTML normaux
     html = html
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replace(/>/g, '&gt;');
     
-    // 4. Rétablir les délimiteurs MathJax (après protection)
+    // Remplacer les symboles de comparaison échappés
     html = html
-      .replace(/\$\$/g, '$$')
-      .replace(/\$/g, '$');
+      .replace(/`&lt;`/g, '`<`')
+      .replace(/`&gt;`/g, '`>`')
+      .replace(/`=`/g, '`=`')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/`\\&lt;`/g, '`<`')
+      .replace(/`\\&gt;`/g, '`>`');
     
-    // 5. Remplacer les balises BR protégées
-    html = html.replace(/&lt;br&gt;/g, '<br>');
-    
+    console.log('HTML après formatage:', html);
     content.innerHTML = html;
   });
 }
 
-// Fonction pour déclencher MathJax sur les extraits
+// Fonction pour exécuter MathJax sur les extraits
 function renderMathExcerpts() {
-  if (window.MathJax && window.MathJax.typesetPromise) {
+  if (window.MathJax) {
+    // Sélectionner tous les contenus d'exercice
     const mathElements = document.querySelectorAll('.excerpt-content');
     
     if (mathElements.length > 0) {
+      console.log('Rendering MathJax for', mathElements.length, 'excerpts');
+      
       MathJax.typesetPromise(mathElements).then(() => {
-        console.log('MathJax rendering complete for excerpts');
+        console.log('MathJax rendering complete');
+        
+        // Ajuster la taille après rendu
+        document.querySelectorAll('.excerpt-content mjx-container').forEach(container => {
+          container.style.display = 'inline-block';
+          container.style.margin = '0';
+          container.style.padding = '0';
+          container.style.verticalAlign = 'middle';
+        });
+        
+        // Vérifier visuellement le résultat
+        document.querySelectorAll('.excerpt-content').forEach(content => {
+          console.log('Contenu final:', content.innerHTML.substring(0, 100) + '...');
+        });
       }).catch(err => {
-        console.warn('MathJax rendering error:', err);
+        console.log('MathJax rendering error:', err.message);
       });
     }
   } else {
     console.log('MathJax not loaded yet, will retry...');
-    setTimeout(renderMathExcerpts, 300);
+    setTimeout(renderMathExcerpts, 500);
   }
 }
 
-// Fonction unifiée pour traiter et afficher le LaTeX
-function processAndRenderLatex() {
-  processLatexContent();
-  renderMathExcerpts();
+// Fonction pour nettoyer les encodages HTML avant l'affichage
+function cleanHtmlEncoding() {
+  document.querySelectorAll('.excerpt-content').forEach(content => {
+    // Remplacer les entités HTML incorrectes par les caractères corrects
+    const html = content.innerHTML;
+    const cleaned = html
+      .replace(/&amp;amp;lt;/g, '<')
+      .replace(/&amp;amp;gt;/g, '>')
+      .replace(/&amp;amp;/g, '&')
+      .replace(/&amp;lt;/g, '<')
+      .replace(/&amp;gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;br&gt;/g, '<br>')
+      .replace(/`&lt;`/g, '`<`')
+      .replace(/`&gt;`/g, '`>`')
+      .replace(/`=`/g, '`=`');
+    
+    if (html !== cleaned) {
+      console.log('Nettoyage HTML effectué');
+      content.innerHTML = cleaned;
+    }
+  });
 }
 
 // Gestion des clics sur les matières
@@ -849,9 +883,13 @@ document.querySelectorAll(".toggle-matiere").forEach(header => {
     const isVisible = content.style.display === "block";
     content.style.display = isVisible ? "none" : "block";
     
-    // Si on ouvre une section, traiter le LaTeX
+    // Si on ouvre une section, rendre le MathJax
     if (!isVisible) {
-      setTimeout(processAndRenderLatex, 50);
+      setTimeout(() => {
+        cleanHtmlEncoding(); // Nettoyer d'abord
+        formatLatexExcerpts(); // Puis formater le LaTeX
+        renderMathExcerpts(); // Enfin rendre le MathJax
+      }, 100);
     }
   };
 });
@@ -865,9 +903,13 @@ document.querySelectorAll(".toggle-unite").forEach(header => {
     const isVisible = content.style.display === "block";
     content.style.display = isVisible ? "none" : "block";
     
-    // Si on ouvre une section, traiter le LaTeX
+    // Si on ouvre une section, rendre le MathJax
     if (!isVisible) {
-      setTimeout(processAndRenderLatex, 50);
+      setTimeout(() => {
+        cleanHtmlEncoding(); // Nettoyer d'abord
+        formatLatexExcerpts(); // Puis formater le LaTeX
+        renderMathExcerpts(); // Enfin rendre le MathJax
+      }, 100);
     }
   };
 });
@@ -881,22 +923,34 @@ document.addEventListener('DOMContentLoaded', function() {
     container.style.display = 'none';
   });
   
-  // Attendre que MathJax soit chargé, puis traiter le LaTeX
-  function initMathJax() {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      processAndRenderLatex();
-    } else {
-      setTimeout(initMathJax, 100);
-    }
-  }
+  // Nettoyer les encodages HTML d'abord
+  cleanHtmlEncoding();
   
-  initMathJax();
+  // Puis formater et rendre le LaTeX
+  formatLatexExcerpts();
+  
+  // Attendre que MathJax soit chargé
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    setTimeout(renderMathExcerpts, 500);
+  } else {
+    // Si MathJax n'est pas encore chargé, attendre
+    const checkMathJax = setInterval(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        clearInterval(checkMathJax);
+        renderMathExcerpts();
+      }
+    }, 100);
+  }
 });
 
 // Re-rendre le MathJax quand des sections sont ouvertes
 document.addEventListener('click', function(e) {
   if (e.target.closest('.toggle-matiere') || e.target.closest('.toggle-unite')) {
-    setTimeout(processAndRenderLatex, 100);
+    setTimeout(() => {
+      cleanHtmlEncoding();
+      formatLatexExcerpts();
+      renderMathExcerpts();
+    }, 300);
   }
 });
 
@@ -904,7 +958,11 @@ document.addEventListener('click', function(e) {
 const observer = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-      setTimeout(processAndRenderLatex, 100);
+      setTimeout(() => {
+        cleanHtmlEncoding();
+        formatLatexExcerpts();
+        renderMathExcerpts();
+      }, 100);
     }
   });
 });

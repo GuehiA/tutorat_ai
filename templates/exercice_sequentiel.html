@@ -1167,12 +1167,7 @@
         <h3>{{ 'Question' if lang == 'fr' else 'Question' }} {{ index + 1 }}</h3>
       </div>
       <div class="question-text math-content" id="questionContent">
-        <!-- Utilisation du filtre safe pour éviter l'encodage double -->
-        {% if lang == 'fr' %}
-          {{ exercice.question_fr|safe }}
-        {% else %}
-          {{ exercice.question_en|safe }}
-        {% endif %}
+        {{ exercice.question_fr if lang == 'fr' else exercice.question_en }}
       </div>
     </div>
     
@@ -1262,8 +1257,7 @@
         {{ 'Votre réponse' if lang == 'fr' else 'Your Answer' }}
       </div>
       <div class="answer-content math-content" id="studentAnswerContent">
-        <!-- Utilisation du filtre safe ici aussi -->
-        {{ reponse.reponse_eleve|safe }}
+        {{ reponse.reponse_eleve }}
       </div>
     </div>
 
@@ -1526,40 +1520,35 @@
     document.getElementById('progressText').textContent = `${currentIndex + 1}/${total}`;
   }
 
-  // Fonction pour nettoyer les encodages HTML problématiques
-  function cleanHtmlEncoding(elementId) {
+  // Fonction pour nettoyer et formater le contenu mathématique
+  function cleanAndFormatMathContent(elementId) {
     const element = document.getElementById(elementId);
     if (!element) return;
     
     let content = element.innerHTML;
     
-    // Nettoyage agressif des encodages HTML incorrects
+    // Nettoyage agressif des espaces excessifs
     content = content
-      .replace(/&amp;amp;/g, '&')
-      .replace(/&amp;lt;/g, '<')
-      .replace(/&amp;gt;/g, '>')
-      .replace(/&amp;quot;/g, '"')
-      .replace(/&amp;#39;/g, "'")
-      .replace(/&amp;nbsp;/g, ' ')
-      .replace(/&lt;br&gt;/g, '<br>')
-      .replace(/`&lt;`/g, '`<`')
-      .replace(/`&gt;`/g, '`>`')
-      .replace(/`=`/g, '`=`')
-      .replace(/\\&lt;/g, '<')
-      .replace(/\\&gt;/g, '>')
-      .replace(/\\&amp;/g, '&');
+      .replace(/\\n\\n\\n/g, '<br><br>')
+      .replace(/\\n\\n/g, '<br><br>')
+      .replace(/\\n/g, ' ')
+      .replace(/\s\s+/g, ' ')
+      .replace(/\\"/g, '"')
+      .replace(/\\t/g, ' ')
+      .replace(/\\\\/g, '\\')
+      .replace(/\\\[/g, '$$')
+      .replace(/\\\]/g, '$$')
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$');
     
+    // Nettoyer les balises HTML dangereuses
+    content = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                     .replace(/javascript:/gi, '')
+                     .replace(/on\w+="[^"]*"/gi, '')
+                     .replace(/on\w+='[^']*'/gi, '');
+    
+    // Mettre à jour le contenu
     element.innerHTML = content;
-    return content;
-  }
-
-  // Fonction pour formater le contenu mathématique
-  function formatMathContent(elementId) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-    
-    // Nettoyer d'abord les encodages HTML
-    cleanHtmlEncoding(elementId);
     
     // Appliquer MathJax
     if (window.MathJax) {
@@ -1571,6 +1560,8 @@
         });
       }, 100);
     }
+    
+    return content;
   }
 
   // Fonction pour nettoyer automatiquement le contenu JSON
@@ -1578,16 +1569,18 @@
     const element = document.getElementById('aiAnalysisContent');
     if (!element) return;
     
-    // Nettoyer d'abord les encodages HTML
-    let content = cleanHtmlEncoding('aiAnalysisContent');
+    const content = element.innerHTML.trim();
     
     // Si le contenu commence par { et finit par }, c'est du JSON
     if (content.startsWith('{') && content.endsWith('}')) {
       try {
+        // Essayer de parser le JSON
         const jsonData = JSON.parse(content);
+        
+        // Extraire le texte à afficher
         const displayText = jsonData.current_feedback || jsonData.original || content;
         
-        // Nettoyer le texte
+        // Nettoyer AGGRESSIVEMENT les espaces et sauts de ligne
         let cleanText = displayText
           .replace(/\\"/g, '"')
           .replace(/\\\\/g, '\\')
@@ -1601,10 +1594,12 @@
           .replace(/\\\(/g, '$')
           .replace(/\\\)/g, '$');
         
+        // Wrapper dans un div pour le styling
         const wrapper = document.createElement('div');
         wrapper.className = 'feedback-text';
         wrapper.innerHTML = cleanText;
         
+        // Remplacer le contenu
         element.innerHTML = '';
         element.appendChild(wrapper);
         
@@ -1618,7 +1613,7 @@
         }
       } catch (e) {
         console.error('Erreur parsing JSON:', e);
-        // Extraction manuelle
+        // Extraction manuelle avec nettoyage agressif
         let cleanText = content;
         
         if (content.includes('"current_feedback": "')) {
@@ -1635,7 +1630,7 @@
           }
         }
         
-        // Nettoyage
+        // Nettoyage agressif
         cleanText = cleanText
           .replace(/\\"/g, '"')
           .replace(/\\\\/g, '\\')
@@ -1663,6 +1658,7 @@
         .replace(/\\n/g, ' ')
         .replace(/\s\s+/g, ' ');
       
+      // Chercher et wrapper le texte dans .feedback-text si pas déjà fait
       if (!element.querySelector('.feedback-text')) {
         const wrapper = document.createElement('div');
         wrapper.className = 'feedback-text';
@@ -1940,11 +1936,10 @@
       // Ajouter une classe pour un indicateur visuel discret
       feedbackElement.classList.add('analysis-updated');
       
-      // Nettoyer et formater le nouveau contenu
+      // Appliquer le nettoyage MathJax
       setTimeout(() => {
-        cleanHtmlEncoding('aiAnalysisContent');
-        formatMathContent('aiAnalysisContent');
-        cleanJSONContent();
+        cleanAndFormatMathContent('aiAnalysisContent');
+        cleanJSONContent(); // Nettoyer aussi le JSON si présent
       }, 50);
     }
     
@@ -1987,11 +1982,11 @@
   document.addEventListener("DOMContentLoaded", function() {
     updateProgress();
     
-    // Nettoyer et formater tous les contenus mathématiques
+    // Nettoyer et formater le contenu mathématique
     setTimeout(() => {
-      formatMathContent('questionContent');
-      formatMathContent('studentAnswerContent');
-      formatMathContent('aiAnalysisContent');
+      cleanAndFormatMathContent('aiAnalysisContent');
+      cleanAndFormatMathContent('studentAnswerContent');
+      cleanAndFormatMathContent('questionContent');
       
       // Nettoyer spécifiquement le contenu JSON
       cleanJSONContent();
