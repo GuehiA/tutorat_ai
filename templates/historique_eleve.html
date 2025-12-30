@@ -11,6 +11,7 @@
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
   <title>{% if lang == 'fr' %}Historique des réponses{% else %}Answer History{% endif %}</title>
+  
   <style>
     :root {
       --primary: #4361ee;
@@ -22,6 +23,10 @@
       --dark: #212529;
       --gray: #6c757d;
       --light-gray: #e9ecef;
+      --card-bg: #ffffff;
+      --shadow: 0 4px 12px rgba(0,0,0,0.08);
+      --radius: 12px;
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
     
     * {
@@ -31,20 +36,21 @@
     }
     
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       padding: 20px;
       min-height: 100vh;
       color: var(--dark);
+      line-height: 1.6;
     }
     
     .container {
       max-width: 1000px;
       margin: 20px auto;
       background: white;
-      padding: 30px;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
       position: relative;
       overflow: hidden;
     }
@@ -55,17 +61,19 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 8px;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--accent), var(--success));
     }
     
     h2 {
       text-align: center;
       color: var(--secondary);
       margin-bottom: 30px;
-      font-size: 2.2rem;
+      font-size: 2.4rem;
       position: relative;
       padding-bottom: 15px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
     }
     
     h2::after {
@@ -74,220 +82,357 @@
       bottom: 0;
       left: 50%;
       transform: translateX(-50%);
-      width: 100px;
+      width: 120px;
       height: 4px;
-      background: var(--accent);
+      background: linear-gradient(90deg, var(--accent), var(--primary));
       border-radius: 2px;
     }
     
+    /* Carte élève améliorée */
     .student-info {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: white;
-      padding: 15px 20px;
-      border-radius: 12px;
-      margin-bottom: 30px;
+      padding: 25px;
+      border-radius: 18px;
+      margin-bottom: 40px;
       display: flex;
       align-items: center;
-      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+      box-shadow: 0 10px 30px rgba(67, 97, 238, 0.25);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .student-info::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+      animation: shimmer 3s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
     }
     
     .student-info .avatar {
-      width: 60px;
-      height: 60px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       background: white;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 15px;
-      font-size: 1.8rem;
+      margin-right: 25px;
+      font-size: 2.2rem;
       color: var(--primary);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      border: 3px solid white;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .student-info .avatar i {
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
     }
     
     .student-info h3 {
-      font-size: 1.5rem;
-      margin-bottom: 5px;
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      font-weight: 700;
+      position: relative;
+      z-index: 1;
     }
     
     .student-info p {
       opacity: 0.9;
-      font-size: 0.95rem;
+      font-size: 1rem;
+      position: relative;
+      z-index: 1;
     }
     
+    /* Titres de section */
     .section-title {
       display: flex;
       align-items: center;
-      margin: 30px 0 20px;
+      margin: 40px 0 25px;
       color: var(--secondary);
-      font-size: 1.5rem;
+      font-size: 1.6rem;
+      font-weight: 700;
+      padding-bottom: 12px;
+      border-bottom: 2px solid rgba(0,0,0,0.1);
     }
     
     .section-title i {
-      margin-right: 10px;
+      margin-right: 15px;
       font-size: 1.8rem;
+      color: var(--primary);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
     
+    /* Cartes de réponse élégantes */
     .reponse {
-      border-left: 4px solid var(--primary);
-      padding: 15px 20px;
-      margin-bottom: 20px;
-      background: var(--light);
-      border-radius: 0 10px 10px 0;
-      transition: all 0.3s ease;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 0;
+      margin-bottom: 25px;
+      transition: var(--transition);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(0,0,0,0.05);
+      overflow: hidden;
     }
     
     .reponse:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.12);
     }
     
-    .reponse-header {
+    /* En-tête des réponses (summary) */
+    summary {
+      cursor: pointer;
+      padding: 25px 30px;
+      background: white;
+      transition: var(--transition);
+      font-weight: 600;
+      color: var(--dark);
+      border-left: 5px solid var(--success);
+      list-style: none;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
+      position: relative;
+    }
+    
+    summary::after {
+      content: '▼';
+      font-size: 0.8em;
+      color: var(--primary);
+      transition: transform 0.3s;
+      margin-left: 10px;
+    }
+    
+    details[open] summary::after {
+      transform: rotate(180deg);
+    }
+    
+    summary:hover {
+      background: linear-gradient(90deg, rgba(67, 97, 238, 0.05), white);
     }
     
     .theme {
-      font-weight: bold;
-      color: var(--secondary);
+      font-weight: 700;
+      color: var(--primary);
       font-size: 1.1rem;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background-color: rgba(67, 97, 238, 0.1);
     }
     
     .etoiles {
       color: var(--warning);
-      font-weight: bold;
+      font-weight: 700;
       display: flex;
       align-items: center;
+      gap: 8px;
+      font-size: 1.2rem;
     }
     
-    .etoiles span {
-      margin-left: 5px;
+    .etoiles i {
+      filter: drop-shadow(0 2px 4px rgba(249, 199, 79, 0.3));
     }
     
+    /* Contenu des réponses */
     .reponse-content {
-      margin-top: 15px;
+      padding: 30px;
+      border-top: 1px solid rgba(0,0,0,0.08);
     }
     
     .reponse-content p {
-      margin-bottom: 10px;
+      margin-bottom: 15px;
+      color: var(--dark);
     }
     
     .reponse-content strong {
       color: var(--primary);
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
     }
     
-    .mathjax-block {
-      white-space: pre-wrap;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      border: 1px solid var(--light-gray);
-      margin-bottom: 15px;
+    /* Blocs de contenu mathématique */
+    .math-block {
+      background: rgba(248, 249, 250, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid var(--primary);
+      margin-bottom: 20px;
       font-family: inherit;
-      /* Nettoyage des espaces et tabulations */
-      white-space-collapse: collapse;
-      text-wrap: wrap;
-      overflow-wrap: break-word;
+      overflow-x: auto;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(67, 97, 238, 0.1);
     }
     
-    .mathjax-block pre {
-      margin: 0;
-      padding: 0;
-      font-family: inherit;
+    .math-block.math-content {
       white-space: pre-wrap;
-      background: transparent;
-      border: none;
+      word-wrap: break-word;
+      line-height: 1.8;
     }
     
-    /* ✅ BOUTON UNIQUE INTELLIGENT */
+    /* Styles spécifiques pour MathJax */
+    .math-content mjx-container {
+      display: inline-block;
+      line-height: 0;
+      margin: 0 2px;
+    }
+    
+    .math-content mjx-container[jax="CHTML"][display="true"] {
+      display: block;
+      text-align: center;
+      margin: 1.5em 0;
+    }
+    
+    .MathJax_Display {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 10px 0;
+    }
+    
+    /* Bouton retour élégant */
     .smart-back-link {
       display: inline-flex;
       align-items: center;
       color: white;
       text-decoration: none;
-      font-weight: bold;
-      padding: 12px 24px;
+      font-weight: 700;
+      padding: 16px 32px;
       border-radius: 50px;
       background: linear-gradient(135deg, var(--primary), var(--secondary));
-      box-shadow: 0 3px 10px rgba(67, 97, 238, 0.3);
-      transition: all 0.3s ease;
+      box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
+      transition: var(--transition);
       border: 2px solid transparent;
-      margin-top: 30px;
+      margin-top: 40px;
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .smart-back-link::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
     }
     
     .smart-back-link:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(67, 97, 238, 0.4);
       background: linear-gradient(135deg, var(--secondary), var(--primary));
     }
     
+    .smart-back-link:hover::before {
+      transform: translateX(100%);
+    }
+    
     .smart-back-link i {
-      margin-right: 8px;
+      margin-right: 12px;
+      font-size: 1.1rem;
+      transition: transform 0.3s;
+    }
+    
+    .smart-back-link:hover i {
+      transform: translateX(-3px);
     }
     
     hr {
-      margin: 40px 0;
+      margin: 50px 0;
       border: none;
-      border-top: 2px dashed var(--light-gray);
+      border-top: 2px solid rgba(0,0,0,0.08);
+      position: relative;
     }
     
+    hr::after {
+      content: '✦';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 0 20px;
+      color: var(--primary);
+      font-size: 1.2rem;
+    }
+    
+    /* État vide */
     .empty-state {
       text-align: center;
-      padding: 40px 20px;
+      padding: 60px 20px;
       color: var(--gray);
     }
     
     .empty-state i {
-      font-size: 3rem;
-      margin-bottom: 15px;
+      font-size: 4rem;
+      margin-bottom: 20px;
       color: var(--light-gray);
+      opacity: 0.6;
     }
     
     .empty-state p {
-      font-size: 1.1rem;
+      font-size: 1.2rem;
+      margin-top: 15px;
+      color: var(--gray);
     }
     
-    details {
-      margin-bottom: 15px;
-    }
-    
-    summary {
-      cursor: pointer;
-      padding: 15px 20px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-      transition: all 0.3s ease;
+    /* Badge pour les nouvelles réponses */
+    .new-badge {
+      display: inline-flex;
+      align-items: center;
+      background: linear-gradient(135deg, var(--accent), #ff2d95);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
       font-weight: 600;
-      color: var(--secondary);
-      border-left: 4px solid var(--success);
+      margin-left: 10px;
+      animation: pulse 2s infinite;
     }
     
-    summary:hover {
-      background: var(--light);
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
     
-    summary::-webkit-details-marker {
-      color: var(--primary);
-    }
-
-    /* Styles pour les formules mathématiques */
-    .math-inline {
-      display: inline;
+    /* Indicateur de chargement */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(67, 97, 238, 0.3);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s ease-in-out infinite;
+      margin-left: 10px;
     }
     
-    .math-display {
-      display: block;
-      text-align: center;
-      margin: 15px 0;
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
-
+    
     /* Responsive */
     @media (max-width: 768px) {
       body {
@@ -295,35 +440,81 @@
       }
       
       .container {
-        padding: 20px;
+        padding: 25px;
+        border-radius: 20px;
       }
       
       h2 {
-        font-size: 1.8rem;
+        font-size: 2rem;
+        padding: 0 10px 15px;
       }
       
       .student-info {
         flex-direction: column;
         text-align: center;
+        padding: 20px;
       }
       
       .student-info .avatar {
         margin-right: 0;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
+        width: 70px;
+        height: 70px;
       }
       
-      .reponse-header {
+      .student-info h3 {
+        font-size: 1.5rem;
+      }
+      
+      summary {
+        padding: 20px;
         flex-direction: column;
         align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .reponse-content {
+        padding: 20px;
+      }
+      
+      .section-title {
+        font-size: 1.4rem;
+        margin: 30px 0 20px;
+      }
+      
+      .smart-back-link {
+        width: 100%;
+        justify-content: center;
+        padding: 14px 24px;
+      }
+      
+      .math-block {
+        padding: 15px;
+        font-size: 0.95rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .container {
+        padding: 20px 15px;
+      }
+      
+      h2 {
+        font-size: 1.7rem;
       }
       
       .etoiles {
-        margin-top: 10px;
+        font-size: 1rem;
+      }
+      
+      .math-block {
+        padding: 12px;
+        font-size: 0.9rem;
       }
     }
   </style>
 
-  <!-- MathJax Configuration simplifiée et robuste -->
+  <!-- MathJax Configuration robuste -->
   <script>
     window.MathJax = {
       tex: {
@@ -331,35 +522,44 @@
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
         processEnvironments: true,
-        packages: ['base', 'ams']
+        packages: ['base', 'ams', 'noerrors', 'noundefined']
       },
       options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-        ignoreHtmlClass: 'no-mathjax'
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        ignoreHtmlClass: 'no-mathjax',
+        processHtmlClass: 'math-content'
+      },
+      loader: {
+        load: ['input/tex', 'output/chtml', '[tex]/noerrors', '[tex]/noundefined']
       },
       startup: {
+        ready: () => {
+          console.log('MathJax v3 initialized');
+          return MathJax.startup.defaultReady();
+        },
         pageReady: () => {
-          console.log('MathJax configuration loaded');
+          console.log('MathJax page ready');
           return MathJax.startup.defaultPageReady();
         }
       }
     };
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
   
-  <!-- Font Awesome pour les icônes -->
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
     <h2>
       {% if lang == 'fr' %}
-        <i class="fas fa-history"></i> Historique des réponses
+        <i class="fas fa-history"></i> Historique des Réponses
       {% else %}
         <i class="fas fa-history"></i> Answer History
       {% endif %}
     </h2>
     
+    <!-- Carte élève élégante -->
     <div class="student-info">
       <div class="avatar">
         <i class="fas fa-user-graduate"></i>
@@ -368,41 +568,50 @@
         <h3>{{ eleve.nom_complet }}</h3>
         <p>
           {% if lang == 'fr' %}
-            Progression académique et résultats
+            <i class="fas fa-chart-line"></i> Suivi détaillé de votre progression académique
           {% else %}
-            Academic progress and results
+            <i class="fas fa-chart-line"></i> Detailed tracking of your academic progress
           {% endif %}
         </p>
       </div>
     </div>
 
-    <!-- ✅ Réponses aux exercices -->
+    <!-- Section des exercices -->
     <div class="section-title">
       <i class="fas fa-book-open"></i>
-      <span>{% if lang == 'fr' %}Exercices complétés{% else %}Completed Exercises{% endif %}</span>
+      <span>{% if lang == 'fr' %}Exercices Complétés{% else %}Completed Exercises{% endif %}</span>
     </div>
     
     {% if reponses %}
       {% for r in reponses %}
-        <details>
+        <details class="reponse">
           <summary>
-            <span class="theme">{{ r.theme }}</span> – {{ r.enonce[:70] }}...
-            <span class="etoiles">{{ r.etoiles or 0 }} <i class="fas fa-star"></i></span>
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                <span class="theme">{{ r.theme or "Exercice" }}</span>
+                <span class="etoiles">{{ r.etoiles or 0 }} <i class="fas fa-star"></i></span>
+              </div>
+              <div style="color: var(--gray); font-size: 0.95rem; font-weight: normal;">
+                {{ (r.enonce or "")[:80] }}...
+              </div>
+            </div>
           </summary>
-          <div class="reponse">
-            <div class="reponse-content">
-              <p><strong>{{ 'Énoncé :' if lang == 'fr' else 'Prompt:' }}</strong></p>
-              <div class="mathjax-block math-content">{{ r.enonce | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
+          <div class="reponse-content">
+            <p><strong>{{ '📋 Énoncé :' if lang == 'fr' else '📋 Prompt:' }}</strong></p>
+            <div class="math-block math-content">{{ r.enonce|default('', true)|trim|e }}</div>
 
-              <p><strong>{{ 'Réponse de l\'élève :' if lang == 'fr' else "Student's Answer:" }}</strong></p>
-              <div class="mathjax-block math-content">{{ r.reponse_eleve | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
+            <p><strong>{{ '✏️ Réponse de l\'élève :' if lang == 'fr' else '✏️ Student\'s Answer:' }}</strong></p>
+            <div class="math-block math-content">{{ r.reponse_eleve|default('', true)|trim|e }}</div>
 
-              <p><strong>{{ 'Analyse IA :' if lang == 'fr' else 'AI Feedback:' }}</strong></p>
-              <div class="mathjax-block math-content">{{ r.analyse_ia | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
+            <p><strong>{{ '🤖 Analyse IA :' if lang == 'fr' else '🤖 AI Feedback:' }}</strong></p>
+            <div class="math-block math-content">{{ r.analyse_ia|default('', true)|trim|e }}</div>
 
-              <p><strong>{{ 'Note :' if lang == 'fr' else 'Score:' }}</strong>
-                <span class="etoiles">{{ r.etoiles }} <i class="fas fa-star"></i></span>
-              </p>
+            <div style="display: flex; align-items: center; gap: 15px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
+              <strong style="color: var(--dark);">{{ '⭐ Note :' if lang == 'fr' else '⭐ Score:' }}</strong>
+              <span class="etoiles" style="font-size: 1.4rem;">{{ r.etoiles or 0 }} <i class="fas fa-star"></i></span>
+              <span style="margin-left: auto; color: var(--gray); font-size: 0.9rem;">
+                <i class="far fa-calendar"></i> {{ r.date|default('') }}
+              </span>
             </div>
           </div>
         </details>
@@ -412,9 +621,15 @@
         <i class="fas fa-clipboard-list"></i>
         <p>
           {% if lang == 'fr' %}
-            Aucune réponse d'exercice enregistrée.
+            Aucun exercice complété pour le moment.<br>
+            <small style="color: var(--gray); margin-top: 10px; display: block;">
+              Commencez par résoudre des exercices pour voir votre historique ici.
+            </small>
           {% else %}
-            No exercise responses recorded.
+            No exercises completed yet.<br>
+            <small style="color: var(--gray); margin-top: 10px; display: block;">
+              Start solving exercises to see your history here.
+            </small>
           {% endif %}
         </p>
       </div>
@@ -422,35 +637,42 @@
 
     <hr>
 
-    <!-- ✅ Réponses aux tests sommatifs -->
+    <!-- Section des tests sommatifs -->
     <div class="section-title">
       <i class="fas fa-file-alt"></i>
-      <span>{% if lang == 'fr' %}Tests sommatifs complétés{% else %}Completed Final Tests{% endif %}</span>
+      <span>{% if lang == 'fr' %}Tests Sommatifs{% else %}Final Tests{% endif %}</span>
     </div>
     
     {% if tests %}
       {% for t in tests %}
-        <details>
+        <details class="reponse">
           <summary>
-            <span class="theme">{{ t.unite }}</span> – {{ (t.question[:70] if t.question else '...') }}
-            <span class="etoiles">{{ t.etoiles or 0 }} <i class="fas fa-star"></i></span>
-          </summary>
-          <div class="reponse">
-            <div class="reponse-content">
-              <p><strong>{{ 'Question :' if lang == 'fr' else 'Question:' }}</strong></p>
-              <div class="mathjax-block math-content">{{ t.question | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
-
-              <p><strong>{{ 'Réponse :' if lang == 'fr' else 'Answer:' }}</strong></p>
-              <div class="mathjax-block math-content">{{ t.reponse_eleve | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}</div>
-
-              <p><strong>{{ 'Analyse IA :' if lang == 'fr' else 'AI Feedback:' }}</strong></p>
-              <div class="mathjax-block math-content">
-                {{ t.analyse_ia | replace("\\", "\\\\") | trim | replace("\t", "  ") | replace("  ", " ") | e }}
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                <span class="theme">{{ t.unite or "Test" }}</span>
+                <span class="etoiles">{{ t.etoiles or 0 }} <i class="fas fa-star"></i></span>
               </div>
+              <div style="color: var(--gray); font-size: 0.95rem; font-weight: normal;">
+                {{ (t.question or "")[:80] }}...
+              </div>
+            </div>
+          </summary>
+          <div class="reponse-content">
+            <p><strong>{{ '❓ Question :' if lang == 'fr' else '❓ Question:' }}</strong></p>
+            <div class="math-block math-content">{{ t.question|default('', true)|trim|e }}</div>
 
-              <p><strong>{{ 'Note :' if lang == 'fr' else 'Score:' }}</strong>
-                <span class="etoiles">{{ t.etoiles }} <i class="fas fa-star"></i></span>
-              </p>
+            <p><strong>{{ '✏️ Réponse :' if lang == 'fr' else '✏️ Answer:' }}</strong></p>
+            <div class="math-block math-content">{{ t.reponse_eleve|default('', true)|trim|e }}</div>
+
+            <p><strong>{{ '🤖 Analyse IA :' if lang == 'fr' else '🤖 AI Feedback:' }}</strong></p>
+            <div class="math-block math-content">{{ t.analyse_ia|default('', true)|trim|e }}</div>
+
+            <div style="display: flex; align-items: center; gap: 15px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
+              <strong style="color: var(--dark);">{{ '⭐ Note :' if lang == 'fr' else '⭐ Score:' }}</strong>
+              <span class="etoiles" style="font-size: 1.4rem;">{{ t.etoiles or 0 }} <i class="fas fa-star"></i></span>
+              <span style="margin-left: auto; color: var(--gray); font-size: 0.9rem;">
+                <i class="far fa-calendar"></i> {{ t.date|default('') }}
+              </span>
             </div>
           </div>
         </details>
@@ -460,138 +682,182 @@
         <i class="fas fa-file-alt"></i>
         <p>
           {% if lang == 'fr' %}
-            Aucun test sommatif complété.
+            Aucun test sommatif complété.<br>
+            <small style="color: var(--gray); margin-top: 10px; display: block;">
+              Les tests sommatifs apparaîtront ici après complétion.
+            </small>
           {% else %}
-            No final test completed yet.
+            No final tests completed yet.<br>
+            <small style="color: var(--gray); margin-top: 10px; display: block;">
+              Final tests will appear here upon completion.
+            </small>
           {% endif %}
         </p>
       </div>
     {% endif %}
 
-    <!-- ✅ BOUTON UNIQUE INTELLIGENT -->
-    {% if is_parent_access %}
-      {# ✅ CONTEXTE PARENT : Retour au dashboard parent #}
-      <a class="smart-back-link" href="/parent-dashboard">
-        <i class="fas fa-arrow-left"></i> 
-        {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to dashboard{% endif %}
-      </a>
-    {% else %}
-      {# ✅ CONTEXTE ÉLÈVE : Retour au dashboard élève #}
-      <a class="smart-back-link" href="/dashboard-eleve?username={{ eleve.username }}">
-        <i class="fas fa-arrow-left"></i> 
-        {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to dashboard{% endif %}
-      </a>
-    {% endif %}
+    <!-- Bouton retour intelligent -->
+    <div style="text-align: center; margin-top: 50px;">
+      {% if is_parent_access %}
+        <a class="smart-back-link" href="/parent-dashboard">
+          <i class="fas fa-arrow-left"></i> 
+          {% if lang == 'fr' %}Retour au Tableau de Bord Parent{% else %}Back to Parent Dashboard{% endif %}
+        </a>
+      {% else %}
+        <a class="smart-back-link" href="/dashboard-eleve?username={{ eleve.username }}">
+          <i class="fas fa-arrow-left"></i> 
+          {% if lang == 'fr' %}Retour au Tableau de Bord{% else %}Back to Dashboard{% endif %}
+        </a>
+      {% endif %}
+    </div>
   </div>
 
-  <!-- Script pour traiter le contenu MathJax après le chargement -->
+  <!-- Script pour le traitement MathJax amélioré -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('Page historique chargée');
+      console.log('📊 Page historique chargée');
       
-      // Fonction pour nettoyer les tabulations et espaces superflus
-      function cleanTextContent(element) {
-        if (!element || !element.classList.contains('mathjax-block')) return;
+      // Fonction pour préparer le contenu pour MathJax
+      function prepareMathContent() {
+        const mathBlocks = document.querySelectorAll('.math-block.math-content');
         
-        // Remplacer les tabulations multiples par un seul espace
-        let text = element.textContent || element.innerText;
-        text = text
-          .replace(/\t+/g, ' ')        // Remplacer les tabulations par espaces
-          .replace(/  +/g, ' ')        // Remplacer les espaces multiples
-          .replace(/^\s+|\s+$/g, '')   // Supprimer les espaces en début/fin
-          .replace(/\n\s*\n\s*\n/g, '\n\n'); // Normaliser les sauts de ligne
-        
-        element.textContent = text;
+        mathBlocks.forEach(block => {
+          let content = block.innerHTML;
+          
+          // 1. Nettoyer les encodages HTML problématiques
+          content = content
+            .replace(/&amp;amp;/g, '&')
+            .replace(/&amp;lt;/g, '<')
+            .replace(/&amp;gt;/g, '>')
+            .replace(/&amp;quot;/g, '"')
+            .replace(/&amp;#39;/g, "'")
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#039;/g, "'")
+            .replace(/&nbsp;/g, ' ');
+          
+          // 2. Remplacer les délimiteurs LaTeX encodés
+          content = content
+            .replace(/\\\\\[/g, '$$')
+            .replace(/\\\\\]/g, '$$')
+            .replace(/\\\\\(/g, '$')
+            .replace(/\\\\\)/g, '$')
+            .replace(/\\\[/g, '$$')
+            .replace(/\\\]/g, '$$')
+            .replace(/\\\(/g, '$')
+            .replace(/\\\)/g, '$');
+          
+          // 3. Nettoyer les sauts de ligne et espaces
+          content = content
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '')
+            .replace(/\\t/g, ' ')
+            .replace(/\s+/g, ' ')
+            .replace(/^\s+|\s+$/g, '');
+          
+          // 4. Protéger les caractères HTML pour MathJax
+          content = content
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+          
+          // 5. Rétablir les délimiteurs MathJax
+          content = content
+            .replace(/\$\$/g, '$$')
+            .replace(/\$/g, '$');
+          
+          block.innerHTML = content;
+          block.style.display = 'block';
+        });
       }
-
-      // Nettoyer tous les blocs de contenu
-      document.querySelectorAll('.mathjax-block').forEach(cleanTextContent);
-
-      // Fonction pour convertir les fractions Unicode en LaTeX
-      function convertUnicodeFractions(element) {
-        if (!element || !element.classList.contains('math-content')) return;
-        
-        let content = element.innerHTML;
-        
-        // Remplacer les fractions Unicode par du LaTeX
-        const fractionMap = {
-          '¼': '\\frac{1}{4}',
-          '½': '\\frac{1}{2}', 
-          '¾': '\\frac{3}{4}',
-          '⅓': '\\frac{1}{3}',
-          '⅔': '\\frac{2}{3}',
-          '⅕': '\\frac{1}{5}',
-          '⅖': '\\frac{2}{5}',
-          '⅗': '\\frac{3}{5}',
-          '⅘': '\\frac{4}{5}',
-          '⅙': '\\frac{1}{6}',
-          '⅚': '\\frac{5}{6}',
-          '⅛': '\\frac{1}{8}',
-          '⅜': '\\frac{3}{8}',
-          '⅝': '\\frac{5}{8}',
-          '⅞': '\\frac{7}{8}'
-        };
-        
-        for (const [unicode, latex] of Object.entries(fractionMap)) {
-          content = content.replace(new RegExp(unicode, 'g'), latex);
+      
+      // Initialiser MathJax après préparation
+      function initMathJax() {
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          prepareMathContent();
+          
+          // Attendre que le DOM soit prêt
+          setTimeout(() => {
+            MathJax.typesetPromise().then(() => {
+              console.log('✅ MathJax a rendu toutes les formules avec succès');
+              
+              // Ajouter une classe de confirmation
+              document.querySelectorAll('.math-block').forEach(block => {
+                block.classList.add('math-rendered');
+              });
+              
+            }).catch(err => {
+              console.warn('⚠️ Erreur MathJax:', err);
+              
+              // Fallback: réessayer avec une méthode plus simple
+              setTimeout(() => {
+                if (window.MathJax) {
+                  MathJax.typesetPromise();
+                }
+              }, 1000);
+            });
+          }, 300);
+        } else {
+          console.log('⏳ MathJax pas encore chargé, nouvelle tentative dans 500ms...');
+          setTimeout(initMathJax, 500);
         }
-        
-        // Remplacer le symbole de division Unicode
-        content = content.replace(/∕/g, '/');
-        
-        // Normaliser les espaces autour des formules LaTeX
-        content = content.replace(/\s*\\/g, ' \\').replace(/\\\s*/g, '\\ ');
-        
-        element.innerHTML = content;
       }
-
-      // Convertir les fractions dans tous les éléments mathématiques
-      document.querySelectorAll('.math-content').forEach(convertUnicodeFractions);
       
-      // Configurer MathJax pour traiter les formules
-      if (window.MathJax) {
-        console.log('MathJax disponible, traitement des formules...');
-        
-        setTimeout(() => {
-          MathJax.typesetPromise().then(() => {
-            console.log('Formules mathématiques rendues avec succès');
-          }).catch((err) => {
-            console.warn('Erreur lors du rendu MathJax:', err);
-          });
-        }, 500);
-      }
-
-      // Réappliquer MathJax quand on ouvre les détails
+      // Démarrer l'initialisation
+      initMathJax();
+      
+      // Gérer l'ouverture des détails
       document.querySelectorAll('details').forEach(detail => {
         detail.addEventListener('toggle', function() {
           if (this.open && window.MathJax) {
-            // Nettoyer et convertir le contenu nouvellement visible
-            this.querySelectorAll('.math-content').forEach(convertUnicodeFractions);
+            // Préparer le contenu du détail ouvert
+            const mathBlocks = this.querySelectorAll('.math-block.math-content:not(.math-rendered)');
             
-            setTimeout(() => {
-              MathJax.typesetPromise([this]).catch(err => {
-                console.warn('Erreur MathJax dans détail:', err);
-              });
-            }, 100);
+            if (mathBlocks.length > 0) {
+              setTimeout(() => {
+                MathJax.typesetPromise(mathBlocks).then(() => {
+                  mathBlocks.forEach(block => block.classList.add('math-rendered'));
+                });
+              }, 100);
+            }
           }
         });
       });
-    });
-
-    // Observer les changements dans le DOM
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.addedNodes.length && window.MathJax) {
-          setTimeout(() => {
-            MathJax.typesetPromise();
-          }, 100);
-        }
+      
+      // Observer les changements dans le DOM
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+          if (mutation.addedNodes.length > 0 && window.MathJax) {
+            setTimeout(() => {
+              MathJax.typesetPromise();
+            }, 200);
+          }
+        });
       });
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+      
+      // Forcer une réinitialisation si MathJax n'est pas chargé après 3 secondes
+      setTimeout(() => {
+        if (!window.MathJax || !window.MathJax.typesetPromise) {
+          console.log('🔄 Rechargement du script MathJax...');
+          const script = document.getElementById('MathJax-script');
+          if (script) {
+            script.remove();
+            const newScript = document.createElement('script');
+            newScript.id = 'MathJax-script';
+            newScript.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js';
+            newScript.defer = true;
+            document.head.appendChild(newScript);
+          }
+        }
+      }, 3000);
     });
   </script>
 </body>
