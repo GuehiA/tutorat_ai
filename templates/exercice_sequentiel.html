@@ -233,8 +233,8 @@
 
     /* Styles pour le rendu MathJax */
     .math-content {
-      line-height: 1.6;
-      font-size: 1.05rem;
+      line-height: 1.4;
+      font-size: 0.95rem;
     }
 
     .math-content mjx-container {
@@ -246,14 +246,14 @@
     .math-content mjx-container[jax="CHTML"][display="true"] {
       display: block;
       text-align: center;
-      margin: 1em 0;
+      margin: 5px 0;
     }
 
     /* Style pour les équations */
     .equation {
       text-align: center;
-      margin: 1em 0;
-      padding: 10px;
+      margin: 10px 0;
+      padding: 8px;
       background: #f8f9fa;
       border-radius: 5px;
       border-left: 3px solid #4361ee;
@@ -261,7 +261,7 @@
 
     /* Style pour les fractions */
     .mjx-frac {
-      font-size: 1.1em;
+      font-size: 1em;
     }
 
     /* Assurer que MathJax s'affiche bien */
@@ -272,6 +272,7 @@
     .MathJax_Display {
       overflow-x: auto;
       overflow-y: hidden;
+      margin: 5px 0;
     }
 
     /* Éditeur mathématique simplifié */
@@ -488,15 +489,52 @@
 
     .answer-content, .analysis-content {
       background: white;
-      padding: 20px;
+      padding: 15px 20px;
       border-radius: 12px;
       border-left: 4px solid var(--accent);
-      line-height: 1.6;
+      line-height: 1.4;
       white-space: pre-line;
+      font-size: 0.95rem;
     }
 
     .analysis-content {
       border-left: 4px solid var(--primary);
+      padding: 15px;
+    }
+
+    /* Style spécifique pour le texte du feedback */
+    .feedback-text {
+      line-height: 1.4;
+      margin: 0;
+      padding: 0;
+    }
+
+    .feedback-text p {
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .feedback-text br {
+      margin-bottom: 4px;
+      display: block;
+      content: "";
+    }
+
+    .analysis-content .feedback-text {
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    /* Style pour les listes dans le feedback */
+    .feedback-text ul, .feedback-text ol {
+      margin: 5px 0 8px 20px;
+      padding: 0;
+    }
+
+    .feedback-text li {
+      margin-bottom: 4px;
+      line-height: 1.3;
     }
 
     .feedback-actions {
@@ -857,13 +895,13 @@
       background: #e8f5e9;
       border: 1px solid #c3e6cb;
       color: #155724;
-      padding: 8px 12px;
+      padding: 6px 10px;
       border-radius: 6px;
-      margin-bottom: 15px;
-      font-size: 0.85rem;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       animation: fadeInUp 0.5s ease;
     }
 
@@ -1248,7 +1286,7 @@
         {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
       </div>
       <div class="analysis-content math-content" id="aiAnalysisContent">
-        {# SECTION CRITIQUE : EXTRACTION PROPRE DU JSON #}
+        {# SECTION CRITIQUE : EXTRACTION PROPRE DU JSON AVEC RÉDUCTION DES ESPACES #}
         {% if reponse and reponse.analyse_ia %}
           {% set feedback_content = reponse.analyse_ia %}
           
@@ -1256,61 +1294,66 @@
           {% if feedback_content.startswith('{') and feedback_content.endswith('}') %}
             {# C'est du JSON - extraction robuste #}
             {% set json_str = feedback_content %}
-            
-            {# Essayons d'extraire le texte de plusieurs manières #}
             {% set extracted_text = '' %}
             
-            {# Méthode 1: Chercher current_feedback #}
+            {# Méthode prioritaire: extraction avec regex pour plus de robustesse #}
             {% if '"current_feedback":' in json_str %}
-              {% set parts = json_str.split('"current_feedback":') %}
-              {% if parts|length > 1 %}
-                {% set after_current = parts[1] %}
-                {% if after_current.startswith(' "') %}
-                  {% set text_start = after_current.find('"') + 1 %}
-                  {% set text_end = after_current.find('",', text_start) %}
-                  {% if text_end == -1 %}
-                    {% set text_end = after_current.find('"}', text_start) %}
-                  {% endif %}
-                  {% if text_end > text_start %}
-                    {% set extracted_text = after_current[text_start:text_end] %}
-                  {% endif %}
+              {# Chercher le texte entre "current_feedback": " et le prochain ", #}
+              {% set pattern_current = '"current_feedback": "' %}
+              {% set start_idx = json_str.find(pattern_current) %}
+              {% if start_idx != -1 %}
+                {% set text_start = start_idx + pattern_current|length %}
+                {% set end_idx = json_str.find('",', text_start) %}
+                {% if end_idx == -1 %}
+                  {% set end_idx = json_str.find('"}', text_start) %}
+                {% endif %}
+                {% if end_idx != -1 and end_idx > text_start %}
+                  {% set extracted_text = json_str[text_start:end_idx] %}
                 {% endif %}
               {% endif %}
             {% endif %}
             
-            {# Méthode 2: Si current_feedback échoue, chercher original #}
+            {# Fallback: chercher "original": #}
             {% if not extracted_text and '"original":' in json_str %}
-              {% set parts = json_str.split('"original":') %}
-              {% if parts|length > 1 %}
-                {% set after_original = parts[1] %}
-                {% if after_original.startswith(' "') %}
-                  {% set text_start = after_original.find('"') + 1 %}
-                  {% set text_end = after_original.find('",', text_start) %}
-                  {% if text_end == -1 %}
-                    {% set text_end = after_original.find('"}', text_start) %}
-                  {% endif %}
-                  {% if text_end > text_start %}
-                    {% set extracted_text = after_original[text_start:text_end] %}
-                  {% endif %}
+              {% set pattern_original = '"original": "' %}
+              {% set start_idx = json_str.find(pattern_original) %}
+              {% if start_idx != -1 %}
+                {% set text_start = start_idx + pattern_original|length %}
+                {% set end_idx = json_str.find('",', text_start) %}
+                {% if end_idx == -1 %}
+                  {% set end_idx = json_str.find('"}', text_start) %}
+                {% endif %}
+                {% if end_idx != -1 and end_idx > text_start %}
+                  {% set extracted_text = json_str[text_start:end_idx] %}
                 {% endif %}
               {% endif %}
             {% endif %}
             
             {# Si extraction réussie, nettoyer et afficher #}
             {% if extracted_text %}
+              {# Nettoyage AGGRESSIF des espaces et sauts de ligne excessifs #}
               {% set clean_text = extracted_text
                 |replace('\\"', '"')
                 |replace('\\\\', '\\')
-                |replace('\\n', '<br>')
-                |replace('\\t', ' ')
+                |replace('\\n\\n\\n', '<br><br>')  # Réduire 3 sauts à 2
+                |replace('\\n\\n', '<br><br>')     # Garder 2 sauts
+                |replace('\\n', ' ')               # Remplacer simples sauts par espace
+                |replace('  ', ' ')                # Réduire doubles espaces
+                |replace('   ', ' ')               # Réduire triples espaces
+                |replace('\\t', ' ')               # Tabs en espaces
                 |replace('\\[', '$$')
                 |replace('\\]', '$$')
                 |replace('\\(', '$')
                 |replace('\\)', '$')
               %}
-              {{ clean_text|safe }}
+              
+              {# Formatage HTML propre avec wrapper #}
+              <div class="feedback-text">
+                {{ clean_text|safe }}
+              </div>
+              
             {% else %}
-              {# Fallback: extraction simple avec split #}
+              {# Fallback: méthode simple #}
               {% if '"current_feedback": "' in json_str %}
                 {% set parts = json_str.split('"current_feedback": "') %}
                 {% if parts|length > 1 %}
@@ -1319,13 +1362,19 @@
                     {% set clean_text = subparts[0]
                       |replace('\\"', '"')
                       |replace('\\\\', '\\')
-                      |replace('\\n', '<br>')
+                      |replace('\\n\\n\\n', '<br><br>')
+                      |replace('\\n\\n', '<br><br>')
+                      |replace('\\n', ' ')
+                      |replace('  ', ' ')
+                      |replace('   ', ' ')
                       |replace('\\[', '$$')
                       |replace('\\]', '$$')
                       |replace('\\(', '$')
                       |replace('\\)', '$')
                     %}
-                    {{ clean_text|safe }}
+                    <div class="feedback-text">
+                      {{ clean_text|safe }}
+                    </div>
                   {% endif %}
                 {% endif %}
               {% elif '"original": "' in json_str %}
@@ -1336,18 +1385,24 @@
                     {% set clean_text = subparts[0]
                       |replace('\\"', '"')
                       |replace('\\\\', '\\')
-                      |replace('\\n', '<br>')
+                      |replace('\\n\\n\\n', '<br><br>')
+                      |replace('\\n\\n', '<br><br>')
+                      |replace('\\n', ' ')
+                      |replace('  ', ' ')
+                      |replace('   ', ' ')
                       |replace('\\[', '$$')
                       |replace('\\]', '$$')
                       |replace('\\(', '$')
                       |replace('\\)', '$')
                     %}
-                    {{ clean_text|safe }}
+                    <div class="feedback-text">
+                      {{ clean_text|safe }}
+                    </div>
                   {% endif %}
                 {% endif %}
               {% else %}
                 {# Afficher un message d'erreur propre #}
-                <div style="color: #dc3545; font-style: italic;">
+                <div style="color: #dc3545; font-style: italic; padding: 10px;">
                   <i class="fas fa-exclamation-triangle"></i>
                   {% if lang == 'fr' %}
                     Erreur d'affichage de la correction. L'analyse IA est disponible mais le format est incorrect.
@@ -1359,7 +1414,7 @@
             {% endif %}
             
           {% else %}
-            {# Ce n'est pas du JSON, afficher directement #}
+            {# Ce n'est pas du JSON, afficher directement avec nettoyage #}
             {% set clean_text = feedback_content
               |replace('\\[', '$$')
               |replace('\\]', '$$')
@@ -1367,13 +1422,19 @@
               |replace('\\)', '$')
               |replace('\\"', '"')
               |replace('\\\\', '\\')
-              |replace('\\n', '<br>')
+              |replace('\\n\\n\\n', '<br><br>')
+              |replace('\\n\\n', '<br><br>')
+              |replace('\\n', ' ')
+              |replace('  ', ' ')
+              |replace('   ', ' ')
             %}
-            {{ clean_text|safe }}
+            <div class="feedback-text">
+              {{ clean_text|safe }}
+            </div>
           {% endif %}
           
         {% else %}
-          <div style="color: #666; font-style: italic;">
+          <div style="color: #666; font-style: italic; padding: 10px;">
             <i class="fas fa-info-circle"></i>
             {% if lang == 'fr' %}
               Aucune correction disponible pour le moment.
@@ -1405,7 +1466,7 @@
         {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
       </button>
       
-      <!-- NOUVEAU : Bouton pour retourner aux exercices de la leçon -->
+      <!-- Bouton pour retourner aux exercices de la leçon -->
       <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" 
          class="action-btn" style="background: #6c757d;">
         <i class="fas fa-list"></i>
@@ -1502,26 +1563,29 @@
     
     let content = element.innerHTML;
     
-    // 1. Nettoyer les échappements JSON
-    content = content.replace(/\\"/g, '"')
-                     .replace(/\\n/g, '<br>')
-                     .replace(/\\t/g, ' ')
-                     .replace(/\\\\/g, '\\');
+    // Nettoyage AGGRESSIF des espaces
+    content = content
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+      .replace(/\\n\\n\\n/g, '<br><br>')
+      .replace(/\\n\\n/g, '<br><br>')
+      .replace(/\\n/g, ' ')
+      .replace(/\s\s+/g, ' ')
+      .replace(/\\\[/g, '$$')
+      .replace(/\\\]/g, '$$')
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$');
     
-    // 2. Convertir le LaTeX pour MathJax
-    content = content.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$');
-    content = content.replace(/\\\(/g, '$').replace(/\\\)/g, '$');
-    
-    // 3. Nettoyer les balises HTML indésirables
-    content = content.replace(/<[^>]*script[^>]*>/gi, '')
+    // Nettoyer les balises HTML dangereuses
+    content = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
                      .replace(/javascript:/gi, '')
                      .replace(/on\w+="[^"]*"/gi, '')
                      .replace(/on\w+='[^']*'/gi, '');
     
-    // 4. Mettre à jour le contenu
+    // Mettre à jour le contenu
     element.innerHTML = content;
     
-    // 5. Appliquer MathJax
+    // Appliquer MathJax
     if (window.MathJax) {
       setTimeout(() => {
         MathJax.typesetPromise([element]).then(() => {
@@ -1535,7 +1599,7 @@
     return content;
   }
 
-  // Fonction pour nettoyer automatiquement le contenu JSON
+  // Fonction pour nettoyer automatiquement le contenu JSON avec réduction d'espace
   function cleanJSONContent() {
     const element = document.getElementById('aiAnalysisContent');
     if (!element) return;
@@ -1551,19 +1615,28 @@
         // Extraire le texte à afficher
         const displayText = jsonData.current_feedback || jsonData.original || content;
         
-        // Nettoyer les échappements
+        // Nettoyage AGGRESSIF des espaces
         let cleanText = displayText
           .replace(/\\"/g, '"')
           .replace(/\\\\/g, '\\')
-          .replace(/\\n/g, '<br>')
+          .replace(/\\n\\n\\n/g, '<br><br>')
+          .replace(/\\n\\n/g, '<br><br>')
+          .replace(/\\n/g, ' ')
+          .replace(/\s\s+/g, ' ')
           .replace(/\\t/g, ' ')
           .replace(/\\\[/g, '$$')
           .replace(/\\\]/g, '$$')
           .replace(/\\\(/g, '$')
           .replace(/\\\)/g, '$');
         
-        // Mettre à jour le contenu
-        element.innerHTML = cleanText;
+        // Créer un wrapper pour le styling
+        const wrapper = document.createElement('div');
+        wrapper.className = 'feedback-text';
+        wrapper.innerHTML = cleanText;
+        
+        // Remplacer le contenu
+        element.innerHTML = '';
+        element.appendChild(wrapper);
         
         // Re-trigger MathJax
         if (window.MathJax) {
@@ -1575,19 +1648,16 @@
         }
       } catch (e) {
         console.error('Erreur parsing JSON:', e);
-        // Si le parsing échoue, extraire manuellement
+        // Extraction manuelle avec nettoyage agressif
         let cleanText = content;
         
-        // Extraction manuelle de current_feedback
         if (content.includes('"current_feedback": "')) {
           const start = content.indexOf('"current_feedback": "') + 21;
           const end = content.indexOf('",', start);
           if (end > start) {
             cleanText = content.substring(start, end);
           }
-        } 
-        // Extraction manuelle de original
-        else if (content.includes('"original": "')) {
+        } else if (content.includes('"original": "')) {
           const start = content.indexOf('"original": "') + 13;
           const end = content.indexOf('",', start);
           if (end > start) {
@@ -1595,17 +1665,41 @@
           }
         }
         
-        // Nettoyer le texte extrait
+        // Nettoyage agressif
         cleanText = cleanText
           .replace(/\\"/g, '"')
           .replace(/\\\\/g, '\\')
-          .replace(/\\n/g, '<br>')
+          .replace(/\\n\\n\\n/g, '<br><br>')
+          .replace(/\\n\\n/g, '<br><br>')
+          .replace(/\\n/g, ' ')
+          .replace(/\s\s+/g, ' ')
           .replace(/\\\[/g, '$$')
           .replace(/\\\]/g, '$$')
           .replace(/\\\(/g, '$')
           .replace(/\\\)/g, '$');
         
-        element.innerHTML = cleanText;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'feedback-text';
+        wrapper.innerHTML = cleanText;
+        
+        element.innerHTML = '';
+        element.appendChild(wrapper);
+      }
+    } else {
+      // Si ce n'est pas du JSON mais a des \n excessifs, nettoyer aussi
+      let cleanText = content
+        .replace(/\\n\\n\\n/g, '<br><br>')
+        .replace(/\\n\\n/g, '<br><br>')
+        .replace(/\\n/g, ' ')
+        .replace(/\s\s+/g, ' ');
+      
+      // Chercher et wrapper le texte dans .feedback-text si pas déjà fait
+      if (!element.querySelector('.feedback-text')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'feedback-text';
+        wrapper.innerHTML = cleanText;
+        element.innerHTML = '';
+        element.appendChild(wrapper);
       }
     }
   }
@@ -1874,9 +1968,6 @@
       `;
       feedbackElement.prepend(updateMessage);
       
-      // Ajouter une classe pour un indicateur visuel discret
-      feedbackElement.classList.add('analysis-updated');
-      
       // Appliquer le nettoyage MathJax
       setTimeout(() => {
         cleanAndFormatMathContent('aiAnalysisContent');
@@ -1929,7 +2020,7 @@
       cleanAndFormatMathContent('studentAnswerContent');
       cleanAndFormatMathContent('questionContent');
       
-      // Nettoyer spécifiquement le contenu JSON
+      // Nettoyer spécifiquement le contenu JSON avec réduction d'espace
       cleanJSONContent();
     }, 200);
     
