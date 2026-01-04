@@ -6128,44 +6128,38 @@ def historique_eleve():
     exercice_id = request.args.get("exercice_id")
     lang = request.args.get("lang", "fr")
 
-    # ✅ DÉTECTION DU CONTEXTE AVEC VERIFICATION DE SESSION
+    # ✅ DÉTECTION DU CONTEXTE : Priorité à l'enseignant s'il y a conflit
     parent_email = session.get("parent_email")
     enseignant_id = session.get("enseignant_id")
-    user_role = session.get("role")  # Récupérer le rôle de la session
     
-    # DEBUG: Voir ce qui est dans la session
-    print(f"DEBUG SESSION - parent_email: {parent_email}")
-    print(f"DEBUG SESSION - enseignant_id: {enseignant_id}")
-    print(f"DEBUG SESSION - role: {user_role}")
-    print(f"DEBUG SESSION - username: {session.get('username')}")
+    # DEBUG
+    print(f"SESSION - parent_email: {parent_email}")
+    print(f"SESSION - enseignant_id: {enseignant_id}")
     
-    # Vérifier d'abord par le rôle dans la session
-    if user_role == "enseignant":
-        # L'utilisateur est connecté en tant qu'enseignant
+    # ✅ LOGIQUE DE PRIORITÉ : 
+    # 1. Si enseignant_id existe → c'est un enseignant (priorité haute)
+    # 2. Si parent_email existe ET pas d'enseignant_id → c'est un parent
+    # 3. Sinon → c'est l'élève
+    
+    if enseignant_id:
+        # L'utilisateur est connecté comme enseignant (même s'il a aussi parent_email)
         is_enseignant_access = True
         is_parent_access = False
         is_eleve_direct_access = False
-    elif user_role == "parent":
-        # L'utilisateur est connecté en tant que parent
+        print(f"ACCÈS - ENSEIGNANT prioritaire (ID: {enseignant_id})")
+    elif parent_email:
+        # L'utilisateur est connecté comme parent (sans enseignant_id)
         is_parent_access = True
         is_enseignant_access = False
         is_eleve_direct_access = False
-    elif user_role == "eleve" or user_role == "admin":
-        # L'utilisateur est connecté en tant qu'élève ou admin
-        eleve_username = session.get("username")
-        is_eleve_direct_access = eleve_username == username
+        print(f"ACCÈS - PARENT (email: {parent_email})")
+    else:
+        # Vérifier si l'élève accède à son propre historique
+        eleve_session_username = session.get("username")
+        is_eleve_direct_access = eleve_session_username == username
         is_parent_access = False
         is_enseignant_access = False
-    else:
-        # Fallback aux anciennes vérifications
-        is_parent_access = bool(parent_email)
-        is_enseignant_access = bool(enseignant_id)
-        is_eleve_direct_access = session.get("username") == username and not parent_email and not enseignant_id
-    
-    # DEBUG: Voir les résultats
-    print(f"DEBUG ACCES - is_parent_access: {is_parent_access}")
-    print(f"DEBUG ACCES - is_enseignant_access: {is_enseignant_access}")
-    print(f"DEBUG ACCES - is_eleve_direct_access: {is_eleve_direct_access}")
+        print(f"ACCÈS - ÉLÈVE (session: {eleve_session_username}, requested: {username})")
 
     eleve = User.query.filter_by(username=username).first()
     if not eleve:
@@ -6327,17 +6321,6 @@ def historique_eleve():
             "date": t.timestamp.strftime("%d/%m/%Y") if t.timestamp else ""
         })
 
-    # AJOUTER UNE VÉRIFICATION FINALE
-    # Si enseignant_id existe dans la session, forcer is_enseignant_access = True
-    if enseignant_id:
-        is_enseignant_access = True
-        is_parent_access = False
-    
-    # Si parent_email existe dans la session, forcer is_parent_access = True
-    if parent_email:
-        is_parent_access = True
-        is_enseignant_access = False
-
     return render_template(
         "historique_eleve.html",
         eleve=eleve,
@@ -6348,10 +6331,7 @@ def historique_eleve():
         tests=donnees_tests,
         is_parent_access=is_parent_access,
         is_enseignant_access=is_enseignant_access,
-        is_eleve_direct_access=is_eleve_direct_access,
-        # Passer aussi les IDs pour référence
-        enseignant_id=enseignant_id,
-        parent_email=parent_email
+        is_eleve_direct_access=is_eleve_direct_access
     )
 
 @app.route("/enseignant-remediations")
