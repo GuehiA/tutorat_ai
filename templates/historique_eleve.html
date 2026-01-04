@@ -204,6 +204,30 @@
       font-size: 0.9rem;
     }
     
+    /* Barre de progression */
+    .progress-container {
+      margin-top: 15px;
+      background: var(--light-gray);
+      border-radius: 10px;
+      overflow: hidden;
+      height: 12px;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      transition: width 1s ease-in-out;
+    }
+    
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+    
     /* Structure en accordéon */
     .accordion {
       margin-bottom: 30px;
@@ -501,6 +525,25 @@
       color: var(--gray);
     }
     
+    /* Indicateur de progression */
+    .progress-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+    }
+    
+    .completed {
+      color: #4cc9f0;
+    }
+    
+    .remaining {
+      color: #f9c74f;
+    }
+    
     /* Style pour les formules LaTeX */
     mjx-container {
       display: inline-block;
@@ -550,6 +593,12 @@
       
       .accordion-header h3 {
         font-size: 1.1rem;
+      }
+      
+      .accordion-header .badge {
+        flex-direction: column;
+        gap: 5px;
+        padding: 8px 12px;
       }
       
       .matiere .accordion-header {
@@ -654,6 +703,16 @@
           <div class="stat-number">{{ total_exercices_effectues }}</div>
           <div class="stat-label">{% if lang == 'fr' %}Total{% else %}Total{% endif %}</div>
         </div>
+        {% set total = total_exercices_effectues + total_exercices_restants %}
+        {% if total > 0 %}
+        <div class="progress-container">
+          <div class="progress-bar" style="width: {{ (total_exercices_effectues / total * 100)|round }}%"></div>
+        </div>
+        <div class="progress-text">
+          <span>{{ (total_exercices_effectues / total * 100)|round }}%</span>
+          <span>{{ total_exercices_effectues }}/{{ total }}</span>
+        </div>
+        {% endif %}
       </div>
       
       <div class="stat-card">
@@ -664,11 +723,21 @@
           <div class="stat-number">{{ total_exercices_restants }}</div>
           <div class="stat-label">{% if lang == 'fr' %}À faire{% else %}To do{% endif %}</div>
         </div>
+        {% set total = total_exercices_effectues + total_exercices_restants %}
+        {% if total > 0 %}
+        <div class="progress-container">
+          <div class="progress-bar" style="width: {{ (total_exercices_restants / total * 100)|round }}%"></div>
+        </div>
+        <div class="progress-text">
+          <span>{{ (total_exercices_restants / total * 100)|round }}%</span>
+          <span>{{ total_exercices_restants }}/{{ total }}</span>
+        </div>
+        {% endif %}
       </div>
       
       <div class="stat-card">
         <h3><i class="fas fa-chart-pie"></i> 
-          {% if lang == 'fr' %}Taux de Complétion{% else %}Completion Rate{% endif %}
+          {% if lang == 'fr' %}Progression Globale{% else %}Global Progress{% endif %}
         </h3>
         <div class="stat-numbers">
           <div class="stat-number">
@@ -679,15 +748,24 @@
               0%
             {% endif %}
           </div>
-          <div class="stat-label">{% if lang == 'fr' %}Progression{% else %}Progress{% endif %}</div>
+          <div class="stat-label">{% if lang == 'fr' %}Complétion{% else %}Completion{% endif %}</div>
         </div>
+        {% set total = total_exercices_effectues + total_exercices_restants %}
+        {% if total > 0 %}
+        <div class="progress-container">
+          <div class="progress-bar" style="width: {{ (total_exercices_effectues / total * 100)|round }}%"></div>
+        </div>
+        <div class="progress-text">
+          <span>{{ total_exercices_effectues }}/{{ total }}</span>
+        </div>
+        {% endif %}
       </div>
     </div>
     
     <!-- Structure hiérarchique des exercices -->
     <div class="section-title">
       <i class="fas fa-sitemap"></i>
-      <span>{% if lang == 'fr' %}Structure des Exercices par Niveau{% else %}Exercise Structure by Level{% endif %}</span>
+      <span>{% if lang == 'fr' %}Structure Complète des Exercices{% else %}Complete Exercise Structure{% endif %}</span>
     </div>
     
     {% if data_structure.niveaux %}
@@ -697,11 +775,14 @@
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <h3><i class="fas fa-layer-group"></i> Niveau: {{ niveau_nom }}</h3>
             <div class="badge">
-              <span title="{% if lang == 'fr' %}Exercices effectués{% else %}Exercises completed{% endif %}">
+              <span class="progress-indicator completed" title="{% if lang == 'fr' %}Exercices effectués{% else %}Exercises completed{% endif %}">
                 <i class="fas fa-check"></i> {{ niveau_data.total_effectues }}
               </span>
-              <span title="{% if lang == 'fr' %}Exercices restants{% else %}Exercises remaining{% endif %}">
+              <span class="progress-indicator remaining" title="{% if lang == 'fr' %}Exercices restants{% else %}Exercises remaining{% endif %}">
                 <i class="fas fa-clock"></i> {{ niveau_data.total_restants }}
+              </span>
+              <span class="progress-indicator" title="{% if lang == 'fr' %}Total exercices{% else %}Total exercises{% endif %}">
+                <i class="fas fa-list-ol"></i> {{ niveau_data.total_exercices }}
               </span>
             </div>
           </div>
@@ -712,8 +793,15 @@
                 <div class="accordion-header" onclick="toggleAccordion(this)">
                   <h3><i class="fas fa-book"></i> Matière: {{ matiere_nom }}</h3>
                   <div class="badge">
-                    <span><i class="fas fa-check"></i> {{ matiere_data.total_effectues }}</span>
-                    <span><i class="fas fa-clock"></i> {{ matiere_data.total_restants }}</span>
+                    <span class="progress-indicator completed">
+                      <i class="fas fa-check"></i> {{ matiere_data.total_effectues }}
+                    </span>
+                    <span class="progress-indicator remaining">
+                      <i class="fas fa-clock"></i> {{ matiere_data.total_restants }}
+                    </span>
+                    <span class="progress-indicator">
+                      <i class="fas fa-list-ol"></i> {{ matiere_data.total_exercices }}
+                    </span>
                   </div>
                 </div>
                 <div class="accordion-content">
@@ -723,8 +811,15 @@
                       <div class="accordion-header" onclick="toggleAccordion(this)">
                         <h3><i class="fas fa-cube"></i> Unité: {{ unite_nom }}</h3>
                         <div class="badge">
-                          <span><i class="fas fa-check"></i> {{ unite_data.total_effectues }}</span>
-                          <span><i class="fas fa-clock"></i> {{ unite_data.total_restants }}</span>
+                          <span class="progress-indicator completed">
+                            <i class="fas fa-check"></i> {{ unite_data.total_effectues }}
+                          </span>
+                          <span class="progress-indicator remaining">
+                            <i class="fas fa-clock"></i> {{ unite_data.total_restants }}
+                          </span>
+                          <span class="progress-indicator">
+                            <i class="fas fa-list-ol"></i> {{ unite_data.total_exercices }}
+                          </span>
                         </div>
                       </div>
                       <div class="accordion-content">
@@ -734,8 +829,15 @@
                             <div class="accordion-header" onclick="toggleAccordion(this)">
                               <h3><i class="fas fa-file-alt"></i> Leçon: {{ lecon_nom }}</h3>
                               <div class="badge">
-                                <span><i class="fas fa-check"></i> {{ lecon_data.exercices_effectues }}</span>
-                                <span><i class="fas fa-clock"></i> {{ lecon_data.exercices_restants }}</span>
+                                <span class="progress-indicator completed">
+                                  <i class="fas fa-check"></i> {{ lecon_data.exercices_effectues }}
+                                </span>
+                                <span class="progress-indicator remaining">
+                                  <i class="fas fa-clock"></i> {{ lecon_data.exercices_restants }}
+                                </span>
+                                <span class="progress-indicator">
+                                  <i class="fas fa-list-ol"></i> {{ lecon_data.exercices_totaux }}
+                                </span>
                               </div>
                             </div>
                             <div class="accordion-content">
@@ -744,11 +846,14 @@
                                   <strong style="color: var(--primary);">
                                     <i class="fas fa-list-check"></i> 
                                     {% if lang == 'fr' %}
-                                      Exercices de cette leçon ({{ lecon_data.exercices|length }} effectué{% if lecon_data.exercices|length > 1 %}s{% endif %}):
+                                      Exercices de cette leçon ({{ lecon_data.exercices_effectues }}/{{ lecon_data.exercices_totaux }} effectués):
                                     {% else %}
-                                      Exercises in this lesson ({{ lecon_data.exercices|length }} completed):
+                                      Exercises in this lesson ({{ lecon_data.exercices_effectues }}/{{ lecon_data.exercices_totaux }} completed):
                                     {% endif %}
                                   </strong>
+                                  <div class="progress-container" style="margin-top: 10px;">
+                                    <div class="progress-bar" style="width: {% if lecon_data.exercices_totaux > 0 %}{{ (lecon_data.exercices_effectues / lecon_data.exercices_totaux * 100)|round }}%{% else %}0%{% endif %}"></div>
+                                  </div>
                                 </div>
                                 
                                 {% for exercice in lecon_data.exercices %}
@@ -757,7 +862,7 @@
                                     <summary>
                                       <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
                                         <div style="display: flex; align-items: center; gap: 10px;">
-                                          <span class="theme">Exercice</span>
+                                          <span class="theme">Exercice complété</span>
                                           <span style="color: var(--gray); font-size: 0.9em;">
                                             <i class="far fa-calendar"></i> {{ exercice.date }}
                                           </span>
@@ -786,6 +891,19 @@
                                   </details>
                                 </div>
                                 {% endfor %}
+                                
+                                {% if lecon_data.exercices_restants > 0 %}
+                                <div style="margin: 20px 0 10px 0; padding: 15px; background: rgba(249, 199, 79, 0.1); border-radius: 8px; border-left: 4px solid var(--warning);">
+                                  <strong style="color: var(--warning);">
+                                    <i class="fas fa-clock"></i> 
+                                    {% if lang == 'fr' %}
+                                      {{ lecon_data.exercices_restants }} exercice(s) restant(s) dans cette leçon
+                                    {% else %}
+                                      {{ lecon_data.exercices_restants }} exercise(s) remaining in this lesson
+                                    {% endif %}
+                                  </strong>
+                                </div>
+                                {% endif %}
                               {% else %}
                                 <div class="empty-state" style="padding: 30px;">
                                   <i class="fas fa-clipboard-list"></i>
@@ -796,6 +914,16 @@
                                       No exercises completed in this lesson
                                     {% endif %}
                                   </p>
+                                  {% if lecon_data.exercices_totaux > 0 %}
+                                  <p style="color: var(--accent); font-weight: 600; margin-top: 10px;">
+                                    <i class="fas fa-tasks"></i>
+                                    {% if lang == 'fr' %}
+                                      {{ lecon_data.exercices_totaux }} exercice(s) disponible(s)
+                                    {% else %}
+                                      {{ lecon_data.exercices_totaux }} exercise(s) available
+                                    {% endif %}
+                                  </p>
+                                  {% endif %}
                                 </div>
                               {% endif %}
                             </div>
@@ -806,9 +934,9 @@
                             <i class="fas fa-book-open"></i>
                             <p>
                               {% if lang == 'fr' %}
-                                Aucune leçon avec exercices complétés dans cette unité
+                                Aucune leçon disponible dans cette unité
                               {% else %}
-                                No lessons with completed exercises in this unit
+                                No lessons available in this unit
                               {% endif %}
                             </p>
                           </div>
@@ -821,9 +949,9 @@
                       <i class="fas fa-cubes"></i>
                       <p>
                         {% if lang == 'fr' %}
-                          Aucune unité avec exercices complétés dans cette matière
+                          Aucune unité disponible dans cette matière
                         {% else %}
-                          No units with completed exercises in this subject
+                          No units available in this subject
                         {% endif %}
                       </p>
                     </div>
@@ -836,9 +964,9 @@
                 <i class="fas fa-books"></i>
                 <p>
                   {% if lang == 'fr' %}
-                    Aucune matière avec exercices complétés dans ce niveau
+                    Aucune matière disponible dans ce niveau
                   {% else %}
-                    No subjects with completed exercises in this level
+                    No subjects available in this level
                   {% endif %}
                 </p>
               </div>
@@ -1019,6 +1147,14 @@
           console.log('Content is not JSON:', e.message);
         }
       });
+      
+      // Ouvrir automatiquement le premier niveau si disponible
+      const firstNiveau = document.querySelector('.niveau .accordion-header');
+      if (firstNiveau) {
+        setTimeout(() => {
+          firstNiveau.click();
+        }, 500);
+      }
     });
     
     // Observer les changements pour traiter le contenu dynamique
