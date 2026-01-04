@@ -3671,6 +3671,7 @@ def remediations_a_valider():
 
     enseignant_id = session["enseignant_id"]
     niveau_filtre = request.args.get("niveau")
+    statut_filtre = request.args.get("statut", "en_attente")  # Nouveau filtre par statut
 
     query = RemediationSuggestion.query \
         .join(User, RemediationSuggestion.user_id == User.id) \
@@ -3679,17 +3680,66 @@ def remediations_a_valider():
 
     if niveau_filtre:
         query = query.filter(User.niveau.has(nom=niveau_filtre))
+    
+    if statut_filtre != "tous":
+        query = query.filter(RemediationSuggestion.statut == statut_filtre)
+    else:
+        # Si "tous", on montre tous les statuts sauf supprimés
+        query = query.filter(RemediationSuggestion.statut != "supprime")
 
-    suggestions = query.all()
+    suggestions = query.order_by(RemediationSuggestion.timestamp.desc()).all()
 
     # Pour la liste déroulante des niveaux disponibles
     niveaux = db.session.query(Niveau.nom).distinct().all()
+    
+    # Liste des statuts possibles
+    statuts = ["en_attente", "valide", "tous"]
 
     return render_template(
         "enseignant_remediations_validation.html",
         suggestions=suggestions,
         niveaux=[n[0] for n in niveaux],
-        niveau_filtre=niveau_filtre
+        niveau_filtre=niveau_filtre,
+        statut_filtre=statut_filtre,
+        statuts=statuts
+    )
+
+@app.route("/enseignant/remediation/<int:remediation_id>")
+def view_remediation(remediation_id):
+    if "enseignant_id" not in session:
+        return redirect(url_for("login_enseignant"))
+
+    lang = request.args.get("lang", "fr")
+    suggestion = RemediationSuggestion.query.get_or_404(remediation_id)
+    
+    # Vérifier que cette remédiation appartient bien à un élève de cet enseignant
+    if suggestion.user.enseignant_id != session["enseignant_id"]:
+        return redirect(url_for("remediations_a_valider", lang=lang))
+    
+    # Parser le contenu de l'exercice suggéré
+    import re
+    
+    exercice_suggere = suggestion.exercice_suggere or ""
+    if lang == "en":
+        question_match = re.search(r"Question\s*[:：]\s*(.*)", exercice_suggere)
+        reponse_match = re.search(r"Expected answer\s*[:：]\s*(.*)", exercice_suggere)
+        explication_match = re.search(r"Explanation\s*[:：]\s*(.*)", exercice_suggere)
+    else:
+        question_match = re.search(r"Question\s*[:：]\s*(.*)", exercice_suggere)
+        reponse_match = re.search(r"Réponse attendue\s*[:：]\s*(.*)", exercice_suggere)
+        explication_match = re.search(r"Explication\s*[:：]\s*(.*)", exercice_suggere)
+
+    question_text = question_match.group(1).strip() if question_match else ""
+    reponse_text = reponse_match.group(1).strip() if reponse_match else ""
+    explication_text = explication_match.group(1).strip() if explication_match else ""
+    
+    return render_template(
+        "view_remediation.html",
+        suggestion=suggestion,
+        lang=lang,
+        question=question_text,
+        reponse=reponse_text,
+        explication=explication_text
     )
 
 @app.route("/lecon/<int:lecon_id>")

@@ -99,15 +99,20 @@
     .filter-container {
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: white;
-      padding: 20px 25px;
+      padding: 25px;
       border-radius: 15px;
       margin-bottom: 30px;
       box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 15px;
+      gap: 20px;
+    }
+    
+    .filter-section {
+      flex: 1;
+      min-width: 300px;
     }
     
     .filter-label {
@@ -116,6 +121,8 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      margin-bottom: 12px;
+      color: rgba(255, 255, 255, 0.95);
     }
     
     .filter-select {
@@ -126,7 +133,7 @@
       color: var(--dark);
       font-size: 1rem;
       font-weight: 500;
-      min-width: 250px;
+      width: 100%;
       transition: var(--transition);
       cursor: pointer;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
@@ -141,6 +148,17 @@
     .filter-select option {
       padding: 10px;
       font-size: 1rem;
+    }
+    
+    .stats-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 10px;
+      font-weight: 600;
     }
     
     /* Tableau élégant */
@@ -236,6 +254,28 @@
       box-shadow: 0 3px 8px rgba(76, 201, 240, 0.3);
     }
     
+    /* Badge statut */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-pending {
+      background: linear-gradient(135deg, var(--warning), #e85d04);
+      color: white;
+    }
+    
+    .status-validated {
+      background: linear-gradient(135deg, var(--success), #2a9134);
+      color: white;
+    }
+    
     /* Message avec contraste */
     .message-content {
       background: var(--light);
@@ -283,6 +323,28 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 15px rgba(56, 176, 0, 0.4);
       background: linear-gradient(135deg, #2a9134, var(--success));
+    }
+    
+    .view-button {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    }
+    
+    .view-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(67, 97, 238, 0.4);
+    }
+    
+    .edit-button {
+      background: linear-gradient(135deg, #ff9e00, #e85d04);
+      color: white;
+      box-shadow: 0 4px 12px rgba(255, 158, 0, 0.3);
+    }
+    
+    .edit-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(255, 158, 0, 0.4);
     }
     
     .delete-button {
@@ -373,8 +435,8 @@
         align-items: stretch;
       }
       
-      .filter-select {
-        width: 100%;
+      .filter-section {
+        min-width: 100%;
       }
       
       .elegant-table {
@@ -506,29 +568,64 @@
       🧠 Remédiations à valider
     </h2>
     
-    <!-- Filtre élégant -->
+    <!-- Filtres élégants -->
     <div class="filter-container">
-      <div class="filter-label">
-        <i class="fas fa-filter"></i>
-        🎓 Filtrer par niveau :
-      </div>
-      <form method="GET" style="flex: 1;">
-        <select name="niveau" id="niveau" class="filter-select" onchange="this.form.submit()">
-          <option value="">-- Tous les niveaux --</option>
-          {% for n in niveaux %}
-            <option value="{{ n }}" {% if n == niveau_filtre %}selected{% endif %}>
-              {{ n }}
-            </option>
-          {% endfor %}
-        </select>
-      </form>
-      
-      {% if suggestions %}
-        <div style="color: rgba(255, 255, 255, 0.9); font-weight: 500;">
-          <i class="fas fa-list-check"></i>
-          {{ suggestions|length }} remédiation(s) à valider
+      <!-- Filtre par niveau -->
+      <div class="filter-section">
+        <div class="filter-label">
+          <i class="fas fa-filter"></i>
+          🎓 Filtrer par niveau :
         </div>
-      {% endif %}
+        <form method="GET" id="filterForm">
+          <select name="niveau" id="niveau" class="filter-select" onchange="submitFilter()">
+            <option value="">-- Tous les niveaux --</option>
+            {% for n in niveaux %}
+              <option value="{{ n }}" {% if n == niveau_filtre %}selected{% endif %}>
+                {{ n }}
+              </option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      
+      <!-- Filtre par statut -->
+      <div class="filter-section">
+        <div class="filter-label">
+          <i class="fas fa-filter"></i>
+          📋 Filtrer par statut :
+        </div>
+        <select name="statut" id="statut" class="filter-select" onchange="submitFilter()">
+          <option value="en_attente" {% if statut_filtre == 'en_attente' %}selected{% endif %}>
+            ⏳ En attente
+          </option>
+          <option value="valide" {% if statut_filtre == 'valide' %}selected{% endif %}>
+            ✅ Validées
+          </option>
+          <option value="tous" {% if statut_filtre == 'tous' %}selected{% endif %}>
+            📋 Toutes (sauf supprimées)
+          </option>
+        </select>
+      </div>
+      
+      <!-- Statistiques -->
+      <div class="filter-section">
+        <div class="filter-label">
+          <i class="fas fa-chart-bar"></i>
+          📊 Statistiques :
+        </div>
+        <div class="stats-info">
+          <i class="fas fa-list-check"></i>
+          {{ suggestions|length }} remédiation(s) affichée(s)
+          {% if suggestions %}
+            {% set pending_count = suggestions|selectattr('statut', 'equalto', 'en_attente')|list|length %}
+            {% set validated_count = suggestions|selectattr('statut', 'equalto', 'valide')|list|length %}
+            <br>
+            <small>
+              ⏳ {{ pending_count }} en attente | ✅ {{ validated_count }} validée(s)
+            </small>
+          {% endif %}
+        </div>
+      </div>
     </div>
     
     {% if suggestions %}
@@ -542,6 +639,7 @@
               <th><i class="fas fa-graduation-cap"></i> Leçon</th>
               <th><i class="fas fa-message"></i> Message</th>
               <th><i class="fas fa-calendar-alt"></i> Date</th>
+              <th><i class="fas fa-tag"></i> Statut</th>
               <th><i class="fas fa-gears"></i> Actions</th>
             </tr>
           </thead>
@@ -587,23 +685,54 @@
                 </div>
               </td>
               <td>
-                <div class="actions-container">
-                  <a href="/enseignant/valider-remediation/{{ s.id }}" 
-                     class="action-button validate-button"
-                     title="Valider cette remédiation">
+                {% if s.statut == 'en_attente' %}
+                  <span class="status-badge status-pending">
+                    <i class="fas fa-clock"></i>
+                    En attente
+                  </span>
+                {% elif s.statut == 'valide' %}
+                  <span class="status-badge status-validated">
                     <i class="fas fa-check-circle"></i>
-                    Valider
-                  </a>
-                  <form method="POST" action="/enseignant/supprimer-remediation/{{ s.id }}" 
-                        onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette remédiation ? Cette action est irréversible.');"
-                        style="width: 100%;">
-                    <button type="submit" 
-                            class="action-button delete-button"
-                            title="Supprimer cette remédiation">
-                      <i class="fas fa-trash-can"></i>
-                      Supprimer
-                    </button>
-                  </form>
+                    Validée
+                    {% if s.enseignant_valide_at %}
+                      <br><small>le {{ s.enseignant_valide_at.strftime('%d/%m') }}</small>
+                    {% endif %}
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="actions-container">
+                  {% if s.statut == 'en_attente' %}
+                    <a href="/enseignant/valider-remediation/{{ s.id }}" 
+                       class="action-button validate-button"
+                       title="Valider cette remédiation">
+                      <i class="fas fa-check-circle"></i>
+                      Valider
+                    </a>
+                    <form method="POST" action="/enseignant/supprimer-remediation/{{ s.id }}" 
+                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette remédiation ? Cette action est irréversible.');"
+                          style="width: 100%;">
+                      <button type="submit" 
+                              class="action-button delete-button"
+                              title="Supprimer cette remédiation">
+                        <i class="fas fa-trash-can"></i>
+                        Supprimer
+                      </button>
+                    </form>
+                  {% elif s.statut == 'valide' %}
+                    <a href="/enseignant/remediation/{{ s.id }}" 
+                       class="action-button view-button"
+                       title="Voir cette remédiation validée">
+                      <i class="fas fa-eye"></i>
+                      Voir
+                    </a>
+                    <a href="/enseignant/valider-remediation/{{ s.id }}" 
+                       class="action-button edit-button"
+                       title="Modifier cette remédiation">
+                      <i class="fas fa-edit"></i>
+                      Modifier
+                    </a>
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -614,16 +743,29 @@
       
     {% else %}
       <div class="empty-state">
-        <i class="fas fa-clipboard-check"></i>
-        <p>✅ Toutes les remédiations sont validées !</p>
-        <p class="subtext">
-          <i class="fas fa-info-circle"></i>
-          {% if niveau_filtre %}
-            Aucune remédiation à valider pour le niveau "{{ niveau_filtre }}".
-          {% else %}
-            Aucune remédiation en attente de validation.
-          {% endif %}
-        </p>
+        {% if statut_filtre == 'en_attente' %}
+          <i class="fas fa-inbox"></i>
+          <p>📭 Aucune remédiation en attente</p>
+          <p class="subtext">
+            Toutes les remédiations ont été traitées. Vous serez notifié lorsque de nouvelles suggestions arriveront.
+          </p>
+        {% elif statut_filtre == 'valide' %}
+          <i class="fas fa-clipboard-check"></i>
+          <p>📋 Aucune remédiation validée</p>
+          <p class="subtext">
+            Commencez par valider des remédiations pour les voir apparaître ici.
+          </p>
+        {% else %}
+          <i class="fas fa-search"></i>
+          <p>🔍 Aucune remédiation trouvée</p>
+          <p class="subtext">
+            {% if niveau_filtre %}
+              Aucune remédiation pour le niveau "{{ niveau_filtre }}".
+            {% else %}
+              Aucune remédiation dans votre liste.
+            {% endif %}
+          </p>
+        {% endif %}
       </div>
     {% endif %}
     
@@ -636,6 +778,18 @@
   </div>
 
   <script>
+    function submitFilter() {
+      const form = document.getElementById('filterForm');
+      const niveau = document.getElementById('niveau').value;
+      const statut = document.getElementById('statut').value;
+      
+      let url = '/enseignant/remediations-a-valider?';
+      if (niveau) url += `niveau=${encodeURIComponent(niveau)}&`;
+      if (statut) url += `statut=${encodeURIComponent(statut)}`;
+      
+      window.location.href = url;
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
       console.log('Page de validation des remédiations chargée');
       

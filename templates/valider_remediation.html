@@ -49,7 +49,7 @@
       border-radius: var(--border-radius);
       box-shadow: var(--box-shadow);
       padding: 40px;
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       position: relative;
       overflow: hidden;
@@ -68,7 +68,7 @@
     h2 {
       color: var(--secondary);
       text-align: center;
-      margin-bottom: 35px;
+      margin-bottom: 25px;
       font-size: 2.2rem;
       display: flex;
       align-items: center;
@@ -79,6 +79,84 @@
     h2 i {
       color: var(--primary);
       font-size: 2.5rem;
+    }
+
+    /* Bannière d'information sur le statut */
+    .status-info {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 15px;
+      border-radius: 10px;
+      animation: pulse 2s infinite;
+    }
+
+    .status-info.validated {
+      background: linear-gradient(135deg, rgba(39, 174, 96, 0.15), rgba(46, 204, 113, 0.1));
+      border: 2px solid rgba(39, 174, 96, 0.3);
+      color: #27ae60;
+    }
+
+    .status-info.pending {
+      background: linear-gradient(135deg, rgba(243, 156, 18, 0.15), rgba(241, 196, 15, 0.1));
+      border: 2px solid rgba(243, 156, 18, 0.3);
+      color: #f39c12;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.9; }
+      100% { opacity: 1; }
+    }
+
+    /* Info élève */
+    .student-info-card {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      border-left: 5px solid var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .student-avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 2rem;
+      box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+    }
+
+    .student-details h3 {
+      color: var(--secondary);
+      margin-bottom: 5px;
+      font-size: 1.4rem;
+    }
+
+    .student-details .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    .meta-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: var(--gray);
+      border: 1px solid #e9ecef;
     }
 
     .form-section {
@@ -314,6 +392,16 @@
         gap: 10px;
       }
 
+      .student-info-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+      }
+
+      .student-details .meta {
+        justify-content: center;
+      }
+
       .modal-actions {
         flex-direction: column;
       }
@@ -343,6 +431,15 @@
       color: var(--gray);
       margin-top: 5px;
     }
+
+    .message-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 10px;
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
   </style>
 
   <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css">
@@ -356,6 +453,57 @@
     {% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}
   </h2>
 
+  <!-- Indicateur de statut -->
+  <div class="status-info {% if suggestion.statut == 'valide' %}validated{% else %}pending{% endif %}">
+    <i class="fas fa-info-circle"></i>
+    {% if suggestion.statut == 'valide' %}
+      {% if lang == 'en' %}
+        ✅ This remediation has already been validated on {{ suggestion.timestamp.strftime('%d/%m/%Y') }}.
+        You can modify the content below if needed.
+      {% else %}
+        ✅ Cette remédiation a déjà été validée le {{ suggestion.timestamp.strftime('%d/%m/%Y') }}.
+        Vous pouvez modifier le contenu ci-dessous si nécessaire.
+      {% endif %}
+    {% else %}
+      {% if lang == 'en' %}
+        ⏳ This remediation is pending validation. Fill out the form below to validate it.
+      {% else %}
+        ⏳ Cette remédiation est en attente de validation. Remplissez le formulaire ci-dessous pour la valider.
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- Informations sur l'élève -->
+  <div class="student-info-card">
+    <div class="student-avatar">
+      <i class="fas fa-user-graduate"></i>
+    </div>
+    <div class="student-details">
+      <h3>{{ suggestion.user.nom_complet }}</h3>
+      <p>@{{ suggestion.user.username }}</p>
+      <div class="meta">
+        <span class="meta-tag">
+          <i class="fas fa-graduation-cap"></i>
+          {{ suggestion.user.niveau.nom }}
+        </span>
+        <span class="meta-tag">
+          <i class="fas fa-book"></i>
+          {{ suggestion.theme }}
+        </span>
+        <span class="meta-tag">
+          <i class="fas fa-file-alt"></i>
+          {{ suggestion.lecon }}
+        </span>
+        {% if suggestion.statut == 'valide' %}
+        <span class="meta-tag" style="background: linear-gradient(135deg, #27ae60, #219150); color: white;">
+          <i class="fas fa-check"></i>
+          Déjà validée
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
   <form method="POST" id="remediationForm">
     <!-- Message Section -->
     <div class="form-section">
@@ -363,6 +511,12 @@
         <i class="fas fa-comment-dots"></i>
         <div class="section-title">
           {% if lang == 'en' %}Message to Student{% else %}Message à l'élève{% endif %}
+          {% if suggestion.statut == 'valide' %}
+            <span class="message-indicator">
+              <i class="fas fa-history"></i>
+              Modifié
+            </span>
+          {% endif %}
         </div>
       </div>
       <div class="form-group">
@@ -372,7 +526,7 @@
           placeholder="{% if lang == 'en' %}Write your feedback message...{% else %}Rédigez votre message de feedback...{% endif %}"
           required
           oninput="updateCharacterCount('message_text', 'message_count')"
-        >{{ suggestion.message }}</textarea>
+        >{{ suggestion.message or '' }}</textarea>
         <div class="character-count">
           <span id="message_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
         </div>
@@ -395,6 +549,12 @@
         <i class="fas fa-question-circle"></i>
         <div class="section-title">
           {% if lang == 'en' %}Remediation Question{% else %}Question de remédiation{% endif %}
+          {% if suggestion.statut == 'valide' %}
+            <span class="message-indicator">
+              <i class="fas fa-history"></i>
+              Modifié
+            </span>
+          {% endif %}
         </div>
       </div>
       <div class="form-group">
@@ -427,6 +587,12 @@
         <i class="fas fa-check-square"></i>
         <div class="section-title">
           {% if lang == 'en' %}Expected Answer{% else %}Réponse attendue{% endif %}
+          {% if suggestion.statut == 'valide' %}
+            <span class="message-indicator">
+              <i class="fas fa-history"></i>
+              Modifié
+            </span>
+          {% endif %}
         </div>
       </div>
       <div class="form-group">
@@ -459,6 +625,12 @@
         <i class="fas fa-lightbulb"></i>
         <div class="section-title">
           {% if lang == 'en' %}Explanation{% else %}Explication{% endif %}
+          {% if suggestion.statut == 'valide' %}
+            <span class="message-indicator">
+              <i class="fas fa-history"></i>
+              Modifié
+            </span>
+          {% endif %}
         </div>
       </div>
       <div class="form-group">
@@ -489,8 +661,13 @@
     <div class="actions-container">
       <div class="action-group">
         <button type="submit" class="btn btn-submit">
-          <i class="fas fa-check-circle"></i>
-          {% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}
+          {% if suggestion.statut == 'valide' %}
+            <i class="fas fa-save"></i>
+            {% if lang == 'en' %}Save Changes{% else %}Enregistrer les modifications{% endif %}
+          {% else %}
+            <i class="fas fa-check-circle"></i>
+            {% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}
+          {% endif %}
         </button>
       </div>
 
@@ -524,7 +701,7 @@
         <i class="fas fa-times"></i>
         {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
       </button>
-      <form method="POST" action="{{ url_for('supprimer_remediation', id=suggestion.id) }}" style="display: inline;">
+      <form method="POST" action="{{ url_for('supprimer_remediation', id=suggestion.id) if url_for('supprimer_remediation') else '#' }}" style="display: inline;">
         <button type="submit" class="btn btn-delete">
           <i class="fas fa-trash"></i>
           {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
@@ -587,10 +764,49 @@
     updateCharacterCount('reponse_text', 'reponse_count');
     updateCharacterCount('explication_text', 'explication_count');
 
+    // Highlight modified fields if remediation is already validated
+    {% if suggestion.statut == 'valide' %}
+      const textareas = document.querySelectorAll('textarea');
+      textareas.forEach(textarea => {
+        if (textarea.value.trim()) {
+          textarea.style.background = 'linear-gradient(135deg, #fff9e6, #fff3cd)';
+          textarea.style.borderColor = '#ffc107';
+        }
+      });
+    {% endif %}
+
     // Close modal when clicking outside
     document.getElementById('deleteModal').addEventListener('click', function(e) {
       if (e.target === this) {
         hideDeleteModal();
+      }
+    });
+
+    // Add visual feedback when editing
+    const form = document.getElementById('remediationForm');
+    const submitBtn = form.querySelector('.btn-submit');
+    const originalValues = {
+      message: document.getElementById('message_text').value,
+      question: document.getElementById('question_text').value,
+      reponse: document.getElementById('reponse_text').value,
+      explication: document.getElementById('explication_text').value
+    };
+
+    form.addEventListener('input', function() {
+      const currentValues = {
+        message: document.getElementById('message_text').value,
+        question: document.getElementById('question_text').value,
+        reponse: document.getElementById('reponse_text').value,
+        explication: document.getElementById('explication_text').value
+      };
+
+      const hasChanges = Object.keys(originalValues).some(key => 
+        currentValues[key] !== originalValues[key]
+      );
+
+      if (hasChanges && suggestion.statut == 'valide') {
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer les modifications';
+        submitBtn.style.background = 'linear-gradient(135deg, #ff9e00, #e67e22)';
       }
     });
   });
