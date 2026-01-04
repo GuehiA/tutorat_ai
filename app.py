@@ -4962,7 +4962,8 @@ def supprimer_remediation(id):
     db.session.commit()
     flash("Remédiation supprimée avec succès.", "success")
 
-    return redirect(url_for("remediations_en_attente", lang=session.get("lang", "fr")))
+    lang = request.args.get("lang", session.get("lang", "fr"))
+    return redirect(url_for("remediations_a_valider", lang=lang))
 
 
 # ============================================

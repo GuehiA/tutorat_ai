@@ -701,7 +701,7 @@
         <i class="fas fa-times"></i>
         {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
       </button>
-      <form method="POST" action="{{ url_for('supprimer_remediation', id=suggestion.id) if url_for('supprimer_remediation') else '#' }}" style="display: inline;">
+      <form method="POST" action="{{ url_for('supprimer_remediation', id=suggestion.id, lang=lang) }}" style="display: inline;">
         <button type="submit" class="btn btn-delete">
           <i class="fas fa-trash"></i>
           {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
