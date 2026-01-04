@@ -929,11 +929,22 @@
           {% if lang == 'fr' %}Retour au Tableau de Bord Parent{% else %}Back to Parent Dashboard{% endif %}
         </a>
       {% elif is_enseignant_access %}
-        <a class="smart-back-link" href="/enseignant-dashboard">
-          <i class="fas fa-arrow-left"></i> 
-          {% if lang == 'fr' %}Retour au Tableau de Bord Enseignant{% else %}Back to Teacher Dashboard{% endif %}
-        </a>
+        <!-- L'enseignant doit retourner à son dashboard ou à la liste de ses élèves -->
+        {% if eleve.enseignant_id == enseignant_id %}
+          <!-- C'est un élève de cet enseignant -->
+          <a class="smart-back-link" href="/enseignant-dashboard">
+            <i class="fas fa-arrow-left"></i> 
+            {% if lang == 'fr' %}Retour au Tableau de Bord Enseignant{% else %}Back to Teacher Dashboard{% endif %}
+          </a>
+        {% else %}
+          <!-- L'enseignant pourrait avoir une page de gestion des élèves -->
+          <a class="smart-back-link" href="/enseignant-eleves">
+            <i class="fas fa-arrow-left"></i> 
+            {% if lang == 'fr' %}Retour à la Liste des Élèves{% else %}Back to Students List{% endif %}
+          </a>
+        {% endif %}
       {% else %}
+        <!-- Accès direct de l'élève -->
         <a class="smart-back-link" href="/dashboard-eleve?username={{ eleve.username }}">
           <i class="fas fa-arrow-left"></i> 
           {% if lang == 'fr' %}Retour au Tableau de Bord{% else %}Back to Dashboard{% endif %}

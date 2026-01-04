@@ -6131,8 +6131,12 @@ def historique_eleve():
     # ✅ DÉTECTION DU CONTEXTE : Parent, Enseignant ou Élève
     parent_email = session.get("parent_email")
     enseignant_id = session.get("enseignant_id")
+    eleve_username = session.get("username")  # Pour l'accès direct élève
+    
+    # Déterminer le type d'accès
     is_parent_access = bool(parent_email)
     is_enseignant_access = bool(enseignant_id)
+    is_eleve_direct_access = eleve_username == username and not parent_email and not enseignant_id
 
     eleve = User.query.filter_by(username=username).first()
     if not eleve:
@@ -6303,7 +6307,8 @@ def historique_eleve():
         total_exercices_restants=total_exercices_restants,
         tests=donnees_tests,
         is_parent_access=is_parent_access,
-        is_enseignant_access=is_enseignant_access
+        is_enseignant_access=is_enseignant_access,
+        is_eleve_direct_access=is_eleve_direct_access
     )
 
 @app.route("/enseignant-remediations")
