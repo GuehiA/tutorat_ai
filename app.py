@@ -6158,44 +6158,59 @@ def historique_eleve():
             
         # Naviguer dans la hiérarchie
         lecon = ex.lecon
+        if not lecon:
+            continue
+            
         unite = lecon.unite if lecon else None
+        if not unite:
+            continue
+            
         matiere = unite.matiere if unite else None
+        if not matiere:
+            continue
+            
         niveau = matiere.niveau if matiere else None
-        
-        if not all([niveau, matiere, unite, lecon]):
+        if not niveau:
             continue
         
+        # Récupérer les noms avec les bons attributs
+        niveau_nom = niveau.nom
+        matiere_nom = matiere.nom
+        unite_nom = unite.nom
+        lecon_nom = lecon.titre_fr if lang == "fr" else lecon.titre_en
+        
         # Initialiser les structures si nécessaire
-        if niveau.nom not in data_structure["niveaux"]:
-            data_structure["niveaux"][niveau.nom] = {
+        if niveau_nom not in data_structure["niveaux"]:
+            data_structure["niveaux"][niveau_nom] = {
                 "matieres": {},
                 "total_effectues": 0,
                 "total_restants": 0
             }
         
-        if matiere.nom not in data_structure["niveaux"][niveau.nom]["matieres"]:
-            data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom] = {
+        if matiere_nom not in data_structure["niveaux"][niveau_nom]["matieres"]:
+            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom] = {
                 "unites": {},
                 "total_effectues": 0,
                 "total_restants": 0
             }
         
-        if unite.nom not in data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"]:
-            data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom] = {
+        if unite_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"]:
+            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom] = {
                 "lecons": {},
                 "total_effectues": 0,
                 "total_restants": 0
             }
         
-        if lecon.nom not in data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"]:
-            data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom] = {
+        if lecon_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"]:
+            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom] = {
                 "exercices": [],
                 "exercices_effectues": 0,
-                "exercices_restants": 0
+                "exercices_restants": 0,
+                "lecon_id": lecon.id  # Ajouter l'ID pour référence
             }
         
         # Ajouter l'exercice à la leçon
-        theme = unite.nom if unite else "—"
+        theme = unite_nom if unite else "—"
         enonce = ex.question_fr if lang == "fr" else (ex.question_en if ex else "Réponse libre (remédiation)")
         
         exercice_data = {
@@ -6205,17 +6220,17 @@ def historique_eleve():
             "reponse_eleve": r.reponse_eleve,
             "analyse_ia": r.analyse_ia or "—",
             "etoiles": r.etoiles if r.etoiles is not None else 0,
-            "date": r.date.strftime("%d/%m/%Y") if r.date else ""
+            "date": r.timestamp.strftime("%d/%m/%Y") if r.timestamp else ""
         }
         
-        data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom]["exercices"].append(exercice_data)
+        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices"].append(exercice_data)
         
         # Mettre à jour les compteurs
-        data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom]["exercices_effectues"] += 1
+        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_effectues"] += 1
         
         # Compter les exercices restants (total - effectués)
         total_exercices_lecon = Exercice.query.filter_by(lecon_id=lecon.id).count()
-        data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom]["exercices_restants"] = total_exercices_lecon - data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom]["exercices_effectues"]
+        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_restants"] = total_exercices_lecon - data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_effectues"]
     
     # Calculer les totaux par unité, matière et niveau
     for niveau_nom, niveau_data in data_structure["niveaux"].items():
@@ -6254,8 +6269,12 @@ def historique_eleve():
     donnees_tests = []
     for t in reponses_tests:
         test = t.test
-        unite_nom = test.unite.nom if test and test.unite else "—"
-        enonce_test = test.question_fr if lang == "fr" else test.question_en
+        if test and test.unite:
+            unite_nom_test = test.unite.nom
+        else:
+            unite_nom_test = "—"
+            
+        enonce_test = test.question_fr if test and lang == "fr" else (test.question_en if test else "—")
 
         reponses_ordonnees = ""
         if isinstance(t.reponses_exercices, dict):
@@ -6267,12 +6286,12 @@ def historique_eleve():
                 reponses_ordonnees = "\n".join(t.reponses_exercices.values())
 
         donnees_tests.append({
-            "unite": unite_nom,
+            "unite": unite_nom_test,
             "question": enonce_test,
             "reponse_eleve": reponses_ordonnees or "—",
             "analyse_ia": t.analyse_ia or "—",
             "etoiles": t.etoiles if t.etoiles is not None else 0,
-            "date": t.date.strftime("%d/%m/%Y") if t.date else ""
+            "date": t.timestamp.strftime("%d/%m/%Y") if t.timestamp else ""
         })
 
     return render_template(
