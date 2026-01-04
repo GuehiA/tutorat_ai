@@ -17,9 +17,9 @@
       --primary: #4361ee;
       --secondary: #3a0ca3;
       --accent: #f72585;
-      --light: #f8f9fa;
       --success: #4cc9f0;
       --warning: #f9c74f;
+      --info: #7209b7;
       --dark: #212529;
       --gray: #6c757d;
       --light-gray: #e9ecef;
@@ -45,7 +45,7 @@
     }
     
     .container {
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 20px auto;
       background: white;
       padding: 40px;
@@ -136,10 +136,6 @@
       z-index: 1;
     }
     
-    .student-info .avatar i {
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-    }
-    
     .student-info h3 {
       font-size: 1.8rem;
       margin-bottom: 8px;
@@ -155,53 +151,177 @@
       z-index: 1;
     }
     
-    /* Titres de section */
-    .section-title {
+    /* Statistiques globales */
+    .stats-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 25px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border-left: 5px solid var(--primary);
+      transition: var(--transition);
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card h3 {
+      color: var(--dark);
+      font-size: 1.2rem;
+      margin-bottom: 15px;
       display: flex;
       align-items: center;
-      margin: 40px 0 25px;
-      color: var(--secondary);
-      font-size: 1.6rem;
-      font-weight: 700;
-      padding-bottom: 12px;
-      border-bottom: 2px solid rgba(0,0,0,0.1);
+      gap: 10px;
     }
     
-    .section-title i {
-      margin-right: 15px;
-      font-size: 1.8rem;
+    .stat-card h3 i {
       color: var(--primary);
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
     }
     
-    /* Cartes de réponse élégantes */
+    .stat-numbers {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 15px;
+    }
+    
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    
+    .stat-label {
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+    
+    /* Structure en accordéon */
+    .accordion {
+      margin-bottom: 30px;
+    }
+    
+    .accordion-item {
+      margin-bottom: 10px;
+    }
+    
+    .accordion-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 20px 25px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      transition: var(--transition);
+      box-shadow: 0 4px 15px rgba(67, 97, 238, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .accordion-header:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(67, 97, 238, 0.3);
+    }
+    
+    .accordion-header::after {
+      content: '▼';
+      font-size: 0.9em;
+      transition: transform 0.3s;
+    }
+    
+    .accordion-header.active::after {
+      transform: rotate(180deg);
+    }
+    
+    .accordion-header h3 {
+      margin: 0;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .accordion-header .badge {
+      background: rgba(255,255,255,0.2);
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .accordion-content {
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out, padding 0.3s;
+    }
+    
+    .accordion-content.expanded {
+      padding: 20px 0;
+      max-height: 5000px;
+    }
+    
+    /* Niveaux - Couleur primaire */
+    .niveau .accordion-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #2a4fd8 100%);
+    }
+    
+    /* Matières - Couleur secondaire */
+    .matiere .accordion-header {
+      background: linear-gradient(135deg, var(--secondary) 0%, #2d0a8c 100%);
+      margin-left: 20px;
+    }
+    
+    /* Unités - Couleur accent */
+    .unite .accordion-header {
+      background: linear-gradient(135deg, var(--accent) 0%, #d40f6a 100%);
+      margin-left: 40px;
+    }
+    
+    /* Leçons - Couleur success */
+    .lecon .accordion-header {
+      background: linear-gradient(135deg, var(--success) 0%, #2ab4d6 100%);
+      margin-left: 60px;
+    }
+    
+    /* Exercices - Couleur warning */
+    .exercice-item {
+      margin-left: 80px;
+      margin-bottom: 15px;
+    }
+    
+    /* Cartes de réponse */
     .reponse {
       background: var(--card-bg);
       border-radius: var(--radius);
-      padding: 0;
-      margin-bottom: 25px;
+      margin-bottom: 15px;
       transition: var(--transition);
       box-shadow: var(--shadow);
       border: 1px solid rgba(0,0,0,0.05);
       overflow: hidden;
     }
     
-    .reponse:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 40px rgba(0,0,0,0.12);
-    }
-    
-    /* En-tête des réponses (summary) */
-    summary {
+    .reponse summary {
       cursor: pointer;
-      padding: 25px 30px;
+      padding: 20px;
       background: white;
       transition: var(--transition);
       font-weight: 600;
       color: var(--dark);
-      border-left: 5px solid var(--success);
+      border-left: 5px solid var(--warning);
       list-style: none;
       display: flex;
       justify-content: space-between;
@@ -209,7 +329,7 @@
       position: relative;
     }
     
-    summary::after {
+    .reponse summary::after {
       content: '▼';
       font-size: 0.8em;
       color: var(--primary);
@@ -217,18 +337,18 @@
       margin-left: 10px;
     }
     
-    details[open] summary::after {
+    .reponse details[open] summary::after {
       transform: rotate(180deg);
     }
     
-    summary:hover {
-      background: linear-gradient(90deg, rgba(67, 97, 238, 0.05), white);
+    .reponse summary:hover {
+      background: rgba(249, 199, 79, 0.05);
     }
     
     .theme {
       font-weight: 700;
       color: var(--primary);
-      font-size: 1.1rem;
+      font-size: 1rem;
       background: linear-gradient(135deg, var(--primary), var(--accent));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -246,30 +366,11 @@
       font-size: 1.2rem;
     }
     
-    .etoiles i {
-      filter: drop-shadow(0 2px 4px rgba(249, 199, 79, 0.3));
-    }
-    
-    /* Contenu des réponses */
     .reponse-content {
-      padding: 30px;
+      padding: 25px;
       border-top: 1px solid rgba(0,0,0,0.08);
     }
     
-    .reponse-content p {
-      margin-bottom: 15px;
-      color: var(--dark);
-    }
-    
-    .reponse-content strong {
-      color: var(--primary);
-      display: block;
-      margin-bottom: 12px;
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-    
-    /* Blocs de contenu */
     .content-block {
       background: rgba(248, 249, 250, 0.8);
       padding: 20px;
@@ -291,36 +392,22 @@
       margin-bottom: 0;
     }
     
-    /* Styles pour les formules LaTeX déjà rendues */
-    .content-block mjx-container {
-      display: inline-block;
-      vertical-align: middle;
+    /* Titres de section */
+    .section-title {
+      display: flex;
+      align-items: center;
+      margin: 40px 0 25px;
+      color: var(--secondary);
+      font-size: 1.6rem;
+      font-weight: 700;
+      padding-bottom: 12px;
+      border-bottom: 2px solid rgba(0,0,0,0.1);
     }
     
-    /* Style pour le contenu JSON */
-    .json-content {
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: 8px;
-      border-left: 3px solid var(--accent);
-      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-      font-size: 0.9rem;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    
-    /* Style pour le texte extrait du JSON */
-    .extracted-feedback {
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      border: 1px solid #dee2e6;
-      line-height: 1.6;
-    }
-    
-    .extracted-feedback mjx-container {
-      display: inline-block;
-      margin: 0 2px;
+    .section-title i {
+      margin-right: 15px;
+      font-size: 1.8rem;
+      color: var(--primary);
     }
     
     /* Bouton retour élégant */
@@ -414,6 +501,12 @@
       color: var(--gray);
     }
     
+    /* Style pour les formules LaTeX */
+    mjx-container {
+      display: inline-block;
+      vertical-align: middle;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
       body {
@@ -447,20 +540,43 @@
         font-size: 1.5rem;
       }
       
-      summary {
-        padding: 20px;
+      .stats-summary {
+        grid-template-columns: 1fr;
+      }
+      
+      .accordion-header {
+        padding: 15px 20px;
+      }
+      
+      .accordion-header h3 {
+        font-size: 1.1rem;
+      }
+      
+      .matiere .accordion-header {
+        margin-left: 10px;
+      }
+      
+      .unite .accordion-header {
+        margin-left: 20px;
+      }
+      
+      .lecon .accordion-header {
+        margin-left: 30px;
+      }
+      
+      .exercice-item {
+        margin-left: 40px;
+      }
+      
+      .reponse summary {
+        padding: 15px;
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
       }
       
       .reponse-content {
-        padding: 20px;
-      }
-      
-      .section-title {
-        font-size: 1.4rem;
-        margin: 30px 0 20px;
+        padding: 15px;
       }
       
       .smart-back-link {
@@ -475,8 +591,10 @@
       }
     }
   </style>
-
-  <!-- MathJax pour les formules en texte -->
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- MathJax pour les formules -->
   <script>
     window.MathJax = {
       tex: {
@@ -492,28 +610,24 @@
       },
       startup: {
         pageReady: () => {
-          console.log('MathJax ready');
           return MathJax.startup.defaultPageReady();
         }
       }
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
-  
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
     <h2>
       {% if lang == 'fr' %}
-        <i class="fas fa-history"></i> Historique des Réponses
+        <i class="fas fa-history"></i> Historique des Exercices
       {% else %}
-        <i class="fas fa-history"></i> Answer History
+        <i class="fas fa-history"></i> Exercise History
       {% endif %}
     </h2>
     
-    <!-- Carte élève élégante -->
+    <!-- Carte élève -->
     <div class="student-info">
       <div class="avatar">
         <i class="fas fa-user-graduate"></i>
@@ -522,61 +636,217 @@
         <h3>{{ eleve.nom_complet }}</h3>
         <p>
           {% if lang == 'fr' %}
-            <i class="fas fa-chart-line"></i> Suivi détaillé de votre progression académique
+            <i class="fas fa-chart-line"></i> Progression académique détaillée
           {% else %}
-            <i class="fas fa-chart-line"></i> Detailed tracking of your academic progress
+            <i class="fas fa-chart-line"></i> Detailed academic progress
           {% endif %}
         </p>
       </div>
     </div>
-
-    <!-- Section des exercices -->
-    <div class="section-title">
-      <i class="fas fa-book-open"></i>
-      <span>{% if lang == 'fr' %}Exercices Complétés{% else %}Completed Exercises{% endif %}</span>
+    
+    <!-- Statistiques globales -->
+    <div class="stats-summary">
+      <div class="stat-card">
+        <h3><i class="fas fa-check-circle"></i> 
+          {% if lang == 'fr' %}Exercices Effectués{% else %}Exercises Completed{% endif %}
+        </h3>
+        <div class="stat-numbers">
+          <div class="stat-number">{{ total_exercices_effectues }}</div>
+          <div class="stat-label">{% if lang == 'fr' %}Total{% else %}Total{% endif %}</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <h3><i class="fas fa-clock"></i> 
+          {% if lang == 'fr' %}Exercices Restants{% else %}Exercises Remaining{% endif %}
+        </h3>
+        <div class="stat-numbers">
+          <div class="stat-number">{{ total_exercices_restants }}</div>
+          <div class="stat-label">{% if lang == 'fr' %}À faire{% else %}To do{% endif %}</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <h3><i class="fas fa-chart-pie"></i> 
+          {% if lang == 'fr' %}Taux de Complétion{% else %}Completion Rate{% endif %}
+        </h3>
+        <div class="stat-numbers">
+          <div class="stat-number">
+            {% set total = total_exercices_effectues + total_exercices_restants %}
+            {% if total > 0 %}
+              {{ ((total_exercices_effectues / total) * 100)|round|int }}%
+            {% else %}
+              0%
+            {% endif %}
+          </div>
+          <div class="stat-label">{% if lang == 'fr' %}Progression{% else %}Progress{% endif %}</div>
+        </div>
+      </div>
     </div>
     
-    {% if reponses %}
-      {% for r in reponses %}
-        <details class="reponse">
-          <summary>
-            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                <span class="theme">{{ r.theme or "Exercice" }}</span>
-                <span class="etoiles">{{ r.etoiles or 0 }} <i class="fas fa-star"></i></span>
-              </div>
-              <div style="color: var(--gray); font-size: 0.95rem; font-weight: normal;">
-                {% if r.enonce %}
-                  {{ r.enonce[:80]|striptags|replace("\n", " ")|trim }}...
-                {% else %}
-                  ...
-                {% endif %}
-              </div>
-            </div>
-          </summary>
-          <div class="reponse-content">
-            <p><strong>{{ '📋 Énoncé :' if lang == 'fr' else '📋 Prompt:' }}</strong></p>
-            <div class="content-block">{{ r.enonce|default('', true)|safe }}</div>
-
-            <p><strong>{{ '✏️ Réponse de l\'élève :' if lang == 'fr' else '✏️ Student\'s Answer:' }}</strong></p>
-            <div class="content-block">{{ r.reponse_eleve|default('', true)|safe }}</div>
-
-            <p><strong>{{ '🤖 Analyse IA :' if lang == 'fr' else '🤖 AI Feedback:' }}</strong></p>
-            <div class="content-block" data-feedback-content="{{ r.analyse_ia|default('', true)|e }}">
-              {# Le contenu sera traité par JavaScript #}
-              {{ r.analyse_ia|default('', true)|safe }}
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 15px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
-              <strong style="color: var(--dark);">{{ '⭐ Note :' if lang == 'fr' else '⭐ Score:' }}</strong>
-              <span class="etoiles" style="font-size: 1.4rem;">{{ r.etoiles or 0 }} <i class="fas fa-star"></i></span>
-              <span style="margin-left: auto; color: var(--gray); font-size: 0.9rem;">
-                <i class="far fa-calendar"></i> {{ r.date|default('') }}
+    <!-- Structure hiérarchique des exercices -->
+    <div class="section-title">
+      <i class="fas fa-sitemap"></i>
+      <span>{% if lang == 'fr' %}Structure des Exercices par Niveau{% else %}Exercise Structure by Level{% endif %}</span>
+    </div>
+    
+    {% if data_structure.niveaux %}
+      <div class="accordion">
+        {% for niveau_nom, niveau_data in data_structure.niveaux.items() %}
+        <div class="accordion-item niveau">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <h3><i class="fas fa-layer-group"></i> Niveau: {{ niveau_nom }}</h3>
+            <div class="badge">
+              <span title="{% if lang == 'fr' %}Exercices effectués{% else %}Exercises completed{% endif %}">
+                <i class="fas fa-check"></i> {{ niveau_data.total_effectues }}
+              </span>
+              <span title="{% if lang == 'fr' %}Exercices restants{% else %}Exercises remaining{% endif %}">
+                <i class="fas fa-clock"></i> {{ niveau_data.total_restants }}
               </span>
             </div>
           </div>
-        </details>
-      {% endfor %}
+          <div class="accordion-content">
+            {% if niveau_data.matieres %}
+              {% for matiere_nom, matiere_data in niveau_data.matieres.items() %}
+              <div class="accordion-item matiere">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                  <h3><i class="fas fa-book"></i> Matière: {{ matiere_nom }}</h3>
+                  <div class="badge">
+                    <span><i class="fas fa-check"></i> {{ matiere_data.total_effectues }}</span>
+                    <span><i class="fas fa-clock"></i> {{ matiere_data.total_restants }}</span>
+                  </div>
+                </div>
+                <div class="accordion-content">
+                  {% if matiere_data.unites %}
+                    {% for unite_nom, unite_data in matiere_data.unites.items() %}
+                    <div class="accordion-item unite">
+                      <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <h3><i class="fas fa-cube"></i> Unité: {{ unite_nom }}</h3>
+                        <div class="badge">
+                          <span><i class="fas fa-check"></i> {{ unite_data.total_effectues }}</span>
+                          <span><i class="fas fa-clock"></i> {{ unite_data.total_restants }}</span>
+                        </div>
+                      </div>
+                      <div class="accordion-content">
+                        {% if unite_data.lecons %}
+                          {% for lecon_nom, lecon_data in unite_data.lecons.items() %}
+                          <div class="accordion-item lecon">
+                            <div class="accordion-header" onclick="toggleAccordion(this)">
+                              <h3><i class="fas fa-file-alt"></i> Leçon: {{ lecon_nom }}</h3>
+                              <div class="badge">
+                                <span><i class="fas fa-check"></i> {{ lecon_data.exercices_effectues }}</span>
+                                <span><i class="fas fa-clock"></i> {{ lecon_data.exercices_restants }}</span>
+                              </div>
+                            </div>
+                            <div class="accordion-content">
+                              {% if lecon_data.exercices %}
+                                <div style="margin: 15px 0 25px 0; padding: 15px; background: rgba(67, 97, 238, 0.05); border-radius: 8px;">
+                                  <strong style="color: var(--primary);">
+                                    <i class="fas fa-list-check"></i> 
+                                    {% if lang == 'fr' %}
+                                      Exercices de cette leçon ({{ lecon_data.exercices|length }} effectué{% if lecon_data.exercices|length > 1 %}s{% endif %}):
+                                    {% else %}
+                                      Exercises in this lesson ({{ lecon_data.exercices|length }} completed):
+                                    {% endif %}
+                                  </strong>
+                                </div>
+                                
+                                {% for exercice in lecon_data.exercices %}
+                                <div class="exercice-item">
+                                  <details class="reponse">
+                                    <summary>
+                                      <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                          <span class="theme">Exercice</span>
+                                          <span style="color: var(--gray); font-size: 0.9em;">
+                                            <i class="far fa-calendar"></i> {{ exercice.date }}
+                                          </span>
+                                        </div>
+                                        <span class="etoiles">{{ exercice.etoiles }} <i class="fas fa-star"></i></span>
+                                      </div>
+                                    </summary>
+                                    <div class="reponse-content">
+                                      <p><strong>{{ '📋 Énoncé :' if lang == 'fr' else '📋 Prompt:' }}</strong></p>
+                                      <div class="content-block math-content">{{ exercice.enonce|default('', true)|safe }}</div>
+
+                                      <p><strong>{{ '✏️ Réponse de l\'élève :' if lang == 'fr' else '✏️ Student\'s Answer:' }}</strong></p>
+                                      <div class="content-block math-content">{{ exercice.reponse_eleve|default('', true)|safe }}</div>
+
+                                      <p><strong>{{ '🤖 Analyse IA :' if lang == 'fr' else '🤖 AI Feedback:' }}</strong></p>
+                                      <div class="content-block math-content">{{ exercice.analyse_ia|default('', true)|safe }}</div>
+
+                                      <div style="display: flex; align-items: center; gap: 15px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
+                                        <strong style="color: var(--dark);">{{ '⭐ Note :' if lang == 'fr' else '⭐ Score:' }}</strong>
+                                        <span class="etoiles" style="font-size: 1.4rem;">{{ exercice.etoiles }} <i class="fas fa-star"></i></span>
+                                        <span style="margin-left: auto; color: var(--gray); font-size: 0.9rem;">
+                                          <i class="far fa-calendar"></i> {{ exercice.date }}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </details>
+                                </div>
+                                {% endfor %}
+                              {% else %}
+                                <div class="empty-state" style="padding: 30px;">
+                                  <i class="fas fa-clipboard-list"></i>
+                                  <p>
+                                    {% if lang == 'fr' %}
+                                      Aucun exercice complété dans cette leçon
+                                    {% else %}
+                                      No exercises completed in this lesson
+                                    {% endif %}
+                                  </p>
+                                </div>
+                              {% endif %}
+                            </div>
+                          </div>
+                          {% endfor %}
+                        {% else %}
+                          <div class="empty-state" style="padding: 30px;">
+                            <i class="fas fa-book-open"></i>
+                            <p>
+                              {% if lang == 'fr' %}
+                                Aucune leçon avec exercices complétés dans cette unité
+                              {% else %}
+                                No lessons with completed exercises in this unit
+                              {% endif %}
+                            </p>
+                          </div>
+                        {% endif %}
+                      </div>
+                    </div>
+                    {% endfor %}
+                  {% else %}
+                    <div class="empty-state" style="padding: 30px;">
+                      <i class="fas fa-cubes"></i>
+                      <p>
+                        {% if lang == 'fr' %}
+                          Aucune unité avec exercices complétés dans cette matière
+                        {% else %}
+                          No units with completed exercises in this subject
+                        {% endif %}
+                      </p>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state" style="padding: 30px;">
+                <i class="fas fa-books"></i>
+                <p>
+                  {% if lang == 'fr' %}
+                    Aucune matière avec exercices complétés dans ce niveau
+                  {% else %}
+                    No subjects with completed exercises in this level
+                  {% endif %}
+                </p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
     {% else %}
       <div class="empty-state">
         <i class="fas fa-clipboard-list"></i>
@@ -589,74 +859,79 @@
         </p>
       </div>
     {% endif %}
-
-    <hr>
-
+    
     <!-- Section des tests sommatifs -->
+    {% if tests %}
+    <hr>
+    
     <div class="section-title">
       <i class="fas fa-file-alt"></i>
       <span>{% if lang == 'fr' %}Tests Sommatifs{% else %}Final Tests{% endif %}</span>
     </div>
     
-    {% if tests %}
+    <div class="accordion">
       {% for t in tests %}
-        <details class="reponse">
-          <summary>
-            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                <span class="theme">{{ t.unite or "Test" }}</span>
-                <span class="etoiles">{{ t.etoiles or 0 }} <i class="fas fa-star"></i></span>
-              </div>
-              <div style="color: var(--gray); font-size: 0.95rem; font-weight: normal;">
-                {% if t.question %}
-                  {{ t.question[:80]|striptags|replace("\n", " ")|trim }}...
-                {% else %}
-                  ...
-                {% endif %}
-              </div>
-            </div>
-          </summary>
-          <div class="reponse-content">
-            <p><strong>{{ '❓ Question :' if lang == 'fr' else '❓ Question:' }}</strong></p>
-            <div class="content-block">{{ t.question|default('', true)|safe }}</div>
-
-            <p><strong>{{ '✏️ Réponse :' if lang == 'fr' else '✏️ Answer:' }}</strong></p>
-            <div class="content-block">{{ t.reponse_eleve|default('', true)|safe }}</div>
-
-            <p><strong>{{ '🤖 Analyse IA :' if lang == 'fr' else '🤖 AI Feedback:' }}</strong></p>
-            <div class="content-block" data-feedback-content="{{ t.analyse_ia|default('', true)|e }}">
-              {{ t.analyse_ia|default('', true)|safe }}
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 15px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
-              <strong style="color: var(--dark);">{{ '⭐ Note :' if lang == 'fr' else '⭐ Score:' }}</strong>
-              <span class="etoiles" style="font-size: 1.4rem;">{{ t.etoiles or 0 }} <i class="fas fa-star"></i></span>
-              <span style="margin-left: auto; color: var(--gray); font-size: 0.9rem;">
-                <i class="far fa-calendar"></i> {{ t.date|default('') }}
-              </span>
-            </div>
+      <div class="accordion-item unite">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h3><i class="fas fa-file-signature"></i> Test: {{ t.unite or "Test Sommatif" }}</h3>
+          <div class="badge">
+            <span class="etoiles">{{ t.etoiles }} <i class="fas fa-star"></i></span>
+            <span style="margin-left: 10px;">
+              <i class="far fa-calendar"></i> {{ t.date }}
+            </span>
           </div>
-        </details>
-      {% endfor %}
-    {% else %}
-      <div class="empty-state">
-        <i class="fas fa-file-alt"></i>
-        <p>
-          {% if lang == 'fr' %}
-            Aucun test sommatif complété.
-          {% else %}
-            No final tests completed yet.
-          {% endif %}
-        </p>
-      </div>
-    {% endif %}
+        </div>
+        <div class="accordion-content">
+          <div class="exercice-item">
+            <details class="reponse">
+              <summary>
+                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="theme">Test Sommatif</span>
+                    <span style="color: var(--gray); font-size: 0.9em;">
+                      <i class="far fa-calendar"></i> {{ t.date }}
+                    </span>
+                  </div>
+                  <span class="etoiles">{{ t.etoiles }} <i class="fas fa-star"></i></span>
+                </div>
+              </summary>
+              <div class="reponse-content">
+                <p><strong>{{ '❓ Question :' if lang == 'fr' else '❓ Question:' }}</strong></p>
+                <div class="content-block math-content">{{ t.question|default('', true)|safe }}</div>
 
+                <p><strong>{{ '✏️ Réponse :' if lang == 'fr' else '✏️ Answer:' }}</strong></p>
+                <div class="content-block math-content">{{ t.reponse_eleve|default('', true)|safe }}</div>
+
+                <p><strong>{{ '🤖 Analyse IA :' if lang == 'fr' else '🤖 AI Feedback:' }}</strong></p>
+                <div class="content-block math-content">{{ t.analyse_ia|default('', true)|safe }}</div>
+
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
+                  <strong style="color: var(--dark);">{{ '⭐ Note :' if lang == 'fr' else '⭐ Score:' }}</strong>
+                  <span class="etoiles" style="font-size: 1.4rem;">{{ t.etoiles }} <i class="fas fa-star"></i></span>
+                  <span style="margin-left: auto; color: var(--gray); font-size: 0.9rem;">
+                    <i class="far fa-calendar"></i> {{ t.date }}
+                  </span>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    
     <!-- Bouton retour intelligent -->
     <div style="text-align: center; margin-top: 50px;">
       {% if is_parent_access %}
         <a class="smart-back-link" href="/parent-dashboard">
           <i class="fas fa-arrow-left"></i> 
           {% if lang == 'fr' %}Retour au Tableau de Bord Parent{% else %}Back to Parent Dashboard{% endif %}
+        </a>
+      {% elif is_enseignant_access %}
+        <a class="smart-back-link" href="/enseignant-dashboard">
+          <i class="fas fa-arrow-left"></i> 
+          {% if lang == 'fr' %}Retour au Tableau de Bord Enseignant{% else %}Back to Teacher Dashboard{% endif %}
         </a>
       {% else %}
         <a class="smart-back-link" href="/dashboard-eleve?username={{ eleve.username }}">
@@ -666,198 +941,106 @@
       {% endif %}
     </div>
   </div>
-
-  <!-- Script pour traiter les différents formats de contenu -->
+  
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('📊 Page historique chargée - traitement du contenu');
+    // Gestion des accordéons
+    function toggleAccordion(element) {
+      const content = element.nextElementSibling;
+      const isExpanded = content.classList.contains('expanded');
       
-      // Fonction pour extraire et afficher le feedback du JSON
-      function processFeedbackContent() {
-        const feedbackBlocks = document.querySelectorAll('.content-block[data-feedback-content]');
-        
-        feedbackBlocks.forEach(block => {
-          let content = block.getAttribute('data-feedback-content') || block.innerHTML;
-          
-          // Si c'est du JSON, extraire le feedback
-          if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
-            try {
-              const jsonData = JSON.parse(content);
-              
-              // Chercher le feedback à afficher (priorité: current_feedback > original > texte brut)
-              let feedbackText = '';
-              
-              if (jsonData.current_feedback) {
-                feedbackText = jsonData.current_feedback;
-              } else if (jsonData.original) {
-                feedbackText = jsonData.original;
-              } else {
-                // Essayer de trouver d'autres champs possibles
-                feedbackText = jsonData.feedback || jsonData.analysis || content;
-              }
-              
-              // Nettoyer le texte
-              feedbackText = cleanFeedbackText(feedbackText);
-              
-              // Créer un conteneur pour le feedback
-              const feedbackContainer = document.createElement('div');
-              feedbackContainer.className = 'extracted-feedback';
-              feedbackContainer.innerHTML = feedbackText;
-              
-              // Remplacer le contenu du bloc
-              block.innerHTML = '';
-              block.appendChild(feedbackContainer);
-              
-              // Si c'est encore du JSON (imbriqué), réessayer
-              if (feedbackText.trim().startsWith('{')) {
-                processFeedbackContent();
-              }
-              
-            } catch (e) {
-              console.log('⚠️ Impossible de parser le JSON, affichage brut', e);
-              block.innerHTML = cleanFeedbackText(content);
-            }
-          } else {
-            // Nettoyer le contenu non-JSON
-            block.innerHTML = cleanFeedbackText(content);
-          }
-        });
-      }
+      // Fermer tous les accordéons du même niveau
+      const parentItem = element.closest('.accordion-item');
+      const siblings = parentItem ? parentItem.querySelectorAll('.accordion-content.expanded') : [];
       
-      // Fonction pour nettoyer le texte du feedback
-      function cleanFeedbackText(text) {
-        if (!text) return '';
-        
-        return text
-          // Décoder les entités HTML
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#039;/g, "'")
-          .replace(/&nbsp;/g, ' ')
-          
-          // Nettoyer les sauts de ligne
-          .replace(/\\n/g, '\n')
-          .replace(/\\r/g, '')
-          .replace(/\\t/g, ' ')
-          
-          // Remplacer les délimiteurs LaTeX encodés
-          .replace(/\\\\\[/g, '$$')
-          .replace(/\\\\\]/g, '$$')
-          .replace(/\\\\\(/g, '$')
-          .replace(/\\\\\)/g, '$')
-          
-          // Nettoyer les espaces multiples
-          .replace(/\s+/g, ' ')
-          .replace(/^\s+|\s+$/g, '');
-      }
-      
-      // Fonction pour traiter le contenu MathJax déjà rendu
-      function preserveMathJaxContent() {
-        const blocks = document.querySelectorAll('.content-block');
-        
-        blocks.forEach(block => {
-          // Si le bloc contient déjà du MathJax rendu (<mjx-container>), le conserver tel quel
-          if (block.innerHTML.includes('<mjx-container')) {
-            // Ne rien faire, le contenu est déjà rendu
-            return;
-          }
-          
-          // Si le bloc contient des formules LaTeX en texte, les marquer pour MathJax
-          const content = block.innerHTML;
-          if (content.includes('$') || content.includes('\\(') || content.includes('$$')) {
-            block.classList.add('math-content');
-          }
-        });
-      }
-      
-      // Initialiser le traitement
-      function initContentProcessing() {
-        console.log('🔄 Traitement du contenu...');
-        
-        // 1. Préserver le MathJax déjà rendu
-        preserveMathJaxContent();
-        
-        // 2. Traiter le contenu des feedbacks
-        processFeedbackContent();
-        
-        // 3. Initialiser MathJax pour les formules en texte
-        if (window.MathJax && window.MathJax.typesetPromise) {
-          setTimeout(() => {
-            MathJax.typesetPromise().then(() => {
-              console.log('✅ MathJax initialisé');
-            }).catch(err => {
-              console.warn('⚠️ Erreur MathJax:', err);
-            });
-          }, 500);
+      siblings.forEach(sibling => {
+        if (sibling !== content) {
+          sibling.classList.remove('expanded');
+          const header = sibling.previousElementSibling;
+          if (header) header.classList.remove('active');
         }
-        
-        // 4. Ajouter une classe pour indiquer le traitement terminé
+      });
+      
+      // Basculer l'état actuel
+      content.classList.toggle('expanded');
+      element.classList.toggle('active');
+      
+      // Forcer le re-rendu MathJax après ouverture
+      if (content.classList.contains('expanded')) {
         setTimeout(() => {
-          document.querySelectorAll('.content-block').forEach(block => {
-            block.classList.add('processed');
-          });
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            MathJax.typesetPromise([content]).catch(err => console.warn('MathJax error:', err));
+          }
         }, 300);
       }
-      
-      // Démarrer le traitement
-      initContentProcessing();
-      
-      // Gérer l'ouverture des détails
-      document.querySelectorAll('details').forEach(detail => {
-        detail.addEventListener('toggle', function() {
-          if (this.open) {
-            // Traiter le contenu du détail ouvert
-            setTimeout(() => {
-              const feedbackBlocks = this.querySelectorAll('.content-block:not(.processed)');
-              if (feedbackBlocks.length > 0) {
-                processFeedbackContent();
-                preserveMathJaxContent();
-                
-                // Appliquer MathJax sur le nouveau contenu
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  setTimeout(() => {
-                    MathJax.typesetPromise(feedbackBlocks);
-                  }, 100);
-                }
-              }
-            }, 50);
-          }
-        });
-      });
-      
-      // Observer les changements dans le DOM
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach(mutation => {
-          if (mutation.addedNodes.length > 0) {
-            // Attendre que le contenu soit ajouté
-            setTimeout(() => {
-              const newBlocks = document.querySelectorAll('.content-block:not(.processed)');
-              if (newBlocks.length > 0) {
-                processFeedbackContent();
-                preserveMathJaxContent();
-              }
-            }, 100);
-          }
-        });
-      });
-      
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-      
-      // Recharger MathJax si nécessaire
-      setTimeout(() => {
-        if (!window.MathJax || !window.MathJax.typesetPromise) {
-          console.log('🔄 MathJax non détecté, rechargement...');
-          const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js';
-          script.defer = true;
-          document.head.appendChild(script);
+    }
+    
+    // Initialiser tous les blocs de contenu comme "math-content"
+    document.addEventListener('DOMContentLoaded', function() {
+      // Marquer tous les blocs de contenu pour MathJax
+      document.querySelectorAll('.content-block').forEach(block => {
+        if (!block.classList.contains('math-content')) {
+          block.classList.add('math-content');
         }
-      }, 2000);
+      });
+      
+      // Traitement initial MathJax
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        setTimeout(() => {
+          MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
+        }, 500);
+      }
+      
+      // Traitement des réponses JSON
+      document.querySelectorAll('.content-block').forEach(block => {
+        try {
+          const content = block.innerHTML.trim();
+          // Essayer de parser le JSON
+          if (content.startsWith('{') && content.endsWith('}')) {
+            const data = JSON.parse(content);
+            // Chercher les champs de feedback
+            const feedback = data.current_feedback || data.feedback || data.original || 
+                            data.analyse || data.analysis || data.reponse || content;
+            
+            // Nettoyer le texte
+            let cleanFeedback = String(feedback)
+              .replace(/\\n/g, '\n')
+              .replace(/\\r/g, '')
+              .replace(/\\t/g, ' ')
+              .replace(/\\\\\[/g, '$$')
+              .replace(/\\\\\]/g, '$$')
+              .replace(/\\\\\(/g, '$')
+              .replace(/\\\\\)/g, '$');
+            
+            block.innerHTML = cleanFeedback;
+          }
+        } catch(e) {
+          // Ce n'est pas du JSON, laisser tel quel
+          console.log('Content is not JSON:', e.message);
+        }
+      });
+    });
+    
+    // Observer les changements pour traiter le contenu dynamique
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.addedNodes.length) {
+          mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1 && node.classList && node.classList.contains('accordion-content')) {
+              // Contenu d'accordéon ajouté, traiter MathJax
+              setTimeout(() => {
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
+                }
+              }, 100);
+            }
+          });
+        }
+      });
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
     });
   </script>
 </body>

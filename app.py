@@ -6128,37 +6128,128 @@ def historique_eleve():
     exercice_id = request.args.get("exercice_id")
     lang = request.args.get("lang", "fr")
 
-    # ✅ DÉTECTION DU CONTEXTE : Parent ou Élève
+    # ✅ DÉTECTION DU CONTEXTE : Parent, Enseignant ou Élève
     parent_email = session.get("parent_email")
+    enseignant_id = session.get("enseignant_id")
     is_parent_access = bool(parent_email)
+    is_enseignant_access = bool(enseignant_id)
 
     eleve = User.query.filter_by(username=username).first()
     if not eleve:
         return "Élève introuvable", 404
 
-    # Réponses aux exercices simples
-    query = StudentResponse.query.filter_by(user_id=eleve.id)
-    if exercice_id:
-        query = query.filter_by(exercice_id=exercice_id)
-
-    reponses_exos = query.all()
-
-    donnees_exo = []
+    # Récupérer toutes les réponses de l'élève
+    reponses_exos = StudentResponse.query.filter_by(user_id=eleve.id).all()
+    
+    # Structure pour organiser les données
+    data_structure = {
+        "niveaux": {}
+    }
+    
+    # Compteurs globaux
+    total_exercices_effectues = 0
+    total_exercices_restants = 0
+    
+    # Traiter chaque réponse d'exercice
     for r in reponses_exos:
         ex = Exercice.query.get(r.exercice_id) if r.exercice_id else None
-
-        theme = ex.lecon.unite.nom if ex and ex.lecon and ex.lecon.unite else "—"
-        enonce = ex.question_fr if ex and lang == "fr" else (ex.question_en if ex else "Réponse libre (remédiation)")
-
-        donnees_exo.append({
+        if not ex:
+            continue
+            
+        # Naviguer dans la hiérarchie
+        lecon = ex.lecon
+        unite = lecon.unite if lecon else None
+        matiere = unite.matiere if unite else None
+        niveau = matiere.niveau if matiere else None
+        
+        if not all([niveau, matiere, unite, lecon]):
+            continue
+        
+        # Initialiser les structures si nécessaire
+        if niveau.nom not in data_structure["niveaux"]:
+            data_structure["niveaux"][niveau.nom] = {
+                "matieres": {},
+                "total_effectues": 0,
+                "total_restants": 0
+            }
+        
+        if matiere.nom not in data_structure["niveaux"][niveau.nom]["matieres"]:
+            data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom] = {
+                "unites": {},
+                "total_effectues": 0,
+                "total_restants": 0
+            }
+        
+        if unite.nom not in data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"]:
+            data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom] = {
+                "lecons": {},
+                "total_effectues": 0,
+                "total_restants": 0
+            }
+        
+        if lecon.nom not in data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"]:
+            data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom] = {
+                "exercices": [],
+                "exercices_effectues": 0,
+                "exercices_restants": 0
+            }
+        
+        # Ajouter l'exercice à la leçon
+        theme = unite.nom if unite else "—"
+        enonce = ex.question_fr if lang == "fr" else (ex.question_en if ex else "Réponse libre (remédiation)")
+        
+        exercice_data = {
+            "id": r.id,
             "theme": theme,
             "enonce": enonce,
             "reponse_eleve": r.reponse_eleve,
             "analyse_ia": r.analyse_ia or "—",
-            "etoiles": r.etoiles if r.etoiles is not None else 0
-        })
+            "etoiles": r.etoiles if r.etoiles is not None else 0,
+            "date": r.date.strftime("%d/%m/%Y") if r.date else ""
+        }
+        
+        data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom]["exercices"].append(exercice_data)
+        
+        # Mettre à jour les compteurs
+        data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom]["exercices_effectues"] += 1
+        
+        # Compter les exercices restants (total - effectués)
+        total_exercices_lecon = Exercice.query.filter_by(lecon_id=lecon.id).count()
+        data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom]["exercices_restants"] = total_exercices_lecon - data_structure["niveaux"][niveau.nom]["matieres"][matiere.nom]["unites"][unite.nom]["lecons"][lecon.nom]["exercices_effectues"]
+    
+    # Calculer les totaux par unité, matière et niveau
+    for niveau_nom, niveau_data in data_structure["niveaux"].items():
+        niveau_effectues = 0
+        niveau_restants = 0
+        
+        for matiere_nom, matiere_data in niveau_data["matieres"].items():
+            matiere_effectues = 0
+            matiere_restants = 0
+            
+            for unite_nom, unite_data in matiere_data["unites"].items():
+                unite_effectues = 0
+                unite_restants = 0
+                
+                for lecon_nom, lecon_data in unite_data["lecons"].items():
+                    unite_effectues += lecon_data["exercices_effectues"]
+                    unite_restants += lecon_data["exercices_restants"]
+                
+                unite_data["total_effectues"] = unite_effectues
+                unite_data["total_restants"] = unite_restants
+                matiere_effectues += unite_effectues
+                matiere_restants += unite_restants
+            
+            matiere_data["total_effectues"] = matiere_effectues
+            matiere_data["total_restants"] = matiere_restants
+            niveau_effectues += matiere_effectues
+            niveau_restants += matiere_restants
+        
+        niveau_data["total_effectues"] = niveau_effectues
+        niveau_data["total_restants"] = niveau_restants
+        total_exercices_effectues += niveau_effectues
+        total_exercices_restants += niveau_restants
 
-    # Réponses aux tests sommatifs
+    # Réponses aux tests sommatifs (gardées séparées)
     reponses_tests = TestResponse.query.filter_by(user_id=eleve.id).all()
     donnees_tests = []
     for t in reponses_tests:
@@ -6166,7 +6257,6 @@ def historique_eleve():
         unite_nom = test.unite.nom if test and test.unite else "—"
         enonce_test = test.question_fr if lang == "fr" else test.question_en
 
-        # 🔧 Concaténation des réponses dans l'ordre des clés (1, 2, 3...)
         reponses_ordonnees = ""
         if isinstance(t.reponses_exercices, dict):
             try:
@@ -6181,16 +6271,20 @@ def historique_eleve():
             "question": enonce_test,
             "reponse_eleve": reponses_ordonnees or "—",
             "analyse_ia": t.analyse_ia or "—",
-            "etoiles": t.etoiles if t.etoiles is not None else 0
+            "etoiles": t.etoiles if t.etoiles is not None else 0,
+            "date": t.date.strftime("%d/%m/%Y") if t.date else ""
         })
 
     return render_template(
         "historique_eleve.html",
         eleve=eleve,
         lang=lang,
-        reponses=donnees_exo,
+        data_structure=data_structure,
+        total_exercices_effectues=total_exercices_effectues,
+        total_exercices_restants=total_exercices_restants,
         tests=donnees_tests,
-        is_parent_access=is_parent_access  # ✅ IMPORTANT
+        is_parent_access=is_parent_access,
+        is_enseignant_access=is_enseignant_access
     )
 
 @app.route("/enseignant-remediations")
