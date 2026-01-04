@@ -6216,8 +6216,17 @@ def historique_eleve():
     if not eleve:
         return "Élève introuvable", 404
 
-    # Récupérer l'ID de l'élève
+    # Récupérer l'ID de l'élève et son niveau
     eleve_id = eleve.id
+    niveau_eleve = eleve.niveau  # Récupère l'objet Niveau de l'élève
+    
+    if not niveau_eleve:
+        return "Niveau de l'élève non défini", 404
+    
+    niveau_eleve_nom = niveau_eleve.nom
+    niveau_eleve_id = niveau_eleve.id
+    
+    print(f"ÉLÈVE - {eleve.nom_complet} - Niveau: {niveau_eleve_nom} (ID: {niveau_eleve_id})")
 
     # Récupérer toutes les réponses de l'élève
     reponses_exos = StudentResponse.query.filter_by(user_id=eleve_id).all()
@@ -6225,87 +6234,84 @@ def historique_eleve():
     # Créer un dictionnaire pour suivre quels exercices ont été faits par ID
     exercices_faits_par_id = {r.exercice_id for r in reponses_exos if r.exercice_id}
     
-    # Récupérer tous les niveaux, matières, unités et leçons disponibles
-    tous_niveaux = Niveau.query.all()
+    # Récupérer UNIQUEMENT le niveau de l'élève
+    niveau_eleve_obj = Niveau.query.get(niveau_eleve_id)
     
-    # Structure pour organiser les données
+    if not niveau_eleve_obj:
+        return "Niveau de l'élève introuvable", 404
+    
+    # Structure pour organiser les données (UNIQUEMENT pour le niveau de l'élève)
     data_structure = {
         "niveaux": {}
     }
     
-    # Compteurs globaux
+    # Compteurs globaux (UNIQUEMENT pour le niveau de l'élève)
     total_exercices_effectues = 0
     total_exercices_restants = 0
     total_exercices_totaux = 0
     
-    # Parcourir toute la hiérarchie pédagogique
-    for niveau in tous_niveaux:
-        niveau_nom = niveau.nom
+    # Initialiser le niveau de l'élève dans la structure
+    data_structure["niveaux"][niveau_eleve_nom] = {
+        "matieres": {},
+        "total_effectues": 0,
+        "total_restants": 0,
+        "total_exercices": 0
+    }
+    
+    # Parcourir les matières du niveau de l'élève
+    for matiere in niveau_eleve_obj.matieres:
+        matiere_nom = matiere.nom
         
-        # Initialiser le niveau
-        if niveau_nom not in data_structure["niveaux"]:
-            data_structure["niveaux"][niveau_nom] = {
-                "matieres": {},
+        # Initialiser la matière
+        data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom] = {
+            "unites": {},
+            "total_effectues": 0,
+            "total_restants": 0,
+            "total_exercices": 0
+        }
+        
+        # Parcourir les unités de cette matière
+        for unite in matiere.unites:
+            unite_nom = unite.nom
+            
+            # Initialiser l'unité
+            data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom]["unites"][unite_nom] = {
+                "lecons": {},
                 "total_effectues": 0,
                 "total_restants": 0,
                 "total_exercices": 0
             }
-        
-        # Parcourir les matières de ce niveau
-        for matiere in niveau.matieres:
-            matiere_nom = matiere.nom
             
-            # Initialiser la matière
-            if matiere_nom not in data_structure["niveaux"][niveau_nom]["matieres"]:
-                data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom] = {
-                    "unites": {},
-                    "total_effectues": 0,
-                    "total_restants": 0,
-                    "total_exercices": 0
+            # Parcourir les leçons de cette unité
+            for lecon in unite.lecons:
+                lecon_nom = lecon.titre_fr if lang == "fr" else lecon.titre_en
+                
+                # Initialiser la leçon
+                data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom] = {
+                    "exercices": [],
+                    "exercices_effectues": 0,
+                    "exercices_restants": 0,
+                    "exercices_totaux": 0,
+                    "lecon_id": lecon.id
                 }
-            
-            # Parcourir les unités de cette matière
-            for unite in matiere.unites:
-                unite_nom = unite.nom
                 
-                # Initialiser l'unité
-                if unite_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"]:
-                    data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom] = {
-                        "lecons": {},
-                        "total_effectues": 0,
-                        "total_restants": 0,
-                        "total_exercices": 0
-                    }
+                # Récupérer tous les exercices de cette leçon
+                exercices_lecon = Exercice.query.filter_by(lecon_id=lecon.id).all()
+                total_exercices_lecon = len(exercices_lecon)
+                data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_totaux"] = total_exercices_lecon
                 
-                # Parcourir les leçons de cette unité
-                for lecon in unite.lecons:
-                    lecon_nom = lecon.titre_fr if lang == "fr" else lecon.titre_en
-                    
-                    # Initialiser la leçon
-                    if lecon_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"]:
-                        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom] = {
-                            "exercices": [],
-                            "exercices_effectues": 0,
-                            "exercices_restants": 0,
-                            "exercices_totaux": 0,
-                            "lecon_id": lecon.id
-                        }
-                    
-                    # Récupérer tous les exercices de cette leçon
-                    exercices_lecon = Exercice.query.filter_by(lecon_id=lecon.id).all()
-                    total_exercices_lecon = len(exercices_lecon)
-                    data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_totaux"] = total_exercices_lecon
-                    
-                    # Mettre à jour les totaux
-                    total_exercices_totaux += total_exercices_lecon
+                # Mettre à jour les totaux du niveau
+                total_exercices_totaux += total_exercices_lecon
     
-    # Maintenant, traiter les exercices effectués par l'élève
+    print(f"TOTAL EXERCICES DISPONIBLES pour {niveau_eleve_nom}: {total_exercices_totaux}")
+    
+    # Maintenant, traiter les exercices effectués par l'élève (uniquement ceux de son niveau)
     for r in reponses_exos:
         ex = Exercice.query.get(r.exercice_id) if r.exercice_id else None
         if not ex:
             continue
             
-        # Naviguer dans la hiérarchie
+        # Naviguer dans la hiérarchie pour vérifier le niveau
         lecon = ex.lecon
         if not lecon:
             continue
@@ -6322,44 +6328,44 @@ def historique_eleve():
         if not niveau:
             continue
         
+        # VÉRIFIER SI L'EXERCICE EST DU NIVEAU DE L'ÉLÈVE
+        if niveau.id != niveau_eleve_id:
+            print(f"EXERCICE {ex.id} ignoré - Niveau: {niveau.nom} (pas le niveau de l'élève)")
+            continue
+        
         # Récupérer les noms avec les bons attributs
         niveau_nom = niveau.nom
         matiere_nom = matiere.nom
         unite_nom = unite.nom
         lecon_nom = lecon.titre_fr if lang == "fr" else lecon.titre_en
         
-        # S'assurer que les structures existent (au cas où)
-        if niveau_nom not in data_structure["niveaux"]:
-            continue
-        
-        if matiere_nom not in data_structure["niveaux"][niveau_nom]["matieres"]:
-            continue
+        # Vérifier que la structure existe
+        if (niveau_nom in data_structure["niveaux"] and 
+            matiere_nom in data_structure["niveaux"][niveau_nom]["matieres"] and
+            unite_nom in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"] and
+            lecon_nom in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"]):
             
-        if unite_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"]:
-            continue
+            # Ajouter l'exercice à la leçon
+            theme = unite_nom if unite else "—"
+            enonce = ex.question_fr if lang == "fr" else (ex.question_en if ex else "Réponse libre (remédiation)")
             
-        if lecon_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"]:
-            continue
-        
-        # Ajouter l'exercice à la leçon
-        theme = unite_nom if unite else "—"
-        enonce = ex.question_fr if lang == "fr" else (ex.question_en if ex else "Réponse libre (remédiation)")
-        
-        exercice_data = {
-            "id": r.id,
-            "theme": theme,
-            "enonce": enonce,
-            "reponse_eleve": r.reponse_eleve,
-            "analyse_ia": r.analyse_ia or "—",
-            "etoiles": r.etoiles if r.etoiles is not None else 0,
-            "date": r.timestamp.strftime("%d/%m/%Y") if r.timestamp else ""
-        }
-        
-        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices"].append(exercice_data)
-        
-        # Mettre à jour les compteurs
-        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_effectues"] += 1
-        total_exercices_effectues += 1
+            exercice_data = {
+                "id": r.id,
+                "theme": theme,
+                "enonce": enonce,
+                "reponse_eleve": r.reponse_eleve,
+                "analyse_ia": r.analyse_ia or "—",
+                "etoiles": r.etoiles if r.etoiles is not None else 0,
+                "date": r.timestamp.strftime("%d/%m/%Y") if r.timestamp else ""
+            }
+            
+            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices"].append(exercice_data)
+            
+            # Mettre à jour les compteurs
+            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_effectues"] += 1
+            total_exercices_effectues += 1
+    
+    print(f"EXERCICES EFFECTUÉS dans le niveau {niveau_eleve_nom}: {total_exercices_effectues}")
     
     # Calculer les exercices restants et totaux pour chaque niveau de la hiérarchie
     for niveau_nom, niveau_data in data_structure["niveaux"].items():
@@ -6406,16 +6412,29 @@ def historique_eleve():
         niveau_data["total_restants"] = niveau_total_restants
         niveau_data["total_exercices"] = niveau_total_exercices
         
-        total_exercices_restants += niveau_total_restants
+        total_exercices_restants = niveau_total_restants
     
-    # Calculer le total général des exercices disponibles
+    # Calculer le total général des exercices disponibles dans le niveau
     total_exercices_disponibles = total_exercices_totaux
-
-    # Réponses aux tests sommatifs (inchangé)
+    
+    print(f"RÉSUMÉ FINAL - Niveau: {niveau_eleve_nom}")
+    print(f"  Exercices effectués: {total_exercices_effectues}")
+    print(f"  Exercices restants: {total_exercices_restants}")
+    print(f"  Exercices totaux: {total_exercices_disponibles}")
+    
+    # Réponses aux tests sommatifs (uniquement ceux du niveau de l'élève)
     reponses_tests = TestResponse.query.filter_by(user_id=eleve_id).all()
     donnees_tests = []
     for t in reponses_tests:
         test = t.test
+        if not test:
+            continue
+            
+        # Vérifier si le test est du niveau de l'élève
+        if test.unite and test.unite.matiere and test.unite.matiere.niveau:
+            if test.unite.matiere.niveau.id != niveau_eleve_id:
+                continue  # Ignorer les tests qui ne sont pas du niveau de l'élève
+        
         if test and test.unite:
             unite_nom_test = test.unite.nom
         else:
@@ -6444,6 +6463,7 @@ def historique_eleve():
     return render_template(
         "historique_eleve.html",
         eleve=eleve,
+        niveau_eleve=niveau_eleve_nom,  # Ajout du nom du niveau pour l'affichage
         lang=lang,
         data_structure=data_structure,
         total_exercices_effectues=total_exercices_effectues,

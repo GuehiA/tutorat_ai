@@ -88,13 +88,31 @@
       border-radius: 2px;
     }
     
+    /* Bandeau niveau de l'élève */
+    .niveau-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      padding: 8px 20px;
+      border-radius: 25px;
+      font-weight: 600;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 15px rgba(67, 97, 238, 0.25);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      font-size: 1.1rem;
+    }
+    
+    .niveau-badge i {
+      margin-right: 10px;
+    }
+    
     /* Carte élève améliorée */
     .student-info {
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: white;
       padding: 25px;
       border-radius: 18px;
-      margin-bottom: 40px;
+      margin-bottom: 25px;
       display: flex;
       align-items: center;
       box-shadow: 0 10px 30px rgba(67, 97, 238, 0.25);
@@ -676,6 +694,18 @@
       {% endif %}
     </h2>
     
+    <!-- Bandeau niveau de l'élève -->
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div class="niveau-badge">
+        <i class="fas fa-graduation-cap"></i>
+        {% if lang == 'fr' %}
+          Niveau : {{ niveau_eleve }}
+        {% else %}
+          Level : {{ niveau_eleve }}
+        {% endif %}
+      </div>
+    </div>
+    
     <!-- Carte élève -->
     <div class="student-info">
       <div class="avatar">
@@ -685,9 +715,9 @@
         <h3>{{ eleve.nom_complet }}</h3>
         <p>
           {% if lang == 'fr' %}
-            <i class="fas fa-chart-line"></i> Progression académique détaillée
+            <i class="fas fa-chart-line"></i> Progression dans le niveau {{ niveau_eleve }}
           {% else %}
-            <i class="fas fa-chart-line"></i> Detailed academic progress
+            <i class="fas fa-chart-line"></i> Progress in level {{ niveau_eleve }}
           {% endif %}
         </p>
       </div>
@@ -765,7 +795,13 @@
     <!-- Structure hiérarchique des exercices -->
     <div class="section-title">
       <i class="fas fa-sitemap"></i>
-      <span>{% if lang == 'fr' %}Structure Complète des Exercices{% else %}Complete Exercise Structure{% endif %}</span>
+      <span>
+        {% if lang == 'fr' %}
+          Structure des Exercices - Niveau {{ niveau_eleve }}
+        {% else %}
+          Exercise Structure - Level {{ niveau_eleve }}
+        {% endif %}
+      </span>
     </div>
     
     {% if data_structure.niveaux %}
@@ -1148,11 +1184,11 @@
         }
       });
       
-      // Ouvrir automatiquement le premier niveau si disponible
-      const firstNiveau = document.querySelector('.niveau .accordion-header');
-      if (firstNiveau) {
+      // Ouvrir automatiquement le niveau de l'élève
+      const niveauHeader = document.querySelector('.niveau .accordion-header');
+      if (niveauHeader) {
         setTimeout(() => {
-          firstNiveau.click();
+          niveauHeader.click();
         }, 500);
       }
     });
