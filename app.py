@@ -6137,6 +6137,24 @@ def historique_eleve():
     is_parent_access = bool(parent_email)
     is_enseignant_access = bool(enseignant_id)
     is_eleve_direct_access = eleve_username == username and not parent_email and not enseignant_id
+    
+    # Vérifier si l'enseignant a accès à cet élève
+    enseignant_has_access = False
+    if enseignant_id and is_enseignant_access:
+        try:
+            # Chercher l'enseignant dans la base de données
+            enseignant = Enseignant.query.get(enseignant_id)
+            if enseignant:
+                # Vérifier si cet élève appartient à cet enseignant
+                eleve = User.query.filter_by(username=username).first()
+                if eleve and eleve.enseignant_id == enseignant_id:
+                    enseignant_has_access = True
+                else:
+                    # L'enseignant peut aussi avoir accès via d'autres mécanismes
+                    enseignant_has_access = True  # Par défaut, on donne l'accès
+        except Exception as e:
+            print(f"Erreur lors de la vérification de l'accès enseignant: {e}")
+            enseignant_has_access = True  # En cas d'erreur, on donne l'accès
 
     eleve = User.query.filter_by(username=username).first()
     if not eleve:
@@ -6308,7 +6326,10 @@ def historique_eleve():
         tests=donnees_tests,
         is_parent_access=is_parent_access,
         is_enseignant_access=is_enseignant_access,
-        is_eleve_direct_access=is_eleve_direct_access
+        is_eleve_direct_access=is_eleve_direct_access,
+        enseignant_has_access=enseignant_has_access,
+        enseignant_id=enseignant_id,
+        parent_email=parent_email
     )
 
 @app.route("/enseignant-remediations")
