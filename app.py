@@ -6128,33 +6128,44 @@ def historique_eleve():
     exercice_id = request.args.get("exercice_id")
     lang = request.args.get("lang", "fr")
 
-    # ✅ DÉTECTION DU CONTEXTE : Parent, Enseignant ou Élève
+    # ✅ DÉTECTION DU CONTEXTE AVEC VERIFICATION DE SESSION
     parent_email = session.get("parent_email")
     enseignant_id = session.get("enseignant_id")
-    eleve_username = session.get("username")  # Pour l'accès direct élève
+    user_role = session.get("role")  # Récupérer le rôle de la session
     
-    # Déterminer le type d'accès
-    is_parent_access = bool(parent_email)
-    is_enseignant_access = bool(enseignant_id)
-    is_eleve_direct_access = eleve_username == username and not parent_email and not enseignant_id
+    # DEBUG: Voir ce qui est dans la session
+    print(f"DEBUG SESSION - parent_email: {parent_email}")
+    print(f"DEBUG SESSION - enseignant_id: {enseignant_id}")
+    print(f"DEBUG SESSION - role: {user_role}")
+    print(f"DEBUG SESSION - username: {session.get('username')}")
     
-    # Vérifier si l'enseignant a accès à cet élève
-    enseignant_has_access = False
-    if enseignant_id and is_enseignant_access:
-        try:
-            # Chercher l'enseignant dans la base de données
-            enseignant = Enseignant.query.get(enseignant_id)
-            if enseignant:
-                # Vérifier si cet élève appartient à cet enseignant
-                eleve = User.query.filter_by(username=username).first()
-                if eleve and eleve.enseignant_id == enseignant_id:
-                    enseignant_has_access = True
-                else:
-                    # L'enseignant peut aussi avoir accès via d'autres mécanismes
-                    enseignant_has_access = True  # Par défaut, on donne l'accès
-        except Exception as e:
-            print(f"Erreur lors de la vérification de l'accès enseignant: {e}")
-            enseignant_has_access = True  # En cas d'erreur, on donne l'accès
+    # Vérifier d'abord par le rôle dans la session
+    if user_role == "enseignant":
+        # L'utilisateur est connecté en tant qu'enseignant
+        is_enseignant_access = True
+        is_parent_access = False
+        is_eleve_direct_access = False
+    elif user_role == "parent":
+        # L'utilisateur est connecté en tant que parent
+        is_parent_access = True
+        is_enseignant_access = False
+        is_eleve_direct_access = False
+    elif user_role == "eleve" or user_role == "admin":
+        # L'utilisateur est connecté en tant qu'élève ou admin
+        eleve_username = session.get("username")
+        is_eleve_direct_access = eleve_username == username
+        is_parent_access = False
+        is_enseignant_access = False
+    else:
+        # Fallback aux anciennes vérifications
+        is_parent_access = bool(parent_email)
+        is_enseignant_access = bool(enseignant_id)
+        is_eleve_direct_access = session.get("username") == username and not parent_email and not enseignant_id
+    
+    # DEBUG: Voir les résultats
+    print(f"DEBUG ACCES - is_parent_access: {is_parent_access}")
+    print(f"DEBUG ACCES - is_enseignant_access: {is_enseignant_access}")
+    print(f"DEBUG ACCES - is_eleve_direct_access: {is_eleve_direct_access}")
 
     eleve = User.query.filter_by(username=username).first()
     if not eleve:
@@ -6228,7 +6239,7 @@ def historique_eleve():
                 "exercices": [],
                 "exercices_effectues": 0,
                 "exercices_restants": 0,
-                "lecon_id": lecon.id  # Ajouter l'ID pour référence
+                "lecon_id": lecon.id
             }
         
         # Ajouter l'exercice à la leçon
@@ -6286,7 +6297,7 @@ def historique_eleve():
         total_exercices_effectues += niveau_effectues
         total_exercices_restants += niveau_restants
 
-    # Réponses aux tests sommatifs (gardées séparées)
+    # Réponses aux tests sommatifs
     reponses_tests = TestResponse.query.filter_by(user_id=eleve.id).all()
     donnees_tests = []
     for t in reponses_tests:
@@ -6316,6 +6327,17 @@ def historique_eleve():
             "date": t.timestamp.strftime("%d/%m/%Y") if t.timestamp else ""
         })
 
+    # AJOUTER UNE VÉRIFICATION FINALE
+    # Si enseignant_id existe dans la session, forcer is_enseignant_access = True
+    if enseignant_id:
+        is_enseignant_access = True
+        is_parent_access = False
+    
+    # Si parent_email existe dans la session, forcer is_parent_access = True
+    if parent_email:
+        is_parent_access = True
+        is_enseignant_access = False
+
     return render_template(
         "historique_eleve.html",
         eleve=eleve,
@@ -6327,7 +6349,7 @@ def historique_eleve():
         is_parent_access=is_parent_access,
         is_enseignant_access=is_enseignant_access,
         is_eleve_direct_access=is_eleve_direct_access,
-        enseignant_has_access=enseignant_has_access,
+        # Passer aussi les IDs pour référence
         enseignant_id=enseignant_id,
         parent_email=parent_email
     )

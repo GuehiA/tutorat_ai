@@ -921,7 +921,7 @@
     </div>
     {% endif %}
     
-    <!-- Bouton retour intelligent -->
+    <!-- Bouton retour intelligent - VERSION SIMPLIFIÉE ET SÛRE -->
     <div style="text-align: center; margin-top: 50px;">
       {% if is_parent_access %}
         <a class="smart-back-link" href="/parent-dashboard">
@@ -929,13 +929,11 @@
           {% if lang == 'fr' %}Retour au Tableau de Bord Parent{% else %}Back to Parent Dashboard{% endif %}
         </a>
       {% elif is_enseignant_access %}
-        <!-- Tous les enseignants retournent à leur dashboard -->
         <a class="smart-back-link" href="/enseignant-dashboard">
           <i class="fas fa-arrow-left"></i> 
           {% if lang == 'fr' %}Retour au Tableau de Bord Enseignant{% else %}Back to Teacher Dashboard{% endif %}
         </a>
       {% else %}
-        <!-- Accès direct de l'élève -->
         <a class="smart-back-link" href="/dashboard-eleve?username={{ eleve.username }}">
           <i class="fas fa-arrow-left"></i> 
           {% if lang == 'fr' %}Retour au Tableau de Bord{% else %}Back to Dashboard{% endif %}
