@@ -1912,7 +1912,8 @@
       // Cette fonction tente de créer un graphique alternatif avec Chart.js
       // à partir des données disponibles
       {% if reponses_eleve and reponses_eleve|length > 0 %}
-      const reponses = {{ reponses_eleve|tojson|safe }};
+      // Ne pas essayer de sérialiser l'objet SQLAlchemy directement
+      // const reponses = {{ reponses_eleve|tojson|safe }};
       
       if (reponses && reponses.length > 0) {
         // Préparer les données pour le graphique
