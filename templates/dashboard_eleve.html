@@ -13,8 +13,6 @@
   <meta name="theme-color" content="#4361ee">
   <title>{% if lang == 'en' %}Welcome {{ eleve.nom_complet }}{% else %}Bienvenue {{ eleve.nom_complet }}{% endif %}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Chart.js pour de meilleurs graphiques -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --primary: #3498db;
@@ -536,70 +534,11 @@
       opacity: 0.8;
     }
     
-    /* CONTAINER POUR GRAPHIQUE - AMÉLIORÉ */
     .chart-container {
       background: var(--white);
       padding: 20px;
       border-radius: 12px;
       margin-top: 20px;
-      border: 1px solid #e0e0e0;
-      position: relative;
-      min-height: 300px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .chart-image {
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
-      filter: none !important;
-    }
-    
-    .chart-placeholder {
-      text-align: center;
-      padding: 40px 20px;
-      color: var(--gray);
-    }
-    
-    .chart-placeholder i {
-      font-size: 3rem;
-      margin-bottom: 15px;
-      color: var(--primary);
-      opacity: 0.5;
-    }
-    
-    .chart-controls {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 15px;
-      flex-wrap: wrap;
-    }
-    
-    .chart-btn {
-      padding: 8px 16px;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: var(--transition);
-    }
-    
-    .chart-btn:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-    }
-    
-    .chart-btn.active {
-      background: var(--secondary);
-      box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3);
     }
     
     /* CARTE ASSISTANT RÉMÉDIATION COMPACTE */
@@ -946,53 +885,6 @@
     
     .animated-card {
       animation: fadeInUp 0.5s ease forwards;
-    }
-    
-    /* CANVAS CHART.JS */
-    .chart-canvas-container {
-      width: 100%;
-      height: 250px;
-      position: relative;
-    }
-    
-    .chart-canvas {
-      width: 100% !important;
-      height: 100% !important;
-    }
-    
-    /* AMÉLIORATIONS POUR LES GRAPHIQUES */
-    .chart-legend {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 15px;
-      margin-top: 15px;
-      font-size: 0.85rem;
-    }
-    
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    
-    .legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-    }
-    
-    /* AMÉLIORATIONS RESPONSIVES */
-    @media (max-width: 480px) {
-      .chart-controls {
-        flex-direction: column;
-        align-items: center;
-      }
-      
-      .chart-btn {
-        width: 100%;
-        max-width: 200px;
-      }
     }
   </style>
 </head>
@@ -1599,74 +1491,11 @@
           </div>
         </div>
 
-        <!-- SECTION GRAPHIQUE AMÉLIORÉE -->
+        {% if courbe_progression %}
         <div class="chart-container">
-          {% if courbe_progression %}
-            <!-- Image générée par le backend -->
-            <img src="data:image/png;base64,{{ courbe_progression }}" 
-                 alt="Courbe de progression" 
-                 class="chart-image"
-                 id="chartImage">
-            
-            <!-- Légende -->
-            <div class="chart-legend" id="chartLegend">
-              <div class="legend-item">
-                <div class="legend-color" style="background-color: #3498db;"></div>
-                <span>
-                  {% if lang == 'en' %}Scores{% else %}Scores{% endif %}
-                </span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-color" style="background-color: #2ecc71;"></div>
-                <span>
-                  {% if lang == 'en' %}Average{% else %}Moyenne{% endif %}
-                </span>
-              </div>
-            </div>
-            
-            <!-- Contrôles du graphique -->
-            <div class="chart-controls">
-              <button class="chart-btn" onclick="enhanceChartImage()">
-                <i class="fas fa-magic"></i>
-                {% if lang == 'en' %}Enhance{% else %}Améliorer{% endif %}
-              </button>
-              <button class="chart-btn" onclick="toggleChartType()">
-                <i class="fas fa-exchange-alt"></i>
-                {% if lang == 'en' %}Switch View{% else %}Changer vue{% endif %}
-              </button>
-            </div>
-          {% else %}
-            <!-- Placeholder si pas de données -->
-            <div class="chart-placeholder">
-              <i class="fas fa-chart-line"></i>
-              <h4>
-                {% if lang == 'en' %}
-                  No progress data yet
-                {% else %}
-                  Aucune donnée de progression
-                {% endif %}
-              </h4>
-              <p>
-                {% if lang == 'en' %}
-                  Complete your first exercises to see your progress chart.
-                {% else %}
-                  Complétez vos premiers exercices pour voir votre graphique de progression.
-                {% endif %}
-              </p>
-              <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-secondary" style="margin-top: 15px;">
-                <i class="fas fa-play"></i>
-                {% if lang == 'en' %}Start Learning{% else %}Commencer à apprendre{% endif %}
-              </a>
-            </div>
-          {% endif %}
-          
-          <!-- Canvas pour Chart.js (optionnel) -->
-          <div id="chartCanvasContainer" style="display: none; width: 100%;">
-            <div class="chart-canvas-container">
-              <canvas id="progressChart" class="chart-canvas"></canvas>
-            </div>
-          </div>
+          <img src="data:image/png;base64,{{ courbe_progression }}" alt="Courbe de progression" style="width: 100%; border-radius: 8px;">
         </div>
+        {% endif %}
       </div>
 
       <!-- Activité Récente -->
@@ -1778,12 +1607,6 @@
           card.style.animation = 'fadeInUp 0.5s ease forwards';
         }, delay * 1000);
       });
-      
-      // Améliorer l'image du graphique au chargement
-      enhanceChartImage();
-      
-      // Créer un graphique alternatif avec Chart.js si possible
-      tryCreateAlternativeChart();
     });
 
     function startTrialCountdown(totalSeconds, initialPercentage) {
@@ -1844,229 +1667,6 @@
         this.style.transform = 'translateY(-5px)';
       });
     }
-    
-    // Fonctions pour améliorer le graphique
-    function enhanceChartImage() {
-      const chartImage = document.getElementById('chartImage');
-      if (!chartImage) return;
-      
-      // Appliquer des filtres pour améliorer la netteté
-      chartImage.style.filter = 'contrast(1.1) brightness(1.05) saturate(1.1)';
-      chartImage.style.imageRendering = 'crisp-edges';
-      chartImage.style.imageRendering = '-webkit-optimize-contrast';
-      chartImage.style.imageRendering = 'pixelated';
-      
-      // Ajuster la taille pour une meilleure netteté
-      const container = chartImage.parentElement;
-      const containerWidth = container.clientWidth;
-      chartImage.style.maxWidth = containerWidth + 'px';
-      chartImage.style.height = 'auto';
-      
-      // Ajouter un effet de surbrillance
-      chartImage.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
-      chartImage.style.border = '1px solid #e0e0e0';
-      chartImage.style.borderRadius = '8px';
-      
-      // Changer le bouton pour indiquer qu'il est actif
-      const buttons = document.querySelectorAll('.chart-btn');
-      buttons.forEach(btn => {
-        if (btn.textContent.includes('Enhance') || btn.textContent.includes('Améliorer')) {
-          btn.classList.add('active');
-          btn.innerHTML = '<i class="fas fa-check"></i> ' + (btn.textContent.includes('Enhance') ? 'Enhanced' : 'Amélioré');
-        }
-      });
-    }
-    
-    function toggleChartType() {
-      const chartImage = document.getElementById('chartImage');
-      const chartCanvasContainer = document.getElementById('chartCanvasContainer');
-      
-      if (!chartImage || !chartCanvasContainer) return;
-      
-      // Basculer entre l'image et le canvas Chart.js
-      if (chartImage.style.display !== 'none') {
-        chartImage.style.display = 'none';
-        chartCanvasContainer.style.display = 'block';
-        createChartJsGraph();
-      } else {
-        chartImage.style.display = 'block';
-        chartCanvasContainer.style.display = 'none';
-      }
-      
-      // Mettre à jour le texte du bouton
-      const buttons = document.querySelectorAll('.chart-btn');
-      buttons.forEach(btn => {
-        if (btn.textContent.includes('Switch') || btn.textContent.includes('Changer')) {
-          if (chartImage.style.display !== 'none') {
-            btn.innerHTML = '<i class="fas fa-exchange-alt"></i> ' + 
-                           (btn.textContent.includes('Switch') ? 'Switch to Interactive' : 'Passer en interactif');
-          } else {
-            btn.innerHTML = '<i class="fas fa-exchange-alt"></i> ' + 
-                           (btn.textContent.includes('Switch') ? 'Switch to Image' : 'Retour à l\'image');
-          }
-        }
-      });
-    }
-    
-    function tryCreateAlternativeChart() {
-      // Cette fonction tente de créer un graphique alternatif avec Chart.js
-      // à partir des données disponibles
-      {% if reponses_eleve and reponses_eleve|length > 0 %}
-      // Ne pas essayer de sérialiser l'objet SQLAlchemy directement
-      // const reponses = {{ reponses_eleve|tojson|safe }};
-      
-      if (reponses && reponses.length > 0) {
-        // Préparer les données pour le graphique
-        const labels = [];
-        const scores = [];
-        
-        // Trier par date
-        reponses.sort((a, b) => {
-          const dateA = a.timestamp ? new Date(a.timestamp) : new Date();
-          const dateB = b.timestamp ? new Date(b.timestamp) : new Date();
-          return dateA - dateB;
-        });
-        
-        // Limiter aux 10 derniers pour plus de clarté
-        const recentReponses = reponses.slice(-10);
-        
-        recentReponses.forEach((reponse, index) => {
-          const date = reponse.timestamp ? new Date(reponse.timestamp) : new Date();
-          labels.push(date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));
-          scores.push(reponse.etoiles || 0);
-        });
-        
-        // Stocker les données pour une utilisation ultérieure
-        window.chartData = {
-          labels: labels,
-          scores: scores
-        };
-      }
-      {% endif %}
-    }
-    
-    function createChartJsGraph() {
-      const ctx = document.getElementById('progressChart');
-      if (!ctx || !window.chartData) return;
-      
-      // Détruire le graphique existant s'il y en a un
-      if (window.myChart) {
-        window.myChart.destroy();
-      }
-      
-      // Calculer la moyenne
-      const averageScore = window.chartData.scores.reduce((a, b) => a + b, 0) / window.chartData.scores.length;
-      const averageLine = Array(window.chartData.scores.length).fill(averageScore);
-      
-      // Créer le graphique avec Chart.js
-      window.myChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: window.chartData.labels,
-          datasets: [
-            {
-              label: '{% if lang == "en" %}Scores{% else %}Scores{% endif %}',
-              data: window.chartData.scores,
-              borderColor: '#3498db',
-              backgroundColor: 'rgba(52, 152, 219, 0.1)',
-              borderWidth: 2,
-              fill: true,
-              tension: 0.3,
-              pointBackgroundColor: '#3498db',
-              pointBorderColor: '#ffffff',
-              pointBorderWidth: 2,
-              pointRadius: 5,
-              pointHoverRadius: 7
-            },
-            {
-              label: '{% if lang == "en" %}Average{% else %}Moyenne{% endif %}',
-              data: averageLine,
-              borderColor: '#2ecc71',
-              backgroundColor: 'transparent',
-              borderWidth: 2,
-              borderDash: [5, 5],
-              fill: false,
-              tension: 0
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                font: {
-                  size: 12,
-                  family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
-                },
-                color: '#2c3e50'
-              }
-            },
-            tooltip: {
-              backgroundColor: 'rgba(44, 62, 80, 0.9)',
-              titleFont: {
-                size: 13,
-                family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
-              },
-              bodyFont: {
-                size: 12,
-                family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
-              },
-              padding: 12,
-              cornerRadius: 6
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 5,
-              ticks: {
-                stepSize: 1,
-                font: {
-                  size: 11,
-                  family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
-                },
-                color: '#7f8c8d'
-              },
-              grid: {
-                color: 'rgba(189, 195, 199, 0.2)'
-              }
-            },
-            x: {
-              ticks: {
-                font: {
-                  size: 11,
-                  family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
-                },
-                color: '#7f8c8d'
-              },
-              grid: {
-                color: 'rgba(189, 195, 199, 0.1)'
-              }
-            }
-          },
-          interaction: {
-            intersect: false,
-            mode: 'index'
-          },
-          animation: {
-            duration: 1000,
-            easing: 'easeOutQuart'
-          }
-        }
-      });
-    }
-    
-    // Améliorer l'affichage de l'image au chargement
-    window.addEventListener('load', function() {
-      const chartImage = document.getElementById('chartImage');
-      if (chartImage) {
-        // Délai pour s'assurer que l'image est chargée
-        setTimeout(enhanceChartImage, 500);
-      }
-    });
   </script>
 </body>
 </html>

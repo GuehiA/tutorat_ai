@@ -4338,7 +4338,7 @@ def dashboard_eleve():
         "success": taux_reussite
     }
 
-    # 📈 Courbe progression - MOYENNE PAR JOUR (AMÉLIORÉ)
+    # 📈 Courbe progression - MOYENNE PAR JOUR
     courbe_progression = None
     if reponses_eleve:
         # Grouper les réponses par date et calculer la moyenne des étoiles par jour
@@ -4361,84 +4361,33 @@ def dashboard_eleve():
         # Formater les dates pour l'affichage
         dates_formatees = [datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m") for date_str in dates_ordonnees]
 
-        # CRÉER LE GRAPHIQUE AVEC DES PARAMÈTRES AMÉLIORÉS
-        plt.style.use('seaborn-v0_8-whitegrid')
-        
-        # Augmenter la taille et la résolution
-        fig = plt.figure(figsize=(8, 4), dpi=150)
+        # Créer le graphique
+        fig = plt.figure(figsize=(6, 2.5))
         ax = fig.add_subplot(111)
-
-        # Couleurs modernes
-        primary_color = "#3498db"  # Bleu
-        secondary_color = "#2ecc71"  # Vert
-        text_color = "#2c3e50"
-        grid_color = "#ecf0f1"
 
         titre = "Moyenne des Étoiles par Jour" if lang == "fr" else "Daily Average Stars"
         label_y = "Étoiles" if lang == "fr" else "Stars"
 
-        # Tracer la courbe avec des lignes plus fines
-        ax.plot(dates_formatees, moyennes_journalieres, 
-                marker="o", 
-                color=primary_color, 
-                linewidth=2.5, 
-                markersize=8,
-                markerfacecolor='white',
-                markeredgecolor=primary_color,
-                markeredgewidth=2,
-                alpha=0.9)
-        
-        # Ajouter une zone ombrée sous la courbe
-        ax.fill_between(dates_formatees, moyennes_journalieres, 
-                       alpha=0.1, color=primary_color)
-        
-        # Définir les limites et le style des axes
-        ax.set_title(titre, fontsize=14, fontweight='bold', color=text_color, pad=15)
-        ax.set_ylabel(label_y, fontweight='bold', fontsize=12, color=text_color)
+        ax.plot(dates_formatees, moyennes_journalieres, marker="o", color="blue", linewidth=2, markersize=4)
+        ax.set_title(titre, fontsize=12, fontweight='bold')
+        ax.set_ylabel(label_y, fontweight='bold')
         ax.set_ylim(0, 5.5)
-        
-        # Personnaliser les ticks
-        ax.tick_params(axis='both', which='major', labelsize=10, colors=text_color)
+        ax.grid(True, alpha=0.3)
         ax.tick_params(axis='x', rotation=45)
         
-        # Améliorer la grille
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5, color=grid_color)
-        
-        # Ajouter les valeurs sur les points avec un style amélioré
+        # Ajouter les valeurs sur les points
         for i, (date, valeur) in enumerate(zip(dates_formatees, moyennes_journalieres)):
-            ax.annotate(f'{valeur:.1f}', 
-                       (date, valeur), 
-                       textcoords="offset points", 
-                       xytext=(0, 12), 
-                       ha='center', 
-                       fontsize=9,
-                       fontweight='bold',
-                       color=primary_color,
-                       bbox=dict(boxstyle="round,pad=0.3", 
-                                facecolor='white', 
-                                edgecolor=primary_color,
-                                alpha=0.8))
+            ax.annotate(f'{valeur}', (date, valeur), 
+                       textcoords="offset points", xytext=(0,10), ha='center', fontsize=8)
         
-        # Ajouter une ligne horizontale pour la moyenne générale
-        moyenne_generale = stats["average"]
-        ax.axhline(y=moyenne_generale, color=secondary_color, linestyle='--', 
-                  linewidth=1.5, alpha=0.7, label=f'Moyenne: {moyenne_generale:.1f}')
-        
-        # Ajouter la légende
-        ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
-        
-        # Ajuster les marges
-        fig.tight_layout(pad=3.0)
-        
-        # Sauvegarder avec une meilleure qualité
+        fig.tight_layout()
+
         buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=150, bbox_inches='tight', 
-                   facecolor=fig.get_facecolor(), edgecolor='none')
+        fig.savefig(buf, format="png", dpi=100, bbox_inches='tight')
         buf.seek(0)
         courbe_progression = base64.b64encode(buf.read()).decode('utf-8')
         buf.close()
         plt.close(fig)
-        plt.style.use('default')  # Réinitialiser le style
 
     # ⏰ CALCUL TEMPS RESTANT ESSAI GRATUIT
     temps_restant = None
