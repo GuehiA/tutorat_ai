@@ -190,89 +190,65 @@ def admin_required(f):
 @app.template_filter('replace_latex')
 def replace_latex_filter(text):
     """
-    Remplace les expressions LaTeX simples par un format plus convivial
+    Version simple qui normalise tous les formats LaTeX pour MathJax
+    et laisse MathJax faire le rendu des formules
     """
     if not text:
         return text
     
     import re
-    
-    # Nettoyage initial
-    text = str(text)
-    
-    # Échappement HTML pour sécurité
     from markupsafe import Markup
     
-    # Fractions: \frac{a}{b} → a/b
-    text = re.sub(r'\\frac{([^}]+)}{([^}]+)}', r'\1/\2', text)
+    text = str(text)
     
-    # Racines carrées: \sqrt{x} → √x, \sqrt[n]{x} → ⁿ√x
-    text = re.sub(r'\\sqrt\[([^]]+)\]{(.+?)}', r'\1√\2', text)
-    text = re.sub(r'\\sqrt{(.+?)}', r'√\1', text)
+    # Normaliser TOUS les formats LaTeX vers les formats MathJax
+    # 1. $$...$$ → \[...\]  (display math)
+    text = re.sub(r'\$\$(.*?)\$\$', r'\\[\1\\]', text, flags=re.DOTALL)
     
-    # Exposants: x^{2} → x², x^{n} → xⁿ
-    text = re.sub(r'(\w+)\^{2}', r'\1²', text)
-    text = re.sub(r'(\w+)\^{3}', r'\1³', text)
-    text = re.sub(r'(\w+)\^{(\w+)}', r'\1^\2', text)
+    # 2. $...$ → \(...\)  (inline math)
+    text = re.sub(r'\$(.*?)\$', r'\\(\1\\)', text)
     
-    # Indices: x_{2} → x₂, x_{n} → xₙ
-    text = re.sub(r'(\w+)_{2}', r'\1₂', text)
-    text = re.sub(r'(\w+)_{3}', r'\1₃', text)
-    text = re.sub(r'(\w+)_{(\w+)}', r'\1_\2', text)
+    # 3. \(...\) déjà bon, mais s'assurer de l'échappement
+    text = text.replace('\\(', '\\(').replace('\\)', '\\)')
     
-    # Symboles grecs étendus
-    greek_symbols = {
-        '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ', '\\delta': 'δ',
-        '\\epsilon': 'ε', '\\zeta': 'ζ', '\\eta': 'η', '\\theta': 'θ',
-        '\\iota': 'ι', '\\kappa': 'κ', '\\lambda': 'λ', '\\mu': 'μ',
-        '\\nu': 'ν', '\\xi': 'ξ', '\\pi': 'π', '\\rho': 'ρ',
-        '\\sigma': 'σ', '\\tau': 'τ', '\\upsilon': 'υ', '\\phi': 'φ',
-        '\\chi': 'χ', '\\psi': 'ψ', '\\omega': 'ω',
-        '\\Gamma': 'Γ', '\\Delta': 'Δ', '\\Theta': 'Θ', '\\Lambda': 'Λ',
-        '\\Xi': 'Ξ', '\\Pi': 'Π', '\\Sigma': 'Σ', '\\Phi': 'Φ',
-        '\\Psi': 'Ψ', '\\Omega': 'Ω'
+    # 4. \[...\] déjà bon, mais s'assurer de l'échappement  
+    text = text.replace('\\[', '\\[').replace('\\]', '\\]')
+    
+    # 5. Pour les commandes LaTeX SIMPLES qui sont hors des blocs math,
+    # on peut les remplacer par du Unicode pour améliorer la lisibilité
+    
+    # D'abord, protéger les blocs mathématiques existants
+    math_pattern = r'(\\\[.*?\\\]|\\\(.*?\\\))'
+    math_zones = []
+    
+    def protect_math(match):
+        placeholder = f'__MATH_{len(math_zones)}__'
+        math_zones.append(match.group(0))
+        return placeholder
+    
+    protected = re.sub(math_pattern, protect_math, text, flags=re.DOTALL)
+    
+    # Remplacer QUELQUES symboles courants HORS des blocs math
+    simple_replacements = {
+        '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ',
+        '\\pi': 'π', '\\theta': 'θ',
+        '\\times': '×', '\\div': '÷', '\\pm': '±',
+        '\\leq': '≤', '\\geq': '≥', '\\neq': '≠',
+        '\\approx': '≈', '\\infty': '∞'
     }
     
-    for latex, symbol in greek_symbols.items():
-        text = text.replace(latex, symbol)
+    for latex, symbol in simple_replacements.items():
+        protected = protected.replace(latex, symbol)
     
-    # Opérateurs mathématiques
-    operators = {
-        '\\times': '×', '\\cdot': '·', '\\div': '÷', '\\pm': '±',
-        '\\mp': '∓', '\\leq': '≤', '\\geq': '≥', '\\neq': '≠',
-        '\\approx': '≈', '\\equiv': '≡', '\\propto': '∝', '\\infty': '∞',
-        '\\partial': '∂', '\\nabla': '∇', '\\forall': '∀', '\\exists': '∃',
-        '\\in': '∈', '\\notin': '∉', '\\subset': '⊂', '\\subseteq': '⊆',
-        '\\cup': '∪', '\\cap': '∩', '\\wedge': '∧', '\\vee': '∨',
-        '\\neg': '¬', '\\Rightarrow': '⇒', '\\Leftrightarrow': '⇔',
-        '\\rightarrow': '→', '\\leftarrow': '←'
-    }
+    # Restaurer les blocs mathématiques
+    result = protected
+    for i, math_zone in enumerate(math_zones):
+        result = result.replace(f'__MATH_{i}__', math_zone)
     
-    for latex, symbol in operators.items():
-        text = text.replace(latex, symbol)
+    # Échappement HTML basique
+    result = result.replace('<', '&lt;').replace('>', '&gt;')
     
-    # Ensembles
-    text = text.replace('\\mathbb{R}', 'ℝ')
-    text = text.replace('\\mathbb{N}', 'ℕ')
-    text = text.replace('\\mathbb{Z}', 'ℤ')
-    text = text.replace('\\mathbb{Q}', 'ℚ')
-    text = text.replace('\\mathbb{C}', 'ℂ')
-    
-    # Accents et symboles divers
-    text = text.replace('\\hat', '̂')
-    text = text.replace('\\bar', '̄')
-    text = text.replace('\\vec', '⃗')
-    text = text.replace('\\dot', '̇')
-    
-    # Équations en display (supprimer les $$)
-    text = re.sub(r'\$\$(.*?)\$\$', r'\1', text, flags=re.DOTALL)
-    text = re.sub(r'\$(.*?)\$', r'\1', text)
-    
-    # Nettoyage des doubles backslashes et espaces
-    text = text.replace('\\\\', ' ')
-    text = re.sub(r'\s+', ' ', text)  # Normaliser les espaces
-    
-    return Markup(text.strip())
+    return Markup(result)
 
 
 # ... ensuite vos routes commencent ici ...

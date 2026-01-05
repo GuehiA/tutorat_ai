@@ -13,12 +13,12 @@
   <meta name="theme-color" content="#4361ee">
   <title>{% if lang == 'en' %}Exercise{% else %}Exercice{% endif %}</title>
   
-  <!-- MathJax avec configuration robuste -->
+  <!-- MathJax avec configuration robuste - CORRIGÉE POUR LES BLOCS \[ \] -->
   <script>
     window.MathJax = {
       tex: {
-        inlineMath: [['$', '$'], ['\(', '\)']],
-        displayMath: [['$$', '$$'], ['\[', '\]']],
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
         processEnvironments: true,
         tags: 'ams'
@@ -31,12 +31,33 @@
         pageReady: () => {
           return MathJax.startup.defaultPageReady().then(() => {
             console.log('MathJax configuration loaded successfully');
+            // Re-traitement spécifique pour les blocs LaTeX
+            processLaTeXBlocks();
           }).catch((error) => {
             console.error('MathJax initialization error:', error);
           });
         }
       }
     };
+
+    // Fonction pour s'assurer que les blocs LaTeX sont correctement traités
+    function processLaTeXBlocks() {
+      // Rechercher les blocs \[ ... \] non traités
+      const mathBlocks = document.querySelectorAll('.math-content, .markdown-rendered');
+      mathBlocks.forEach(block => {
+        const html = block.innerHTML;
+        // Remplacer les \[ et \] échappés incorrectement
+        let newHtml = html.replace(/\\\[/g, '\\[').replace(/\\\]/g, '\\]');
+        if (newHtml !== html) {
+          block.innerHTML = newHtml;
+        }
+      });
+      
+      // Redemander à MathJax de traiter le contenu
+      if (window.MathJax && MathJax.typeset) {
+        MathJax.typesetPromise();
+      }
+    }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" defer></script>
   
@@ -248,7 +269,7 @@
       font-style: italic;
     }
 
-    /* Styles pour le rendu MathJax */
+    /* Styles pour le rendu MathJax - AMÉLIORÉS POUR LES BLOCS */
     .math-content mjx-container {
       display: inline-block;
       margin: 0 2px;
@@ -256,17 +277,36 @@
 
     .math-display {
       text-align: center;
-      margin: 15px 0;
-      padding: 10px;
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(248, 249, 250, 0.7);
+      border-radius: 8px;
+      border-left: 4px solid var(--success);
     }
 
     .math-inline {
       display: inline;
     }
 
+    /* Style spécifique pour les blocs LaTeX display */
+    .math-content mjx-container[jax="CHTML"][display="true"] {
+      display: block;
+      text-align: center;
+      margin: 25px 0;
+      padding: 20px;
+      background: rgba(248, 249, 250, 0.9);
+      border-radius: 10px;
+      border: 1px solid var(--light-gray);
+      overflow-x: auto;
+    }
+
     .mathjax-error {
       color: var(--accent);
       font-style: italic;
+      background: #fff5f5;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #fed7d7;
     }
     
     .image-container {
@@ -1095,9 +1135,60 @@
       if (window.MathJax) {
         MathJax.typesetPromise().then(() => {
           console.log('MathJax content processed successfully');
+          // Vérification spécifique pour les blocs LaTeX
+          checkAndFixLaTeXBlocks();
         }).catch((error) => {
           console.warn('MathJax processing warning:', error);
         });
+      }
+    }
+
+    // Fonction pour vérifier et corriger les blocs LaTeX
+    function checkAndFixLaTeXBlocks() {
+      // Vérifier s'il y a des blocs \[ ... \] non traités
+      const mathElements = document.querySelectorAll('.math-content, .markdown-rendered');
+      let foundUnprocessed = false;
+      
+      mathElements.forEach(element => {
+        const text = element.textContent || element.innerText;
+        if (text.includes('\\[') || text.includes('\\]')) {
+          foundUnprocessed = true;
+          console.log('Found unprocessed LaTeX block:', text.substring(0, 50));
+          
+          // Essayer de re-traiter avec MathJax
+          if (window.MathJax && MathJax.typeset) {
+            MathJax.typesetPromise([element]);
+          }
+        }
+      });
+      
+      return foundUnprocessed;
+    }
+
+    // Fonction pour traiter spécifiquement les blocs LaTeX
+    function processLaTeXBlocks() {
+      const mathBlocks = document.querySelectorAll('.math-content, .markdown-rendered');
+      mathBlocks.forEach(block => {
+        let html = block.innerHTML;
+        
+        // Remplacer les échappements incorrects
+        html = html.replace(/\\\[/g, '\\[').replace(/\\\]/g, '\\]');
+        
+        // S'assurer que les blocs \[ ... \] sont correctement formatés
+        html = html.replace(/\\\[([\s\S]*?)\\\]/g, function(match, content) {
+          return '\\[' + content.trim() + '\\]';
+        });
+        
+        if (html !== block.innerHTML) {
+          block.innerHTML = html;
+        }
+      });
+      
+      // Redemander à MathJax de traiter
+      if (window.MathJax && MathJax.typeset) {
+        setTimeout(() => {
+          MathJax.typesetPromise();
+        }, 100);
       }
     }
 
@@ -1232,6 +1323,9 @@
       // Traiter le contenu mathématique après un court délai
       setTimeout(processMathContent, 500);
       
+      // Traiter spécifiquement les blocs LaTeX
+      setTimeout(processLaTeXBlocks, 800);
+      
       // Mise à jour en temps réel de l'éditeur
       const visualEditor = document.getElementById('visualMathEditor');
       if (visualEditor) {
@@ -1246,8 +1340,19 @@
       // Configurer la soumission du formulaire
       setupFormSubmission();
 
-      // Retraiter MathJax après un délai supplémentaire
-      setTimeout(processMathContent, 1000);
+      // Retraiter MathJax après un délai supplémentaire pour s'assurer que tout est traité
+      setTimeout(() => {
+        processMathContent();
+        processLaTeXBlocks();
+      }, 1500);
+      
+      // Dernière vérification après que tout est chargé
+      setTimeout(() => {
+        if (checkAndFixLaTeXBlocks()) {
+          console.log('LaTeX blocks needed fixing, reprocessing...');
+          processMathContent();
+        }
+      }, 2000);
     });
 
     // Styles d'animation pour les notifications
@@ -1273,6 +1378,22 @@
           opacity: 0;
           transform: translateX(100px);
         }
+      }
+      
+      /* Styles pour les erreurs LaTeX */
+      .latex-error {
+        background: #fff5f5;
+        border: 1px solid #fed7d7;
+        border-radius: 6px;
+        padding: 10px;
+        margin: 10px 0;
+        color: #c53030;
+        font-family: monospace;
+      }
+      
+      .latex-error::before {
+        content: "⚠️ LaTeX Error: ";
+        font-weight: bold;
       }
     `;
     document.head.appendChild(style);
