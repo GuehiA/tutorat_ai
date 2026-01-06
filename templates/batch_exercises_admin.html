@@ -211,7 +211,7 @@
           <!-- Leçon -->
           <div class="col-md-3">
             <label for="lecon_id" class="form-label required-field">{% if lang == 'en' %}Lesson{% else %}Leçon{% endif %}</label>
-            <select name="lecon_id" id="lecon_id" class="form-select" {% if not lecons %}disabled{% endif %}>
+            <select name="lecon_id" id="lecon_id" class="form-select" {% if not lecons %}disabled{% endif %} onchange="this.form.submit()">
               <option value="">{% if lang == 'en' %}Select lesson{% else %}Sélectionnez une leçon{% endif %}</option>
               {% for lecon in lecons %}
                 <option value="{{ lecon.id }}" {% if selected_lecon and selected_lecon.id == lecon.id %}selected{% endif %}>
@@ -652,6 +652,11 @@
       });
       
       document.getElementById('unite_id')?.addEventListener('change', function() {
+        this.form.submit();
+      });
+      
+      // AJOUT IMPORTANT : Soumettre quand on sélectionne une leçon
+      document.getElementById('lecon_id')?.addEventListener('change', function() {
         this.form.submit();
       });
     });
