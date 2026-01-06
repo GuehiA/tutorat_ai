@@ -4639,12 +4639,14 @@ def dashboard_eleve():
         statut_paiement_info=statut_paiement_info
     )
 
+import re
+
 def parse_bilingual_exercises(text, default_time=120):
     """Parse les exercices au format bilingue"""
     exercises = []
     
-    # Sépare les exercices par '---'
-    raw_exercises = text.strip().split('\n---\n')
+    # Sépare les exercices par '---' (au moins 3 tirets)
+    raw_exercises = re.split(r'\n-{3,}\n', text.strip())
     
     for raw in raw_exercises:
         if not raw.strip():
@@ -4695,16 +4697,6 @@ def parse_bilingual_exercises(text, default_time=120):
                         exercise['temps'] = int(value)
                     except:
                         exercise['temps'] = default_time
-            else:
-                # Si pas de ':', c'est peut-être une question simple
-                # La première ligne non-vide est la question
-                if not exercise['question_fr']:
-                    exercise['question_fr'] = line
-                    exercise['question_en'] = line
-                # La deuxième ligne non-vide est la réponse
-                elif not exercise['reponse_fr']:
-                    exercise['reponse_fr'] = line
-                    exercise['reponse_en'] = line
         
         # N'ajouter que si on a au moins une question
         if exercise['question_fr'] or exercise['question_en']:
