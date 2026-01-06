@@ -168,7 +168,7 @@
       </h4>
       
       <form id="hierarchyForm" method="GET" action="{{ url_for('batch_create_exercises_admin') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- SUPPRIMÉ: <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> -->
         <div class="row">
           <!-- Niveau -->
           <div class="col-md-3">
@@ -292,7 +292,7 @@
       
       <!-- Formulaire d'importation -->
       <form method="POST" action="{{ url_for('batch_create_exercises_admin') }}" id="importForm">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- SUPPRIMÉ: <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> -->
         <input type="hidden" name="lecon_id" value="{{ selected_lecon.id }}">
         
         <div class="mb-4">
