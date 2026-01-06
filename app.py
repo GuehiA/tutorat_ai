@@ -4645,8 +4645,28 @@ def parse_bilingual_exercises(text, default_time=120):
     """Parse les exercices au format bilingue"""
     exercises = []
     
-    # Sépare les exercices par '---' (au moins 3 tirets)
-    raw_exercises = re.split(r'\n-{3,}\n', text.strip())
+    # Sépare les exercices par '---' sur ligne seule
+    # Important: split sur '\n---\n' exactement
+    raw_exercises = []
+    current_exercise = []
+    
+    for line in text.strip().split('\n'):
+        line = line.strip()
+        if line == '---':
+            if current_exercise:
+                raw_exercises.append('\n'.join(current_exercise))
+                current_exercise = []
+        else:
+            if line or current_exercise:  # Garder les lignes vides à l'intérieur
+                current_exercise.append(line)
+    
+    # Ajouter le dernier exercice
+    if current_exercise:
+        raw_exercises.append('\n'.join(current_exercise))
+    
+    # Si pas de '---', tout est un exercice
+    if not raw_exercises:
+        raw_exercises = [text.strip()]
     
     for raw in raw_exercises:
         if not raw.strip():
@@ -4670,7 +4690,6 @@ def parse_bilingual_exercises(text, default_time=120):
             if not line:
                 continue
                 
-            # Cherche le format "clé: valeur"
             if ':' in line:
                 key, value = line.split(':', 1)
                 key = key.strip().lower()
@@ -4698,7 +4717,6 @@ def parse_bilingual_exercises(text, default_time=120):
                     except:
                         exercise['temps'] = default_time
         
-        # N'ajouter que si on a au moins une question
         if exercise['question_fr'] or exercise['question_en']:
             exercises.append(exercise)
     
