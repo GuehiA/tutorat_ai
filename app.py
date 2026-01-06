@@ -4578,13 +4578,13 @@ def batch_create_exercises_admin():
     # VÉRIFICATION D'AUTH SIMPLE
     if not session.get('user_id'):
         flash('Veuillez vous connecter', 'error')
-        return redirect(url_for('login'))
+        return redirect(url_for('login_admin'))  # <-- CORRECTION ICI
     
     # Récupérer l'utilisateur - la classe s'appelle User
     user = User.query.get(session['user_id'])
     if not user or user.role != 'admin':
         flash('Accès non autorisé', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('login_admin'))  # <-- CORRECTION ICI aussi
     
     # Récupérer tous les niveaux pour le menu déroulant
     niveaux = Niveau.query.order_by(Niveau.id).all()
