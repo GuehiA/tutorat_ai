@@ -44,6 +44,13 @@ load_dotenv()
 
 # --- Clé secrète ---
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-me')
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
+app.config['SESSION_COOKIE_SECURE'] = True  # Pour HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 
 # ====================================================================
 # 🔧 CONFIGURATION INTELLIGENTE DE LA BASE DE DONNÉES
@@ -186,6 +193,13 @@ def admin_required(f):
             return redirect(url_for("login_admin"))
         return f(*args, **kwargs)
     return decorated_function
+
+
+@app.route('/test-session')
+def test_session():
+    session['test_key'] = 'test_value'
+    return f'Session ID: {session.get("_id", "no_id")}, Test Key: {session.get("test_key", "not_set")}, User ID: {session.get("user_id", "not_logged_in")}'
+
 
 @app.template_filter('replace_latex')
 def replace_latex_filter(text):
@@ -4570,27 +4584,18 @@ def parse_bilingual_exercises(text, default_time):
         exercises.append(current_ex)
     
     return exercises
+
+
 from flask_wtf.csrf import generate_csrf
 @app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
 def batch_create_exercises_admin():
     """Importation d'exercices en lot par l'admin"""
     
-    # VÉRIFICATION SANS REDIRECTION
+    # VÉRIFICATION AVEC REDIRECTION VERS LOGIN SI NON CONNECTÉ
     if not session.get('user_id'):
-        flash('Veuillez vous connecter', 'error')
-        # TOUJOURS charger les niveaux même si non connecté
-        niveaux = Niveau.query.order_by(Niveau.id).all()
-        return render_template('batch_exercises_admin.html',
-                             lang=session.get('lang', 'fr'),
-                             niveaux=niveaux,  # CORRIGÉ : passe les niveaux
-                             matieres=[],
-                             unites=[],
-                             lecons=[],
-                             selected_niveau=None,
-                             selected_matiere=None,
-                             selected_unite=None,
-                             selected_lecon=None,
-                             csrf_token=generate_csrf)  # Ajout pour éviter l'erreur CSRF
+        flash('Veuillez vous connecter pour accéder à cette page', 'error')
+        # Redirige vers la page de login admin
+        return redirect(url_for('login_admin'))
     
     # Récupérer tous les niveaux pour le menu déroulant
     niveaux = Niveau.query.order_by(Niveau.id).all()
@@ -4631,7 +4636,17 @@ def batch_create_exercises_admin():
         lecon_id = request.form.get('lecon_id', type=int)
         if not lecon_id:
             flash('Veuillez sélectionner une leçon', 'error')
-            return redirect(url_for('batch_create_exercises_admin'))
+            # Garder les sélections actuelles
+            return render_template('batch_exercises_admin.html',
+                                 lang=session.get('lang', 'fr'),
+                                 niveaux=niveaux,
+                                 matieres=matieres,
+                                 unites=unites,
+                                 lecons=lecons,
+                                 selected_niveau=selected_niveau,
+                                 selected_matiere=selected_matiere,
+                                 selected_unite=selected_unite,
+                                 selected_lecon=selected_lecon)
         
         selected_lecon = Lecon.query.get_or_404(lecon_id)
         exercises_text = request.form.get('exercises_text', '').strip()
@@ -4648,8 +4663,7 @@ def batch_create_exercises_admin():
                                  selected_niveau=selected_niveau,
                                  selected_matiere=selected_matiere,
                                  selected_unite=selected_unite,
-                                 selected_lecon=selected_lecon,
-                                 csrf_token=generate_csrf)
+                                 selected_lecon=selected_lecon)
         
         try:
             # Parser les exercices
@@ -4666,8 +4680,7 @@ def batch_create_exercises_admin():
                                      selected_niveau=selected_niveau,
                                      selected_matiere=selected_matiere,
                                      selected_unite=selected_unite,
-                                     selected_lecon=selected_lecon,
-                                     csrf_token=generate_csrf)
+                                     selected_lecon=selected_lecon)
             
             # Validation des champs obligatoires
             valid_exercises = []
@@ -4694,8 +4707,7 @@ def batch_create_exercises_admin():
                                      selected_niveau=selected_niveau,
                                      selected_matiere=selected_matiere,
                                      selected_unite=selected_unite,
-                                     selected_lecon=selected_lecon,
-                                     csrf_token=generate_csrf)
+                                     selected_lecon=selected_lecon)
             
             # Créer les exercices dans la base de données
             created_count = 0
@@ -4753,7 +4765,7 @@ def batch_create_exercises_admin():
             db.session.rollback()
             flash(f'Erreur lors de l\'importation: {str(e)}', 'error')
     
-    # GET request ou POST avec erreurs
+    # GET request
     return render_template('batch_exercises_admin.html',
                          lang=session.get('lang', 'fr'),
                          niveaux=niveaux,
@@ -4763,8 +4775,7 @@ def batch_create_exercises_admin():
                          selected_niveau=selected_niveau,
                          selected_matiere=selected_matiere,
                          selected_unite=selected_unite,
-                         selected_lecon=selected_lecon,
-                         csrf_token=generate_csrf)
+                         selected_lecon=selected_lecon)
     
 @app.route("/create-profile", methods=["POST"])
 def create_profile():
