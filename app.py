@@ -4539,117 +4539,50 @@ def dashboard_eleve():
         statut_paiement_info=statut_paiement_info
     )
 
-import json
-import re
-from datetime import datetime
-
-# Fonction pour parser les exercices bilingues
-def parse_bilingual_exercises(text, default_time=120):
-    """
-    Parse un texte avec des exercices bilingues (FR/EN obligatoires)
-    Format attendu:
-    Question_fr: [texte]
-    Question_en: [texte]
-    Options_fr: [texte]
-    Options_en: [texte]
-    Réponse_fr: [texte]
-    Réponse_en: [texte]
-    Explication_fr: [texte]
-    Explication_en: [texte]
-    Temps: [nombre]
-    ---
-    """
+def parse_bilingual_exercises(text, default_time):
+    """Parse des exercices bilingues à partir d'un texte"""
     exercises = []
+    lines = text.strip().split('\n')
+    current_ex = {}
     
-    # Normalisation des séparateurs
-    text = text.strip()
-    text = re.sub(r'\r\n', '\n', text)
-    text = re.sub(r'\n{3,}', '\n\n---\n\n', text)
-    text = re.sub(r'={3,}|_{3,}', '---', text)
+    for line in lines:
+        line = line.strip()
+        if line.startswith('Q') or line.startswith('Ex') or '?' in line:
+            if current_ex:
+                exercises.append(current_ex)
+            current_ex = {
+                'question_fr': line,
+                'question_en': line,
+                'options_fr': '',
+                'options_en': '',
+                'reponse_fr': '',
+                'reponse_en': '',
+                'explication_fr': '',
+                'explication_en': '',
+                'temps': default_time
+            }
+        elif line and current_ex:
+            if not current_ex.get('reponse_fr'):
+                current_ex['reponse_fr'] = line
+                current_ex['reponse_en'] = line
     
-    # Séparation des exercices
-    parts = re.split(r'\n\s*---\s*\n', text)
-    
-    for i, part in enumerate(parts):
-        part = part.strip()
-        if not part:
-            continue
-            
-        exercice_data = {
-            'numero': i + 1,
-            'temps': default_time,
-            'question_fr': '',
-            'question_en': '',
-            'options_fr': '',
-            'options_en': '',
-            'reponse_fr': '',
-            'reponse_en': '',
-            'explication_fr': '',
-            'explication_en': ''
-        }
-        
-        # Dictionnaire pour les correspondances de champs
-        field_mapping = {
-            'question_fr': ['question_fr', 'question fr', 'questionfr'],
-            'question_en': ['question_en', 'question en', 'questionen'],
-            'options_fr': ['options_fr', 'options fr', 'optionsfr', 'choix_fr', 'choix fr'],
-            'options_en': ['options_en', 'options en', 'optionsen', 'choix_en', 'choix en'],
-            'reponse_fr': ['réponse_fr', 'réponse fr', 'reponse_fr', 'reponse fr', 'réponsefr'],
-            'reponse_en': ['réponse_en', 'réponse en', 'reponse_en', 'reponse en', 'réponseen'],
-            'explication_fr': ['explication_fr', 'explication fr', 'explicationfr'],
-            'explication_en': ['explication_en', 'explication en', 'explicationen'],
-            'temps': ['temps', 'time', 'durée']
-        }
-        
-        lines = part.split('\n')
-        for line in lines:
-            line = line.strip()
-            if not line or ':' not in line:
-                continue
-                
-            # Recherche du champ
-            for field, variants in field_mapping.items():
-                for variant in variants:
-                    if line.lower().startswith(variant + ':'):
-                        # Extraction de la valeur après les deux points
-                        value = line[len(variant) + 1:].strip()
-                        if value:
-                            exercice_data[field] = value
-                        break
-        
-        # Validation des champs obligatoires
-        if not exercice_data['question_fr']:
-            # Essayer de trouver une question en cherchant dans les lignes non reconnues
-            for line in lines:
-                if line.strip() and ':' not in line and not any(key in line.lower() for key in ['option', 'réponse', 'reponse', 'explication', 'temps', 'time']):
-                    if not exercice_data['question_fr']:
-                        exercice_data['question_fr'] = line.strip()
-        
-        # Formatage des options
-        for key in ['options_fr', 'options_en']:
-            if exercice_data[key]:
-                # Nettoie et uniformise le format des options
-                exercice_data[key] = exercice_data[key].replace(';', ',')
-                exercice_data[key] = re.sub(r'([A-D])[\.\)]', r'\1)', exercice_data[key])
-        
-        # Conversion du temps
-        if exercice_data['temps'] and isinstance(exercice_data['temps'], str):
-            try:
-                exercice_data['temps'] = int(exercice_data['temps'])
-            except:
-                exercice_data['temps'] = default_time
-        elif not exercice_data['temps']:
-            exercice_data['temps'] = default_time
-        
-        exercises.append(exercice_data)
+    if current_ex:
+        exercises.append(current_ex)
     
     return exercises
 
 @app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
-@admin_required
 def batch_create_exercises_admin():
     """Importation d'exercices en lot par l'admin"""
-    if current_user.role != 'admin':
+    
+    # VÉRIFICATION D'AUTH SIMPLE
+    if not session.get('user_id'):
+        flash('Veuillez vous connecter', 'error')
+        return redirect(url_for('login'))
+    
+    # Récupérer l'utilisateur - la classe s'appelle User
+    user = User.query.get(session['user_id'])
+    if not user or user.role != 'admin':
         flash('Accès non autorisé', 'error')
         return redirect(url_for('index'))
     
@@ -4778,7 +4711,7 @@ def batch_create_exercises_admin():
                     created_count += 1
                     
                 except Exception as e:
-                    errors.append(f"Exercice {ex['numero']}: {str(e)}")
+                    errors.append(f"Exercice {ex.get('numero', 'N/A')}: {str(e)}")
             
             db.session.commit()
             
