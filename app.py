@@ -4646,7 +4646,7 @@ def parse_bilingual_exercises(text, default_time=120):
     return exercises
 
 @app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def batch_create_exercises_admin():
     """Importation d'exercices en lot par l'admin"""
     if current_user.role != 'admin':
