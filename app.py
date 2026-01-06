@@ -4575,19 +4575,22 @@ def parse_bilingual_exercises(text, default_time):
 def batch_create_exercises_admin():
     """Importation d'exercices en lot par l'admin"""
     
-    # VÉRIFICATION SIMPLE - PAS DE REDIRECTION CYCLIQUE
+    # VÉRIFICATION SANS REDIRECTION
     if not session.get('user_id'):
         flash('Veuillez vous connecter', 'error')
+        # TOUJOURS charger les niveaux même si non connecté
+        niveaux = Niveau.query.order_by(Niveau.id).all()
         return render_template('batch_exercises_admin.html',
                              lang=session.get('lang', 'fr'),
-                             niveaux=[],
+                             niveaux=niveaux,  # CORRIGÉ : passe les niveaux
                              matieres=[],
                              unites=[],
                              lecons=[],
                              selected_niveau=None,
                              selected_matiere=None,
                              selected_unite=None,
-                             selected_lecon=None)
+                             selected_lecon=None,
+                             csrf_token=generate_csrf)  # Ajout pour éviter l'erreur CSRF
     
     # Récupérer tous les niveaux pour le menu déroulant
     niveaux = Niveau.query.order_by(Niveau.id).all()
@@ -4645,7 +4648,8 @@ def batch_create_exercises_admin():
                                  selected_niveau=selected_niveau,
                                  selected_matiere=selected_matiere,
                                  selected_unite=selected_unite,
-                                 selected_lecon=selected_lecon)
+                                 selected_lecon=selected_lecon,
+                                 csrf_token=generate_csrf)
         
         try:
             # Parser les exercices
@@ -4662,7 +4666,8 @@ def batch_create_exercises_admin():
                                      selected_niveau=selected_niveau,
                                      selected_matiere=selected_matiere,
                                      selected_unite=selected_unite,
-                                     selected_lecon=selected_lecon)
+                                     selected_lecon=selected_lecon,
+                                     csrf_token=generate_csrf)
             
             # Validation des champs obligatoires
             valid_exercises = []
@@ -4689,7 +4694,8 @@ def batch_create_exercises_admin():
                                      selected_niveau=selected_niveau,
                                      selected_matiere=selected_matiere,
                                      selected_unite=selected_unite,
-                                     selected_lecon=selected_lecon)
+                                     selected_lecon=selected_lecon,
+                                     csrf_token=generate_csrf)
             
             # Créer les exercices dans la base de données
             created_count = 0
@@ -4757,7 +4763,8 @@ def batch_create_exercises_admin():
                          selected_niveau=selected_niveau,
                          selected_matiere=selected_matiere,
                          selected_unite=selected_unite,
-                         selected_lecon=selected_lecon)
+                         selected_lecon=selected_lecon,
+                         csrf_token=generate_csrf)
     
 @app.route("/create-profile", methods=["POST"])
 def create_profile():
