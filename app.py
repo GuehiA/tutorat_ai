@@ -1591,7 +1591,32 @@ def visualiser_test_sommatif(test_id):
         dashboard_url=dashboard_url
     )
 
-from flask import request, jsonify, session
+@app.route("/admin/supprimer-exercice/<int:exercice_id>", methods=["POST"])
+@admin_required
+def supprimer_exercice(exercice_id):
+    """Route pour supprimer un seul exercice"""
+    exercice = Exercice.query.get_or_404(exercice_id)
+    
+    try:
+        db.session.delete(exercice)
+        db.session.commit()
+        
+        if session.get("lang") == "en":
+            flash("✅ Exercise successfully deleted", "success")
+        else:
+            flash("✅ Exercice supprimé avec succès", "success")
+            
+    except Exception as e:
+        db.session.rollback()
+        if session.get("lang") == "en":
+            flash(f"❌ Error deleting exercise: {str(e)}", "error")
+        else:
+            flash(f"❌ Erreur lors de la suppression: {str(e)}", "error")
+    
+    # Redirection vers la liste des exercices
+    return redirect(url_for("liste_exercices"))
+
+from flask import request, jsonify, session, flash, redirect, url_for
 import json
 
 @app.route("/admin/supprimer-exercices-multiple", methods=["POST"])
@@ -1659,137 +1684,7 @@ def supprimer_exercices_multiple():
             'success': False, 
             'message': error_message
         }), 500
-
-# Gardez votre route existante pour la suppression simple
-@app.route("/admin/supprimer-exercice/<int:exercice_id>", methods=["POST"])
-@admin_required
-def supprimer_exercice(exercice_id):
-    """Route pour supprimer un seul exercice (gardée pour compatibilité)"""
-    exercice = Exercice.query.get_or_404(exercice_id)
-    lecon_id = exercice.lecon_id
-    
-    try:
-        db.session.delete(exercice)
-        db.session.commit()
         
-        if session.get("lang") == "en":
-            flash("✅ Exercise successfully deleted", "success")
-        else:
-            flash("✅ Exercice supprimé avec succès", "success")
-            
-    except Exception as e:
-        db.session.rollback()
-        if session.get("lang") == "en":
-            flash(f"❌ Error deleting exercise: {str(e)}", "error")
-        else:
-            flash(f"❌ Erreur lors de la suppression: {str(e)}", "error")
-    
-    # Redirection vers la liste des exercices au lieu du dashboard
-    return redirect(url_for("gerer_exercices"))
-
-@app.route("/admin/gerer-exercices")
-@admin_required
-def gerer_exercices():
-    """Route principale pour gérer les exercices avec pagination"""
-    # Stocker la page actuelle dans la session
-    page = request.args.get('page', 1, type=int)
-    session['current_exercises_page'] = page
-    
-    # Récupérer toutes les matières avec leurs exercices
-    matieres = Matiere.query.all()
-    matieres_avec_exercices = []
-    
-    # Préparer les données par matière
-    for matiere in matieres:
-        # Compter les exercices dans cette matière
-        total_exercices_matiere = db.session.query(Exercice).join(Lecon).join(Unite)\
-            .filter(Unite.matiere_id == matiere.id).count()
-        
-        if total_exercices_matiere > 0:
-            matiere_dict = {
-                'id': matiere.id,
-                'nom': matiere.nom,
-                'nom_en': matiere.nom_en,
-                'niveau_id': matiere.niveau_id,
-                'niveau': matiere.niveau,
-                'total_exercices': total_exercices_matiere,
-                'unites_avec_exercices': []
-            }
-            
-            # Récupérer les unités de cette matière
-            unites = Unite.query.filter_by(matiere_id=matiere.id).all()
-            
-            for unite in unites:
-                # Compter les exercices dans cette unité
-                total_exercices_unite = db.session.query(Exercice).join(Lecon)\
-                    .filter(Lecon.unite_id == unite.id).count()
-                
-                if total_exercices_unite > 0:
-                    unite_dict = {
-                        'id': unite.id,
-                        'nom': unite.nom,
-                        'nom_en': unite.nom_en,
-                        'total_exercices': total_exercices_unite,
-                        'lecons_avec_exercices': []
-                    }
-                    
-                    # Récupérer les leçons de cette unité
-                    lecons = Lecon.query.filter_by(unite_id=unite.id).all()
-                    
-                    for lecon in lecons:
-                        # Récupérer les exercices de cette leçon
-                        exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()
-                        
-                        if exercices:
-                            lecon_dict = {
-                                'id': lecon.id,
-                                'titre_fr': lecon.titre_fr,
-                                'titre_en': lecon.titre_en,
-                                'exercices': exercices
-                            }
-                            unite_dict['lecons_avec_exercices'].append(lecon_dict)
-                    
-                    matiere_dict['unites_avec_exercices'].append(unite_dict)
-            
-            matieres_avec_exercices.append(matiere_dict)
-    
-    # Pagination
-    per_page = 10  # Nombre de matières par page
-    start = (page - 1) * per_page
-    end = start + per_page
-    
-    matieres_paginees = matieres_avec_exercices[start:end]
-    has_next = len(matieres_avec_exercices) > end
-    
-    # Récupérer les totaux pour les statistiques
-    total_exercices = Exercice.query.count()
-    total_lecons = Lecon.query.count()
-    total_unites = Unite.query.count()
-    total_matieres = Matiere.query.count()
-    
-    # Récupérer les niveaux pour les filtres
-    niveaux = Niveau.query.all()
-    
-    # Préparer les matières par niveau pour le filtre
-    matieres_par_niveau = {}
-    for niveau in niveaux:
-        matieres_par_niveau[niveau.id] = Matiere.query.filter_by(niveau_id=niveau.id).all()
-    
-    return render_template(
-        "gerer_exercices.html",
-        matieres_avec_exercices=matieres_paginees,
-        total_exercices=total_exercices,
-        total_lecons=total_lecons,
-        total_unites=total_unites,
-        total_matieres=total_matieres,
-        niveaux=niveaux,
-        matieres_par_niveau=matieres_par_niveau,
-        page=page,
-        per_page=per_page,
-        has_next=has_next,
-        lang=session.get("lang", "fr")
-    )
-
 
 @app.route("/eleve/remediation/<int:id>", methods=["GET", "POST"])
 def faire_remediation(id):
@@ -7611,30 +7506,108 @@ def liste_exercices():
 
 
 
-@app.route("/exercice")
-def liste_exercice():
-    username = request.args.get("username")
-    eleve = User.query.filter_by(username=username).first()
-    if not eleve:
-        return "Élève non trouvé", 404
-
-    niveau = request.args.get("niveau") or eleve.niveau
-    theme = request.args.get("theme")
-    lecon = request.args.get("lecon")
-
-    exercice_faits_ids = db.session.query(StudentResponse.Exercice_id).filter_by(user_id=eleve.id).all()
-    exercice_faits_ids = [id for (id,) in exercice_faits_ids]
-
-    query = Exercice.query.filter_by(niveau=niveau)
-    if theme:
-        query = query.filter_by(theme=theme)
-    if lecon:
-        query = query.filter_by(lecon=lecon)
-
-    query = query.filter(~Exercice.id.in_(exercice_faits_ids))
-    exercice = query.order_by(Exercice.id).all()
-
-    return render_template("exercice.html", eleve=eleve, exercice=exercice)
+@app.route("/admin/exercices")
+@admin_required
+def liste_exercices():
+    """Route principale pour gérer les exercices avec pagination"""
+    # Stocker la page actuelle dans la session
+    page = request.args.get('page', 1, type=int)
+    session['current_exercises_page'] = page
+    
+    # Récupérer toutes les matières avec leurs exercices
+    matieres = Matiere.query.all()
+    matieres_avec_exercices = []
+    
+    # Préparer les données par matière
+    for matiere in matieres:
+        # Compter les exercices dans cette matière
+        total_exercices_matiere = db.session.query(Exercice).join(Lecon).join(Unite)\
+            .filter(Unite.matiere_id == matiere.id).count()
+        
+        if total_exercices_matiere > 0:
+            matiere_dict = {
+                'id': matiere.id,
+                'nom': matiere.nom,
+                'nom_en': matiere.nom_en,
+                'niveau_id': matiere.niveau_id,
+                'niveau': matiere.niveau,
+                'total_exercices': total_exercices_matiere,
+                'unites_avec_exercices': []
+            }
+            
+            # Récupérer les unités de cette matière
+            unites = Unite.query.filter_by(matiere_id=matiere.id).all()
+            
+            for unite in unites:
+                # Compter les exercices dans cette unité
+                total_exercices_unite = db.session.query(Exercice).join(Lecon)\
+                    .filter(Lecon.unite_id == unite.id).count()
+                
+                if total_exercices_unite > 0:
+                    unite_dict = {
+                        'id': unite.id,
+                        'nom': unite.nom,
+                        'nom_en': unite.nom_en,
+                        'total_exercices': total_exercices_unite,
+                        'lecons_avec_exercices': []
+                    }
+                    
+                    # Récupérer les leçons de cette unité
+                    lecons = Lecon.query.filter_by(unite_id=unite.id).all()
+                    
+                    for lecon in lecons:
+                        # Récupérer les exercices de cette leçon
+                        exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()
+                        
+                        if exercices:
+                            lecon_dict = {
+                                'id': lecon.id,
+                                'titre_fr': lecon.titre_fr,
+                                'titre_en': lecon.titre_en,
+                                'exercices': exercices
+                            }
+                            unite_dict['lecons_avec_exercices'].append(lecon_dict)
+                    
+                    matiere_dict['unites_avec_exercices'].append(unite_dict)
+            
+            matieres_avec_exercices.append(matiere_dict)
+    
+    # Pagination
+    per_page = 10  # Nombre de matières par page
+    start = (page - 1) * per_page
+    end = start + per_page
+    
+    matieres_paginees = matieres_avec_exercices[start:end]
+    has_next = len(matieres_avec_exercices) > end
+    
+    # Récupérer les totaux pour les statistiques
+    total_exercices = Exercice.query.count()
+    total_lecons = Lecon.query.count()
+    total_unites = Unite.query.count()
+    total_matieres = Matiere.query.count()
+    
+    # Récupérer les niveaux pour les filtres
+    niveaux = Niveau.query.all()
+    
+    # Préparer les matières par niveau pour le filtre
+    matieres_par_niveau = {}
+    for niveau in niveaux:
+        matieres_par_niveau[niveau.id] = Matiere.query.filter_by(niveau_id=niveau.id).all()
+    
+    return render_template(
+        "liste_exercices.html",
+        matieres_avec_exercices=matieres_paginees,
+        total_exercices=total_exercices,
+        total_lecons=total_lecons,
+        total_unites=total_unites,
+        total_matieres=total_matieres,
+        niveaux=niveaux,
+        matieres_par_niveau=matieres_par_niveau,
+        page=page,
+        per_page=per_page,
+        has_next=has_next,
+        lang=session.get("lang", "fr")
+    )
 
 
 if __name__ == "__main__":
