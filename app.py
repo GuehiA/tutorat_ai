@@ -4639,38 +4639,78 @@ def dashboard_eleve():
         statut_paiement_info=statut_paiement_info
     )
 
-def parse_bilingual_exercises(text, default_time):
-    """Parse des exercices bilingues à partir d'un texte"""
+def parse_bilingual_exercises(text, default_time=120):
+    """Parse les exercices au format bilingue"""
     exercises = []
-    lines = text.strip().split('\n')
-    current_ex = {}
     
-    for line in lines:
-        line = line.strip()
-        if line.startswith('Q') or line.startswith('Ex') or '?' in line:
-            if current_ex:
-                exercises.append(current_ex)
-            current_ex = {
-                'question_fr': line,
-                'question_en': line,
-                'options_fr': '',
-                'options_en': '',
-                'reponse_fr': '',
-                'reponse_en': '',
-                'explication_fr': '',
-                'explication_en': '',
-                'temps': default_time
-            }
-        elif line and current_ex:
-            if not current_ex.get('reponse_fr'):
-                current_ex['reponse_fr'] = line
-                current_ex['reponse_en'] = line
+    # Sépare les exercices par '---'
+    raw_exercises = text.strip().split('\n---\n')
     
-    if current_ex:
-        exercises.append(current_ex)
+    for raw in raw_exercises:
+        if not raw.strip():
+            continue
+            
+        exercise = {
+            'question_fr': '',
+            'question_en': '',
+            'options_fr': '',
+            'options_en': '',
+            'reponse_fr': '',
+            'reponse_en': '',
+            'explication_fr': '',
+            'explication_en': '',
+            'temps': default_time
+        }
+        
+        lines = raw.strip().split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Cherche le format "clé: valeur"
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.strip().lower()
+                value = value.strip()
+                
+                if key == 'question_fr':
+                    exercise['question_fr'] = value
+                elif key == 'question_en':
+                    exercise['question_en'] = value
+                elif key == 'options_fr':
+                    exercise['options_fr'] = value
+                elif key == 'options_en':
+                    exercise['options_en'] = value
+                elif key == 'réponse_fr' or key == 'reponse_fr':
+                    exercise['reponse_fr'] = value
+                elif key == 'réponse_en' or key == 'reponse_en':
+                    exercise['reponse_en'] = value
+                elif key == 'explication_fr':
+                    exercise['explication_fr'] = value
+                elif key == 'explication_en':
+                    exercise['explication_en'] = value
+                elif key == 'temps' or key == 'time':
+                    try:
+                        exercise['temps'] = int(value)
+                    except:
+                        exercise['temps'] = default_time
+            else:
+                # Si pas de ':', c'est peut-être une question simple
+                # La première ligne non-vide est la question
+                if not exercise['question_fr']:
+                    exercise['question_fr'] = line
+                    exercise['question_en'] = line
+                # La deuxième ligne non-vide est la réponse
+                elif not exercise['reponse_fr']:
+                    exercise['reponse_fr'] = line
+                    exercise['reponse_en'] = line
+        
+        # N'ajouter que si on a au moins une question
+        if exercise['question_fr'] or exercise['question_en']:
+            exercises.append(exercise)
     
     return exercises
-
 
 from flask_wtf.csrf import generate_csrf
 @app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
