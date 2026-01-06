@@ -4575,25 +4575,22 @@ def parse_bilingual_exercises(text, default_time):
 def batch_create_exercises_admin():
     """Importation d'exercices en lot par l'admin"""
     
-    # VÉRIFICATION SIMPLIFIÉE POUR ÉVITER LA REDIRECTION CYCLIQUE
-    # Seulement vérifier si l'utilisateur est connecté (via session)
+    # VÉRIFICATION ULTRA SIMPLE - PAS DE REDIRECTION
     if not session.get('user_id'):
-        flash('Veuillez vous connecter', 'error')
-        return redirect(url_for('login_admin'))
+        # Au lieu de redirect, affiche un message et retourne un template vide
+        flash('Veuillez vous connecter pour accéder à cette page', 'error')
+        return render_template('batch_exercises_admin.html',
+                             lang=session.get('lang', 'fr'),
+                             niveaux=[],
+                             matieres=[],
+                             unites=[],
+                             lecons=[],
+                             selected_niveau=None,
+                             selected_matiere=None,
+                             selected_unite=None,
+                             selected_lecon=None)
     
-    # TEMPORAIREMENT : PAS DE VÉRIFICATION ADMIN POUR ÉVITER LA BOUCLE
-    # On vérifie seulement que l'utilisateur existe
-    user = User.query.get(session['user_id'])
-    if not user:
-        session.clear()
-        flash('Session invalide', 'error')
-        return redirect(url_for('login_admin'))
-    
-    # NOTE: Si tu veux vérifier le rôle admin plus tard, fais-le ainsi :
-    # if not hasattr(user, 'role') or user.role != 'admin':
-    #     flash('Accès réservé aux administrateurs', 'error')
-    #     return redirect(url_for('admin_dashboard'))  # REDIRIGE VERS DASHBOARD, PAS LOGIN
-    
+    # [TOUT LE RESTE DE TON CODE EXACTEMENT COMME AVANT]
     # Récupérer tous les niveaux pour le menu déroulant
     niveaux = Niveau.query.order_by(Niveau.id).all()
     matieres = []
@@ -4763,7 +4760,6 @@ def batch_create_exercises_admin():
                          selected_matiere=selected_matiere,
                          selected_unite=selected_unite,
                          selected_lecon=selected_lecon)
-
     
 @app.route("/create-profile", methods=["POST"])
 def create_profile():
