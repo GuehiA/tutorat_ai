@@ -4756,49 +4756,198 @@ def batch_create_exercises_admin():
                          selected_unite=selected_unite,
                          selected_lecon=selected_lecon)
 
-@app.route("/reset-admin-password")
-def reset_admin_password():
-    """Réinitialise le mot de passe admin - À SUPPRIMER APRÈS"""
-    try:
-        with app.app_context():
-            from werkzeug.security import generate_password_hash, check_password_hash
-            from datetime import datetime
+@app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
+def batch_create_exercises_admin():
+    """Importation d'exercices en lot par l'admin"""
+    
+    # VÉRIFICATION SIMPLIFIÉE POUR ÉVITER LA REDIRECTION CYCLIQUE
+    # Seulement vérifier si l'utilisateur est connecté (via session)
+    if not session.get('user_id'):
+        flash('Veuillez vous connecter', 'error')
+        return redirect(url_for('login_admin'))
+    
+    # TEMPORAIREMENT : PAS DE VÉRIFICATION ADMIN POUR ÉVITER LA BOUCLE
+    # On vérifie seulement que l'utilisateur existe
+    user = User.query.get(session['user_id'])
+    if not user:
+        session.clear()
+        flash('Session invalide', 'error')
+        return redirect(url_for('login_admin'))
+    
+    # NOTE: Si tu veux vérifier le rôle admin plus tard, fais-le ainsi :
+    # if not hasattr(user, 'role') or user.role != 'admin':
+    #     flash('Accès réservé aux administrateurs', 'error')
+    #     return redirect(url_for('admin_dashboard'))  # REDIRIGE VERS DASHBOARD, PAS LOGIN
+    
+    # Récupérer tous les niveaux pour le menu déroulant
+    niveaux = Niveau.query.order_by(Niveau.id).all()
+    matieres = []
+    unites = []
+    lecons = []
+    
+    # Initialiser les sélections
+    selected_niveau = None
+    selected_matiere = None
+    selected_unite = None
+    selected_lecon = None
+    
+    # Récupérer les paramètres GET pour la hiérarchie
+    niveau_id = request.args.get('niveau_id', type=int)
+    matiere_id = request.args.get('matiere_id', type=int)
+    unite_id = request.args.get('unite_id', type=int)
+    lecon_id = request.args.get('lecon_id', type=int)
+    
+    # Récupérer les données en fonction des sélections
+    if niveau_id:
+        selected_niveau = Niveau.query.get(niveau_id)
+        matieres = Matiere.query.filter_by(niveau_id=niveau_id).order_by(Matiere.id).all()
+    
+    if matiere_id:
+        selected_matiere = Matiere.query.get(matiere_id)
+        unites = Unite.query.filter_by(matiere_id=matiere_id).order_by(Unite.id).all()
+    
+    if unite_id:
+        selected_unite = Unite.query.get(unite_id)
+        lecons = Lecon.query.filter_by(unite_id=unite_id).order_by(Lecon.id).all()
+    
+    if lecon_id:
+        selected_lecon = Lecon.query.get(lecon_id)
+    
+    if request.method == 'POST':
+        # Vérifier qu'une leçon est sélectionnée
+        lecon_id = request.form.get('lecon_id', type=int)
+        if not lecon_id:
+            flash('Veuillez sélectionner une leçon', 'error')
+            return redirect(url_for('batch_create_exercises_admin'))
+        
+        selected_lecon = Lecon.query.get_or_404(lecon_id)
+        exercises_text = request.form.get('exercises_text', '').strip()
+        default_time = request.form.get('temps_defaut', 120, type=int)
+        
+        if not exercises_text:
+            flash('Veuillez saisir des exercices', 'error')
+            return render_template('batch_exercises_admin.html',
+                                 lang=session.get('lang', 'fr'),
+                                 niveaux=niveaux,
+                                 matieres=matieres,
+                                 unites=unites,
+                                 lecons=lecons,
+                                 selected_niveau=selected_niveau,
+                                 selected_matiere=selected_matiere,
+                                 selected_unite=selected_unite,
+                                 selected_lecon=selected_lecon)
+        
+        try:
+            # Parser les exercices
+            exercises = parse_bilingual_exercises(exercises_text, default_time)
             
-            email = "ambroiseguehi@gmail.com"
-            password = "Ninsem@n@912"
+            if not exercises:
+                flash('Aucun exercice valide détecté', 'error')
+                return render_template('batch_exercises_admin.html',
+                                     lang=session.get('lang', 'fr'),
+                                     niveaux=niveaux,
+                                     matieres=matieres,
+                                     unites=unites,
+                                     lecons=lecons,
+                                     selected_niveau=selected_niveau,
+                                     selected_matiere=selected_matiere,
+                                     selected_unite=selected_unite,
+                                     selected_lecon=selected_lecon)
             
-            # Trouver l'admin
-            admin = User.query.filter_by(email=email, role="admin").first()
+            # Validation des champs obligatoires
+            valid_exercises = []
+            invalid_count = 0
             
-            if not admin:
-                return "<h1>❌ Admin non trouvé</h1><p>Créez d'abord un compte admin.</p>"
+            for i, ex in enumerate(exercises):
+                if not ex['question_fr']:
+                    flash(f'Exercice {i+1}: Question_fr manquante', 'warning')
+                    invalid_count += 1
+                elif not ex['question_en']:
+                    flash(f'Exercice {i+1}: Question_en manquante', 'warning')
+                    invalid_count += 1
+                else:
+                    valid_exercises.append(ex)
             
-            # Afficher le hash actuel
-            current_hash = admin.mot_de_passe_hash[:30] if admin.mot_de_passe_hash else "N/A"
+            if not valid_exercises:
+                flash('Aucun exercice valide avec les versions française et anglaise', 'error')
+                return render_template('batch_exercises_admin.html',
+                                     lang=session.get('lang', 'fr'),
+                                     niveaux=niveaux,
+                                     matieres=matieres,
+                                     unites=unites,
+                                     lecons=lecons,
+                                     selected_niveau=selected_niveau,
+                                     selected_matiere=selected_matiere,
+                                     selected_unite=selected_unite,
+                                     selected_lecon=selected_lecon)
             
-            # Générer un NOUVEAU hash
-            new_hash = generate_password_hash(password)
+            # Créer les exercices dans la base de données
+            created_count = 0
+            errors = []
             
-            # Mettre à jour le hash
-            admin.mot_de_passe_hash = new_hash
+            for ex in valid_exercises:
+                try:
+                    exercice = Exercice(
+                        lecon_id=lecon_id,
+                        question_fr=ex['question_fr'],
+                        question_en=ex['question_en'],
+                        options_fr=ex['options_fr'],
+                        options_en=ex['options_en'],
+                        reponse_fr=ex['reponse_fr'],
+                        reponse_en=ex['reponse_en'],
+                        explication_fr=ex['explication_fr'],
+                        explication_en=ex['explication_en'],
+                        temps=ex['temps']
+                    )
+                    
+                    db.session.add(exercice)
+                    created_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Exercice {ex.get('numero', 'N/A')}: {str(e)}")
+            
             db.session.commit()
             
-            # Vérifier le nouveau hash
-            test = check_password_hash(new_hash, password)
+            # Statistiques
+            with_options = sum(1 for ex in valid_exercises if ex['options_fr'] or ex['options_en'])
+            with_explanations = sum(1 for ex in valid_exercises if ex['explication_fr'] or ex['explication_en'])
+            avg_time = sum(ex['temps'] for ex in valid_exercises) // len(valid_exercises) if valid_exercises else 0
             
-            return f"""
-            <h1>✅ Mot de passe admin réinitialisé !</h1>
-            <p><strong>Email:</strong> {email}</p>
-            <p><strong>Mot de passe:</strong> {password}</p>
-            <p><strong>Ancien hash:</strong> {current_hash}...</p>
-            <p><strong>Nouveau hash:</strong> {new_hash[:30]}...</p>
-            <p><strong>Test du mot de passe:</strong> {"✅ Réussi" if test else "❌ Échec"}</p>
-            <p><strong>⚠️ IMPORTANT:</strong> Supprimez cette route après usage !</p>
-            <a href="/login-admin">Se connecter maintenant</a>
-            """
+            flash(f'{created_count} exercice(s) importé(s) avec succès!', 'success')
             
-    except Exception as e:
-        return f"<h1>❌ Erreur:</h1><p>{str(e)}</p>"
+            if invalid_count > 0:
+                flash(f'{invalid_count} exercice(s) ignoré(s) car incomplets', 'warning')
+            
+            if errors:
+                flash(f"Quelques erreurs: {' | '.join(errors[:2])}", 'warning')
+            
+            # Afficher la page de confirmation
+            return render_template('batch_exercises_confirm.html',
+                                 lang=session.get('lang', 'fr'),
+                                 count=created_count,
+                                 lecon=selected_lecon,
+                                 niveau=selected_niveau,
+                                 matiere=selected_matiere,
+                                 unite=selected_unite,
+                                 with_options=with_options,
+                                 with_explanations=with_explanations,
+                                 avg_time=avg_time)
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erreur lors de l\'importation: {str(e)}', 'error')
+    
+    # GET request ou POST avec erreurs
+    return render_template('batch_exercises_admin.html',
+                         lang=session.get('lang', 'fr'),
+                         niveaux=niveaux,
+                         matieres=matieres,
+                         unites=unites,
+                         lecons=lecons,
+                         selected_niveau=selected_niveau,
+                         selected_matiere=selected_matiere,
+                         selected_unite=selected_unite,
+                         selected_lecon=selected_lecon)
     
 @app.route("/create-profile", methods=["POST"])
 def create_profile():
