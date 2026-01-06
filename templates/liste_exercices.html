@@ -211,6 +211,54 @@
             margin-top: 20px;
         }
         
+        /* Style pour la sélection multiple */
+        .selection-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .select-all-checkbox {
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        
+        .exercise-checkbox {
+            margin-right: 10px;
+        }
+        
+        .selected-count {
+            background-color: #4361ee;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-left: 10px;
+        }
+        
+        .bulk-actions {
+            display: none;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .bulk-actions.active {
+            display: flex;
+        }
+        
+        .exercise-item.selected {
+            background-color: rgba(67, 97, 238, 0.1);
+            border-left: 4px solid #4361ee;
+        }
+        
         /* Style responsive */
         @media (max-width: 768px) {
             .accordion-button {
@@ -239,6 +287,15 @@
             .matiere-header, .unite-header {
                 padding: 10px 15px;
                 font-size: 1rem;
+            }
+            
+            .exercise-checkbox {
+                margin-right: 5px;
+            }
+            
+            .selection-controls, .bulk-actions {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -357,6 +414,29 @@
             </button>
         </div>
 
+        <!-- Contrôles de sélection multiple -->
+        <div class="selection-controls">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input select-all-checkbox" id="selectAll">
+                <label class="form-check-label" for="selectAll">
+                    {% if lang == 'en' %}Select All{% else %}Tout sélectionner{% endif %}
+                </label>
+            </div>
+            <span class="selected-count" id="selectedCount">0</span>
+        </div>
+
+        <div class="bulk-actions" id="bulkActions">
+            <button class="btn btn-danger btn-sm" id="deleteSelectedBtn">
+                <i class="fas fa-trash"></i>
+                {% if lang == 'en' %}Delete Selected{% else %}Supprimer la sélection{% endif %}
+                (<span id="selectedCountDisplay">0</span>)
+            </button>
+            <button class="btn btn-secondary btn-sm" id="clearSelectionBtn">
+                <i class="fas fa-times"></i>
+                {% if lang == 'en' %}Clear Selection{% else %}Effacer la sélection{% endif %}
+            </button>
+        </div>
+
         <!-- Structure organisée par matière → unité → leçon -->
         {% if matieres_avec_exercices %}
             {% for matiere in matieres_avec_exercices %}
@@ -425,7 +505,11 @@
                                                 {% for exercice in lecon.exercices %}
                                                 <div class="exercise-item p-3 exercise-card" data-exercice-id="{{ exercice.id }}">
                                                     <div class="row align-items-center">
-                                                        <div class="col-md-8">
+                                                        <div class="col-md-1">
+                                                            <input type="checkbox" class="form-check-input exercise-checkbox" 
+                                                                   data-exercice-id="{{ exercice.id }}">
+                                                        </div>
+                                                        <div class="col-md-7">
                                                             <div class="d-flex align-items-start">
                                                                 <div class="me-3 text-muted">
                                                                     <small>#{{ exercice.id }}</small>
@@ -468,12 +552,12 @@
                                                                 <i class="fas fa-edit"></i>
                                                                 {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
                                                             </a>
-                                                            <form method="POST" action="/admin/supprimer-exercice/{{ exercice.id }}" class="d-inline" onsubmit="return confirm('{% if lang == 'en' %}Delete this exercise?{% else %}Supprimer cet exercice ?{% endif %}')">
-                                                                <button type="submit" class="btn btn-danger btn-sm" title="{% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}">
-                                                                    <i class="fas fa-trash"></i>
-                                                                    {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
-                                                                </button>
-                                                            </form>
+                                                            <button type="button" class="btn btn-danger btn-sm delete-single-btn" 
+                                                                    data-exercice-id="{{ exercice.id }}"
+                                                                    title="{% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}">
+                                                                <i class="fas fa-trash"></i>
+                                                                {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
+                                                            </button>
                                                             <button class="btn btn-info btn-sm preview-btn" 
                                                                     data-exercice='{{ 
                                                                         {
@@ -638,6 +722,7 @@
     <script>
         // Variables globales
         const langJs = "{{ lang }}";
+        let selectedExercises = new Set();
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
@@ -652,7 +737,319 @@
             
             // Initialiser le filtre des matières
             initMatiereFilter();
+            
+            // Initialiser la sélection multiple
+            initMultiSelect();
         });
+
+        // Initialiser la sélection multiple
+        function initMultiSelect() {
+            // Événements pour les checkboxes individuelles
+            document.querySelectorAll('.exercise-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const exerciceId = this.getAttribute('data-exercice-id');
+                    const exerciseItem = this.closest('.exercise-item');
+                    
+                    if (this.checked) {
+                        selectedExercises.add(exerciceId);
+                        exerciseItem.classList.add('selected');
+                    } else {
+                        selectedExercises.delete(exerciceId);
+                        exerciseItem.classList.remove('selected');
+                    }
+                    
+                    updateSelectionUI();
+                });
+            });
+            
+            // Événement pour "Tout sélectionner"
+            document.getElementById('selectAll').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.exercise-checkbox');
+                const allChecked = this.checked;
+                
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = allChecked;
+                    const exerciceId = checkbox.getAttribute('data-exercice-id');
+                    const exerciseItem = checkbox.closest('.exercise-item');
+                    
+                    if (allChecked) {
+                        selectedExercises.add(exerciceId);
+                        exerciseItem.classList.add('selected');
+                    } else {
+                        selectedExercises.delete(exerciceId);
+                        exerciseItem.classList.remove('selected');
+                    }
+                });
+                
+                updateSelectionUI();
+            });
+            
+            // Événement pour le bouton de suppression multiple
+            document.getElementById('deleteSelectedBtn').addEventListener('click', function() {
+                deleteSelectedExercises();
+            });
+            
+            // Événement pour effacer la sélection
+            document.getElementById('clearSelectionBtn').addEventListener('click', function() {
+                clearSelection();
+            });
+            
+            // Événements pour les boutons de suppression individuels
+            document.querySelectorAll('.delete-single-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const exerciceId = this.getAttribute('data-exercice-id');
+                    deleteExercises([exerciceId]);
+                });
+            });
+        }
+
+        // Mettre à jour l'interface de sélection
+        function updateSelectionUI() {
+            const count = selectedExercises.size;
+            document.getElementById('selectedCount').textContent = count;
+            document.getElementById('selectedCountDisplay').textContent = count;
+            
+            const bulkActions = document.getElementById('bulkActions');
+            if (count > 0) {
+                bulkActions.classList.add('active');
+            } else {
+                bulkActions.classList.remove('active');
+                document.getElementById('selectAll').checked = false;
+            }
+            
+            // Vérifier si tous sont sélectionnés
+            const totalCheckboxes = document.querySelectorAll('.exercise-checkbox').length;
+            const allChecked = selectedExercises.size === totalCheckboxes;
+            document.getElementById('selectAll').checked = allChecked && totalCheckboxes > 0;
+        }
+
+        // Effacer la sélection
+        function clearSelection() {
+            selectedExercises.clear();
+            document.querySelectorAll('.exercise-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+                const exerciseItem = checkbox.closest('.exercise-item');
+                exerciseItem.classList.remove('selected');
+            });
+            updateSelectionUI();
+        }
+
+        // Supprimer les exercices sélectionnés
+        function deleteSelectedExercises() {
+            if (selectedExercises.size === 0) {
+                alert(langJs === 'en' ? 'No exercises selected' : 'Aucun exercice sélectionné');
+                return;
+            }
+            
+            const exerciseIds = Array.from(selectedExercises);
+            deleteExercises(exerciseIds);
+        }
+
+        // Fonction pour supprimer des exercices
+        function deleteExercises(exerciseIds) {
+            const count = exerciseIds.length;
+            const singular = count === 1;
+            
+            const message = langJs === 'en' 
+                ? `Are you sure you want to delete ${count} exercise${singular ? '' : 's'}?`
+                : `Êtes-vous sûr de vouloir supprimer ${count} exercice${singular ? '' : 's'} ?`;
+            
+            if (!confirm(message)) {
+                return;
+            }
+            
+            // Afficher un indicateur de chargement
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            const originalText = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = 
+                '<i class="fas fa-spinner fa-spin"></i> ' + 
+                (langJs === 'en' ? 'Deleting...' : 'Suppression...');
+            deleteBtn.disabled = true;
+            
+            // Envoyer la requête AJAX
+            fetch('/admin/supprimer-exercices-multiple', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ exercice_ids: exerciseIds })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Supprimer les éléments du DOM
+                    exerciseIds.forEach(id => {
+                        const element = document.querySelector(`[data-exercice-id="${id}"]`);
+                        if (element) {
+                            element.remove();
+                        }
+                    });
+                    
+                    // Réinitialiser la sélection
+                    selectedExercises.clear();
+                    updateSelectionUI();
+                    
+                    // Mettre à jour les statistiques
+                    updateStatsAfterDeletion(exerciseIds.length);
+                    
+                    // Afficher un message de succès
+                    showNotification(data.message, 'success');
+                    
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification(
+                    langJs === 'en' ? 'Error deleting exercises' : 'Erreur lors de la suppression',
+                    'error'
+                );
+            })
+            .finally(() => {
+                // Restaurer le texte original du bouton
+                deleteBtn.innerHTML = originalText;
+                deleteBtn.disabled = false;
+            });
+        }
+
+        // Mettre à jour les statistiques après suppression
+        function updateStatsAfterDeletion(deletedCount) {
+            // Mettre à jour le total d'exercices
+            const totalElement = document.querySelector('.card.bg-primary h4');
+            if (totalElement) {
+                const currentTotal = parseInt(totalElement.textContent);
+                totalElement.textContent = Math.max(0, currentTotal - deletedCount);
+            }
+            
+            // Mettre à jour les compteurs par matière/unité/leçon
+            selectedExercises.forEach(id => {
+                const item = document.querySelector(`[data-exercice-id="${id}"]`);
+                if (item) {
+                    updateParentCounters(item.closest('.accordion-item'), -1);
+                }
+            });
+        }
+
+        // Mettre à jour les compteurs parents
+        function updateParentCounters(element, change) {
+            // Mettre à jour le compteur de la leçon
+            const lessonStats = element.querySelector('.lesson-stats');
+            if (lessonStats) {
+                const match = lessonStats.textContent.match(/(\d+)/);
+                if (match) {
+                    const current = parseInt(match[1]);
+                    const newCount = Math.max(0, current + change);
+                    lessonStats.innerHTML = `<i class="fas fa-edit me-1"></i> ${newCount} ${langJs === 'en' ? 'exercise' : 'exercice'}${newCount !== 1 ? 's' : ''}`;
+                    
+                    // Si plus d'exercices dans la leçon, afficher un message
+                    if (newCount === 0) {
+                        const accordionBody = element.querySelector('.accordion-body');
+                        accordionBody.innerHTML = `
+                            <div class="no-exercises-message">
+                                <i class="fas fa-inbox fa-2x mb-3 text-muted"></i>
+                                <p class="mb-2">${langJs === 'en' ? 'No exercises in this lesson' : 'Aucun exercice dans cette leçon'}</p>
+                                <a href="/admin/ajouter-exercice?lecon_id=${element.getAttribute('data-lecon-id')}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i>
+                                    ${langJs === 'en' ? 'Add Exercise' : 'Ajouter un exercice'}
+                                </a>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // Mettre à jour le compteur de l'unité
+            const uniteSection = element.closest('.unite-section');
+            if (uniteSection) {
+                const uniteBadge = uniteSection.querySelector('.unite-header .badge.bg-light');
+                if (uniteBadge) {
+                    const match = uniteBadge.textContent.match(/(\d+)/);
+                    if (match) {
+                        const current = parseInt(match[1]);
+                        const newCount = Math.max(0, current + change);
+                        uniteBadge.textContent = `${newCount} ${langJs === 'en' ? 'exercise' : 'exercice'}${newCount !== 1 ? 's' : ''}`;
+                    }
+                }
+            }
+            
+            // Mettre à jour le compteur de la matière
+            const matiereSection = element.closest('.matiere-section');
+            if (matiereSection) {
+                const matiereBadge = matiereSection.querySelector('.matiere-header .badge.bg-info');
+                if (matiereBadge) {
+                    const match = matiereBadge.textContent.match(/(\d+)/);
+                    if (match) {
+                        const current = parseInt(match[1]);
+                        const newCount = Math.max(0, current + change);
+                        matiereBadge.textContent = `${newCount} ${langJs === 'en' ? 'exercise' : 'exercice'}${newCount !== 1 ? 's' : ''}`;
+                    }
+                }
+            }
+        }
+
+        // Fonction pour afficher des notifications
+        function showNotification(message, type = 'info') {
+            // Supprimer les notifications existantes
+            const existingNotifications = document.querySelectorAll('.custom-notification');
+            existingNotifications.forEach(notification => {
+                notification.remove();
+            });
+            
+            // Créer la notification
+            const notification = document.createElement('div');
+            notification.className = `custom-notification alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                border: none;
+            `;
+            
+            notification.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-supprimer après 5 secondes
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Fonction pour récupérer le token CSRF
+        function getCsrfToken() {
+            const csrfToken = document.querySelector('input[name="csrf_token"]');
+            return csrfToken ? csrfToken.value : '';
+        }
+
+        // Attacher les événements aux boutons d'aperçu
+        function attachPreviewEvents() {
+            document.querySelectorAll('.preview-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    try {
+                        const exerciceData = JSON.parse(this.getAttribute('data-exercice'));
+                        showExercisePreview(exerciceData);
+                    } catch (error) {
+                        console.error('Error parsing exercise data:', error);
+                        alert(langJs === 'en' ? 'Error loading exercise preview' : 'Erreur lors du chargement de l\'aperçu');
+                    }
+                });
+            });
+        }
 
         // Initialiser le filtre des matières
         function initMatiereFilter() {
@@ -697,21 +1094,6 @@
                 
                 // Réappliquer le filtre
                 filterByMatiere();
-            });
-        }
-
-        // Attacher les événements aux boutons d'aperçu
-        function attachPreviewEvents() {
-            document.querySelectorAll('.preview-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    try {
-                        const exerciceData = JSON.parse(this.getAttribute('data-exercice'));
-                        showExercisePreview(exerciceData);
-                    } catch (error) {
-                        console.error('Error parsing exercise data:', error);
-                        alert(langJs === 'en' ? 'Error loading exercise preview' : 'Erreur lors du chargement de l\'aperçu');
-                    }
-                });
             });
         }
 
