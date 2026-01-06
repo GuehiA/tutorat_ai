@@ -4578,9 +4578,16 @@ def batch_create_exercises_admin():
     # VÉRIFICATION SANS REDIRECTION
     if not session.get('user_id'):
         # Retourner un template simple sans CSRF
-        return render_template('batch_exercises_admin_simple.html',
+        return render_template('batch_exercises_admin.html',
                              lang=session.get('lang', 'fr'),
-                             message='Veuillez vous connecter')
+                             niveaux=[],
+                             matieres=[],
+                             unites=[],
+                             lecons=[],
+                             selected_niveau=None,
+                             selected_matiere=None,
+                             selected_unite=None,
+                             selected_lecon=None)
     
     # Récupérer tous les niveaux pour le menu déroulant
     niveaux = Niveau.query.order_by(Niveau.id).all()
@@ -4638,18 +4645,109 @@ def batch_create_exercises_admin():
                                  selected_niveau=selected_niveau,
                                  selected_matiere=selected_matiere,
                                  selected_unite=selected_unite,
-                                 selected_lecon=selected_lecon,
-                                 csrf_available=False)  # <-- Important
-    
+                                 selected_lecon=selected_lecon)
+        
         try:
-            # [TOUT LE RESTE DE TON CODE...]
-            # ...
+            # Parser les exercices
+            exercises = parse_bilingual_exercises(exercises_text, default_time)
+            
+            if not exercises:
+                flash('Aucun exercice valide détecté', 'error')
+                return render_template('batch_exercises_admin.html',
+                                     lang=session.get('lang', 'fr'),
+                                     niveaux=niveaux,
+                                     matieres=matieres,
+                                     unites=unites,
+                                     lecons=lecons,
+                                     selected_niveau=selected_niveau,
+                                     selected_matiere=selected_matiere,
+                                     selected_unite=selected_unite,
+                                     selected_lecon=selected_lecon)
+            
+            # Validation des champs obligatoires
+            valid_exercises = []
+            invalid_count = 0
+            
+            for i, ex in enumerate(exercises):
+                if not ex['question_fr']:
+                    flash(f'Exercice {i+1}: Question_fr manquante', 'warning')
+                    invalid_count += 1
+                elif not ex['question_en']:
+                    flash(f'Exercice {i+1}: Question_en manquante', 'warning')
+                    invalid_count += 1
+                else:
+                    valid_exercises.append(ex)
+            
+            if not valid_exercises:
+                flash('Aucun exercice valide avec les versions française et anglaise', 'error')
+                return render_template('batch_exercises_admin.html',
+                                     lang=session.get('lang', 'fr'),
+                                     niveaux=niveaux,
+                                     matieres=matieres,
+                                     unites=unites,
+                                     lecons=lecons,
+                                     selected_niveau=selected_niveau,
+                                     selected_matiere=selected_matiere,
+                                     selected_unite=selected_unite,
+                                     selected_lecon=selected_lecon)
+            
+            # Créer les exercices dans la base de données
+            created_count = 0
+            errors = []
+            
+            for ex in valid_exercises:
+                try:
+                    exercice = Exercice(
+                        lecon_id=lecon_id,
+                        question_fr=ex['question_fr'],
+                        question_en=ex['question_en'],
+                        options_fr=ex['options_fr'],
+                        options_en=ex['options_en'],
+                        reponse_fr=ex['reponse_fr'],
+                        reponse_en=ex['reponse_en'],
+                        explication_fr=ex['explication_fr'],
+                        explication_en=ex['explication_en'],
+                        temps=ex['temps']
+                    )
+                    
+                    db.session.add(exercice)
+                    created_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Exercice {ex.get('numero', 'N/A')}: {str(e)}")
+            
+            db.session.commit()
+            
+            # Statistiques
+            with_options = sum(1 for ex in valid_exercises if ex['options_fr'] or ex['options_en'])
+            with_explanations = sum(1 for ex in valid_exercises if ex['explication_fr'] or ex['explication_en'])
+            avg_time = sum(ex['temps'] for ex in valid_exercises) // len(valid_exercises) if valid_exercises else 0
+            
+            flash(f'{created_count} exercice(s) importé(s) avec succès!', 'success')
+            
+            if invalid_count > 0:
+                flash(f'{invalid_count} exercice(s) ignoré(s) car incomplets', 'warning')
+            
+            if errors:
+                flash(f"Quelques erreurs: {' | '.join(errors[:2])}", 'warning')
+            
+            # Afficher la page de confirmation
+            return render_template('batch_exercises_confirm.html',
+                                 lang=session.get('lang', 'fr'),
+                                 count=created_count,
+                                 lecon=selected_lecon,
+                                 niveau=selected_niveau,
+                                 matiere=selected_matiere,
+                                 unite=selected_unite,
+                                 with_options=with_options,
+                                 with_explanations=with_explanations,
+                                 avg_time=avg_time)
             
         except Exception as e:
             db.session.rollback()
             flash(f'Erreur lors de l\'importation: {str(e)}', 'error')
     
-    # GET request
+    # GET request ou POST avec erreurs
     return render_template('batch_exercises_admin.html',
                          lang=session.get('lang', 'fr'),
                          niveaux=niveaux,
@@ -4659,8 +4757,7 @@ def batch_create_exercises_admin():
                          selected_niveau=selected_niveau,
                          selected_matiere=selected_matiere,
                          selected_unite=selected_unite,
-                         selected_lecon=selected_lecon,
-                         csrf_available=False)  # <-- Important
+                         selected_lecon=selected_lecon)
     
 @app.route("/create-profile", methods=["POST"])
 def create_profile():
