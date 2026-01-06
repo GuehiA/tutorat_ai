@@ -4575,9 +4575,9 @@ def parse_bilingual_exercises(text, default_time):
 def batch_create_exercises_admin():
     """Importation d'exercices en lot par l'admin"""
     
-    # VÉRIFICATION SANS REDIRECTION
+    # VÉRIFICATION SIMPLE - PAS DE REDIRECTION CYCLIQUE
     if not session.get('user_id'):
-        # Retourner un template simple sans CSRF
+        flash('Veuillez vous connecter', 'error')
         return render_template('batch_exercises_admin.html',
                              lang=session.get('lang', 'fr'),
                              niveaux=[],
