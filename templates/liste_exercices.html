@@ -309,6 +309,18 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             border: none;
         }
+        
+        /* Styles pour l'indicateur de chargement */
+        .spinner-btn {
+            position: relative;
+        }
+        
+        .spinner-btn .spinner {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
     </style>
 </head>
 <body>
@@ -743,12 +755,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Variables globales
+        // Variables globales - CORRECTION : déclaré en dehors de DOMContentLoaded
         const langJs = "{{ lang }}";
         let selectedExercises = new Set();
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM chargé, initialisation de la sélection multiple...');
+            
             // Ouvrir le premier accordéon de la première unité par défaut
             const firstAccordion = document.querySelector('.accordion-item:first-child .accordion-button');
             if (firstAccordion) {
@@ -763,14 +777,30 @@
             
             // Initialiser la sélection multiple
             initMultiSelect();
+            
+            // Ajouter un écouteur pour debug
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('exercise-checkbox')) {
+                    console.log('Checkbox cliquée, ID:', e.target.dataset.exerciceId, 'checked:', e.target.checked);
+                    console.log('SelectedExercises:', Array.from(selectedExercises));
+                }
+            });
         });
 
-        // Initialiser la sélection multiple
+        // Initialiser la sélection multiple - VERSION CORRIGÉE
         function initMultiSelect() {
+            console.log('Initialisation de la sélection multiple...');
+            
             // Événements pour les checkboxes individuelles
             document.querySelectorAll('.exercise-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
+                // Supprimer les écouteurs existants pour éviter les doublons
+                const newCheckbox = checkbox.cloneNode(true);
+                checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+                
+                newCheckbox.addEventListener('change', function() {
                     const exerciceId = this.getAttribute('data-exercice-id');
+                    console.log('Checkbox changée:', exerciceId, 'checked:', this.checked);
+                    
                     const exerciseItem = this.closest('.exercise-item');
                     
                     if (this.checked) {
@@ -787,8 +817,12 @@
             
             // Événement pour "Tout sélectionner"
             document.getElementById('selectAll').addEventListener('change', function() {
+                console.log('Select All changé:', this.checked);
                 const checkboxes = document.querySelectorAll('.exercise-checkbox');
                 const allChecked = this.checked;
+                
+                // Vider le Set avant de remplir
+                selectedExercises.clear();
                 
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = allChecked;
@@ -808,27 +842,52 @@
             });
             
             // Événement pour le bouton de suppression multiple
-            document.getElementById('deleteSelectedBtn').addEventListener('click', function() {
+            document.getElementById('deleteSelectedBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Bouton suppression multiple cliqué');
+                console.log('Exercices sélectionnés:', Array.from(selectedExercises));
                 deleteSelectedExercises();
             });
             
             // Événement pour effacer la sélection
             document.getElementById('clearSelectionBtn').addEventListener('click', function() {
+                console.log('Effacer la sélection cliqué');
                 clearSelection();
             });
             
-            // Événements pour les boutons de suppression individuels
+            // Événements pour les boutons de suppression individuels - VERSION CORRIGÉE
             document.querySelectorAll('.delete-single-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
+                // Cloner le bouton pour éviter les doublons
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     const exerciceId = this.getAttribute('data-exercice-id');
-                    deleteExercises([exerciceId]);
+                    console.log('Suppression individuelle cliquée:', exerciceId);
+                    
+                    // Demander confirmation
+                    const message = langJs === 'en' 
+                        ? 'Are you sure you want to delete this exercise?'
+                        : 'Êtes-vous sûr de vouloir supprimer cet exercice ?';
+                    
+                    if (confirm(message)) {
+                        deleteSingleExercise(exerciceId);
+                    }
                 });
             });
+            
+            // Initialiser l'UI
+            updateSelectionUI();
         }
 
         // Mettre à jour l'interface de sélection
         function updateSelectionUI() {
             const count = selectedExercises.size;
+            console.log('Mise à jour UI, nombre sélectionné:', count);
+            
             document.getElementById('selectedCount').textContent = count;
             document.getElementById('selectedCountDisplay').textContent = count;
             
@@ -842,12 +901,13 @@
             
             // Vérifier si tous sont sélectionnés
             const totalCheckboxes = document.querySelectorAll('.exercise-checkbox').length;
-            const allChecked = selectedExercises.size === totalCheckboxes;
-            document.getElementById('selectAll').checked = allChecked && totalCheckboxes > 0;
+            const allChecked = selectedExercises.size === totalCheckboxes && totalCheckboxes > 0;
+            document.getElementById('selectAll').checked = allChecked;
         }
 
         // Effacer la sélection
         function clearSelection() {
+            console.log('Effacement de la sélection');
             selectedExercises.clear();
             document.querySelectorAll('.exercise-checkbox').forEach(checkbox => {
                 checkbox.checked = false;
@@ -859,17 +919,26 @@
 
         // Supprimer les exercices sélectionnés
         function deleteSelectedExercises() {
+            console.log('Suppression des exercices sélectionnés, nombre:', selectedExercises.size);
+            
             if (selectedExercises.size === 0) {
                 alert(langJs === 'en' ? 'No exercises selected' : 'Aucun exercice sélectionné');
                 return;
             }
             
             const exerciseIds = Array.from(selectedExercises);
-            deleteExercises(exerciseIds);
+            console.log('IDs à supprimer:', exerciseIds);
+            deleteExercises(exerciseIds, true);
+        }
+
+        // Supprimer un seul exercice
+        function deleteSingleExercise(exerciceId) {
+            console.log('Suppression exercice unique:', exerciceId);
+            deleteExercises([exerciceId], false);
         }
 
         // Fonction pour supprimer des exercices
-        function deleteExercises(exerciseIds) {
+        function deleteExercises(exerciseIds, isBulk = true) {
             const count = exerciseIds.length;
             const singular = count === 1;
             
@@ -882,28 +951,44 @@
             }
             
             // Afficher un indicateur de chargement
-            const deleteBtn = document.getElementById('deleteSelectedBtn');
-            const originalText = deleteBtn.innerHTML;
-            deleteBtn.innerHTML = 
-                '<i class="fas fa-spinner fa-spin"></i> ' + 
-                (langJs === 'en' ? 'Deleting...' : 'Suppression...');
-            deleteBtn.disabled = true;
+            const deleteBtn = isBulk ? document.getElementById('deleteSelectedBtn') : null;
+            let originalText = '';
+            if (deleteBtn) {
+                originalText = deleteBtn.innerHTML;
+                deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + 
+                    (langJs === 'en' ? 'Deleting...' : 'Suppression...');
+                deleteBtn.disabled = true;
+            }
             
-            // Envoyer la requête AJAX
+            // Envoyer la requête AJAX - CORRECTION : envoi des IDs en tant qu'entiers
+            console.log('Envoi AJAX pour supprimer:', exerciseIds);
+            
             fetch('/admin/supprimer-exercices-multiple', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
-                body: JSON.stringify({ exercice_ids: exerciseIds })
+                body: JSON.stringify({ 
+                    exercice_ids: exerciseIds.map(id => parseInt(id))  // Convertir en entiers
+                })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Réponse reçue, statut:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Données reçues:', data);
+                
                 if (data.success) {
                     // Supprimer les éléments du DOM
                     exerciseIds.forEach(id => {
                         const element = document.querySelector(`[data-exercice-id="${id}"]`);
                         if (element) {
+                            console.log('Suppression DOM pour ID:', id);
                             element.remove();
                         }
                     });
@@ -925,14 +1010,16 @@
             .catch(error => {
                 console.error('Error:', error);
                 showNotification(
-                    langJs === 'en' ? 'Error deleting exercises' : 'Erreur lors de la suppression',
+                    langJs === 'en' ? 'Error deleting exercises: ' + error.message : 'Erreur lors de la suppression: ' + error.message,
                     'error'
                 );
             })
             .finally(() => {
                 // Restaurer le texte original du bouton
-                deleteBtn.innerHTML = originalText;
-                deleteBtn.disabled = false;
+                if (deleteBtn) {
+                    deleteBtn.innerHTML = originalText;
+                    deleteBtn.disabled = false;
+                }
             });
         }
 
@@ -956,6 +1043,8 @@
 
         // Mettre à jour les compteurs parents
         function updateParentCounters(element, change) {
+            if (!element) return;
+            
             // Mettre à jour le compteur de la leçon
             const lessonStats = element.querySelector('.lesson-stats');
             if (lessonStats) {
@@ -968,16 +1057,19 @@
                     // Si plus d'exercices dans la leçon, afficher un message
                     if (newCount === 0) {
                         const accordionBody = element.querySelector('.accordion-body');
-                        accordionBody.innerHTML = `
-                            <div class="no-exercises-message">
-                                <i class="fas fa-inbox fa-2x mb-3 text-muted"></i>
-                                <p class="mb-2">${langJs === 'en' ? 'No exercises in this lesson' : 'Aucun exercice dans cette leçon'}</p>
-                                <a href="/admin/ajouter-exercice?lecon_id=${element.getAttribute('data-lecon-id')}" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-plus"></i>
-                                    ${langJs === 'en' ? 'Add Exercise' : 'Ajouter un exercice'}
-                                </a>
-                            </div>
-                        `;
+                        if (accordionBody) {
+                            const leconId = element.getAttribute('data-lecon-id');
+                            accordionBody.innerHTML = `
+                                <div class="no-exercises-message">
+                                    <i class="fas fa-inbox fa-2x mb-3 text-muted"></i>
+                                    <p class="mb-2">${langJs === 'en' ? 'No exercises in this lesson' : 'Aucun exercice dans cette leçon'}</p>
+                                    <a href="/admin/ajouter-exercice?lecon_id=${leconId}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-plus"></i>
+                                        ${langJs === 'en' ? 'Add Exercise' : 'Ajouter un exercice'}
+                                    </a>
+                                </div>
+                            `;
+                        }
                     }
                 }
             }
@@ -1423,6 +1515,21 @@
                 message.remove();
             }
         }
+        
+        // Fonction de debug (à enlever en production)
+        window.debugSelection = function() {
+            console.log('=== DEBUG SELECTION ===');
+            console.log('selectedExercises:', Array.from(selectedExercises));
+            console.log('selectedExercises size:', selectedExercises.size);
+            console.log('Checkboxes total:', document.querySelectorAll('.exercise-checkbox').length);
+            console.log('Checkboxes checked:', document.querySelectorAll('.exercise-checkbox:checked').length);
+            alert(`Sélection debug:\n${selectedExercises.size} exercice(s) sélectionné(s)\nIDs: ${Array.from(selectedExercises).join(', ')}`);
+        }
     </script>
+    
+    <!-- Bouton de debug (temporaire) -->
+    <button onclick="debugSelection()" class="btn btn-sm btn-warning" style="position: fixed; bottom: 10px; right: 10px; z-index: 1000; display: none;">
+        <i class="fas fa-bug"></i> Debug
+    </button>
 </body>
 </html>
