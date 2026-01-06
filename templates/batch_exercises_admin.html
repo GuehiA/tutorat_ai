@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <title>{% if lang == 'en' %}Batch Import Exercises{% else %}Importation d'Exercices en Lot{% endif %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-light: #e0e7ff;
+      --success: #3fba83;
+      --warning: #fcc419;
+      --danger: #e85959;
+      --light: #f8f9ff;
+      --dark: #121826;
+    }
+    body {
+      background: linear-gradient(135deg, var(--light) 0%, #e8eaff 100%);
+      min-height: 100vh;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .header-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      padding: 25px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .main-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 20px;
+    }
+    .hierarchy-step {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-left: 4px solid var(--primary);
+    }
+    .hierarchy-step.active {
+      background: var(--primary-light);
+      border-left-color: var(--primary);
+    }
+    .format-example {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      border: 1px solid #dee2e6;
+      margin-bottom: 10px;
+    }
+    .exercise-counter {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--primary);
+      color: white;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.8rem;
+    }
+    .textarea-wrapper {
+      position: relative;
+    }
+    .required-field::after {
+      content: " *";
+      color: var(--danger);
+    }
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 0 4px 4px 0;
+    }
+    .language-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      margin-right: 5px;
+      margin-bottom: 5px;
+    }
+    .language-fr {
+      background: #4caf50;
+      color: white;
+    }
+    .language-en {
+      background: #2196f3;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- En-tête -->
+    <div class="header-card">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h1 class="h3 mb-2">
+            <i class="fas fa-file-import text-primary me-2"></i>
+            {% if lang == 'en' %}Batch Import Exercises{% else %}Importation d'Exercices en Lot{% endif %}
+          </h1>
+          <p class="text-muted mb-0">
+            {% if lang == 'en' %}
+              Import multiple exercises at once. <strong>Both French and English versions are required.</strong>
+            {% else %}
+              Importez plusieurs exercices en une seule fois. <strong>Les versions française et anglaise sont obligatoires.</strong>
+            {% endif %}
+          </p>
+        </div>
+        <div class="col-md-4 text-end">
+          <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>
+            {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Étape 1: Sélection de la hiérarchie -->
+    <div class="main-card">
+      <h4 class="mb-4">
+        <span class="badge bg-primary me-2">1</span>
+        {% if lang == 'en' %}Select Content Hierarchy{% else %}Sélectionnez la Hiérarchie du Contenu{% endif %}
+      </h4>
+      
+      <form id="hierarchyForm" method="GET" action="{{ url_for('batch_create_exercises_admin') }}">
+        <div class="row">
+          <!-- Niveau -->
+          <div class="col-md-3">
+            <label for="niveau_id" class="form-label required-field">{% if lang == 'en' %}Level{% else %}Niveau{% endif %}</label>
+            <select name="niveau_id" id="niveau_id" class="form-select" required onchange="this.form.submit()">
+              <option value="">{% if lang == 'en' %}Select level{% else %}Sélectionnez un niveau{% endif %}</option>
+              {% for niveau in niveaux %}
+                <option value="{{ niveau.id }}" {% if selected_niveau and selected_niveau.id == niveau.id %}selected{% endif %}>
+                  {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <!-- Matière -->
+          <div class="col-md-3">
+            <label for="matiere_id" class="form-label required-field">{% if lang == 'en' %}Subject{% else %}Matière{% endif %}</label>
+            <select name="matiere_id" id="matiere_id" class="form-select" {% if not matieres %}disabled{% endif %} onchange="this.form.submit()">
+              <option value="">{% if lang == 'en' %}Select subject{% else %}Sélectionnez une matière{% endif %}</option>
+              {% for matiere in matieres %}
+                <option value="{{ matiere.id }}" {% if selected_matiere and selected_matiere.id == matiere.id %}selected{% endif %}>
+                  {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <!-- Unité -->
+          <div class="col-md-3">
+            <label for="unite_id" class="form-label required-field">{% if lang == 'en' %}Unit{% else %}Unité{% endif %}</label>
+            <select name="unite_id" id="unite_id" class="form-select" {% if not unites %}disabled{% endif %} onchange="this.form.submit()">
+              <option value="">{% if lang == 'en' %}Select unit{% else %}Sélectionnez une unité{% endif %}</option>
+              {% for unite in unites %}
+                <option value="{{ unite.id }}" {% if selected_unite and selected_unite.id == unite.id %}selected{% endif %}>
+                  {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <!-- Leçon -->
+          <div class="col-md-3">
+            <label for="lecon_id" class="form-label required-field">{% if lang == 'en' %}Lesson{% else %}Leçon{% endif %}</label>
+            <select name="lecon_id" id="lecon_id" class="form-select" {% if not lecons %}disabled{% endif %}>
+              <option value="">{% if lang == 'en' %}Select lesson{% else %}Sélectionnez une leçon{% endif %}</option>
+              {% for lecon in lecons %}
+                <option value="{{ lecon.id }}" {% if selected_lecon and selected_lecon.id == lecon.id %}selected{% endif %}>
+                  {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        
+        {% if selected_lecon %}
+        <div class="alert alert-success mt-3">
+          <i class="fas fa-check-circle me-2"></i>
+          {% if lang == 'en' %}
+            Selected: <strong>{{ selected_niveau.nom_en if selected_niveau.nom_en else selected_niveau.nom }}</strong> → 
+            <strong>{{ selected_matiere.nom_en if selected_matiere.nom_en else selected_matiere.nom }}</strong> → 
+            <strong>{{ selected_unite.nom_en if selected_unite.nom_en else selected_unite.nom }}</strong> → 
+            <strong>{{ selected_lecon.titre_en if selected_lecon.titre_en else selected_lecon.titre_fr }}</strong>
+          {% else %}
+            Sélectionné : <strong>{{ selected_niveau.nom }}</strong> → 
+            <strong>{{ selected_matiere.nom }}</strong> → 
+            <strong>{{ selected_unite.nom }}</strong> → 
+            <strong>{{ selected_lecon.titre_fr }}</strong>
+          {% endif %}
+        </div>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- Étape 2: Format des exercices (uniquement si une leçon est sélectionnée) -->
+    {% if selected_lecon %}
+    <div class="main-card">
+      <h4 class="mb-4">
+        <span class="badge bg-success me-2">2</span>
+        {% if lang == 'en' %}Enter Exercises in Required Format{% else %}Saisissez les Exercices au Format Requis{% endif %}
+      </h4>
+      
+      <div class="info-box">
+        <h6><i class="fas fa-exclamation-triangle me-2"></i>{% if lang == 'en' %}Important Requirements{% else %}Exigences Importantes{% endif %}</h6>
+        <ul class="mb-0">
+          <li>{% if lang == 'en' %}Both <strong>French and English versions are mandatory</strong> for each exercise{% else %}Les versions <strong>française et anglaise sont obligatoires</strong> pour chaque exercice{% endif %}</li>
+          <li>{% if lang == 'en' %}Separate exercises with <code>---</code> on a blank line{% else %}Séparez les exercices par <code>---</code> sur une ligne vide{% endif %}</li>
+          <li>{% if lang == 'en' %}All fields marked with * are required{% else %}Tous les champs marqués * sont obligatoires{% endif %}</li>
+        </ul>
+      </div>
+      
+      <!-- Exemple de format -->
+      <div class="mb-4">
+        <h6><i class="fas fa-code me-2"></i>{% if lang == 'en' %}Required Format Example{% else %}Exemple de Format Requis{% endif %}</h6>
+        <div class="format-example">
+          <span class="language-tag language-fr">FR</span> Question_fr: Quelle est la capitale de la France ?<br>
+          <span class="language-tag language-en">EN</span> Question_en: What is the capital of France?<br>
+          <span class="language-tag language-fr">FR</span> Options_fr: A) Londres, B) Berlin, C) Paris, D) Madrid<br>
+          <span class="language-tag language-en">EN</span> Options_en: A) London, B) Berlin, C) Paris, D) Madrid<br>
+          <span class="language-tag language-fr">FR</span> Réponse_fr: C<br>
+          <span class="language-tag language-en">EN</span> Réponse_en: C<br>
+          <span class="language-tag language-fr">FR</span> Explication_fr: Paris est la capitale de la France<br>
+          <span class="language-tag language-en">EN</span> Explication_en: Paris is the capital of France<br>
+          Temps: 60<br>
+          ---<br>
+          <span class="language-tag language-fr">FR</span> Question_fr: Combien font 5 × 8 ?<br>
+          <span class="language-tag language-en">EN</span> Question_en: What is 5 × 8 ?<br>
+          <span class="language-tag language-fr">FR</span> Réponse_fr: 40<br>
+          <span class="language-tag language-en">EN</span> Réponse_en: 40<br>
+          <span class="language-tag language-fr">FR</span> Explication_fr: Table de multiplication<br>
+          <span class="language-tag language-en">EN</span> Explication_en: Multiplication table<br>
+          Temps: 30
+        </div>
+        <small class="text-muted">
+          {% if lang == 'en' %}
+            <strong>Note:</strong> Options are optional. Time is in seconds (default: 120).
+          {% else %}
+            <strong>Note :</strong> Les Options sont facultatives. Le Temps est en secondes (défaut : 120).
+          {% endif %}
+        </small>
+      </div>
+      
+      <!-- Formulaire d'importation -->
+      <form method="POST" action="{{ url_for('batch_create_exercises_admin') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="lecon_id" value="{{ selected_lecon.id }}">
+        
+        <div class="mb-4">
+          <label for="exercises_text" class="form-label required-field">
+            <i class="fas fa-paste me-1"></i>
+            {% if lang == 'en' %}Paste your exercises here{% else %}Collez vos exercices ici{% endif %}
+            <span class="badge bg-secondary ms-2" id="exerciseCount">0 exercice(s)</span>
+          </label>
+          
+          <div class="textarea-wrapper">
+            <textarea name="exercises_text" id="exercises_text" 
+                      class="form-control" rows="20" 
+                      placeholder="{% if lang == 'en' %}Paste your exercises in the required bilingual format...{% else %}Collez vos exercices au format bilingue requis...{% endif %}"
+                      style="font-family: 'Courier New', monospace; font-size: 0.9rem;"
+                      required></textarea>
+            <div class="exercise-counter" id="liveCounter">0</div>
+          </div>
+          
+          <div class="mt-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="validateFormat()">
+              <i class="fas fa-check me-1"></i>
+              {% if lang == 'en' %}Validate Format{% else %}Valider le Format{% endif %}
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="formatText()">
+              <i class="fas fa-magic me-1"></i>
+              {% if lang == 'en' %}Auto-format{% else %}Auto-formater{% endif %}
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearText()">
+              <i class="fas fa-trash me-1"></i>
+              {% if lang == 'en' %}Clear{% else %}Effacer{% endif %}
+            </button>
+          </div>
+        </div>
+        
+        <!-- Options supplémentaires -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <label for="temps_defaut" class="form-label">{% if lang == 'en' %}Default Time (seconds){% else %}Temps par défaut (secondes){% endif %}</label>
+            <input type="number" name="temps_defaut" id="temps_defaut" class="form-control" value="120" min="10" max="600">
+          </div>
+          <div class="col-md-8">
+            <div class="form-check mt-4">
+              <input class="form-check-input" type="checkbox" name="auto_number" id="auto_number" checked>
+              <label class="form-check-label" for="auto_number">
+                {% if lang == 'en' %}Auto-number exercises{% else %}Numéroter automatiquement les exercices{% endif %}
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Boutons d'action -->
+        <div class="d-flex justify-content-between">
+          <button type="button" onclick="previewExercises()" class="btn btn-info">
+            <i class="fas fa-eye me-2"></i>
+            {% if lang == 'en' %}Preview{% else %}Prévisualiser{% endif %}
+          </button>
+          
+          <div>
+            <button type="reset" class="btn btn-secondary me-2">
+              <i class="fas fa-undo me-2"></i>
+              {% if lang == 'en' %}Reset{% else %}Réinitialiser{% endif %}
+            </button>
+            <button type="submit" name="action" value="create" class="btn btn-success">
+              <i class="fas fa-save me-2"></i>
+              {% if lang == 'en' %}Import Exercises{% else %}Importer les Exercices{% endif %}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Modal de prévisualisation -->
+  <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-eye me-2"></i>
+            {% if lang == 'en' %}Exercises Preview{% else %}Prévisualisation des Exercices{% endif %}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="previewContent">
+          <!-- Le contenu sera inséré ici par JavaScript -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            {% if lang == 'en' %}Close{% else %}Fermer{% endif %}
+          </button>
+          <button type="button" class="btn btn-primary" onclick="submitForm()">
+            <i class="fas fa-check me-2"></i>
+            {% if lang == 'en' %}Confirm Import{% else %}Confirmer l'Importation{% endif %}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Compte les exercices en temps réel
+    function countExercises() {
+      const text = document.getElementById('exercises_text').value;
+      const exercises = text.split('\n---\n').filter(ex => {
+        const trimmed = ex.trim();
+        return trimmed.length > 0 && !trimmed.startsWith('#');
+      });
+      const count = exercises.length;
+      document.getElementById('exerciseCount').textContent = count + ' exercice(s)';
+      document.getElementById('liveCounter').textContent = count;
+    }
+    
+    // Nettoie et formate le texte
+    function formatText() {
+      const textarea = document.getElementById('exercises_text');
+      let text = textarea.value;
+      
+      // Remplace les séparateurs
+      text = text.replace(/\r\n/g, '\n');
+      text = text.replace(/\n{3,}/g, '\n\n---\n\n');
+      text = text.replace(/={3,}|_{3,}/g, '---');
+      
+      // Nettoie les espaces
+      text = text.replace(/[ \t]+/g, ' ');
+      text = text.replace(/\n[ \t]+/g, '\n');
+      text = text.replace(/[ \t]+\n/g, '\n');
+      
+      // Uniformise les labels (case insensitive)
+      const patterns = {
+        'question_fr': ['Question_fr', 'Question FR', 'question fr', 'QuestionFr'],
+        'question_en': ['Question_en', 'Question EN', 'question en', 'QuestionEn'],
+        'options_fr': ['Options_fr', 'Options FR', 'options fr', 'OptionsFr'],
+        'options_en': ['Options_en', 'Options EN', 'options en', 'OptionsEn'],
+        'reponse_fr': ['Réponse_fr', 'Réponse FR', 'réponse fr', 'Reponse_fr', 'Reponse FR'],
+        'reponse_en': ['Réponse_en', 'Réponse EN', 'réponse en', 'Reponse_en', 'Reponse EN'],
+        'explication_fr': ['Explication_fr', 'Explication FR', 'explication fr', 'ExplicationFr'],
+        'explication_en': ['Explication_en', 'Explication EN', 'explication en', 'ExplicationEn'],
+        'temps': ['Temps', 'Time', 'Durée', 'temps']
+      };
+      
+      for (const [standard, variants] of Object.entries(patterns)) {
+        for (const variant of variants) {
+          const regex = new RegExp(`^${variant}[ :]+`, 'gmi');
+          text = text.replace(regex, standard.charAt(0).toUpperCase() + standard.slice(1) + ': ');
+        }
+      }
+      
+      // Nettoie les options
+      text = text.replace(/Options_fr: ([^\n]+)/gi, (match, options) => {
+        return 'Options_fr: ' + options.replace(/[A-D][\.\)] /g, (opt) => {
+          return opt.charAt(0) + ') ';
+        });
+      });
+      
+      textarea.value = text.trim();
+      countExercises();
+    }
+    
+    // Efface le texte
+    function clearText() {
+      if (confirm('{% if lang == "en" %}Clear all text?{% else %}Effacer tout le texte ?{% endif %}')) {
+        document.getElementById('exercises_text').value = '';
+        countExercises();
+      }
+    }
+    
+    // Valide le format
+    function validateFormat() {
+      const text = document.getElementById('exercises_text').value.trim();
+      if (!text) {
+        alert('{% if lang == "en" %}Please enter some exercises{% else %}Veuillez saisir des exercices{% endif %}');
+        return;
+      }
+      
+      const exercises = text.split('\n---\n').filter(ex => ex.trim());
+      let errors = [];
+      let warnings = [];
+      
+      exercises.forEach((ex, index) => {
+        const lines = ex.split('\n').filter(line => line.trim());
+        const fields = {};
+        
+        lines.forEach(line => {
+          const match = line.match(/^(\w+):\s*(.+)$/i);
+          if (match) {
+            fields[match[1].toLowerCase()] = match[2].trim();
+          }
+        });
+        
+        // Vérification des champs obligatoires
+        if (!fields.question_fr) {
+          errors.push(`{% if lang == "en" %}Exercise ${index + 1}: Missing Question_fr{% else %}Exercice ${index + 1} : Question_fr manquante{% endif %}`);
+        }
+        if (!fields.question_en) {
+          errors.push(`{% if lang == "en" %}Exercise ${index + 1}: Missing Question_en{% else %}Exercice ${index + 1} : Question_en manquante{% endif %}`);
+        }
+        
+        // Vérification des correspondances
+        if (fields.options_fr && !fields.options_en) {
+          warnings.push(`{% if lang == "en" %}Exercise ${index + 1}: Options_fr present but Options_en missing{% else %}Exercice ${index + 1} : Options_fr présente mais Options_en manquante{% endif %}`);
+        }
+        if (fields.options_en && !fields.options_fr) {
+          warnings.push(`{% if lang == "en" %}Exercise ${index + 1}: Options_en present but Options_fr missing{% else %}Exercice ${index + 1} : Options_en présente mais Options_fr manquante{% endif %}`);
+        }
+      });
+      
+      let message = '';
+      if (errors.length > 0) {
+        message += `{% if lang == "en" %}❌ ERRORS (${errors.length}):{% else %}❌ ERREURS (${errors.length}) :{% endif %}\n` + 
+                  errors.slice(0, 3).join('\n');
+        if (errors.length > 3) {
+          message += `\n... {% if lang == "en" %}and ${errors.length - 3} more errors{% else %}et ${errors.length - 3} autres erreurs{% endif %}`;
+        }
+        message += '\n\n';
+      }
+      
+      if (warnings.length > 0) {
+        message += `{% if lang == "en" %}⚠️ WARNINGS (${warnings.length}):{% else %}⚠️ AVERTISSEMENTS (${warnings.length}) :{% endif %}\n` +
+                  warnings.slice(0, 3).join('\n');
+      }
+      
+      if (errors.length === 0 && warnings.length === 0) {
+        message = '✅ {% if lang == "en" %}Format is valid! Ready for import.{% else %}Format valide ! Prêt pour l\'importation.{% endif %}';
+      }
+      
+      alert(message);
+    }
+    
+    // Prévisualisation
+    function previewExercises() {
+      const text = document.getElementById('exercises_text').value.trim();
+      if (!text) {
+        alert('{% if lang == "en" %}Please enter some exercises first{% else %}Veuillez d\'abord saisir des exercices{% endif %}');
+        return;
+      }
+      
+      const exercises = text.split('\n---\n').filter(ex => ex.trim());
+      let previewHTML = `
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          ${exercises.length} {% if lang == "en" %}exercise(s) will be created in the lesson:{% else %}exercice(s) seront créés dans la leçon :{% endif %} 
+          <strong>${document.querySelector('#lecon_id option:checked').textContent}</strong>
+        </div>
+      `;
+      
+      exercises.forEach((ex, index) => {
+        const lines = ex.split('\n').filter(line => line.trim());
+        const fields = {};
+        
+        lines.forEach(line => {
+          const match = line.match(/^(\w+):\s*(.+)$/i);
+          if (match) {
+            fields[match[1].toLowerCase()] = match[2].trim();
+          }
+        });
+        
+        previewHTML += `
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">{% if lang == "en" %}Exercise{% else %}Exercice{% endif %} ${index + 1}</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 border-end">
+                  <h6><span class="badge bg-success">FR</span> Français</h6>
+                  <p><strong>Question :</strong> ${fields.question_fr || '<span class="text-danger">Missing</span>'}</p>
+                  ${fields.options_fr ? `<p><strong>Options :</strong> ${fields.options_fr}</p>` : ''}
+                  ${fields.reponse_fr ? `<p><strong>Réponse :</strong> <code>${fields.reponse_fr}</code></p>` : ''}
+                  ${fields.explication_fr ? `<p><strong>Explication :</strong> ${fields.explication_fr}</p>` : ''}
+                </div>
+                <div class="col-md-6">
+                  <h6><span class="badge bg-primary">EN</span> English</h6>
+                  <p><strong>Question :</strong> ${fields.question_en || '<span class="text-danger">Missing</span>'}</p>
+                  ${fields.options_en ? `<p><strong>Options :</strong> ${fields.options_en}</p>` : ''}
+                  ${fields.reponse_en ? `<p><strong>Answer :</strong> <code>${fields.reponse_en}</code></p>` : ''}
+                  ${fields.explication_en ? `<p><strong>Explanation :</strong> ${fields.explication_en}</p>` : ''}
+                </div>
+              </div>
+              <div class="mt-2 text-muted">
+                <small><i class="fas fa-clock"></i> Time: ${fields.temps || '120'} seconds</small>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      document.getElementById('previewContent').innerHTML = previewHTML;
+      const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+      previewModal.show();
+    }
+    
+    // Soumettre le formulaire depuis la prévisualisation
+    function submitForm() {
+      document.querySelector('form').submit();
+    }
+    
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function() {
+      const textarea = document.getElementById('exercises_text');
+      if (textarea) {
+        textarea.addEventListener('input', countExercises);
+        countExercises();
+      }
+      
+      // Met à jour les sélecteurs en cascade
+      document.getElementById('niveau_id').addEventListener('change', function() {
+        this.form.submit();
+      });
+      
+      document.getElementById('matiere_id').addEventListener('change', function() {
+        this.form.submit();
+      });
+      
+      document.getElementById('unite_id').addEventListener('change', function() {
+        this.form.submit();
+      });
+    });
+  </script>
+</body>
+</html>

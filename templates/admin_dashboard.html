@@ -618,6 +618,7 @@
               {% if lang == 'en' %}Content Management{% else %}Gestion des Contenus{% endif %}
             </div>
             <div class="card-body">
+              <!-- Niveaux, Matières, Unités, Leçons -->
               <a href="/admin/ajouter-niveau" class="btn action-btn">
                 <i class="fas fa-layer-group"></i>
                 {% if lang == 'en' %}Add Level{% else %}Ajouter un Niveau{% endif %}
@@ -633,6 +634,19 @@
               <a href="/admin/ajouter-lecon" class="btn action-btn">
                 <i class="fas fa-file-alt"></i>
                 {% if lang == 'en' %}Add Lesson{% else %}Ajouter une Leçon{% endif %}
+              </a>
+              
+              <!-- NOUVEAU : Importation en lot -->
+              <a href="{{ url_for('batch_create_exercises_admin') }}" class="btn action-btn" 
+                 style="border-left: 4px solid #9b59b6; background: rgba(155, 89, 182, 0.1);">
+                <i class="fas fa-file-import" style="color: #9b59b6;"></i>
+                <div>
+                  <strong>{% if lang == 'en' %}Batch Import Exercises{% else %}Importation d'Exercices en Lot{% endif %}</strong>
+                  <br>
+                  <small class="text-muted">
+                    {% if lang == 'en' %}Import multiple exercises at once{% else %}Importez plusieurs exercices en une fois{% endif %}
+                  </small>
+                </div>
               </a>
             </div>
           </div>
@@ -1001,4 +1015,3 @@
   </script>
 </body>
 </html>
-

@@ -4539,6 +4539,290 @@ def dashboard_eleve():
         statut_paiement_info=statut_paiement_info
     )
 
+import json
+import re
+from datetime import datetime
+
+# Fonction pour parser les exercices bilingues
+def parse_bilingual_exercises(text, default_time=120):
+    """
+    Parse un texte avec des exercices bilingues (FR/EN obligatoires)
+    Format attendu:
+    Question_fr: [texte]
+    Question_en: [texte]
+    Options_fr: [texte]
+    Options_en: [texte]
+    Réponse_fr: [texte]
+    Réponse_en: [texte]
+    Explication_fr: [texte]
+    Explication_en: [texte]
+    Temps: [nombre]
+    ---
+    """
+    exercises = []
+    
+    # Normalisation des séparateurs
+    text = text.strip()
+    text = re.sub(r'\r\n', '\n', text)
+    text = re.sub(r'\n{3,}', '\n\n---\n\n', text)
+    text = re.sub(r'={3,}|_{3,}', '---', text)
+    
+    # Séparation des exercices
+    parts = re.split(r'\n\s*---\s*\n', text)
+    
+    for i, part in enumerate(parts):
+        part = part.strip()
+        if not part:
+            continue
+            
+        exercice_data = {
+            'numero': i + 1,
+            'temps': default_time,
+            'question_fr': '',
+            'question_en': '',
+            'options_fr': '',
+            'options_en': '',
+            'reponse_fr': '',
+            'reponse_en': '',
+            'explication_fr': '',
+            'explication_en': ''
+        }
+        
+        # Dictionnaire pour les correspondances de champs
+        field_mapping = {
+            'question_fr': ['question_fr', 'question fr', 'questionfr'],
+            'question_en': ['question_en', 'question en', 'questionen'],
+            'options_fr': ['options_fr', 'options fr', 'optionsfr', 'choix_fr', 'choix fr'],
+            'options_en': ['options_en', 'options en', 'optionsen', 'choix_en', 'choix en'],
+            'reponse_fr': ['réponse_fr', 'réponse fr', 'reponse_fr', 'reponse fr', 'réponsefr'],
+            'reponse_en': ['réponse_en', 'réponse en', 'reponse_en', 'reponse en', 'réponseen'],
+            'explication_fr': ['explication_fr', 'explication fr', 'explicationfr'],
+            'explication_en': ['explication_en', 'explication en', 'explicationen'],
+            'temps': ['temps', 'time', 'durée']
+        }
+        
+        lines = part.split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line or ':' not in line:
+                continue
+                
+            # Recherche du champ
+            for field, variants in field_mapping.items():
+                for variant in variants:
+                    if line.lower().startswith(variant + ':'):
+                        # Extraction de la valeur après les deux points
+                        value = line[len(variant) + 1:].strip()
+                        if value:
+                            exercice_data[field] = value
+                        break
+        
+        # Validation des champs obligatoires
+        if not exercice_data['question_fr']:
+            # Essayer de trouver une question en cherchant dans les lignes non reconnues
+            for line in lines:
+                if line.strip() and ':' not in line and not any(key in line.lower() for key in ['option', 'réponse', 'reponse', 'explication', 'temps', 'time']):
+                    if not exercice_data['question_fr']:
+                        exercice_data['question_fr'] = line.strip()
+        
+        # Formatage des options
+        for key in ['options_fr', 'options_en']:
+            if exercice_data[key]:
+                # Nettoie et uniformise le format des options
+                exercice_data[key] = exercice_data[key].replace(';', ',')
+                exercice_data[key] = re.sub(r'([A-D])[\.\)]', r'\1)', exercice_data[key])
+        
+        # Conversion du temps
+        if exercice_data['temps'] and isinstance(exercice_data['temps'], str):
+            try:
+                exercice_data['temps'] = int(exercice_data['temps'])
+            except:
+                exercice_data['temps'] = default_time
+        elif not exercice_data['temps']:
+            exercice_data['temps'] = default_time
+        
+        exercises.append(exercice_data)
+    
+    return exercises
+
+@app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
+@login_required
+def batch_create_exercises_admin():
+    """Importation d'exercices en lot par l'admin"""
+    if current_user.role != 'admin':
+        flash('Accès non autorisé', 'error')
+        return redirect(url_for('index'))
+    
+    # Récupérer tous les niveaux pour le menu déroulant
+    niveaux = Niveau.query.order_by(Niveau.id).all()
+    matieres = []
+    unites = []
+    lecons = []
+    
+    # Initialiser les sélections
+    selected_niveau = None
+    selected_matiere = None
+    selected_unite = None
+    selected_lecon = None
+    
+    # Récupérer les paramètres GET pour la hiérarchie
+    niveau_id = request.args.get('niveau_id', type=int)
+    matiere_id = request.args.get('matiere_id', type=int)
+    unite_id = request.args.get('unite_id', type=int)
+    lecon_id = request.args.get('lecon_id', type=int)
+    
+    # Récupérer les données en fonction des sélections
+    if niveau_id:
+        selected_niveau = Niveau.query.get(niveau_id)
+        matieres = Matiere.query.filter_by(niveau_id=niveau_id).order_by(Matiere.id).all()
+    
+    if matiere_id:
+        selected_matiere = Matiere.query.get(matiere_id)
+        unites = Unite.query.filter_by(matiere_id=matiere_id).order_by(Unite.id).all()
+    
+    if unite_id:
+        selected_unite = Unite.query.get(unite_id)
+        lecons = Lecon.query.filter_by(unite_id=unite_id).order_by(Lecon.id).all()
+    
+    if lecon_id:
+        selected_lecon = Lecon.query.get(lecon_id)
+    
+    if request.method == 'POST':
+        # Vérifier qu'une leçon est sélectionnée
+        lecon_id = request.form.get('lecon_id', type=int)
+        if not lecon_id:
+            flash('Veuillez sélectionner une leçon', 'error')
+            return redirect(url_for('batch_create_exercises_admin'))
+        
+        selected_lecon = Lecon.query.get_or_404(lecon_id)
+        exercises_text = request.form.get('exercises_text', '').strip()
+        default_time = request.form.get('temps_defaut', 120, type=int)
+        
+        if not exercises_text:
+            flash('Veuillez saisir des exercices', 'error')
+            return render_template('batch_exercises_admin.html',
+                                 lang=session.get('lang', 'fr'),
+                                 niveaux=niveaux,
+                                 matieres=matieres,
+                                 unites=unites,
+                                 lecons=lecons,
+                                 selected_niveau=selected_niveau,
+                                 selected_matiere=selected_matiere,
+                                 selected_unite=selected_unite,
+                                 selected_lecon=selected_lecon)
+        
+        try:
+            # Parser les exercices
+            exercises = parse_bilingual_exercises(exercises_text, default_time)
+            
+            if not exercises:
+                flash('Aucun exercice valide détecté', 'error')
+                return render_template('batch_exercises_admin.html',
+                                     lang=session.get('lang', 'fr'),
+                                     niveaux=niveaux,
+                                     matieres=matieres,
+                                     unites=unites,
+                                     lecons=lecons,
+                                     selected_niveau=selected_niveau,
+                                     selected_matiere=selected_matiere,
+                                     selected_unite=selected_unite,
+                                     selected_lecon=selected_lecon)
+            
+            # Validation des champs obligatoires
+            valid_exercises = []
+            invalid_count = 0
+            
+            for i, ex in enumerate(exercises):
+                if not ex['question_fr']:
+                    flash(f'Exercice {i+1}: Question_fr manquante', 'warning')
+                    invalid_count += 1
+                elif not ex['question_en']:
+                    flash(f'Exercice {i+1}: Question_en manquante', 'warning')
+                    invalid_count += 1
+                else:
+                    valid_exercises.append(ex)
+            
+            if not valid_exercises:
+                flash('Aucun exercice valide avec les versions française et anglaise', 'error')
+                return render_template('batch_exercises_admin.html',
+                                     lang=session.get('lang', 'fr'),
+                                     niveaux=niveaux,
+                                     matieres=matieres,
+                                     unites=unites,
+                                     lecons=lecons,
+                                     selected_niveau=selected_niveau,
+                                     selected_matiere=selected_matiere,
+                                     selected_unite=selected_unite,
+                                     selected_lecon=selected_lecon)
+            
+            # Créer les exercices dans la base de données
+            created_count = 0
+            errors = []
+            
+            for ex in valid_exercises:
+                try:
+                    exercice = Exercice(
+                        lecon_id=lecon_id,
+                        question_fr=ex['question_fr'],
+                        question_en=ex['question_en'],
+                        options_fr=ex['options_fr'],
+                        options_en=ex['options_en'],
+                        reponse_fr=ex['reponse_fr'],
+                        reponse_en=ex['reponse_en'],
+                        explication_fr=ex['explication_fr'],
+                        explication_en=ex['explication_en'],
+                        temps=ex['temps']
+                    )
+                    
+                    db.session.add(exercice)
+                    created_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Exercice {ex['numero']}: {str(e)}")
+            
+            db.session.commit()
+            
+            # Statistiques
+            with_options = sum(1 for ex in valid_exercises if ex['options_fr'] or ex['options_en'])
+            with_explanations = sum(1 for ex in valid_exercises if ex['explication_fr'] or ex['explication_en'])
+            avg_time = sum(ex['temps'] for ex in valid_exercises) // len(valid_exercises) if valid_exercises else 0
+            
+            flash(f'{created_count} exercice(s) importé(s) avec succès!', 'success')
+            
+            if invalid_count > 0:
+                flash(f'{invalid_count} exercice(s) ignoré(s) car incomplets', 'warning')
+            
+            if errors:
+                flash(f"Quelques erreurs: {' | '.join(errors[:2])}", 'warning')
+            
+            # Afficher la page de confirmation
+            return render_template('batch_exercises_confirm.html',
+                                 lang=session.get('lang', 'fr'),
+                                 count=created_count,
+                                 lecon=selected_lecon,
+                                 niveau=selected_niveau,
+                                 matiere=selected_matiere,
+                                 unite=selected_unite,
+                                 with_options=with_options,
+                                 with_explanations=with_explanations,
+                                 avg_time=avg_time)
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erreur lors de l\'importation: {str(e)}', 'error')
+    
+    # GET request ou POST avec erreurs
+    return render_template('batch_exercises_admin.html',
+                         lang=session.get('lang', 'fr'),
+                         niveaux=niveaux,
+                         matieres=matieres,
+                         unites=unites,
+                         lecons=lecons,
+                         selected_niveau=selected_niveau,
+                         selected_matiere=selected_matiere,
+                         selected_unite=selected_unite,
+                         selected_lecon=selected_lecon)
+
 @app.route("/reset-admin-password")
 def reset_admin_password():
     """Réinitialise le mot de passe admin - À SUPPRIMER APRÈS"""
