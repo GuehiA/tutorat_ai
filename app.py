@@ -29,6 +29,7 @@ from flask_migrate import Migrate
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from datetime import datetime  # Pour le timestamp
+from datetime import timedelta
 
 # 🧠 Modèles et config
 from models import (
@@ -44,12 +45,13 @@ load_dotenv()
 
 # --- Clé secrète ---
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-me')
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_PERMANENT'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
-app.config['SESSION_COOKIE_SECURE'] = True  # Pour HTTPS
+
+# --- Configuration de session ---
+app.config['SESSION_COOKIE_NAME'] = 'tutorat_session'
+app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS seulement
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 7200  # 2 heures en secondes
 
 
 # ====================================================================
