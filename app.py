@@ -4570,7 +4570,7 @@ def parse_bilingual_exercises(text, default_time):
         exercises.append(current_ex)
     
     return exercises
-
+from flask_wtf.csrf import generate_csrf
 @app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
 def batch_create_exercises_admin():
     """Importation d'exercices en lot par l'admin"""
