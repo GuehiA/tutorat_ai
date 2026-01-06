@@ -4593,10 +4593,9 @@ from flask_wtf.csrf import generate_csrf
 def batch_create_exercises_admin():
     """Importation d'exercices en lot par l'admin"""
     
-    # VÉRIFICATION AVEC REDIRECTION VERS LOGIN SI NON CONNECTÉ
-    if not session.get('user_id'):
-        flash('Veuillez vous connecter pour accéder à cette page', 'error')
-        # Redirige vers la page de login admin
+    # VÉRIFICATION AVEC LES DEUX CLÉS POSSIBLES (is_admin ET user_id)
+    if not session.get('is_admin') and not session.get('user_id'):
+        flash('Veuillez vous connecter en tant qu\'administrateur', 'error')
         return redirect(url_for('login_admin'))
     
     # Récupérer tous les niveaux pour le menu déroulant
@@ -4638,7 +4637,6 @@ def batch_create_exercises_admin():
         lecon_id = request.form.get('lecon_id', type=int)
         if not lecon_id:
             flash('Veuillez sélectionner une leçon', 'error')
-            # Garder les sélections actuelles
             return render_template('batch_exercises_admin.html',
                                  lang=session.get('lang', 'fr'),
                                  niveaux=niveaux,
@@ -4767,7 +4765,7 @@ def batch_create_exercises_admin():
             db.session.rollback()
             flash(f'Erreur lors de l\'importation: {str(e)}', 'error')
     
-    # GET request
+    # GET request ou POST avec erreurs
     return render_template('batch_exercises_admin.html',
                          lang=session.get('lang', 'fr'),
                          niveaux=niveaux,
