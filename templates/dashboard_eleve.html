@@ -971,22 +971,23 @@
           </span>
         </a>
         
+        <!-- MODIFICATION : "Séquence Guidée" devient "Débuter les exercices par leçon" -->
         <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.2s;">
           <div class="main-action-icon">
-            <i class="fas fa-bullseye"></i>
+            <i class="fas fa-play-circle"></i>
           </div>
           <h4>
             {% if lang == 'en' %}
-              Guided Sequence
+              Start Exercises by Lesson
             {% else %}
-              Séquence Guidée
+              Débuter les exercices par leçon
             {% endif %}
           </h4>
           <p>
             {% if lang == 'en' %}
-              Follow a personalized learning path
+              Start exercises by lesson for targeted practice
             {% else %}
-              Suis un parcours d'apprentissage personnalisé
+              Débutez les exercices par leçon pour une pratique ciblée
             {% endif %}
           </p>
         </a>
@@ -1034,26 +1035,6 @@
               {% if lang == 'en' %}New{% else %}Nouveau{% endif %}
             </span>
           {% endif %}
-        </a>
-        
-        <a href="/contenus-eleve?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.5s;">
-          <div class="main-action-icon">
-            <i class="fas fa-compass"></i>
-          </div>
-          <h4>
-            {% if lang == 'en' %}
-              Explore Lessons
-            {% else %}
-              Explorer les Leçons
-            {% endif %}
-          </h4>
-          <p>
-            {% if lang == 'en' %}
-              Discover new topics and concepts
-            {% else %}
-              Découvre de nouveaux sujets et concepts
-            {% endif %}
-          </p>
         </a>
       </div>
     </div>
