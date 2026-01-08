@@ -4971,46 +4971,51 @@ def exercice_sequentiel_progressif():
         flash("Aucun exercice trouvé dans cette leçon", "warning")
         return redirect(url_for("contenus_eleve", username=username, lang=lang))
 
-    # Étape 1: Trouver le prochain exercice non fait à partir de l'index donné
-    next_index = index
-    while next_index < len(exercices):
-        exercice_courant = exercices[next_index]
-        reponse_existante = StudentResponse.query.filter_by(
-            user_id=eleve.id, 
-            exercice_id=exercice_courant.id
+    # MODIFICATION 1: Vérifier que l'index est valide
+    if index < 0 or index >= len(exercices):
+        flash("Numéro d'exercice invalide", "warning")
+        index = 0  # Revenir au premier exercice
+
+    # Récupérer l'exercice demandé directement
+    exercice = exercices[index]
+    
+    # MODIFICATION 2: Récupérer la réponse existante pour cet exercice
+    reponse = StudentResponse.query.filter_by(
+        user_id=eleve.id, 
+        exercice_id=exercice.id
+    ).first()
+
+    # MODIFICATION 3: Calculer le statut de tous les exercices pour l'affichage
+    exercices_status = []
+    for ex in exercices:
+        reponse_ex = StudentResponse.query.filter_by(
+            user_id=eleve.id,
+            exercice_id=ex.id
         ).first()
-        
-        if not reponse_existante:
-            # Exercice non fait trouvé
-            break
-        next_index += 1
+        exercices_status.append({
+            'completed': reponse_ex is not None,
+            'reponse': reponse_ex
+        })
 
-    # Étape 2: Gérer les cas de figure
-    if next_index >= len(exercices):
-        # Tous les exercices à partir de l'index sont faits
-        if index == 0:
-            # Tous les exercices de la leçon sont faits
-            flash("🎉 Félicitations ! Vous avez terminé tous les exercices de cette leçon.", "success")
-            return redirect(url_for("retour_exercices", username=username, lecon_id=lecon_id, lang=lang))
-        else:
-            # L'élève a terminé les exercices restants
-            flash("✅ Vous avez terminé les exercices suivants de cette leçon.", "info")
-            return redirect(url_for("retour_exercices", username=username, lecon_id=lecon_id, lang=lang))
-
-    # Étape 3: Préparer les données pour l'affichage
-    exercice = exercices[next_index]
-    
-    # Récupérer la réponse existante (normalement None puisque c'est le prochain non fait)
-    reponse = StudentResponse.query.filter_by(user_id=eleve.id, exercice_id=exercice.id).first()
-
-    # Calculer la progression réelle (exercices faits / total)
+    # MODIFICATION 4: Calculer la progression (exercices faits / total)
     total_exercices = len(exercices)
-    exercices_faits = StudentResponse.query.filter(
-        StudentResponse.user_id == eleve.id,
-        StudentResponse.exercice_id.in_([ex.id for ex in exercices])
-    ).count()
-    
+    exercices_faits = sum(1 for status in exercices_status if status['completed'])
     progression_pourcentage = (exercices_faits / total_exercices * 100) if total_exercices > 0 else 0
+
+    # MODIFICATION 5: Déterminer s'il y a un exercice suivant/précédent pour la navigation
+    has_next = index < total_exercices - 1
+    has_prev = index > 0
+    next_index = index + 1 if has_next else index
+    prev_index = index - 1 if has_prev else index
+
+    # MODIFICATION 6: Préparer le statut des réponses pour le template
+    # Format: ['completed', 'not_started', etc.]
+    reponses_status = []
+    for status in exercices_status:
+        if status['completed']:
+            reponses_status.append('completed')
+        else:
+            reponses_status.append('not_started')
 
     return render_template(
         "exercice_sequentiel_progressif.html",
@@ -5018,11 +5023,20 @@ def exercice_sequentiel_progressif():
         eleve=eleve,
         lecon=lecon,
         lang=lang,
-        index=next_index,  # Utiliser l'index corrigé
+        index=index,  # Utiliser l'index demandé directement
         total=total_exercices,
         reponse=reponse,
         progression_pourcentage=progression_pourcentage,
-        exercices_faits=exercices_faits
+        exercices_faits=exercices_faits,
+        has_next=has_next,
+        has_prev=has_prev,
+        next_index=next_index,
+        prev_index=prev_index,
+        # NOUVEAU: Passer les informations de statut
+        exercices_status=exercices_status,
+        reponses_status=reponses_status,
+        # Pour la rétroaction
+        show_feedback=reponse is not None  # Afficher feedback si réponse existe
     )
 
 
@@ -5895,7 +5909,7 @@ def reset_contest(reponse_id):
 def soumettre_sequentiel():
     from datetime import datetime, timezone
     import re
-    import json  # IMPORT CRITIQUE
+    import json
 
     print("=== 📝 SOUMISSION SÉQUENTIELLE ===")
     
@@ -5906,19 +5920,12 @@ def soumettre_sequentiel():
     exercice_id = request.form.get("exercice_id")
     reponse_eleve = request.form.get("reponse_eleve", "").strip()
     index = int(request.form.get("index", 0))
-    action = request.form.get("action", "submit")
     
-    # NOUVEAU : Vérifier si c'est une contestation
-    is_contestation = request.form.get("is_contestation") == "true"
-    contestation_data = request.form.get("contestation_data", None)
-
     print(f"Username: {username}")
     print(f"Leçon ID: {lecon_id}")
     print(f"Exercice ID: {exercice_id}")
     print(f"Réponse longueur: {len(reponse_eleve)} caractères")
     print(f"Index: {index}")
-    print(f"Action: {action}")
-    print(f"Is Contestation: {is_contestation}")
 
     # CORRECTION : Utilisation de méthodes non dépréciées
     eleve = User.query.filter_by(username=username).first()
@@ -5926,17 +5933,23 @@ def soumettre_sequentiel():
     exercice = db.session.get(Exercice, exercice_id)
 
     if not eleve or not lecon or not exercice:
-        return "Élève, leçon ou exercice non trouvé", 404
+        flash("Élève, leçon ou exercice non trouvé", "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
 
-    # VARIABLES POUR LE TRAITEMENT
-    reponse_id = None
-    derniere_reponse = None
-    analyse_ia = ""
-    etoiles = 0
+    # Récupérer tous les exercices pour la progression
+    exercices = Exercice.query.filter_by(lecon_id=lecon.id).order_by(Exercice.id).all()
+    total_exercices = len(exercices)
     
-    # Si c'est une nouvelle soumission (pas une modification)
-    if action == "submit" and reponse_eleve and not is_contestation:
+    # MODIFICATION : Récupérer ou créer la réponse
+    reponse = StudentResponse.query.filter_by(
+        user_id=eleve.id,
+        exercice_id=exercice.id
+    ).first()
+    
+    # Si c'est une nouvelle réponse ou une modification
+    if reponse_eleve:
         question = exercice.question_en if lang == "en" else exercice.question_fr
+        reponse_attendue = exercice.reponse_en if lang == "en" else exercice.reponse_fr
 
         # ✅ PROMPT de correction - BARÈME SUR 5
         if lang == "en":
@@ -6041,58 +6054,107 @@ Correction :
         # SECTION CRITIQUE : STRUCTURATION JSON
         # ============================================
         try:
-            # NOUVEAU : Structurer le feedback en JSON pour supporter les contestations
-            feedback_json = {
-                "original": analyse_ia,
-                "history": [],  # Liste vide correcte
-                "current_stars": etoiles,
-                "current_feedback": analyse_ia,
-                "metadata": {
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "exercise_id": exercice.id,
-                    "student_id": eleve.id,
-                    "language": lang
+            # Structurer le feedback en JSON pour supporter les contestations
+            if reponse and reponse.analyse_ia and reponse.analyse_ia.startswith('{'):
+                # Si une réponse existe déjà avec JSON, on la met à jour
+                feedback_json = json.loads(reponse.analyse_ia)
+                # Ajouter l'historique
+                if "history" not in feedback_json:
+                    feedback_json["history"] = []
+                
+                feedback_json["history"].append({
+                    "feedback": feedback_json.get("current_feedback", feedback_json.get("original", "")),
+                    "stars": feedback_json.get("current_stars", reponse.etoiles or 0),
+                    "date": feedback_json.get("metadata", {}).get("updated_at", datetime.now(timezone.utc).isoformat())
+                })
+                
+                feedback_json["current_feedback"] = analyse_ia
+                feedback_json["current_stars"] = etoiles
+                feedback_json["metadata"]["updated_at"] = datetime.now(timezone.utc).isoformat()
+                
+            else:
+                # Nouveau feedback JSON
+                feedback_json = {
+                    "original": analyse_ia,
+                    "history": [],  # Pas d'historique pour la première soumission
+                    "current_stars": etoiles,
+                    "current_feedback": analyse_ia,
+                    "metadata": {
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "exercise_id": exercice.id,
+                        "student_id": eleve.id,
+                        "language": lang
+                    }
                 }
-            }
+                if reponse:
+                    # Si réponse existante sans JSON, on commence l'historique
+                    feedback_json["history"].append({
+                        "feedback": reponse.analyse_ia or "",
+                        "stars": reponse.etoiles or 0,
+                        "date": reponse.timestamp.isoformat() if reponse.timestamp else datetime.now(timezone.utc).isoformat()
+                    })
 
             # CONVERTIR EN JSON STRING
             feedback_json_str = json.dumps(feedback_json, ensure_ascii=False, indent=2)
             print(f"✅ JSON créé - Taille: {len(feedback_json_str)} caractères")
             
-            # Sauvegarde réponse STRUCTURÉE
-            nouvelle = StudentResponse(
-                user_id=eleve.id,
-                exercice_id=exercice.id,
-                reponse_eleve=reponse_eleve,
-                analyse_ia=feedback_json_str,  # JSON structuré
-                etoiles=etoiles,
-                timestamp=datetime.now(timezone.utc)
-            )
-            db.session.add(nouvelle)
+            # Mettre à jour ou créer la réponse
+            if reponse:
+                # Mise à jour de la réponse existante
+                reponse.reponse_eleve = reponse_eleve
+                reponse.analyse_ia = feedback_json_str
+                reponse.etoiles = etoiles
+                reponse.timestamp = datetime.now(timezone.utc)
+                print(f"✅ Réponse mise à jour (ID: {reponse.id})")
+            else:
+                # Création d'une nouvelle réponse
+                reponse = StudentResponse(
+                    user_id=eleve.id,
+                    exercice_id=exercice.id,
+                    reponse_eleve=reponse_eleve,
+                    analyse_ia=feedback_json_str,
+                    etoiles=etoiles,
+                    timestamp=datetime.now(timezone.utc)
+                )
+                db.session.add(reponse)
+                print(f"✅ Nouvelle réponse créée")
+            
             db.session.commit()
-            reponse_id = nouvelle.id
-            print(f"✅ Réponse sauvegardée (ID: {reponse_id}) avec JSON structuré")
+            print(f"✅ Données sauvegardées avec succès")
             
         except Exception as e:
             print(f"❌ Erreur lors de la sauvegarde avec JSON: {e}")
             
             # Fallback : sauvegarde sans JSON
             try:
-                nouvelle = StudentResponse(
-                    user_id=eleve.id,
-                    exercice_id=exercice.id,
-                    reponse_eleve=reponse_eleve,
-                    analyse_ia=analyse_ia,  # Texte simple
-                    etoiles=etoiles,
-                    timestamp=datetime.now(timezone.utc)
-                )
-                db.session.add(nouvelle)
+                if reponse:
+                    reponse.reponse_eleve = reponse_eleve
+                    reponse.analyse_ia = analyse_ia
+                    reponse.etoiles = etoiles
+                    reponse.timestamp = datetime.now(timezone.utc)
+                else:
+                    reponse = StudentResponse(
+                        user_id=eleve.id,
+                        exercice_id=exercice.id,
+                        reponse_eleve=reponse_eleve,
+                        analyse_ia=analyse_ia,
+                        etoiles=etoiles,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    db.session.add(reponse)
+                
                 db.session.commit()
-                reponse_id = nouvelle.id
                 print(f"✅ Réponse sauvegardée (fallback texte simple)")
             except Exception as fallback_error:
                 print(f"❌ Erreur lors du fallback: {fallback_error}")
-                return f"Erreur base de données: {fallback_error}", 500
+                flash(f"Erreur base de données: {fallback_error}", "danger")
+                return redirect(url_for(
+                    "exercice_sequentiel_progressif",
+                    username=username,
+                    lecon_id=lecon_id,
+                    lang=lang,
+                    index=index
+                ))
         # ============================================
 
         # ✅ REMÉDIATION si note < 3/5 (0, 1 ou 2/5)
@@ -6171,63 +6233,48 @@ Indice : ...
                 print(f"⚠️ Erreur sauvegarde remédiation: {e}")
 
         print("=== ✅ RÉPONSE SÉQUENTIELLE SAUVEGARDÉE ===")
-    
-    # TRAITEMENT SPÉCIAL POUR LES CONTESTATIONS (via API)
-    elif is_contestation and contestation_data:
-        try:
-            contest_data = json.loads(contestation_data)
-            print(f"📝 Traitement contestation directe: {contest_data}")
-            
-            # Utiliser l'API contest-evaluation pour le traitement
-            # Cette partie sera gérée par le JavaScript
-            pass
-            
-        except Exception as e:
-            print(f"❌ Erreur traitement contestation: {e}")
-
-    # Récupérer tous les exercices pour déterminer s'il y a un suivant
-    exercices = Exercice.query.filter_by(lecon_id=lecon_id).all()
-    total_exercices = len(exercices)
-    next_index = index + 1
-    has_next = next_index < total_exercices
-
-    # Récupérer la dernière réponse si elle existe
-    if action == "submit" and reponse_eleve and not is_contestation:
-        derniere_reponse = db.session.get(StudentResponse, reponse_id) if reponse_id else None
     else:
-        # Chercher la dernière réponse existante
-        derniere_reponse = StudentResponse.query.filter_by(
-            user_id=eleve.id, 
+        # Si pas de réponse fournie, on garde la réponse existante
+        flash("Veuillez fournir une réponse", "warning")
+        reponse = StudentResponse.query.filter_by(
+            user_id=eleve.id,
             exercice_id=exercice.id
-        ).order_by(StudentResponse.timestamp.desc()).first()
-        
-        # Si contestation, utiliser la réponse contestée
-        if is_contestation and reponse_id:
-            derniere_reponse = db.session.get(StudentResponse, reponse_id)
+        ).first()
 
-    # Gérer l'affichage du feedback
-    show_feedback = False
-    if action == "submit" and reponse_eleve:
-        show_feedback = True
-    elif is_contestation:
-        show_feedback = True
+    # MODIFICATION : Calculer le statut de tous les exercices pour l'affichage
+    exercices_status = []
+    reponses_status = []
+    for ex in exercices:
+        reponse_ex = StudentResponse.query.filter_by(
+            user_id=eleve.id,
+            exercice_id=ex.id
+        ).first()
+        exercices_status.append({
+            'completed': reponse_ex is not None,
+            'reponse': reponse_ex
+        })
+        reponses_status.append('completed' if reponse_ex is not None else 'not_started')
 
-    # Afficher le template avec les options appropriées
-    return render_template(
-        "exercice_sequentiel.html",  # Utiliser le nouveau template avec contestation
-        exercice=exercice,
-        eleve=eleve,
-        lecon=lecon,
+    # Calculer la progression
+    exercices_faits = sum(1 for status in exercices_status if status['completed'])
+    progression_pourcentage = (exercices_faits / total_exercices * 100) if total_exercices > 0 else 0
+
+    # Déterminer la navigation
+    has_next = index < total_exercices - 1
+    has_prev = index > 0
+    next_index = index + 1 if has_next else index
+    prev_index = index - 1 if has_prev else index
+
+    # MODIFICATION : Rediriger vers la page de l'exercice avec feedback
+    return redirect(url_for(
+        "exercice_sequentiel_progressif",
+        username=username,
+        lecon_id=lecon_id,
         lang=lang,
         index=index,
-        total=total_exercices,
-        reponse=derniere_reponse,
-        show_feedback=show_feedback,
-        has_next=has_next,
-        next_index=next_index,
-        current_reponse=reponse_eleve,
-        is_contestation=is_contestation
-    )
+        # Passer les paramètres pour afficher directement le feedback
+        show_feedback=True
+    ))
 
 from datetime import datetime, timezone
 

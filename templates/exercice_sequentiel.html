@@ -553,6 +553,111 @@
       margin-right: 8px;
     }
 
+    /* Navigation rapide */
+    .quick-navigation {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+      z-index: 90;
+      max-width: 250px;
+    }
+
+    .exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .exercise-dot {
+      display: block;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e9ecef;
+      color: var(--dark);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .exercise-dot:hover {
+      transform: scale(1.1);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+
+    .exercise-dot.active {
+      background: var(--primary) !important;
+      color: white !important;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3);
+    }
+
+    .exercise-dot.completed {
+      background: var(--success) !important;
+      color: white !important;
+    }
+
+    .exercise-dot.completed:hover {
+      background: #3aa76d !important;
+    }
+
+    .exercise-dot.completed::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 12px;
+      height: 12px;
+      background: var(--success);
+      border-radius: 50%;
+      border: 2px solid white;
+    }
+
+    .exercise-dot.active::after {
+      display: none;
+    }
+
+    /* Menu de sélection d'exercice */
+    .exercise-selector {
+      position: relative;
+    }
+
+    .exercise-list {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      z-index: 1000;
+      min-width: 200px;
+      margin-top: 5px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .exercise-item {
+      display: block;
+      padding: 12px 20px;
+      text-decoration: none;
+      color: var(--dark);
+      border-bottom: 1px solid var(--light-gray);
+      transition: all 0.2s;
+    }
+
+    .exercise-item:hover {
+      background: var(--light);
+      color: var(--primary);
+    }
+
     /* Bouton retour en haut */
     .back-button {
       position: fixed;
@@ -1035,6 +1140,25 @@
         font-size: 0.65rem;
         padding: 3px 8px;
       }
+
+      /* Navigation rapide sur mobile */
+      .quick-navigation {
+        display: none;
+      }
+
+      .exercise-selector {
+        width: 100%;
+      }
+
+      .exercise-list {
+        width: 100%;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        max-width: 90%;
+        max-height: 70vh;
+      }
     }
   </style>
   
@@ -1048,6 +1172,32 @@
     <i class="fas fa-arrow-left"></i>
     {{ 'Retour à l\'accueil' if lang == 'fr' else 'Back to Home' }}
   </a>
+
+  <!-- Navigation rapide -->
+  <div class="quick-navigation">
+    <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--secondary);">
+      <i class="fas fa-map"></i> {{ 'Navigation rapide' if lang == 'fr' else 'Quick Navigation' }}
+    </h4>
+    <div class="exercise-grid">
+      {% for i in range(total) %}
+        <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
+           class="exercise-dot {% if i == index %}active{% endif %} {% if reponses_status and reponses_status[i] == 'completed' %}completed{% endif %}"
+           title="{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}">
+          {{ i + 1 }}
+        </a>
+      {% endfor %}
+    </div>
+    <div style="margin-top: 10px; font-size: 0.8rem; color: var(--gray); text-align: center;">
+      <span style="display: inline-flex; align-items: center; gap: 5px; margin-right: 10px;">
+        <span style="display: inline-block; width: 12px; height: 12px; background: #e9ecef; border-radius: 50%;"></span>
+        {{ 'Non commencé' if lang == 'fr' else 'Not started' }}
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 5px;">
+        <span style="display: inline-block; width: 12px; height: 12px; background: var(--success); border-radius: 50%;"></span>
+        {{ 'Terminé' if lang == 'fr' else 'Completed' }}
+      </span>
+    </div>
+  </div>
 
   <!-- Overlay d'attente -->
   <div class="waiting-overlay" id="waitingOverlay">
@@ -1412,30 +1562,65 @@
     </div>
 
     <div class="feedback-actions">
-      {% if has_next %}
-      <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ next_index }}" 
-         class="action-btn">
-        <i class="fas fa-arrow-right"></i>
-        {{ 'Exercice suivant' if lang == 'fr' else 'Next Exercise' }}
-      </a>
-      {% else %}
-      <a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}?message=sequence_complete" 
-         class="action-btn">
-        <i class="fas fa-trophy"></i>
-        {{ 'Terminer la séquence' if lang == 'fr' else 'Finish Sequence' }}
-      </a>
-      {% endif %}
+      <div style="display: flex; gap: 15px; width: 100%;">
+        <!-- Navigation complète -->
+        <div style="display: flex; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 10px;">
+          {% if index > 0 %}
+          <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ index - 1 }}" 
+             class="action-btn" style="background: #6c757d;">
+            <i class="fas fa-arrow-left"></i>
+            {{ 'Exercice précédent' if lang == 'fr' else 'Previous Exercise' }}
+          </a>
+          {% endif %}
+          
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <!-- Menu de sélection d'exercice -->
+            <div class="exercise-selector">
+              <button type="button" class="action-btn" onclick="toggleExerciseList()" 
+                      style="background: var(--primary); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-list"></i>
+                {{ 'Choisir un exercice' if lang == 'fr' else 'Choose Exercise' }}
+              </button>
+              <div class="exercise-list" id="exerciseList">
+                {% for i in range(total) %}
+                  <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
+                     class="exercise-item">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <div style="width: 24px; height: 24px; border-radius: 50%; background: {% if i == index %}var(--primary){% elif reponses_status and reponses_status[i] == 'completed' %}var(--success){% else %}#e9ecef{% endif %}; 
+                                  display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: {% if i == index %}white{% else %}var(--dark){% endif %};">
+                        {{ i + 1 }}
+                      </div>
+                      <span>{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}</span>
+                      {% if reponses_status and reponses_status[i] == 'completed' %}
+                      <i class="fas fa-check" style="margin-left: auto; color: var(--success);"></i>
+                      {% endif %}
+                    </div>
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+            
+            {% if has_next %}
+            <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ next_index }}" 
+               class="action-btn">
+              <i class="fas fa-arrow-right"></i>
+              {{ 'Exercice suivant' if lang == 'fr' else 'Next Exercise' }}
+            </a>
+            {% endif %}
+          </div>
+          
+          <a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}" 
+             class="action-btn" style="background: #6c757d;">
+            <i class="fas fa-home"></i>
+            {{ 'Accueil' if lang == 'fr' else 'Home' }}
+          </a>
+        </div>
+      </div>
       
-      <button type="button" class="action-btn secondary" onclick="showForm()">
+      <button type="button" class="action-btn secondary" onclick="showForm()" style="margin-top: 15px;">
         <i class="fas fa-edit"></i>
         {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
       </button>
-      
-      <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" 
-         class="action-btn" style="background: #6c757d;">
-        <i class="fas fa-list"></i>
-        {{ 'Retour aux exercices' if lang == 'fr' else 'Back to Exercises' }}
-      </a>
     </div>
 
     <!-- Section contestation -->
@@ -1768,6 +1953,26 @@
     document.getElementById('mainForm').style.display = 'none';
     document.getElementById('feedbackSection').classList.add('active');
     document.getElementById('feedbackSection').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Gestion du menu d'exercices
+  function toggleExerciseList() {
+    const list = document.getElementById('exerciseList');
+    if (list.style.display === 'block') {
+      list.style.display = 'none';
+    } else {
+      list.style.display = 'block';
+      
+      // Fermer le menu en cliquant à l'extérieur
+      setTimeout(() => {
+        document.addEventListener('click', function closeList(e) {
+          if (!list.contains(e.target) && !e.target.closest('.exercise-selector button')) {
+            list.style.display = 'none';
+            document.removeEventListener('click', closeList);
+          }
+        });
+      }, 10);
+    }
   }
 
   // Gestion de la soumission du formulaire
