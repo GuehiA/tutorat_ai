@@ -117,42 +117,92 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      cursor: pointer;
+      transition: var(--transition);
     }
 
-    .unite-section {
-      padding: 20px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    .matiere-header:hover {
+      background: linear-gradient(135deg, #38a873 0%, #2e9968 100%);
     }
 
-    .unite-section:last-child {
-      border-bottom: none;
+    .matiere-header i.fa-chevron-down {
+      margin-left: auto;
+      transition: transform 0.3s ease;
     }
 
-    .unite-title {
-      color: var(--primary);
+    .matiere-header.collapsed i.fa-chevron-down {
+      transform: rotate(-90deg);
+    }
+
+    .matiere-content {
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+
+    .matiere-content.collapsed {
+      max-height: 0;
+    }
+
+    .unite-card {
+      margin: 15px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .unite-header {
+      background: linear-gradient(135deg, var(--primary-light) 0%, #d4dcff 100%);
+      padding: 15px 20px;
       font-weight: 600;
-      margin-bottom: 15px;
+      color: var(--primary);
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 1.1rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .unite-header:hover {
+      background: linear-gradient(135deg, #d4dcff 0%, #c9d3ff 100%);
+    }
+
+    .unite-header i.fa-chevron-down {
+      margin-left: auto;
+      transition: transform 0.3s ease;
+      color: var(--primary);
+    }
+
+    .unite-header.collapsed i.fa-chevron-down {
+      transform: rotate(-90deg);
+    }
+
+    .unite-content {
+      background: #f8f9fa;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+
+    .unite-content.collapsed {
+      max-height: 0;
     }
 
     .lecon-card {
-      background: #f8f9fa;
-      border-radius: 8px;
+      background: white;
+      border-radius: 6px;
       padding: 15px;
-      margin-bottom: 12px;
+      margin: 10px;
       border-left: 3px solid var(--primary);
       transition: var(--transition);
       display: flex;
-      justify-content: between;
+      justify-content: space-between;
       align-items: center;
     }
 
     .lecon-card:hover {
-      background: #e9ecef;
+      background: #f0f4ff;
       transform: translateX(5px);
+      box-shadow: 0 4px 8px rgba(67, 97, 238, 0.1);
     }
 
     .lecon-info {
@@ -163,6 +213,9 @@
       font-weight: 600;
       color: var(--text);
       margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .lecon-meta {
@@ -171,6 +224,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .badge-exercises {
@@ -180,6 +234,21 @@
       border-radius: 12px;
       font-size: 0.75rem;
       font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-test {
+      background: var(--warning);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .btn-primary-custom {
@@ -194,6 +263,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      white-space: nowrap;
     }
 
     .btn-primary-custom:hover {
@@ -214,6 +284,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      white-space: nowrap;
     }
 
     .btn-test:hover {
@@ -247,20 +318,6 @@
       font-size: 1.2rem;
     }
 
-    .progress-ring {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid #e9ecef;
-      border-top: 2px solid var(--primary);
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
     .floating-icon {
       animation: float 3s ease-in-out infinite;
     }
@@ -268,6 +325,27 @@
     @keyframes float {
       0%, 100% { transform: translateY(0px); }
       50% { transform: translateY(-10px); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px 20px;
+      color: var(--text-light);
+    }
+
+    .empty-state i {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      color: var(--text-light);
+      opacity: 0.5;
+    }
+
+    .stats-badge {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.85rem;
+      margin-left: 10px;
     }
 
     @media (max-width: 768px) {
@@ -291,6 +369,11 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
+      }
+      
+      .btn-primary-custom, .btn-test {
+        width: 100%;
+        justify-content: center;
       }
     }
   </style>
@@ -326,94 +409,149 @@
         <div class="mt-2 mt-md-0">
           <span class="badge bg-primary px-3 py-2">
             <i class="fas fa-books me-2"></i>
-            {{ unites|length }} {{ "subjects available" if lang == "en" else "matières disponibles" }}
+            {% set total_matieres = {} %}
+            {% for unite in unites %}
+              {% set matiere_nom = unite.matiere.nom_en if lang == 'en' and unite.matiere.nom_en else unite.matiere.nom %}
+              {% if matiere_nom not in total_matieres %}
+                {% set _ = total_matieres.update({matiere_nom: true}) %}
+              {% endif %}
+            {% endfor %}
+            {{ total_matieres|length }} {{ "subjects available" if lang == "en" else "matières disponibles" }}
           </span>
         </div>
       </div>
     </div>
 
-    <!-- Matières List -->
+    <!-- Group units by matiere -->
     {% set matiere_groupes = {} %}
     {% for unite in unites %}
       {% set matiere_nom = unite.matiere.nom_en if lang == 'en' and unite.matiere.nom_en else unite.matiere.nom %}
       {% if matiere_nom not in matiere_groupes %}
-        {% set _ = matiere_groupes.update({matiere_nom: []}) %}
+        {% set _ = matiere_groupes.update({matiere_nom: {'matiere_obj': unite.matiere, 'unites': []}}) %}
       {% endif %}
-      {% set _ = matiere_groupes[matiere_nom].append(unite) %}
+      {% set _ = matiere_groupes[matiere_nom]['unites'].append(unite) %}
     {% endfor %}
 
-    {% for matiere_nom, unites_matiere in matiere_groupes.items() %}
-      <div class="matiere-card">
-        <!-- Matière Header -->
-        <div class="matiere-header">
-          <i class="fas fa-book-open icon-large"></i>
-          {{ matiere_nom }}
-          <span class="badge bg-light text-dark ms-2">{{ unites_matiere|length }} {{ "units" if lang == "en" else "unités" }}</span>
-        </div>
+    {% if matiere_groupes %}
+      {% for matiere_nom, matiere_data in matiere_groupes.items() %}
+        <div class="matiere-card">
+          <!-- Matière Header (clickable to collapse/expand) -->
+          <div class="matiere-header collapsed" onclick="toggleMatiere(this)">
+            <i class="fas fa-book-open icon-large"></i>
+            {{ matiere_nom }}
+            <span class="stats-badge">{{ matiere_data.unites|length }} {{ "units" if lang == "en" else "unités" }}</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
 
-        <!-- Unités List -->
-        {% for unite in unites_matiere %}
-          <div class="unite-section">
-            <!-- Unité Title -->
-            <div class="unite-title">
-              <i class="fas fa-cube"></i>
-              {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
-            </div>
-
-            <!-- Test Sommatif -->
-            {% if unite.tests %}
-              <div class="lecon-card">
-                <div class="lecon-info">
-                  <div class="lecon-name">
-                    <i class="fas fa-vial me-2 text-warning"></i>
-                    {{ "Final Assessment" if lang == "en" else "Évaluation Finale" }}
+          <!-- Matière Content (collapsed by default) -->
+          <div class="matiere-content collapsed" id="matiere-content-{{ loop.index }}">
+            {% for unite in matiere_data.unites %}
+              <div class="unite-card">
+                <!-- Unité Header (clickable to collapse/expand) -->
+                <div class="unite-header collapsed" onclick="toggleUnite(this)">
+                  <i class="fas fa-cube"></i>
+                  {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
+                  <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+                    {% set total_lecons = unite.lecons|length %}
+                    {% set total_exercices = 0 %}
+                    {% for lecon in unite.lecons %}
+                      {% set total_exercices = total_exercices + lecon.exercices|length %}
+                    {% endfor %}
+                    <span class="badge-exercises" style="font-size: 0.7rem;">
+                      <i class="fas fa-file-alt"></i> {{ total_lecons }} {{ "lessons" if lang == "en" else "leçons" }}
+                    </span>
+                    <span class="badge-exercises" style="font-size: 0.7rem; background: #6c757d;">
+                      <i class="fas fa-pencil-alt"></i> {{ total_exercices }} {{ "exercises" if lang == "en" else "exercices" }}
+                    </span>
                   </div>
-                  <div class="lecon-meta">
-                    <i class="fas fa-clock me-1"></i>
-                    {{ "Comprehensive test" if lang == "en" else "Test complet" }}
-                  </div>
+                  <i class="fas fa-chevron-down"></i>
                 </div>
-                <a class="btn-test" href="/test/{{ unite.tests[0].id }}?username={{ eleve.username }}&lang={{ lang }}">
-                  <i class="fas fa-play-circle me-2"></i>
-                  {{ "Take Test" if lang == "en" else "Commencer le test" }}
-                </a>
+
+                <!-- Unité Content (collapsed by default) -->
+                <div class="unite-content collapsed" id="unite-content-{{ loop.index }}">
+                  <!-- Test Sommatif (if exists) -->
+                  {% if unite.tests and unite.tests|length > 0 %}
+                    <div class="lecon-card" style="border-left-color: var(--warning);">
+                      <div class="lecon-info">
+                        <div class="lecon-name">
+                          <i class="fas fa-vial me-2 text-warning"></i>
+                          {{ "Final Assessment" if lang == "en" else "Évaluation Finale" }}
+                        </div>
+                        <div class="lecon-meta">
+                          <span class="badge-test">
+                            <i class="fas fa-star me-1"></i>
+                            {{ "Comprehensive test" if lang == "en" else "Test complet" }}
+                          </span>
+                          <span>
+                            <i class="fas fa-clock me-1"></i>
+                            {{ "Evaluate your knowledge" if lang == "en" else "Évaluez vos connaissances" }}
+                          </span>
+                        </div>
+                      </div>
+                      <a class="btn-test" href="/test/{{ unite.tests[0].id }}?username={{ eleve.username }}&lang={{ lang }}">
+                        <i class="fas fa-play-circle me-2"></i>
+                        {{ "Take Test" if lang == "en" else "Commencer le test" }}
+                      </a>
+                    </div>
+                  {% endif %}
+
+                  <!-- Leçons -->
+                  {% if unite.lecons and unite.lecons|length > 0 %}
+                    {% for lecon in unite.lecons %}
+                      {% if lecon.exercices|length > 0 %}
+                        <div class="lecon-card">
+                          <div class="lecon-info">
+                            <div class="lecon-name">
+                              <i class="fas fa-file-alt me-2 text-primary"></i>
+                              {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                            </div>
+                            <div class="lecon-meta">
+                              <span class="badge-exercises">
+                                <i class="fas fa-pencil-alt me-1"></i>
+                                {{ lecon.exercices|length }} {{ "exercises" if lang == "en" else "exercices" }}
+                              </span>
+                              <span>
+                                <i class="fas fa-chart-line me-1"></i>
+                                {{ "Progressive learning" if lang == "en" else "Apprentissage progressif" }}
+                              </span>
+                            </div>
+                          </div>
+                          <a class="btn-primary-custom" href="{{ url_for('exercice_sequentiel_progressif', username=eleve.username, lecon_id=lecon.id, lang=lang) }}">
+                            <i class="fas fa-rocket me-2"></i>
+                            {{ "Start Learning" if lang == "en" else "Commencer" }}
+                          </a>
+                        </div>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <div class="empty-state">
+                      <i class="fas fa-book-open"></i>
+                      <p>{{ "No lessons available in this unit" if lang == "en" else "Aucune leçon disponible dans cette unité" }}</p>
+                    </div>
+                  {% endif %}
+                </div>
               </div>
-            {% endif %}
-
-            <!-- Leçons -->
-            {% for lecon in unite.lecons %}
-              {% if lecon.exercices|length > 0 %}
-                <div class="lecon-card">
-                  <div class="lecon-info">
-                    <div class="lecon-name">
-                      <i class="fas fa-file-alt me-2 text-primary"></i>
-                      {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
-                    </div>
-                    <div class="lecon-meta">
-                      <span class="badge-exercises">
-                        <i class="fas fa-pencil-alt me-1"></i>
-                        {{ lecon.exercices|length }} {{ "exercises" if lang == "en" else "exercices" }}
-                      </span>
-                      <span>
-                        <i class="fas fa-chart-line me-1"></i>
-                        {{ "Progressive learning" if lang == "en" else "Apprentissage progressif" }}
-                      </span>
-                    </div>
-                  </div>
-                  <a class="btn-primary-custom" href="{{ url_for('exercice_sequentiel_progressif', username=eleve.username, lecon_id=lecon.id, lang=lang) }}">
-                    <i class="fas fa-rocket me-2"></i>
-                    {{ "Start Learning" if lang == "en" else "Commencer" }}
-                  </a>
-                </div>
-              {% endif %}
             {% endfor %}
           </div>
-        {% endfor %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="matiere-card">
+        <div class="matiere-header">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          {{ "No content available" if lang == "en" else "Aucun contenu disponible" }}
+        </div>
+        <div class="unite-section" style="padding: 30px; text-align: center;">
+          <i class="fas fa-book-open fa-3x mb-3" style="color: #ddd;"></i>
+          <p class="text-muted">
+            {{ "No learning sequences are available for your level at the moment." if lang == "en" else "Aucune séquence d'apprentissage n'est disponible pour votre niveau pour le moment." }}
+          </p>
+        </div>
       </div>
-    {% endfor %}
+    {% endif %}
 
     <!-- Back Button -->
-    <div class="text-center">
+    <div class="text-center mt-4">
       <a class="back-btn" href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}">
         <i class="fas fa-arrow-left me-2"></i>
         {{ "Back to Dashboard" if lang == "en" else "Retour au tableau de bord" }}
@@ -421,6 +559,100 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Fonction pour basculer l'état d'une matière
+  function toggleMatiere(element) {
+    const content = element.nextElementSibling;
+    const isCollapsed = content.classList.contains('collapsed');
+    
+    // Basculer l'état de la matière
+    element.classList.toggle('collapsed');
+    content.classList.toggle('collapsed');
+    
+    // Animer la hauteur
+    if (!isCollapsed) {
+      content.style.maxHeight = '0';
+    } else {
+      content.style.maxHeight = content.scrollHeight + 'px';
+    }
+  }
+
+  // Fonction pour basculer l'état d'une unité
+  function toggleUnite(element) {
+    const content = element.nextElementSibling;
+    const isCollapsed = content.classList.contains('collapsed');
+    
+    // Basculer l'état de l'unité
+    element.classList.toggle('collapsed');
+    content.classList.toggle('collapsed');
+    
+    // Animer la hauteur
+    if (!isCollapsed) {
+      content.style.maxHeight = '0';
+    } else {
+      content.style.maxHeight = content.scrollHeight + 'px';
+    }
+  }
+
+  // Fonction pour ouvrir une unité spécifique (peut être utile pour une navigation directe)
+  function openUnite(uniteId) {
+    const uniteHeader = document.querySelector(`[data-unite-id="${uniteId}"]`);
+    if (uniteHeader) {
+      // Ouvrir d'abord la matière parente
+      const matiereCard = uniteHeader.closest('.matiere-card');
+      const matiereHeader = matiereCard.querySelector('.matiere-header');
+      const matiereContent = matiereCard.querySelector('.matiere-content');
+      
+      if (matiereHeader.classList.contains('collapsed')) {
+        matiereHeader.classList.remove('collapsed');
+        matiereContent.classList.remove('collapsed');
+        matiereContent.style.maxHeight = matiereContent.scrollHeight + 'px';
+      }
+      
+      // Ensuite ouvrir l'unité
+      setTimeout(() => {
+        if (uniteHeader.classList.contains('collapsed')) {
+          uniteHeader.classList.remove('collapsed');
+          const uniteContent = uniteHeader.nextElementSibling;
+          uniteContent.classList.remove('collapsed');
+          uniteContent.style.maxHeight = uniteContent.scrollHeight + 'px';
+          
+          // Faire défiler jusqu'à l'unité
+          uniteHeader.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }
+
+  // Initialisation : ouvrir la première matière et sa première unité par défaut
+  document.addEventListener('DOMContentLoaded', function() {
+    const firstMatiere = document.querySelector('.matiere-card');
+    if (firstMatiere) {
+      const matiereHeader = firstMatiere.querySelector('.matiere-header');
+      const matiereContent = firstMatiere.querySelector('.matiere-content');
+      
+      // Ouvrir la première matière
+      matiereHeader.classList.remove('collapsed');
+      matiereContent.classList.remove('collapsed');
+      matiereContent.style.maxHeight = matiereContent.scrollHeight + 'px';
+      
+      // Ouvrir la première unité de la première matière
+      const firstUnite = firstMatiere.querySelector('.unite-card');
+      if (firstUnite) {
+        const uniteHeader = firstUnite.querySelector('.unite-header');
+        const uniteContent = firstUnite.querySelector('.unite-content');
+        
+        // Attendre un peu pour l'animation
+        setTimeout(() => {
+          uniteHeader.classList.remove('collapsed');
+          uniteContent.classList.remove('collapsed');
+          uniteContent.style.maxHeight = uniteContent.scrollHeight + 'px';
+        }, 100);
+      }
+    }
+  });
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
