@@ -6578,13 +6578,76 @@ def progression_eleve():
 @app.route("/historique")
 def historique_eleve():
     username = request.args.get("username")
+    
+    # Si pas de username dans les paramètres, vérifier la session
+    if not username:
+        username = session.get("username")
+    
+    if not username:
+        if lang == "fr":
+            flash("Veuillez vous connecter pour accéder à l'historique", "warning")
+        else:
+            flash("Please log in to access history", "warning")
+        return redirect(url_for("connexion_eleve"))
+    
     exercice_id = request.args.get("exercice_id")
     lang = request.args.get("lang", "fr")
 
-    # ... [votre code existant reste inchangé jusqu'à la création de data_structure] ...
+    eleve = User.query.filter_by(username=username).first()
+    if not eleve:
+        if lang == "fr":
+            flash(f"Élève {username} introuvable", "danger")
+        else:
+            flash(f"Student {username} not found", "danger")
+        return redirect(url_for("dashboard_parent" if session.get("parent_email") else "dashboard_eleve"))
 
+    # ✅ DÉTECTION DU CONTEXTE : Priorité à l'enseignant s'il y a conflit
+    parent_email = session.get("parent_email")
+    enseignant_id = session.get("enseignant_id")
+    
+    # DEBUG
+    print(f"SESSION - parent_email: {parent_email}")
+    print(f"SESSION - enseignant_id: {enseignant_id}")
+    print(f"ÉLÈVE TROUVÉ - {eleve.nom_complet} (username: {username})")
+    
+    # ✅ LOGIQUE DE PRIORITÉ : 
+    # 1. Si enseignant_id existe → c'est un enseignant (priorité haute)
+    # 2. Si parent_email existe ET pas d'enseignant_id → c'est un parent
+    # 3. Sinon → c'est l'élève
+    
+    if enseignant_id:
+        # L'utilisateur est connecté comme enseignant (même s'il a aussi parent_email)
+        is_enseignant_access = True
+        is_parent_access = False
+        is_eleve_direct_access = False
+        print(f"ACCÈS - ENSEIGNANT prioritaire (ID: {enseignant_id})")
+    elif parent_email:
+        # L'utilisateur est connecté comme parent (sans enseignant_id)
+        is_parent_access = True
+        is_enseignant_access = False
+        is_eleve_direct_access = False
+        print(f"ACCÈS - PARENT (email: {parent_email})")
+    else:
+        # Vérifier si l'élève accède à son propre historique
+        eleve_session_username = session.get("username")
+        is_eleve_direct_access = eleve_session_username == username
+        is_parent_access = False
+        is_enseignant_access = False
+        print(f"ACCÈS - ÉLÈVE (session: {eleve_session_username}, requested: {username})")
+
+    # Récupérer l'ID de l'élève et son niveau
+    eleve_id = eleve.id
+    niveau_eleve = eleve.niveau  # Récupère l'objet Niveau de l'élève
+    
+    if not niveau_eleve:
+        if lang == "fr":
+            flash("Niveau de l'élève non défini", "warning")
+        else:
+            flash("Student level not defined", "warning")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+    
     # ============================================
-    # FONCTION UTILITAIRE POBTENIR LE NOM TRADUIT
+    # FONCTION UTILITAIRE POUR OBTENIR LE NOM TRADUIT
     # ============================================
     def get_translated_name(obj, field_prefix="nom"):
         """Retourne le nom traduit d'un objet selon la langue"""
@@ -6606,13 +6669,6 @@ def historique_eleve():
                     return getattr(obj, f"{field_prefix}_fr")
         return "Nom inconnu"
 
-    # Récupérer l'ID de l'élève et son niveau
-    eleve_id = eleve.id
-    niveau_eleve = eleve.niveau  # Récupère l'objet Niveau de l'élève
-    
-    if not niveau_eleve:
-        return "Niveau de l'élève non défini", 404
-    
     # Utiliser la fonction de traduction pour obtenir le nom du niveau
     niveau_eleve_nom = get_translated_name(niveau_eleve)
     niveau_eleve_id = niveau_eleve.id
@@ -6629,7 +6685,11 @@ def historique_eleve():
     niveau_eleve_obj = Niveau.query.get(niveau_eleve_id)
     
     if not niveau_eleve_obj:
-        return "Niveau de l'élève introuvable", 404
+        if lang == "fr":
+            flash("Niveau de l'élève introuvable", "danger")
+        else:
+            flash("Student level not found", "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
     
     # Structure pour organiser les données (UNIQUEMENT pour le niveau de l'élève)
     data_structure = {
