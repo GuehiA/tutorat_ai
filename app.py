@@ -6651,23 +6651,45 @@ def historique_eleve():
     # ============================================
     def get_translated_name(obj, field_prefix="nom"):
         """Retourne le nom traduit d'un objet selon la langue"""
-        if lang == "fr":
-            # Pour le français, utiliser le champ sans suffixe ou avec _fr
-            if hasattr(obj, field_prefix):
-                return getattr(obj, field_prefix)
-            elif hasattr(obj, f"{field_prefix}_fr"):
-                return getattr(obj, f"{field_prefix}_fr")
-        else:
-            # Pour l'anglais, utiliser le champ avec _en
-            if hasattr(obj, f"{field_prefix}_en") and getattr(obj, f"{field_prefix}_en"):
-                return getattr(obj, f"{field_prefix}_en")
+        if not obj:
+            return "Inconnu"
+        
+        # Si l'objet a un attribut 'nom' (pour Niveau, Matiere, Unite)
+        if hasattr(obj, 'nom'):
+            if lang == "fr":
+                return obj.nom  # Nom français
             else:
-                # Fallback sur le nom français si pas de traduction anglaise
-                if hasattr(obj, field_prefix):
-                    return getattr(obj, field_prefix)
-                elif hasattr(obj, f"{field_prefix}_fr"):
-                    return getattr(obj, f"{field_prefix}_fr")
-        return "Nom inconnu"
+                # Vérifier si l'objet a un champ nom_en
+                if hasattr(obj, 'nom_en') and obj.nom_en:
+                    return obj.nom_en  # Nom anglais
+                else:
+                    return obj.nom  # Fallback sur le français
+        
+        # Si l'objet a un attribut 'titre' (pour Lecon)
+        elif hasattr(obj, 'titre_fr'):
+            if lang == "fr":
+                return obj.titre_fr  # Titre français
+            else:
+                if hasattr(obj, 'titre_en') and obj.titre_en:
+                    return obj.titre_en  # Titre anglais
+                else:
+                    return obj.titre_fr  # Fallback sur le français
+        
+        # Pour d'autres objets
+        elif hasattr(obj, field_prefix):
+            base_name = getattr(obj, field_prefix)
+            if lang == "fr":
+                return base_name
+            else:
+                # Essayer de trouver le champ avec _en
+                en_field = f"{field_prefix}_en"
+                if hasattr(obj, en_field):
+                    en_name = getattr(obj, en_field)
+                    if en_name:
+                        return en_name
+                return base_name  # Fallback sur la base
+        
+        return f"{field_prefix} inconnu"
 
     # Utiliser la fonction de traduction pour obtenir le nom du niveau
     niveau_eleve_nom = get_translated_name(niveau_eleve)
