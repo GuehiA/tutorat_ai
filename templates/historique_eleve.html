@@ -1027,19 +1027,25 @@
   <!-- Navigation rapide pour les parents -->
   {% if is_parent_access %}
   <div class="quick-nav">
-    <h4><i class="fas fa-compass"></i> Navigation Rapide</h4>
+    <h4><i class="fas fa-compass"></i> 
+      {% if lang == 'fr' %}Navigation Rapide{% else %}Quick Navigation{% endif %}
+    </h4>
     <div class="nav-links">
       <a href="/parent-dashboard" class="nav-link">
-        <i class="fas fa-home"></i> Tableau de bord
+        <i class="fas fa-home"></i> 
+        {% if lang == 'fr' %}Tableau de bord{% else %}Dashboard{% endif %}
       </a>
       <a href="#stats" class="nav-link">
-        <i class="fas fa-chart-bar"></i> Statistiques
+        <i class="fas fa-chart-bar"></i> 
+        {% if lang == 'fr' %}Statistiques{% else %}Statistics{% endif %}
       </a>
       <a href="#structure" class="nav-link">
-        <i class="fas fa-sitemap"></i> Structure
+        <i class="fas fa-sitemap"></i> 
+        {% if lang == 'fr' %}Structure{% else %}Structure{% endif %}
       </a>
       <a href="#tests" class="nav-link">
-        <i class="fas fa-file-alt"></i> Tests
+        <i class="fas fa-file-alt"></i> 
+        {% if lang == 'fr' %}Tests{% else %}Tests{% endif %}
       </a>
     </div>
   </div>
@@ -1083,19 +1089,23 @@
         <div class="student-stats">
           <div class="stat-mini">
             <i class="fas fa-check-circle"></i>
-            {{ total_exercices_effectues }} complétés
+            {{ total_exercices_effectues }} 
+            {% if lang == 'fr' %}complétés{% else %}completed{% endif %}
           </div>
           <div class="stat-mini">
             <i class="fas fa-clock"></i>
-            {{ total_exercices_restants }} restants
+            {{ total_exercices_restants }} 
+            {% if lang == 'fr' %}restants{% else %}remaining{% endif %}
           </div>
           <div class="stat-mini">
             <i class="fas fa-trophy"></i>
             {% set total = total_exercices_effectues + total_exercices_restants %}
             {% if total > 0 %}
-              {{ ((total_exercices_effectues / total) * 100)|round|int }}% complété
+              {{ ((total_exercices_effectues / total) * 100)|round|int }}% 
+              {% if lang == 'fr' %}complété{% else %}completed{% endif %}
             {% else %}
-              0% complété
+              0% 
+              {% if lang == 'fr' %}complété{% else %}completed{% endif %}
             {% endif %}
           </div>
         </div>
@@ -1110,7 +1120,9 @@
         </h3>
         <div class="stat-numbers">
           <div class="stat-number">{{ total_exercices_effectues }}</div>
-          <div class="stat-label">Total</div>
+          <div class="stat-label">
+            {% if lang == 'fr' %}Total{% else %}Total{% endif %}
+          </div>
         </div>
         {% set total = total_exercices_effectues + total_exercices_restants %}
         {% if total > 0 %}
@@ -1118,7 +1130,9 @@
           <div class="progress-bar" style="width: {{ (total_exercices_effectues / total * 100)|round }}%"></div>
         </div>
         <div class="progress-text">
-          <span>{{ (total_exercices_effectues / total * 100)|round }}% complété</span>
+          <span>{{ (total_exercices_effectues / total * 100)|round }}% 
+            {% if lang == 'fr' %}complété{% else %}completed{% endif %}
+          </span>
           <span>{{ total_exercices_effectues }}/{{ total }}</span>
         </div>
         {% endif %}
@@ -1130,7 +1144,9 @@
         </h3>
         <div class="stat-numbers">
           <div class="stat-number">{{ total_exercices_restants }}</div>
-          <div class="stat-label">À faire</div>
+          <div class="stat-label">
+            {% if lang == 'fr' %}À faire{% else %}To do{% endif %}
+          </div>
         </div>
         {% set total = total_exercices_effectues + total_exercices_restants %}
         {% if total > 0 %}
@@ -1138,7 +1154,9 @@
           <div class="progress-bar" style="width: {{ (total_exercices_restants / total * 100)|round }}%"></div>
         </div>
         <div class="progress-text">
-          <span>{{ (total_exercices_restants / total * 100)|round }}% restant</span>
+          <span>{{ (total_exercices_restants / total * 100)|round }}% 
+            {% if lang == 'fr' %}restant{% else %}remaining{% endif %}
+          </span>
           <span>{{ total_exercices_restants }}/{{ total }}</span>
         </div>
         {% endif %}
@@ -1157,7 +1175,9 @@
               0%
             {% endif %}
           </div>
-          <div class="stat-label">Complétion</div>
+          <div class="stat-label">
+            {% if lang == 'fr' %}Complétion{% else %}Completion{% endif %}
+          </div>
         </div>
         {% set total = total_exercices_effectues + total_exercices_restants %}
         {% if total > 0 %}
@@ -1165,7 +1185,9 @@
           <div class="progress-bar" style="width: {{ (total_exercices_effectues / total * 100)|round }}%"></div>
         </div>
         <div class="progress-text">
-          <span>{{ total_exercices_effectues }}/{{ total }} exercices</span>
+          <span>{{ total_exercices_effectues }}/{{ total }} 
+            {% if lang == 'fr' %}exercices{% else %}exercises{% endif %}
+          </span>
         </div>
         {% endif %}
       </div>
@@ -1188,7 +1210,9 @@
         {% for niveau_nom, niveau_data in data_structure.niveaux.items() %}
         <div class="accordion-item niveau">
           <div class="accordion-header" onclick="toggleAccordion(this)">
-            <h3><i class="fas fa-layer-group"></i> Niveau: {{ niveau_nom }}</h3>
+            <h3><i class="fas fa-layer-group"></i> 
+              {% if lang == 'fr' %}Niveau:{% else %}Level:{% endif %} {{ niveau_nom }}
+            </h3>
             <div class="badge">
               <span class="badge-item completed">
                 <i class="fas fa-check"></i> {{ niveau_data.total_effectues }}
@@ -1206,7 +1230,9 @@
               {% for matiere_nom, matiere_data in niveau_data.matieres.items() %}
               <div class="accordion-item matiere">
                 <div class="accordion-header" onclick="toggleAccordion(this)">
-                  <h3><i class="fas fa-book"></i> Matière: {{ matiere_nom }}</h3>
+                  <h3><i class="fas fa-book"></i> 
+                    {% if lang == 'fr' %}Matière:{% else %}Subject:{% endif %} {{ matiere_nom }}
+                  </h3>
                   <div class="badge">
                     <span class="badge-item completed">
                       <i class="fas fa-check"></i> {{ matiere_data.total_effectues }}
@@ -1224,7 +1250,9 @@
                     {% for unite_nom, unite_data in matiere_data.unites.items() %}
                     <div class="accordion-item unite">
                       <div class="accordion-header" onclick="toggleAccordion(this)">
-                        <h3><i class="fas fa-cube"></i> Unité: {{ unite_nom }}</h3>
+                        <h3><i class="fas fa-cube"></i> 
+                          {% if lang == 'fr' %}Unité:{% else %}Unit:{% endif %} {{ unite_nom }}
+                        </h3>
                         <div class="badge">
                           <span class="badge-item completed">
                             <i class="fas fa-check"></i> {{ unite_data.total_effectues }}
@@ -1242,7 +1270,9 @@
                           {% for lecon_nom, lecon_data in unite_data.lecons.items() %}
                           <div class="accordion-item lecon">
                             <div class="accordion-header" onclick="toggleAccordion(this)">
-                              <h3><i class="fas fa-file-alt"></i> Leçon: {{ lecon_nom }}</h3>
+                              <h3><i class="fas fa-file-alt"></i> 
+                                {% if lang == 'fr' %}Leçon:{% else %}Lesson:{% endif %} {{ lecon_nom }}
+                              </h3>
                               <div class="badge">
                                 <span class="badge-item completed">
                                   <i class="fas fa-check"></i> {{ lecon_data.exercices_effectues }}
@@ -1277,7 +1307,9 @@
                                     <summary>
                                       <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; flex-wrap: wrap; gap: 15px;">
                                         <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                                          <span class="theme">Exercice complété</span>
+                                          <span class="theme">
+                                            {% if lang == 'fr' %}Exercice complété{% else %}Exercise completed{% endif %}
+                                          </span>
                                           <span style="color: var(--gray); font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
                                             <i class="far fa-calendar"></i> {{ exercice.date }}
                                           </span>
@@ -1428,7 +1460,9 @@
       {% for t in tests %}
       <div class="accordion-item unite">
         <div class="accordion-header" onclick="toggleAccordion(this)">
-          <h3><i class="fas fa-file-signature"></i> Test: {{ t.unite or "Test Sommatif" }}</h3>
+          <h3><i class="fas fa-file-signature"></i> 
+            {% if lang == 'fr' %}Test:{% else %}Test:{% endif %} {{ t.unite or "Test Sommatif" }}
+          </h3>
           <div class="badge">
             <span class="etoiles">{{ t.etoiles }} <i class="fas fa-star"></i></span>
             <span class="badge-item total" style="background: var(--primary);">
@@ -1442,7 +1476,9 @@
               <summary>
                 <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; flex-wrap: wrap; gap: 15px;">
                   <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <span class="theme">Test Sommatif</span>
+                    <span class="theme">
+                      {% if lang == 'fr' %}Test Sommatif{% else %}Final Test{% endif %}
+                    </span>
                     <span style="color: var(--gray); font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
                       <i class="far fa-calendar"></i> {{ t.date }}
                     </span>
