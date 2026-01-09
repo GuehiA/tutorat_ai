@@ -3,708 +3,271 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Favicon VirtuEduc -->
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
-  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-  <meta name="msapplication-TileColor" content="#4361ee">
-  <meta name="theme-color" content="#4361ee">
-  <title>{% if lang == 'en' %}Home - AI Tutoring{% else %}Accueil - Tutorat IA{% endif %}</title>
+
+  <title>{% if lang == 'en' %}Home – AI Tutoring Platform{% else %}Accueil – Plateforme de Tutorat IA{% endif %}</title>
+
+  <!-- Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+
   <style>
     :root {
-      --primary: #3498db;
-      --primary-dark: #2980b9;
-      --secondary: #2c3e50;
-      --success: #27ae60;
-      --warning: #f39c12;
-      --danger: #e74c3c;
-      --light: #f8f9fa;
-      --dark: #343a40;
-      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --gradient-primary: linear-gradient(135deg, #3498db, #2980b9);
-      --gradient-success: linear-gradient(135deg, #27ae60, #219150);
-      --gradient-warning: linear-gradient(135deg, #f39c12, #e67e22);
-      --border-radius: 16px;
-      --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      --primary: #4f46e5;
+      --secondary: #1f2937;
+      --light: #f9fafb;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --gradient: linear-gradient(135deg, #667eea, #764ba2);
+      --radius: 16px;
       --transition: all 0.3s ease;
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
       background: var(--gradient);
-      min-height: 100vh;
       color: white;
-      line-height: 1.6;
+      min-height: 100vh;
     }
 
     .container {
       max-width: 1200px;
-      margin: 0 auto;
+      margin: auto;
       padding: 40px 20px;
     }
 
-    /* Sélecteur de langue */
-    .lang-switch {
-      position: absolute;
-      top: 25px;
-      right: 25px;
-      z-index: 100;
-    }
-
-    .lang-switch form {
+    /* Navigation */
+    .nav {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 10px;
+      margin-bottom: 60px;
     }
 
-    .lang-switch label {
-      margin: 0;
-      font-size: 1.4rem;
-      color: white;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .lang-switch select {
-      padding: 10px 14px;
-      border-radius: var(--border-radius);
-      font-size: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      background: rgba(255, 255, 255, 0.9);
-      cursor: pointer;
-      transition: var(--transition);
-      width: auto;
-      backdrop-filter: blur(10px);
-    }
-
-    .lang-switch select:focus {
-      outline: none;
-      border-color: white;
-      background: white;
-      box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
-    }
-
-    /* Bouton À propos dans la navigation */
-    .about-link-nav {
-      position: absolute;
-      top: 25px;
-      left: 25px;
-      z-index: 100;
-    }
-
-    .about-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: var(--border-radius);
+    .nav a {
       color: white;
       text-decoration: none;
-      font-weight: 500;
-      font-size: 1rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.15);
+      padding: 10px 18px;
+      border-radius: var(--radius);
       transition: var(--transition);
     }
 
-    .about-btn:hover {
-      background: rgba(255, 255, 255, 0.25);
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
+    .nav a:hover { background: rgba(255,255,255,0.25); }
 
-    .hero-section {
+    /* Hero */
+    .hero {
       text-align: center;
-      padding: 60px 0 40px;
+      margin-bottom: 80px;
     }
 
-    .logo {
+    .hero i {
       font-size: 4rem;
       margin-bottom: 20px;
-      display: inline-block;
-      background: linear-gradient(135deg, #fff, #e3f2fd);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
-    }
-
-    h1 {
-      font-size: 3.5rem;
-      font-weight: 700;
-      margin-bottom: 20px;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    }
-
-    .subtitle {
-      font-size: 1.4rem;
-      margin-bottom: 40px;
-      opacity: 0.9;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .highlight {
-      background: linear-gradient(135deg, #ffeaa7, #fab1a0);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      font-weight: 700;
-    }
-
-    .cards-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 30px;
-      margin-top: 50px;
-    }
-
-    .card {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: var(--border-radius);
-      padding: 40px 30px;
-      text-align: center;
-      transition: var(--transition);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: var(--gradient);
-    }
-
-    .card:hover {
-      transform: translateY(-10px);
-      background: rgba(255, 255, 255, 0.15);
-      box-shadow: var(--box-shadow);
-    }
-
-    .card-icon {
-      font-size: 3.5rem;
-      margin-bottom: 20px;
-      display: inline-block;
-      background: linear-gradient(135deg, #fff, #e3f2fd);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .card-title {
-      font-size: 1.8rem;
-      font-weight: 600;
-      margin-bottom: 15px;
-    }
-
-    .card-description {
-      font-size: 1rem;
-      opacity: 0.8;
-      margin-bottom: 25px;
-      line-height: 1.5;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 28px;
-      border-radius: 50px;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 1.1rem;
-      transition: var(--transition);
-      border: 2px solid transparent;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .btn-primary {
-      background: var(--gradient-primary);
-      color: white;
-    }
-
-    .btn-success {
-      background: var(--gradient-success);
-      color: white;
-    }
-
-    .btn-warning {
-      background: var(--gradient-warning);
-      color: white;
-    }
-
-    .btn-light {
-      background: rgba(255, 255, 255, 0.9);
-      color: var(--secondary);
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-
-    .btn i {
-      font-size: 1.2rem;
-    }
-
-    .features-section {
-      margin-top: 80px;
-      text-align: center;
-    }
-
-    .section-title {
-      font-size: 2.5rem;
-      margin-bottom: 50px;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 30px;
-      margin-bottom: 50px;
-    }
-
-    .feature-item {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 30px 20px;
-      border-radius: 12px;
-      transition: var(--transition);
-    }
-
-    .feature-item:hover {
-      background: rgba(255, 255, 255, 0.12);
-      transform: translateY(-5px);
-    }
-
-    .feature-icon {
-      font-size: 2.5rem;
-      margin-bottom: 15px;
       opacity: 0.9;
     }
 
-    .feature-title {
+    .hero h1 {
+      font-size: 3.2rem;
+      margin-bottom: 20px;
+    }
+
+    .hero p {
+      max-width: 760px;
+      margin: auto;
       font-size: 1.3rem;
-      margin-bottom: 10px;
-      font-weight: 600;
+      opacity: 0.95;
     }
 
-    .feature-description {
-      font-size: 0.95rem;
-      opacity: 0.8;
+    /* Value Proposition */
+    .value {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 30px;
+      margin-bottom: 90px;
     }
 
-    .parent-access {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: var(--border-radius);
-      padding: 40px;
-      margin-top: 40px;
+    .value-card {
+      background: rgba(255,255,255,0.12);
+      padding: 30px 25px;
+      border-radius: var(--radius);
       text-align: center;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .parent-access h3 {
-      font-size: 1.8rem;
-      margin-bottom: 15px;
-    }
-
-    .parent-access p {
-      margin-bottom: 20px;
-      opacity: 0.9;
-    }
-
-    .footer {
-      margin-top: 60px;
-      text-align: center;
-      padding-top: 30px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      opacity: 0.7;
-      font-size: 0.9rem;
-    }
-
-    /* Lien À propos dans le footer */
-    .footer-links {
-      margin-top: 15px;
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-    }
-
-    .footer-link {
-      color: rgba(255, 255, 255, 0.8);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
       transition: var(--transition);
     }
 
-    .footer-link:hover {
+    .value-card:hover { transform: translateY(-6px); }
+
+    .value-card i {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+    }
+
+    .value-card h3 { margin-bottom: 10px; }
+
+    /* Learning Loop */
+    .loop {
+      background: rgba(255,255,255,0.1);
+      border-radius: var(--radius);
+      padding: 50px 30px;
+      margin-bottom: 90px;
+      text-align: center;
+    }
+
+    .loop h2 { margin-bottom: 30px; }
+
+    .loop-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 25px;
+    }
+
+    .step {
+      background: rgba(0,0,0,0.15);
+      padding: 20px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    /* Access cards */
+    .access {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin-bottom: 80px;
+    }
+
+    .access-card {
+      background: rgba(255,255,255,0.15);
+      border-radius: var(--radius);
+      padding: 35px 25px;
+      text-align: center;
+    }
+
+    .access-card i { font-size: 2.5rem; margin-bottom: 15px; }
+
+    .access-card a {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 28px;
+      border-radius: 30px;
+      text-decoration: none;
       color: white;
-      transform: translateY(-2px);
+      font-weight: 600;
     }
 
-    /* Animations */
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
+    .teacher { background: var(--success); }
+    .student { background: var(--warning); }
+    .parent { background: white; color: var(--secondary); }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      opacity: 0.8;
+      font-size: 0.9rem;
+      margin-top: 40px;
     }
 
-    .logo {
-      animation: float 3s ease-in-out infinite;
-    }
-
-    .card {
-      animation: fadeInUp 0.6s ease;
-    }
-
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .card:nth-child(1) { animation-delay: 0.1s; }
-    .card:nth-child(2) { animation-delay: 0.2s; }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .container {
-        padding: 20px 15px;
-      }
-
-      h1 {
-        font-size: 2.5rem;
-      }
-
-      .subtitle {
-        font-size: 1.1rem;
-      }
-
-      .cards-container {
-        grid-template-columns: 1fr;
-        gap: 20px;
-      }
-
-      .card {
-        padding: 30px 20px;
-      }
-
-      .logo {
-        font-size: 3rem;
-      }
-
-      .btn {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .lang-switch {
-        position: relative;
-        top: 0;
-        right: 0;
-        text-align: center;
-        margin-bottom: 20px;
-      }
-
-      /* Adaptation responsive pour le bouton À propos */
-      .about-link-nav {
-        position: relative;
-        top: 0;
-        left: 0;
-        text-align: center;
-        margin-bottom: 15px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      h1 {
-        font-size: 2rem;
-      }
-
-      .section-title {
-        font-size: 1.8rem;
-      }
-
-      .card-title {
-        font-size: 1.5rem;
-      }
-
-      .footer-links {
-        flex-direction: column;
-        gap: 10px;
-      }
+    @media(max-width: 768px) {
+      .hero h1 { font-size: 2.4rem; }
+      .hero p { font-size: 1.1rem; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Lien À propos dans la navigation -->
-    <div class="about-link-nav">
-      <a href="/a-propos" class="about-btn">
-        <i class="fas fa-info-circle"></i>
-        {% if lang == 'en' %}About{% else %}À propos{% endif %}
-      </a>
-    </div>
 
-    <!-- Sélecteur de langue -->
-    <div class="lang-switch">
+    <!-- Navigation -->
+    <div class="nav">
+      <a href="/a-propos"><i class="fas fa-info-circle"></i> {% if lang=='en' %}About{% else %}À propos{% endif %}</a>
       <form method="POST" action="/changer-langue">
-        <label for="lang">🌍</label>
-        <select name="lang" id="lang" onchange="this.form.submit()">
-          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-          <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+        <select name="lang" onchange="this.form.submit()">
+          <option value="fr" {% if lang=='fr' %}selected{% endif %}>FR</option>
+          <option value="en" {% if lang=='en' %}selected{% endif %}>EN</option>
         </select>
         <input type="hidden" name="redirect_page" value="index">
       </form>
     </div>
 
-    <!-- Section Hero -->
-    <div class="hero-section">
-      <div class="logo">
-        <i class="fas fa-robot"></i>
-      </div>
-      <h1>
-        {% if lang == 'en' %}
-          AI Tutoring <span class="highlight">Platform</span>
-        {% else %}
-          Plateforme de <span class="highlight">Tutorat IA</span>
-        {% endif %}
-      </h1>
-      <p class="subtitle">
-        {% if lang == 'en' %}
-          A revolution in personalized learning. Our artificial intelligence adapts teaching to each learner's unique needs.
-        {% else %}
-          Une révolution dans l'apprentissage personnalisé. Notre intelligence artificielle adapte l'enseignement aux besoins uniques de chaque apprenant.
-        {% endif %}
-      </p>
-    </div>
-
-    <!-- Cartes de connexion -->
-    <div class="cards-container">
-      <!-- Carte Enseignant -->
-      <div class="card">
-        <div class="card-icon">
-          <i class="fas fa-chalkboard-teacher"></i>
-        </div>
-        <h3 class="card-title">
-          {% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}
-        </h3>
-        <p class="card-description">
-          {% if lang == 'en' %}
-            Create exercises, track student progress and personalize learning paths.
-          {% else %}
-            Créez des exercices, suivez la progression de vos élèves et personnalisez les parcours d'apprentissage.
-          {% endif %}
-        </p>
-        <a href="/login-enseignant" class="btn btn-success">
-          <i class="fas fa-sign-in-alt"></i>
-          {% if lang == 'en' %}Teacher Login{% else %}Connexion Enseignant{% endif %}
-        </a>
-      </div>
-
-      <!-- Carte Élève -->
-      <div class="card">
-        <div class="card-icon">
-          <i class="fas fa-user-graduate"></i>
-        </div>
-        <h3 class="card-title">
-          {% if lang == 'en' %}Student{% else %}Élève{% endif %}
-        </h3>
-        <p class="card-description">
-          {% if lang == 'en' %}
-            Access tailored exercises, progress at your own pace and receive personalized feedback.
-          {% else %}
-            Accédez à des exercices adaptés, progressez à votre rythme et recevez un feedback personnalisé.
-          {% endif %}
-        </p>
-        <a href="/login-eleve" class="btn btn-warning">
-          <i class="fas fa-sign-in-alt"></i>
-          {% if lang == 'en' %}Student Login{% else %}Connexion Élève{% endif %}
-        </a>
-      </div>
-    </div>
-
-    <!-- Accès Parent -->
-    <div class="parent-access">
-      <h3>
-        {% if lang == 'en' %}👨‍👩‍👧‍👦 Are you a parent?{% else %}👨‍👩‍👧‍👦 Vous êtes parent ?{% endif %}
-      </h3>
+    <!-- Hero -->
+    <section class="hero">
+      <i class="fas fa-robot"></i>
+      <h1>{% if lang=='en' %}AI Tutoring Platform{% else %}Plateforme de Tutorat IA{% endif %}</h1>
       <p>
-        {% if lang == 'en' %}
-          Track your children's progress, check their results and stay informed about their learning.
+        {% if lang=='en' %}
+        Personalized learning powered by AI, enhanced by teacher validation, student feedback review, and full parent visibility.
         {% else %}
-          Suivez la progression de vos enfants, consultez leurs résultats et restez informé de leur apprentissage.
+        Un apprentissage personnalisé par l’IA, renforcé par la validation des enseignants, la contestation intelligente des rétroactions et une transparence totale pour les parents.
         {% endif %}
       </p>
-      <a href="/login-parent" class="btn btn-light">
-        <i class="fas fa-user-friends"></i>
-        {% if lang == 'en' %}Parent Access{% else %}Accès Parent{% endif %}
-      </a>
-    </div>
+    </section>
 
-    <!-- Section Features -->
-    <div class="features-section">
-      <h2 class="section-title">
-        {% if lang == 'en' %}Why choose our platform?{% else %}Pourquoi choisir notre plateforme ?{% endif %}
-      </h2>
-      <div class="features-grid">
-        <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fas fa-brain"></i>
-          </div>
-          <h4 class="feature-title">
-            {% if lang == 'en' %}Adaptive AI{% else %}IA Adaptative{% endif %}
-          </h4>
-          <p class="feature-description">
-            {% if lang == 'en' %}
-              Algorithm that adjusts to each student's level and pace
-            {% else %}
-              Algorithme qui s'ajuste au niveau et au rythme de chaque élève
-            {% endif %}
-          </p>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fas fa-chart-line"></i>
-          </div>
-          <h4 class="feature-title">
-            {% if lang == 'en' %}Detailed Tracking{% else %}Suivi Détaillé{% endif %}
-          </h4>
-          <p class="feature-description">
-            {% if lang == 'en' %}
-              In-depth analysis of progress and improvement points
-            {% else %}
-              Analyses approfondies des progrès et des points d'amélioration
-            {% endif %}
-          </p>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fas fa-gamepad"></i>
-          </div>
-          <h4 class="feature-title">
-            {% if lang == 'en' %}Engaging Learning{% else %}Apprentissage Ludique{% endif %}
-          </h4>
-          <p class="feature-description">
-            {% if lang == 'en' %}
-              Engaging exercises with reward and progression system
-            {% else %}
-              Exercices engageants avec système de récompenses et de progression
-            {% endif %}
-          </p>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fas fa-clock"></i>
-          </div>
-          <h4 class="feature-title">
-            {% if lang == 'en' %}Available 24/7{% else %}Disponible 24h/24{% endif %}
-          </h4>
-          <p class="feature-description">
-            {% if lang == 'en' %}
-              Access the platform whenever you want, wherever you are
-            {% else %}
-              Accédez à la plateforme quand vous voulez, où vous voulez
-            {% endif %}
-          </p>
-        </div>
+    <!-- Value -->
+    <section class="value">
+      <div class="value-card">
+        <i class="fas fa-brain"></i>
+        <h3>{% if lang=='en' %}Adaptive AI{% else %}IA adaptative{% endif %}</h3>
+        <p>{% if lang=='en' %}Exercises adapt to each learner’s results and pace.{% else %}Les exercices s’ajustent automatiquement au niveau et au rythme de l’élève.{% endif %}</p>
       </div>
-    </div>
+      <div class="value-card">
+        <i class="fas fa-user-check"></i>
+        <h3>{% if lang=='en' %}Teacher Validation{% else %}Validation humaine{% endif %}</h3>
+        <p>{% if lang=='en' %}All remediation activities are reviewed and approved by a real teacher.{% else %}Chaque activité de remédiation est vérifiée et validée par un enseignant.{% endif %}</p>
+      </div>
+      <div class="value-card">
+        <i class="fas fa-scale-balanced"></i>
+        <h3>{% if lang=='en' %}Fair Assessment{% else %}Évaluation équitable{% endif %}</h3>
+        <p>{% if lang=='en' %}Students can challenge feedback and request AI re-evaluation with arguments.{% else %}L’élève peut contester une rétroaction et demander une révision de la note par l’IA.{% endif %}</p>
+      </div>
+      <div class="value-card">
+        <i class="fas fa-chart-line"></i>
+        <h3>{% if lang=='en' %}Full Transparency{% else %}Transparence totale{% endif %}</h3>
+        <p>{% if lang=='en' %}Parents access statistics, history and detailed progress reports.{% else %}Les parents accèdent aux statistiques, à l’historique et aux rapports détaillés.{% endif %}</p>
+      </div>
+    </section>
 
-    <!-- Footer -->
-    <div class="footer">
-      <p>
-        {% if lang == 'en' %}
-          © 2024 AI Tutoring Platform. All rights reserved.
-        {% else %}
-          © 2024 Plateforme de Tutorat IA. Tous droits réservés.
-        {% endif %}
-      </p>
-      <p>
-        {% if lang == 'en' %}
-          Revolutionize learning with artificial intelligence
-        {% else %}
-          Révolutionnez l'apprentissage avec l'intelligence artificielle
-        {% endif %}
-      </p>
-      <!-- Liens dans le footer -->
-      <div class="footer-links">
-        <a href="/a-propos" class="footer-link">
-          <i class="fas fa-info-circle"></i>
-          {% if lang == 'en' %}About{% else %}À propos{% endif %}
-        </a>
+    <!-- Learning Loop -->
+    <section class="loop">
+      <h2>{% if lang=='en' %}How it works{% else %}Comment ça fonctionne{% endif %}</h2>
+      <div class="loop-steps">
+        <div class="step">1. {% if lang=='en' %}Student completes an activity{% else %}L’élève réalise une activité{% endif %}</div>
+        <div class="step">2. {% if lang=='en' %}AI analyzes performance{% else %}L’IA analyse la performance{% endif %}</div>
+        <div class="step">3. {% if lang=='en' %}Remediation triggered below 3/5{% else %}Remédiation déclenchée sous 3/5{% endif %}</div>
+        <div class="step">4. {% if lang=='en' %}Teacher validates remediation{% else %}L’enseignant valide la remédiation{% endif %}</div>
+        <div class="step">5. {% if lang=='en' %}Student may contest feedback{% else %}L’élève peut contester la rétroaction{% endif %}</div>
+        <div class="step">6. {% if lang=='en' %}AI recalculates fairly{% else %}L’IA révise et ajuste la note{% endif %}</div>
       </div>
-    </div>
+    </section>
+
+    <!-- Access -->
+    <section class="access">
+      <div class="access-card">
+        <i class="fas fa-chalkboard-teacher"></i>
+        <h3>{% if lang=='en' %}Teacher{% else %}Enseignant{% endif %}</h3>
+        <p>{% if lang=='en' %}Create content and supervise learning.{% else %}Créer du contenu et superviser l’apprentissage.{% endif %}</p>
+        <a href="/login-enseignant" class="teacher">{% if lang=='en' %}Login{% else %}Connexion{% endif %}</a>
+      </div>
+      <div class="access-card">
+        <i class="fas fa-user-graduate"></i>
+        <h3>{% if lang=='en' %}Student{% else %}Élève{% endif %}</h3>
+        <p>{% if lang=='en' %}Learn, receive feedback and grow.{% else %}Apprendre, recevoir des rétroactions et progresser.{% endif %}</p>
+        <a href="/login-eleve" class="student">{% if lang=='en' %}Login{% else %}Connexion{% endif %}</a>
+      </div>
+      <div class="access-card">
+        <i class="fas fa-users"></i>
+        <h3>{% if lang=='en' %}Parent{% else %}Parent{% endif %}</h3>
+        <p>{% if lang=='en' %}Monitor progress and reports.{% else %}Suivre les progrès et consulter les rapports.{% endif %}</p>
+        <a href="/login-parent" class="parent">{% if lang=='en' %}Access{% else %}Accéder{% endif %}</a>
+      </div>
+    </section>
+
+    <footer>
+      © 2024 – Plateforme de Tutorat IA · IA responsable · Supervision humaine
+    </footer>
+
   </div>
-
-  <script>
-    // Animation au chargement de la page
-    document.addEventListener('DOMContentLoaded', function() {
-      const cards = document.querySelectorAll('.card');
-      cards.forEach((card, index) => {
-        card.style.animationDelay = `${index * 0.1}s`;
-      });
-    });
-
-    // Effet de particules simples
-    function createParticle() {
-      const particle = document.createElement('div');
-      particle.style.position = 'fixed';
-      particle.style.width = '4px';
-      particle.style.height = '4px';
-      particle.style.background = 'rgba(255, 255, 255, 0.5)';
-      particle.style.borderRadius = '50%';
-      particle.style.pointerEvents = 'none';
-      particle.style.left = Math.random() * 100 + 'vw';
-      particle.style.top = '-10px';
-      particle.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
-      
-      document.body.appendChild(particle);
-      
-      setTimeout(() => {
-        particle.remove();
-      }, 5000);
-    }
-
-    // Ajouter l'animation de chute
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes fall {
-        to {
-          transform: translateY(100vh) rotate(360deg);
-          opacity: 0;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Créer quelques particules
-    setInterval(createParticle, 300);
-  </script>
 </body>
 </html>
