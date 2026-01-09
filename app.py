@@ -4348,39 +4348,115 @@ def choisir_sequence():
     username = request.args.get("username")
     lang = request.args.get("lang", "fr")
 
+    # 1. Récupérer l'élève avec ses relations optimisées
     eleve = User.query.options(
         joinedload(User.niveau)
         .joinedload(Niveau.matieres)
         .joinedload(Matiere.unites)
         .joinedload(Unite.lecons)
-        .joinedload(Lecon.exercices),  # Ajout pour charger les exercices
-
+        .joinedload(Lecon.exercices),
         joinedload(User.niveau)
         .joinedload(Niveau.matieres)
         .joinedload(Matiere.unites)
         .joinedload(Unite.tests)
     ).filter_by(username=username).first_or_404()
 
-    unites = []
+    # 2. Récupérer les exercices complétés par l'élève (UNE SEULE REQUÊTE)
+    completed_exercises = StudentResponse.query.filter_by(user_id=eleve.id)\
+        .with_entities(StudentResponse.exercice_id).all()
+    completed_exercise_ids = {ex[0] for ex in completed_exercises if ex[0]}
+    
+    # 3. Récupérer les tests complétés
+    completed_tests = TestResponse.query.filter_by(user_id=eleve.id)\
+        .with_entities(TestResponse.test_id).all()
+    completed_test_ids = {test[0] for test in completed_tests if test[0]}
+
+    # 4. Organiser les données par matière avec statistiques
+    matiere_data = {}
+    unites_list = []
     lecons_filtrees = []
 
     for matiere in eleve.niveau.matieres:
+        matiere_nom = matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom
+        
+        if matiere_nom not in matiere_data:
+            matiere_data[matiere_nom] = {
+                'matiere_obj': matiere,
+                'unites': [],
+                'stats': {
+                    'total_unites': 0,
+                    'total_lecons': 0,
+                    'total_exercises': 0,
+                    'completed_exercises': 0
+                }
+            }
+        
         for unite in matiere.unites:
-            unites.append(unite)
+            unites_list.append(unite)
+            
+            # Statistiques pour cette unité
+            unit_stats = {
+                'unite': unite,
+                'total_lecons': len(unite.lecons),
+                'total_exercises': 0,
+                'completed_exercises': 0,
+                'tests': [],
+                'lecons': []
+            }
+            
+            # Marquer les tests comme complétés ou non
+            for test in unite.tests:
+                test.completed = test.id in completed_test_ids
+                unit_stats['tests'].append(test)
+            
             for lecon in unite.lecons:
                 total_exos = len(lecon.exercices)
-                print(f"🔎 {lecon.titre_fr} → {total_exos} exercice(s)")
+                
+                # Calculer les exercices complétés pour cette leçon
+                completed_count = 0
+                for exercice in lecon.exercices:
+                    if exercice.id in completed_exercise_ids:
+                        completed_count += 1
+                
+                # Ajouter aux statistiques
+                lecon_stats = {
+                    'lecon': lecon,
+                    'total_exercises': total_exos,
+                    'completed_exercises': completed_count,
+                    'progress': (completed_count / total_exos * 100) if total_exos > 0 else 0
+                }
+                
+                unit_stats['lecons'].append(lecon_stats)
+                unit_stats['total_exercises'] += total_exos
+                unit_stats['completed_exercises'] += completed_count
+                
+                # Filtrer les leçons avec exercices (pour compatibilité)
                 if total_exos > 0:
                     lecons_filtrees.append(lecon)
+            
+            # Ajouter l'unité à la matière
+            matiere_data[matiere_nom]['unites'].append(unit_stats)
+            
+            # Mettre à jour les totaux de la matière
+            matiere_data[matiere_nom]['stats']['total_unites'] += 1
+            matiere_data[matiere_nom]['stats']['total_lecons'] += unit_stats['total_lecons']
+            matiere_data[matiere_nom]['stats']['total_exercises'] += unit_stats['total_exercises']
+            matiere_data[matiere_nom]['stats']['completed_exercises'] += unit_stats['completed_exercises']
+    
+    print(f"✅ {len(unites_list)} unités trouvées")
+    print(f"✅ {len(lecons_filtrees)} leçons avec exercices")
+    print(f"✅ {len(matiere_data)} matières organisées")
 
     return render_template(
         "choisir_sequence.html",
         eleve=eleve,
-        unites=unites,
-        lecons=lecons_filtrees,
+        unites=unites_list,  # Gardé pour compatibilité
+        lecons=lecons_filtrees,  # Gardé pour compatibilité
+        matiere_data=matiere_data,  # NOUVEAU : données organisées
+        completed_exercise_ids=completed_exercise_ids,
+        completed_test_ids=completed_test_ids,
         lang=lang
     )
-
 
 from datetime import datetime, timedelta
 import matplotlib
