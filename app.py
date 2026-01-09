@@ -6581,42 +6581,30 @@ def historique_eleve():
     exercice_id = request.args.get("exercice_id")
     lang = request.args.get("lang", "fr")
 
-    # ✅ DÉTECTION DU CONTEXTE : Priorité à l'enseignant s'il y a conflit
-    parent_email = session.get("parent_email")
-    enseignant_id = session.get("enseignant_id")
-    
-    # DEBUG
-    print(f"SESSION - parent_email: {parent_email}")
-    print(f"SESSION - enseignant_id: {enseignant_id}")
-    
-    # ✅ LOGIQUE DE PRIORITÉ : 
-    # 1. Si enseignant_id existe → c'est un enseignant (priorité haute)
-    # 2. Si parent_email existe ET pas d'enseignant_id → c'est un parent
-    # 3. Sinon → c'est l'élève
-    
-    if enseignant_id:
-        # L'utilisateur est connecté comme enseignant (même s'il a aussi parent_email)
-        is_enseignant_access = True
-        is_parent_access = False
-        is_eleve_direct_access = False
-        print(f"ACCÈS - ENSEIGNANT prioritaire (ID: {enseignant_id})")
-    elif parent_email:
-        # L'utilisateur est connecté comme parent (sans enseignant_id)
-        is_parent_access = True
-        is_enseignant_access = False
-        is_eleve_direct_access = False
-        print(f"ACCÈS - PARENT (email: {parent_email})")
-    else:
-        # Vérifier si l'élève accède à son propre historique
-        eleve_session_username = session.get("username")
-        is_eleve_direct_access = eleve_session_username == username
-        is_parent_access = False
-        is_enseignant_access = False
-        print(f"ACCÈS - ÉLÈVE (session: {eleve_session_username}, requested: {username})")
+    # ... [votre code existant reste inchangé jusqu'à la création de data_structure] ...
 
-    eleve = User.query.filter_by(username=username).first()
-    if not eleve:
-        return "Élève introuvable", 404
+    # ============================================
+    # FONCTION UTILITAIRE POBTENIR LE NOM TRADUIT
+    # ============================================
+    def get_translated_name(obj, field_prefix="nom"):
+        """Retourne le nom traduit d'un objet selon la langue"""
+        if lang == "fr":
+            # Pour le français, utiliser le champ sans suffixe ou avec _fr
+            if hasattr(obj, field_prefix):
+                return getattr(obj, field_prefix)
+            elif hasattr(obj, f"{field_prefix}_fr"):
+                return getattr(obj, f"{field_prefix}_fr")
+        else:
+            # Pour l'anglais, utiliser le champ avec _en
+            if hasattr(obj, f"{field_prefix}_en") and getattr(obj, f"{field_prefix}_en"):
+                return getattr(obj, f"{field_prefix}_en")
+            else:
+                # Fallback sur le nom français si pas de traduction anglaise
+                if hasattr(obj, field_prefix):
+                    return getattr(obj, field_prefix)
+                elif hasattr(obj, f"{field_prefix}_fr"):
+                    return getattr(obj, f"{field_prefix}_fr")
+        return "Nom inconnu"
 
     # Récupérer l'ID de l'élève et son niveau
     eleve_id = eleve.id
@@ -6625,7 +6613,8 @@ def historique_eleve():
     if not niveau_eleve:
         return "Niveau de l'élève non défini", 404
     
-    niveau_eleve_nom = niveau_eleve.nom
+    # Utiliser la fonction de traduction pour obtenir le nom du niveau
+    niveau_eleve_nom = get_translated_name(niveau_eleve)
     niveau_eleve_id = niveau_eleve.id
     
     print(f"ÉLÈVE - {eleve.nom_complet} - Niveau: {niveau_eleve_nom} (ID: {niveau_eleve_id})")
@@ -6657,36 +6646,39 @@ def historique_eleve():
         "matieres": {},
         "total_effectues": 0,
         "total_restants": 0,
-        "total_exercices": 0
+        "total_exercices": 0,
+        "original_id": niveau_eleve_id
     }
     
     # Parcourir les matières du niveau de l'élève
     for matiere in niveau_eleve_obj.matieres:
-        matiere_nom = matiere.nom
+        matiere_nom = get_translated_name(matiere)
         
         # Initialiser la matière
         data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom] = {
             "unites": {},
             "total_effectues": 0,
             "total_restants": 0,
-            "total_exercices": 0
+            "total_exercices": 0,
+            "original_id": matiere.id
         }
         
         # Parcourir les unités de cette matière
         for unite in matiere.unites:
-            unite_nom = unite.nom
+            unite_nom = get_translated_name(unite)
             
             # Initialiser l'unité
             data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom]["unites"][unite_nom] = {
                 "lecons": {},
                 "total_effectues": 0,
                 "total_restants": 0,
-                "total_exercices": 0
+                "total_exercices": 0,
+                "original_id": unite.id
             }
             
             # Parcourir les leçons de cette unité
             for lecon in unite.lecons:
-                lecon_nom = lecon.titre_fr if lang == "fr" else lecon.titre_en
+                lecon_nom = get_translated_name(lecon, "titre")
                 
                 # Initialiser la leçon
                 data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom] = {
@@ -6732,14 +6724,14 @@ def historique_eleve():
         
         # VÉRIFIER SI L'EXERCICE EST DU NIVEAU DE L'ÉLÈVE
         if niveau.id != niveau_eleve_id:
-            print(f"EXERCICE {ex.id} ignoré - Niveau: {niveau.nom} (pas le niveau de l'élève)")
+            print(f"EXERCICE {ex.id} ignoré - Niveau: {get_translated_name(niveau)} (pas le niveau de l'élève)")
             continue
         
-        # Récupérer les noms avec les bons attributs
-        niveau_nom = niveau.nom
-        matiere_nom = matiere.nom
-        unite_nom = unite.nom
-        lecon_nom = lecon.titre_fr if lang == "fr" else lecon.titre_en
+        # Récupérer les noms traduits
+        niveau_nom = get_translated_name(niveau)
+        matiere_nom = get_translated_name(matiere)
+        unite_nom = get_translated_name(unite)
+        lecon_nom = get_translated_name(lecon, "titre")
         
         # Vérifier que la structure existe
         if (niveau_nom in data_structure["niveaux"] and 
@@ -6747,18 +6739,23 @@ def historique_eleve():
             unite_nom in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"] and
             lecon_nom in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"]):
             
-            # Ajouter l'exercice à la leçon
-            theme = unite_nom if unite else "—"
-            enonce = ex.question_fr if lang == "fr" else (ex.question_en if ex else "Réponse libre (remédiation)")
+            # Obtenir l'énoncé dans la bonne langue
+            enonce = ex.question_fr if lang == "fr" else (ex.question_en if ex.question_en else ex.question_fr)
             
             exercice_data = {
                 "id": r.id,
-                "theme": theme,
+                "theme": unite_nom if unite else "—",
                 "enonce": enonce,
                 "reponse_eleve": r.reponse_eleve,
                 "analyse_ia": r.analyse_ia or "—",
                 "etoiles": r.etoiles if r.etoiles is not None else 0,
-                "date": r.timestamp.strftime("%d/%m/%Y") if r.timestamp else ""
+                "date": r.timestamp.strftime("%d/%m/%Y") if r.timestamp else "",
+                "original_names": {
+                    "niveau": niveau.nom,
+                    "matiere": matiere.nom,
+                    "unite": unite.nom,
+                    "lecon": lecon.titre_fr
+                }
             }
             
             data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices"].append(exercice_data)
@@ -6838,11 +6835,17 @@ def historique_eleve():
                 continue  # Ignorer les tests qui ne sont pas du niveau de l'élève
         
         if test and test.unite:
-            unite_nom_test = test.unite.nom
+            unite_nom_test = get_translated_name(test.unite)
         else:
             unite_nom_test = "—"
             
-        enonce_test = test.question_fr if test and lang == "fr" else (test.question_en if test else "—")
+        # Obtenir la question dans la bonne langue
+        if test and lang == "fr":
+            enonce_test = test.question_fr if test.question_fr else "—"
+        elif test:
+            enonce_test = test.question_en if test.question_en else (test.question_fr if test.question_fr else "—")
+        else:
+            enonce_test = "—"
 
         reponses_ordonnees = ""
         if isinstance(t.reponses_exercices, dict):
@@ -6865,7 +6868,7 @@ def historique_eleve():
     return render_template(
         "historique_eleve.html",
         eleve=eleve,
-        niveau_eleve=niveau_eleve_nom,  # Ajout du nom du niveau pour l'affichage
+        niveau_eleve=niveau_eleve_nom,  # Utilise le nom traduit
         lang=lang,
         data_structure=data_structure,
         total_exercices_effectues=total_exercices_effectues,
