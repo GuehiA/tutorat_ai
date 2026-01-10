@@ -840,6 +840,20 @@
             font-weight: bold;
             margin-left: 10px;
         }
+
+        /* Politique d'annulation claire */
+        .cancellation-policy {
+            background: linear-gradient(135deg, #fff0f0, #ffe6e6);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid var(--danger);
+            font-size: 0.9rem;
+        }
+
+        .cancellation-policy strong {
+            color: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -1110,6 +1124,22 @@
                     </small>
                 </div>
 
+                <!-- Politique d'annulation réaliste -->
+                <div class="cancellation-policy">
+                    <strong><i class="fas fa-info-circle"></i> {{ 'Cancellation Policy:' if lang == 'en' else 'Politique d\'annulation :' }}</strong>
+                    {% if lang == 'en' %}
+                    <p>• Free trial: Cancel anytime<br>
+                    • Weekly plan: No refund after 48 hours<br>
+                    • Monthly plan: Pro-rated refund within first 7 days<br>
+                    • Quarterly/annual: Pro-rated refund within first 14 days</p>
+                    {% else %}
+                    <p>• Essai gratuit : Annulez à tout moment<br>
+                    • Forfait hebdo : Pas de remboursement après 48 heures<br>
+                    • Forfait mensuel : Remboursement au prorata dans les 7 premiers jours<br>
+                    • Forfait trimestriel/annuel : Remboursement au prorata dans les 14 premiers jours</p>
+                    {% endif %}
+                </div>
+
                 <div class="plan-cards">
                     <!-- Essai Gratuit -->
                     <div class="plan-card trial selected" onclick="selectPlan('trial')" id="trialPlan">
@@ -1126,7 +1156,7 @@
                             <li><i class="fas fa-check feature-included"></i> {{ 'No credit card required' if lang == 'en' else 'Aucune carte requise' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Virtual teacher available' if lang == 'en' else 'Enseignant virtuel disponible' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Basic support' if lang == 'en' else 'Support de base' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Convert anytime' if lang == 'en' else 'Convertissez à tout moment' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
                         </ul>
                         <div class="plan-footer">
                             <div style="color: var(--trial); font-weight: 600;">
@@ -1149,7 +1179,7 @@
                         <ul class="plan-features">
                             <li><i class="fas fa-check feature-included"></i> {{ 'All trial features' if lang == 'en' else "Toutes les fonctionnalités d'essai" }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime (48h refund)' if lang == 'en' else 'Annulez à tout moment (48h remb.)' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Weekly progress reports' if lang == 'en' else 'Rapports de progression hebdo' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Flexible commitment' if lang == 'en' else 'Engagement flexible' }}</li>
                         </ul>
@@ -1176,7 +1206,7 @@
                             <li><i class="fas fa-check feature-included"></i> {{ 'Personalized roadmap' if lang == 'en' else 'Feuille de route personnalisée' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Monthly assessments' if lang == 'en' else 'Évaluations mensuelles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Parent progress reports' if lang == 'en' else 'Rapports parents' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime (7d refund)' if lang == 'en' else 'Annulez à tout moment (7j remb.)' }}</li>
                         </ul>
                         <div class="plan-footer">
                             <div style="color: var(--monthly); font-weight: 600;">
@@ -1201,7 +1231,7 @@
                             <li><i class="fas fa-check feature-included"></i> {{ 'All monthly features' if lang == 'en' else 'Toutes les fonctionnalités mensuelles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly assessments' if lang == 'en' else 'Évaluations trimestrielles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Advanced analytics' if lang == 'en' else 'Analyses avancées' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Learning milestones' if lang == 'en' else "Jalons d'apprentissage" }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime (14d refund)' if lang == 'en' else 'Annulez à tout moment (14j remb.)' }}</li>
                         </ul>
                         <div class="plan-footer">
                             <div style="color: var(--quarterly); font-weight: 600;">
@@ -1226,7 +1256,7 @@
                             <li><i class="fas fa-check feature-included"></i> {{ 'All quarterly features' if lang == 'en' else 'Toutes les fonctionnalités trimestrielles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Premium teacher features' if lang == 'en' else 'Fonctionnalités premium' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly parent meetings' if lang == 'en' else 'Rencontres trimestrielles parents' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Annual learning certificate' if lang == 'en' else "Certificat d'apprentissage annuel" }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime (14d refund)' if lang == 'en' else 'Annulez à tout moment (14j remb.)' }}</li>
                         </ul>
                         <div class="plan-footer">
                             <div style="color: var(--annual); font-weight: 600;">
@@ -1256,14 +1286,14 @@
                         <li>{{ 'Parental consent required for students under 16' if lang == 'en' else 'Consentement parental requis pour les élèves de moins de 16 ans' }}</li>
                         <li>{{ 'AI recommendations are supervised by human teachers' if lang == 'en' else 'Les recommandations IA sont supervisées par des enseignants humains' }}</li>
                         <li>{{ 'Stripe handles secure payment processing' if lang == 'en' else 'Stripe gère le traitement sécurisé des paiements' }}</li>
-                        <li>{{ '14-day cancellation policy for paid plans' if lang == 'en' else 'Politique d\'annulation de 14 jours pour les forfaits payants' }}</li>
+                        <li>{{ 'Realistic cancellation policy (see details)' if lang == 'en' else 'Politique d\'annulation réaliste (voir détails)' }}</li>
                         <li>{{ 'GDPR and PIPEDA compliant data protection' if lang == 'en' else 'Protection des données conforme au RGPD et PIPEDA' }}</li>
                     </ul>
                     
                     <h4>{{ 'Company Information:' if lang == 'en' else 'Informations de l\'entreprise :' }}</h4>
-                    <p><strong>TutoratAI</strong><br>
+                    <p><strong>Advanceteach INC - TutoratAI</strong><br>
                     6 Whitmore, St. Catharines, Ontario L2R 6P4<br>
-                    {{ 'Email:' if lang == 'en' else 'Courriel :' }} contact@tutoratai.com<br>
+                    {{ 'Email:' if lang == 'en' else 'Courriel :' }} info@advanceteach.com<br>
                     {{ 'Website:' if lang == 'en' else 'Site web :' }} www.tutoratai.com</p>
                 </div>
 
@@ -1295,9 +1325,9 @@
                         <i class="fas fa-shield-alt"></i>
                         {{ 'Privacy Policy' if lang == 'en' else 'Politique de confidentialité' }}
                     </a>
-                    <a href="#" onclick="showRefundPolicy()">
+                    <a href="#" onclick="showCancellationPolicy()">
                         <i class="fas fa-hand-holding-usd"></i>
-                        {{ 'Refund Policy' if lang == 'en' else 'Politique de remboursement' }}
+                        {{ 'Cancellation Policy' if lang == 'en' else 'Politique d\'annulation' }}
                     </a>
                 </div>
             </div>
@@ -1331,73 +1361,10 @@
     <div id="termsModal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal()">×</button>
-            <h2>{{ 'Full Terms and Conditions - TutoratAI' if lang == 'en' else 'Conditions Générales d\'Utilisation Complètes - TutoratAI' }}</h2>
+            <h2 id="modalTitle">{{ 'Full Terms and Conditions - TutoratAI' if lang == 'en' else 'Conditions Générales d\'Utilisation Complètes - TutoratAI' }}</h2>
             
             <div id="termsContent">
-                {% if lang == 'en' %}
-                    <!-- ENGLISH VERSION -->
-                    <h3>1. Acceptance of Terms</h3>
-                    <p>By registering for TutoratAI, you agree to these Terms and Conditions.</p>
-                    
-                    <h3>2. Service Description</h3>
-                    <p>TutoratAI provides AI-powered tutoring services with human supervision. Our virtual teacher uses Socratic questioning to guide learning.</p>
-                    
-                    <h3>3. Age Requirements</h3>
-                    <p>In Ontario, Canada, users under 16 years old require parental consent. By registering, you confirm you are either:
-                    <ul>
-                        <li>16 years or older, OR</li>
-                        <li>Under 16 with parental consent</li>
-                    </ul>
-                    
-                    <h3>4. Payment Terms</h3>
-                    <p>All payments are processed securely via Stripe. We do not store credit card information.</p>
-                    <p>Cancellation policy: 14-day cancellation for paid plans. Free trial can be cancelled anytime.</p>
-                    
-                    <h3>5. Data Protection</h3>
-                    <p>We comply with Canadian privacy laws (PIPEDA) and GDPR for international users.</p>
-                    <p>AI recommendations are always supervised by human teachers. No automated profiling for minors without human oversight.</p>
-                    
-                    <h3>6. Limitation of Liability</h3>
-                    <p>TutoratAI is an educational aid. We do not guarantee specific academic results.</p>
-                    
-                    <h3>7. Company Information</h3>
-                    <p><strong>TutoratAI</strong><br>
-                    6 Whitmore, St. Catharines, Ontario L2R 6P4<br>
-                    Email: contact@tutoratai.com<br>
-                    Website: www.tutoratai.com</p>
-                    
-                {% else %}
-                    <!-- FRENCH VERSION -->
-                    <h3>1. Acceptation des Conditions</h3>
-                    <p>En vous inscrivant sur TutoratAI, vous acceptez ces Conditions Générales d'Utilisation.</p>
-                    
-                    <h3>2. Description du Service</h3>
-                    <p>TutoratAI fournit des services de tutorat alimentés par IA avec supervision humaine. Notre enseignant virtuel utilise le questionnement socratique pour guider l'apprentissage.</p>
-                    
-                    <h3>3. Exigences d'âge</h3>
-                    <p>En Ontario, Canada, les utilisateurs de moins de 16 ans nécessitent le consentement parental. En vous inscrivant, vous confirmez que vous êtes soit :
-                    <ul>
-                        <li>Âgé de 16 ans ou plus, OU</li>
-                        <li>Moins de 16 ans avec consentement parental</li>
-                    </ul>
-                    
-                    <h3>4. Conditions de Paiement</h3>
-                    <p>Tous les paiements sont traités de manière sécurisée via Stripe. Nous ne stockons pas les informations de carte bancaire.</p>
-                    <p>Politique d'annulation : 14 jours pour les forfaits payants. L'essai gratuit peut être annulé à tout moment.</p>
-                    
-                    <h3>5. Protection des Données</h3>
-                    <p>Nous respectons les lois canadiennes sur la vie privée (PIPEDA) et le RGPD pour les utilisateurs internationaux.</p>
-                    <p>Les recommandations IA sont toujours supervisées par des enseignants humains. Pas de profilage automatisé pour les mineurs sans supervision humaine.</p>
-                    
-                    <h3>6. Limitation de Responsabilité</h3>
-                    <p>TutoratAI est une aide éducative. Nous ne garantissons pas de résultats académiques spécifiques.</p>
-                    
-                    <h3>7. Informations de l'Entreprise</h3>
-                    <p><strong>TutoratAI</strong><br>
-                    6 Whitmore, St. Catharines, Ontario L2R 6P4<br>
-                    Courriel : contact@tutoratai.com<br>
-                    Site web : www.tutoratai.com</p>
-                {% endif %}
+                <!-- Le contenu sera rempli dynamiquement par JavaScript -->
             </div>
         </div>
     </div>
@@ -1476,6 +1443,182 @@
             }
         };
 
+        // Contenu des modals selon la langue
+        const modalContent = {
+            'en': {
+                terms: `
+                    <h3>1. Acceptance of Terms</h3>
+                    <p>By registering for TutoratAI, you agree to these Terms and Conditions.</p>
+                    
+                    <h3>2. Service Description</h3>
+                    <p>TutoratAI provides AI-powered tutoring services with human supervision. Our virtual teacher uses Socratic questioning to guide learning.</p>
+                    
+                    <h3>3. Age Requirements</h3>
+                    <p>In Ontario, Canada, users under 16 years old require parental consent. By registering, you confirm you are either:
+                    <ul>
+                        <li>16 years or older, OR</li>
+                        <li>Under 16 with parental consent</li>
+                    </ul>
+                    
+                    <h3>4. Payment and Cancellation Policy</h3>
+                    <p>All payments are processed securely via Stripe. We do not store credit card information.</p>
+                    <p><strong>Cancellation policy:</strong>
+                    <ul>
+                        <li>Free trial: Cancel anytime</li>
+                        <li>Weekly plan: No refund after 48 hours</li>
+                        <li>Monthly plan: Pro-rated refund within first 7 days</li>
+                        <li>Quarterly/annual: Pro-rated refund within first 14 days</li>
+                    </ul>
+                    
+                    <h3>5. Data Protection</h3>
+                    <p>We comply with Canadian privacy laws (PIPEDA) and GDPR for international users.</p>
+                    <p>AI recommendations are always supervised by human teachers. No automated profiling for minors without human oversight.</p>
+                    
+                    <h3>6. Limitation of Liability</h3>
+                    <p>TutoratAI is an educational aid. We do not guarantee specific academic results.</p>
+                    
+                    <h3>7. Company Information</h3>
+                    <p><strong>Advanceteach INC - TutoratAI</strong><br>
+                    6 Whitmore, St. Catharines, Ontario L2R 6P4<br>
+                    Email: info@advanceteach.com<br>
+                    Website: www.tutoratai.com</p>
+                `,
+                privacy: `
+                    <h3>Privacy Policy</h3>
+                    <p>We protect your data according to Canadian (PIPEDA) and international standards.</p>
+                    
+                    <h3>Data Collection</h3>
+                    <p>We collect only necessary data for educational purposes: username, email, learning progress, and interaction data.</p>
+                    
+                    <h3>Data Protection for Minors</h3>
+                    <p>Parents can request deletion of child data at any time. No automated profiling for users under 16.</p>
+                    
+                    <h3>Third-Party Services</h3>
+                    <p>We use Stripe for payment processing and only share necessary data with them for transaction purposes.</p>
+                `,
+                cancellation: `
+                    <h3>Cancellation and Refund Policy</h3>
+                    <p>Our policy is designed to be fair while protecting our service.</p>
+                    
+                    <h3>Free Trial</h3>
+                    <p>• Cancel anytime during the trial period<br>
+                    • No payment required<br>
+                    • No obligation to continue</p>
+                    
+                    <h3>Weekly Plan ($15/week)</h3>
+                    <p>• Cancel anytime<br>
+                    • Refund available within first 48 hours<br>
+                    • After 48 hours: no refund (you've used the full week)</p>
+                    
+                    <h3>Monthly Plan ($50/month)</h3>
+                    <p>• Cancel anytime<br>
+                    • Pro-rated refund within first 7 days<br>
+                    • After 7 days: no refund for current month</p>
+                    
+                    <h3>Quarterly Plan ($120/3 months)</h3>
+                    <p>• Cancel anytime<br>
+                    • Pro-rated refund within first 14 days<br>
+                    • Refund based on unused months</p>
+                    
+                    <h3>Annual Plan ($450/year)</h3>
+                    <p>• Cancel anytime<br>
+                    • Pro-rated refund within first 14 days<br>
+                    • Refund based on unused months<br>
+                    • Best value with 25% savings</p>
+                    
+                    <h3>Contact for Refunds</h3>
+                    <p>Email: info@advanceteach.com<br>
+                    Please include your username and reason for cancellation.</p>
+                `
+            },
+            'fr': {
+                terms: `
+                    <h3>1. Acceptation des Conditions</h3>
+                    <p>En vous inscrivant sur TutoratAI, vous acceptez ces Conditions Générales d'Utilisation.</p>
+                    
+                    <h3>2. Description du Service</h3>
+                    <p>TutoratAI fournit des services de tutorat alimentés par IA avec supervision humaine. Notre enseignant virtuel utilise le questionnement socratique pour guider l'apprentissage.</p>
+                    
+                    <h3>3. Exigences d'âge</h3>
+                    <p>En Ontario, Canada, les utilisateurs de moins de 16 ans nécessitent le consentement parental. En vous inscrivant, vous confirmez que vous êtes soit :
+                    <ul>
+                        <li>Âgé de 16 ans ou plus, OU</li>
+                        <li>Moins de 16 ans avec consentement parental</li>
+                    </ul>
+                    
+                    <h3>4. Paiement et Politique d'Annulation</h3>
+                    <p>Tous les paiements sont traités de manière sécurisée via Stripe. Nous ne stockons pas les informations de carte bancaire.</p>
+                    <p><strong>Politique d'annulation :</strong>
+                    <ul>
+                        <li>Essai gratuit : Annulez à tout moment</li>
+                        <li>Forfait hebdo : Pas de remboursement après 48 heures</li>
+                        <li>Forfait mensuel : Remboursement au prorata dans les 7 premiers jours</li>
+                        <li>Forfait trimestriel/annuel : Remboursement au prorata dans les 14 premiers jours</li>
+                    </ul>
+                    
+                    <h3>5. Protection des Données</h3>
+                    <p>Nous respectons les lois canadiennes sur la vie privée (PIPEDA) et le RGPD pour les utilisateurs internationaux.</p>
+                    <p>Les recommandations IA sont toujours supervisées par des enseignants humains. Pas de profilage automatisé pour les mineurs sans supervision humaine.</p>
+                    
+                    <h3>6. Limitation de Responsabilité</h3>
+                    <p>TutoratAI est une aide éducative. Nous ne garantissons pas de résultats académiques spécifiques.</p>
+                    
+                    <h3>7. Informations de l'Entreprise</h3>
+                    <p><strong>Advanceteach INC - TutoratAI</strong><br>
+                    6 Whitmore, St. Catharines, Ontario L2R 6P4<br>
+                    Courriel : info@advanceteach.com<br>
+                    Site web : www.tutoratai.com</p>
+                `,
+                privacy: `
+                    <h3>Politique de Confidentialité</h3>
+                    <p>Nous protégeons vos données selon les normes canadiennes (PIPEDA) et internationales.</p>
+                    
+                    <h3>Collecte des Données</h3>
+                    <p>Nous collectons uniquement les données nécessaires à des fins éducatives : nom d'utilisateur, email, progression d'apprentissage et données d'interaction.</p>
+                    
+                    <h3>Protection des Données pour Mineurs</h3>
+                    <p>Les parents peuvent demander la suppression des données de leur enfant à tout moment. Pas de profilage automatisé pour les utilisateurs de moins de 16 ans.</p>
+                    
+                    <h3>Services Tiers</h3>
+                    <p>Nous utilisons Stripe pour le traitement des paiements et ne partageons que les données nécessaires avec eux à des fins de transaction.</p>
+                `,
+                cancellation: `
+                    <h3>Politique d'Annulation et de Remboursement</h3>
+                    <p>Notre politique est conçue pour être équitable tout en protégeant notre service.</p>
+                    
+                    <h3>Essai Gratuit</h3>
+                    <p>• Annulez à tout moment pendant la période d'essai<br>
+                    • Aucun paiement requis<br>
+                    • Aucune obligation de continuer</p>
+                    
+                    <h3>Forfait Hebdomadaire (15$/semaine)</h3>
+                    <p>• Annulez à tout moment<br>
+                    • Remboursement disponible dans les 48 premières heures<br>
+                    • Après 48 heures : pas de remboursement (vous avez utilisé la semaine complète)</p>
+                    
+                    <h3>Forfait Mensuel (50$/mois)</h3>
+                    <p>• Annulez à tout moment<br>
+                    • Remboursement au prorata dans les 7 premiers jours<br>
+                    • Après 7 jours : pas de remboursement pour le mois en cours</p>
+                    
+                    <h3>Forfait Trimestriel (120$/3 mois)</h3>
+                    <p>• Annulez à tout moment<br>
+                    • Remboursement au prorata dans les 14 premiers jours<br>
+                    • Remboursement basé sur les mois non utilisés</p>
+                    
+                    <h3>Forfait Annuel (450$/an)</h3>
+                    <p>• Annulez à tout moment<br>
+                    • Remboursement au prorata dans les 14 premiers jours<br>
+                    • Remboursement basé sur les mois non utilisés<br>
+                    • Meilleur rapport avec 25% d'économies</p>
+                    
+                    <h3>Contact pour Remboursements</h3>
+                    <p>Courriel : info@advanceteach.com<br>
+                    Veuillez inclure votre nom d'utilisateur et la raison de l'annulation.</p>
+                `
+            }
+        };
+
         // Gestion de la sélection du plan
         function selectPlan(planType) {
             console.log(`🎯 Plan sélectionné: ${planType}`);
@@ -1534,31 +1677,26 @@
 
         // Fonctions pour les modals
         function showFullTerms() {
+            const lang = document.documentElement.lang || 'en';
+            const title = lang === 'en' ? 'Full Terms and Conditions - TutoratAI' : 'Conditions Générales d\'Utilisation Complètes - TutoratAI';
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('termsContent').innerHTML = modalContent[lang].terms;
             document.getElementById('termsModal').style.display = 'flex';
-            document.getElementById('termsContent').scrollTop = 0;
         }
 
         function showPrivacyPolicy() {
             const lang = document.documentElement.lang || 'en';
-            const title = lang === 'en' ? 'Privacy Policy' : 'Politique de Confidentialité';
-            const content = lang === 'en' ? 
-                '<h3>Privacy Policy</h3><p>We protect your data according to Canadian (PIPEDA) and international standards. Parents can request deletion of child data at any time.</p>' :
-                '<h3>Politique de Confidentialité</h3><p>Nous protégeons vos données selon les normes canadiennes (PIPEDA) et internationales. Les parents peuvent demander la suppression des données de leur enfant à tout moment.</p>';
-            
-            document.getElementById('termsContent').innerHTML = content;
-            document.querySelector('#termsModal h2').textContent = title;
+            const title = lang === 'en' ? 'Privacy Policy - TutoratAI' : 'Politique de Confidentialité - TutoratAI';
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('termsContent').innerHTML = modalContent[lang].privacy;
             document.getElementById('termsModal').style.display = 'flex';
         }
 
-        function showRefundPolicy() {
+        function showCancellationPolicy() {
             const lang = document.documentElement.lang || 'en';
-            const title = lang === 'en' ? 'Refund Policy' : 'Politique de Remboursement';
-            const content = lang === 'en' ? 
-                '<h3>Refund Policy</h3><p>14-day money-back guarantee for all paid plans. Contact support@tutoratai.com for refund requests.</p>' :
-                '<h3>Politique de Remboursement</h3><p>Garantie de remboursement de 14 jours pour tous les forfaits payants. Contactez support@tutoratai.com pour les demandes de remboursement.</p>';
-            
-            document.getElementById('termsContent').innerHTML = content;
-            document.querySelector('#termsModal h2').textContent = title;
+            const title = lang === 'en' ? 'Cancellation Policy - TutoratAI' : 'Politique d\'Annulation - TutoratAI';
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('termsContent').innerHTML = modalContent[lang].cancellation;
             document.getElementById('termsModal').style.display = 'flex';
         }
 
