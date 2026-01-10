@@ -2,38 +2,31 @@
 <html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
   <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
   <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
-  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon-ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  <title>
-    {% if lang == 'fr' %}
-      Exercice {{ index + 1 }} sur {{ total }}
-    {% else %}
-      Exercise {{ index + 1 }} of {{ total }}
-    {% endif %}
-  </title>
+  <title>{{ 'Exercice' if lang == 'en' else 'Exercice séquentiel' }}</title>
   
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- ✅ Mathlive CSS et JS complets -->
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.css">
+  <script defer src="https://unpkg.com/mathlive/dist/mathlive.min.js"></script>
   
-  <!-- MathJax avec configuration corrigée -->
+  <!-- MathJax avec configuration robuste -->
   <script>
     window.MathJax = {
       tex: {
         inlineMath: [['$', '$'], ['\\(', '\\)']],
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
-        processEnvironments: true,
-        tags: 'ams'
+        processEnvironments: true
       },
       options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
         ignoreHtmlClass: 'no-mathjax'
       },
       startup: {
@@ -51,379 +44,237 @@
   
   <style>
     :root {
-      --primary: #3498db;
-      --primary-dark: #2980b9;
-      --secondary: #2ecc71;
-      --secondary-dark: #27ae60;
-      --accent: #9b59b6;
-      --warning: #f39c12;
-      --danger: #e74c3c;
-      --light: #ecf0f1;
-      --dark: #2c3e50;
-      --gray: #95a5a6;
-      --white: #ffffff;
-      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      --transition: all 0.3s ease;
+      --primary: #4361ee;
+      --secondary: #3a0ca3;
+      --accent: #f72585;
+      --success: #4cc9f0;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --warning: #f9c74f;
     }
-
+    
     * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
     }
-
+    
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      margin: 0;
       padding: 20px;
       min-height: 100vh;
       color: var(--dark);
     }
-
+    
     .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-      padding: 15px 20px;
-      background: var(--white);
-      border-radius: 15px;
-      box-shadow: var(--shadow);
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: var(--primary);
-    }
-
-    .logo i {
-      font-size: 2rem;
-    }
-
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .avatar {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-      font-size: 1.2rem;
-    }
-
-    .lang-selector {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .lang-selector select {
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--gray);
-      background: var(--white);
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .lang-selector select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-    }
-
-    /* Navigation rapide */
-    .quick-navigation {
-      position: fixed;
-      top: 100px;
-      right: 20px;
-      background: var(--white);
-      border-radius: 10px;
-      padding: 15px;
-      box-shadow: 0 3px 15px rgba(0,0,0,0.1);
-      z-index: 90;
-      max-width: 250px;
-    }
-
-    .exercise-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-    }
-
-    .exercise-dot {
-      display: block;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--light);
-      color: var(--dark);
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      transition: all 0.2s;
-      position: relative;
-    }
-
-    .exercise-dot:hover {
-      transform: scale(1.1);
-      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-    }
-
-    .exercise-dot.active {
-      background: var(--primary) !important;
-      color: white !important;
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
-    }
-
-    .exercise-dot.completed {
-      background: var(--secondary) !important;
-      color: white !important;
-    }
-
-    .exercise-dot.completed:hover {
-      background: #27ae60 !important;
-    }
-
-    .exercise-dot.completed::after {
-      content: '';
-      position: absolute;
-      top: -2px;
-      right: -2px;
-      width: 12px;
-      height: 12px;
-      background: var(--secondary);
-      border-radius: 50%;
-      border: 2px solid white;
-    }
-
-    .exercise-dot.active::after {
-      display: none;
-    }
-
-    /* Menu de sélection d'exercice (pour feedback) */
-    .exercise-selector {
-      position: relative;
-      display: inline-block;
-    }
-
-    .exercise-list {
-      display: none;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      background: var(--white);
-      border-radius: 8px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-      z-index: 1000;
-      min-width: 200px;
-      margin-top: 5px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    .exercise-item {
-      display: block;
-      padding: 12px 20px;
-      text-decoration: none;
-      color: var(--dark);
-      border-bottom: 1px solid var(--light);
-      transition: all 0.2s;
-    }
-
-    .exercise-item:hover {
-      background: var(--light);
-      color: var(--primary);
-    }
-
-    .exercise-container {
-      background: var(--white);
+      max-width: 800px;
+      margin: 80px auto 20px;
+      background: white;
+      padding: 30px;
       border-radius: 20px;
-      padding: 40px;
-      box-shadow: var(--shadow);
-      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
       position: relative;
       overflow: hidden;
     }
-
-    .exercise-container::before {
+    
+    .container::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
-      right: 0;
-      height: 5px;
-      background: linear-gradient(90deg, var(--accent), var(--primary));
+      width: 100%;
+      height: 8px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
     }
-
-    .progress-section {
-      margin-bottom: 30px;
+    
+    h2 {
+      text-align: center;
+      color: var(--secondary);
+      margin-bottom: 25px;
+      font-size: 2.2rem;
+      position: relative;
+      padding-bottom: 15px;
     }
-
-    .progress-header {
+    
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    
+    .header-info {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 25px;
+      background: var(--light);
+      padding: 15px 20px;
+      border-radius: 12px;
+      border-left: 4px solid var(--primary);
     }
-
-    .progress-title {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--dark);
-    }
-
-    .progress-text {
-      font-size: 1.1rem;
+    
+    .student-name {
       font-weight: 600;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+    }
+    
+    .student-name i {
+      margin-right: 8px;
       color: var(--primary);
     }
-
+    
+    .lesson-title {
+      font-weight: 500;
+      color: var(--gray);
+    }
+    
+    .progress-container {
+      margin-bottom: 30px;
+    }
+    
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+    
     .progress-bar {
-      width: 100%;
-      height: 8px;
-      background: var(--light);
-      border-radius: 10px;
+      background: var(--light-gray);
+      border-radius: 30px;
+      height: 16px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .progress-bar-fill {
+      background: linear-gradient(90deg, var(--primary), var(--success));
+      height: 100%;
+      width: 0%;
+      border-radius: 30px;
+      transition: width 0.5s ease;
+      position: relative;
       overflow: hidden;
     }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--secondary), var(--primary));
-      border-radius: 10px;
-      transition: width 0.5s ease;
+    
+    .progress-bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background-image: linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.2) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.2) 75%,
+        transparent 75%,
+        transparent
+      );
+      background-size: 20px 20px;
+      animation: move 1s linear infinite;
     }
-
-    .exercise-header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid var(--light);
+    
+    @keyframes move {
+      0% { background-position: 0 0; }
+      100% { background-position: 20px 0; }
     }
-
-    .exercise-title {
-      font-size: 2rem;
-      color: var(--dark);
-      margin-bottom: 15px;
-      font-weight: 700;
-    }
-
-    .exercise-meta {
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      flex-wrap: wrap;
-      margin-bottom: 15px;
-    }
-
-    .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--gray);
-      font-weight: 500;
-    }
-
-    .meta-item i {
-      color: var(--primary);
-    }
-
-    .question-section {
-      margin-bottom: 30px;
-    }
-
-    .question-label {
-      font-weight: 600;
-      color: var(--dark);
-      margin-bottom: 15px;
-      font-size: 1.2rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .question-text {
-      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-      border-radius: 12px;
+    
+    .question-card {
+      background: var(--light);
       padding: 25px;
-      line-height: 1.6;
-      font-size: 1.1rem;
-      border-left: 4px solid var(--primary);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border-radius: 15px;
+      margin-bottom: 25px;
+      border-left: 4px solid var(--accent);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    
+    .question-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .question-number {
+      background: var(--accent);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 15px;
+      box-shadow: 0 3px 8px rgba(247, 37, 133, 0.3);
+    }
+    
+    .question-text {
+      font-size: 1.2rem;
+      line-height: 1.5;
+      color: var(--dark);
     }
 
     /* Styles pour le rendu MathJax */
+    .math-content {
+      line-height: 1.6;
+      font-size: 1.05rem;
+    }
+
     .math-content mjx-container {
       display: inline-block;
+      line-height: 0;
       margin: 0 2px;
     }
 
-    .math-display {
+    .math-content mjx-container[jax="CHTML"][display="true"] {
+      display: block;
       text-align: center;
-      margin: 15px 0;
+      margin: 1em 0;
+    }
+
+    /* Style pour les équations */
+    .equation {
+      text-align: center;
+      margin: 1em 0;
       padding: 10px;
+      background: #f8f9fa;
+      border-radius: 5px;
+      border-left: 3px solid #4361ee;
     }
 
-    .math-inline {
-      display: inline;
+    /* Style pour les fractions */
+    .mjx-frac {
+      font-size: 1.1em;
     }
 
-    .mathjax-error {
-      color: var(--danger);
-      font-style: italic;
+    /* Assurer que MathJax s'affiche bien */
+    .MathJax {
+      outline: none;
     }
 
-    .image-illustration {
-      margin: 25px 0;
-      text-align: center;
+    .MathJax_Display {
+      overflow-x: auto;
+      overflow-y: hidden;
     }
 
-    .image-illustration img {
-      max-width: 100%;
-      border-radius: 12px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      border: 3px solid var(--white);
-    }
-
-    .answer-section {
-      margin-top: 30px;
-    }
-
-    .form-group {
-      margin-bottom: 25px;
-    }
-
-    .answer-label {
-      font-weight: 600;
-      margin-bottom: 15px;
-      color: var(--dark);
-      font-size: 1.2rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* Styles pour l'éditeur mathématique unifié */
+    /* Éditeur mathématique simplifié */
     .unified-math-editor {
       background: var(--light);
       padding: 25px;
@@ -434,7 +285,7 @@
 
     .current-content {
       background: white;
-      border: 2px solid var(--secondary);
+      border: 2px solid var(--success);
       border-radius: 8px;
       padding: 15px;
       margin: 15px 0;
@@ -445,7 +296,7 @@
     }
 
     .current-content:empty::before {
-      content: "{% if lang == 'fr' %}Votre réponse apparaîtra ici...{% else %}Your answer will appear here...{% endif %}";
+      content: "{{ 'Votre réponse apparaîtra ici...' if lang == 'fr' else 'Your answer will appear here...' }}";
       color: var(--gray);
       font-style: italic;
     }
@@ -498,7 +349,7 @@
     .visual-editor:focus {
       outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
     }
 
     .help-text {
@@ -507,15 +358,77 @@
       margin-top: 15px;
       line-height: 1.4;
     }
+    
+    .input-section {
+      margin-bottom: 20px;
+    }
+    
+    .answer-label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+    }
+    
+    .answer-label i {
+      margin-right: 8px;
+      color: var(--primary);
+    }
+    
+    .navigation {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+      gap: 15px;
+    }
+    
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 25px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      flex: 1;
+      justify-content: center;
+    }
+    
+    .nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    }
+    
+    .nav-btn.submit {
+      background: var(--success);
+    }
+    
+    .nav-btn.edit {
+      background: var(--accent);
+    }
+    
+    .nav-btn i {
+      margin-right: 8px;
+    }
 
-    /* Section feedback */
+    /* Styles pour la rétroaction */
     .feedback-section {
       margin-top: 40px;
       padding: 30px;
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       border-radius: 15px;
       border-left: 5px solid var(--primary);
-      display: {% if show_feedback %}block{% else %}none{% endif %};
+      display: none;
+    }
+
+    .feedback-section.active {
+      display: block;
       animation: fadeIn 0.5s ease;
     }
 
@@ -524,7 +437,7 @@
       align-items: center;
       margin-bottom: 25px;
       padding-bottom: 15px;
-      border-bottom: 2px solid var(--light);
+      border-bottom: 2px solid var(--light-gray);
       position: relative;
     }
 
@@ -532,7 +445,7 @@
       width: 50px;
       height: 50px;
       border-radius: 50%;
-      background: var(--secondary);
+      background: var(--success);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -546,7 +459,7 @@
     }
 
     .feedback-content h3 {
-      color: var(--dark);
+      color: var(--secondary);
       margin: 0 0 5px 0;
     }
 
@@ -564,7 +477,7 @@
       display: flex;
       align-items: center;
       margin-bottom: 12px;
-      color: var(--dark);
+      color: var(--secondary);
       font-weight: 600;
     }
 
@@ -579,6 +492,7 @@
       border-radius: 12px;
       border-left: 4px solid var(--accent);
       line-height: 1.6;
+      white-space: pre-line;
     }
 
     .analysis-content {
@@ -588,6 +502,7 @@
       padding: 15px;
     }
 
+    /* Style spécifique pour le contenu de feedback */
     .feedback-text {
       line-height: 1.4;
       margin: 0;
@@ -608,235 +523,166 @@
       gap: 15px;
       margin-top: 30px;
       flex-wrap: wrap;
+      justify-content: center;
     }
 
     .action-btn {
       display: inline-flex;
       align-items: center;
       padding: 12px 25px;
-      background: var(--primary);
-      color: var(--white);
+      background: var(--success);
+      color: white;
       text-decoration: none;
-      border-radius: 8px;
+      border-radius: 50px;
       font-weight: 600;
-      transition: var(--transition);
+      transition: all 0.3s ease;
       border: none;
       cursor: pointer;
-      font-size: 1rem;
     }
 
     .action-btn:hover {
-      background: var(--primary-dark);
       transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+      box-shadow: 0 5px 15px rgba(76, 201, 240, 0.4);
     }
 
     .action-btn.secondary {
-      background: var(--secondary);
-    }
-
-    .action-btn.secondary:hover {
-      background: var(--secondary-dark);
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 24px;
       background: var(--primary);
-      color: var(--white);
-      text-decoration: none;
-      border-radius: 8px;
-      font-weight: 600;
-      transition: var(--transition);
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
     }
 
-    .btn:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    .action-btn i {
+      margin-right: 8px;
     }
 
-    .btn-secondary {
-      background: var(--secondary);
-    }
-
-    .btn-secondary:hover {
-      background: var(--secondary-dark);
-    }
-
-    .btn-outline {
-      background: transparent;
-      border: 2px solid var(--primary);
-      color: var(--primary);
-    }
-
-    .btn-outline:hover {
-      background: var(--primary);
-      color: var(--white);
-    }
-
-    .btn-success {
-      background: var(--secondary);
-    }
-
-    .btn-success:hover {
-      background: var(--secondary-dark);
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: 15px;
-      margin-top: 25px;
-      flex-wrap: wrap;
-    }
-
-    .back-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      margin: 20px auto 0;
-      padding: 12px 25px;
-      background: transparent;
-      color: var(--dark);
-      border: 2px solid var(--dark);
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: 600;
-      transition: var(--transition);
-      width: fit-content;
-    }
-
-    .back-btn:hover {
-      background: var(--dark);
-      color: var(--white);
-    }
-
-    /* Styles pour la contestation */
-    .contest-container {
-      margin-top: 30px;
-      padding: 25px;
-      background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-      border-radius: 12px;
-      border-left: 5px solid var(--warning);
-    }
-
-    .contest-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-
-    .contest-header h4 {
-      margin: 0;
-      color: var(--dark);
-    }
-
-    .contest-description {
-      color: var(--gray);
-      margin-bottom: 20px;
-      line-height: 1.5;
-    }
-
-    .contest-form {
+    /* Navigation rapide */
+    .quick-navigation {
+      position: fixed;
+      top: 80px;
+      right: 20px;
       background: white;
-      padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    .contest-textarea {
-      width: 100%;
       padding: 15px;
-      border: 2px solid var(--light);
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 1rem;
-      resize: vertical;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+      z-index: 90;
+      max-width: 250px;
     }
 
-    .contest-textarea:focus {
-      outline: none;
-      border-color: var(--warning);
-      box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.2);
-    }
-
-    .star-buttons {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-
-    .star-btn {
-      padding: 10px 15px;
-      background: white;
-      border: 2px solid var(--light);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-weight: 600;
-    }
-
-    .star-btn:hover {
-      border-color: var(--warning);
-      transform: translateY(-2px);
-    }
-
-    .star-btn.selected {
-      background: var(--warning);
-      color: white;
-      border-color: var(--warning);
-    }
-
-    .contest-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 15px;
-      margin-top: 25px;
-    }
-
-    .btn-cancel, .btn-submit {
-      padding: 12px 25px;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .btn-cancel {
-      background: transparent;
-      border: 2px solid var(--gray);
-      color: var(--gray);
-    }
-
-    .btn-cancel:hover {
-      background: var(--gray);
-      color: white;
-    }
-
-    .btn-submit {
-      background: var(--warning);
-      color: white;
-      display: flex;
-      align-items: center;
+    .exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
       gap: 8px;
     }
 
-    .btn-submit:hover {
-      background: #e6a800;
+    .exercise-dot {
+      display: block;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e9ecef;
+      color: var(--dark);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .exercise-dot:hover {
+      transform: scale(1.1);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+
+    .exercise-dot.active {
+      background: var(--primary) !important;
+      color: white !important;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3);
+    }
+
+    .exercise-dot.completed {
+      background: var(--success) !important;
+      color: white !important;
+    }
+
+    .exercise-dot.completed:hover {
+      background: #3aa76d !important;
+    }
+
+    .exercise-dot.completed::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 12px;
+      height: 12px;
+      background: var(--success);
+      border-radius: 50%;
+      border: 2px solid white;
+    }
+
+    .exercise-dot.active::after {
+      display: none;
+    }
+
+    /* Menu de sélection d'exercice */
+    .exercise-selector {
+      position: relative;
+    }
+
+    .exercise-list {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      z-index: 1000;
+      min-width: 200px;
+      margin-top: 5px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .exercise-item {
+      display: block;
+      padding: 12px 20px;
+      text-decoration: none;
+      color: var(--dark);
+      border-bottom: 1px solid var(--light-gray);
+      transition: all 0.2s;
+    }
+
+    .exercise-item:hover {
+      background: var(--light);
+      color: var(--primary);
+    }
+
+    /* Bouton retour en haut */
+    .back-button {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: var(--light);
+      border: 2px solid var(--primary);
+      color: var(--primary);
+      padding: 10px 20px;
+      border-radius: 50px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      z-index: 100;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+
+    .back-button:hover {
+      background: var(--primary);
+      color: white;
       transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(243, 156, 18, 0.3);
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
     }
 
     /* Styles pour le message d'attente */
@@ -964,7 +810,7 @@
       width: 30px;
       height: 30px;
       border-radius: 50%;
-      background: var(--light);
+      background: var(--light-gray);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -988,31 +834,177 @@
       font-weight: 600;
     }
 
+    /* Styles pour la section contestation */
+    .contest-container {
+      margin-top: 30px;
+      padding: 25px;
+      background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+      border-radius: 12px;
+      border-left: 5px solid var(--warning);
+    }
+
+    .contest-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .contest-header h4 {
+      margin: 0;
+      color: var(--secondary);
+    }
+
+    .contest-description {
+      color: var(--gray);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .contest-form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .contest-textarea {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid var(--light-gray);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      resize: vertical;
+    }
+
+    .contest-textarea:focus {
+      outline: none;
+      border-color: var(--warning);
+      box-shadow: 0 0 0 3px rgba(249, 199, 79, 0.2);
+    }
+
+    .star-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .star-btn {
+      padding: 10px 15px;
+      background: white;
+      border: 2px solid var(--light-gray);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+    }
+
+    .star-btn:hover {
+      border-color: var(--warning);
+      transform: translateY(-2px);
+    }
+
+    .star-btn.selected {
+      background: var(--warning);
+      color: white;
+      border-color: var(--warning);
+    }
+
+    .contest-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+      margin-top: 25px;
+    }
+
+    .btn-cancel, .btn-submit {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 50px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      border: 2px solid var(--gray);
+      color: var(--gray);
+    }
+
+    .btn-cancel:hover {
+      background: var(--gray);
+      color: white;
+    }
+
+    .btn-submit {
+      background: var(--warning);
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover {
+      background: #e6a800;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(249, 199, 79, 0.3);
+    }
+
+    /* Badge "Mis à jour" */
+    .feedback-updated-badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: linear-gradient(135deg, #28a745, #20c997);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 15px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      z-index: 10;
+      box-shadow: 0 3px 8px rgba(40, 167, 69, 0.3);
+      animation: pulseSoft 2s infinite;
+    }
+
+    /* Message discret "Mise à jour" */
+    .update-message {
+      background: #e8f5e9;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
-    }
-
-    @keyframes slideIn {
-      from { 
-        opacity: 0;
-        transform: translateX(30px);
-      }
-      to { 
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes slideOut {
-      from { 
-        opacity: 1;
-        transform: translateX(0);
-      }
-      to { 
-        opacity: 0;
-        transform: translateX(30px);
-      }
     }
 
     @keyframes slideUp {
@@ -1027,8 +1019,23 @@
     }
 
     @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
+      0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% { 
+        opacity: 0.7;
+        transform: scale(1.05);
+      }
+    }
+
+    @keyframes pulseSoft {
+      0%, 100% { 
+        transform: scale(1);
+      }
+      50% { 
+        transform: scale(1.05);
+      }
     }
 
     @keyframes bounce {
@@ -1039,40 +1046,56 @@
         transform: scale(1);
       }
     }
-
+    
+    /* Responsive */
     @media (max-width: 768px) {
-      .exercise-container {
-        padding: 25px;
+      body {
+        padding: 10px;
       }
       
-      .exercise-title {
-        font-size: 1.6rem;
+      .container {
+        padding: 20px;
+        margin-top: 70px;
       }
       
-      .exercise-meta {
+      h2 {
+        font-size: 1.8rem;
+      }
+      
+      .header-info {
         flex-direction: column;
-        gap: 10px;
+        align-items: flex-start;
       }
       
-      header {
+      .lesson-title {
+        margin-top: 10px;
+      }
+      
+      .navigation {
         flex-direction: column;
         gap: 15px;
-        text-align: center;
       }
       
-      .action-buttons {
-        flex-direction: column;
-      }
-      
-      .btn {
+      .nav-btn {
         width: 100%;
         justify-content: center;
       }
-      
-      .progress-header {
+
+      .feedback-actions {
         flex-direction: column;
-        gap: 10px;
-        text-align: center;
+      }
+
+      .action-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .back-button {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        padding: 8px 15px;
+        font-size: 0.9rem;
       }
 
       .waiting-card {
@@ -1098,6 +1121,27 @@
         font-size: 1em;
       }
 
+      .star-buttons {
+        justify-content: center;
+      }
+
+      .contest-actions {
+        flex-direction: column;
+      }
+
+      .btn-cancel, .btn-submit {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .feedback-updated-badge {
+        top: -8px;
+        right: -8px;
+        font-size: 0.65rem;
+        padding: 3px 8px;
+      }
+
+      /* Navigation rapide sur mobile */
       .quick-navigation {
         display: none;
       }
@@ -1115,31 +1159,23 @@
         max-width: 90%;
         max-height: 70vh;
       }
-
-      .feedback-actions {
-        flex-direction: column;
-      }
-
-      .action-btn {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .contest-actions {
-        flex-direction: column;
-      }
-
-      .btn-cancel, .btn-submit {
-        width: 100%;
-        justify-content: center;
-      }
     }
   </style>
+  
+  <!-- Font Awesome pour les icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+
+  <!-- Bouton retour en haut -->
+  <a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}" class="back-button">
+    <i class="fas fa-arrow-left"></i>
+    {{ 'Retour à l\'accueil' if lang == 'fr' else 'Back to Home' }}
+  </a>
+
   <!-- Navigation rapide -->
   <div class="quick-navigation">
-    <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--dark);">
+    <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--secondary);">
       <i class="fas fa-map"></i> {{ 'Navigation rapide' if lang == 'fr' else 'Quick Navigation' }}
     </h4>
     <div class="exercise-grid">
@@ -1153,11 +1189,11 @@
     </div>
     <div style="margin-top: 10px; font-size: 0.8rem; color: var(--gray); text-align: center;">
       <span style="display: inline-flex; align-items: center; gap: 5px; margin-right: 10px;">
-        <span style="display: inline-block; width: 12px; height: 12px; background: var(--light); border-radius: 50%;"></span>
+        <span style="display: inline-block; width: 12px; height: 12px; background: #e9ecef; border-radius: 50%;"></span>
         {{ 'Non commencé' if lang == 'fr' else 'Not started' }}
       </span>
       <span style="display: inline-flex; align-items: center; gap: 5px;">
-        <span style="display: inline-block; width: 12px; height: 12px; background: var(--secondary); border-radius: 50%;"></span>
+        <span style="display: inline-block; width: 12px; height: 12px; background: var(--success); border-radius: 50%;"></span>
         {{ 'Terminé' if lang == 'fr' else 'Completed' }}
       </span>
     </div>
@@ -1242,1020 +1278,978 @@
     </div>
   </div>
 
-  <div class="container">
-    <!-- Header -->
-    <header>
-      <div class="logo">
-        <i class="fas fa-graduation-cap"></i>
-        <span>{% if lang == 'en' %}Learning Platform{% else %}Plateforme d'Apprentissage{% endif %}</span>
-      </div>
-      <div class="user-info">
-        <div class="avatar">
-          {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
-        </div>
-        <div>
-          <strong>{{ eleve.nom_complet }}</strong>
-        </div>
-        <div class="lang-selector">
-          <form method="POST" action="/changer-langue">
-            <select name="lang" id="lang" onchange="this.form.submit()">
-              <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-              <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
-            </select>
-            <input type="hidden" name="redirect_page" value="exercice_sequentiel_progressif">
-            <input type="hidden" name="username" value="{{ eleve.username }}">
-            <input type="hidden" name="lecon_id" value="{{ lecon.id }}">
-            <input type="hidden" name="index" value="{{ index }}">
-          </form>
-        </div>
-      </div>
-    </header>
+<div class="container">
+  <h2>
+    <i class="fas fa-tasks"></i> {{ 'Séquence d\'exercices' if lang == 'fr' else 'Exercise Sequence' }}
+  </h2>
+  
+  <div class="header-info">
+    <div class="student-name">
+      <i class="fas fa-user-graduate"></i> {{ eleve.username }}
+    </div>
+    <div class="lesson-title">
+      <i class="fas fa-books"></i> {{ lecon.titre_fr if lang == 'fr' else lecon.titre_en }}
+    </div>
+  </div>
 
-    <!-- Conteneur de l'exercice -->
-    <div class="exercise-container">
-      <!-- Section de progression -->
-      <div class="progress-section">
-        <div class="progress-header">
-          <div class="progress-title">
-            {% if lang == 'fr' %}
-              Exercice {{ index + 1 }} sur {{ total }}
-            {% else %}
-              Exercise {{ index + 1 }} of {{ total }}
-            {% endif %}
-          </div>
-          <div class="progress-text">
-            {{ ((index + 1) / total * 100) | round | int }}%
-          </div>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: {{ ((index + 1) / total * 100) | round | int }}%"></div>
-        </div>
-      </div>
+  <div class="progress-container">
+    <div class="progress-header">
+      <span>{{ 'Progression' if lang == 'fr' else 'Progress' }}</span>
+      <span id="progressText">{{ index + 1 }}/{{ total }}</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+  </div>
 
-      <!-- En-tête de l'exercice -->
-      <div class="exercise-header">
-        <h1 class="exercise-title">
-          {% if lang == 'fr' %}
-            Exercice {{ index + 1 }}
-          {% else %}
-            Exercise {{ index + 1 }}
-          {% endif %}
-        </h1>
-        
-        <div class="exercise-meta">
-          {% if lecon.unite %}
-            <div class="meta-item">
-              <i class="fas fa-book"></i>
-              <span><strong>{% if lang == 'fr' %}Unité :{% else %}Unit:{% endif %}</strong> {{ lecon.unite.nom }}</span>
-            </div>
-          {% endif %}
+  <!-- Formulaire principal -->
+  <form method="POST" action="/soumettre-sequentiel" id="mainForm" {% if show_feedback %}style="display: none;"{% endif %}>
+    <input type="hidden" name="username" value="{{ eleve.username }}">
+    <input type="hidden" name="lang" value="{{ lang }}">
+    <input type="hidden" name="lecon_id" value="{{ lecon.id }}">
+    <input type="hidden" name="exercice_id" value="{{ exercice.id }}">
+    <input type="hidden" name="index" value="{{ index }}">
+    <input type="hidden" name="reponse_eleve" id="reponse_eleve_hidden" value="">
+
+    <div class="question-card">
+      <div class="question-header">
+        <div class="question-number">{{ index + 1 }}</div>
+        <h3>{{ 'Question' if lang == 'fr' else 'Question' }} {{ index + 1 }}</h3>
+      </div>
+      <div class="question-text math-content" id="questionContent">
+        {{ exercice.question_fr if lang == 'fr' else exercice.question_en }}
+      </div>
+    </div>
+    
+    <div class="input-section">
+      <div class="answer-label">
+        <i class="fas fa-edit"></i> {{ 'Votre réponse' if lang == 'fr' else 'Your answer' }}
+      </div>
+      
+      <!-- Éditeur mathématique simplifié -->
+      <div class="unified-math-editor">
+        <div class="current-content" id="currentContent">
+          {{ 'Votre réponse apparaîtra ici...' if lang == 'fr' else 'Your answer will appear here...' }}
+        </div>
+
+        <div class="math-toolbar">
+          <!-- Symboles mathématiques de base -->
+          <button type="button" class="math-btn" onclick="insertSymbol('²')">x²</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('³')">x³</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('√')">√</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('π')">π</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('∞')">∞</button>
           
-          <div class="meta-item">
-            <i class="fas fa-file-alt"></i>
-            <span><strong>{% if lang == 'fr' %}Leçon :{% else %}Lesson:{% endif %}</strong> 
-              {{ lecon.titre_fr if lang == 'fr' else lecon.titre_en or lecon.titre_fr }}
-            </span>
-          </div>
+          <!-- Opérateurs -->
+          <button type="button" class="math-btn" onclick="insertSymbol('≠')">≠</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('≈')">≈</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('≤')">≤</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('≥')">≥</button>
+          
+          <!-- Fractions et lettres grecques -->
+          <button type="button" class="math-btn" onclick="insertFraction()">½</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('α')">α</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('β')">β</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('θ')">θ</button>
+          <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
+        </div>
+
+        <div 
+          class="visual-editor" 
+          contenteditable="true"
+          id="visualMathEditor"
+          placeholder="{{ 'Écrivez votre réponse complète ici... Utilisez les boutons pour les symboles mathématiques.' if lang == 'fr' else 'Write your complete answer here... Use the buttons for math symbols.' }}"
+        ></div>
+
+        <div class="help-text">
+          💡 <strong>{{ 'Conseil :' if lang == 'fr' else 'Tip:' }}</strong> 
+          {{ 'Écrivez normalement et utilisez les boutons pour les symboles mathématiques. Votre réponse s\'affiche en temps réel ci-dessus.' if lang == 'fr' else 'Write normally and use the buttons for math symbols. Your answer appears in real-time above.' }}
         </div>
       </div>
+    </div>
 
-      <!-- Section de la question -->
-      <div class="question-section">
-        <div class="question-label">
-          <i class="fas fa-question-circle"></i>
-          {% if lang == 'fr' %}Énoncé :{% else %}Prompt:{% endif %}
-        </div>
-        <div class="question-text math-content" id="question-content">
-          {{ (exercice.question_fr if lang == 'fr' else exercice.question_en) | safe }}
-        </div>
+    <div class="navigation">
+      {% if not show_feedback %}
+      <button type="submit" class="nav-btn submit" id="submitBtn">
+        <i class="fas fa-paper-plane"></i> {{ 'Soumettre la réponse' if lang == 'fr' else 'Submit answer' }}
+      </button>
+      {% else %}
+      <button type="submit" class="nav-btn submit" id="submitBtn">
+        <i class="fas fa-redo"></i> {{ 'Soumettre à nouveau' if lang == 'fr' else 'Submit again' }}
+      </button>
+      <button type="button" class="nav-btn edit" onclick="showFeedback()">
+        <i class="fas fa-eye"></i> {{ 'Voir la rétroaction' if lang == 'fr' else 'View feedback' }}
+      </button>
+      {% endif %}
+    </div>
+  </form>
 
-        {% if exercice.chemin_image %}
-          <div class="image-illustration">
-            <img src="{{ url_for('static', filename=exercice.chemin_image) }}" alt="Illustration">
-          </div>
-        {% endif %}
+  <!-- Section de rétroaction -->
+  {% if reponse %}
+  <div class="feedback-section {% if show_feedback %}active{% endif %}" id="feedbackSection">
+    <div class="feedback-header">
+      <div class="feedback-icon {% if reponse.etoiles < 2 %}warning{% endif %}" id="feedbackIcon">
+        <i class="fas fa-{% if reponse.etoiles >= 4 %}check-circle{% elif reponse.etoiles >= 2 %}lightbulb{% else %}exclamation-circle{% endif %}"></i>
       </div>
+      <div class="feedback-content">
+        <h3>{{ 'Rétroaction de l\'IA' if lang == 'fr' else 'AI Feedback' }}</h3>
+        <div class="stars" id="starsDisplay">
+          {% if reponse.etoiles is not none %}
+            <strong>{{ reponse.etoiles }}/5 ⭐</strong>
+          {% endif %}
+        </div>
+      </div>
+    </div>
 
-      <!-- Formulaire de réponse (visible si pas de feedback ou si on veut modifier) -->
-      <form method="POST" action="/soumettre-sequentiel" id="answerForm" {% if reponse and not edit_mode %}style="display: none;"{% endif %}>
-        <!-- Champs requis pour la route /soumettre-sequentiel -->
-        <input type="hidden" name="username" value="{{ eleve.username }}">
-        <input type="hidden" name="lang" value="{{ lang }}">
-        <input type="hidden" name="lecon_id" value="{{ lecon.id }}">
-        <input type="hidden" name="exercice_id" value="{{ exercice.id }}">
-        <input type="hidden" name="index" value="{{ index }}">
+    <div class="answer-review">
+      <div class="section-label">
+        <i class="fas fa-edit"></i>
+        {{ 'Votre réponse' if lang == 'fr' else 'Your Answer' }}
+      </div>
+      <div class="answer-content math-content" id="studentAnswerContent">
+        {{ reponse.reponse_eleve }}
+      </div>
+    </div>
 
-        <!-- Champ caché pour la réponse -->
-        <input type="hidden" name="reponse_eleve" id="reponse_eleve" value="">
-
-        <div class="answer-section">
-          <div class="form-group">
-            <div class="answer-label">
-              <i class="fas fa-edit"></i>
-              {% if lang == 'fr' %}Votre réponse :{% else %}Your answer:{% endif %}
-            </div>
+    <div class="ai-analysis">
+      <div class="section-label">
+        <i class="fas fa-robot"></i>
+        {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
+      </div>
+      <div class="analysis-content math-content" id="aiAnalysisContent">
+        {% if reponse and reponse.analyse_ia %}
+          {% set feedback_content = reponse.analyse_ia %}
+          
+          {% if feedback_content.startswith('{') and feedback_content.endswith('}') %}
+            {% set json_str = feedback_content %}
+            {% set extracted_text = '' %}
             
-            <!-- Éditeur mathématique simplifié -->
-            <div class="unified-math-editor">
-              <div class="current-content" id="currentContent">
-                {% if lang == 'fr' %}Votre réponse apparaîtra ici...{% else %}Your answer will appear here...{% endif %}
-              </div>
-
-              <div class="math-toolbar">
-                <!-- Symboles mathématiques de base -->
-                <button type="button" class="math-btn" onclick="insertSymbol('²')">x²</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('³')">x³</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('√')">√</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('π')">π</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('∞')">∞</button>
-                
-                <!-- Opérateurs -->
-                <button type="button" class="math-btn" onclick="insertSymbol('≠')">≠</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('≈')">≈</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('≤')">≤</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('≥')">≥</button>
-                
-                <!-- Fractions et lettres grecques -->
-                <button type="button" class="math-btn" onclick="insertFraction()">½</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('α')">α</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('β')">β</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('θ')">θ</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
-              </div>
-
-              <div 
-                class="visual-editor" 
-                contenteditable="true"
-                id="visualMathEditor"
-                placeholder="{% if lang == 'fr' %}Écrivez votre réponse complète ici... Utilisez les boutons pour les symboles mathématiques.{% else %}Write your complete answer here... Use the buttons for math symbols.{% endif %}"
-              ></div>
-
-              <div class="help-text">
-                💡 <strong>{% if lang == 'fr' %}Conseil :{% else %}Tip:{% endif %}</strong> 
-                {% if lang == 'fr' %}
-                  Écrivez normalement et utilisez les boutons pour les symboles mathématiques. Votre réponse s'affiche en temps réel ci-dessus.
-                {% else %}
-                  Write normally and use the buttons for math symbols. Your answer appears in real-time above.
+            {% if '"current_feedback":' in json_str %}
+              {% set pattern_current = '"current_feedback": "' %}
+              {% set start_idx = json_str.find(pattern_current) %}
+              {% if start_idx != -1 %}
+                {% set text_start = start_idx + pattern_current|length %}
+                {% set end_idx = json_str.find('",', text_start) %}
+                {% if end_idx == -1 %}
+                  {% set end_idx = json_str.find('"}', text_start) %}
                 {% endif %}
-              </div>
-            </div>
-          </div>
-
-          <!-- Bouton de soumission -->
-          <div class="action-buttons">
-            <button type="submit" class="btn" id="submitBtn">
-              <i class="fas fa-paper-plane"></i>
-              {% if lang == 'fr' %}Soumettre ma réponse{% else %}Submit answer{% endif %}
-            </button>
-            
-            {% if reponse %}
-            <button type="button" class="btn btn-outline" onclick="showFeedback()">
-              <i class="fas fa-eye"></i>
-              {% if lang == 'fr' %}Voir la rétroaction{% else %}View feedback{% endif %}
-            </button>
-            {% endif %}
-          </div>
-        </div>
-      </form>
-
-      <!-- Section de rétroaction (visible si réponse existante) -->
-      {% if reponse %}
-      <div class="feedback-section" id="feedbackSection" {% if not show_feedback %}style="display: none;"{% endif %}>
-        <div class="feedback-header">
-          <div class="feedback-icon {% if reponse.etoiles < 2 %}warning{% endif %}" id="feedbackIcon">
-            <i class="fas fa-{% if reponse.etoiles >= 4 %}check-circle{% elif reponse.etoiles >= 2 %}lightbulb{% else %}exclamation-circle{% endif %}"></i>
-          </div>
-          <div class="feedback-content">
-            <h3>{{ 'Rétroaction de l\'IA' if lang == 'fr' else 'AI Feedback' }}</h3>
-            <div class="stars" id="starsDisplay">
-              {% if reponse.etoiles is not none %}
-                <strong>{{ reponse.etoiles }}/5 ⭐</strong>
+                {% if end_idx != -1 and end_idx > text_start %}
+                  {% set extracted_text = json_str[text_start:end_idx] %}
+                {% endif %}
               {% endif %}
-            </div>
-          </div>
-        </div>
-
-        <div class="answer-review">
-          <div class="section-label">
-            <i class="fas fa-edit"></i>
-            {{ 'Votre réponse' if lang == 'fr' else 'Your Answer' }}
-          </div>
-          <div class="answer-content math-content" id="studentAnswerContent">
-            {{ reponse.reponse_eleve }}
-          </div>
-        </div>
-
-        <div class="ai-analysis">
-          <div class="section-label">
-            <i class="fas fa-robot"></i>
-            {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
-          </div>
-          <div class="analysis-content math-content" id="aiAnalysisContent">
-            {% if reponse and reponse.analyse_ia %}
-              {% set feedback_content = reponse.analyse_ia %}
+            {% endif %}
+            
+            {% if not extracted_text and '"original":' in json_str %}
+              {% set pattern_original = '"original": "' %}
+              {% set start_idx = json_str.find(pattern_original) %}
+              {% if start_idx != -1 %}
+                {% set text_start = start_idx + pattern_original|length %}
+                {% set end_idx = json_str.find('",', text_start) %}
+                {% if end_idx == -1 %}
+                  {% set end_idx = json_str.find('"}', text_start) %}
+                {% endif %}
+                {% if end_idx != -1 and end_idx > text_start %}
+                  {% set extracted_text = json_str[text_start:end_idx] %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+            
+            {% if extracted_text %}
+              {% set clean_text = extracted_text
+                |replace('\\"', '"')
+                |replace('\\\\', '\\')
+                |replace('\\n\\n\\n', '<br><br>')
+                |replace('\\n\\n', '<br><br>')
+                |replace('\\n', ' ')
+                |replace('  ', ' ')
+                |replace('\\t', ' ')
+                |replace('\\[', '$$')
+                |replace('\\]', '$$')
+                |replace('\\(', '$')
+                |replace('\\)', '$')
+              %}
               
-              {% if feedback_content.startswith('{') and feedback_content.endswith('}') %}
-                {% set json_str = feedback_content %}
-                {% set extracted_text = '' %}
-                
-                {% if '"current_feedback":' in json_str %}
-                  {% set pattern_current = '"current_feedback": "' %}
-                  {% set start_idx = json_str.find(pattern_current) %}
-                  {% if start_idx != -1 %}
-                    {% set text_start = start_idx + pattern_current|length %}
-                    {% set end_idx = json_str.find('",', text_start) %}
-                    {% if end_idx == -1 %}
-                      {% set end_idx = json_str.find('"}', text_start) %}
-                    {% endif %}
-                    {% if end_idx != -1 and end_idx > text_start %}
-                      {% set extracted_text = json_str[text_start:end_idx] %}
-                    {% endif %}
-                  {% endif %}
-                {% endif %}
-                
-                {% if not extracted_text and '"original":' in json_str %}
-                  {% set pattern_original = '"original": "' %}
-                  {% set start_idx = json_str.find(pattern_original) %}
-                  {% if start_idx != -1 %}
-                    {% set text_start = start_idx + pattern_original|length %}
-                    {% set end_idx = json_str.find('",', text_start) %}
-                    {% if end_idx == -1 %}
-                      {% set end_idx = json_str.find('"}', text_start) %}
-                    {% endif %}
-                    {% if end_idx != -1 and end_idx > text_start %}
-                      {% set extracted_text = json_str[text_start:end_idx] %}
-                    {% endif %}
-                  {% endif %}
-                {% endif %}
-                
-                {% if extracted_text %}
-                  {% set clean_text = extracted_text
-                    |replace('\\"', '"')
-                    |replace('\\\\', '\\')
-                    |replace('\\n\\n\\n', '<br><br>')
-                    |replace('\\n\\n', '<br><br>')
-                    |replace('\\n', ' ')
-                    |replace('  ', ' ')
-                    |replace('\\t', ' ')
-                    |replace('\\[', '$$')
-                    |replace('\\]', '$$')
-                    |replace('\\(', '$')
-                    |replace('\\)', '$')
-                  %}
-                  
-                  <div class="feedback-text">
-                    {{ clean_text|safe }}
-                  </div>
-                  
-                {% else %}
-                  {% if '"current_feedback": "' in json_str %}
-                    {% set parts = json_str.split('"current_feedback": "') %}
-                    {% if parts|length > 1 %}
-                      {% set subparts = parts[1].split('",') %}
-                      {% if subparts|length > 0 %}
-                        {% set clean_text = subparts[0]
-                          |replace('\\"', '"')
-                          |replace('\\\\', '\\')
-                          |replace('\\n\\n\\n', '<br><br>')
-                          |replace('\\n\\n', '<br><br>')
-                          |replace('\\n', ' ')
-                          |replace('  ', ' ')
-                          |replace('\\[', '$$')
-                          |replace('\\]', '$$')
-                          |replace('\\(', '$')
-                          |replace('\\)', '$')
-                        %}
-                        <div class="feedback-text">
-                          {{ clean_text|safe }}
-                        </div>
-                      {% endif %}
-                    {% endif %}
-                  {% elif '"original": "' in json_str %}
-                    {% set parts = json_str.split('"original": "') %}
-                    {% if parts|length > 1 %}
-                      {% set subparts = parts[1].split('",') %}
-                      {% if subparts|length > 0 %}
-                        {% set clean_text = subparts[0]
-                          |replace('\\"', '"')
-                          |replace('\\\\', '\\')
-                          |replace('\\n\\n\\n', '<br><br>')
-                          |replace('\\n\\n', '<br><br>')
-                          |replace('\\n', ' ')
-                          |replace('  ', ' ')
-                          |replace('\\[', '$$')
-                          |replace('\\]', '$$')
-                          |replace('\\(', '$')
-                          |replace('\\)', '$')
-                        %}
-                        <div class="feedback-text">
-                          {{ clean_text|safe }}
-                        </div>
-                      {% endif %}
-                    {% endif %}
-                  {% else %}
-                    <div style="color: var(--danger); font-style: italic; padding: 15px;">
-                      <i class="fas fa-exclamation-triangle"></i>
-                      {% if lang == 'fr' %}
-                        Erreur d'affichage de la correction. L'analyse IA est disponible mais le format est incorrect.
-                      {% else %}
-                        Correction display error. AI analysis is available but format is incorrect.
-                      {% endif %}
+              <div class="feedback-text">
+                {{ clean_text|safe }}
+              </div>
+              
+            {% else %}
+              {% if '"current_feedback": "' in json_str %}
+                {% set parts = json_str.split('"current_feedback": "') %}
+                {% if parts|length > 1 %}
+                  {% set subparts = parts[1].split('",') %}
+                  {% if subparts|length > 0 %}
+                    {% set clean_text = subparts[0]
+                      |replace('\\"', '"')
+                      |replace('\\\\', '\\')
+                      |replace('\\n\\n\\n', '<br><br>')
+                      |replace('\\n\\n', '<br><br>')
+                      |replace('\\n', ' ')
+                      |replace('  ', ' ')
+                      |replace('\\[', '$$')
+                      |replace('\\]', '$$')
+                      |replace('\\(', '$')
+                      |replace('\\)', '$')
+                    %}
+                    <div class="feedback-text">
+                      {{ clean_text|safe }}
                     </div>
                   {% endif %}
                 {% endif %}
-                
+              {% elif '"original": "' in json_str %}
+                {% set parts = json_str.split('"original": "') %}
+                {% if parts|length > 1 %}
+                  {% set subparts = parts[1].split('",') %}
+                  {% if subparts|length > 0 %}
+                    {% set clean_text = subparts[0]
+                      |replace('\\"', '"')
+                      |replace('\\\\', '\\')
+                      |replace('\\n\\n\\n', '<br><br>')
+                      |replace('\\n\\n', '<br><br>')
+                      |replace('\\n', ' ')
+                      |replace('  ', ' ')
+                      |replace('\\[', '$$')
+                      |replace('\\]', '$$')
+                      |replace('\\(', '$')
+                      |replace('\\)', '$')
+                    %}
+                    <div class="feedback-text">
+                      {{ clean_text|safe }}
+                    </div>
+                  {% endif %}
+                {% endif %}
               {% else %}
-                {% set clean_text = feedback_content
-                  |replace('\\[', '$$')
-                  |replace('\\]', '$$')
-                  |replace('\\(', '$')
-                  |replace('\\)', '$')
-                  |replace('\\"', '"')
-                  |replace('\\\\', '\\')
-                  |replace('\\n\\n\\n', '<br><br>')
-                  |replace('\\n\\n', '<br><br>')
-                  |replace('\\n', ' ')
-                  |replace('  ', ' ')
-                %}
-                <div class="feedback-text">
-                  {{ clean_text|safe }}
+                <div style="color: #dc3545; font-style: italic; padding: 15px;">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  {% if lang == 'fr' %}
+                    Erreur d'affichage de la correction. L'analyse IA est disponible mais le format est incorrect.
+                  {% else %}
+                    Correction display error. AI analysis is available but format is incorrect.
+                  {% endif %}
                 </div>
               {% endif %}
-              
+            {% endif %}
+            
+          {% else %}
+            {% set clean_text = feedback_content
+              |replace('\\[', '$$')
+              |replace('\\]', '$$')
+              |replace('\\(', '$')
+              |replace('\\)', '$')
+              |replace('\\"', '"')
+              |replace('\\\\', '\\')
+              |replace('\\n\\n\\n', '<br><br>')
+              |replace('\\n\\n', '<br><br>')
+              |replace('\\n', ' ')
+              |replace('  ', ' ')
+            %}
+            <div class="feedback-text">
+              {{ clean_text|safe }}
+            </div>
+          {% endif %}
+          
+        {% else %}
+          <div style="color: #666; font-style: italic; padding: 15px;">
+            <i class="fas fa-info-circle"></i>
+            {% if lang == 'fr' %}
+              Aucune correction disponible pour le moment.
             {% else %}
-              <div style="color: #666; font-style: italic; padding: 15px;">
-                <i class="fas fa-info-circle"></i>
-                {% if lang == 'fr' %}
-                  Aucune correction disponible pour le moment.
-                {% else %}
-                  No correction available at the moment.
-                {% endif %}
-              </div>
+              No correction available at the moment.
             {% endif %}
           </div>
-        </div>
-
-        <div class="feedback-actions">
-          <div style="display: flex; gap: 15px; width: 100%;">
-            <!-- Navigation complète -->
-            <div style="display: flex; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 10px;">
-              {% if index > 0 %}
-              <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ index - 1 }}" 
-                 class="action-btn" style="background: var(--gray);">
-                <i class="fas fa-arrow-left"></i>
-                {{ 'Exercice précédent' if lang == 'fr' else 'Previous Exercise' }}
-              </a>
-              {% endif %}
-              
-              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <!-- Menu de sélection d'exercice -->
-                <div class="exercise-selector">
-                  <button type="button" class="action-btn" onclick="toggleExerciseList()" 
-                          style="background: var(--primary); display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-list"></i>
-                    {{ 'Choisir un exercice' if lang == 'fr' else 'Choose Exercise' }}
-                  </button>
-                  <div class="exercise-list" id="exerciseList">
-                    {% for i in range(total) %}
-                      <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
-                         class="exercise-item">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                          <div style="width: 24px; height: 24px; border-radius: 50%; background: {% if i == index %}var(--primary){% elif reponses_status and reponses_status[i] == 'completed' %}var(--secondary){% else %}var(--light){% endif %}; 
-                                      display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: {% if i == index %}white{% else %}var(--dark){% endif %};">
-                            {{ i + 1 }}
-                          </div>
-                          <span>{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}</span>
-                          {% if reponses_status and reponses_status[i] == 'completed' %}
-                          <i class="fas fa-check" style="margin-left: auto; color: var(--secondary);"></i>
-                          {% endif %}
-                        </div>
-                      </a>
-                    {% endfor %}
-                  </div>
-                </div>
-                
-                {% if index < total - 1 %}
-                <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ index + 1 }}" 
-                   class="action-btn">
-                  <i class="fas fa-arrow-right"></i>
-                  {{ 'Exercice suivant' if lang == 'fr' else 'Next Exercise' }}
-                </a>
-                {% endif %}
-              </div>
-              
-              <a href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}" 
-                 class="action-btn" style="background: var(--gray);">
-                <i class="fas fa-home"></i>
-                {{ 'Accueil' if lang == 'fr' else 'Home' }}
-              </a>
-            </div>
-          </div>
-          
-          <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
-            <button type="button" class="action-btn secondary" onclick="showForm()">
-              <i class="fas fa-edit"></i>
-              {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
-            </button>
-            
-            <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" 
-               class="action-btn" style="background: var(--gray);">
-              <i class="fas fa-list"></i>
-              {{ 'Retour aux exercices' if lang == 'fr' else 'Back to Exercises' }}
-            </a>
-          </div>
-        </div>
-
-        <!-- Section contestation -->
-        {% if reponse and reponse.etoiles is not none and reponse.etoiles < 5 %}
-        <div class="contest-container" id="contestContainer">
-          <div class="contest-header">
-            <h4><i class="fas fa-balance-scale"></i> 
-              {{ 'Vous n\'êtes pas d\'accord ?' if lang == 'fr' else 'Disagree?' }}
-            </h4>
-          </div>
-          
-          <div class="contest-body">
-            <p class="contest-description">
-              <i class="fas fa-info-circle"></i>
-              {% if lang == 'fr' %}
-                Si vous pensez que votre réponse mérite une meilleure note, expliquez pourquoi :
-              {% else %}
-                If you think your answer deserves a better grade, explain why:
-              {% endif %}
-            </p>
-            
-            <div class="contest-form">
-              <div class="form-group">
-                <textarea 
-                  id="contestText" 
-                  rows="3" 
-                  placeholder="{% if lang == 'fr' %}Exemple : Ma réponse $x=2$ est équivalente à $x = 2$...{% else %}Example: My answer $x=2$ is equivalent to $x = 2$...{% endif %}"
-                  class="contest-textarea"
-                ></textarea>
-              </div>
-              
-              <div class="form-group">
-                <label>
-                  <i class="fas fa-star"></i>
-                  {{ 'Note que vous proposez :' if lang == 'fr' else 'Grade you propose:' }}
-                </label>
-                <div class="star-buttons">
-                  {% for i in range(1, 6) %}
-                    <button 
-                      type="button" 
-                      class="star-btn {% if i == reponse.etoiles + 1 %}selected{% endif %}"
-                      onclick="selectStar({{ i }})"
-                      data-stars="{{ i }}"
-                    >
-                      {{ i }} ⭐
-                    </button>
-                  {% endfor %}
-                </div>
-              </div>
-              
-              <div class="contest-actions">
-                <button type="button" class="btn-cancel" onclick="hideContest()">
-                  {{ 'Annuler' if lang == 'fr' else 'Cancel' }}
-                </button>
-                <button type="button" class="btn-submit" onclick="submitContest()" id="submitContestBtn">
-                  <i class="fas fa-paper-plane"></i>
-                  {{ 'Envoyer la contestation' if lang == 'fr' else 'Submit Contest' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
         {% endif %}
       </div>
-      {% endif %}
     </div>
 
-    <!-- Bouton de retour -->
-    <a class="back-btn" href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}">
-      <i class="fas fa-arrow-left"></i>
-      {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to dashboard{% endif %}
-    </a>
+    <div class="feedback-actions">
+      <div style="display: flex; gap: 15px; width: 100%;">
+        <!-- Navigation complète -->
+        <div style="display: flex; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 10px;">
+          {% if index > 0 %}
+          <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ index - 1 }}" 
+             class="action-btn" style="background: #6c757d;">
+            <i class="fas fa-arrow-left"></i>
+            {{ 'Exercice précédent' if lang == 'fr' else 'Previous Exercise' }}
+          </a>
+          {% endif %}
+          
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <!-- Menu de sélection d'exercice -->
+            <div class="exercise-selector">
+              <button type="button" class="action-btn" onclick="toggleExerciseList()" 
+                      style="background: var(--primary); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-list"></i>
+                {{ 'Choisir un exercice' if lang == 'fr' else 'Choose Exercise' }}
+              </button>
+              <div class="exercise-list" id="exerciseList">
+                {% for i in range(total) %}
+                  <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
+                     class="exercise-item">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <div style="width: 24px; height: 24px; border-radius: 50%; background: {% if i == index %}var(--primary){% elif reponses_status and reponses_status[i] == 'completed' %}var(--success){% else %}#e9ecef{% endif %}; 
+                                  display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: {% if i == index %}white{% else %}var(--dark){% endif %};">
+                        {{ i + 1 }}
+                      </div>
+                      <span>{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}</span>
+                      {% if reponses_status and reponses_status[i] == 'completed' %}
+                      <i class="fas fa-check" style="margin-left: auto; color: var(--success);"></i>
+                      {% endif %}
+                    </div>
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+            
+            {% if has_next %}
+            <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ next_index }}" 
+               class="action-btn">
+              <i class="fas fa-arrow-right"></i>
+              {{ 'Exercice suivant' if lang == 'fr' else 'Next Exercise' }}
+            </a>
+            {% endif %}
+          </div>
+          
+          <a href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}" 
+             class="action-btn" style="background: #6c757d;">
+            <i class="fas fa-home"></i>
+            {{ 'Accueil' if lang == 'fr' else 'Home' }}
+          </a>
+        </div>
+      </div>
+      
+      <button type="button" class="action-btn secondary" onclick="showForm()" style="margin-top: 15px;">
+        <i class="fas fa-edit"></i>
+        {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
+      </button>
+    </div>
+
+    <!-- Section contestation -->
+    {% if reponse and reponse.etoiles is not none and reponse.etoiles < 5 %}
+    <div class="contest-container" id="contestContainer">
+      <div class="contest-header">
+        <h4><i class="fas fa-balance-scale"></i> 
+          {{ 'Vous n\'êtes pas d\'accord ?' if lang == 'fr' else 'Disagree?' }}
+        </h4>
+      </div>
+      
+      <div class="contest-body">
+        <p class="contest-description">
+          <i class="fas fa-info-circle"></i>
+          {% if lang == 'fr' %}
+            Si vous pensez que votre réponse mérite une meilleure note, expliquez pourquoi :
+          {% else %}
+            If you think your answer deserves a better grade, explain why:
+          {% endif %}
+        </p>
+        
+        <div class="contest-form">
+          <div class="form-group">
+            <textarea 
+              id="contestText" 
+              rows="3" 
+              placeholder="{{ 'Exemple : Ma réponse $x=2$ est équivalente à $x = 2$...' if lang == 'fr' else 'Example: My answer $x=2$ is equivalent to $x = 2$...' }}"
+              class="contest-textarea"
+            ></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>
+              <i class="fas fa-star"></i>
+              {{ 'Note que vous proposez :' if lang == 'fr' else 'Grade you propose:' }}
+            </label>
+            <div class="star-buttons">
+              {% for i in range(1, 6) %}
+                <button 
+                  type="button" 
+                  class="star-btn {% if i == reponse.etoiles + 1 %}selected{% endif %}"
+                  onclick="selectStar({{ i }})"
+                  data-stars="{{ i }}"
+                >
+                  {{ i }} ⭐
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+          
+          <div class="contest-actions">
+            <button type="button" class="btn-cancel" onclick="hideContest()">
+              {{ 'Annuler' if lang == 'fr' else 'Cancel' }}
+            </button>
+            <button type="button" class="btn-submit" onclick="submitContest()">
+              <i class="fas fa-paper-plane"></i>
+              {{ 'Envoyer la contestation' if lang == 'fr' else 'Submit Contest' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    
   </div>
+  {% endif %}
+</div>
 
-  <script>
-    let currentAnswer = '';
-    let selectedContestStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 3 }};
-    let editMode = {% if edit_mode %}true{% else %}false{% endif %};
+<script>
+  // Variables globales
+  let currentAnswer = '';
+  let selectedContestStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 3 }};
 
-    // Fonction pour traiter le contenu mathématique avec MathJax
-    function processMathContent() {
-      if (window.MathJax) {
-        MathJax.typesetPromise().then(() => {
-          console.log('MathJax content processed successfully');
-        }).catch((error) => {
-          console.warn('MathJax processing warning:', error);
-        });
-      }
-    }
+  // Configuration initiale
+  const total = {{ total }};
+  const currentIndex = {{ index }};
+  
+  // Fonction pour mettre à jour la progression
+  function updateProgress() {
+    const percent = ((currentIndex + 1) / total) * 100;
+    document.getElementById('progressFill').style.width = percent + '%';
+    document.getElementById('progressText').textContent = `${currentIndex + 1}/${total}`;
+  }
 
-    function insertSymbol(symbol) {
-      const editor = document.getElementById('visualMathEditor');
-      const selection = window.getSelection();
-      
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(document.createTextNode(symbol));
-      } else {
-        editor.focus();
-        document.execCommand('insertText', false, symbol);
-      }
-      
-      updatePreview();
-    }
-
-    function insertFraction() {
-      const numerator = prompt('{% if lang == "fr" %}Numérateur :{% else %}Numerator:{% endif %}', '1');
-      const denominator = prompt('{% if lang == "fr" %}Dénominateur :{% else %}Denominator:{% endif %}', '2');
-      
-      if (numerator && denominator) {
-        insertSymbol(`${numerator}∕${denominator}`);
-      }
-    }
-
-    function updatePreview() {
-      const content = document.getElementById('visualMathEditor').innerHTML
-        .replace(/<div>/g, '\n')
-        .replace(/<\/div>/g, '')
-        .replace(/<br>/g, '\n')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/<[^>]*>/g, '');
-      
-      document.getElementById('currentContent').textContent = content || '{% if lang == "fr" %}Votre réponse apparaîtra ici...{% else %}Your answer will appear here...{% endif %}';
-      
-      const currentContent = document.getElementById('currentContent');
-      if (content.trim()) {
-        currentContent.classList.add('has-content');
-      } else {
-        currentContent.classList.remove('has-content');
-      }
-      
-      currentAnswer = content;
-      document.getElementById('reponse_eleve').value = content;
-    }
-
-    function showNotification(message, type = 'info') {
-      const notification = document.createElement('div');
-      const bgColor = type === 'success' ? 'var(--secondary)' : 
-                      type === 'error' ? 'var(--danger)' : 
-                      type === 'warning' ? 'var(--warning)' : 'var(--primary)';
-      const icon = type === 'success' ? 'check' : 
-                   type === 'error' ? 'exclamation-circle' : 
-                   type === 'warning' ? 'exclamation-triangle' : 'info';
-      
-      notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${bgColor};
-        color: white;
-        padding: 12px 18px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
-        animation: slideIn 0.3s ease;
-        max-width: 350px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 0.95rem;
-      `;
-      notification.innerHTML = `<i class="fas fa-${icon}"></i> <span>${message}</span>`;
-      
-      document.body.appendChild(notification);
-      
+  // Fonction pour nettoyer et formater le contenu mathématique
+  function cleanAndFormatMathContent(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    let content = element.innerHTML;
+    
+    // Nettoyage agressif des espaces excessifs
+    content = content
+      .replace(/\\n\\n\\n/g, '<br><br>')
+      .replace(/\\n\\n/g, '<br><br>')
+      .replace(/\\n/g, ' ')
+      .replace(/\s\s+/g, ' ')
+      .replace(/\\"/g, '"')
+      .replace(/\\t/g, ' ')
+      .replace(/\\\\/g, '\\')
+      .replace(/\\\[/g, '$$')
+      .replace(/\\\]/g, '$$')
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$');
+    
+    // Nettoyer les balises HTML dangereuses
+    content = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                     .replace(/javascript:/gi, '')
+                     .replace(/on\w+="[^"]*"/gi, '')
+                     .replace(/on\w+='[^']*'/gi, '');
+    
+    // Mettre à jour le contenu
+    element.innerHTML = content;
+    
+    // Appliquer MathJax
+    if (window.MathJax) {
       setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-          if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-          }
-        }, 300);
-      }, 4000);
-    }
-
-    // Gestion du menu d'exercices
-    function toggleExerciseList() {
-      const list = document.getElementById('exerciseList');
-      if (list.style.display === 'block') {
-        list.style.display = 'none';
-      } else {
-        list.style.display = 'block';
-        
-        setTimeout(() => {
-          document.addEventListener('click', function closeList(e) {
-            if (!list.contains(e.target) && !e.target.closest('.exercise-selector button')) {
-              list.style.display = 'none';
-              document.removeEventListener('click', closeList);
-            }
-          });
-        }, 10);
-      }
-    }
-
-    // Fonctions pour gérer l'affichage
-    function showForm() {
-      document.getElementById('feedbackSection').style.display = 'none';
-      document.getElementById('answerForm').style.display = 'block';
-      document.getElementById('answerForm').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function showFeedback() {
-      document.getElementById('answerForm').style.display = 'none';
-      document.getElementById('feedbackSection').style.display = 'block';
-      document.getElementById('feedbackSection').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // Fonctions pour la contestation
-    function selectStar(stars) {
-      selectedContestStars = stars;
-      
-      document.querySelectorAll('.star-btn').forEach(btn => {
-        if (parseInt(btn.dataset.stars) === stars) {
-          btn.classList.add('selected');
-        } else {
-          btn.classList.remove('selected');
-        }
-      });
-    }
-
-    function hideContest() {
-      const contestContainer = document.getElementById('contestContainer');
-      if (contestContainer) {
-        contestContainer.style.display = 'none';
-      }
-    }
-
-    function submitContest() {
-      const justification = document.getElementById('contestText').value.trim();
-      const submitBtn = document.getElementById('submitContestBtn');
-      
-      if (!justification) {
-        showNotification(
-          "{% if lang == 'fr' %}Veuillez expliquer pourquoi vous méritez une meilleure note.{% else %}Please explain why you deserve a better grade.{% endif %}",
-          'warning'
-        );
-        document.getElementById('contestText').focus();
-        return;
-      }
-      
-      // Vérifier que la note proposée est supérieure à la note actuelle
-      const currentStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }};
-      if (selectedContestStars <= currentStars) {
-        showNotification(
-          "{% if lang == 'fr' %}Veuillez choisir une note supérieure à votre note actuelle.{% else %}Please choose a grade higher than your current one.{% endif %}",
-          'warning'
-        );
-        return;
-      }
-      
-      // Afficher l'overlay d'attente
-      const waitingOverlay = document.getElementById('waitingOverlay');
-      if (waitingOverlay) {
-        waitingOverlay.classList.add('active');
-        
-        // Réinitialiser les étapes
-        document.querySelectorAll('.processing-step').forEach(step => {
-          step.classList.remove('active');
+        MathJax.typesetPromise([element]).then(() => {
+          console.log('Math content formatted for', elementId);
+        }).catch(err => {
+          console.warn('MathJax formatting error:', err);
         });
-        document.getElementById('step1').classList.add('active');
+      }, 100);
+    }
+    
+    return content;
+  }
+
+  // Fonction pour nettoyer automatiquement le contenu JSON
+  function cleanJSONContent() {
+    const element = document.getElementById('aiAnalysisContent');
+    if (!element) return;
+    
+    const content = element.innerHTML.trim();
+    
+    // Si le contenu commence par { et finit par }, c'est du JSON
+    if (content.startsWith('{') && content.endsWith('}')) {
+      try {
+        // Essayer de parser le JSON
+        const jsonData = JSON.parse(content);
         
-        // Animer les étapes
-        let step = 1;
+        // Extraire le texte à afficher
+        const displayText = jsonData.current_feedback || jsonData.original || content;
+        
+        // Nettoyer AGGRESSIVEMENT les espaces et sauts de ligne
+        let cleanText = displayText
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\')
+          .replace(/\\n\\n\\n/g, '<br><br>')
+          .replace(/\\n\\n/g, '<br><br>')
+          .replace(/\\n/g, ' ')
+          .replace(/\s\s+/g, ' ')
+          .replace(/\\t/g, ' ')
+          .replace(/\\\[/g, '$$')
+          .replace(/\\\]/g, '$$')
+          .replace(/\\\(/g, '$')
+          .replace(/\\\)/g, '$');
+        
+        // Wrapper dans un div pour le styling
+        const wrapper = document.createElement('div');
+        wrapper.className = 'feedback-text';
+        wrapper.innerHTML = cleanText;
+        
+        // Remplacer le contenu
+        element.innerHTML = '';
+        element.appendChild(wrapper);
+        
+        // Re-trigger MathJax
+        if (window.MathJax) {
+          setTimeout(() => {
+            MathJax.typesetPromise([element]).catch(err => {
+              console.log('MathJax re-rendered after JSON cleanup');
+            });
+          }, 100);
+        }
+      } catch (e) {
+        console.error('Erreur parsing JSON:', e);
+        // Extraction manuelle avec nettoyage agressif
+        let cleanText = content;
+        
+        if (content.includes('"current_feedback": "')) {
+          const start = content.indexOf('"current_feedback": "') + 21;
+          const end = content.indexOf('",', start);
+          if (end > start) {
+            cleanText = content.substring(start, end);
+          }
+        } else if (content.includes('"original": "')) {
+          const start = content.indexOf('"original": "') + 13;
+          const end = content.indexOf('",', start);
+          if (end > start) {
+            cleanText = content.substring(start, end);
+          }
+        }
+        
+        // Nettoyage agressif
+        cleanText = cleanText
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\')
+          .replace(/\\n\\n\\n/g, '<br><br>')
+          .replace(/\\n\\n/g, '<br><br>')
+          .replace(/\\n/g, ' ')
+          .replace(/\s\s+/g, ' ')
+          .replace(/\\\[/g, '$$')
+          .replace(/\\\]/g, '$$')
+          .replace(/\\\(/g, '$')
+          .replace(/\\\)/g, '$');
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'feedback-text';
+        wrapper.innerHTML = cleanText;
+        
+        element.innerHTML = '';
+        element.appendChild(wrapper);
+      }
+    } else {
+      // Si ce n'est pas du JSON mais a des \n excessifs, nettoyer aussi
+      let cleanText = content
+        .replace(/\\n\\n\\n/g, '<br><br>')
+        .replace(/\\n\\n/g, '<br><br>')
+        .replace(/\\n/g, ' ')
+        .replace(/\s\s+/g, ' ');
+      
+      // Chercher et wrapper le texte dans .feedback-text si pas déjà fait
+      if (!element.querySelector('.feedback-text')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'feedback-text';
+        wrapper.innerHTML = cleanText;
+        element.innerHTML = '';
+        element.appendChild(wrapper);
+      }
+    }
+  }
+
+  // Fonctions pour l'éditeur mathématique
+  function insertSymbol(symbol) {
+    const editor = document.getElementById('visualMathEditor');
+    const selection = window.getSelection();
+    
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(symbol));
+    } else {
+      editor.focus();
+      document.execCommand('insertText', false, symbol);
+    }
+    
+    updatePreview();
+  }
+
+  function insertFraction() {
+    const numerator = prompt('{{ "Numérateur :" if lang == "fr" else "Numerator:" }}', '1');
+    const denominator = prompt('{{ "Dénominateur :" if lang == "fr" else "Denominator:" }}', '2');
+    
+    if (numerator && denominator) {
+      insertSymbol(`${numerator}∕${denominator}`);
+    }
+  }
+
+  function updatePreview() {
+    const content = document.getElementById('visualMathEditor').innerHTML
+      .replace(/<div>/g, '\n')
+      .replace(/<\/div>/g, '')
+      .replace(/<br>/g, '\n')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/<[^>]*>/g, '');
+    
+    document.getElementById('currentContent').textContent = content || '{{ "Votre réponse apparaîtra ici..." if lang == "fr" else "Your answer will appear here..." }}';
+    
+    const currentContent = document.getElementById('currentContent');
+    if (content.trim()) {
+      currentContent.classList.add('has-content');
+    } else {
+      currentContent.classList.remove('has-content');
+    }
+    
+    currentAnswer = content;
+    document.getElementById('reponse_eleve_hidden').value = content;
+  }
+
+  // Fonction pour afficher les notifications
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    const bgColor = type === 'success' ? '#28a745' : 
+                    type === 'error' ? '#dc3545' : 
+                    type === 'warning' ? '#ffc107' : '#007bff';
+    const icon = type === 'success' ? 'check' : 
+                 type === 'error' ? 'exclamation-circle' : 
+                 type === 'warning' ? 'exclamation-triangle' : 'info';
+    
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${bgColor};
+      color: white;
+      padding: 12px 18px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      max-width: 350px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+    `;
+    notification.innerHTML = `<i class="fas fa-${icon}"></i> <span>${message}</span>`;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 4000);
+  }
+
+  // Fonctions pour gérer l'affichage
+  function showForm() {
+    document.getElementById('feedbackSection').classList.remove('active');
+    document.getElementById('mainForm').style.display = 'block';
+    document.getElementById('mainForm').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function showFeedback() {
+    document.getElementById('mainForm').style.display = 'none';
+    document.getElementById('feedbackSection').classList.add('active');
+    document.getElementById('feedbackSection').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Gestion du menu d'exercices
+  function toggleExerciseList() {
+    const list = document.getElementById('exerciseList');
+    if (list.style.display === 'block') {
+      list.style.display = 'none';
+    } else {
+      list.style.display = 'block';
+      
+      // Fermer le menu en cliquant à l'extérieur
+      setTimeout(() => {
+        document.addEventListener('click', function closeList(e) {
+          if (!list.contains(e.target) && !e.target.closest('.exercise-selector button')) {
+            list.style.display = 'none';
+            document.removeEventListener('click', closeList);
+          }
+        });
+      }, 10);
+    }
+  }
+
+  // Gestion de la soumission du formulaire
+  function setupFormSubmission() {
+    const form = document.getElementById('mainForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const waitingOverlay = document.getElementById('waitingOverlay');
+
+    if (form && submitBtn && waitingOverlay) {
+      form.addEventListener('submit', function(e) {
+        if (!currentAnswer.trim()) {
+          e.preventDefault();
+          showNotification('{{ "Veuillez écrire votre réponse avant de soumettre !" if lang == "fr" else "Please write your answer before submitting!" }}', 'error');
+          return;
+        }
+
+        e.preventDefault();
+        
+        waitingOverlay.classList.add('active');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Soumission en cours..." if lang == "fr" else "Submitting..." }}';
+        
+        let currentStep = 1;
         const stepInterval = setInterval(() => {
-          if (step < 3) {
-            document.getElementById('step' + step).classList.remove('active');
-            step++;
-            document.getElementById('step' + step).classList.add('active');
+          document.getElementById('step' + currentStep).classList.remove('active');
+          currentStep++;
+          if (currentStep <= 3) {
+            document.getElementById('step' + currentStep).classList.add('active');
           } else {
             clearInterval(stepInterval);
           }
+        }, 1500);
+        
+        setTimeout(() => {
+          form.submit();
         }, 2000);
+      });
+    }
+  }
+
+  // Fonctions pour la contestation
+  function selectStar(stars) {
+    selectedContestStars = stars;
+    
+    document.querySelectorAll('.star-btn').forEach(btn => {
+      if (parseInt(btn.dataset.stars) === stars) {
+        btn.classList.add('selected');
+      } else {
+        btn.classList.remove('selected');
       }
-      
-      // Désactiver le bouton
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "fr" %}Traitement en cours...{% else %}Processing...{% endif %}';
-      }
-      
-      // Préparer les données pour l'API
-      const requestData = {
+    });
+  }
+
+  function hideContest() {
+    const contestContainer = document.getElementById('contestContainer');
+    if (contestContainer) {
+      contestContainer.style.display = 'none';
+    }
+  }
+
+  function submitContest() {
+    const justification = document.getElementById('contestText').value.trim();
+    
+    if (!justification) {
+      showNotification(
+        "{{ 'Veuillez expliquer pourquoi vous méritez une meilleure note.' if lang == 'fr' else 'Please explain why you deserve a better grade.' }}",
+        'warning'
+      );
+      return;
+    }
+    
+    showNotification(
+      "{{ 'Envoi de votre contestation à l\'IA pour réévaluation...' if lang == 'fr' else 'Sending your contest to AI for re-evaluation...' }}",
+      'info'
+    );
+    
+    const submitBtn = document.querySelector('.contest-form .btn-submit');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Traitement en cours..." if lang == "fr" else "Processing..." }}';
+    }
+    
+    fetch('/api/contest-evaluation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         reponse_id: {{ reponse.id if reponse else 'null' }},
         justification: justification,
         proposed_stars: selectedContestStars,
         student_answer: document.querySelector('#studentAnswerContent').textContent.trim(),
         current_stars: {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }},
         lang: '{{ lang }}'
-      };
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {{ "Envoyer la contestation" if lang == "fr" else "Submit Contest" }}';
+      }
       
-      console.log('Envoi de la contestation à l\'API:', requestData);
-      
-      // Appeler votre API existante
-      fetch('/api/contest-evaluation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP! statut: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('Réponse de l\'API:', data);
-        
-        // Cacher l'overlay d'attente
-        if (waitingOverlay) {
-          waitingOverlay.classList.remove('active');
-        }
-        
-        // Réactiver le bouton
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
-        }
-        
-        if (data.success) {
-          // Mettre à jour l'affichage avec les nouvelles données
-          updateDisplayAfterContest(data);
-          
-          // Montrer un message de succès
-          showNotification(
-            data.message || 
-            "{% if lang == 'fr' %}Contestation traitée avec succès !{% else %}Contest processed successfully!{% endif %}",
-            'success'
-          );
-          
-          // Recharger la page après 2 secondes pour voir tous les changements
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
-          
-        } else {
-          showNotification(
-            data.message || 
-            "{% if lang == 'fr' %}Erreur lors du traitement de la contestation.{% else %}Error processing contest.{% endif %}",
-            'error'
-          );
-        }
-      })
-      .catch(error => {
-        console.error('Erreur lors de l\'appel API:', error);
-        
-        // Cacher l'overlay
-        if (waitingOverlay) {
-          waitingOverlay.classList.remove('active');
-        }
-        
-        // Réactiver le bouton
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
-        }
+      if (data.success) {
+        updateDisplayAfterContest(data.new_stars, data.new_feedback);
         
         showNotification(
-          "{% if lang == 'fr' %}Erreur de connexion au serveur. Veuillez réessayer.{% else %}Server connection error. Please try again.{% endif %}",
-          'error'
-        );
-      });
-    }
-
-    function updateDisplayAfterContest(data) {
-      // Extraire les données de la réponse
-      const newStars = data.new_stars;
-      const newFeedback = data.new_feedback;
-      const starsChanged = data.stars_changed;
-      
-      console.log('Mise à jour de l\'affichage après contestation:', data);
-      
-      // Mettre à jour les étoiles affichées
-      const starsElement = document.getElementById('starsDisplay');
-      if (starsElement && newStars !== undefined) {
-        starsElement.innerHTML = `<strong>${newStars}/5 ⭐</strong>`;
-        
-        // Animation si la note a changé
-        if (starsChanged) {
-          starsElement.style.animation = 'pulse 0.5s ease 3';
-          setTimeout(() => starsElement.style.animation = '', 1500);
-        }
-      }
-      
-      // Mettre à jour l'icône de feedback
-      updateFeedbackIcon(newStars);
-      
-      // Mettre à jour le contenu de l'analyse IA
-      const feedbackElement = document.getElementById('aiAnalysisContent');
-      if (feedbackElement && newFeedback) {
-        // Créer un message de mise à jour
-        const updateMessage = document.createElement('div');
-        updateMessage.className = 'update-notice';
-        updateMessage.style.cssText = `
-          background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
-          border-left: 4px solid var(--secondary);
-          padding: 12px 15px;
-          margin-bottom: 15px;
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-weight: 600;
-          color: var(--dark);
-        `;
-        updateMessage.innerHTML = `
-          <i class="fas fa-sync-alt" style="color: var(--secondary);"></i>
-          <span>{% if lang == "fr" %}Correction mise à jour suite à votre contestation{% else %}Feedback updated following your contest{% endif %}</span>
-        `;
-        
-        // Nettoyer le feedback pour l'affichage
-        const cleanFeedback = newFeedback
-          .replace(/\\"/g, '"')
-          .replace(/\\\\/g, '\\')
-          .replace(/\\n\\n\\n/g, '<br><br>')
-          .replace(/\\n\\n/g, '<br><br>')
-          .replace(/\\n/g, ' ')
-          .replace(/  /g, ' ')
-          .replace(/\\\[/g, '$$')
-          .replace(/\\\]/g, '$$')
-          .replace(/\\\(/g, '$')
-          .replace(/\\\)/g, '$');
-        
-        // Mettre à jour le contenu
-        feedbackElement.innerHTML = '';
-        feedbackElement.appendChild(updateMessage);
-        
-        // Ajouter le nouveau feedback
-        const feedbackDiv = document.createElement('div');
-        feedbackDiv.className = 'feedback-text';
-        feedbackDiv.innerHTML = cleanFeedback;
-        feedbackElement.appendChild(feedbackDiv);
-        
-        // Reprocesser MathJax après la mise à jour
-        setTimeout(() => {
-          if (window.MathJax) {
-            MathJax.typesetPromise([feedbackElement]).catch(err => {
-              console.log('MathJax reprocessing error:', err);
-            });
-          }
-        }, 100);
-      }
-      
-      // Ajouter un badge "Mis à jour" à l'en-tête du feedback
-      const feedbackHeader = document.querySelector('.feedback-header');
-      if (feedbackHeader && starsChanged) {
-        // Supprimer l'ancien badge s'il existe
-        const oldBadge = feedbackHeader.querySelector('.feedback-updated-badge');
-        if (oldBadge) oldBadge.remove();
-        
-        // Créer un nouveau badge
-        const badge = document.createElement('div');
-        badge.className = 'feedback-updated-badge';
-        badge.style.cssText = `
-          position: absolute;
-          top: -10px;
-          right: -10px;
-          background: var(--secondary);
-          color: white;
-          padding: 4px 8px;
-          border-radius: 12px;
-          font-size: 0.7rem;
-          font-weight: bold;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          animation: pulse 1s ease 2;
-        `;
-        badge.innerHTML = '<i class="fas fa-sync-alt"></i> {% if lang == "fr" %}Mis à jour{% else %}Updated{% endif %}';
-        feedbackHeader.style.position = 'relative';
-        feedbackHeader.appendChild(badge);
-      }
-      
-      // Si la note maximale est atteinte, cacher la section contestation
-      if (newStars >= 5) {
-        hideContest();
-        showNotification(
-          "{% if lang == 'fr' %}Félicitations ! Vous avez obtenu la note maximale. 🎉{% else %}Congratulations! You obtained the maximum grade. 🎉{% endif %}",
+          data.message || 
+          "{{ 'Contestation traitée avec succès !' if lang == 'fr' else 'Contest processed successfully!' }}",
           'success'
         );
-      }
-    }
-
-    function updateFeedbackIcon(stars) {
-      const iconElement = document.getElementById('feedbackIcon');
-      if (!iconElement) return;
-      
-      // Mettre à jour la classe et l'icône selon la note
-      iconElement.className = 'feedback-icon';
-      if (stars < 2) {
-        iconElement.classList.add('warning');
-      }
-      
-      // Mettre à jour l'icône
-      if (stars >= 4) {
-        iconElement.innerHTML = '<i class="fas fa-check-circle"></i>';
-      } else if (stars >= 2) {
-        iconElement.innerHTML = '<i class="fas fa-lightbulb"></i>';
+        
+        hideContest();
       } else {
-        iconElement.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+        showNotification(
+          data.message || 
+          "{{ 'Erreur lors du traitement.' if lang == 'fr' else 'Error during processing.' }}",
+          'error'
+        );
       }
-    }
-
-    // Gestion de la soumission du formulaire de réponse
-    function setupFormSubmission() {
-      const form = document.getElementById('answerForm');
-      const submitBtn = document.getElementById('submitBtn');
-      const waitingOverlay = document.getElementById('waitingOverlay');
-
-      if (form && submitBtn && waitingOverlay) {
-        form.addEventListener('submit', function(e) {
-          if (!currentAnswer.trim()) {
-            e.preventDefault();
-            showNotification('{% if lang == "fr" %}Veuillez écrire votre réponse avant de soumettre !{% else %}Please write your answer before submitting!{% endif %}', 'error');
-            return;
-          }
-
-          e.preventDefault();
-          
-          waitingOverlay.classList.add('active');
-          submitBtn.disabled = true;
-          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "fr" %}Soumission en cours...{% else %}Submitting...{% endif %}';
-          
-          let currentStep = 1;
-          const stepInterval = setInterval(() => {
-            document.getElementById('step' + currentStep).classList.remove('active');
-            currentStep++;
-            if (currentStep <= 3) {
-              document.getElementById('step' + currentStep).classList.add('active');
-            } else {
-              clearInterval(stepInterval);
-            }
-          }, 1500);
-          
-          setTimeout(() => {
-            form.submit();
-          }, 2000);
-        });
+    })
+    .catch(error => {
+      console.error('Erreur:', error);
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {{ "Envoyer la contestation" if lang == "fr" else "Submit Contest" }}';
       }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      console.log('DOM loaded, initializing MathJax...');
-      
-      // Traiter le contenu mathématique après le chargement
-      setTimeout(processMathContent, 1000);
-
-      // Animation d'apparition progressive
-      const elements = document.querySelectorAll('.exercise-container > *');
-      elements.forEach((element, index) => {
-        element.style.opacity = '0';
-        element.style.transform = 'translateY(20px)';
-        
-        setTimeout(() => {
-          element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-          element.style.opacity = '1';
-          element.style.transform = 'translateY(0)';
-        }, 100 * index);
-      });
-
-      // Mise à jour en temps réel de l'éditeur
-      const visualEditor = document.getElementById('visualMathEditor');
-      if (visualEditor) {
-        visualEditor.addEventListener('input', updatePreview);
-        
-        // Remplir l'éditeur avec la réponse existante si disponible
-        {% if reponse and reponse.reponse_eleve %}
-        visualEditor.innerHTML = '{{ reponse.reponse_eleve | escape }}';
-        updatePreview();
-        {% endif %}
-        
-        setTimeout(() => {
-          visualEditor.focus();
-        }, 500);
-      }
-
-      // Configurer la soumission du formulaire
-      setupFormSubmission();
-
-      // Initialiser les étoiles de contestation
-      selectStar({{ reponse.etoiles + 1 if reponse and reponse.etoiles is not none else 3 }});
-
-      // Retraiter MathJax après un délai supplémentaire pour s'assurer que tout est chargé
-      setTimeout(processMathContent, 2000);
+      showNotification(
+        "{{ 'Erreur de connexion au serveur.' if lang == 'fr' else 'Server connection error.' }}",
+        'error'
+      );
     });
+  }
 
-    // Réessayer MathJax si le contenu change
-    new MutationObserver(() => {
-      setTimeout(processMathContent, 100);
-    }).observe(document.body, { subtree: true, childList: true });
-  </script>
+  function updateDisplayAfterContest(newStars, newFeedback) {
+    console.log('Mise à jour après contestation:', newStars, 'étoiles');
+    
+    // 1. Mettre à jour les étoiles
+    const starsElement = document.getElementById('starsDisplay');
+    if (starsElement) {
+      starsElement.innerHTML = `<strong>${newStars}/5 ⭐</strong>`;
+      
+      if (newStars !== {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }}) {
+        starsElement.style.animation = 'pulse 0.5s ease 2';
+        setTimeout(() => starsElement.style.animation = '', 1000);
+      }
+    }
+    
+    // 2. Mettre à jour l'icône
+    updateFeedbackIcon(newStars);
+    
+    // 3. Mettre à jour le contenu avec un indicateur visuel discret
+    const feedbackElement = document.getElementById('aiAnalysisContent');
+    if (feedbackElement) {
+      feedbackElement.innerHTML = newFeedback;
+      
+      // Ajouter un message discret "Mise à jour"
+      const updateMessage = document.createElement('div');
+      updateMessage.className = 'update-message';
+      updateMessage.innerHTML = `
+        <i class="fas fa-sync-alt" style="color: #28a745;"></i>
+        <span>{{ "Correction mise à jour suite à votre contestation" if lang == "fr" else "Feedback updated following your contest" }}</span>
+      `;
+      feedbackElement.prepend(updateMessage);
+      
+      // Ajouter une classe pour un indicateur visuel discret
+      feedbackElement.classList.add('analysis-updated');
+      
+      // Appliquer le nettoyage MathJax
+      setTimeout(() => {
+        cleanAndFormatMathContent('aiAnalysisContent');
+        cleanJSONContent(); // Nettoyer aussi le JSON si présent
+      }, 50);
+    }
+    
+    // 4. Ajouter un badge discret sur l'en-tête
+    const feedbackHeader = document.querySelector('.feedback-header');
+    if (feedbackHeader && !feedbackHeader.querySelector('.feedback-updated-badge')) {
+      const badge = document.createElement('div');
+      badge.className = 'feedback-updated-badge';
+      badge.innerHTML = '<i class="fas fa-sync-alt"></i> {{ "Mis à jour" if lang == "fr" else "Updated" }}';
+      feedbackHeader.appendChild(badge);
+    }
+    
+    // 5. Si note maintenant 5/5, cacher la contestation
+    if (newStars >= 5) {
+      hideContest();
+      showNotification(
+        "{{ 'Félicitations ! Vous avez obtenu la note maximale. 🎉' if lang == 'fr' else 'Congratulations! You obtained the maximum grade. 🎉' }}",
+        'success'
+      );
+    }
+  }
+
+  function updateFeedbackIcon(stars) {
+    const iconElement = document.getElementById('feedbackIcon');
+    if (!iconElement) return;
+    
+    if (stars >= 4) {
+      iconElement.className = 'feedback-icon';
+      iconElement.innerHTML = '<i class="fas fa-check-circle"></i>';
+    } else if (stars >= 2) {
+      iconElement.className = 'feedback-icon warning';
+      iconElement.innerHTML = '<i class="fas fa-lightbulb"></i>';
+    } else {
+      iconElement.className = 'feedback-icon warning';
+      iconElement.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+    }
+  }
+
+  // Initialisation
+  document.addEventListener("DOMContentLoaded", function() {
+    updateProgress();
+    
+    // Nettoyer et formater le contenu mathématique
+    setTimeout(() => {
+      cleanAndFormatMathContent('aiAnalysisContent');
+      cleanAndFormatMathContent('studentAnswerContent');
+      cleanAndFormatMathContent('questionContent');
+      
+      // Nettoyer spécifiquement le contenu JSON
+      cleanJSONContent();
+    }, 200);
+    
+    // Mise à jour en temps réel de l'éditeur
+    const visualEditor = document.getElementById('visualMathEditor');
+    if (visualEditor) {
+      visualEditor.addEventListener('input', updatePreview);
+      
+      setTimeout(() => {
+        visualEditor.focus();
+      }, 500);
+    }
+
+    // Configurer la soumission du formulaire
+    setupFormSubmission();
+    
+    {% if show_feedback %}
+    setTimeout(() => {
+      const feedbackSection = document.getElementById('feedbackSection');
+      if (feedbackSection) {
+        feedbackSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 500);
+    {% endif %}
+    
+    // Initialiser les étoiles de contestation
+    selectStar({{ reponse.etoiles + 1 if reponse and reponse.etoiles is not none else 3 }});
+  });
+
+  // Styles d'animation pour les notifications
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from { 
+        opacity: 0;
+        transform: translateX(100px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    @keyframes slideOut {
+      from { 
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to { 
+        opacity: 0;
+        transform: translateX(100px);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+</script>
+
 </body>
 </html>
