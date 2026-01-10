@@ -803,6 +803,11 @@
       cursor: not-allowed;
     }
 
+    .star-btn.disabled:hover {
+      border-color: var(--light);
+      transform: none;
+    }
+
     .contest-actions {
       display: flex;
       justify-content: flex-end;
@@ -1670,7 +1675,7 @@
           </div>
         </div>
 
-        <!-- Section contestation - CORRIGÉE POUR PERMETTRE LE CHOIX DE LA NOTE -->
+        <!-- Section contestation - CORRIGÉE POUR PERMETTRE LE CHOIX LIBRE DE LA NOTE -->
         {% if reponse and reponse.etoiles is not none and reponse.etoiles < 5 %}
         <div class="contest-container" id="contestContainer">
           <div class="contest-header">
@@ -1683,9 +1688,9 @@
             <p class="contest-description">
               <i class="fas fa-info-circle"></i>
               {% if lang == 'fr' %}
-                Si vous pensez que votre réponse mérite une meilleure note, expliquez pourquoi et choisissez la note que vous estimez mériter :
+                Si vous pensez que votre réponse mérite une meilleure note, expliquez pourquoi et choisissez la note que vous estimez mériter (de {{ reponse.etoiles + 1 }} à 5) :
               {% else %}
-                If you think your answer deserves a better grade, explain why and choose the grade you think you deserve:
+                If you think your answer deserves a better grade, explain why and choose the grade you think you deserve (from {{ reponse.etoiles + 1 }} to 5):
               {% endif %}
             </p>
             
@@ -1718,25 +1723,35 @@
                 </label>
                 <div class="star-buttons" id="starButtons">
                   {% for i in range(1, 6) %}
+                    {% if i > reponse.etoiles %}
                     <button 
                       type="button" 
-                      class="star-btn {% if i == reponse.etoiles %}selected{% endif %}"
+                      class="star-btn {% if i == reponse.etoiles + 1 %}selected{% endif %}"
                       onclick="selectStar({{ i }})"
                       data-stars="{{ i }}"
-                      {% if i <= reponse.etoiles %}disabled{% endif %}
                     >
                       {{ i }} ⭐
                     </button>
+                    {% else %}
+                    <button 
+                      type="button" 
+                      class="star-btn disabled"
+                      disabled
+                      data-stars="{{ i }}"
+                    >
+                      {{ i }} ⭐
+                    </button>
+                    {% endif %}
                   {% endfor %}
                 </div>
                 <div style="margin-top: 10px; font-size: 0.9rem; color: var(--gray);">
                   <i class="fas fa-info-circle"></i>
                   {% if lang == 'fr' %}
                     Note actuelle : <strong>{{ reponse.etoiles }}/5</strong> • 
-                    Vous pouvez choisir n'importe quelle note de {{ reponse.etoiles + 1 }} à 5.
+                    Vous pouvez choisir n'importe quelle note supérieure à votre note actuelle.
                   {% else %}
                     Current grade: <strong>{{ reponse.etoiles }}/5</strong> • 
-                    You can choose any grade from {{ reponse.etoiles + 1 }} to 5.
+                    You can choose any grade higher than your current one.
                   {% endif %}
                 </div>
               </div>
@@ -1883,7 +1898,7 @@
             }
           });
         }, 10);
-      }
+        }
     }
 
     // Fonctions pour gérer l'affichage
@@ -1899,28 +1914,20 @@
       document.getElementById('feedbackSection').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Fonctions pour la contestation - CORRIGÉES
+    // Fonctions pour la contestation - CORRIGÉES POUR CHOIX LIBRE
     function selectStar(stars) {
       const currentStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }};
       
-      // PERMETTRE DE CHOISIR N'IMPORTE QUELLE NOTE (pas seulement +1)
+      // PERMETTRE DE CHOISIR N'IMPORTE QUELLE NOTE SUPÉRIEURE À LA NOTE ACTUELLE
       if (stars > currentStars) {
         selectedContestStars = stars;
         
-        document.querySelectorAll('.star-btn').forEach(btn => {
+        // Mettre à jour l'affichage des boutons
+        document.querySelectorAll('.star-btn:not(.disabled)').forEach(btn => {
           const btnStars = parseInt(btn.dataset.stars);
-          if (btnStars <= currentStars) {
-            btn.disabled = true;
-            btn.classList.add('disabled');
-          } else {
-            btn.disabled = false;
-            btn.classList.remove('disabled');
-          }
-          
+          btn.classList.remove('selected');
           if (btnStars === stars) {
             btn.classList.add('selected');
-          } else {
-            btn.classList.remove('selected');
           }
         });
         
@@ -1959,6 +1966,7 @@
       }
       
       console.log('Envoi contestation:', {
+        reponse_id: {{ reponse.id if reponse else 'null' }},
         justification: justification,
         proposed_stars: selectedContestStars,
         current_stars: currentStars
@@ -1994,7 +2002,7 @@
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "fr" %}Traitement en cours...{% else %}Processing...{% endif %}';
       }
       
-      // Préparer les données pour l'API
+      // Préparer les données pour l'API - FORMAT CORRIGÉ
       const requestData = {
         reponse_id: {{ reponse.id if reponse else 'null' }},
         justification: justification,
@@ -2006,18 +2014,22 @@
       
       console.log('Envoi de la contestation à l\'API:', requestData);
       
-      // Appeler votre API existante
+      // Appeler votre API existante - AJOUT DU BLOCAGE DE LA REQUÊTE
       fetch('/api/contest-evaluation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
+        credentials: 'same-origin' // IMPORTANT: Inclure les cookies de session
       })
       .then(response => {
         console.log('Réponse HTTP:', response.status, response.statusText);
         if (!response.ok) {
+          if (response.status === 403) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+          }
           throw new Error(`Erreur HTTP! statut: ${response.status} - ${response.statusText}`);
         }
         return response.json();
@@ -2037,20 +2049,17 @@
         }
         
         if (data.success) {
-          // Mettre à jour l'affichage avec les nouvelles données
-          updateDisplayAfterContest(data);
-          
           // Montrer un message de succès
           showNotification(
             data.message || 
-            "{% if lang == 'fr' %}Contestation traitée avec succès !{% else %}Contest processed successfully!{% endif %}",
+            "{% if lang == 'fr' %}Contestation traitée avec succès ! La page va se recharger pour afficher les modifications.{% else %}Contest processed successfully! The page will reload to show changes.{% endif %}",
             'success'
           );
           
-          // Recharger la page après 3 secondes pour voir tous les changements
+          // Recharger la page après 2 secondes pour voir tous les changements
           setTimeout(() => {
             window.location.reload();
-          }, 3000);
+          }, 2000);
           
         } else {
           showNotification(
@@ -2074,130 +2083,21 @@
           submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
         }
         
-        showNotification(
-          "{% if lang == 'fr' %}Erreur de connexion au serveur. Veuillez réessayer.{% else %}Server connection error. Please try again.{% endif %}",
-          'error'
-        );
+        // Message d'erreur spécifique
+        let errorMessage = "{% if lang == 'fr' %}Erreur de connexion au serveur. Veuillez réessayer.{% else %}Server connection error. Please try again.{% endif %}";
+        if (error.message.includes('Session')) {
+          errorMessage = "{% if lang == 'fr' %}Session expirée. Veuillez vous reconnecter.{% else %}Session expired. Please log in again.{% endif %}";
+        }
+        
+        showNotification(errorMessage, 'error');
       });
     }
 
     function updateDisplayAfterContest(data) {
-      // Extraire les données de la réponse
-      const newStars = data.new_stars;
-      const newFeedback = data.new_feedback;
-      const starsChanged = data.stars_changed;
-      
+      // Cette fonction est appelée par le backend après la redirection
       console.log('Mise à jour de l\'affichage après contestation:', data);
       
-      // Mettre à jour les étoiles affichées
-      const starsElement = document.getElementById('starsDisplay');
-      if (starsElement && newStars !== undefined) {
-        starsElement.innerHTML = `<strong>${newStars}/5 ⭐</strong>`;
-        
-        // Animation si la note a changé
-        if (starsChanged) {
-          starsElement.style.animation = 'pulse 0.5s ease 3';
-          setTimeout(() => starsElement.style.animation = '', 1500);
-        }
-      }
-      
-      // Mettre à jour l'icône de feedback
-      updateFeedbackIcon(newStars);
-      
-      // Mettre à jour le contenu de l'analyse IA
-      const feedbackElement = document.getElementById('aiAnalysisContent');
-      if (feedbackElement && newFeedback) {
-        // Créer un message de mise à jour
-        const updateMessage = document.createElement('div');
-        updateMessage.className = 'update-notice';
-        updateMessage.style.cssText = `
-          background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
-          border-left: 4px solid var(--secondary);
-          padding: 12px 15px;
-          margin-bottom: 15px;
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-weight: 600;
-          color: var(--dark);
-        `;
-        updateMessage.innerHTML = `
-          <i class="fas fa-sync-alt" style="color: var(--secondary);"></i>
-          <span>{% if lang == "fr" %}Correction mise à jour suite à votre contestation{% else %}Feedback updated following your contest{% endif %}</span>
-        `;
-        
-        // Nettoyer le feedback pour l'affichage
-        const cleanFeedback = newFeedback
-          .replace(/\\"/g, '"')
-          .replace(/\\\\/g, '\\')
-          .replace(/\\n\\n\\n/g, '<br><br>')
-          .replace(/\\n\\n/g, '<br><br>')
-          .replace(/\\n/g, ' ')
-          .replace(/  /g, ' ')
-          .replace(/\\\[/g, '$$')
-          .replace(/\\\]/g, '$$')
-          .replace(/\\\(/g, '$')
-          .replace(/\\\)/g, '$');
-        
-        // Mettre à jour le contenu
-        feedbackElement.innerHTML = '';
-        feedbackElement.appendChild(updateMessage);
-        
-        // Ajouter le nouveau feedback
-        const feedbackDiv = document.createElement('div');
-        feedbackDiv.className = 'feedback-text';
-        feedbackDiv.innerHTML = cleanFeedback;
-        feedbackElement.appendChild(feedbackDiv);
-        
-        // Reprocesser MathJax après la mise à jour
-        setTimeout(() => {
-          if (window.MathJax) {
-            MathJax.typesetPromise([feedbackElement]).catch(err => {
-              console.log('MathJax reprocessing error:', err);
-            });
-          }
-        }, 100);
-      }
-      
-      // Ajouter un badge "Mis à jour" à l'en-tête du feedback
-      const feedbackHeader = document.querySelector('.feedback-header');
-      if (feedbackHeader && starsChanged) {
-        // Supprimer l'ancien badge s'il existe
-        const oldBadge = feedbackHeader.querySelector('.feedback-updated-badge');
-        if (oldBadge) oldBadge.remove();
-        
-        // Créer un nouveau badge
-        const badge = document.createElement('div');
-        badge.className = 'feedback-updated-badge';
-        badge.style.cssText = `
-          position: absolute;
-          top: -10px;
-          right: -10px;
-          background: var(--secondary);
-          color: white;
-          padding: 4px 8px;
-          border-radius: 12px;
-          font-size: 0.7rem;
-          font-weight: bold;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          animation: pulse 1s ease 2;
-        `;
-        badge.innerHTML = '<i class="fas fa-sync-alt"></i> {% if lang == "fr" %}Mis à jour{% else %}Updated{% endif %}';
-        feedbackHeader.style.position = 'relative';
-        feedbackHeader.appendChild(badge);
-      }
-      
-      // Si la note maximale est atteinte, cacher la section contestation
-      if (newStars >= 5) {
-        hideContest();
-        showNotification(
-          "{% if lang == 'fr' %}Félicitations ! Vous avez obtenu la note maximale. 🎉{% else %}Congratulations! You obtained the maximum grade. 🎉{% endif %}",
-          'success'
-        );
-      }
+      // Les mises à jour se font via le rechargement de la page
     }
 
     function updateFeedbackIcon(stars) {
@@ -2297,21 +2197,10 @@
       setupFormSubmission();
 
       // Initialiser les étoiles de contestation - CHOIX LIBRE
-      // Par défaut, sélectionner la note actuelle + 1, mais permettre de choisir plus
       const currentStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }};
-      selectedContestStars = currentStars + 1;
+      selectedContestStars = currentStars + 1; // Par défaut, sélectionner la note juste au-dessus
       
-      // Mettre à jour l'affichage des boutons
-      document.querySelectorAll('.star-btn').forEach(btn => {
-        const btnStars = parseInt(btn.dataset.stars);
-        if (btnStars <= currentStars) {
-          btn.disabled = true;
-          btn.classList.add('disabled');
-        }
-        if (btnStars === selectedContestStars) {
-          btn.classList.add('selected');
-        }
-      });
+      console.log('Initialisation contestation: note actuelle =', currentStars, 'note sélectionnée =', selectedContestStars);
 
       // Retraiter MathJax après un délai supplémentaire pour s'assurer que tout est chargé
       setTimeout(processMathContent, 2000);
