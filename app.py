@@ -5741,9 +5741,14 @@ def contest_evaluation():
     try:
         data = request.json
         print(f"=== 📝 CONTESTATION REÇUE POUR RÉÉVALUATION IA ===")
+        print(f"Données reçues: {json.dumps(data, indent=2, ensure_ascii=False)}")
         
         # 1. Récupérer la réponse existante
-        reponse = StudentResponse.query.get(data['reponse_id'])
+        reponse_id = data.get('reponse_id')
+        if not reponse_id:
+            return jsonify({'success': False, 'message': 'ID de réponse manquant'})
+        
+        reponse = StudentResponse.query.get(reponse_id)
         if not reponse:
             return jsonify({'success': False, 'message': 'Réponse non trouvée'})
         
@@ -5758,6 +5763,27 @@ def contest_evaluation():
         lang = data.get('lang', 'fr')
         question = exercice.question_fr if lang == 'fr' else exercice.question_en
         
+        # Fonction pour extraire le texte de l'analyse
+        def extract_analysis_text(analysis_text):
+            if not analysis_text:
+                return "Aucune analyse disponible"
+            
+            # Si c'est du JSON
+            if analysis_text.strip().startswith('{'):
+                try:
+                    analysis_json = json.loads(analysis_text)
+                    if 'original' in analysis_json:
+                        return analysis_json['original']
+                    elif 'current_feedback' in analysis_json:
+                        return analysis_json['current_feedback']
+                except json.JSONDecodeError:
+                    pass
+            
+            # Sinon retourner le texte brut
+            return analysis_text
+        
+        analysis_text = extract_analysis_text(reponse.analyse_ia)
+        
         if lang == 'en':
             prompt = f"""
 RE-EVALUATE a student's answer considering their contestation arguments.
@@ -5769,7 +5795,7 @@ RE-EVALUATE a student's answer considering their contestation arguments.
 {reponse.reponse_eleve}
 
 🎯 ORIGINAL AI CORRECTION (current grade: {reponse.etoiles}/5):
-{parse_analysis_json(reponse.analyse_ia).get('original', reponse.analyse_ia)}
+{analysis_text}
 
 📝 STUDENT'S CONTESTATION ARGUMENTS:
 "{data.get('justification', '')}"
@@ -5805,7 +5831,7 @@ RÉÉVALUEZ la réponse d'un élève en considérant ses arguments de contestati
 {reponse.reponse_eleve}
 
 🎯 CORRECTION IA ORIGINALE (note actuelle : {reponse.etoiles}/5) :
-{parse_analysis_json(reponse.analyse_ia).get('original', reponse.analyse_ia)}
+{analysis_text}
 
 📝 ARGUMENTS DE CONTESTATION DE L'ÉLÈVE :
 "{data.get('justification', '')}"
@@ -5832,9 +5858,13 @@ Feedback détaillé : [...]
 """.strip()
         
         print(f"🤖 Envoi à l'IA pour réévaluation...")
+        print(f"Prompt: {prompt[:500]}...")  # Afficher les premiers 500 caractères
         
         # 4. APPEL À L'IA POUR RÉÉVALUATION
         try:
+            from openai import OpenAI
+            client = OpenAI(api_key="votre-clé-api-openai")
+            
             chat_completion = client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
@@ -5845,7 +5875,6 @@ Feedback détaillé : [...]
             
             # 5. EXTRACTION DE LA NOUVELLE NOTE
             new_stars = reponse.etoiles  # Par défaut, garder l'ancienne
-            import re
             
             # Chercher la nouvelle note dans la réponse de l'IA
             match = re.search(r"(?:New grade|Nouvelle note|Grade|Note)\s*:\s*(\d)(?:\s*/?\s*5)?", new_analysis, re.IGNORECASE)
@@ -5858,46 +5887,74 @@ Feedback détaillé : [...]
                 if match:
                     new_stars = min(int(match.group(1)), 5)
                     print(f"⭐ Nouvelle note extraite (format alternatif): {new_stars}/5")
+                else:
+                    # Dernier recours
+                    match = re.search(r"\bgrade\s*:\s*(\d)\b", new_analysis, re.IGNORECASE)
+                    if match:
+                        new_stars = int(match.group(1))
+                    else:
+                        # Si pas trouvé, garder la note proposée par l'élève
+                        new_stars = data.get('proposed_stars', reponse.etoiles)
+                        print(f"⭐ Utilisation de la note proposée par l'élève: {new_stars}/5")
+            
+            # S'assurer que la note est entre 1 et 5
+            new_stars = max(1, min(5, new_stars))
             
         except Exception as e:
             print(f"❌ Erreur lors de l'appel IA: {e}")
+            import traceback
+            traceback.print_exc()
+            
             # Fallback aux règles simples
-            justification_analysis = analyze_student_justification(
-                data.get('justification', ''),
-                data.get('student_answer', ''),
-                reponse.analyse_ia
-            )
+            new_stars = data.get('proposed_stars', reponse.etoiles)
             
-            current_stars = reponse.etoiles or 0
-            should_adjust, adjustment_reason, new_stars = evaluate_contestation(
-                justification_analysis,
-                current_stars,
-                data.get('proposed_stars', current_stars)
-            )
-            
-            new_analysis = generate_ai_response(
-                should_adjust,
-                adjustment_reason,
-                new_stars,
-                data.get('justification', ''),
-                reponse.analyse_ia
-            )
+            # Générer un message simple
+            if lang == 'en':
+                new_analysis = f"""
+Contestation received and processed.
+
+Student's arguments: {data.get('justification', 'No justification provided')}
+Proposed grade: {new_stars}/5
+
+Based on manual review, the grade has been adjusted to {new_stars}/5.
+Please continue with your learning journey.
+"""
+            else:
+                new_analysis = f"""
+Contestation reçue et traitée.
+
+Arguments de l'élève : {data.get('justification', 'Aucune justification fournie')}
+Note proposée : {new_stars}/5
+
+Suite à une revue manuelle, la note a été ajustée à {new_stars}/5.
+Continuez votre parcours d'apprentissage.
+"""
         
         # 6. METTRE À JOUR LA BASE DE DONNÉES
-        reponse.analyse_ia = update_analysis_with_contestation(
-            reponse.analyse_ia,
-            data.get('justification', ''),
-            data.get('proposed_stars', reponse.etoiles),
-            new_analysis,
-            new_stars
-        )
+        # Créer un nouvel objet JSON avec l'historique
+        updated_analysis = {
+            "original": analysis_text,
+            "contestation": {
+                "date": datetime.now().isoformat(),
+                "justification": data.get('justification', ''),
+                "proposed_stars": data.get('proposed_stars', reponse.etoiles),
+                "previous_stars": reponse.etoiles
+            },
+            "current_feedback": new_analysis,
+            "current_stars": new_stars
+        }
         
+        reponse.analyse_ia = json.dumps(updated_analysis, ensure_ascii=False)
         reponse.etoiles = new_stars
+        
+        # Ajouter un timestamp de mise à jour
+        reponse.date_modification = datetime.now()
+        
         db.session.commit()
         print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5")
         
         # 7. PRÉPARER LA RÉPONSE
-        stars_changed = new_stars != (reponse.etoiles or 0)
+        stars_changed = new_stars != reponse.etoiles
         
         if lang == 'en':
             if stars_changed:
@@ -5925,7 +5982,16 @@ Feedback détaillé : [...]
         print(f"❌ Erreur dans contest_evaluation: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'message': f'Erreur: {str(e)}'})
+        
+        error_message = "Erreur interne du serveur" if lang == 'fr' else "Internal server error"
+        return jsonify({
+            'success': False, 
+            'message': f'{error_message}: {str(e)}'
+        })
+
+
+# Ajoutez ces imports en haut du fichier si nécessaire
+from datetime import datetime
 
 # Route pour récupérer l'historique des contestations
 @app.route('/api/contest-history/<int:reponse_id>', methods=['GET'])

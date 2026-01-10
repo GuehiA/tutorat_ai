@@ -1694,6 +1694,7 @@
                 ></textarea>
               </div>
               
+              <!-- CORRECTION : Choix complet de 1 à 5 étoiles -->
               <div class="form-group">
                 <label>
                   <i class="fas fa-star"></i>
@@ -1703,7 +1704,7 @@
                   {% for i in range(1, 6) %}
                     <button 
                       type="button" 
-                      class="star-btn {% if i == reponse.etoiles + 1 %}selected{% endif %}"
+                      class="star-btn {% if i == reponse.etoiles %}selected{% endif %}"
                       onclick="selectStar({{ i }})"
                       data-stars="{{ i }}"
                     >
@@ -1739,6 +1740,7 @@
 
   <script>
     let currentAnswer = '';
+    // CORRECTION : Initialiser avec la note actuelle au lieu de +1
     let selectedContestStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 3 }};
     let editMode = {% if edit_mode %}true{% else %}false{% endif %};
 
@@ -1894,6 +1896,12 @@
     function submitContest() {
       const justification = document.getElementById('contestText').value.trim();
       
+      console.log("📝 Tentative de contestation:", {
+        justification: justification,
+        selectedStars: selectedContestStars,
+        reponseId: {{ reponse.id if reponse else 'null' }}
+      });
+      
       if (!justification) {
         showNotification(
           "{% if lang == 'fr' %}Veuillez expliquer pourquoi vous méritez une meilleure note.{% else %}Please explain why you deserve a better grade.{% endif %}",
@@ -1902,36 +1910,57 @@
         return;
       }
       
-      showNotification(
-        "{% if lang == 'fr' %}Envoi de votre contestation à l'IA pour réévaluation...{% else %}Sending your contest to AI for re-evaluation...{% endif %}",
-        'info'
-      );
+      // Afficher l'overlay de chargement
+      const waitingOverlay = document.getElementById('waitingOverlay');
+      if (waitingOverlay) {
+        waitingOverlay.classList.add('active');
+      }
       
+      // Désactiver le bouton de soumission
       const submitBtn = document.querySelector('.contest-form .btn-submit');
+      const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "fr" %}Traitement en cours...{% else %}Processing...{% endif %}';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "fr" %}Envoi en cours...{% else %}Sending...{% endif %}';
       }
+      
+      const payload = {
+        reponse_id: {{ reponse.id if reponse else 'null' }},
+        justification: justification,
+        proposed_stars: selectedContestStars,
+        student_answer: document.querySelector('#studentAnswerContent').textContent.trim(),
+        current_stars: {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }},
+        lang: '{{ lang }}'
+      };
+      
+      console.log("📤 Payload envoyé à l'API:", payload);
       
       fetch('/api/contest-evaluation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          reponse_id: {{ reponse.id if reponse else 'null' }},
-          justification: justification,
-          proposed_stars: selectedContestStars,
-          student_answer: document.querySelector('#studentAnswerContent').textContent.trim(),
-          current_stars: {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }},
-          lang: '{{ lang }}'
-        })
+        body: JSON.stringify(payload)
       })
-      .then(response => response.json())
+      .then(response => {
+        console.log("📥 Réponse du serveur - Status:", response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
+        console.log("✅ Données reçues du serveur:", data);
+        
+        // Réactiver le bouton
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
+          submitBtn.innerHTML = originalBtnText;
+        }
+        
+        // Cacher l'overlay
+        if (waitingOverlay) {
+          waitingOverlay.classList.remove('active');
         }
         
         if (data.success) {
@@ -1947,19 +1976,27 @@
         } else {
           showNotification(
             data.message || 
-            "{% if lang == 'fr' %}Erreur lors du traitement.{% else %}Error during processing.{% endif %}",
+            "{% if lang == 'fr' %}Erreur lors du traitement de votre contestation.{% else %}Error processing your contest.{% endif %}",
             'error'
           );
         }
       })
       .catch(error => {
-        console.error('Erreur:', error);
+        console.error('❌ Erreur lors de la contestation:', error);
+        
+        // Réactiver le bouton
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
+          submitBtn.innerHTML = originalBtnText;
         }
+        
+        // Cacher l'overlay
+        if (waitingOverlay) {
+          waitingOverlay.classList.remove('active');
+        }
+        
         showNotification(
-          "{% if lang == 'fr' %}Erreur de connexion au serveur.{% else %}Server connection error.{% endif %}",
+          "{% if lang == 'fr' %}Erreur de connexion au serveur. Veuillez réessayer.{% else %}Server connection error. Please try again.{% endif %}",
           'error'
         );
       });
@@ -2105,7 +2142,7 @@
       setupFormSubmission();
 
       // Initialiser les étoiles de contestation
-      selectStar({{ reponse.etoiles + 1 if reponse and reponse.etoiles is not none else 3 }});
+      selectStar({{ reponse.etoiles if reponse and reponse.etoiles is not none else 3 }});
 
       // Retraiter MathJax après un délai supplémentaire pour s'assurer que tout est chargé
       setTimeout(processMathContent, 2000);
