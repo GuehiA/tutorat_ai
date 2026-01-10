@@ -608,6 +608,8 @@
       border: 2px solid var(--light);
       line-height: 1.8;
       font-size: 1.05rem;
+      white-space: pre-wrap;  /* Conserve les retours à la ligne */
+      word-wrap: break-word;  /* Coupe les mots longs */
     }
     
     .content-block p {
@@ -841,6 +843,23 @@
       color: white;
       transform: translateX(5px);
       border-color: var(--secondary-light);
+    }
+    
+    /* Style spécial pour les contenus nettoyés */
+    .content-block.cleaned-content {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: var(--font-body);
+      line-height: 1.6;
+    }
+    
+    .content-block .math-formula {
+      display: inline-block;
+      background: rgba(52, 152, 219, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin: 0 2px;
+      font-family: 'Courier New', monospace;
     }
     
     /* Responsive */
@@ -1595,9 +1614,19 @@
           const text = parsed.original || parsed.analysis || parsed.analyse_ia || 
                       parsed.current_feedback || parsed.feedback || parsed.reponse || 
                       (typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : strContent);
-          return cleanJsonContent(text);
+          
+          let cleanFeedback = String(text)
+            .replace(/\\n/g, '<br>')
+            .replace(/\\r/g, '')
+            .replace(/\\t/g, ' ')
+            .replace(/\\\\\[/g, '$$')
+            .replace(/\\\\\]/g, '$$')
+            .replace(/\\\\\(/g, '$')
+            .replace(/\\\\\)/g, '$');
+          
+          return cleanFeedback;
         } catch(e) {
-          // Ce n'est pas du JSON valide, continuer avec le nettoyage de base
+          // Pas du JSON
         }
       }
       
@@ -1647,6 +1676,7 @@
             const cleanedContent = cleanJsonContent(originalContent);
             if (cleanedContent !== originalContent) {
               block.innerHTML = cleanedContent;
+              block.classList.add('cleaned-content');
             }
           });
           
@@ -1668,12 +1698,13 @@
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
-      // Nettoyer tout le contenu au chargement
+      // Nettoyer tout le contenu au chargement (au cas où)
       document.querySelectorAll('.content-block').forEach(block => {
         const originalContent = block.innerHTML;
         const cleanedContent = cleanJsonContent(originalContent);
         if (cleanedContent !== originalContent) {
           block.innerHTML = cleanedContent;
+          block.classList.add('cleaned-content');
         }
         
         if (!block.classList.contains('math-content')) {
@@ -1734,6 +1765,7 @@
                   const cleanedContent = cleanJsonContent(originalContent);
                   if (cleanedContent !== originalContent) {
                     block.innerHTML = cleanedContent;
+                    block.classList.add('cleaned-content');
                   }
                 });
                 

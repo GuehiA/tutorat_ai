@@ -6651,6 +6651,70 @@ def progression_eleve():
 
     return render_template("progression_eleve.html", eleve=eleve, exercice=donnees)
 
+import json
+import re
+
+def clean_json_content(content):
+    """
+    Nettoie le contenu JSON problématique, en particulier:
+    - \Math input error
+    - \é, \à, etc.
+    - Dollars mal échappés
+    - Séquences LaTeX problématiques
+    """
+    if not content:
+        return ""
+    
+    content_str = str(content)
+    
+    # D'abord, essayer de parser comme JSON
+    if content_str.strip().startswith('{') and content_str.strip().endswith('}'):
+        try:
+            parsed = json.loads(content_str)
+            # Extraire le contenu principal
+            for key in ['original', 'analysis', 'analyse', 'feedback', 'current_feedback', 'reponse']:
+                if key in parsed:
+                    content_str = str(parsed[key])
+                    break
+        except:
+            pass  # Continuer avec le nettoyage de base
+    
+    # Liste des nettoyages à appliquer
+    replacements = [
+        # Problèmes spécifiques
+        (r'\\Math input error', 'Math input error'),
+        (r'\\([a-zA-ZéàèùâêîôûëïüÿçÉÀÈÙÂÊÎÔÛËÏÜŸÇ])', r'\1'),
+        
+        # Séquences LaTeX mal échappées
+        (r'\\\\\[', '$$'),  # \\[ -> $$
+        (r'\\\\\]', '$$'),  # \\] -> $$
+        (r'\\\\\(', '$'),   # \\( -> $
+        (r'\\\\\)', '$'),   # \\) -> $
+        
+        # Problèmes de backslash
+        (r'\\/', '/'),
+        (r'\\"', '"'),
+        (r"\\'", "'"),
+        
+        # Nettoyer les échappements
+        ('\\n', '<br>'),
+        ('\\r', ''),
+        ('\\t', '    '),
+        
+        # Retours à la ligne
+        ('\r\n', '<br>'),
+        ('\n', '<br>'),
+    ]
+    
+    # Appliquer tous les remplacements
+    for pattern, replacement in replacements:
+        if isinstance(pattern, str):
+            content_str = content_str.replace(pattern, replacement)
+        else:
+            content_str = pattern.sub(replacement, content_str)
+    
+    return content_str
+
 @app.route("/historique")
 def historique_eleve():
     username = request.args.get("username")
@@ -6660,14 +6724,17 @@ def historique_eleve():
         username = session.get("username")
     
     if not username:
-        if lang == "fr":
+        # Utiliser la langue par défaut pour le message flash
+        default_lang = request.args.get("lang", "fr")
+        if default_lang == "fr":
             flash("Veuillez vous connecter pour accéder à l'historique", "warning")
         else:
             flash("Please log in to access history", "warning")
         return redirect(url_for("connexion_eleve"))
     
-    exercice_id = request.args.get("exercice_id")
+    # Récupérer la langue APRES avoir vérifié l'authentification
     lang = request.args.get("lang", "fr")
+    exercice_id = request.args.get("exercice_id")
 
     eleve = User.query.filter_by(username=username).first()
     if not eleve:
@@ -6900,12 +6967,17 @@ def historique_eleve():
             # Obtenir l'énoncé dans la bonne langue
             enonce = ex.question_fr if lang == "fr" else (ex.question_en if ex.question_en else ex.question_fr)
             
+            # Nettoyer le contenu JSON
+            enonce_clean = clean_json_content(enonce)
+            reponse_eleve_clean = clean_json_content(r.reponse_eleve)
+            analyse_ia_clean = clean_json_content(r.analyse_ia or "—")
+            
             exercice_data = {
                 "id": r.id,
                 "theme": unite_nom if unite else "—",
-                "enonce": enonce,
-                "reponse_eleve": r.reponse_eleve,
-                "analyse_ia": r.analyse_ia or "—",
+                "enonce": enonce_clean,
+                "reponse_eleve": reponse_eleve_clean,
+                "analyse_ia": analyse_ia_clean,
                 "etoiles": r.etoiles if r.etoiles is not None else 0,
                 "date": r.timestamp.strftime("%d/%m/%Y") if r.timestamp else "",
                 "original_names": {
@@ -7013,15 +7085,24 @@ def historique_eleve():
                 )
             except Exception:
                 reponses_ordonnees = "\n".join(t.reponses_exercices.values())
+        
+        # Nettoyer le contenu JSON pour les tests
+        enonce_test_clean = clean_json_content(enonce_test)
+        reponses_ordonnees_clean = clean_json_content(reponses_ordonnees or "—")
+        analyse_ia_test_clean = clean_json_content(t.analyse_ia or "—")
 
         donnees_tests.append({
             "unite": unite_nom_test,
-            "question": enonce_test,
-            "reponse_eleve": reponses_ordonnees or "—",
-            "analyse_ia": t.analyse_ia or "—",
+            "question": enonce_test_clean,
+            "reponse_eleve": reponses_ordonnees_clean,
+            "analyse_ia": analyse_ia_test_clean,
             "etoiles": t.etoiles if t.etoiles is not None else 0,
             "date": t.timestamp.strftime("%d/%m/%Y") if t.timestamp else ""
         })
+
+    # Fonction helper pour le template (au cas où)
+    def template_clean_json(content):
+        return clean_json_content(content)
 
     return render_template(
         "historique_eleve.html",
@@ -7035,7 +7116,8 @@ def historique_eleve():
         tests=donnees_tests,
         is_parent_access=is_parent_access,
         is_enseignant_access=is_enseignant_access,
-        is_eleve_direct_access=is_eleve_direct_access
+        is_eleve_direct_access=is_eleve_direct_access,
+        clean_json_content=template_clean_json  # Ajouter la fonction de nettoyage
     )
 
 @app.route("/enseignant-remediations")
