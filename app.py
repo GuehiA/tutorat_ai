@@ -54,6 +54,23 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 7200  # 2 heures en secondes
 
+# === AJOUTEZ CE BLOC ===
+# Import nécessaire pour Flask-Login
+from flask_login import LoginManager
+
+# Initialiser Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'  # Nom de votre route de connexion
+login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
+login_manager.login_message_category = 'warning'
+
+# User loader (IMPORTANT sans modifier le modèle User)
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+# === FIN DU BLOC À AJOUTER ===
+
 
 # ====================================================================
 # 🔧 CONFIGURATION INTELLIGENTE DE LA BASE DE DONNÉES
