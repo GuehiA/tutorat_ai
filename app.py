@@ -54,23 +54,6 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 7200  # 2 heures en secondes
 
-# === AJOUTEZ CE BLOC ===
-# Import nécessaire pour Flask-Login
-from flask_login import LoginManager
-
-# Initialiser Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'  # Nom de votre route de connexion
-login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
-login_manager.login_message_category = 'warning'
-
-# User loader (IMPORTANT sans modifier le modèle User)
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-# === FIN DU BLOC À AJOUTER ===
-
 
 # ====================================================================
 # 🔧 CONFIGURATION INTELLIGENTE DE LA BASE DE DONNÉES
@@ -5135,14 +5118,14 @@ def parse_simple_lesson_format(text):
     return lessons
 
 # Dans votre app.py ou routes.py
-
-from flask_login import login_required, current_user, login_user, logout_user
-
 @app.route('/admin/import-lessons', methods=['GET', 'POST'])
-@login_required
-@admin_required
 def admin_import_lessons():
     """Page d'importation de leçons en lot"""
+    
+    # 🔐 MÊME VÉRIFICATION QUE POUR LES EXERCICES
+    if not session.get('is_admin') and not session.get('user_id'):
+        flash('Veuillez vous connecter en tant qu\'administrateur', 'error')
+        return redirect(url_for('login_admin'))  # Ou votre route de login
     
     # Récupérer toutes les unités avec leurs informations
     unites = Unite.query.join(Matiere).join(Niveau).all()
@@ -5195,7 +5178,8 @@ objectif_en: Identify and create equivalent fractions"""
         return render_template('import_lessons.html', 
                              unites=unites_data,
                              unite_id=unite_id,
-                             template=template)
+                             template=template,
+                             lang=session.get('lang', 'fr'))  # Ajoutez la langue
     
     # POST: Importer les leçons
     unite_id = request.form.get('unite_id')
@@ -5210,6 +5194,46 @@ objectif_en: Identify and create equivalent fractions"""
     result = import_lessons_from_text(lessons_text, int(unite_id), db.session, Lecon)
     
     return jsonify(result)
+
+@app.route('/admin/parse-lessons-preview', methods=['POST'])
+def parse_lessons_preview():
+    """Prévisualiser le parsing des leçons"""
+    
+    # Même vérification d'authentification
+    if not session.get('is_admin') and not session.get('user_id'):
+        return jsonify({
+            'success': False,
+            'message': 'Non autorisé'
+        }), 403
+    
+    lessons_text = request.form.get('lessons_text', '')
+    
+    if not lessons_text:
+        return jsonify({
+            'count': 0,
+            'lessons': [],
+            'formatted': 'Aucun texte fourni'
+        })
+    
+    lessons = parse_bilingual_lessons(lessons_text)
+    
+    # Formater pour l'affichage
+    formatted = ""
+    for i, lesson in enumerate(lessons[:5], 1):  # Limiter à 5 pour l'aperçu
+        formatted += f"Leçon {i}:\n"
+        formatted += f"  🇫🇷 {lesson['titre_fr']}\n"
+        formatted += f"  🇬🇧 {lesson['titre_en']}\n"
+        if lesson['objectif_fr']:
+            formatted += f"  🎯 FR: {lesson['objectif_fr'][:100]}{'...' if len(lesson['objectif_fr']) > 100 else ''}\n"
+        if lesson['objectif_en']:
+            formatted += f"  🎯 EN: {lesson['objectif_en'][:100]}{'...' if len(lesson['objectif_en']) > 100 else ''}\n"
+        formatted += "-" * 40 + "\n"
+    
+    return jsonify({
+        'count': len(lessons),
+        'lessons': lessons[:10],  # Limiter à 10 pour l'aperçu
+        'formatted': formatted
+    })
 
 from flask_wtf.csrf import generate_csrf
 @app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
