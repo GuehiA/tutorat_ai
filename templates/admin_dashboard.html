@@ -834,7 +834,8 @@
                                                       <a href="/admin/modifier-lecon/{{ lecon.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit lesson{% else %}Modifier la leçon{% endif %}">
                                                         <i class="fas fa-edit"></i>
                                                       </a>
-                                                      <form method="POST" action="/admin/supprimer-lecon/{{ lecon.id }}" class="d-inline">
+                                                      <!-- CORRECTION ICI : Utilisez la route supprimer_lecon qui manque -->
+                                                      <form method="POST" action="{{ url_for('supprimer_lecon', id=lecon.id) }}" class="d-inline">
                                                         <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Delete this lesson? All associated exercises will also be deleted.{% else %}Supprimer cette leçon ? Tous les exercices associés seront également supprimés.{% endif %}')">
                                                           <i class="fas fa-trash"></i>
                                                         </button>

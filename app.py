@@ -2575,6 +2575,27 @@ def supprimer_test(test_id):
     
     return redirect(url_for("liste_tests"))
 
+@app.route("/admin/supprimer-lecon/<int:id>", methods=["POST"])
+@admin_required
+def supprimer_lecon(id):
+    """Supprimer une leçon et tous ses exercices associés."""
+    try:
+        lecon = Lecon.query.get_or_404(id)
+        
+        # Supprimer tous les exercices associés à cette leçon
+        Exercice.query.filter_by(lecon_id=id).delete()
+        
+        # Supprimer la leçon
+        db.session.delete(lecon)
+        db.session.commit()
+        
+        flash("Leçon supprimée avec succès", "success")
+        return redirect(url_for("admin_dashboard"))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erreur lors de la suppression : {str(e)}", "danger")
+        return redirect(url_for("admin_dashboard"))
 
 @app.route("/login-admin", methods=["GET", "POST"])
 def login_admin():
