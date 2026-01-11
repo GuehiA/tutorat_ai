@@ -1,10 +1,9 @@
-<!-- templates/import_lessons.html -->
 <!DOCTYPE html>
 <html lang="{{ lang }}" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Importation de leçons bilingues</title>
+    <title>{% if lang == 'en' %}Batch Import Lessons{% else %}Importation de leçons en lot{% endif %}</title>
     <style>
         * {
             margin: 0;
@@ -69,7 +68,6 @@
         .import-icon { background: #4CAF50; color: white; }
         .preview-icon { background: #2196F3; color: white; }
         .template-icon { background: #FF9800; color: white; }
-        .units-icon { background: #9C27B0; color: white; }
         
         .form-group {
             margin-bottom: 20px;
@@ -95,6 +93,12 @@
         select:focus, input:focus, textarea:focus {
             outline: none;
             border-color: #667eea;
+        }
+        
+        select:disabled {
+            background-color: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
         }
         
         textarea {
@@ -139,7 +143,6 @@
         .btn-secondary {
             background: #f5f5f5;
             color: #333;
-            margin-left: 10px;
         }
         
         .btn-secondary:hover {
@@ -156,7 +159,20 @@
             margin-top: 20px;
         }
         
-        .unit-info {
+        .hierarchy-selectors {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .hierarchy-selectors {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .selection-info {
             background: #f8f9fa;
             border-radius: 10px;
             padding: 15px;
@@ -164,12 +180,12 @@
             border-left: 4px solid #667eea;
         }
         
-        .unit-info h4 {
+        .selection-info h4 {
             color: #333;
             margin-bottom: 10px;
         }
         
-        .unit-info p {
+        .selection-info p {
             color: #666;
             margin-bottom: 5px;
             font-size: 14px;
@@ -371,6 +387,18 @@
             border-radius: 15px;
             font-size: 12px;
         }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -381,37 +409,54 @@
                 <div class="icon import-icon">
                     📚
                 </div>
-                <h2>Importation de leçons</h2>
+                <h2>{% if lang == 'en' %}Batch Lesson Import{% else %}Importation de leçons en lot{% endif %}</h2>
             </div>
             
             <div id="alertArea"></div>
             
             <form id="importForm">
-                <div class="form-group">
-                    <label for="uniteSelect">Sélectionnez l'unité cible</label>
-                    <select id="uniteSelect" name="unite_id" required>
-                        <option value="">Choisissez une unité...</option>
-                        {% for unite in unites %}
-                        <option value="{{ unite.id }}" data-matiere="{{ unite.matiere.nom }}" data-niveau="{{ unite.matiere.niveau.nom }}">
-                            [{{ unite.matiere.niveau.nom }}] {{ unite.nom }} - {{ unite.matiere.nom }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                <!-- Sélecteurs hiérarchiques -->
+                <div class="hierarchy-selectors">
+                    <div class="form-group">
+                        <label for="niveauSelect">{% if lang == 'en' %}Level{% else %}Niveau{% endif %}</label>
+                        <select id="niveauSelect" name="niveau_id">
+                            <option value="">{% if lang == 'en' %}Choose a level...{% else %}Choisissez un niveau...{% endif %}</option>
+                            {% for niveau in niveaux %}
+                            <option value="{{ niveau.id }}">{{ niveau.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="matiereSelect">{% if lang == 'en' %}Subject{% else %}Matière{% endif %}</label>
+                        <select id="matiereSelect" name="matiere_id" disabled>
+                            <option value="">{% if lang == 'en' %}Select a level first{% else %}Sélectionnez d'abord un niveau{% endif %}</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="uniteSelect">{% if lang == 'en' %}Unit{% else %}Unité{% endif %}</label>
+                        <select id="uniteSelect" name="unite_id" disabled required>
+                            <option value="">{% if lang == 'en' %}Select a subject first{% else %}Sélectionnez d'abord une matière{% endif %}</option>
+                        </select>
+                    </div>
                 </div>
                 
-                <div id="unitInfo" class="unit-info" style="display: none;">
-                    <h4>Informations de l'unité</h4>
-                    <p><strong>Niveau:</strong> <span id="niveauInfo"></span></p>
-                    <p><strong>Matière:</strong> <span id="matiereInfo"></span></p>
-                    <p><strong>Leçons existantes:</strong> <span id="leconsCount">0</span></p>
+                <!-- Informations sur la sélection -->
+                <div id="selectionInfo" class="selection-info" style="display: none;">
+                    <h4>{% if lang == 'en' %}Selected Unit{% else %}Unité sélectionnée{% endif %}</h4>
+                    <p><strong>{% if lang == 'en' %}Level:{% else %}Niveau:{% endif %}</strong> <span id="niveauInfo"></span></p>
+                    <p><strong>{% if lang == 'en' %}Subject:{% else %}Matière:{% endif %}</strong> <span id="matiereInfo"></span></p>
+                    <p><strong>{% if lang == 'en' %}Unit:{% else %}Unité:{% endif %}</strong> <span id="uniteInfo"></span></p>
+                    <p><strong>{% if lang == 'en' %}Existing lessons:{% else %}Leçons existantes:{% endif %}</strong> <span id="leconsCount">0</span></p>
                 </div>
                 
                 <div class="form-group">
-                    <label for="lessonsText">Contenu des leçons (format bilingue)</label>
+                    <label for="lessonsText">{% if lang == 'en' %}Lesson content (bilingual format){% else %}Contenu des leçons (format bilingue){% endif %}</label>
                     
                     <div class="format-guide">
-                        <h4>Format attendu</h4>
-                        <p>Utilisez le format suivant pour chaque leçon :</p>
+                        <h4>{% if lang == 'en' %}Expected Format{% else %}Format attendu{% endif %}</h4>
+                        <p>{% if lang == 'en' %}Use the following format for each lesson:{% else %}Utilisez le format suivant pour chaque leçon :{% endif %}</p>
                         <div class="format-example">
 titre_fr: Les fractions simples<br>
 titre_en: Simple fractions<br>
@@ -433,52 +478,52 @@ titre_en: Second lesson<br>
                             <span class="keyword">objectif_en</span>
                             <span class="keyword">description_fr</span>
                             <span class="keyword">description_en</span>
-                            <span class="keyword">--- (séparateur)</span>
+                            <span class="keyword">--- ({% if lang == 'en' %}separator{% else %}séparateur{% endif %})</span>
                         </div>
                     </div>
                     
                     <textarea 
                         id="lessonsText" 
                         name="lessons_text" 
-                        placeholder="Collez ou écrivez vos leçons ici..."
+                        placeholder="{% if lang == 'en' %}Paste or write your lessons here...{% else %}Collez ou écrivez vos leçons ici...{% endif %}"
                         rows="15"></textarea>
                 </div>
                 
                 <div class="btn-group">
                     <button type="button" class="btn btn-primary" onclick="previewLessons()">
-                        <span class="btn-icon">👁️</span> Prévisualiser
+                        <span class="btn-icon">👁️</span> {% if lang == 'en' %}Preview{% else %}Prévisualiser{% endif %}
                     </button>
                     <button type="button" class="btn btn-secondary" onclick="loadTemplate()">
-                        <span class="btn-icon">📋</span> Charger modèle
+                        <span class="btn-icon">📋</span> {% if lang == 'en' %}Load Template{% else %}Charger modèle{% endif %}
                     </button>
                     <button type="button" class="btn btn-secondary" onclick="clearForm()">
-                        <span class="btn-icon">🗑️</span> Effacer
+                        <span class="btn-icon">🗑️</span> {% if lang == 'en' %}Clear{% else %}Effacer{% endif %}
                     </button>
                 </div>
                 
                 <div class="loading" id="loadingPreview">
                     <div class="spinner"></div>
-                    <p>Analyse en cours...</p>
+                    <p>{% if lang == 'en' %}Analysis in progress...{% else %}Analyse en cours...{% endif %}</p>
                 </div>
                 
                 <div class="stats" id="previewStats" style="display: none;">
                     <div class="stat-card">
                         <div class="stat-number" id="statLessons">0</div>
-                        <div class="stat-label">Leçons</div>
+                        <div class="stat-label">{% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="statFR">0</div>
-                        <div class="stat-label">Titres FR</div>
+                        <div class="stat-label">{% if lang == 'en' %}French Titles{% else %}Titres FR{% endif %}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="statEN">0</div>
-                        <div class="stat-label">Titres EN</div>
+                        <div class="stat-label">{% if lang == 'en' %}English Titles{% else %}Titres EN{% endif %}</div>
                     </div>
                 </div>
                 
                 <div class="btn-group" style="margin-top: 30px;">
                     <button type="submit" class="btn btn-primary" style="flex: 2;">
-                        <span class="btn-icon">🚀</span> Importer les leçons
+                        <span class="btn-icon">🚀</span> {% if lang == 'en' %}Import Lessons{% else %}Importer les leçons{% endif %}
                     </button>
                 </div>
             </form>
@@ -490,55 +535,14 @@ titre_en: Second lesson<br>
                 <div class="icon preview-icon">
                     👁️
                 </div>
-                <h2>Prévisualisation</h2>
+                <h2>{% if lang == 'en' %}Preview{% else %}Prévisualisation{% endif %}</h2>
             </div>
             
             <div id="previewArea" class="preview-area">
-                <p style="color: #999; text-align: center; margin-top: 50px;">
-                    La prévisualisation apparaîtra ici après analyse...
-                </p>
-            </div>
-        </div>
-        
-        <!-- Carte des unités -->
-        <div class="card">
-            <div class="card-header">
-                <div class="icon units-icon">
-                    📂
+                <div class="empty-state">
+                    <i>👁️</i>
+                    <p>{% if lang == 'en' %}Preview will appear here after analysis...{% else %}La prévisualisation apparaîtra ici après analyse...{% endif %}</p>
                 </div>
-                <h2>Unités disponibles</h2>
-            </div>
-            
-            <div style="max-height: 300px; overflow-y: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: #f8f9fa;">
-                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e0e0e0;">Unité</th>
-                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e0e0e0;">Leçons</th>
-                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e0e0e0;">ID</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for unite in unites %}
-                        <tr style="border-bottom: 1px solid #f0f0f0;">
-                            <td style="padding: 10px;">
-                                <strong>{{ unite.nom }}</strong><br>
-                                <small style="color: #666;">{{ unite.matiere.nom }} - {{ unite.matiere.niveau.nom }}</small>
-                            </td>
-                            <td style="padding: 10px;">
-                                <span style="background: #e3f2fd; padding: 2px 8px; border-radius: 10px; font-size: 12px;">
-                                    {{ unite.lecons|length }} leçons
-                                </span>
-                            </td>
-                            <td style="padding: 10px;">
-                                <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-size: 12px;">
-                                    {{ unite.id }}
-                                </code>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
             </div>
         </div>
         
@@ -548,31 +552,41 @@ titre_en: Second lesson<br>
                 <div class="icon template-icon">
                     📝
                 </div>
-                <h2>Instructions & Modèle</h2>
+                <h2>{% if lang == 'en' %}Instructions & Template{% else %}Instructions & Modèle{% endif %}</h2>
             </div>
             
             <div class="template-actions">
-                <button class="template-btn" onclick="loadSimpleTemplate()">Modèle simple</button>
-                <button class="template-btn" onclick="loadAdvancedTemplate()">Modèle avancé</button>
-                <button class="template-btn" onclick="copyTemplate()">Copier le modèle</button>
+                <button class="template-btn" onclick="loadSimpleTemplate()">{% if lang == 'en' %}Simple Template{% else %}Modèle simple{% endif %}</button>
+                <button class="template-btn" onclick="loadAdvancedTemplate()">{% if lang == 'en' %}Advanced Template{% else %}Modèle avancé{% endif %}</button>
+                <button class="template-btn" onclick="copyTemplate()">{% if lang == 'en' %}Copy Template{% else %}Copier le modèle{% endif %}</button>
             </div>
             
             <div style="margin-top: 20px;">
-                <h4 style="color: #333; margin-bottom: 10px;">Instructions rapides :</h4>
+                <h4 style="color: #333; margin-bottom: 10px;">{% if lang == 'en' %}Quick Instructions:{% else %}Instructions rapides :{% endif %}</h4>
                 <ol style="color: #666; padding-left: 20px; line-height: 1.6;">
-                    <li>Sélectionnez une unité cible</li>
-                    <li>Collez ou écrivez vos leçons dans le format indiqué</li>
-                    <li>Cliquez sur "Prévisualiser" pour vérifier</li>
-                    <li>Cliquez sur "Importer" pour sauvegarder</li>
+                    <li>{% if lang == 'en' %}Select a level, then a subject, then a unit{% else %}Sélectionnez un niveau, puis une matière, puis une unité{% endif %}</li>
+                    <li>{% if lang == 'en' %}Paste or write your lessons in the indicated format{% else %}Collez ou écrivez vos leçons dans le format indiqué{% endif %}</li>
+                    <li>{% if lang == 'en' %}Click "Preview" to check{% else %}Cliquez sur "Prévisualiser" pour vérifier{% endif %}</li>
+                    <li>{% if lang == 'en' %}Click "Import" to save{% else %}Cliquez sur "Importer" pour sauvegarder{% endif %}</li>
                 </ol>
                 
                 <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px;">
-                    <h5 style="color: #667eea; margin-bottom: 10px;">💡 Astuces :</h5>
+                    <h5 style="color: #667eea; margin-bottom: 10px;">💡 {% if lang == 'en' %}Tips:{% else %}Astuces :{% endif %}</h5>
                     <ul style="color: #666; padding-left: 20px; font-size: 13px;">
-                        <li>Utilisez <code>---</code> sur une ligne seule pour séparer les leçons</li>
-                        <li>Les champs optionnels sont : description_fr, description_en</li>
-                        <li>Si titre_en est vide, il sera copié depuis titre_fr</li>
-                        <li>Vous pouvez utiliser des sauts de ligne dans les objectifs</li>
+                        <li>{% if lang == 'en' %}Use <code>---</code> on a single line to separate lessons{% else %}Utilisez <code>---</code> sur une ligne seule pour séparer les leçons{% endif %}</li>
+                        <li>{% if lang == 'en' %}Optional fields: description_fr, description_en{% else %}Les champs optionnels sont : description_fr, description_en{% endif %}</li>
+                        <li>{% if lang == 'en' %}If title_en is empty, it will be copied from title_fr{% else %}Si titre_en est vide, il sera copié depuis titre_fr{% endif %}</li>
+                        <li>{% if lang == 'en' %}You can use line breaks in objectives{% else %}Vous pouvez utiliser des sauts de ligne dans les objectifs{% endif %}</li>
+                        <li>{% if lang == 'en' %}The format "titre_fr: value" is recommended{% else %}Le format "titre_fr: valeur" est recommandé{% endif %}</li>
+                    </ul>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                    <h5 style="color: #4CAF50; margin-bottom: 10px;">⚠️ {% if lang == 'en' %}Important:{% else %}Important :{% endif %}</h5>
+                    <ul style="color: #666; padding-left: 20px; font-size: 13px;">
+                        <li>{% if lang == 'en' %}Lessons will be added to the selected unit{% else %}Les leçons seront ajoutées à l'unité sélectionnée{% endif %}</li>
+                        <li>{% if lang == 'en' %}Existing lessons with the same title will be ignored{% else %}Les leçons existantes avec le même titre seront ignorées{% endif %}</li>
+                        <li>{% if lang == 'en' %}Check the unit carefully before importing{% else %}Vérifiez bien l'unité avant d'importer{% endif %}</li>
                     </ul>
                 </div>
             </div>
@@ -580,34 +594,144 @@ titre_en: Second lesson<br>
     </div>
     
     <script>
-        // Données globales
+        // Données initiales
+        let niveauxData = {{ niveaux|tojson|safe }};
+        let matieresData = {{ matieres|tojson|safe }};
         let unitesData = {{ unites|tojson|safe }};
+        const currentLang = '{{ lang }}' || 'fr';
         
-        // Charger les informations de l'unité sélectionnée
-        document.getElementById('uniteSelect').addEventListener('change', function() {
-            const unitId = this.value;
-            const unitInfo = document.getElementById('unitInfo');
+        // Traductions
+        const translations = {
+            'fr': {
+                'select_subject': 'Sélectionnez une matière...',
+                'no_subjects': 'Aucune matière disponible',
+                'select_unit': 'Sélectionnez une unité...',
+                'no_units': 'Aucune unité disponible',
+                'no_text': 'Veuillez entrer du texte à analyser',
+                'no_unit_selected': 'Veuillez sélectionner une unité',
+                'no_lessons': 'Veuillez entrer des leçons',
+                'analysis_error': 'Erreur lors de l\'analyse',
+                'import_error': 'Erreur lors de l\'importation',
+                'template_loaded': 'Modèle chargé',
+                'template_copied': 'Modèle copié dans le presse-papier',
+                'form_cleared': 'Formulaire vidé',
+                'confirm_clear': 'Voulez-vous vraiment effacer tout le contenu ?',
+                'lessons_detected': 'leçon(s) détectée(s)',
+                'lessons_added': 'leçon(s) ajoutée(s)',
+                'lessons_skipped': 'leçon(s) ignorée(s) car déjà existante(s)'
+            },
+            'en': {
+                'select_subject': 'Select a subject...',
+                'no_subjects': 'No subjects available',
+                'select_unit': 'Select a unit...',
+                'no_units': 'No units available',
+                'no_text': 'Please enter text to analyze',
+                'no_unit_selected': 'Please select a unit',
+                'no_lessons': 'Please enter lessons',
+                'analysis_error': 'Error during analysis',
+                'import_error': 'Error during import',
+                'template_loaded': 'Template loaded',
+                'template_copied': 'Template copied to clipboard',
+                'form_cleared': 'Form cleared',
+                'confirm_clear': 'Do you really want to clear all content?',
+                'lessons_detected': 'lesson(s) detected',
+                'lessons_added': 'lesson(s) added',
+                'lessons_skipped': 'lesson(s) skipped because already exist'
+            }
+        };
+        
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+        
+        // Éléments DOM
+        const niveauSelect = document.getElementById('niveauSelect');
+        const matiereSelect = document.getElementById('matiereSelect');
+        const uniteSelect = document.getElementById('uniteSelect');
+        const selectionInfo = document.getElementById('selectionInfo');
+        
+        // Charger les matières quand un niveau est sélectionné
+        niveauSelect.addEventListener('change', function() {
+            const niveauId = this.value;
             
-            if (!unitId) {
-                unitInfo.style.display = 'none';
+            // Réinitialiser les sélecteurs suivants
+            matiereSelect.innerHTML = `<option value="">${t('select_subject')}</option>`;
+            matiereSelect.disabled = true;
+            uniteSelect.innerHTML = `<option value="">${t('select_unit')}</option>`;
+            uniteSelect.disabled = true;
+            selectionInfo.style.display = 'none';
+            
+            if (!niveauId) return;
+            
+            // Filtrer les matières pour ce niveau
+            const matieresNiveau = matieresData.filter(m => m.niveau_id == niveauId);
+            
+            if (matieresNiveau.length > 0) {
+                matieresNiveau.forEach(matiere => {
+                    const option = document.createElement('option');
+                    option.value = matiere.id;
+                    option.textContent = matiere.nom;
+                    matiereSelect.appendChild(option);
+                });
+                matiereSelect.disabled = false;
+            } else {
+                matiereSelect.innerHTML = `<option value="">${t('no_subjects')}</option>`;
+            }
+        });
+        
+        // Charger les unités quand une matière est sélectionnée
+        matiereSelect.addEventListener('change', function() {
+            const matiereId = this.value;
+            
+            // Réinitialiser le sélecteur d'unité
+            uniteSelect.innerHTML = `<option value="">${t('select_unit')}</option>`;
+            uniteSelect.disabled = true;
+            selectionInfo.style.display = 'none';
+            
+            if (!matiereId) return;
+            
+            // Filtrer les unités pour cette matière
+            const unitesMatiere = unitesData.filter(u => u.matiere_id == matiereId);
+            
+            if (unitesMatiere.length > 0) {
+                unitesMatiere.forEach(unite => {
+                    const option = document.createElement('option');
+                    option.value = unite.id;
+                    option.textContent = unite.nom;
+                    option.dataset.niveau = unite.matiere_niveau_nom;
+                    option.dataset.matiere = unite.matiere_nom;
+                    option.dataset.lecons = unite.lecons_count || 0;
+                    uniteSelect.appendChild(option);
+                });
+                uniteSelect.disabled = false;
+            } else {
+                uniteSelect.innerHTML = `<option value="">${t('no_units')}</option>`;
+            }
+        });
+        
+        // Afficher les informations quand une unité est sélectionnée
+        uniteSelect.addEventListener('change', function() {
+            const uniteId = this.value;
+            
+            if (!uniteId) {
+                selectionInfo.style.display = 'none';
                 return;
             }
             
-            // Trouver l'unité dans les données
-            const unite = unitesData.find(u => u.id == unitId);
-            if (unite) {
-                document.getElementById('niveauInfo').textContent = unite.matiere.niveau.nom;
-                document.getElementById('matiereInfo').textContent = unite.matiere.nom;
-                document.getElementById('leconsCount').textContent = unite.lecons.length;
-                unitInfo.style.display = 'block';
-            }
+            const selectedOption = this.options[this.selectedIndex];
+            document.getElementById('niveauInfo').textContent = selectedOption.dataset.niveau || 'N/A';
+            document.getElementById('matiereInfo').textContent = selectedOption.dataset.matiere || 'N/A';
+            document.getElementById('uniteInfo').textContent = selectedOption.textContent;
+            document.getElementById('leconsCount').textContent = selectedOption.dataset.lecons || '0';
+            
+            selectionInfo.style.display = 'block';
         });
         
         // Prévisualiser les leçons
         async function previewLessons() {
             const text = document.getElementById('lessonsText').value;
             if (!text.trim()) {
-                showAlert('Veuillez entrer du texte à analyser', 'warning');
+                showAlert(t('no_text'), 'warning');
                 return;
             }
             
@@ -620,7 +744,7 @@ titre_en: Second lesson<br>
             stats.style.display = 'none';
             
             try {
-                const response = await fetch('/admin/parse-preview', {
+                const response = await fetch('/admin/parse-lessons-preview', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -633,7 +757,9 @@ titre_en: Second lesson<br>
                 const data = await response.json();
                 
                 if (data.count === 0) {
-                    previewArea.innerHTML = '<p style="color: #f44336; text-align: center;">Aucune leçon valide trouvée</p>';
+                    previewArea.innerHTML = currentLang === 'en' 
+                        ? '<div class="empty-state"><i>❌</i><p>No valid lessons found</p></div>'
+                        : '<div class="empty-state"><i>❌</i><p>Aucune leçon valide trouvée</p></div>';
                 } else {
                     // Afficher les statistiques
                     document.getElementById('statLessons').textContent = data.count;
@@ -650,28 +776,33 @@ titre_en: Second lesson<br>
                         data.lessons.slice(0, 10).forEach((lesson, index) => {
                             html += `
                                 <div class="lesson-preview">
-                                    <div class="lesson-number">Leçon ${index + 1}</div>
-                                    <div class="lesson-title fr">${lesson.titre_fr || 'Non défini'}</div>
-                                    <div class="lesson-title en">${lesson.titre_en || 'Non défini'}</div>
+                                    <div class="lesson-number">${currentLang === 'en' ? 'Lesson' : 'Leçon'} ${index + 1}</div>
+                                    <div class="lesson-title fr">${lesson.titre_fr || (currentLang === 'en' ? 'Not defined' : 'Non défini')}</div>
+                                    <div class="lesson-title en">${lesson.titre_en || (currentLang === 'en' ? 'Not defined' : 'Non défini')}</div>
                                     ${lesson.objectif_fr ? `<div class="lesson-objective">${lesson.objectif_fr.substring(0, 100)}${lesson.objectif_fr.length > 100 ? '...' : ''}</div>` : ''}
                                 </div>
                             `;
                         });
                         
                         if (data.count > 10) {
-                            html += `<p style="text-align: center; color: #666; font-style: italic;">... et ${data.count - 10} leçon(s) supplémentaire(s)</p>`;
+                            const remaining = data.count - 10;
+                            html += currentLang === 'en'
+                                ? `<p style="text-align: center; color: #666; font-style: italic;">... and ${remaining} more lesson(s)</p>`
+                                : `<p style="text-align: center; color: #666; font-style: italic;">... et ${remaining} leçon(s) supplémentaire(s)</p>`;
                         }
                         
                         previewArea.innerHTML = html;
                     }
                 }
                 
-                showAlert(`${data.count} leçon(s) détectée(s)`, 'success');
+                showAlert(`${data.count} ${t('lessons_detected')}`, 'success');
                 
             } catch (error) {
                 console.error('Erreur:', error);
-                previewArea.innerHTML = '<p style="color: #f44336; text-align: center;">Erreur lors de l\'analyse</p>';
-                showAlert('Erreur lors de l\'analyse', 'error');
+                previewArea.innerHTML = currentLang === 'en'
+                    ? '<div class="empty-state"><i>❌</i><p>Error during analysis</p></div>'
+                    : '<div class="empty-state"><i>❌</i><p>Erreur lors de l\'analyse</p></div>';
+                showAlert(t('analysis_error'), 'error');
             } finally {
                 loading.style.display = 'none';
             }
@@ -685,12 +816,12 @@ titre_en: Second lesson<br>
             const lessonsText = document.getElementById('lessonsText').value;
             
             if (!uniteId) {
-                showAlert('Veuillez sélectionner une unité', 'warning');
+                showAlert(t('no_unit_selected'), 'warning');
                 return;
             }
             
             if (!lessonsText.trim()) {
-                showAlert('Veuillez entrer des leçons', 'warning');
+                showAlert(t('no_lessons'), 'warning');
                 return;
             }
             
@@ -708,27 +839,25 @@ titre_en: Second lesson<br>
                 const result = await response.json();
                 
                 if (result.success) {
-                    showAlert(`✅ ${result.message}`, 'success');
+                    showAlert(`✅ ${result.lessons_added} ${t('lessons_added')}`, 'success');
                     
                     // Mettre à jour le compteur de leçons
-                    const unite = unitesData.find(u => u.id == uniteId);
-                    if (unite) {
-                        unite.lecons = unite.lecons || [];
-                        result.added_lessons.forEach(lesson => {
-                            unite.lecons.push(lesson);
-                        });
-                        document.getElementById('leconsCount').textContent = unite.lecons.length;
-                    }
+                    const selectedOption = uniteSelect.options[uniteSelect.selectedIndex];
+                    const currentCount = parseInt(selectedOption.dataset.lecons) || 0;
+                    selectedOption.dataset.lecons = currentCount + result.lessons_added;
+                    document.getElementById('leconsCount').textContent = selectedOption.dataset.lecons;
                     
                     // Afficher les détails
                     if (result.skipped > 0) {
-                        showAlert(`⚠️ ${result.skipped} leçon(s) ignorée(s) car déjà existante(s)`, 'warning');
+                        showAlert(`⚠️ ${result.skipped} ${t('lessons_skipped')}`, 'warning');
                     }
                     
                     // Vider le formulaire après succès
                     setTimeout(() => {
                         document.getElementById('lessonsText').value = '';
-                        document.getElementById('previewArea').innerHTML = '<p style="color: #999; text-align: center; margin-top: 50px;">La prévisualisation apparaîtra ici après analyse...</p>';
+                        document.getElementById('previewArea').innerHTML = currentLang === 'en'
+                            ? '<div class="empty-state"><i>👁️</i><p>Preview will appear here after analysis...</p></div>'
+                            : '<div class="empty-state"><i>👁️</i><p>La prévisualisation apparaîtra ici après analyse...</p></div>';
                         document.getElementById('previewStats').style.display = 'none';
                     }, 2000);
                     
@@ -738,7 +867,7 @@ titre_en: Second lesson<br>
                 
             } catch (error) {
                 console.error('Erreur:', error);
-                showAlert('Erreur lors de l\'importation', 'error');
+                showAlert(t('import_error'), 'error');
             } finally {
                 loading.style.display = 'none';
             }
@@ -748,11 +877,28 @@ titre_en: Second lesson<br>
         function loadTemplate() {
             const template = `{{ template|safe }}`;
             document.getElementById('lessonsText').value = template;
-            showAlert('Modèle chargé', 'success');
+            showAlert(t('template_loaded'), 'success');
         }
         
         function loadSimpleTemplate() {
-            const simpleTemplate = `titre_fr: Les fractions simples
+            const simpleTemplate = currentLang === 'en'
+                ? `titre_fr: Simple fractions
+titre_en: Simple fractions
+objectif_fr: Understand the concept of fractions
+objectif_en: Understand the concept of fractions
+
+---
+titre_fr: Fraction addition
+titre_en: Fraction addition
+objectif_fr: Know how to add fractions
+objectif_en: Know how to add fractions
+
+---
+titre_fr: Equivalent fractions
+titre_en: Equivalent fractions
+objectif_fr: Identify equivalent fractions
+objectif_en: Identify equivalent fractions`
+                : `titre_fr: Les fractions simples
 titre_en: Simple fractions
 objectif_fr: Comprendre le concept de fraction
 objectif_en: Understand the concept of fractions
@@ -770,11 +916,34 @@ objectif_fr: Identifier des fractions équivalentes
 objectif_en: Identify equivalent fractions`;
             
             document.getElementById('lessonsText').value = simpleTemplate;
-            showAlert('Modèle simple chargé', 'success');
+            showAlert(t('template_loaded'), 'success');
         }
         
         function loadAdvancedTemplate() {
-            const advancedTemplate = `titre_fr: Introduction aux fractions
+            const advancedTemplate = currentLang === 'en'
+                ? `titre_fr: Introduction to fractions
+titre_en: Introduction to fractions
+objectif_fr: Define what a fraction is and understand its graphical representation
+objectif_en: Define what a fraction is and understand its graphical representation
+description_fr: This lesson introduces the fundamental concept of fractions.
+Students will learn to read, write, and represent simple fractions.
+description_en: This lesson introduces the fundamental concept of fractions.
+Students will learn to read, write, and represent simple fractions.
+
+---
+titre_fr: Fractions on the number line
+titre_en: Fractions on the number line
+objectif_fr: Place and compare fractions on a number line
+objectif_en: Place and compare fractions on a number line
+description_fr: Learning to represent fractions on a graduated line.
+description_en: Learning to represent fractions on a graduated line.
+
+---
+titre_fr: Fractions and mixed numbers
+titre_en: Fractions and mixed numbers
+objectif_fr: Convert between improper fractions and mixed numbers
+objectif_en: Convert between improper fractions and mixed numbers`
+                : `titre_fr: Introduction aux fractions
 titre_en: Introduction to fractions
 objectif_fr: Définir ce qu'est une fraction et comprendre sa représentation graphique
 objectif_en: Define what a fraction is and understand its graphical representation
@@ -798,7 +967,7 @@ objectif_fr: Convertir entre fractions impropres et nombres mixtes
 objectif_en: Convert between improper fractions and mixed numbers`;
             
             document.getElementById('lessonsText').value = advancedTemplate;
-            showAlert('Modèle avancé chargé', 'success');
+            showAlert(t('template_loaded'), 'success');
         }
         
         // Copier le modèle
@@ -806,16 +975,18 @@ objectif_en: Convert between improper fractions and mixed numbers`;
             const textarea = document.getElementById('lessonsText');
             textarea.select();
             document.execCommand('copy');
-            showAlert('Modèle copié dans le presse-papier', 'success');
+            showAlert(t('template_copied'), 'success');
         }
         
         // Effacer le formulaire
         function clearForm() {
-            if (confirm('Voulez-vous vraiment effacer tout le contenu ?')) {
+            if (confirm(t('confirm_clear'))) {
                 document.getElementById('lessonsText').value = '';
-                document.getElementById('previewArea').innerHTML = '<p style="color: #999; text-align: center; margin-top: 50px;">La prévisualisation apparaîtra ici après analyse...</p>';
+                document.getElementById('previewArea').innerHTML = currentLang === 'en'
+                    ? '<div class="empty-state"><i>👁️</i><p>Preview will appear here after analysis...</p></div>'
+                    : '<div class="empty-state"><i>👁️</i><p>La prévisualisation apparaîtra ici après analyse...</p></div>';
                 document.getElementById('previewStats').style.display = 'none';
-                showAlert('Formulaire vidé', 'success');
+                showAlert(t('form_cleared'), 'success');
             }
         }
         
@@ -855,6 +1026,44 @@ objectif_en: Convert between improper fractions and mixed numbers`;
             const textarea = document.getElementById('lessonsText');
             if (!textarea.value.trim()) {
                 loadSimpleTemplate();
+            }
+            
+            // Pré-sélectionner si des paramètres sont présents
+            const urlParams = new URLSearchParams(window.location.search);
+            const uniteId = urlParams.get('unite_id');
+            
+            if (uniteId && unitesData) {
+                // Trouver l'unité et ses parents
+                const unite = unitesData.find(u => u.id == uniteId);
+                if (unite) {
+                    // Sélectionner le niveau
+                    const niveauOption = Array.from(niveauSelect.options).find(opt => 
+                        opt.textContent.includes(unite.matiere_niveau_nom));
+                    if (niveauOption) {
+                        niveauOption.selected = true;
+                        niveauSelect.dispatchEvent(new Event('change'));
+                        
+                        // Attendre que les matières soient chargées
+                        setTimeout(() => {
+                            const matiereOption = Array.from(matiereSelect.options).find(opt => 
+                                opt.textContent.includes(unite.matiere_nom));
+                            if (matiereOption) {
+                                matiereOption.selected = true;
+                                matiereSelect.dispatchEvent(new Event('change'));
+                                
+                                // Attendre que les unités soient chargées
+                                setTimeout(() => {
+                                    const uniteOption = Array.from(uniteSelect.options).find(opt => 
+                                        opt.value == uniteId);
+                                    if (uniteOption) {
+                                        uniteOption.selected = true;
+                                        uniteSelect.dispatchEvent(new Event('change'));
+                                    }
+                                }, 100);
+                            }
+                        }, 100);
+                    }
+                }
             }
         });
     </script>
