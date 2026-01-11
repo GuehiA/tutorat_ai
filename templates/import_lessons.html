@@ -1,0 +1,862 @@
+<!-- templates/import_lessons.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importation de leçons bilingues</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .card-header h2 {
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+            margin-left: 15px;
+        }
+        
+        .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .import-icon { background: #4CAF50; color: white; }
+        .preview-icon { background: #2196F3; color: white; }
+        .template-icon { background: #FF9800; color: white; }
+        .units-icon { background: #9C27B0; color: white; }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+            margin-left: 10px;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-icon {
+            margin-right: 8px;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .unit-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .unit-info h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .unit-info p {
+            color: #666;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .preview-area {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .lesson-preview {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 3px solid #4CAF50;
+        }
+        
+        .lesson-number {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .lesson-title {
+            font-weight: bold;
+            margin: 5px 0;
+            color: #333;
+        }
+        
+        .lesson-title.fr::before {
+            content: "🇫🇷 ";
+        }
+        
+        .lesson-title.en::before {
+            content: "🇬🇧 ";
+        }
+        
+        .lesson-objective {
+            margin: 8px 0;
+            padding-left: 15px;
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .lesson-objective::before {
+            content: "🎯 ";
+            margin-right: 5px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .template-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .template-btn {
+            padding: 8px 15px;
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #1976d2;
+            transition: all 0.2s;
+        }
+        
+        .template-btn:hover {
+            background: #bbdefb;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .format-guide {
+            background: #f0f8ff;
+            border: 1px dashed #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .format-guide h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .format-guide h4::before {
+            content: "📋 ";
+            margin-right: 10px;
+        }
+        
+        .format-example {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+        
+        .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .keyword {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Carte d'importation -->
+        <div class="card">
+            <div class="card-header">
+                <div class="icon import-icon">
+                    📚
+                </div>
+                <h2>Importation de leçons</h2>
+            </div>
+            
+            <div id="alertArea"></div>
+            
+            <form id="importForm">
+                <div class="form-group">
+                    <label for="uniteSelect">Sélectionnez l'unité cible</label>
+                    <select id="uniteSelect" name="unite_id" required>
+                        <option value="">Choisissez une unité...</option>
+                        {% for unite in unites %}
+                        <option value="{{ unite.id }}" data-matiere="{{ unite.matiere.nom }}" data-niveau="{{ unite.matiere.niveau.nom }}">
+                            [{{ unite.matiere.niveau.nom }}] {{ unite.nom }} - {{ unite.matiere.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div id="unitInfo" class="unit-info" style="display: none;">
+                    <h4>Informations de l'unité</h4>
+                    <p><strong>Niveau:</strong> <span id="niveauInfo"></span></p>
+                    <p><strong>Matière:</strong> <span id="matiereInfo"></span></p>
+                    <p><strong>Leçons existantes:</strong> <span id="leconsCount">0</span></p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lessonsText">Contenu des leçons (format bilingue)</label>
+                    
+                    <div class="format-guide">
+                        <h4>Format attendu</h4>
+                        <p>Utilisez le format suivant pour chaque leçon :</p>
+                        <div class="format-example">
+titre_fr: Les fractions simples<br>
+titre_en: Simple fractions<br>
+objectif_fr: Comprendre le concept de fraction<br>
+objectif_en: Understand the concept of fractions<br>
+description_fr: Description optionnelle<br>
+description_en: Optional description<br>
+<br>
+---<br>
+<br>
+titre_fr: Deuxième leçon<br>
+titre_en: Second lesson<br>
+...
+                        </div>
+                        <div class="keywords">
+                            <span class="keyword">titre_fr</span>
+                            <span class="keyword">titre_en</span>
+                            <span class="keyword">objectif_fr</span>
+                            <span class="keyword">objectif_en</span>
+                            <span class="keyword">description_fr</span>
+                            <span class="keyword">description_en</span>
+                            <span class="keyword">--- (séparateur)</span>
+                        </div>
+                    </div>
+                    
+                    <textarea 
+                        id="lessonsText" 
+                        name="lessons_text" 
+                        placeholder="Collez ou écrivez vos leçons ici..."
+                        rows="15"></textarea>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" onclick="previewLessons()">
+                        <span class="btn-icon">👁️</span> Prévisualiser
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="loadTemplate()">
+                        <span class="btn-icon">📋</span> Charger modèle
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="clearForm()">
+                        <span class="btn-icon">🗑️</span> Effacer
+                    </button>
+                </div>
+                
+                <div class="loading" id="loadingPreview">
+                    <div class="spinner"></div>
+                    <p>Analyse en cours...</p>
+                </div>
+                
+                <div class="stats" id="previewStats" style="display: none;">
+                    <div class="stat-card">
+                        <div class="stat-number" id="statLessons">0</div>
+                        <div class="stat-label">Leçons</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statFR">0</div>
+                        <div class="stat-label">Titres FR</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statEN">0</div>
+                        <div class="stat-label">Titres EN</div>
+                    </div>
+                </div>
+                
+                <div class="btn-group" style="margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 2;">
+                        <span class="btn-icon">🚀</span> Importer les leçons
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Carte de prévisualisation -->
+        <div class="card">
+            <div class="card-header">
+                <div class="icon preview-icon">
+                    👁️
+                </div>
+                <h2>Prévisualisation</h2>
+            </div>
+            
+            <div id="previewArea" class="preview-area">
+                <p style="color: #999; text-align: center; margin-top: 50px;">
+                    La prévisualisation apparaîtra ici après analyse...
+                </p>
+            </div>
+        </div>
+        
+        <!-- Carte des unités -->
+        <div class="card">
+            <div class="card-header">
+                <div class="icon units-icon">
+                    📂
+                </div>
+                <h2>Unités disponibles</h2>
+            </div>
+            
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e0e0e0;">Unité</th>
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e0e0e0;">Leçons</th>
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e0e0e0;">ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for unite in unites %}
+                        <tr style="border-bottom: 1px solid #f0f0f0;">
+                            <td style="padding: 10px;">
+                                <strong>{{ unite.nom }}</strong><br>
+                                <small style="color: #666;">{{ unite.matiere.nom }} - {{ unite.matiere.niveau.nom }}</small>
+                            </td>
+                            <td style="padding: 10px;">
+                                <span style="background: #e3f2fd; padding: 2px 8px; border-radius: 10px; font-size: 12px;">
+                                    {{ unite.lecons|length }} leçons
+                                </span>
+                            </td>
+                            <td style="padding: 10px;">
+                                <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-size: 12px;">
+                                    {{ unite.id }}
+                                </code>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Carte d'instructions -->
+        <div class="card">
+            <div class="card-header">
+                <div class="icon template-icon">
+                    📝
+                </div>
+                <h2>Instructions & Modèle</h2>
+            </div>
+            
+            <div class="template-actions">
+                <button class="template-btn" onclick="loadSimpleTemplate()">Modèle simple</button>
+                <button class="template-btn" onclick="loadAdvancedTemplate()">Modèle avancé</button>
+                <button class="template-btn" onclick="copyTemplate()">Copier le modèle</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h4 style="color: #333; margin-bottom: 10px;">Instructions rapides :</h4>
+                <ol style="color: #666; padding-left: 20px; line-height: 1.6;">
+                    <li>Sélectionnez une unité cible</li>
+                    <li>Collez ou écrivez vos leçons dans le format indiqué</li>
+                    <li>Cliquez sur "Prévisualiser" pour vérifier</li>
+                    <li>Cliquez sur "Importer" pour sauvegarder</li>
+                </ol>
+                
+                <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px;">
+                    <h5 style="color: #667eea; margin-bottom: 10px;">💡 Astuces :</h5>
+                    <ul style="color: #666; padding-left: 20px; font-size: 13px;">
+                        <li>Utilisez <code>---</code> sur une ligne seule pour séparer les leçons</li>
+                        <li>Les champs optionnels sont : description_fr, description_en</li>
+                        <li>Si titre_en est vide, il sera copié depuis titre_fr</li>
+                        <li>Vous pouvez utiliser des sauts de ligne dans les objectifs</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Données globales
+        let unitesData = {{ unites|tojson|safe }};
+        
+        // Charger les informations de l'unité sélectionnée
+        document.getElementById('uniteSelect').addEventListener('change', function() {
+            const unitId = this.value;
+            const unitInfo = document.getElementById('unitInfo');
+            
+            if (!unitId) {
+                unitInfo.style.display = 'none';
+                return;
+            }
+            
+            // Trouver l'unité dans les données
+            const unite = unitesData.find(u => u.id == unitId);
+            if (unite) {
+                document.getElementById('niveauInfo').textContent = unite.matiere.niveau.nom;
+                document.getElementById('matiereInfo').textContent = unite.matiere.nom;
+                document.getElementById('leconsCount').textContent = unite.lecons.length;
+                unitInfo.style.display = 'block';
+            }
+        });
+        
+        // Prévisualiser les leçons
+        async function previewLessons() {
+            const text = document.getElementById('lessonsText').value;
+            if (!text.trim()) {
+                showAlert('Veuillez entrer du texte à analyser', 'warning');
+                return;
+            }
+            
+            const loading = document.getElementById('loadingPreview');
+            const previewArea = document.getElementById('previewArea');
+            const stats = document.getElementById('previewStats');
+            
+            loading.style.display = 'block';
+            previewArea.innerHTML = '';
+            stats.style.display = 'none';
+            
+            try {
+                const response = await fetch('/admin/parse-preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'lessons_text': text
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.count === 0) {
+                    previewArea.innerHTML = '<p style="color: #f44336; text-align: center;">Aucune leçon valide trouvée</p>';
+                } else {
+                    // Afficher les statistiques
+                    document.getElementById('statLessons').textContent = data.count;
+                    document.getElementById('statFR').textContent = data.lessons.filter(l => l.titre_fr).length;
+                    document.getElementById('statEN').textContent = data.lessons.filter(l => l.titre_en).length;
+                    stats.style.display = 'grid';
+                    
+                    // Afficher la prévisualisation formatée
+                    if (data.formatted) {
+                        previewArea.innerHTML = data.formatted;
+                    } else {
+                        // Construire la prévisualisation manuellement
+                        let html = '';
+                        data.lessons.slice(0, 10).forEach((lesson, index) => {
+                            html += `
+                                <div class="lesson-preview">
+                                    <div class="lesson-number">Leçon ${index + 1}</div>
+                                    <div class="lesson-title fr">${lesson.titre_fr || 'Non défini'}</div>
+                                    <div class="lesson-title en">${lesson.titre_en || 'Non défini'}</div>
+                                    ${lesson.objectif_fr ? `<div class="lesson-objective">${lesson.objectif_fr.substring(0, 100)}${lesson.objectif_fr.length > 100 ? '...' : ''}</div>` : ''}
+                                </div>
+                            `;
+                        });
+                        
+                        if (data.count > 10) {
+                            html += `<p style="text-align: center; color: #666; font-style: italic;">... et ${data.count - 10} leçon(s) supplémentaire(s)</p>`;
+                        }
+                        
+                        previewArea.innerHTML = html;
+                    }
+                }
+                
+                showAlert(`${data.count} leçon(s) détectée(s)`, 'success');
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                previewArea.innerHTML = '<p style="color: #f44336; text-align: center;">Erreur lors de l\'analyse</p>';
+                showAlert('Erreur lors de l\'analyse', 'error');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        // Soumettre le formulaire
+        document.getElementById('importForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const uniteId = document.getElementById('uniteSelect').value;
+            const lessonsText = document.getElementById('lessonsText').value;
+            
+            if (!uniteId) {
+                showAlert('Veuillez sélectionner une unité', 'warning');
+                return;
+            }
+            
+            if (!lessonsText.trim()) {
+                showAlert('Veuillez entrer des leçons', 'warning');
+                return;
+            }
+            
+            const loading = document.getElementById('loadingPreview');
+            loading.style.display = 'block';
+            
+            try {
+                const formData = new FormData(this);
+                
+                const response = await fetch('/admin/import-lessons', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(`✅ ${result.message}`, 'success');
+                    
+                    // Mettre à jour le compteur de leçons
+                    const unite = unitesData.find(u => u.id == uniteId);
+                    if (unite) {
+                        unite.lecons = unite.lecons || [];
+                        result.added_lessons.forEach(lesson => {
+                            unite.lecons.push(lesson);
+                        });
+                        document.getElementById('leconsCount').textContent = unite.lecons.length;
+                    }
+                    
+                    // Afficher les détails
+                    if (result.skipped > 0) {
+                        showAlert(`⚠️ ${result.skipped} leçon(s) ignorée(s) car déjà existante(s)`, 'warning');
+                    }
+                    
+                    // Vider le formulaire après succès
+                    setTimeout(() => {
+                        document.getElementById('lessonsText').value = '';
+                        document.getElementById('previewArea').innerHTML = '<p style="color: #999; text-align: center; margin-top: 50px;">La prévisualisation apparaîtra ici après analyse...</p>';
+                        document.getElementById('previewStats').style.display = 'none';
+                    }, 2000);
+                    
+                } else {
+                    showAlert(`❌ ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                showAlert('Erreur lors de l\'importation', 'error');
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+        
+        // Charger un modèle
+        function loadTemplate() {
+            const template = `{{ template|safe }}`;
+            document.getElementById('lessonsText').value = template;
+            showAlert('Modèle chargé', 'success');
+        }
+        
+        function loadSimpleTemplate() {
+            const simpleTemplate = `titre_fr: Les fractions simples
+titre_en: Simple fractions
+objectif_fr: Comprendre le concept de fraction
+objectif_en: Understand the concept of fractions
+
+---
+titre_fr: Addition de fractions
+titre_en: Fraction addition
+objectif_fr: Savoir additionner des fractions
+objectif_en: Know how to add fractions
+
+---
+titre_fr: Fractions équivalentes
+titre_en: Equivalent fractions
+objectif_fr: Identifier des fractions équivalentes
+objectif_en: Identify equivalent fractions`;
+            
+            document.getElementById('lessonsText').value = simpleTemplate;
+            showAlert('Modèle simple chargé', 'success');
+        }
+        
+        function loadAdvancedTemplate() {
+            const advancedTemplate = `titre_fr: Introduction aux fractions
+titre_en: Introduction to fractions
+objectif_fr: Définir ce qu'est une fraction et comprendre sa représentation graphique
+objectif_en: Define what a fraction is and understand its graphical representation
+description_fr: Cette leçon introduit le concept fondamental des fractions.
+Les élèves apprendront à lire, écrire et représenter des fractions simples.
+description_en: This lesson introduces the fundamental concept of fractions.
+Students will learn to read, write, and represent simple fractions.
+
+---
+titre_fr: Fractions sur la droite numérique
+titre_en: Fractions on the number line
+objectif_fr: Placer et comparer des fractions sur une droite numérique
+objectif_en: Place and compare fractions on a number line
+description_fr: Apprentissage de la représentation des fractions sur une droite graduée.
+description_en: Learning to represent fractions on a graduated line.
+
+---
+titre_fr: Fractions et nombres mixtes
+titre_en: Fractions and mixed numbers
+objectif_fr: Convertir entre fractions impropres et nombres mixtes
+objectif_en: Convert between improper fractions and mixed numbers`;
+            
+            document.getElementById('lessonsText').value = advancedTemplate;
+            showAlert('Modèle avancé chargé', 'success');
+        }
+        
+        // Copier le modèle
+        function copyTemplate() {
+            const textarea = document.getElementById('lessonsText');
+            textarea.select();
+            document.execCommand('copy');
+            showAlert('Modèle copié dans le presse-papier', 'success');
+        }
+        
+        // Effacer le formulaire
+        function clearForm() {
+            if (confirm('Voulez-vous vraiment effacer tout le contenu ?')) {
+                document.getElementById('lessonsText').value = '';
+                document.getElementById('previewArea').innerHTML = '<p style="color: #999; text-align: center; margin-top: 50px;">La prévisualisation apparaîtra ici après analyse...</p>';
+                document.getElementById('previewStats').style.display = 'none';
+                showAlert('Formulaire vidé', 'success');
+            }
+        }
+        
+        // Afficher une alerte
+        function showAlert(message, type) {
+            const alertArea = document.getElementById('alertArea');
+            
+            let alertClass = 'alert-success';
+            if (type === 'error') alertClass = 'alert-error';
+            if (type === 'warning') alertClass = 'alert-warning';
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${alertClass}`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button onclick="this.parentElement.style.display='none'" 
+                        style="float: right; background: none; border: none; cursor: pointer; font-size: 18px;">
+                    ×
+                </button>
+            `;
+            
+            alertArea.innerHTML = '';
+            alertArea.appendChild(alertDiv);
+            alertDiv.style.display = 'block';
+            
+            // Auto-hide après 5 secondes
+            if (type !== 'error') {
+                setTimeout(() => {
+                    alertDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        // Exemple de chargement initial
+        document.addEventListener('DOMContentLoaded', function() {
+            // Charger un exemple si le champ est vide
+            const textarea = document.getElementById('lessonsText');
+            if (!textarea.value.trim()) {
+                loadSimpleTemplate();
+            }
+        });
+    </script>
+</body>
+</html>
