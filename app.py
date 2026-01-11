@@ -5122,41 +5122,46 @@ def parse_simple_lesson_format(text):
 def admin_import_lessons():
     """Page d'importation de leçons en lot"""
     
-    # 🔐 MÊME VÉRIFICATION QUE POUR LES EXERCICES
+    # 🔐 VÉRIFICATION D'AUTHENTIFICATION
     if not session.get('is_admin') and not session.get('user_id'):
         flash('Veuillez vous connecter en tant qu\'administrateur', 'error')
-        return redirect(url_for('login_admin'))  # Ou votre route de login
-    
-    # Récupérer toutes les unités avec leurs informations
-    unites = Unite.query.join(Matiere).join(Niveau).all()
-    
-    # Formater les données pour le template
-    unites_data = []
-    for unite in unites:
-        unites_data.append({
-            'id': unite.id,
-            'nom': unite.nom,
-            'nom_en': unite.nom_en,
-            'matiere': {
-                'id': unite.matiere.id,
-                'nom': unite.matiere.nom,
-                'niveau': {
-                    'id': unite.matiere.niveau.id,
-                    'nom': unite.matiere.niveau.nom
-                }
-            },
-            'lecons': [
-                {
-                    'id': lecon.id,
-                    'titre_fr': lecon.titre_fr
-                }
-                for lecon in unite.lecons
-            ]
-        })
+        return redirect(url_for('login_admin'))
     
     if request.method == 'GET':
         # ID d'unité passé en paramètre
         unite_id = request.args.get('unite_id')
+        
+        # Récupérer TOUTES les données nécessaires
+        niveaux = Niveau.query.order_by(Niveau.id).all()
+        matieres = Matiere.query.all()
+        unites = Unite.query.all()
+        
+        # Formater les données pour le template
+        niveaux_data = []
+        for niveau in niveaux:
+            niveaux_data.append({
+                'id': niveau.id,
+                'nom': niveau.nom
+            })
+        
+        matieres_data = []
+        for matiere in matieres:
+            matieres_data.append({
+                'id': matiere.id,
+                'nom': matiere.nom,
+                'niveau_id': matiere.niveau_id
+            })
+        
+        unites_data = []
+        for unite in unites:
+            unites_data.append({
+                'id': unite.id,
+                'nom': unite.nom,
+                'matiere_id': unite.matiere_id,
+                'matiere_nom': unite.matiere.nom if unite.matiere else '',
+                'matiere_niveau_nom': unite.matiere.niveau.nom if unite.matiere and unite.matiere.niveau else '',
+                'lecons_count': len(unite.lecons) if unite.lecons else 0
+            })
         
         template = """titre_fr: Les fractions simples
 titre_en: Simple fractions
@@ -5175,11 +5180,14 @@ titre_en: Equivalent fractions
 objectif_fr: Identifier et créer des fractions équivalentes
 objectif_en: Identify and create equivalent fractions"""
         
+        # AJOUTER TOUTES LES VARIABLES AU TEMPLATE
         return render_template('import_lessons.html', 
-                             unites=unites_data,
+                             niveaux=niveaux_data,        # <-- IMPORTANT
+                             matieres=matieres_data,      # <-- IMPORTANT
+                             unites=unites_data,          # <-- IMPORTANT
                              unite_id=unite_id,
                              template=template,
-                             lang=session.get('lang', 'fr'))  # Ajoutez la langue
+                             lang=session.get('lang', 'fr'))
     
     # POST: Importer les leçons
     unite_id = request.form.get('unite_id')
