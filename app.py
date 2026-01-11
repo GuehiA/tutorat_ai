@@ -29,6 +29,7 @@ from flask_migrate import Migrate
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from datetime import datetime  # Pour le timestamp
+from flask_login import login_required, current_user
 from datetime import timedelta
 
 # 🧠 Modèles et config
@@ -5117,6 +5118,9 @@ def parse_simple_lesson_format(text):
     return lessons
 
 # Dans votre app.py ou routes.py
+
+from flask_login import login_required, current_user, login_user, logout_user
+
 @app.route('/admin/import-lessons', methods=['GET', 'POST'])
 @login_required
 @admin_required
