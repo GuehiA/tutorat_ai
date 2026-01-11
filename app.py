@@ -4798,6 +4798,398 @@ def parse_bilingual_exercises(text, default_time=120):
     
     return exercises
 
+
+def parse_bilingual_lessons(text):
+    """
+    Parse les leçons au format bilingue avec objectifs d'apprentissage
+    
+    Format attendu:
+    titre_fr: Titre français
+    titre_en: Titre anglais
+    objectif_fr: Objectif d'apprentissage en français
+    objectif_en: Learning objective in English
+    --- (séparateur entre les leçons)
+    """
+    lessons = []
+    
+    # Sépare les leçons par '---' sur ligne seule
+    raw_lessons = []
+    current_lesson = []
+    
+    for line in text.strip().split('\n'):
+        line = line.rstrip()  # Garder les espaces à droite pour le formatage
+        if line == '---':
+            if current_lesson:
+                raw_lessons.append('\n'.join(current_lesson))
+                current_lesson = []
+        else:
+            if line or current_lesson:  # Garder les lignes vides à l'intérieur
+                current_lesson.append(line)
+    
+    # Ajouter la dernière leçon
+    if current_lesson:
+        raw_lessons.append('\n'.join(current_lesson))
+    
+    # Si pas de '---', tout est une leçon
+    if not raw_lessons:
+        raw_lessons = [text.strip()]
+    
+    for raw in raw_lessons:
+        if not raw.strip():
+            continue
+            
+        lesson = {
+            'titre_fr': '',
+            'titre_en': '',
+            'objectif_fr': '',
+            'objectif_en': '',
+            'description_fr': '',  # Optionnel
+            'description_en': '',  # Optionnel
+            'keywords_fr': '',     # Optionnel
+            'keywords_en': ''      # Optionnel
+        }
+        
+        lines = raw.strip().split('\n')
+        current_field = None
+        current_text = []
+        
+        for line in lines:
+            line = line.rstrip()
+            if not line:
+                if current_field and current_text:
+                    # Ajouter une ligne vide dans le texte multiligne
+                    current_text.append('')
+                continue
+                
+            # Cherche un nouveau champ
+            if ':' in line and len(line.split(':', 1)[0].strip().split()) <= 2:
+                # Si on a déjà un champ en cours, le sauvegarder
+                if current_field and current_text:
+                    lesson[current_field] = '\n'.join(current_text).strip()
+                
+                # Démarrer un nouveau champ
+                key, value = line.split(':', 1)
+                key = key.strip().lower()
+                value = value.strip()
+                
+                # Mapping des clés
+                field_map = {
+                    'titre_fr': 'titre_fr',
+                    'titre_français': 'titre_fr',
+                    'titre_francais': 'titre_fr',
+                    'french_title': 'titre_fr',
+                    'fr_title': 'titre_fr',
+                    
+                    'titre_en': 'titre_en',
+                    'titre_anglais': 'titre_en',
+                    'english_title': 'titre_en',
+                    'en_title': 'titre_en',
+                    'title_en': 'titre_en',
+                    
+                    'objectif_fr': 'objectif_fr',
+                    'objectif_français': 'objectif_fr',
+                    'objectif_francais': 'objectif_fr',
+                    'french_objective': 'objectif_fr',
+                    'fr_objective': 'objectif_fr',
+                    'learning_objective_fr': 'objectif_fr',
+                    
+                    'objectif_en': 'objectif_en',
+                    'objectif_anglais': 'objectif_en',
+                    'english_objective': 'objectif_en',
+                    'en_objective': 'objectif_en',
+                    'learning_objective_en': 'objectif_en',
+                    
+                    'description_fr': 'description_fr',
+                    'description_français': 'description_fr',
+                    'description_francais': 'description_fr',
+                    'french_description': 'description_fr',
+                    
+                    'description_en': 'description_en',
+                    'description_anglais': 'description_en',
+                    'english_description': 'description_en',
+                    
+                    'mots_cles_fr': 'keywords_fr',
+                    'keywords_fr': 'keywords_fr',
+                    'french_keywords': 'keywords_fr',
+                    
+                    'mots_cles_en': 'keywords_en',
+                    'keywords_en': 'keywords_en',
+                    'english_keywords': 'keywords_en'
+                }
+                
+                current_field = field_map.get(key)
+                if current_field:
+                    current_text = [value] if value else []
+                else:
+                    current_field = None
+                    current_text = []
+            else:
+                # Ligne de continuation pour le champ en cours
+                if current_field:
+                    current_text.append(line)
+                elif line and line != '---':
+                    # Si on n'a pas de champ défini, c'est peut-être un format simple
+                    # On essaye de deviner le type de contenu
+                    if not lesson['titre_fr']:
+                        lesson['titre_fr'] = line
+                    elif not lesson['titre_en']:
+                        lesson['titre_en'] = line
+                    elif not lesson['objectif_fr']:
+                        lesson['objectif_fr'] = line
+                    elif not lesson['objectif_en']:
+                        lesson['objectif_en'] = line
+        
+        # Sauvegarder le dernier champ
+        if current_field and current_text:
+            lesson[current_field] = '\n'.join(current_text).strip()
+        
+        # Validation et nettoyage
+        # Si titre_en est vide mais titre_fr existe, copier titre_fr
+        if lesson['titre_fr'] and not lesson['titre_en']:
+            lesson['titre_en'] = lesson['titre_fr']
+        
+        # Si objectif_en est vide mais objectif_fr existe, copier objectif_fr
+        if lesson['objectif_fr'] and not lesson['objectif_en']:
+            lesson['objectif_en'] = lesson['objectif_fr']
+        
+        # Vérifier qu'on a au moins un titre
+        if lesson['titre_fr'] or lesson['titre_en']:
+            lessons.append(lesson)
+    
+    return lessons
+
+
+def import_lessons_from_text(text, unite_id, db_session, Lecon):
+    """
+    Importe des leçons depuis un texte formaté vers la base de données
+    
+    Args:
+        text: Texte formaté avec les leçons
+        unite_id: ID de l'unité cible
+        db_session: Session SQLAlchemy
+        Lecon: Modèle Lecon à importer
+    
+    Returns:
+        dict: Résultat de l'importation
+    """
+    lessons_data = parse_bilingual_lessons(text)
+    
+    if not lessons_data:
+        return {
+            'success': False,
+            'message': 'Aucune leçon valide trouvée dans le texte',
+            'lessons_added': 0
+        }
+    
+    added_lessons = []
+    skipped_lessons = []
+    
+    try:
+        for i, lesson_data in enumerate(lessons_data):
+            # Vérifier si une leçon avec ce titre existe déjà
+            existing = db_session.query(Lecon).filter_by(
+                titre_fr=lesson_data['titre_fr'],
+                unite_id=unite_id
+            ).first()
+            
+            if existing:
+                skipped_lessons.append({
+                    'index': i + 1,
+                    'titre': lesson_data['titre_fr'],
+                    'reason': 'Leçon déjà existante'
+                })
+                continue
+            
+            # Créer la nouvelle leçon
+            new_lesson = Lecon(
+                titre_fr=lesson_data['titre_fr'],
+                titre_en=lesson_data['titre_en'],
+                objectif_fr=lesson_data['objectif_fr'],
+                objectif_en=lesson_data['objectif_en'],
+                unite_id=unite_id
+            )
+            
+            db_session.add(new_lesson)
+            db_session.flush()  # Pour obtenir l'ID
+            
+            added_lessons.append({
+                'id': new_lesson.id,
+                'titre_fr': new_lesson.titre_fr,
+                'titre_en': new_lesson.titre_en
+            })
+        
+        db_session.commit()
+        
+        return {
+            'success': True,
+            'message': f'{len(added_lessons)} leçon(s) ajoutée(s) avec succès',
+            'lessons_added': len(added_lessons),
+            'skipped': len(skipped_lessons),
+            'added_lessons': added_lessons,
+            'skipped_lessons': skipped_lessons
+        }
+        
+    except Exception as e:
+        db_session.rollback()
+        return {
+            'success': False,
+            'message': f'Erreur lors de l\'importation: {str(e)}',
+            'lessons_added': 0
+        }
+
+
+def get_lesson_template():
+    """
+    Retourne un modèle de texte pour les leçons
+    """
+    return """titre_fr: Les fractions simples
+titre_en: Simple fractions
+objectif_fr: Comprendre le concept de fraction et sa représentation visuelle
+objectif_en: Understand the concept of fractions and their visual representation
+description_fr: Cette leçon introduit le concept de fraction comme partie d'un tout.
+description_en: This lesson introduces the concept of fractions as parts of a whole.
+
+---
+titre_fr: Addition de fractions
+titre_en: Fraction addition
+objectif_fr: Savoir additionner des fractions avec le même dénominateur
+objectif_en: Know how to add fractions with the same denominator
+description_fr: Apprendre à combiner des fractions ayant le même dénominateur.
+description_en: Learn to combine fractions with the same denominator.
+
+---
+titre_fr: Fractions équivalentes
+titre_en: Equivalent fractions
+objectif_fr: Identifier et créer des fractions équivalentes
+objectif_en: Identify and create equivalent fractions"""
+
+
+def format_lessons_for_display(lessons):
+    """
+    Formate les leçons pour un affichage lisible
+    """
+    if not lessons:
+        return "Aucune leçon à afficher"
+    
+    output = []
+    for i, lesson in enumerate(lessons, 1):
+        output.append(f"Leçon {i}:")
+        output.append(f"  🇫🇷 Titre: {lesson['titre_fr']}")
+        output.append(f"  🇬🇧 Title: {lesson['titre_en']}")
+        
+        if lesson['objectif_fr']:
+            output.append(f"  🎯 Objectif FR: {lesson['objectif_fr']}")
+        if lesson['objectif_en']:
+            output.append(f"  🎯 Objective EN: {lesson['objectif_en']}")
+        
+        if lesson.get('description_fr'):
+            output.append(f"  📝 Description FR: {lesson['description_fr']}")
+        if lesson.get('description_en'):
+            output.append(f"  📝 Description EN: {lesson['description_en']}")
+        
+        if i < len(lessons):
+            output.append("─" * 40)
+    
+    return '\n'.join(output)
+
+
+def parse_simple_lesson_format(text):
+    """
+    Format simplifié : 4 lignes par leçon
+    Ligne 1: Titre français
+    Ligne 2: Titre anglais
+    Ligne 3: Objectif français
+    Ligne 4: Objectif anglais
+    """
+    lessons = []
+    lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
+    
+    for i in range(0, len(lines), 4):
+        if i + 3 < len(lines):
+            lesson = {
+                'titre_fr': lines[i],
+                'titre_en': lines[i + 1],
+                'objectif_fr': lines[i + 2],
+                'objectif_en': lines[i + 3]
+            }
+            lessons.append(lesson)
+    
+    return lessons
+
+# Dans votre app.py ou routes.py
+@app.route('/admin/import-lessons', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_import_lessons():
+    """Page d'importation de leçons en lot"""
+    
+    # Récupérer toutes les unités avec leurs informations
+    unites = Unite.query.join(Matiere).join(Niveau).all()
+    
+    # Formater les données pour le template
+    unites_data = []
+    for unite in unites:
+        unites_data.append({
+            'id': unite.id,
+            'nom': unite.nom,
+            'nom_en': unite.nom_en,
+            'matiere': {
+                'id': unite.matiere.id,
+                'nom': unite.matiere.nom,
+                'niveau': {
+                    'id': unite.matiere.niveau.id,
+                    'nom': unite.matiere.niveau.nom
+                }
+            },
+            'lecons': [
+                {
+                    'id': lecon.id,
+                    'titre_fr': lecon.titre_fr
+                }
+                for lecon in unite.lecons
+            ]
+        })
+    
+    if request.method == 'GET':
+        # ID d'unité passé en paramètre
+        unite_id = request.args.get('unite_id')
+        
+        template = """titre_fr: Les fractions simples
+titre_en: Simple fractions
+objectif_fr: Comprendre le concept de fraction et sa représentation
+objectif_en: Understand the concept of fractions and their representation
+
+---
+titre_fr: Addition de fractions
+titre_en: Fraction addition
+objectif_fr: Savoir additionner des fractions avec même dénominateur
+objectif_en: Know how to add fractions with the same denominator
+
+---
+titre_fr: Fractions équivalentes
+titre_en: Equivalent fractions
+objectif_fr: Identifier et créer des fractions équivalentes
+objectif_en: Identify and create equivalent fractions"""
+        
+        return render_template('import_lessons.html', 
+                             unites=unites_data,
+                             unite_id=unite_id,
+                             template=template)
+    
+    # POST: Importer les leçons
+    unite_id = request.form.get('unite_id')
+    lessons_text = request.form.get('lessons_text')
+    
+    if not unite_id or not lessons_text:
+        return jsonify({
+            'success': False,
+            'message': 'Unité ID et texte des leçons requis'
+        }), 400
+    
+    result = import_lessons_from_text(lessons_text, int(unite_id), db.session, Lecon)
+    
+    return jsonify(result)
+
 from flask_wtf.csrf import generate_csrf
 @app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
 def batch_create_exercises_admin():
