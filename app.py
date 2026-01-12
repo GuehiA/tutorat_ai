@@ -7549,6 +7549,25 @@ def historique_eleve():
         is_eleve_direct_access=is_eleve_direct_access
     )
 
+@app.route('/admin/lecon/supprimer/<int:id>', methods=['POST'])
+@admin_required
+def supprimer_lecon(id):
+    """Supprimer une leçon"""
+    lecon = Lecon.query.get_or_404(id)
+    
+    # Vérifier s'il y a des exercices associés
+    if lecon.exercices:
+        # Option 1 : Supprimer tous les exercices associés
+        for exercice in lecon.exercices:
+            db.session.delete(exercice)
+    
+    # Supprimer la leçon
+    db.session.delete(lecon)
+    db.session.commit()
+    
+    flash('Leçon supprimée avec succès', 'success')
+    return redirect(url_for('admin_dashboard'))
+
 @app.route("/enseignant-remediations")
 def enseignant_remediations():
     suggestions = RemediationSuggestion.query.all()
