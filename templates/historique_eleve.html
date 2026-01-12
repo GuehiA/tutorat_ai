@@ -1322,19 +1322,19 @@
                                         <i class="fas fa-file-alt"></i>
                                         <span>{{ 'Énoncé' if lang == 'fr' else 'Prompt' }}</span>
                                       </div>
-                                      <div class="content-block math-content">{{ clean_json_content(exercice.enonce)|default('', true)|safe }}</div>
+                                      <div class="content-block math-content">{{ exercice.enonce|default('', true)|safe }}</div>
 
                                       <div class="content-title">
                                         <i class="fas fa-edit"></i>
                                         <span>{{ 'Réponse de l\'élève' if lang == 'fr' else 'Student\'s Answer' }}</span>
                                       </div>
-                                      <div class="content-block math-content">{{ clean_json_content(exercice.reponse_eleve)|default('', true)|safe }}</div>
+                                      <div class="content-block math-content">{{ exercice.reponse_eleve|default('', true)|safe }}</div>
 
                                       <div class="content-title">
                                         <i class="fas fa-robot"></i>
                                         <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
                                       </div>
-                                      <div class="content-block math-content">{{ clean_json_content(exercice.analyse_ia)|default('', true)|safe }}</div>
+                                      <div class="content-block math-content">{{ exercice.analyse_ia|default('', true)|safe }}</div>
 
                                       <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                                         <div>
@@ -1491,19 +1491,19 @@
                   <i class="fas fa-question-circle"></i>
                   <span>{{ 'Question' if lang == 'fr' else 'Question' }}</span>
                 </div>
-                <div class="content-block math-content">{{ clean_json_content(t.question)|default('', true)|safe }}</div>
+                <div class="content-block math-content">{{ t.question|default('', true)|safe }}</div>
 
                 <div class="content-title">
                   <i class="fas fa-edit"></i>
                   <span>{{ 'Réponse' if lang == 'fr' else 'Answer' }}</span>
                 </div>
-                <div class="content-block math-content">{{ clean_json_content(t.reponse_eleve)|default('', true)|safe }}</div>
+                <div class="content-block math-content">{{ t.reponse_eleve|default('', true)|safe }}</div>
 
                 <div class="content-title">
                   <i class="fas fa-robot"></i>
                   <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
                 </div>
-                <div class="content-block math-content">{{ clean_json_content(t.analyse_ia)|default('', true)|safe }}</div>
+                <div class="content-block math-content">{{ t.analyse_ia|default('', true)|safe }}</div>
 
                 <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                   <div>
@@ -1546,64 +1546,6 @@
   </div>
   
   <script>
-    // Fonction de nettoyage JSON pour résoudre les problèmes d'affichage
-    function cleanJsonContent(content) {
-      if (!content) return '';
-      
-      let strContent = String(content);
-      
-      // Nettoyer les séquences problématiques courantes
-      const replacements = [
-        // Problèmes d'échappement LaTeX
-        [/\\(Math input error)/g, ''],
-        [/\\([a-zA-Z])/g, '$1'], // Nettoyer les \é, \à, etc.
-        [/\\(\n|\r)/g, '<br>'],
-        
-        // Problèmes JSON mal formés
-        [/\\\\\[/g, '$$'],
-        [/\\\\\]/g, '$$'],
-        [/\\\\\(/g, '$'],
-        [/\\\\\)/g, '$'],
-        
-        // Échappements HTML
-        [/&amp;/g, '&'],
-        [/&lt;/g, '<'],
-        [/&gt;/g, '>'],
-        [/&quot;/g, '"'],
-        [/&#39;/g, "'"],
-        
-        // Nouveaux caractères spéciaux
-        [/\r\n/g, '<br>'],
-        [/\n/g, '<br>'],
-        [/\t/g, '    '],
-        
-        // Problèmes spécifiques identifiés
-        [/\\\//g, '/'],
-        [/\\"/g, '"'],
-        [/\\'/g, "'"],
-      ];
-      
-      replacements.forEach(([pattern, replacement]) => {
-        strContent = strContent.replace(pattern, replacement);
-      });
-      
-      // Essayer de parser le JSON si le contenu semble être du JSON
-      if (strContent.trim().startsWith('{') && strContent.trim().endsWith('}')) {
-        try {
-          const parsed = JSON.parse(strContent);
-          // Extraire le texte pertinent
-          const text = parsed.original || parsed.analysis || parsed.analyse_ia || 
-                      parsed.current_feedback || parsed.feedback || parsed.reponse || 
-                      (typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : strContent);
-          return cleanJsonContent(text);
-        } catch(e) {
-          // Ce n'est pas du JSON valide, continuer avec le nettoyage de base
-        }
-      }
-      
-      return strContent;
-    }
-    
     // Gestion des accordéons améliorée
     function toggleAccordion(element) {
       const content = element.nextElementSibling;
@@ -1641,15 +1583,6 @@
       // Forcer le re-rendu MathJax après ouverture
       if (content.classList.contains('expanded')) {
         setTimeout(() => {
-          // Nettoyer le contenu JSON avant d'appliquer MathJax
-          content.querySelectorAll('.content-block').forEach(block => {
-            const originalContent = block.innerHTML;
-            const cleanedContent = cleanJsonContent(originalContent);
-            if (cleanedContent !== originalContent) {
-              block.innerHTML = cleanedContent;
-            }
-          });
-          
           if (window.MathJax && window.MathJax.typesetPromise) {
             MathJax.typesetPromise([content]).catch(err => console.warn('MathJax error:', err));
           }
@@ -1668,14 +1601,8 @@
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
-      // Nettoyer tout le contenu au chargement
+      // Marquer tous les blocs de contenu pour MathJax
       document.querySelectorAll('.content-block').forEach(block => {
-        const originalContent = block.innerHTML;
-        const cleanedContent = cleanJsonContent(originalContent);
-        if (cleanedContent !== originalContent) {
-          block.innerHTML = cleanedContent;
-        }
-        
         if (!block.classList.contains('math-content')) {
           block.classList.add('math-content');
         }
@@ -1688,21 +1615,28 @@
         }, 500);
       }
       
-      // Traitement des réponses JSON supplémentaires
+      // Traitement des réponses JSON
       document.querySelectorAll('.content-block').forEach(block => {
-        const content = block.innerHTML.trim();
-        // Essayer d'extraire plus de contenu si c'est du JSON
-        if (content.startsWith('{') && content.endsWith('}')) {
-          try {
-            const parsed = JSON.parse(content);
-            const feedback = parsed.original || parsed.analyse || parsed.analysis || 
-                            parsed.current_feedback || parsed.feedback || parsed.reponse || 
-                            (typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : content);
+        try {
+          const content = block.innerHTML.trim();
+          if (content.startsWith('{') && content.endsWith('}')) {
+            const data = JSON.parse(content);
+            const feedback = data.current_feedback || data.feedback || data.original || 
+                            data.analyse || data.analysis || data.reponse || content;
             
-            block.innerHTML = cleanJsonContent(feedback);
-          } catch(e) {
-            // Ce n'est pas du JSON valide
+            let cleanFeedback = String(feedback)
+              .replace(/\\n/g, '<br>')
+              .replace(/\\r/g, '')
+              .replace(/\\t/g, ' ')
+              .replace(/\\\\\[/g, '$$')
+              .replace(/\\\\\]/g, '$$')
+              .replace(/\\\\\(/g, '$')
+              .replace(/\\\\\)/g, '$');
+            
+            block.innerHTML = cleanFeedback;
           }
+        } catch(e) {
+          // Pas du JSON
         }
       });
       
@@ -1746,15 +1680,6 @@
           mutation.addedNodes.forEach(function(node) {
             if (node.nodeType === 1 && node.classList && node.classList.contains('accordion-content')) {
               setTimeout(() => {
-                // Nettoyer le nouveau contenu
-                node.querySelectorAll('.content-block').forEach(block => {
-                  const originalContent = block.innerHTML;
-                  const cleanedContent = cleanJsonContent(originalContent);
-                  if (cleanedContent !== originalContent) {
-                    block.innerHTML = cleanedContent;
-                  }
-                });
-                
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
                 }
