@@ -491,7 +491,6 @@
       transition: max-height 0.6s cubic-bezier(0.215, 0.610, 0.355, 1), padding 0.3s;
       background: var(--white);
       border-radius: 0 0 var(--radius) var(--radius);
-      margin-top: -10px;
     }
     
     .accordion-content.expanded {
@@ -500,6 +499,7 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.05);
       border: 2px solid var(--light);
       border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
     }
     
     /* Exercices avec bon espacement */
@@ -634,6 +634,35 @@
     .content-title i {
       color: var(--secondary);
       font-size: 1.5rem;
+    }
+    
+    /* Style spécial pour l'analyse IA avec mise en forme */
+    .content-block.analyse-ia {
+      background: linear-gradient(135deg, rgba(155, 89, 182, 0.05), rgba(155, 89, 182, 0.02));
+      border-left-color: var(--info);
+    }
+    
+    .content-block.analyse-ia strong {
+      color: var(--info);
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+    }
+    
+    .content-block.analyse-ia .note-section {
+      background: rgba(243, 156, 18, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      border-left: 4px solid var(--warning);
+    }
+    
+    .content-block.analyse-ia .correction-section {
+      background: rgba(46, 204, 113, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      border-left: 4px solid var(--success);
     }
     
     /* Titres de section élégants */
@@ -1353,7 +1382,9 @@
                                         <i class="fas fa-robot"></i>
                                         <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
                                       </div>
-                                      <div class="content-block math-content">{{ exercice.analyse_ia|default('', true)|safe }}</div>
+                                      <div class="content-block analyse-ia math-content" data-original-content="{{ exercice.analyse_ia|default('', true)|tojson|forceescape }}">
+                                        {{ exercice.analyse_ia|default('', true)|nl2br|safe }}
+                                      </div>
 
                                       <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                                         <div>
@@ -1522,7 +1553,9 @@
                   <i class="fas fa-robot"></i>
                   <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
                 </div>
-                <div class="content-block math-content">{{ t.analyse_ia|default('', true)|safe }}</div>
+                <div class="content-block analyse-ia math-content" data-original-content="{{ t.analyse_ia|default('', true)|tojson|forceescape }}">
+                  {{ t.analyse_ia|default('', true)|nl2br|safe }}
+                </div>
 
                 <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                   <div>
@@ -1565,235 +1598,307 @@
   </div>
   
   <script>
-    // Fonction de nettoyage JSON pour résoudre les problèmes d'affichage
-    function cleanJsonContent(content) {
-      if (!content) return '';
-      
-      let strContent = String(content);
-      
-      // Nettoyer les séquences problématiques courantes
-      const replacements = [
-        // Problèmes d'échappement LaTeX
-        [/\\(Math input error)/g, ''],
-        [/\\([a-zA-Z])/g, '$1'], // Nettoyer les \é, \à, etc.
-        [/\\(\n|\r)/g, '<br>'],
+    // Fonction de nettoyage JSON améliorée
+    function parseJsonContent(content) {
+        if (!content) return '';
         
-        // Problèmes JSON mal formés
-        [/\\\\\[/g, '$$'],
-        [/\\\\\]/g, '$$'],
-        [/\\\\\(/g, '$'],
-        [/\\\\\)/g, '$'],
+        let strContent = String(content).trim();
         
-        // Échappements HTML
-        [/&amp;/g, '&'],
-        [/&lt;/g, '<'],
-        [/&gt;/g, '>'],
-        [/&quot;/g, '"'],
-        [/&#39;/g, "'"],
-        
-        // Nouveaux caractères spéciaux
-        [/\r\n/g, '<br>'],
-        [/\n/g, '<br>'],
-        [/\t/g, '    '],
-        
-        // Problèmes spécifiques identifiés
-        [/\\\//g, '/'],
-        [/\\"/g, '"'],
-        [/\\'/g, "'"],
-      ];
-      
-      replacements.forEach(([pattern, replacement]) => {
-        strContent = strContent.replace(pattern, replacement);
-      });
-      
-      // Essayer de parser le JSON si le contenu semble être du JSON
-      if (strContent.trim().startsWith('{') && strContent.trim().endsWith('}')) {
-        try {
-          const parsed = JSON.parse(strContent);
-          // Extraire le texte pertinent
-          const text = parsed.original || parsed.analysis || parsed.analyse_ia || 
-                      parsed.current_feedback || parsed.feedback || parsed.reponse || 
-                      (typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : strContent);
-          
-          let cleanFeedback = String(text)
-            .replace(/\\n/g, '<br>')
-            .replace(/\\r/g, '')
-            .replace(/\\t/g, ' ')
-            .replace(/\\\\\[/g, '$$')
-            .replace(/\\\\\]/g, '$$')
-            .replace(/\\\\\(/g, '$')
-            .replace(/\\\\\)/g, '$');
-          
-          return cleanFeedback;
-        } catch(e) {
-          // Pas du JSON
+        // Si le contenu commence par { et finit par }, c'est probablement du JSON
+        if (strContent.startsWith('{') && strContent.endsWith('}')) {
+            try {
+                const parsed = JSON.parse(strContent);
+                
+                // Ordre de priorité pour l'extraction du texte
+                const priorityKeys = [
+                    'current_feedback', 
+                    'original', 
+                    'feedback', 
+                    'analysis', 
+                    'analyse_ia',
+                    'correction',
+                    'reponse'
+                ];
+                
+                let extractedText = '';
+                
+                // Chercher dans les clés prioritaires
+                for (const key of priorityKeys) {
+                    if (parsed[key] && typeof parsed[key] === 'string') {
+                        extractedText = parsed[key];
+                        break;
+                    }
+                }
+                
+                // Si aucune clé prioritaire n'est trouvée, convertir tout l'objet en string
+                if (!extractedText) {
+                    // Essayer de trouver n'importe quelle valeur string dans l'objet
+                    const findStringInObject = (obj) => {
+                        for (const key in obj) {
+                            if (typeof obj[key] === 'string' && obj[key].trim().length > 0) {
+                                return obj[key];
+                            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                                const result = findStringInObject(obj[key]);
+                                if (result) return result;
+                            }
+                        }
+                        return '';
+                    };
+                    
+                    extractedText = findStringInObject(parsed) || JSON.stringify(parsed, null, 2);
+                }
+                
+                // Appliquer le nettoyage de base au texte extrait
+                strContent = cleanBasicContent(extractedText);
+            } catch(e) {
+                console.warn('Échec du parsing JSON, utilisation du contenu brut:', e);
+                strContent = cleanBasicContent(strContent);
+            }
+        } else {
+            // Si ce n'est pas du JSON, appliquer juste le nettoyage de base
+            strContent = cleanBasicContent(strContent);
         }
-      }
-      
-      return strContent;
+        
+        return strContent;
+    }
+    
+    // Fonction de nettoyage de base pour tout type de contenu
+    function cleanBasicContent(content) {
+        if (!content) return '';
+        
+        let strContent = String(content);
+        
+        // Remplacer les retours à la ligne
+        const replacements = [
+            [/\\n/g, '\n'],
+            [/\\r/g, ''],
+            [/\r\n/g, '\n'],
+            
+            // Échappements LaTeX
+            [/\\\\\[/g, '$$'],
+            [/\\\\\]/g, '$$'],
+            [/\\\\\(/g, '$'],
+            [/\\\\\)/g, '$'],
+            
+            // Échappements HTML
+            [/&amp;/g, '&'],
+            [/&lt;/g, '<'],
+            [/&gt;/g, '>'],
+            [/&quot;/g, '"'],
+            [/&#39;/g, "'"],
+            
+            // Problèmes spécifiques
+            [/\\\//g, '/'],
+            [/\\"/g, '"'],
+            [/\\'/g, "'"],
+            [/\\t/g, '    '],
+            
+            // Supprimer les "Math input error"
+            [/\\\(Math input error\)/g, ''],
+            [/Math input error/g, ''],
+        ];
+        
+        replacements.forEach(([pattern, replacement]) => {
+            strContent = strContent.replace(pattern, replacement);
+        });
+        
+        // Améliorer la lisibilité avec des sauts de ligne et du HTML
+        strContent = strContent
+            .replace(/\n{3,}/g, '\n\n')  // Réduire les multiples sauts de ligne
+            .replace(/^Analyse\s*:/gim, '<strong>Analyse :</strong>')
+            .replace(/^Note\s*:/gim, '<strong>Note :</strong>')
+            .replace(/^Correction\s*:/gim, '<strong>Correction :</strong>')
+            .replace(/^- /gm, '• ')  // Convertir les tirets en puces
+            .replace(/\n/g, '<br>');  // Convertir les sauts de ligne en HTML
+        
+        return strContent;
+    }
+    
+    // Fonction pour formater l'analyse IA avec un meilleur HTML
+    function formatAnalyseIA(content) {
+        let html = parseJsonContent(content);
+        
+        // Ajouter des classes CSS pour les sections spécifiques
+        html = html.replace(/<strong>Note :<\/strong>([^<]+)/gi, 
+            '<div class="note-section"><strong>Note :</strong>$1</div>');
+        html = html.replace(/<strong>Correction :<\/strong>([^<]+)/gi, 
+            '<div class="correction-section"><strong>Correction :</strong>$1</div>');
+        
+        return html;
     }
     
     // Gestion des accordéons améliorée
     function toggleAccordion(element) {
-      const content = element.nextElementSibling;
-      const isExpanded = content.classList.contains('expanded');
-      
-      // Fermer tous les accordéons du même niveau
-      const parentItem = element.closest('.accordion-item');
-      const siblings = parentItem ? parentItem.querySelectorAll('.accordion-content.expanded') : [];
-      
-      siblings.forEach(sibling => {
-        if (sibling !== content) {
-          sibling.classList.remove('expanded');
-          const header = sibling.previousElementSibling;
-          if (header) {
-            header.classList.remove('active');
-            header.style.borderBottomRightRadius = 'var(--radius)';
-            header.style.borderBottomLeftRadius = 'var(--radius)';
-          }
-        }
-      });
-      
-      // Basculer l'état actuel
-      content.classList.toggle('expanded');
-      element.classList.toggle('active');
-      
-      // Ajuster le border-radius de l'en-tête
-      if (content.classList.contains('expanded')) {
-        element.style.borderBottomRightRadius = '0';
-        element.style.borderBottomLeftRadius = '0';
-      } else {
-        element.style.borderBottomRightRadius = 'var(--radius)';
-        element.style.borderBottomLeftRadius = 'var(--radius)';
-      }
-      
-      // Forcer le re-rendu MathJax après ouverture
-      if (content.classList.contains('expanded')) {
-        setTimeout(() => {
-          // Nettoyer le contenu JSON avant d'appliquer MathJax
-          content.querySelectorAll('.content-block').forEach(block => {
-            const originalContent = block.innerHTML;
-            const cleanedContent = cleanJsonContent(originalContent);
-            if (cleanedContent !== originalContent) {
-              block.innerHTML = cleanedContent;
-              block.classList.add('cleaned-content');
-            }
-          });
-          
-          if (window.MathJax && window.MathJax.typesetPromise) {
-            MathJax.typesetPromise([content]).catch(err => console.warn('MathJax error:', err));
-          }
-        }, 300);
+        const content = element.nextElementSibling;
+        const isExpanded = content.classList.contains('expanded');
         
-        // Animer la barre de progression
-        content.querySelectorAll('.progress-bar').forEach(bar => {
-          const width = bar.style.width;
-          bar.style.width = '0';
-          setTimeout(() => {
-            bar.style.width = width;
-          }, 50);
+        // Fermer tous les accordéons du même niveau
+        const parentItem = element.closest('.accordion-item');
+        const siblings = parentItem ? parentItem.querySelectorAll('.accordion-content.expanded') : [];
+        
+        siblings.forEach(sibling => {
+            if (sibling !== content) {
+                sibling.classList.remove('expanded');
+                const header = sibling.previousElementSibling;
+                if (header) {
+                    header.classList.remove('active');
+                    header.style.borderBottomRightRadius = 'var(--radius)';
+                    header.style.borderBottomLeftRadius = 'var(--radius)';
+                }
+            }
         });
-      }
+        
+        // Basculer l'état actuel
+        content.classList.toggle('expanded');
+        element.classList.toggle('active');
+        
+        // Ajuster le border-radius de l'en-tête
+        if (content.classList.contains('expanded')) {
+            element.style.borderBottomRightRadius = '0';
+            element.style.borderBottomLeftRadius = '0';
+            
+            // Traiter le contenu après l'ouverture
+            setTimeout(() => {
+                // Traiter spécifiquement les analyses IA
+                content.querySelectorAll('.analyse-ia').forEach(block => {
+                    const originalContent = block.getAttribute('data-original-content') || block.innerHTML;
+                    const formattedContent = formatAnalyseIA(originalContent);
+                    
+                    if (formattedContent !== block.innerHTML) {
+                        block.innerHTML = formattedContent;
+                    }
+                    
+                    // Ajouter la classe pour le style
+                    if (!block.classList.contains('cleaned-content')) {
+                        block.classList.add('cleaned-content');
+                    }
+                });
+                
+                // Appliquer MathJax sur le nouveau contenu
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([content]).catch(err => console.warn('MathJax error:', err));
+                }
+                
+                // Animer les barres de progression
+                content.querySelectorAll('.progress-bar').forEach(bar => {
+                    const width = bar.style.width;
+                    bar.style.width = '0';
+                    setTimeout(() => {
+                        bar.style.width = width;
+                    }, 50);
+                });
+            }, 100);
+        } else {
+            element.style.borderBottomRightRadius = 'var(--radius)';
+            element.style.borderBottomLeftRadius = 'var(--radius)';
+        }
     }
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
-      // Nettoyer tout le contenu au chargement (au cas où)
-      document.querySelectorAll('.content-block').forEach(block => {
-        const originalContent = block.innerHTML;
-        const cleanedContent = cleanJsonContent(originalContent);
-        if (cleanedContent !== originalContent) {
-          block.innerHTML = cleanedContent;
-          block.classList.add('cleaned-content');
+        // Traiter toutes les analyses IA au chargement
+        document.querySelectorAll('.analyse-ia').forEach(block => {
+            const originalContent = block.getAttribute('data-original-content') || block.innerHTML;
+            const formattedContent = formatAnalyseIA(originalContent);
+            
+            if (formattedContent !== block.innerHTML) {
+                block.innerHTML = formattedContent;
+            }
+            
+            if (!block.classList.contains('cleaned-content')) {
+                block.classList.add('cleaned-content');
+            }
+        });
+        
+        // Traitement MathJax initial
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            setTimeout(() => {
+                MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
+            }, 500);
         }
         
-        if (!block.classList.contains('math-content')) {
-          block.classList.add('math-content');
-        }
-      });
-      
-      // Traitement initial MathJax
-      if (window.MathJax && window.MathJax.typesetPromise) {
-        setTimeout(() => {
-          MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
-        }, 500);
-      }
-      
-      // Animer les barres de progression
-      document.querySelectorAll('.progress-bar').forEach(bar => {
-        const width = bar.style.width;
-        bar.style.width = '0';
-        setTimeout(() => {
-          bar.style.width = width;
-        }, 300);
-      });
-      
-      // Navigation rapide pour les ancres
-      document.querySelectorAll('.nav-link[href^="#"]').forEach(link => {
-        link.addEventListener('click', function(e) {
-          e.preventDefault();
-          const targetId = this.getAttribute('href').substring(1);
-          const targetElement = document.getElementById(targetId);
-          if (targetElement) {
-            window.scrollTo({
-              top: targetElement.offsetTop - 100,
-              behavior: 'smooth'
-            });
-          }
+        // Animer les barres de progression
+        document.querySelectorAll('.progress-bar').forEach(bar => {
+            const width = bar.style.width;
+            bar.style.width = '0';
+            setTimeout(() => {
+                bar.style.width = width;
+            }, 300);
         });
-      });
-      
-      // Ouvrir automatiquement le premier niveau
-      const firstNiveau = document.querySelector('.niveau .accordion-header');
-      if (firstNiveau) {
-        setTimeout(() => {
-          firstNiveau.click();
-        }, 800);
-      }
+        
+        // Navigation rapide pour les ancres
+        document.querySelectorAll('.nav-link[href^="#"]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 100,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // Ouvrir automatiquement le premier niveau
+        const firstNiveau = document.querySelector('.niveau .accordion-header');
+        if (firstNiveau) {
+            setTimeout(() => {
+                firstNiveau.click();
+            }, 800);
+        }
+        
+        // Améliorer l'accessibilité des accordéons
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.setAttribute('role', 'button');
+            header.setAttribute('tabindex', '0');
+            header.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleAccordion(header);
+                }
+            });
+        });
+        
+        // Ajouter un effet visuel pour les analyses IA
+        document.querySelectorAll('.analyse-ia').forEach(block => {
+            block.addEventListener('click', function() {
+                this.classList.toggle('expanded-analyse');
+            });
+        });
     });
     
     // Observer pour traiter le contenu dynamique
     const observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        if (mutation.addedNodes.length) {
-          mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1 && node.classList && node.classList.contains('accordion-content')) {
-              setTimeout(() => {
-                // Nettoyer le nouveau contenu
-                node.querySelectorAll('.content-block').forEach(block => {
-                  const originalContent = block.innerHTML;
-                  const cleanedContent = cleanJsonContent(originalContent);
-                  if (cleanedContent !== originalContent) {
-                    block.innerHTML = cleanedContent;
-                    block.classList.add('cleaned-content');
-                  }
+        mutations.forEach(function(mutation) {
+            if (mutation.addedNodes.length) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1 && node.classList && node.classList.contains('accordion-content')) {
+                        setTimeout(() => {
+                            // Traiter les analyses IA dans le nouveau contenu
+                            node.querySelectorAll('.analyse-ia').forEach(block => {
+                                const originalContent = block.getAttribute('data-original-content') || block.innerHTML;
+                                const formattedContent = formatAnalyseIA(originalContent);
+                                
+                                if (formattedContent !== block.innerHTML) {
+                                    block.innerHTML = formattedContent;
+                                }
+                            });
+                            
+                            if (window.MathJax && window.MathJax.typesetPromise) {
+                                MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
+                            }
+                        }, 100);
+                    }
                 });
-                
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
-                }
-              }, 100);
             }
-          });
-        }
-      });
+        });
     });
     
     observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-    
-    // Améliorer l'accessibilité des accordéons
-    document.querySelectorAll('.accordion-header').forEach(header => {
-      header.setAttribute('role', 'button');
-      header.setAttribute('tabindex', '0');
-      header.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          toggleAccordion(header);
-        }
-      });
+        childList: true,
+        subtree: true
     });
   </script>
 </body>

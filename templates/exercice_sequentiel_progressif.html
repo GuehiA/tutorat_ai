@@ -150,7 +150,7 @@
       box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
     }
 
-    /* Navigation rapide - MODIFIE AVEC SCROLL */
+    /* Navigation rapide */
     .quick-navigation {
       position: fixed;
       top: 100px;
@@ -161,53 +161,12 @@
       box-shadow: 0 3px 15px rgba(0,0,0,0.1);
       z-index: 90;
       max-width: 250px;
-      max-height: 70vh; /* Limite la hauteur */
-      overflow: hidden; /* Cache le débordement */
-      display: flex;
-      flex-direction: column;
-    }
-
-    .quick-navigation-header {
-      margin-bottom: 10px;
-      font-size: 0.9rem;
-      color: var(--dark);
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--light);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .exercise-grid-container {
-      flex: 1;
-      overflow-y: auto; /* Barre de défilement verticale */
-      padding-right: 5px; /* Espace pour la barre de défilement */
-    }
-
-    /* Style de la barre de défilement */
-    .exercise-grid-container::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .exercise-grid-container::-webkit-scrollbar-track {
-      background: var(--light);
-      border-radius: 3px;
-    }
-
-    .exercise-grid-container::-webkit-scrollbar-thumb {
-      background: var(--primary);
-      border-radius: 3px;
-    }
-
-    .exercise-grid-container::-webkit-scrollbar-thumb:hover {
-      background: var(--primary-dark);
     }
 
     .exercise-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       gap: 8px;
-      margin-bottom: 10px;
     }
 
     .exercise-dot {
@@ -260,32 +219,6 @@
 
     .exercise-dot.active::after {
       display: none;
-    }
-
-    .quick-navigation-footer {
-      margin-top: 10px;
-      font-size: 0.8rem;
-      color: var(--gray);
-      text-align: center;
-      padding-top: 8px;
-      border-top: 1px solid var(--light);
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-
-    .status-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .status-dot {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
     }
 
     /* Menu de sélection d'exercice (pour feedback) */
@@ -1165,7 +1098,6 @@
         font-size: 1em;
       }
 
-      /* Cacher la navigation rapide sur mobile */
       .quick-navigation {
         display: none;
       }
@@ -1205,31 +1137,27 @@
   </style>
 </head>
 <body>
-  <!-- Navigation rapide - MODIFIÉE POUR AVOIR UNE BARRE DE DÉFILEMENT -->
+  <!-- Navigation rapide -->
   <div class="quick-navigation">
-    <div class="quick-navigation-header">
+    <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--dark);">
       <i class="fas fa-map"></i> {{ 'Navigation rapide' if lang == 'fr' else 'Quick Navigation' }}
+    </h4>
+    <div class="exercise-grid">
+      {% for i in range(total) %}
+        <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
+           class="exercise-dot {% if i == index %}active{% endif %} {% if reponses_status and reponses_status[i] == 'completed' %}completed{% endif %}"
+           title="{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}">
+          {{ i + 1 }}
+        </a>
+      {% endfor %}
     </div>
-    
-    <div class="exercise-grid-container">
-      <div class="exercise-grid">
-        {% for i in range(total) %}
-          <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
-             class="exercise-dot {% if i == index %}active{% endif %} {% if reponses_status and reponses_status[i] == 'completed' %}completed{% endif %}"
-             title="{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}">
-            {{ i + 1 }}
-          </a>
-        {% endfor %}
-      </div>
-    </div>
-    
-    <div class="quick-navigation-footer">
-      <span class="status-indicator">
-        <span class="status-dot" style="background: var(--light);"></span>
+    <div style="margin-top: 10px; font-size: 0.8rem; color: var(--gray); text-align: center;">
+      <span style="display: inline-flex; align-items: center; gap: 5px; margin-right: 10px;">
+        <span style="display: inline-block; width: 12px; height: 12px; background: var(--light); border-radius: 50%;"></span>
         {{ 'Non commencé' if lang == 'fr' else 'Not started' }}
       </span>
-      <span class="status-indicator">
-        <span class="status-dot" style="background: var(--secondary);"></span>
+      <span style="display: inline-flex; align-items: center; gap: 5px;">
+        <span style="display: inline-block; width: 12px; height: 12px; background: var(--secondary); border-radius: 50%;"></span>
         {{ 'Terminé' if lang == 'fr' else 'Completed' }}
       </span>
     </div>
@@ -2218,18 +2146,6 @@
 
       // Retraiter MathJax après un délai supplémentaire pour s'assurer que tout est chargé
       setTimeout(processMathContent, 2000);
-      
-      // Faire défiler automatiquement vers l'exercice actif dans la navigation rapide
-      setTimeout(() => {
-        const quickNav = document.querySelector('.quick-navigation');
-        if (quickNav) {
-          const activeDot = quickNav.querySelector('.exercise-dot.active');
-          if (activeDot) {
-            // Scroll pour rendre visible l'exercice actif
-            activeDot.scrollIntoView({ block: 'center', behavior: 'smooth' });
-          }
-        }
-      }, 500);
     });
 
     // Réessayer MathJax si le contenu change
