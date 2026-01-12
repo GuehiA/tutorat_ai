@@ -21,5 +21,7 @@ stripe==9.6.0
 pdfkit==1.0.0
 nltk==3.8.1
 reportlab==4.2.0
-matplotlib==3.7.5        # ⬅️ AJOUTEZ CETTE LIGNE
+matplotlib==3.7.5
 email_validator>=2.0.0
+jinja2>=3.0.0
+markupsafe>=2.0.0  # ⬅️ AJOUTEZ CETTE LIGNE

@@ -2575,27 +2575,7 @@ def supprimer_test(test_id):
     
     return redirect(url_for("liste_tests"))
 
-@app.route("/admin/supprimer-lecon/<int:id>", methods=["POST"])
-@admin_required
-def supprimer_lecon(id):
-    """Supprimer une leçon et tous ses exercices associés."""
-    try:
-        lecon = Lecon.query.get_or_404(id)
-        
-        # Supprimer tous les exercices associés à cette leçon
-        Exercice.query.filter_by(lecon_id=id).delete()
-        
-        # Supprimer la leçon
-        db.session.delete(lecon)
-        db.session.commit()
-        
-        flash("Leçon supprimée avec succès", "success")
-        return redirect(url_for("admin_dashboard"))
-        
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Erreur lors de la suppression : {str(e)}", "danger")
-        return redirect(url_for("admin_dashboard"))
+
 
 @app.route("/login-admin", methods=["GET", "POST"])
 def login_admin():
@@ -7185,7 +7165,6 @@ def progression_eleve():
 
 @app.route("/historique")
 def historique_eleve():
-    import json
     username = request.args.get("username")
     
     # Si pas de username dans les paramètres, vérifier la session
@@ -7255,254 +7234,6 @@ def historique_eleve():
             flash("Student level not defined", "warning")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
     
-    # Fonction pour parser l'analyse IA (définie une fois au début)
-    def parse_analyse_ia(analyse_json):
-        """Parse l'analyse IA JSON pour extraire le texte lisible"""
-        if not analyse_json:
-            return ""
-        
-        try:
-            # Si c'est déjà une chaîne, vérifier si c'est du JSON
-            if isinstance(analyse_json, str):
-                if analyse_json.strip().startswith('{'):
-                    try:
-                        analyse_data = json.loads(analyse_json)
-                    except:
-                        # Si ce n'est pas du JSON valide, retourner tel quel
-                        return analyse_json
-                else:
-                    return analyse_json
-            else:
-                analyse_data = analyse_json
-            
-            # Extraire le texte pertinent
-            text = (
-                analyse_data.get("current_feedback") or
-                analyse_data.get("original") or
-                analyse_data.get("feedback") or
-                analyse_data.get("analyse_ia") or
-                analyse_data.get("analysis") or
-                str(analyse_data)
-            )
-            
-            # Nettoyer les retours à la ligne
-            if isinstance(text, str):
-                text = text.replace('\\n', '\n').replace('\\r', '')
-            
-            return text
-        except (json.JSONDecodeError, AttributeError, TypeError) as e:
-            print(f"Erreur parsing JSON: {e}")
-            # Si ce n'est pas du JSON valide, retourner tel quel
-            return str(analyse_json)
-    
-    # Récupérer les exercices normaux de l'élève (StudentResponse avec exercice_id)
-    reponses_exercices = StudentResponse.query.filter_by(
-        user_id=eleve_id
-    ).filter(
-        StudentResponse.exercice_id.isnot(None)
-    ).order_by(StudentResponse.timestamp.desc()).all()
-    
-    print(f"Exercices faits trouvés: {len(reponses_exercices)}")
-    
-    total_exercices_effectues = len(reponses_exercices)
-    total_exercices_restants = 0  # À calculer selon votre logique
-    
-    # Structure des données pour l'affichage hiérarchique
-    data_structure = {"niveaux": {}}
-    
-    for reponse in reponses_exercices:
-        exercice = reponse.exercice
-        if not exercice:
-            continue
-            
-        # Récupérer la hiérarchie
-        lecon = exercice.lecon
-        if not lecon:
-            continue
-            
-        unite = lecon.unite
-        matiere = unite.matiere if unite else None
-        niveau = matiere.niveau if matiere else None
-        
-        if not all([lecon, unite, matiere, niveau]):
-            continue
-        
-        niveau_nom = niveau.nom
-        matiere_nom = matiere.nom
-        unite_nom = unite.nom
-        lecon_nom = lecon.titre_fr if lang == 'fr' else lecon.titre_en
-        
-        # Initialiser la structure si nécessaire
-        if niveau_nom not in data_structure["niveaux"]:
-            data_structure["niveaux"][niveau_nom] = {
-                "matieres": {},
-                "total_effectues": 0,
-                "total_restants": 0,
-                "total_exercices": 0
-            }
-        
-        if matiere_nom not in data_structure["niveaux"][niveau_nom]["matieres"]:
-            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom] = {
-                "unites": {},
-                "total_effectues": 0,
-                "total_restants": 0,
-                "total_exercices": 0
-            }
-        
-        if unite_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"]:
-            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom] = {
-                "lecons": {},
-                "total_effectues": 0,
-                "total_restants": 0,
-                "total_exercices": 0
-            }
-        
-        if lecon_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"]:
-            # Récupérer tous les exercices de cette leçon pour calculer les totaux
-            tous_exercices_lecon = Exercice.query.filter_by(lecon_id=lecon.id).all()
-            exercices_totaux = len(tous_exercices_lecon)
-            exercices_effectues = StudentResponse.query.filter_by(
-                user_id=eleve_id,
-                exercice_id=exercice.id
-            ).count()
-            
-            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom] = {
-                "exercices": [],
-                "exercices_totaux": exercices_totaux,
-                "exercices_effectues": exercices_effectues,
-                "exercices_restants": max(0, exercices_totaux - exercices_effectues)
-            }
-        
-        # Ajouter l'exercice
-        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices"].append({
-            "enonce": exercice.question_fr if lang == 'fr' else exercice.question_en,
-            "reponse_eleve": reponse.reponse_eleve,
-            "analyse_ia": parse_analyse_ia(reponse.analyse_ia),  # Parser ici
-            "etoiles": reponse.etoiles or 0,
-            "date": reponse.timestamp.strftime("%d/%m/%Y %H:%M") if reponse.timestamp else "Date inconnue"
-        })
-        
-        # Mettre à jour les totaux
-        data_structure["niveaux"][niveau_nom]["total_effectues"] += 1
-        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["total_effectues"] += 1
-        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["total_effectues"] += 1
-    
-    # Récupérer les tests sommatifs (TestResponse)
-    tests_sommatifs = TestResponse.query.filter_by(
-        user_id=eleve_id
-    ).order_by(TestResponse.timestamp.desc()).all()
-    
-    tests = []
-    for test_fait in tests_sommatifs:
-        test = test_fait.test
-        if test:
-            # Formater les réponses (c'est du JSON)
-            reponses_formatees = ""
-            if test_fait.reponses_exercices:
-                try:
-                    if isinstance(test_fait.reponses_exercices, str):
-                        reponses_data = json.loads(test_fait.reponses_exercices)
-                    else:
-                        reponses_data = test_fait.reponses_exercices
-                    
-                    if isinstance(reponses_data, dict):
-                        reponses_formatees = "\n".join([f"{k}: {v}" for k, v in reponses_data.items()])
-                    elif isinstance(reponses_data, list):
-                        reponses_formatees = "\n".join([f"Question {i+1}: {r}" for i, r in enumerate(reponses_data)])
-                    else:
-                        reponses_formatees = str(reponses_data)
-                except Exception as e:
-                    print(f"Erreur formatage réponses test: {e}")
-                    reponses_formatees = str(test_fait.reponses_exercices)
-            
-            tests.append({
-                "question": test.question_fr if lang == 'fr' else test.question_en,
-                "reponse_eleve": reponses_formatees,
-                "analyse_ia": parse_analyse_ia(test_fait.analyse_ia),  # Parser ici
-                "etoiles": test_fait.etoiles or 0,
-                "date": test_fait.timestamp.strftime("%d/%m/%Y %H:%M") if test_fait.timestamp else "Date inconnue",
-                "unite": test.unite.nom if test.unite else "Test Sommatif"
-            })
-    
-    # Récupérer aussi les exercices de test individuels (StudentResponse avec test_exercice_id)
-    exercices_test = StudentResponse.query.filter_by(
-        user_id=eleve_id
-    ).filter(
-        StudentResponse.test_exercice_id.isnot(None)
-    ).order_by(StudentResponse.timestamp.desc()).all()
-    
-    for reponse_test in exercices_test:
-        test_exercice = reponse_test.test_exercice
-        if test_exercice and test_exercice.test:
-            tests.append({
-                "question": test_exercice.question_fr if lang == 'fr' else test_exercice.question_en,
-                "reponse_eleve": reponse_test.reponse_eleve,
-                "analyse_ia": parse_analyse_ia(reponse_test.analyse_ia),
-                "etoiles": reponse_test.etoiles or 0,
-                "date": reponse_test.timestamp.strftime("%d/%m/%Y %H:%M") if reponse_test.timestamp else "Date inconnue",
-                "unite": test_exercice.test.unite.nom if test_exercice.test.unite else "Exercice de test"
-            })
-    
-    # Calculer les exercices restants
-    for niveau_nom, niveau_data in data_structure["niveaux"].items():
-        niveau_obj = Niveau.query.filter_by(nom=niveau_nom).first()
-        if niveau_obj:
-            # Calculer le total des exercices dans ce niveau
-            total_niveau = 0
-            for matiere in niveau_obj.matieres:
-                for unite in matiere.unites:
-                    for lecon in unite.lecons:
-                        total_niveau += len(lecon.exercices)
-            
-            niveau_data["total_exercices"] = total_niveau
-            niveau_data["total_restants"] = max(0, total_niveau - niveau_data["total_effectues"])
-            
-            # Mettre à jour le total général des restants
-            total_exercices_restants += niveau_data["total_restants"]
-    
-    return render_template(
-        "historique_eleve.html",
-        eleve=eleve,
-        niveau_eleve=niveau_eleve.nom,
-        total_exercices_effectues=total_exercices_effectues,
-        total_exercices_restants=total_exercices_restants,
-        data_structure=data_structure,
-        tests=tests,
-        lang=lang,
-        is_parent_access=is_parent_access,
-        is_enseignant_access=is_enseignant_access,
-        is_eleve_direct_access=is_eleve_direct_access
-    )
-    
-    
-from jinja2 import evalcontextfilter, Markup, escape
-import re
-
-@app.template_filter()
-@evalcontextfilter
-def nl2br(eval_ctx, value):
-    """Convertit les sauts de ligne en <br> tags"""
-    if not value:
-        return ''
-    
-    # Si c'est un objet JSON stringifié, le convertir d'abord
-    if isinstance(value, str) and value.strip().startswith('{'):
-        try:
-            import json
-            data = json.loads(value)
-            # Extraire le texte pertinent
-            value = data.get('current_feedback') or data.get('original') or data.get('feedback') or value
-        except:
-            pass
-    
-    # Convertir les \n en <br>
-    result = escape(value).replace('\n', '<br>\n')
-    
-    if eval_ctx.autoescape:
-        result = Markup(result)
-    
-    return result
-
     # ============================================
     # FONCTION UTILITAIRE POUR OBTENIR LE NOM TRADUIT
     # ============================================
@@ -8466,7 +8197,309 @@ def before_request():
                 flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner pour continuer.", "error")
                 return redirect(url_for('login_eleve'))
 
+from jinja2 import pass_eval_context, escape
+from markupsafe import Markup
 
+@app.template_filter()
+@pass_eval_context
+def nl2br(eval_ctx, value):
+    """Convertit les sauts de ligne en <br> tags"""
+    if not value:
+        return ''
+    
+    # Si c'est un objet JSON stringifié, le convertir d'abord
+    if isinstance(value, str) and value.strip().startswith('{'):
+        try:
+            import json
+            data = json.loads(value)
+            # Extraire le texte pertinent
+            value = data.get('current_feedback') or data.get('original') or data.get('feedback') or value
+        except:
+            pass
+    
+    # Convertir les \n en <br>
+    result = escape(value).replace('\n', '<br>\n')
+    
+    if eval_ctx.autoescape:
+        result = Markup(result)
+    
+    return result
+
+@app.route("/historique")
+def historique_eleve():
+    import json
+    from flask import request, session, flash, redirect, url_for, render_template
+    
+    username = request.args.get("username")
+    
+    # Si pas de username dans les paramètres, vérifier la session
+    if not username:
+        username = session.get("username")
+    
+    if not username:
+        if lang == "fr":
+            flash("Veuillez vous connecter pour accéder à l'historique", "warning")
+        else:
+            flash("Please log in to access history", "warning")
+        return redirect(url_for("connexion_eleve"))
+    
+    exercice_id = request.args.get("exercice_id")
+    lang = request.args.get("lang", "fr")
+
+    eleve = User.query.filter_by(username=username).first()
+    if not eleve:
+        if lang == "fr":
+            flash(f"Élève {username} introuvable", "danger")
+        else:
+            flash(f"Student {username} not found", "danger")
+        return redirect(url_for("dashboard_parent" if session.get("parent_email") else "dashboard_eleve"))
+
+    # ✅ DÉTECTION DU CONTEXTE : Priorité à l'enseignant s'il y a conflit
+    parent_email = session.get("parent_email")
+    enseignant_id = session.get("enseignant_id")
+    
+    # DEBUG
+    print(f"SESSION - parent_email: {parent_email}")
+    print(f"SESSION - enseignant_id: {enseignant_id}")
+    print(f"ÉLÈVE TROUVÉ - {eleve.nom_complet} (username: {username})")
+    
+    # ✅ LOGIQUE DE PRIORITÉ : 
+    # 1. Si enseignant_id existe → c'est un enseignant (priorité haute)
+    # 2. Si parent_email existe ET pas d'enseignant_id → c'est un parent
+    # 3. Sinon → c'est l'élève
+    
+    if enseignant_id:
+        # L'utilisateur est connecté comme enseignant (même s'il a aussi parent_email)
+        is_enseignant_access = True
+        is_parent_access = False
+        is_eleve_direct_access = False
+        print(f"ACCÈS - ENSEIGNANT prioritaire (ID: {enseignant_id})")
+    elif parent_email:
+        # L'utilisateur est connecté comme parent (sans enseignant_id)
+        is_parent_access = True
+        is_enseignant_access = False
+        is_eleve_direct_access = False
+        print(f"ACCÈS - PARENT (email: {parent_email})")
+    else:
+        # Vérifier si l'élève accède à son propre historique
+        eleve_session_username = session.get("username")
+        is_eleve_direct_access = eleve_session_username == username
+        is_parent_access = False
+        is_enseignant_access = False
+        print(f"ACCÈS - ÉLÈVE (session: {eleve_session_username}, requested: {username})")
+
+    # Récupérer l'ID de l'élève et son niveau
+    eleve_id = eleve.id
+    niveau_eleve = eleve.niveau  # Récupère l'objet Niveau de l'élève
+    
+    if not niveau_eleve:
+        if lang == "fr":
+            flash("Niveau de l'élève non défini", "warning")
+        else:
+            flash("Student level not defined", "warning")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+    
+    # Fonction pour parser l'analyse IA (définie une fois au début)
+    def parse_analyse_ia(analyse_json):
+        """Parse l'analyse IA JSON pour extraire le texte lisible"""
+        if not analyse_json:
+            return ""
+        
+        try:
+            # Si c'est déjà une chaîne, vérifier si c'est du JSON
+            if isinstance(analyse_json, str):
+                if analyse_json.strip().startswith('{'):
+                    try:
+                        analyse_data = json.loads(analyse_json)
+                    except:
+                        # Si ce n'est pas du JSON valide, retourner tel quel
+                        return analyse_json
+                else:
+                    return analyse_json
+            else:
+                analyse_data = analyse_json
+            
+            # Extraire le texte pertinent
+            text = (
+                analyse_data.get("current_feedback") or
+                analyse_data.get("original") or
+                analyse_data.get("feedback") or
+                analyse_data.get("analyse_ia") or
+                analyse_data.get("analysis") or
+                str(analyse_data)
+            )
+            
+            # Nettoyer les retours à la ligne
+            if isinstance(text, str):
+                text = text.replace('\\n', '\n').replace('\\r', '')
+            
+            return text
+        except (json.JSONDecodeError, AttributeError, TypeError) as e:
+            print(f"Erreur parsing JSON: {e}")
+            # Si ce n'est pas du JSON valide, retourner tel quel
+            return str(analyse_json)
+    
+    # Récupérer les exercices normaux de l'élève (StudentResponse avec exercice_id)
+    reponses_exercices = StudentResponse.query.filter_by(
+        user_id=eleve_id
+    ).filter(
+        StudentResponse.exercice_id.isnot(None)
+    ).order_by(StudentResponse.timestamp.desc()).all()
+    
+    print(f"Exercices faits trouvés: {len(reponses_exercices)}")
+    
+    total_exercices_effectues = len(reponses_exercices)
+    total_exercices_restants = 0  # À calculer selon votre logique
+    
+    # Structure des données pour l'affichage hiérarchique
+    data_structure = {"niveaux": {}}
+    
+    for reponse in reponses_exercices:
+        exercice = reponse.exercice
+        if not exercice:
+            continue
+            
+        # Récupérer la hiérarchie
+        lecon = exercice.lecon
+        if not lecon:
+            continue
+            
+        unite = lecon.unite
+        matiere = unite.matiere if unite else None
+        niveau = matiere.niveau if matiere else None
+        
+        if not all([lecon, unite, matiere, niveau]):
+            continue
+        
+        niveau_nom = niveau.nom
+        matiere_nom = matiere.nom
+        unite_nom = unite.nom
+        lecon_nom = lecon.titre_fr if lang == 'fr' else lecon.titre_en
+        
+        # Initialiser la structure si nécessaire
+        if niveau_nom not in data_structure["niveaux"]:
+            data_structure["niveaux"][niveau_nom] = {
+                "matieres": {},
+                "total_effectues": 0,
+                "total_restants": 0,
+                "total_exercices": 0
+            }
+        
+        if matiere_nom not in data_structure["niveaux"][niveau_nom]["matieres"]:
+            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom] = {
+                "unites": {},
+                "total_effectues": 0,
+                "total_restants": 0,
+                "total_exercices": 0
+            }
+        
+        if unite_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"]:
+            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom] = {
+                "lecons": {},
+                "total_effectues": 0,
+                "total_restants": 0,
+                "total_exercices": 0
+            }
+        
+        if lecon_nom not in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"]:
+            # Récupérer tous les exercices de cette leçon pour calculer les totaux
+            tous_exercices_lecon = Exercice.query.filter_by(lecon_id=lecon.id).all()
+            exercices_totaux = len(tous_exercices_lecon)
+            exercices_effectues = StudentResponse.query.filter_by(
+                user_id=eleve_id,
+                exercice_id=exercice.id
+            ).count()
+            
+            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom] = {
+                "exercices": [],
+                "exercices_totaux": exercices_totaux,
+                "exercices_effectues": exercices_effectues,
+                "exercices_restants": max(0, exercices_totaux - exercices_effectues)
+            }
+        
+        # Ajouter l'exercice
+        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices"].append({
+            "enonce": exercice.question_fr if lang == 'fr' else exercice.question_en,
+            "reponse_eleve": reponse.reponse_eleve,
+            "analyse_ia": parse_analyse_ia(reponse.analyse_ia),
+            "etoiles": reponse.etoiles or 0,
+            "date": reponse.timestamp.strftime("%d/%m/%Y %H:%M") if reponse.timestamp else "Date inconnue"
+        })
+        
+        # Mettre à jour les totaux
+        data_structure["niveaux"][niveau_nom]["total_effectues"] += 1
+        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["total_effectues"] += 1
+        data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["total_effectues"] += 1
+    
+    # Récupérer les tests sommatifs (TestResponse)
+    tests_sommatifs = TestResponse.query.filter_by(
+        user_id=eleve_id
+    ).order_by(TestResponse.timestamp.desc()).all()
+    
+    tests = []
+    for test_fait in tests_sommatifs:
+        test = test_fait.test
+        if test:
+            # Formater les réponses (c'est du JSON)
+            reponses_formatees = ""
+            if test_fait.reponses_exercices:
+                try:
+                    if isinstance(test_fait.reponses_exercices, str):
+                        reponses_data = json.loads(test_fait.reponses_exercices)
+                    else:
+                        reponses_data = test_fait.reponses_exercices
+                    
+                    if isinstance(reponses_data, dict):
+                        reponses_formatees = "\n".join([f"{k}: {v}" for k, v in reponses_data.items()])
+                    elif isinstance(reponses_data, list):
+                        reponses_formatees = "\n".join([f"Question {i+1}: {r}" for i, r in enumerate(reponses_data)])
+                    else:
+                        reponses_formatees = str(reponses_data)
+                except Exception as e:
+                    print(f"Erreur formatage réponses test: {e}")
+                    reponses_formatees = str(test_fait.reponses_exercices)
+            
+            tests.append({
+                "question": test.question_fr if lang == 'fr' else test.question_en,
+                "reponse_eleve": reponses_formatees,
+                "analyse_ia": parse_analyse_ia(test_fait.analyse_ia),
+                "etoiles": test_fait.etoiles or 0,
+                "date": test_fait.timestamp.strftime("%d/%m/%Y %H:%M") if test_fait.timestamp else "Date inconnue",
+                "unite": test.unite.nom if test.unite else "Test Sommatif"
+            })
+    
+    # Calculer les exercices restants
+    for niveau_nom, niveau_data in data_structure["niveaux"].items():
+        niveau_obj = Niveau.query.filter_by(nom=niveau_nom).first()
+        if niveau_obj:
+            # Calculer le total des exercices dans ce niveau
+            total_niveau = 0
+            for matiere in niveau_obj.matieres:
+                for unite in matiere.unites:
+                    for lecon in unite.lecons:
+                        total_niveau += len(lecon.exercices)
+            
+            niveau_data["total_exercices"] = total_niveau
+            niveau_data["total_restants"] = max(0, total_niveau - niveau_data["total_effectues"])
+            
+            # Mettre à jour le total général des restants
+            total_exercices_restants += niveau_data["total_restants"]
+    
+    return render_template(
+        "historique_eleve.html",
+        eleve=eleve,
+        niveau_eleve=niveau_eleve.nom,
+        total_exercices_effectues=total_exercices_effectues,
+        total_exercices_restants=total_exercices_restants,
+        data_structure=data_structure,
+        tests=tests,
+        lang=lang,
+        is_parent_access=is_parent_access,
+        is_enseignant_access=is_enseignant_access,
+        is_eleve_direct_access=is_eleve_direct_access
+    )
+    
+    
 @app.route("/admin/exercices")
 @admin_required
 def liste_exercices():
