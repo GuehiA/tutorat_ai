@@ -7490,11 +7490,11 @@ def historique_eleve():
     )
     
     
-from jinja2 import evalcontextfilter, Markup, escape
+from jinja2 import pass_eval_context, Markup, escape
 import re
 
 @app.template_filter()
-@evalcontextfilter
+@pass_eval_context
 def nl2br(eval_ctx, value):
     """Convertit les sauts de ligne en <br> tags"""
     if not value:
