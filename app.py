@@ -7490,7 +7490,8 @@ def historique_eleve():
     )
     
     
-from jinja2 import pass_eval_context, Markup, escape
+from jinja2 import pass_eval_context, escape
+from markupsafe import Markup
 import re
 
 @app.template_filter()
