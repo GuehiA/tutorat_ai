@@ -608,8 +608,6 @@
       border: 2px solid var(--light);
       line-height: 1.8;
       font-size: 1.05rem;
-      white-space: pre-wrap;  /* Conserve les retours à la ligne */
-      word-wrap: break-word;  /* Coupe les mots longs */
     }
     
     .content-block p {
@@ -843,23 +841,6 @@
       color: white;
       transform: translateX(5px);
       border-color: var(--secondary-light);
-    }
-    
-    /* Style spécial pour les contenus nettoyés */
-    .content-block.cleaned-content {
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      font-family: var(--font-body);
-      line-height: 1.6;
-    }
-    
-    .content-block .math-formula {
-      display: inline-block;
-      background: rgba(52, 152, 219, 0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-      margin: 0 2px;
-      font-family: 'Courier New', monospace;
     }
     
     /* Responsive */
@@ -1341,19 +1322,19 @@
                                         <i class="fas fa-file-alt"></i>
                                         <span>{{ 'Énoncé' if lang == 'fr' else 'Prompt' }}</span>
                                       </div>
-                                      <div class="content-block math-content">{{ exercice.enonce|default('', true)|safe }}</div>
+                                      <div class="content-block math-content">{{ clean_json_content(exercice.enonce)|default('', true)|safe }}</div>
 
                                       <div class="content-title">
                                         <i class="fas fa-edit"></i>
                                         <span>{{ 'Réponse de l\'élève' if lang == 'fr' else 'Student\'s Answer' }}</span>
                                       </div>
-                                      <div class="content-block math-content">{{ exercice.reponse_eleve|default('', true)|safe }}</div>
+                                      <div class="content-block math-content">{{ clean_json_content(exercice.reponse_eleve)|default('', true)|safe }}</div>
 
                                       <div class="content-title">
                                         <i class="fas fa-robot"></i>
                                         <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
                                       </div>
-                                      <div class="content-block math-content">{{ exercice.analyse_ia|default('', true)|safe }}</div>
+                                      <div class="content-block math-content">{{ clean_json_content(exercice.analyse_ia)|default('', true)|safe }}</div>
 
                                       <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                                         <div>
@@ -1510,19 +1491,19 @@
                   <i class="fas fa-question-circle"></i>
                   <span>{{ 'Question' if lang == 'fr' else 'Question' }}</span>
                 </div>
-                <div class="content-block math-content">{{ t.question|default('', true)|safe }}</div>
+                <div class="content-block math-content">{{ clean_json_content(t.question)|default('', true)|safe }}</div>
 
                 <div class="content-title">
                   <i class="fas fa-edit"></i>
                   <span>{{ 'Réponse' if lang == 'fr' else 'Answer' }}</span>
                 </div>
-                <div class="content-block math-content">{{ t.reponse_eleve|default('', true)|safe }}</div>
+                <div class="content-block math-content">{{ clean_json_content(t.reponse_eleve)|default('', true)|safe }}</div>
 
                 <div class="content-title">
                   <i class="fas fa-robot"></i>
                   <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
                 </div>
-                <div class="content-block math-content">{{ t.analyse_ia|default('', true)|safe }}</div>
+                <div class="content-block math-content">{{ clean_json_content(t.analyse_ia)|default('', true)|safe }}</div>
 
                 <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                   <div>
@@ -1614,19 +1595,9 @@
           const text = parsed.original || parsed.analysis || parsed.analyse_ia || 
                       parsed.current_feedback || parsed.feedback || parsed.reponse || 
                       (typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : strContent);
-          
-          let cleanFeedback = String(text)
-            .replace(/\\n/g, '<br>')
-            .replace(/\\r/g, '')
-            .replace(/\\t/g, ' ')
-            .replace(/\\\\\[/g, '$$')
-            .replace(/\\\\\]/g, '$$')
-            .replace(/\\\\\(/g, '$')
-            .replace(/\\\\\)/g, '$');
-          
-          return cleanFeedback;
+          return cleanJsonContent(text);
         } catch(e) {
-          // Pas du JSON
+          // Ce n'est pas du JSON valide, continuer avec le nettoyage de base
         }
       }
       
@@ -1676,7 +1647,6 @@
             const cleanedContent = cleanJsonContent(originalContent);
             if (cleanedContent !== originalContent) {
               block.innerHTML = cleanedContent;
-              block.classList.add('cleaned-content');
             }
           });
           
@@ -1698,13 +1668,12 @@
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
-      // Nettoyer tout le contenu au chargement (au cas où)
+      // Nettoyer tout le contenu au chargement
       document.querySelectorAll('.content-block').forEach(block => {
         const originalContent = block.innerHTML;
         const cleanedContent = cleanJsonContent(originalContent);
         if (cleanedContent !== originalContent) {
           block.innerHTML = cleanedContent;
-          block.classList.add('cleaned-content');
         }
         
         if (!block.classList.contains('math-content')) {
@@ -1718,6 +1687,24 @@
           MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
         }, 500);
       }
+      
+      // Traitement des réponses JSON supplémentaires
+      document.querySelectorAll('.content-block').forEach(block => {
+        const content = block.innerHTML.trim();
+        // Essayer d'extraire plus de contenu si c'est du JSON
+        if (content.startsWith('{') && content.endsWith('}')) {
+          try {
+            const parsed = JSON.parse(content);
+            const feedback = parsed.original || parsed.analyse || parsed.analysis || 
+                            parsed.current_feedback || parsed.feedback || parsed.reponse || 
+                            (typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : content);
+            
+            block.innerHTML = cleanJsonContent(feedback);
+          } catch(e) {
+            // Ce n'est pas du JSON valide
+          }
+        }
+      });
       
       // Animer les barres de progression
       document.querySelectorAll('.progress-bar').forEach(bar => {
@@ -1765,7 +1752,6 @@
                   const cleanedContent = cleanJsonContent(originalContent);
                   if (cleanedContent !== originalContent) {
                     block.innerHTML = cleanedContent;
-                    block.classList.add('cleaned-content');
                   }
                 });
                 
