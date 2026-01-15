@@ -4707,6 +4707,14 @@ def dashboard_eleve():
         'jours_restants_abonnement': eleve.jours_restants_abonnement() if hasattr(eleve, 'jours_restants_abonnement') else 0
     }
 
+    # ✅ CORRECTION : IMPORT MANQUANT pour la génération de la courbe
+    # Ajoutez ces imports en haut de votre fichier si ce n'est pas déjà fait
+    # from datetime import datetime
+    # import matplotlib.pyplot as plt
+    # import io
+    # import base64
+    # from sqlalchemy import and_
+    
     return render_template(
         "dashboard_eleve.html",
         eleve=eleve,
@@ -6243,44 +6251,8 @@ def contest_evaluation():
         
         analysis_text = extract_analysis_text(reponse.analyse_ia)
         
-        if lang == 'en':
-            prompt = f"""
-RE-EVALUATE a student's answer considering their contestation arguments.
-
-📘 ORIGINAL PROBLEM:
-{question}
-
-📜 STUDENT'S ORIGINAL ANSWER:
-{reponse.reponse_eleve}
-
-🎯 ORIGINAL AI CORRECTION (current grade: {reponse.etoiles}/5):
-{analysis_text}
-
-📝 STUDENT'S CONTESTATION ARGUMENTS:
-"{data.get('justification', '')}"
-
-⭐ STUDENT'S PROPOSED GRADE: {data.get('proposed_stars', reponse.etoiles)}/5
-
-🔍 YOUR TASK:
-1. RE-EVALUATE the student's answer considering their arguments
-2. Decide if their arguments are valid and justify your decision
-3. Adjust the grade if warranted (0-5 stars)
-4. Provide detailed feedback explaining your decision
-
-🎯 IMPORTANT CONSIDERATIONS:
-- If the student shows their answer is equivalent to the expected answer, adjust the grade
-- If they demonstrate a valid alternative method, acknowledge it
-- If they point out a minor error that doesn't invalidate the reasoning, consider partial credit
-- Be fair: reward good reasoning even with minor calculation errors
-
-📤 FORMAT:
-Analysis of contestation: [...]
-New grade: X/5
-Decision: [Grade increased/maintained/decreased] because [...]
-Detailed feedback: [...]
-""".strip()
-        else:
-            prompt = f"""
+        # 4. GÉNÉRER LE PROMPT EN ANGLAIS POUR ÉVITER LES PROBLÈMES UNICODE
+        prompt = f"""
 RE-EVALUATE a student's answer considering their contestation arguments.
 
 📘 ORIGINAL PROBLEM:
@@ -6317,16 +6289,14 @@ Detailed feedback: [...]
 """.strip()
         
         print(f"🤖 Envoi à l'IA pour réévaluation...")
-        print(f"Prompt: {prompt[:500]}...")  # Afficher les premiers 500 caractères
+        print(f"Prompt: {prompt[:500]}...")
         
-        # 4. APPEL À L'IA POUR RÉÉVALUATION
+        # 5. APPEL À L'IA POUR RÉÉVALUATION
         new_analysis = ""
         new_stars = data.get('proposed_stars', reponse.etoiles)
         
         try:
             from openai import OpenAI
-            # ✅ CORRECTION : Encodage UTF-8 pour éviter l'erreur Unicode
-            import openai
             import os
             
             # Vérifier que la clé API est disponible
@@ -6337,22 +6307,17 @@ Detailed feedback: [...]
             
             client = OpenAI(api_key=api_key)
             
-            # ✅ CORRECTION : Encodage explicite pour éviter les problèmes Unicode
-            prompt_encoded = prompt.encode('utf-8', 'ignore').decode('utf-8')
-            
+            # Utiliser un modèle stable
             chat_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",  # Utiliser gpt-3.5-turbo au lieu de gpt-4 pour éviter les erreurs
-                messages=[{"role": "user", "content": prompt_encoded}],
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=1000
             )
             new_analysis = chat_completion.choices[0].message.content.strip()
             print("✅ Réévaluation IA reçue avec succès")
             
-            # 5. EXTRACTION DE LA NOUVELLE NOTE
-            new_stars = reponse.etoiles  # Par défaut, garder l'ancienne
-            
-            # Chercher la nouvelle note dans la réponse de l'IA
+            # 6. EXTRACTION DE LA NOUVELLE NOTE
             import re
             match = re.search(r"(?:New grade|Nouvelle note|Grade|Note)\s*:\s*(\d)(?:\s*/?\s*5)?", new_analysis, re.IGNORECASE)
             if match:
@@ -6365,14 +6330,9 @@ Detailed feedback: [...]
                     new_stars = min(int(match.group(1)), 5)
                     print(f"⭐ Nouvelle note extraite (format alternatif): {new_stars}/5")
                 else:
-                    # Dernier recours
-                    match = re.search(r"\bgrade\s*:\s*(\d)\b", new_analysis, re.IGNORECASE)
-                    if match:
-                        new_stars = int(match.group(1))
-                    else:
-                        # Si pas trouvé, garder la note proposée par l'élève
-                        new_stars = data.get('proposed_stars', reponse.etoiles)
-                        print(f"⭐ Utilisation de la note proposée par l'élève: {new_stars}/5")
+                    # Si pas trouvé, garder la note proposée par l'élève
+                    new_stars = data.get('proposed_stars', reponse.etoiles)
+                    print(f"⭐ Utilisation de la note proposée par l'élève: {new_stars}/5")
             
             # S'assurer que la note est entre 0 et 5
             new_stars = max(0, min(5, new_stars))
@@ -6385,7 +6345,7 @@ Detailed feedback: [...]
             # Fallback aux règles simples
             new_stars = data.get('proposed_stars', reponse.etoiles)
             
-            # Générer un message simple
+            # Générer un message simple dans la langue appropriée
             if lang == 'en':
                 new_analysis = f"""
 Contestation received and processed.
@@ -6407,8 +6367,8 @@ Suite à une revue manuelle, la note a été ajustée à {new_stars}/5.
 Continuez votre parcours d'apprentissage.
 """
         
-        # 6. METTRE À JOUR LA BASE DE DONNÉES
-        from datetime import datetime  # ✅ CORRECTION : Import explicite
+        # 7. METTRE À JOUR LA BASE DE DONNÉES
+        from datetime import datetime
         
         # Créer un nouvel objet JSON avec l'historique
         updated_analysis = {
@@ -6429,7 +6389,6 @@ Continuez votre parcours d'apprentissage.
         # Ajouter un timestamp de mise à jour
         reponse.date_modification = datetime.now()
         
-        # 7. METTRE À JOUR LE CACHE DES STATISTIQUES
         # Marquer que les stats doivent être recalculées
         session['stats_updated'] = True
         
@@ -6473,7 +6432,7 @@ Continuez votre parcours d'apprentissage.
         
         return jsonify({
             'success': False, 
-            'message': f'{error_message}: {str(e)[:100]}'
+            'message': f'{error_message}: {str(e)}'
         })
 
 
