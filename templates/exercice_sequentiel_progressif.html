@@ -1685,9 +1685,6 @@
             </p>
             
             <div class="contest-form">
-              <!-- CHAMP CACHÉ POUR L'ID DE LA RÉPONSE - CORRECTION IMPORTANTE -->
-              <input type="hidden" id="contestResponseId" value="{{ reponse.id }}">
-              
               <div class="form-group">
                 <textarea 
                   id="contestText" 
@@ -1706,10 +1703,9 @@
                   {% for i in range(1, 6) %}
                     <button 
                       type="button" 
-                      class="star-btn"
+                      class="star-btn {% if i == reponse.etoiles + 1 %}selected{% endif %}"
                       onclick="selectStar({{ i }})"
                       data-stars="{{ i }}"
-                      {% if i == reponse.etoiles %}style="border-color: var(--warning); background-color: #fff8e1;"{% endif %}
                     >
                       {{ i }} ⭐
                     </button>
@@ -1875,21 +1871,15 @@
       document.getElementById('feedbackSection').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Fonctions pour la contestation - CORRIGÉES
+    // Fonctions pour la contestation
     function selectStar(stars) {
       selectedContestStars = stars;
       
       document.querySelectorAll('.star-btn').forEach(btn => {
         if (parseInt(btn.dataset.stars) === stars) {
           btn.classList.add('selected');
-          btn.style.borderColor = 'var(--warning)';
-          btn.style.backgroundColor = 'var(--warning)';
-          btn.style.color = 'white';
         } else {
           btn.classList.remove('selected');
-          btn.style.borderColor = '';
-          btn.style.backgroundColor = '';
-          btn.style.color = '';
         }
       });
     }
@@ -1903,7 +1893,6 @@
 
     function submitContest() {
       const justification = document.getElementById('contestText').value.trim();
-      const responseId = document.getElementById('contestResponseId').value;
       
       if (!justification) {
         showNotification(
@@ -1911,32 +1900,6 @@
           'warning'
         );
         return;
-      }
-      
-      if (!responseId) {
-        showNotification(
-          "{% if lang == 'fr' %}Erreur: ID de réponse non trouvé.{% else %}Error: Response ID not found.{% endif %}",
-          'error'
-        );
-        return;
-      }
-      
-      // Afficher le message d'attente
-      const waitingOverlay = document.getElementById('waitingOverlay');
-      if (waitingOverlay) {
-        waitingOverlay.classList.add('active');
-        
-        let currentStep = 1;
-        const stepInterval = setInterval(() => {
-          const stepElements = document.querySelectorAll('.processing-step');
-          stepElements.forEach(el => el.classList.remove('active'));
-          if (currentStep <= 3) {
-            document.getElementById('step' + currentStep).classList.add('active');
-            currentStep++;
-          } else {
-            clearInterval(stepInterval);
-          }
-        }, 1000);
       }
       
       showNotification(
@@ -1956,7 +1919,7 @@
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          reponse_id: parseInt(responseId), // CORRECTION: Utiliser l'ID récupéré
+          reponse_id: {{ reponse.id if reponse else 'null' }},
           justification: justification,
           proposed_stars: selectedContestStars,
           student_answer: document.querySelector('#studentAnswerContent').textContent.trim(),
@@ -1964,25 +1927,14 @@
           lang: '{{ lang }}'
         })
       })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
+      .then(response => response.json())
       .then(data => {
-        // Masquer l'overlay d'attente
-        if (waitingOverlay) {
-          waitingOverlay.classList.remove('active');
-        }
-        
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
         }
         
         if (data.success) {
-          // Mettre à jour l'affichage avec la nouvelle note et le feedback
           updateDisplayAfterContest(data.new_stars, data.new_feedback);
           
           showNotification(
@@ -1992,11 +1944,6 @@
           );
           
           hideContest();
-          
-          // Recharger la page après 2 secondes pour afficher les nouvelles données
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
         } else {
           showNotification(
             data.message || 
@@ -2007,19 +1954,12 @@
       })
       .catch(error => {
         console.error('Erreur:', error);
-        
-        // Masquer l'overlay d'attente
-        if (waitingOverlay) {
-          waitingOverlay.classList.remove('active');
-        }
-        
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
         }
-        
         showNotification(
-          "{% if lang == 'fr' %}Erreur de connexion au serveur. Vérifiez votre connexion internet.{% else %}Server connection error. Check your internet connection.{% endif %}",
+          "{% if lang == 'fr' %}Erreur de connexion au serveur.{% else %}Server connection error.{% endif %}",
           'error'
         );
       });
@@ -2164,13 +2104,8 @@
       // Configurer la soumission du formulaire
       setupFormSubmission();
 
-      // CORRECTION: Ne pas initialiser automatiquement les étoiles de contestation
-      // L'utilisateur doit choisir sa note
-      document.querySelectorAll('.star-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-          selectStar(parseInt(this.dataset.stars));
-        });
-      });
+      // Initialiser les étoiles de contestation
+      selectStar({{ reponse.etoiles + 1 if reponse and reponse.etoiles is not none else 3 }});
 
       // Retraiter MathJax après un délai supplémentaire pour s'assurer que tout est chargé
       setTimeout(processMathContent, 2000);
