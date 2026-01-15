@@ -1966,50 +1966,88 @@
     }
 
     function updateDisplayAfterContest(newStars, newFeedback) {
-      const starsElement = document.getElementById('starsDisplay');
-      if (starsElement) {
+    const starsElement = document.getElementById('starsDisplay');
+    if (starsElement) {
         starsElement.innerHTML = `<strong>${newStars}/5 ⭐</strong>`;
         
-        if (newStars !== {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }}) {
-          starsElement.style.animation = 'pulse 0.5s ease 2';
-          setTimeout(() => starsElement.style.animation = '', 1000);
+        const oldStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }};
+        if (newStars !== oldStars) {
+            starsElement.style.animation = 'pulse 0.5s ease 2';
+            setTimeout(() => starsElement.style.animation = '', 1000);
         }
-      }
-      
-      updateFeedbackIcon(newStars);
-      
-      const feedbackElement = document.getElementById('aiAnalysisContent');
-      if (feedbackElement) {
-        feedbackElement.innerHTML = newFeedback;
+    }
+    
+        updateFeedbackIcon(newStars);
         
-        const updateMessage = document.createElement('div');
-        updateMessage.className = 'update-message';
-        updateMessage.innerHTML = `
-          <i class="fas fa-sync-alt" style="color: var(--secondary);"></i>
-          <span>{% if lang == "fr" %}Correction mise à jour suite à votre contestation{% else %}Feedback updated following your contest{% endif %}</span>
-        `;
-        feedbackElement.prepend(updateMessage);
+        const feedbackElement = document.getElementById('aiAnalysisContent');
+        if (feedbackElement) {
+            // Nettoyer le feedback pour l'affichage
+            const cleanFeedback = newFeedback
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\')
+                .replace(/\\n\\n\\n/g, '<br><br>')
+                .replace(/\\n\\n/g, '<br><br>')
+                .replace(/\\n/g, ' ')
+                .replace(/\\\[/g, '$$')
+                .replace(/\\\]/g, '$$')
+                .replace(/\\\(/g, '$')
+                .replace(/\\\)/g, '$');
+            
+            feedbackElement.innerHTML = `
+                <div class="update-message" style="background: #e8f5e9; color: #2e7d32; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #4caf50;">
+                    <i class="fas fa-sync-alt"></i>
+                    <strong>${newStars !== {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }} ? 
+                        '{% if lang == "fr" %}Note mise à jour après contestation{% else %}Grade updated after contest{% endif %}' : 
+                        '{% if lang == "fr" %}Contestation traitée{% else %}Contest processed{% endif %}'}
+                    </strong>
+                </div>
+                <div class="feedback-text">
+                    ${cleanFeedback}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                processMathContent();
+            }, 50);
+        }
         
-        setTimeout(() => {
-          processMathContent();
-        }, 50);
-      }
-      
-      const feedbackHeader = document.querySelector('.feedback-header');
-      if (feedbackHeader && !feedbackHeader.querySelector('.feedback-updated-badge')) {
-        const badge = document.createElement('div');
-        badge.className = 'feedback-updated-badge';
-        badge.innerHTML = '<i class="fas fa-sync-alt"></i> {% if lang == "fr" %}Mis à jour{% else %}Updated{% endif %}';
-        feedbackHeader.appendChild(badge);
-      }
-      
-      if (newStars >= 5) {
-        hideContest();
-        showNotification(
-          "{% if lang == 'fr' %}Félicitations ! Vous avez obtenu la note maximale. 🎉{% else %}Congratulations! You obtained the maximum grade. 🎉{% endif %}",
-          'success'
-        );
-      }
+        const feedbackHeader = document.querySelector('.feedback-header');
+        if (feedbackHeader && !feedbackHeader.querySelector('.feedback-updated-badge')) {
+            const badge = document.createElement('div');
+            badge.className = 'feedback-updated-badge';
+            badge.innerHTML = '<i class="fas fa-sync-alt"></i> {% if lang == "fr" %}Mis à jour{% else %}Updated{% endif %}';
+            badge.style.cssText = 'position: absolute; top: -10px; right: -10px; background: var(--secondary); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);';
+            feedbackHeader.style.position = 'relative';
+            feedbackHeader.appendChild(badge);
+        }
+        
+        // ✅ NOUVEAU : RAFFRAÎCHIR LES STATS DU DASHBOARD
+        if (newStars !== {{ reponse.etoiles if reponse and reponse.etoiles is not none else 0 }}) {
+            // 1. Afficher une notification
+            showNotification(
+                "{% if lang == 'fr' %}Note mise à jour ! Le tableau de bord sera actualisé.{% else %}Grade updated! Dashboard will refresh.{% endif %}",
+                'success'
+            );
+            
+            // 2. Rafraîchir les stats après 2 secondes
+            setTimeout(() => {
+                // Si l'utilisateur est sur le dashboard, le recharger
+                if (window.location.pathname.includes('dashboard')) {
+                    window.location.reload();
+                } else {
+                    // Sinon, forcer le recalcul pour la prochaine visite
+                    fetch(`/dashboard-eleve?force_recalcul=true`, { method: 'HEAD' });
+                }
+            }, 2000);
+        }
+        
+        if (newStars >= 5) {
+            hideContest();
+            showNotification(
+                "{% if lang == 'fr' %}Félicitations ! Vous avez obtenu la note maximale. 🎉{% else %}Congratulations! You obtained the maximum grade. 🎉{% endif %}",
+                'success'
+            );
+        }
     }
 
     function updateFeedbackIcon(stars) {

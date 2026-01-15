@@ -4497,8 +4497,19 @@ def dashboard_eleve():
         vue_par_eleve=False
     ).order_by(RemediationSuggestion.timestamp.desc()).limit(1).all()
 
-    # 📊 Statistiques
+    # 📊 Statistiques - AVEC VÉRIFICATION DE CACHE
     from sqlalchemy.sql import func
+    
+    # Vérifier si les stats ont été mises à jour récemment via contestation
+    force_recalcul = request.args.get('force_recalcul') == 'true' or \
+                     session.get('stats_updated', False)
+    
+    if force_recalcul:
+        # Nettoyer le flag
+        session.pop('stats_updated', None)
+        
+        # Forcer le recalcul des stats
+        print(f"🔁 Forcer recalcul des stats pour l'élève {eleve.id}")
     
     reponses_eleve = StudentResponse.query.filter_by(user_id=eleve.id).order_by(StudentResponse.timestamp).all()
     total_reponses = len(reponses_eleve)
@@ -4515,7 +4526,7 @@ def dashboard_eleve():
         "success": taux_reussite
     }
 
-    # 📈 Courbe progression - MOYENNE PAR JOUR (AMÉLIORÉ)
+    # 📈 Courbe progression - AMÉLIORÉ AVEC DONNÉES MISE À JOUR
     courbe_progression = None
     if reponses_eleve:
         # Grouper les réponses par date et calculer la moyenne des étoiles par jour
@@ -6197,6 +6208,9 @@ def contest_evaluation():
         if not reponse:
             return jsonify({'success': False, 'message': 'Réponse non trouvée'})
         
+        # Stocker l'ancienne note pour comparaison
+        ancienne_note = reponse.etoiles
+        
         # 2. Récupérer l'exercice et les informations
         exercice = Exercice.query.get(reponse.exercice_id)
         eleve = User.query.get(reponse.user_id)
@@ -6383,7 +6397,7 @@ Continuez votre parcours d'apprentissage.
                 "date": datetime.now().isoformat(),
                 "justification": data.get('justification', ''),
                 "proposed_stars": data.get('proposed_stars', reponse.etoiles),
-                "previous_stars": reponse.etoiles
+                "previous_stars": ancienne_note
             },
             "current_feedback": new_analysis,
             "current_stars": new_stars
@@ -6395,20 +6409,51 @@ Continuez votre parcours d'apprentissage.
         # Ajouter un timestamp de mise à jour
         reponse.date_modification = datetime.now()
         
-        db.session.commit()
-        print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5")
+        # 7. ✅ NOUVEAU : METTRE À JOUR LE CACHE DES STATISTIQUES
+        # Créer une entrée dans le cache pour forcer le recalcul
+        from datetime import datetime, timedelta
         
-        # 7. PRÉPARER LA RÉPONSE
-        stars_changed = new_stars != reponse.etoiles
+        # Marquer que les stats doivent être recalculées
+        cache_key = f"stats_updated_{eleve.id}"
+        
+        # Ou directement mettre à jour les stats ici
+        # Récupérer toutes les réponses de l'élève
+        toutes_reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
+        
+        if toutes_reponses:
+            # Calculer les nouvelles statistiques
+            notes_valides = [r.etoiles or 0 for r in toutes_reponses]
+            moyenne = sum(notes_valides) / len(notes_valides) if notes_valides else 0
+            bonnes_reponses = sum(1 for n in notes_valides if n >= 3)
+            taux_reussite = (bonnes_reponses / len(notes_valides) * 100) if notes_valides else 0
+            
+            # Stocker dans un cache temporaire
+            stats_cache = {
+                'total': len(toutes_reponses),
+                'average': round(moyenne, 1),
+                'success': round(taux_reussite, 1),
+                'last_updated': datetime.now().isoformat()
+            }
+            
+            # Vous pouvez stocker cela dans Redis, session, ou une table temporaire
+            # Pour simplifier, stockons dans la session de l'élève
+            session['stats_cache'] = stats_cache
+            session['stats_updated'] = True
+        
+        db.session.commit()
+        print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5 (Ancienne: {ancienne_note})")
+        
+        # 8. PRÉPARER LA RÉPONSE
+        stars_changed = new_stars != ancienne_note
         
         if lang == 'en':
             if stars_changed:
-                message = f"Grade changed from {reponse.etoiles} to {new_stars}/5 stars!"
+                message = f"Grade changed from {ancienne_note} to {new_stars}/5 stars!"
             else:
                 message = f"Grade maintained at {new_stars}/5 stars."
         else:
             if stars_changed:
-                message = f"Note changée de {reponse.etoiles} à {new_stars}/5 étoiles !"
+                message = f"Note changée de {ancienne_note} à {new_stars}/5 étoiles !"
             else:
                 message = f"Note maintenue à {new_stars}/5 étoiles."
         
@@ -6416,10 +6461,11 @@ Continuez votre parcours d'apprentissage.
             'success': True,
             'new_stars': new_stars,
             'new_feedback': new_analysis,
-            'old_stars': reponse.etoiles,
+            'old_stars': ancienne_note,
             'stars_changed': stars_changed,
             'message': message,
-            'has_ai_reassessment': True
+            'has_ai_reassessment': True,
+            'student_id': eleve.id  # Ajouté pour pouvoir rafraîchir les stats
         })
         
     except Exception as e:
