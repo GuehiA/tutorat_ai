@@ -6281,53 +6281,70 @@ Detailed feedback: [...]
 """.strip()
         else:
             prompt = f"""
-RÉÉVALUEZ la réponse d'un élève en considérant ses arguments de contestation.
+RE-EVALUATE a student's answer considering their contestation arguments.
 
-📘 PROBLÈME ORIGINAL :
+📘 ORIGINAL PROBLEM:
 {question}
 
-📜 RÉPONSE ORIGINALE DE L'ÉLÈVE :
+📜 STUDENT'S ORIGINAL ANSWER:
 {reponse.reponse_eleve}
 
-🎯 CORRECTION IA ORIGINALE (note actuelle : {reponse.etoiles}/5) :
+🎯 ORIGINAL AI CORRECTION (current grade: {reponse.etoiles}/5):
 {analysis_text}
 
-📝 ARGUMENTS DE CONTESTATION DE L'ÉLÈVE :
+📝 STUDENT'S CONTESTATION ARGUMENTS:
 "{data.get('justification', '')}"
 
-⭐ NOTE PROPOSÉE PAR L'ÉLÈVE : {data.get('proposed_stars', reponse.etoiles)}/5
+⭐ STUDENT'S PROPOSED GRADE: {data.get('proposed_stars', reponse.etoiles)}/5
 
-🔍 VOTRE TÂCHE :
-1. RÉÉVALUER la réponse de l'élève en considérant ses arguments
-2. Décider si ses arguments sont valides et justifier votre décision
-3. Ajuster la note si justifié (0-5 étoiles)
-4. Fournir un feedback détaillé expliquant votre décision
+🔍 YOUR TASK:
+1. RE-EVALUATE the student's answer considering their arguments
+2. Decide if their arguments are valid and justify your decision
+3. Adjust the grade if warranted (0-5 stars)
+4. Provide detailed feedback explaining your decision
 
-🎯 CONSIDÉRATIONS IMPORTANTES :
-- Si l'élève montre que sa réponse est équivalente à la réponse attendue, ajustez la note
-- S'il démontre une méthode alternative valide, reconnaissez-la
-- S'il pointe une erreur mineure qui n'invalide pas le raisonnement, considérez des points partiels
-- Soyez juste : récompensez le bon raisonnement même avec des erreurs de calcul mineures
+🎯 IMPORTANT CONSIDERATIONS:
+- If the student shows their answer is equivalent to the expected answer, adjust the grade
+- If they demonstrate a valid alternative method, acknowledge it
+- If they point out a minor error that doesn't invalidate the reasoning, consider partial credit
+- Be fair: reward good reasoning even with minor calculation errors
 
-📤 FORMAT :
-Analyse de la contestation : [...]
-Nouvelle note : X/5
-Décision : [Note augmentée/maintenue/diminuée] car [...]
-Feedback détaillé : [...]
+📤 FORMAT:
+Analysis of contestation: [...]
+New grade: X/5
+Decision: [Grade increased/maintained/decreased] because [...]
+Detailed feedback: [...]
 """.strip()
         
         print(f"🤖 Envoi à l'IA pour réévaluation...")
         print(f"Prompt: {prompt[:500]}...")  # Afficher les premiers 500 caractères
         
         # 4. APPEL À L'IA POUR RÉÉVALUATION
+        new_analysis = ""
+        new_stars = data.get('proposed_stars', reponse.etoiles)
+        
         try:
             from openai import OpenAI
-            client = OpenAI(api_key="votre-clé-api-openai")
+            # ✅ CORRECTION : Encodage UTF-8 pour éviter l'erreur Unicode
+            import openai
+            import os
+            
+            # Vérifier que la clé API est disponible
+            api_key = os.environ.get("OPENAI_API_KEY")
+            if not api_key:
+                print("⚠️ OPENAI_API_KEY non définie, utilisation du fallback")
+                raise ValueError("OpenAI API key not found")
+            
+            client = OpenAI(api_key=api_key)
+            
+            # ✅ CORRECTION : Encodage explicite pour éviter les problèmes Unicode
+            prompt_encoded = prompt.encode('utf-8', 'ignore').decode('utf-8')
             
             chat_completion = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
+                model="gpt-3.5-turbo",  # Utiliser gpt-3.5-turbo au lieu de gpt-4 pour éviter les erreurs
+                messages=[{"role": "user", "content": prompt_encoded}],
                 temperature=0.3,
+                max_tokens=1000
             )
             new_analysis = chat_completion.choices[0].message.content.strip()
             print("✅ Réévaluation IA reçue avec succès")
@@ -6336,6 +6353,7 @@ Feedback détaillé : [...]
             new_stars = reponse.etoiles  # Par défaut, garder l'ancienne
             
             # Chercher la nouvelle note dans la réponse de l'IA
+            import re
             match = re.search(r"(?:New grade|Nouvelle note|Grade|Note)\s*:\s*(\d)(?:\s*/?\s*5)?", new_analysis, re.IGNORECASE)
             if match:
                 new_stars = int(match.group(1))
@@ -6356,8 +6374,8 @@ Feedback détaillé : [...]
                         new_stars = data.get('proposed_stars', reponse.etoiles)
                         print(f"⭐ Utilisation de la note proposée par l'élève: {new_stars}/5")
             
-            # S'assurer que la note est entre 1 et 5
-            new_stars = max(1, min(5, new_stars))
+            # S'assurer que la note est entre 0 et 5
+            new_stars = max(0, min(5, new_stars))
             
         except Exception as e:
             print(f"❌ Erreur lors de l'appel IA: {e}")
@@ -6390,6 +6408,8 @@ Continuez votre parcours d'apprentissage.
 """
         
         # 6. METTRE À JOUR LA BASE DE DONNÉES
+        from datetime import datetime  # ✅ CORRECTION : Import explicite
+        
         # Créer un nouvel objet JSON avec l'historique
         updated_analysis = {
             "original": analysis_text,
@@ -6409,36 +6429,9 @@ Continuez votre parcours d'apprentissage.
         # Ajouter un timestamp de mise à jour
         reponse.date_modification = datetime.now()
         
-        # 7. ✅ NOUVEAU : METTRE À JOUR LE CACHE DES STATISTIQUES
-        # Créer une entrée dans le cache pour forcer le recalcul
-        from datetime import datetime, timedelta
-        
+        # 7. METTRE À JOUR LE CACHE DES STATISTIQUES
         # Marquer que les stats doivent être recalculées
-        cache_key = f"stats_updated_{eleve.id}"
-        
-        # Ou directement mettre à jour les stats ici
-        # Récupérer toutes les réponses de l'élève
-        toutes_reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
-        
-        if toutes_reponses:
-            # Calculer les nouvelles statistiques
-            notes_valides = [r.etoiles or 0 for r in toutes_reponses]
-            moyenne = sum(notes_valides) / len(notes_valides) if notes_valides else 0
-            bonnes_reponses = sum(1 for n in notes_valides if n >= 3)
-            taux_reussite = (bonnes_reponses / len(notes_valides) * 100) if notes_valides else 0
-            
-            # Stocker dans un cache temporaire
-            stats_cache = {
-                'total': len(toutes_reponses),
-                'average': round(moyenne, 1),
-                'success': round(taux_reussite, 1),
-                'last_updated': datetime.now().isoformat()
-            }
-            
-            # Vous pouvez stocker cela dans Redis, session, ou une table temporaire
-            # Pour simplifier, stockons dans la session de l'élève
-            session['stats_cache'] = stats_cache
-            session['stats_updated'] = True
+        session['stats_updated'] = True
         
         db.session.commit()
         print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5 (Ancienne: {ancienne_note})")
@@ -6465,7 +6458,7 @@ Continuez votre parcours d'apprentissage.
             'stars_changed': stars_changed,
             'message': message,
             'has_ai_reassessment': True,
-            'student_id': eleve.id  # Ajouté pour pouvoir rafraîchir les stats
+            'student_id': eleve.id
         })
         
     except Exception as e:
@@ -6474,10 +6467,13 @@ Continuez votre parcours d'apprentissage.
         import traceback
         traceback.print_exc()
         
+        # Déterminer la langue pour le message d'erreur
+        lang = request.json.get('lang', 'fr') if request.json else 'fr'
         error_message = "Erreur interne du serveur" if lang == 'fr' else "Internal server error"
+        
         return jsonify({
             'success': False, 
-            'message': f'{error_message}: {str(e)}'
+            'message': f'{error_message}: {str(e)[:100]}'
         })
 
 
