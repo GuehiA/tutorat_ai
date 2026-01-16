@@ -22,3 +22,7 @@ wheels/
 *.egg
 MANIFEST
 .env.local 
+"2.12" 
+"fix_dependencies.py" 
+"__pycache__/" 
+"*.pyc" 

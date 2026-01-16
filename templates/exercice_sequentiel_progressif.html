@@ -64,6 +64,10 @@
       --white: #ffffff;
       --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       --transition: all 0.3s ease;
+      --sympy-correct: #d4edda;
+      --sympy-incorrect: #f8d7da;
+      --sympy-border-correct: #28a745;
+      --sympy-border-incorrect: #dc3545;
     }
 
     * {
@@ -554,6 +558,75 @@
       color: var(--warning);
       font-weight: 600;
       font-size: 1.1rem;
+    }
+
+    /* Section vérification SymPy */
+    .sympy-verification {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid var(--gray);
+      background: var(--light);
+      animation: fadeIn 0.6s ease;
+    }
+
+    .sympy-verification.correct {
+      background: var(--sympy-correct);
+      border-left-color: var(--sympy-border-correct);
+    }
+
+    .sympy-verification.incorrect {
+      background: var(--sympy-incorrect);
+      border-left-color: var(--sympy-border-incorrect);
+    }
+
+    .sympy-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .sympy-header i {
+      font-size: 1.2rem;
+    }
+
+    .sympy-header i.fa-check-circle {
+      color: var(--sympy-border-correct);
+    }
+
+    .sympy-header i.fa-times-circle {
+      color: var(--sympy-border-incorrect);
+    }
+
+    .sympy-header i.fa-question-circle {
+      color: var(--gray);
+    }
+
+    .sympy-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .sympy-details {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--dark);
+      margin-top: 8px;
+      padding-left: 28px;
+    }
+
+    .sympy-details strong {
+      color: var(--dark);
+    }
+
+    .sympy-equivalence {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-family: monospace;
+      border: 1px solid #e9ecef;
     }
 
     .answer-review, .ai-analysis {
@@ -1213,9 +1286,9 @@
           <div class="step-icon">2</div>
           <div class="step-text">
             {% if lang == 'fr' %}
-              Vérification des étapes de résolution...
+              Vérification mathématique (SymPy)...
             {% else %}
-              Checking solution steps...
+              Mathematical verification (SymPy)...
             {% endif %}
           </div>
         </div>
@@ -1232,11 +1305,11 @@
       </div>
 
       <div style="margin-top: 20px; font-size: 0.9rem; color: var(--gray);">
-        <i class="fas fa-clock"></i>
+        <i class="fas fa-calculator"></i>
         {% if lang == 'fr' %}
-          Cela peut prendre quelques secondes...
+          Vérification mathématique en cours avec SymPy...
         {% else %}
-          This may take a few seconds...
+          Mathematical verification with SymPy in progress...
         {% endif %}
       </div>
     </div>
@@ -1391,11 +1464,11 @@
               ></div>
 
               <div class="help-text">
-                💡 <strong>{% if lang == 'fr' %}Conseil :{% else %}Tip:{% endif %}</strong> 
+                <i class="fas fa-calculator"></i> <strong>{% if lang == 'fr' %}Nouveau :{% else %}New:{% endif %}</strong> 
                 {% if lang == 'fr' %}
-                  Écrivez normalement et utilisez les boutons pour les symboles mathématiques. Votre réponse s'affiche en temps réel ci-dessus.
+                  Votre réponse sera vérifiée mathématiquement avec SymPy pour garantir l'exactitude.
                 {% else %}
-                  Write normally and use the buttons for math symbols. Your answer appears in real-time above.
+                  Your answer will be mathematically verified with SymPy to ensure accuracy.
                 {% endif %}
               </div>
             </div>
@@ -1434,6 +1507,91 @@
             </div>
           </div>
         </div>
+
+        <!-- SECTION SYMPY - NOUVEAU -->
+        {% if reponse.analyse_ia %}
+          {% set feedback_content = reponse.analyse_ia %}
+          {% set has_sympy_data = false %}
+          {% set sympy_data = {} %}
+          
+          {% if feedback_content.startswith('{') and feedback_content.endswith('}') %}
+            {% set json_str = feedback_content %}
+            
+            {% if '"symbolic_verification":' in json_str %}
+              {% set has_sympy_data = true %}
+              
+              {# Extraction des données SymPy #}
+              {% set sympy_start = json_str.find('"symbolic_verification":') %}
+              {% set sympy_end = json_str.find('},', sympy_start) %}
+              {% if sympy_end == -1 %}
+                {% set sympy_end = json_str.find('}', sympy_start) %}
+              {% endif %}
+              
+              {% if sympy_start != -1 and sympy_end != -1 %}
+                {% set sympy_json = json_str[sympy_start+24:sympy_end+1] %}
+                {% set sympy_data = sympy_json|from_json %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+          
+          {% if has_sympy_data and sympy_data.was_verified %}
+          <div class="sympy-verification {% if sympy_data.is_correct %}correct{% else %}incorrect{% endif %}" id="sympyVerification">
+            <div class="sympy-header">
+              {% if sympy_data.is_correct %}
+                <i class="fas fa-check-circle"></i>
+                <div class="sympy-title">
+                  {% if lang == 'fr' %}
+                    ✓ Vérification mathématique : CORRECTE
+                  {% else %}
+                    ✓ Mathematical verification: CORRECT
+                  {% endif %}
+                </div>
+              {% else %}
+                <i class="fas fa-times-circle"></i>
+                <div class="sympy-title">
+                  {% if lang == 'fr' %}
+                    ✗ Vérification mathématique : INCORRECTE
+                  {% else %}
+                    ✗ Mathematical verification: INCORRECT
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+            
+            <div class="sympy-details">
+              {% if sympy_data.feedback %}
+                {{ sympy_data.feedback|replace('\n', '<br>')|safe }}
+              {% else %}
+                {% if sympy_data.is_correct %}
+                  {% if lang == 'fr' %}
+                    <strong>SymPy</strong> a vérifié mathématiquement que votre réponse est correcte.
+                  {% else %}
+                    <strong>SymPy</strong> mathematically verified that your answer is correct.
+                  {% endif %}
+                {% else %}
+                  {% if lang == 'fr' %}
+                    <strong>SymPy</strong> a détecté une erreur mathématique dans votre réponse.
+                  {% else %}
+                    <strong>SymPy</strong> detected a mathematical error in your answer.
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+              
+              {% if sympy_data.result and sympy_data.result.student_value and sympy_data.result.expected_value %}
+                <div class="sympy-equivalence">
+                  {% if lang == 'fr' %}
+                    <div><strong>Votre réponse :</strong> ${{ sympy_data.result.student_value }}$</div>
+                    <div><strong>Résultat attendu :</strong> ${{ sympy_data.result.expected_value }}$</div>
+                  {% else %}
+                    <div><strong>Your answer :</strong> ${{ sympy_data.result.student_value }}$</div>
+                    <div><strong>Expected result :</strong> ${{ sympy_data.result.expected_value }}$</div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
 
         <div class="answer-review">
           <div class="section-label">
@@ -2109,12 +2267,35 @@
 
       // Retraiter MathJax après un délai supplémentaire pour s'assurer que tout est chargé
       setTimeout(processMathContent, 2000);
+
+      // Animer la section SymPy si présente
+      const sympySection = document.getElementById('sympyVerification');
+      if (sympySection) {
+        setTimeout(() => {
+          sympySection.style.transform = 'translateY(0)';
+          sympySection.style.opacity = '1';
+        }, 300);
+      }
     });
 
     // Réessayer MathJax si le contenu change
     new MutationObserver(() => {
       setTimeout(processMathContent, 100);
     }).observe(document.body, { subtree: true, childList: true });
+
+    // Fonction pour afficher l'information SymPy
+    function showSympyInfo() {
+      showNotification(
+        "{% if lang == 'fr' %}✓ Vérification mathématique avec SymPy activée{% else %}✓ Mathematical verification with SymPy activated{% endif %}",
+        'success'
+      );
+    }
+
+    // Afficher l'info SymPy au chargement si c'est la première fois
+    if (!localStorage.getItem('sympy_info_shown')) {
+      setTimeout(showSympyInfo, 1500);
+      localStorage.setItem('sympy_info_shown', 'true');
+    }
   </script>
 </body>
 </html>

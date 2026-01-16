@@ -6494,81 +6494,96 @@ def reset_contest(reponse_id):
 
 @app.route("/soumettre-sequentiel", methods=["POST"])
 def soumettre_sequentiel():
-    from datetime import datetime, timezone
-    import re
-    import json
+    print("=== 📝 SOUMISSION SÉQUENTIELLE AVEC SYMPY ===")
 
-    print("=== 📝 SOUMISSION SÉQUENTIELLE ===")
-    
-    # Récupération des données du formulaire
+    # --------------------------------------------------
+    # 1️⃣ Données du formulaire
+    # --------------------------------------------------
     username = request.form.get("username")
     lang = request.form.get("lang", "fr")
     lecon_id = request.form.get("lecon_id")
     exercice_id = request.form.get("exercice_id")
     reponse_eleve = request.form.get("reponse_eleve", "").strip()
     index = int(request.form.get("index", 0))
-    
-    print(f"Username: {username}")
-    print(f"Leçon ID: {lecon_id}")
-    print(f"Exercice ID: {exercice_id}")
-    print(f"Réponse longueur: {len(reponse_eleve)} caractères")
-    print(f"Index: {index}")
 
-    # CORRECTION : Utilisation de méthodes non dépréciées
-    eleve = User.query.filter_by(username=username).first()
+    # --------------------------------------------------
+    # 2️⃣ Sécurité & accès
+    # --------------------------------------------------
+    eleve = User.query.filter_by(username=username).first_or_404()
+
+    if not eleve.a_acces_plateforme():
+        flash("Accès refusé (abonnement ou essai expiré).", "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
     lecon = db.session.get(Lecon, lecon_id)
     exercice = db.session.get(Exercice, exercice_id)
 
-    if not eleve or not lecon or not exercice:
-        flash("Élève, leçon ou exercice non trouvé", "danger")
+    if not lecon or not exercice:
+        flash("Leçon ou exercice introuvable.", "danger")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
 
-    # Récupérer tous les exercices pour la progression
-    exercices = Exercice.query.filter_by(lecon_id=lecon.id).order_by(Exercice.id).all()
-    total_exercices = len(exercices)
-    
-    # MODIFICATION : Récupérer ou créer la réponse
+    if not reponse_eleve:
+        flash("Veuillez fournir une réponse.", "warning")
+        return redirect(url_for(
+            "exercice_sequentiel_progressif",
+            username=username,
+            lecon_id=lecon_id,
+            lang=lang,
+            index=index
+        ))
+
+    # --------------------------------------------------
+    # 3️⃣ Récupération / création réponse
+    # --------------------------------------------------
     reponse = StudentResponse.query.filter_by(
         user_id=eleve.id,
         exercice_id=exercice.id
     ).first()
+
+    question = exercice.question_en if lang == "en" else exercice.question_fr
+    reponse_attendue = exercice.reponse_en if lang == "en" else exercice.reponse_fr
+
+    # --------------------------------------------------
+    # 4️⃣ VÉRIFICATION SYMBOLIQUE AVEC SYMPY (NOUVEAU)
+    # --------------------------------------------------
+    symbolic_result = None
+    symbolic_correct = None
+    symbolic_feedback = ""
     
-    # Si c'est une nouvelle réponse ou une modification
-    if reponse_eleve:
-        question = exercice.question_en if lang == "en" else exercice.question_fr
-        reponse_attendue = exercice.reponse_en if lang == "en" else exercice.reponse_fr
+    try:
+        # Importe le vérificateur
+        from sympy_engine import math_verifier
+        
+        # Effectue la vérification
+        symbolic_result = math_verifier.verify_answer(
+            student_answer=reponse_eleve,
+            expected_answer=reponse_attendue,
+            question=question
+        )
+        
+        symbolic_correct = symbolic_result.get('is_correct', None)
+        symbolic_feedback = math_verifier.get_symbolic_feedback(symbolic_result)
+        
+        print(f"✅ Vérification SymPy : {symbolic_result}")
+        
+    except Exception as e:
+        print(f"⚠️ Erreur vérification SymPy : {e}")
+        symbolic_result = {'verified': False, 'error': str(e)}
+        symbolic_feedback = f"⚠️ Vérification SymPy non disponible : {str(e)[:100]}"
 
-        # ✅ PROMPT de correction - BARÈME SUR 5
-        if lang == "en":
-            prompt = f"""
-Correct the student's answer to a school exercise.
+    # --------------------------------------------------
+    # 5️⃣ PROMPT GPT — avec information SymPy
+    # --------------------------------------------------
+    symbolic_info = ""
+    if symbolic_correct is not None:
+        symbolic_info = f"""
+🔬 **VÉRIFICATION MATHÉMATIQUE AUTOMATIQUE (SymPy) :** 
+{symbolic_feedback}
 
-📘 Problem statement:
-{question}
-
-📜 Student's answer:
-{reponse_eleve}
-
-⭐ SCORING SCALE (5 points):
-- 5: Excellent reasoning, complete methodology, correct result
-- 4: Very good reasoning, appropriate method, minor calculation error
-- 3: Good overall approach, method understood but imperfect application
-- 2: Partial reasoning, some relevant elements but incomplete
-- 1: Fragmented approach, very limited correct elements
-- 0: Off-topic or no answer
-
-🎯 IMPORTANT: Give priority to reasoning over final result. Award partial credit for correct steps.
-
-📤 Expected format:
-Analysis:
-[...]
-Score: X/5
-Correction:
-- Expert resolution: [...]
-- Final answer: [...]
-""".strip()
-        else:
-            prompt = f"""
+---
+"""
+    
+    prompt = f"""
 Corrige la réponse d'un élève à un exercice scolaire.
 
 📘 Énoncé :
@@ -6577,289 +6592,162 @@ Corrige la réponse d'un élève à un exercice scolaire.
 📜 Réponse de l'élève :
 {reponse_eleve}
 
-⭐ BARÈME (5 points) :
-- 5 : Raisonnement excellent, méthodologie complète, résultat correct
-- 4 : Très bon raisonnement, méthode appropriée, erreur mineure de calcul
-- 3 : Bonne démarche globale, méthode comprise mais application imparfaite
-- 2 : Raisonnement partiel, éléments pertinents mais incomplets
-- 1 : Démarche ébauchée, éléments corrects très limités
-- 0 : Hors sujet ou absence de réponse
+{symbolic_info}
 
-🎯 IMPORTANT : Privilégiez le raisonnement sur le résultat final. Accordez des points partiels pour les étapes correctes.
+⭐ BARÈME SUR 5 (INTELLIGENT) :
+5 : Réponse mathématiquement correcte ET raisonnement excellent
+4 : Réponse correcte avec raisonnement presque parfait
+3 : Réponse correcte mais raisonnement incomplet
+2 : Réponse incorrecte mais certaines étapes sont justes
+1 : Tentative mais réponse incorrecte
+0 : Hors sujet / vide
 
-📤 Format attendu :
+🎯 CONSIGNES IMPORTANTES :
+1. La vérification mathématique (SymPy) ci-dessus vous indique si la réponse est correcte
+2. Même si la réponse est mathématiquement fausse, récompensez les bonnes étapes
+3. Si la réponse est mathématiquement correcte, la note ne doit pas être inférieure à 3/5
+4. Expliquez clairement les erreurs et donnez la méthode correcte
+
+📤 Format de réponse :
 Analyse :
-[...]
+[Analyse détaillée du raisonnement]
 Note : X/5
 Correction :
-- Résolution experte : [...]
-- Résultat final : [...]
+- Résolution complète : [Méthode pas à pas]
+- Points d'amélioration : [Conseils spécifiques]
+- Résultat final : [Réponse exacte]
 """.strip()
 
-        try:
-            print("🤖 Appel à l'API OpenAI pour correction...")
-            chat_completion = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-            )
-            analyse_ia = chat_completion.choices[0].message.content.strip()
-            print("✅ Analyse IA reçue avec succès")
-        except Exception as e:
-            analyse_ia = f"Erreur IA : {str(e)[:200]}"
-            print(f"❌ Erreur lors de l'appel IA: {e}")
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        analyse_ia = completion.choices[0].message.content.strip()
+    except Exception as e:
+        analyse_ia = f"Erreur IA : {str(e)[:200]}"
 
-        # Extraction de la note sur 5 avec amélioration
-        etoiles = 0
-        match = re.search(r"(Note|Score)\s*:\s*(\d)(?:\s*/?\s*5)?", analyse_ia, re.IGNORECASE)
-        if match:
-            etoiles = int(match.group(2))
-            print(f"⭐ Note extraite: {etoiles}/5")
-        else:
-            # Recherche plus large
-            match = re.search(r"\b(\d)(?:\s*[/\\]\s*5)?\s*(?:⭐|stars|étoiles|points)", analyse_ia, re.IGNORECASE)
-            if match:
-                etoiles = min(int(match.group(1)), 5)
-                print(f"⭐ Note extraite (format alternatif): {etoiles}/5")
-            else:
-                # Fallback : analyser le texte pour estimer la note
-                if "excellent" in analyse_ia.lower() or "5" in analyse_ia:
-                    etoiles = 5
-                elif "très bon" in analyse_ia.lower() or "very good" in analyse_ia.lower():
-                    etoiles = 4
-                elif "bon" in analyse_ia.lower() or "good" in analyse_ia.lower():
-                    etoiles = 3
-                elif "partiel" in analyse_ia.lower() or "partial" in analyse_ia.lower():
-                    etoiles = 2
-                elif "fragmented" in analyse_ia.lower() or "ébauchée" in analyse_ia.lower():
-                    etoiles = 1
-                else:
-                    etoiles = 0
-                print(f"⭐ Note estimée par analyse: {etoiles}/5")
+    # --------------------------------------------------
+    # 6️⃣ Extraction de la note + ajustement intelligent
+    # --------------------------------------------------
+    etoiles_gpt = 0
+    match = re.search(r"(Note|Score)\s*:\s*(\d)", analyse_ia, re.IGNORECASE)
+    if match:
+        etoiles_gpt = min(int(match.group(2)), 5)
 
-        # ============================================
-        # SECTION CRITIQUE : STRUCTURATION JSON
-        # ============================================
-        try:
-            # Structurer le feedback en JSON pour supporter les contestations
-            if reponse and reponse.analyse_ia and reponse.analyse_ia.startswith('{'):
-                # Si une réponse existe déjà avec JSON, on la met à jour
-                feedback_json = json.loads(reponse.analyse_ia)
-                # Ajouter l'historique
-                if "history" not in feedback_json:
-                    feedback_json["history"] = []
-                
-                feedback_json["history"].append({
-                    "feedback": feedback_json.get("current_feedback", feedback_json.get("original", "")),
-                    "stars": feedback_json.get("current_stars", reponse.etoiles or 0),
-                    "date": feedback_json.get("metadata", {}).get("updated_at", datetime.now(timezone.utc).isoformat())
-                })
-                
-                feedback_json["current_feedback"] = analyse_ia
-                feedback_json["current_stars"] = etoiles
-                feedback_json["metadata"]["updated_at"] = datetime.now(timezone.utc).isoformat()
-                
-            else:
-                # Nouveau feedback JSON
-                feedback_json = {
-                    "original": analyse_ia,
-                    "history": [],  # Pas d'historique pour la première soumission
-                    "current_stars": etoiles,
-                    "current_feedback": analyse_ia,
-                    "metadata": {
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "exercise_id": exercice.id,
-                        "student_id": eleve.id,
-                        "language": lang
-                    }
-                }
-                if reponse:
-                    # Si réponse existante sans JSON, on commence l'historique
-                    feedback_json["history"].append({
-                        "feedback": reponse.analyse_ia or "",
-                        "stars": reponse.etoiles or 0,
-                        "date": reponse.timestamp.isoformat() if reponse.timestamp else datetime.now(timezone.utc).isoformat()
-                    })
-
-            # CONVERTIR EN JSON STRING
-            feedback_json_str = json.dumps(feedback_json, ensure_ascii=False, indent=2)
-            print(f"✅ JSON créé - Taille: {len(feedback_json_str)} caractères")
-            
-            # Mettre à jour ou créer la réponse
-            if reponse:
-                # Mise à jour de la réponse existante
-                reponse.reponse_eleve = reponse_eleve
-                reponse.analyse_ia = feedback_json_str
-                reponse.etoiles = etoiles
-                reponse.timestamp = datetime.now(timezone.utc)
-                print(f"✅ Réponse mise à jour (ID: {reponse.id})")
-            else:
-                # Création d'une nouvelle réponse
-                reponse = StudentResponse(
-                    user_id=eleve.id,
-                    exercice_id=exercice.id,
-                    reponse_eleve=reponse_eleve,
-                    analyse_ia=feedback_json_str,
-                    etoiles=etoiles,
-                    timestamp=datetime.now(timezone.utc)
-                )
-                db.session.add(reponse)
-                print(f"✅ Nouvelle réponse créée")
-            
-            db.session.commit()
-            print(f"✅ Données sauvegardées avec succès")
-            
-        except Exception as e:
-            print(f"❌ Erreur lors de la sauvegarde avec JSON: {e}")
-            
-            # Fallback : sauvegarde sans JSON
-            try:
-                if reponse:
-                    reponse.reponse_eleve = reponse_eleve
-                    reponse.analyse_ia = analyse_ia
-                    reponse.etoiles = etoiles
-                    reponse.timestamp = datetime.now(timezone.utc)
-                else:
-                    reponse = StudentResponse(
-                        user_id=eleve.id,
-                        exercice_id=exercice.id,
-                        reponse_eleve=reponse_eleve,
-                        analyse_ia=analyse_ia,
-                        etoiles=etoiles,
-                        timestamp=datetime.now(timezone.utc)
-                    )
-                    db.session.add(reponse)
-                
-                db.session.commit()
-                print(f"✅ Réponse sauvegardée (fallback texte simple)")
-            except Exception as fallback_error:
-                print(f"❌ Erreur lors du fallback: {fallback_error}")
-                flash(f"Erreur base de données: {fallback_error}", "danger")
-                return redirect(url_for(
-                    "exercice_sequentiel_progressif",
-                    username=username,
-                    lecon_id=lecon_id,
-                    lang=lang,
-                    index=index
-                ))
-        # ============================================
-
-        # ✅ REMÉDIATION si note < 3/5 (0, 1 ou 2/5)
-        if etoiles < 3:
-            print(f"🔄 Génération remédiation (note: {etoiles}/5)")
-            if lang == "en":
-                remediation_prompt = f"""
-Generate a new math remediation exercise for a student who scored {etoiles}/5 on the previous exercise.
-
-🧩 Context:
-- Original question: {question}
-- Student's answer: {reponse_eleve}
-- Student's score: {etoiles}/5
-
-✍️ Instructions:
-- Create an exercise with equivalent difficulty focusing on the same concepts
-- Adapt the exercise to address the specific difficulties shown in the student's answer
-- Write clear instructions
-- Provide the expected final answer
-- Provide a short hint to guide the student
-
-🎯 Output format:
-Question: ...
-Expected answer: ...
-Hint: ...
-""".strip()
-            else:
-                remediation_prompt = f"""
-Génère un nouvel exercice de remédiation en mathématiques pour un élève qui a obtenu {etoiles}/5 sur l'exercice précédent.
-
-🧩 Contexte :
-- Énoncé initial : {question}
-- Réponse de l'élève : {reponse_eleve}
-- Note de l'élève : {etoiles}/5
-
-✍️ Consignes :
-- Crée un exercice de difficulté équivalente ciblant les mêmes concepts
-- Adapte l'exercice pour adresser les difficultés spécifiques montrées dans la réponse de l'élève
-- Rédige un énoncé clair
-- Donne la réponse attendue
-- Fournis un court indice pour aider l'élève
-
-🎯 Format attendu :
-Question : ...
-Réponse attendue : ...
-Indice : ...
-""".strip()
-
-            try:
-                remediation_completion = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": remediation_prompt}],
-                    temperature=0.7,
-                )
-                remediation_content = remediation_completion.choices[0].message.content.strip()
-                print("✅ Remédiation générée")
-            except Exception as e:
-                remediation_content = f"Erreur IA lors de la génération de la remédiation : {str(e)[:200]}"
-                print(f"❌ Erreur génération remédiation: {e}")
-
-            # Création de la suggestion de remédiation
-            try:
-                nouvelle_suggestion = RemediationSuggestion(
-                    user_id=eleve.id,
-                    theme=exercice.theme,
-                    lecon=lecon.titre_fr,
-                    message=f"Exercice de remédiation proposé automatiquement (note: {etoiles}/5).",
-                    exercice_suggere=remediation_content,
-                    statut="en_attente",
-                    timestamp=datetime.now(timezone.utc)
-                )
-                db.session.add(nouvelle_suggestion)
-                db.session.commit()
-                print(f"✅ Suggestion de remédiation sauvegardée (note: {etoiles}/5)")
-            except Exception as e:
-                print(f"⚠️ Erreur sauvegarde remédiation: {e}")
-
-        print("=== ✅ RÉPONSE SÉQUENTIELLE SAUVEGARDÉE ===")
+    # 🎯 LOGIQUE D'AJUSTEMENT INTELLIGENT
+    if symbolic_correct is not None:
+        if symbolic_correct:  # Mathématiquement correct
+            # Garantir un minimum de 3/5 pour une réponse correcte
+            etoiles_finales = max(etoiles_gpt, 3)
+            print(f"✅ Ajustement : {etoiles_gpt} → {etoiles_finales} (réponse correcte)")
+        else:  # Mathématiquement incorrect
+            # Limiter à maximum 2/5 si réponse incorrecte
+            etoiles_finales = min(etoiles_gpt, 2)
+            print(f"⚠️ Ajustement : {etoiles_gpt} → {etoiles_finales} (réponse incorrecte)")
     else:
-        # Si pas de réponse fournie, on garde la réponse existante
-        flash("Veuillez fournir une réponse", "warning")
-        reponse = StudentResponse.query.filter_by(
-            user_id=eleve.id,
-            exercice_id=exercice.id
-        ).first()
+        etoiles_finales = etoiles_gpt  # Garder la note GPT
 
-    # MODIFICATION : Calculer le statut de tous les exercices pour l'affichage
-    exercices_status = []
-    reponses_status = []
-    for ex in exercices:
-        reponse_ex = StudentResponse.query.filter_by(
-            user_id=eleve.id,
-            exercice_id=ex.id
-        ).first()
-        exercices_status.append({
-            'completed': reponse_ex is not None,
-            'reponse': reponse_ex
+    # --------------------------------------------------
+    # 7️⃣ Structuration JSON COMPLÈTE
+    # --------------------------------------------------
+    now = datetime.now(timezone.utc).isoformat()
+
+    feedback_json = {
+        "current_feedback": analyse_ia,
+        "current_stars": etoiles_finales,
+        "symbolic_verification": {
+            "was_verified": symbolic_result.get('verified', False) if symbolic_result else False,
+            "is_correct": symbolic_correct,
+            "result": symbolic_result,
+            "feedback": symbolic_feedback
+        },
+        "metadata": {
+            "exercise_id": exercice.id,
+            "student_id": eleve.id,
+            "language": lang,
+            "gpt_score": etoiles_gpt,
+            "final_score": etoiles_finales,
+            "updated_at": now,
+            "correction_method": "hybrid_gpt_sympy",
+            "exercise_type": symbolic_result.get('type', 'unknown') if symbolic_result else 'unknown'
+        },
+        "history": []
+    }
+
+    # Historique des contestations
+    if reponse and reponse.analyse_ia and reponse.analyse_ia.startswith("{"):
+        ancien = json.loads(reponse.analyse_ia)
+        feedback_json["history"] = ancien.get("history", [])
+        feedback_json["history"].append({
+            "feedback": ancien.get("current_feedback", ""),
+            "stars": ancien.get("current_stars", 0),
+            "date": ancien.get("metadata", {}).get("updated_at", now)
         })
-        reponses_status.append('completed' if reponse_ex is not None else 'not_started')
 
-    # Calculer la progression
-    exercices_faits = sum(1 for status in exercices_status if status['completed'])
-    progression_pourcentage = (exercices_faits / total_exercices * 100) if total_exercices > 0 else 0
+    # --------------------------------------------------
+    # 8️⃣ Sauvegarde DB
+    # --------------------------------------------------
+    feedback_str = json.dumps(feedback_json, ensure_ascii=False, indent=2)
 
-    # Déterminer la navigation
-    has_next = index < total_exercices - 1
-    has_prev = index > 0
-    next_index = index + 1 if has_next else index
-    prev_index = index - 1 if has_prev else index
+    if reponse:
+        reponse.reponse_eleve = reponse_eleve
+        reponse.analyse_ia = feedback_str
+        reponse.etoiles = etoiles_finales
+        reponse.timestamp = datetime.now(timezone.utc)
+    else:
+        reponse = StudentResponse(
+            user_id=eleve.id,
+            exercice_id=exercice.id,
+            reponse_eleve=reponse_eleve,
+            analyse_ia=feedback_str,
+            etoiles=etoiles_finales,
+            timestamp=datetime.now(timezone.utc)
+        )
+        db.session.add(reponse)
 
-    # MODIFICATION : Rediriger vers la page de l'exercice avec feedback
+    db.session.commit()
+
+    # --------------------------------------------------
+    # 9️⃣ Remédiation automatique intelligente
+    # --------------------------------------------------
+    if etoiles_finales < 3:
+        # Message contextuel selon le type d'erreur
+        if symbolic_correct is False:
+            message = f"Erreur mathématique détectée ({etoiles_finales}/5). Réponse incorrecte."
+        elif symbolic_correct is True and etoiles_finales < 3:
+            message = f"Réponse correcte mais raisonnement incomplet ({etoiles_finales}/5)."
+        elif etoiles_finales == 0:
+            message = f"Réponse hors sujet ou vide ({etoiles_finales}/5)."
+        else:
+            message = f"Difficulté détectée ({etoiles_finales}/5)."
+        
+        suggestion = RemediationSuggestion(
+            user_id=eleve.id,
+            theme=exercice.theme,
+            lecon=lecon.titre_fr,
+            message=message,
+            exercice_suggere=None,
+            statut="en_attente",
+            timestamp=datetime.now(timezone.utc)
+        )
+        db.session.add(suggestion)
+        db.session.commit()
+        print(f"📚 Remédiation proposée (note: {etoiles_finales}/5)")
+
+    # --------------------------------------------------
+    # 🔟 Redirection séquentielle
+    # --------------------------------------------------
+    print(f"=== ✅ RÉPONSE SAUVEGARDÉE : {etoiles_finales}/5 ===")
+    print(f"=== 📊 VÉRIFICATION SYMPY : {symbolic_correct} ===")
+    
     return redirect(url_for(
         "exercice_sequentiel_progressif",
         username=username,
         lecon_id=lecon_id,
         lang=lang,
         index=index,
-        # Passer les paramètres pour afficher directement le feedback
         show_feedback=True
     ))
 
