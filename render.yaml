@@ -1,0 +1,22 @@
+# render.yaml
+services:
+  - type: web
+    name: tutorat_ai
+    env: docker  # ⬅️ CRITIQUE : "docker" au lieu de "python"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://...
+      - key: OPENAI_API_KEY
+        value: sk-...
+      - key: SECRET_KEY
+        generateValue: true
+      - key: STRIPE_SECRET_KEY
+        value: sk_...
+      - key: STRIPE_PUBLISHABLE_KEY
+        value: pk_...
+    numInstances: 1
+    domains:
+      - www.tutoratai.com
