@@ -1509,36 +1509,18 @@
           </div>
         </div>
 
-        <!-- SECTION SYMPY - NOUVEAU -->
-        {% if reponse.analyse_ia %}
+        <!-- SECTION SYMPY - VERSION SIMPLIFIÉE -->
+        {% if reponse.analyse_ia and '"symbolic_verification"' in reponse.analyse_ia %}
           {% set feedback_content = reponse.analyse_ia %}
-          {% set has_sympy_data = false %}
-          {% set sympy_data = {} %}
           
-          {% if feedback_content.startswith('{') and feedback_content.endswith('}') %}
-            {% set json_str = feedback_content %}
-            
-            {% if '"symbolic_verification":' in json_str %}
-              {% set has_sympy_data = true %}
-              
-              {# Extraction des données SymPy #}
-              {% set sympy_start = json_str.find('"symbolic_verification":') %}
-              {% set sympy_end = json_str.find('},', sympy_start) %}
-              {% if sympy_end == -1 %}
-                {% set sympy_end = json_str.find('}', sympy_start) %}
-              {% endif %}
-              
-              {% if sympy_start != -1 and sympy_end != -1 %}
-                {% set sympy_json = '{"symbolic_verification":' + json_str[sympy_start+24:sympy_end+1] + '}' %}
-                {% set sympy_data = sympy_json|fromjson %}
-              {% endif %}
-            {% endif %}
-          {% endif %}
+          {# Vérification simplifiée #}
+          {% set is_correct = '"is_correct": true' in feedback_content or '"is_correct":true' in feedback_content %}
+          {% set was_verified = '"was_verified": true' in feedback_content or '"was_verified":true' in feedback_content %}
           
-          {% if has_sympy_data and sympy_data.symbolic_verification and sympy_data.symbolic_verification.was_verified %}
-          <div class="sympy-verification {% if sympy_data.symbolic_verification.is_correct %}correct{% else %}incorrect{% endif %}" id="sympyVerification">
+          {% if was_verified %}
+          <div class="sympy-verification {% if is_correct %}correct{% else %}incorrect{% endif %}" id="sympyVerification">
             <div class="sympy-header">
-              {% if sympy_data.symbolic_verification.is_correct %}
+              {% if is_correct %}
                 <i class="fas fa-check-circle"></i>
                 <div class="sympy-title">
                   {% if lang == 'fr' %}
@@ -1560,34 +1542,18 @@
             </div>
             
             <div class="sympy-details">
-              {% if sympy_data.symbolic_verification.feedback %}
-                {{ sympy_data.symbolic_verification.feedback|replace('\n', '<br>')|safe }}
-              {% else %}
-                {% if sympy_data.symbolic_verification.is_correct %}
-                  {% if lang == 'fr' %}
-                    <strong>SymPy</strong> a vérifié mathématiquement que votre réponse est correcte.
-                  {% else %}
-                    <strong>SymPy</strong> mathematically verified that your answer is correct.
-                  {% endif %}
+              {% if is_correct %}
+                {% if lang == 'fr' %}
+                  <strong>SymPy</strong> a vérifié mathématiquement que votre réponse est correcte.
                 {% else %}
-                  {% if lang == 'fr' %}
-                    <strong>SymPy</strong> a détecté une erreur mathématique dans votre réponse.
-                  {% else %}
-                    <strong>SymPy</strong> detected a mathematical error in your answer.
-                  {% endif %}
+                  <strong>SymPy</strong> mathematically verified that your answer is correct.
                 {% endif %}
-              {% endif %}
-              
-              {% if sympy_data.symbolic_verification.result and sympy_data.symbolic_verification.result.student_value and sympy_data.symbolic_verification.result.expected_value %}
-                <div class="sympy-equivalence">
-                  {% if lang == 'fr' %}
-                    <div><strong>Votre réponse :</strong> ${{ sympy_data.symbolic_verification.result.student_value }}$</div>
-                    <div><strong>Résultat attendu :</strong> ${{ sympy_data.symbolic_verification.result.expected_value }}$</div>
-                  {% else %}
-                    <div><strong>Your answer :</strong> ${{ sympy_data.symbolic_verification.result.student_value }}$</div>
-                    <div><strong>Expected result :</strong> ${{ sympy_data.symbolic_verification.result.expected_value }}$</div>
-                  {% endif %}
-                </div>
+              {% else %}
+                {% if lang == 'fr' %}
+                  <strong>SymPy</strong> a détecté une erreur mathématique dans votre réponse.
+                {% else %}
+                  <strong>SymPy</strong> detected a mathematical error in your answer.
+                {% endif %}
               {% endif %}
             </div>
           </div>
