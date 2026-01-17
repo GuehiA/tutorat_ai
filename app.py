@@ -5486,7 +5486,7 @@ def exercice_sequentiel_progressif():
     print("=== 🔍 DEBUG ARRIVÉE EXERCICE ===")
     print(f"GET params: {dict(request.args)}")
     print(f"Session: {dict(session)}")
-    print(f"Session ID: {session.sid}")
+    print(f"Session ID: {session.get('_id', 'no-id')}")
     
     # --------------------------------------------------
     # 1️⃣ Extraction des paramètres
