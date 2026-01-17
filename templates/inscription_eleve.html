@@ -29,6 +29,7 @@
             --monthly: #3b82f6;
             --quarterly: #8b5cf6;
             --annual: #f59e0b;
+            --parent: #8b5cf6;
             --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             --hover-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
         }
@@ -234,6 +235,11 @@
             justify-content: center;
         }
 
+        .parent-section .section-header i {
+            color: var(--parent);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.1));
+        }
+
         .section-header h3 {
             color: var(--dark);
             font-size: 22px;
@@ -280,14 +286,25 @@
             transform: translateY(-1px);
         }
 
+        .parent-section .form-control:focus {
+            border-color: var(--parent);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 24px;
         }
 
+        .form-row-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+
         @media (max-width: 768px) {
-            .form-row {
+            .form-row, .form-row-3 {
                 grid-template-columns: 1fr;
             }
         }
@@ -899,6 +916,108 @@
             margin-top: 10px;
             letter-spacing: 0.5px;
         }
+
+        /* SECTION PARENT - STYLE SPÉCIAL */
+        .parent-section {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(167, 139, 250, 0.05));
+            border-color: rgba(139, 92, 246, 0.2);
+        }
+
+        .parent-section:hover {
+            border-color: var(--parent);
+        }
+
+        .parent-info {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.1));
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid var(--parent);
+        }
+
+        .parent-info i {
+            color: var(--parent);
+            margin-right: 10px;
+        }
+
+        /* TOGGLE SWITCH */
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 16px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch:hover {
+            border-color: var(--parent);
+        }
+
+        .toggle-switch.active {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(167, 139, 250, 0.05));
+            border-color: var(--parent);
+        }
+
+        .toggle-switch label {
+            font-weight: 600;
+            color: var(--dark);
+            cursor: pointer;
+            margin: 0;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--parent);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -1092,6 +1211,146 @@
                 </div>
             </div>
 
+            <!-- SECTION INFORMATIONS PARENT/TUTEUR -->
+            <div class="form-section parent-section animated-card" style="animation-delay: 0.25s" id="parentSection">
+                <div class="section-header">
+                    <i class="fas fa-users"></i>
+                    <h3>{{ 'Parent/Tutor Information' if lang == 'en' else 'Informations Parent/Tuteur' }}</h3>
+                </div>
+
+                <!-- Information pour le parent -->
+                <div class="parent-info">
+                    <p>
+                        <i class="fas fa-info-circle"></i>
+                        {% if lang == 'en' %}
+                            <strong>Parent access:</strong> The parent/guardian will receive login credentials to monitor their child's progress, view reports, and manage the account. The email provided will be used for the parent account.
+                        {% else %}
+                            <strong>Accès parent :</strong> Le parent/tuteur recevra ses identifiants de connexion pour suivre la progression de son enfant, consulter les rapports et gérer le compte. L'email fourni sera utilisé pour le compte parent.
+                        {% endif %}
+                    </p>
+                </div>
+
+                <!-- Toggle pour activer/désactiver les infos parent -->
+                <div class="toggle-switch" id="parentToggle">
+                    <label for="include_parent">
+                        <i class="fas fa-user-plus"></i>
+                        {% if lang == 'en' %}
+                            Include parent/tutor information
+                        {% else %}
+                            Inclure les informations parent/tuteur
+                        {% endif %}
+                    </label>
+                    <div class="switch">
+                        <input type="checkbox" id="include_parent" name="include_parent" checked>
+                        <span class="slider"></span>
+                    </div>
+                </div>
+
+                <!-- Champs parent (affichés par défaut) -->
+                <div id="parentFields">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="parent_nom_complet" class="required">
+                                <i class="fas fa-user"></i>
+                                {{ 'Full Name' if lang == 'en' else 'Nom Complet' }}
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="parent_nom_complet" 
+                                   name="parent_nom_complet" 
+                                   placeholder="{% if lang == 'en' %}Jane Doe{% else %}Jean Dupont{% endif %}"
+                                   value="{{ request.form.get('parent_nom_complet', '') }}"
+                                   required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="parent_email" class="required">
+                                <i class="fas fa-envelope"></i>
+                                {{ 'Email (Parent Account)' if lang == 'en' else 'Email (Compte Parent)' }}
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="parent_email" 
+                                   name="parent_email" 
+                                   placeholder="parent@example.com"
+                                   value="{{ request.form.get('parent_email', '') }}"
+                                   required>
+                            <small style="color: #64748b; margin-top: 5px; display: block;">
+                                <i class="fas fa-info-circle"></i>
+                                {% if lang == 'en' %}
+                                    This email will be used for the parent account login
+                                {% else %}
+                                    Cet email servira pour la connexion au compte parent
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label for="parent_telephone">
+                                <i class="fas fa-phone"></i>
+                                {{ 'Phone' if lang == 'en' else 'Téléphone' }}
+                            </label>
+                            <input type="tel" 
+                                   class="form-control" 
+                                   id="parent_telephone" 
+                                   name="parent_telephone" 
+                                   placeholder="+1 (555) 123-4567"
+                                   value="{{ request.form.get('parent_telephone', '') }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="parent_telephone2">
+                                <i class="fas fa-phone-alt"></i>
+                                {{ 'Secondary Phone' if lang == 'en' else 'Téléphone Secondaire' }}
+                            </label>
+                            <input type="tel" 
+                                   class="form-control" 
+                                   id="parent_telephone2" 
+                                   name="parent_telephone2" 
+                                   placeholder="{% if lang == 'en' %}Optional{% else %}Optionnel{% endif %}"
+                                   value="{{ request.form.get('parent_telephone2', '') }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="parent_relation">
+                                <i class="fas fa-user-friends"></i>
+                                {{ 'Relationship' if lang == 'en' else 'Lien de Parenté' }}
+                            </label>
+                            <select class="form-select" id="parent_relation" name="parent_relation">
+                                <option value="">{{ 'Select' if lang == 'en' else 'Sélectionner' }}</option>
+                                <option value="mother" {% if request.form.get('parent_relation') == 'mother' %}selected{% endif %}>
+                                    {{ 'Mother' if lang == 'en' else 'Mère' }}
+                                </option>
+                                <option value="father" {% if request.form.get('parent_relation') == 'father' %}selected{% endif %}>
+                                    {{ 'Father' if lang == 'en' else 'Père' }}
+                                </option>
+                                <option value="guardian" {% if request.form.get('parent_relation') == 'guardian' %}selected{% endif %}>
+                                    {{ 'Guardian' if lang == 'en' else 'Tuteur' }}
+                                </option>
+                                <option value="other" {% if request.form.get('parent_relation') == 'other' %}selected{% endif %}>
+                                    {{ 'Other' if lang == 'en' else 'Autre' }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Notes supplémentaires -->
+                    <div class="form-group">
+                        <label for="parent_notes">
+                            <i class="fas fa-sticky-note"></i>
+                            {{ 'Additional Notes' if lang == 'en' else 'Notes Additionnelles' }}
+                        </label>
+                        <textarea class="form-control" 
+                                  id="parent_notes" 
+                                  name="parent_notes" 
+                                  rows="3" 
+                                  placeholder="{% if lang == 'en' %}Any special instructions or information...{% else %}Instructions particulières ou informations supplémentaires...{% endif %}">{{ request.form.get('parent_notes', '') }}</textarea>
+                    </div>
+                </div>
+            </div>
+
             <!-- SECTION OPTIONS D'ABONNEMENT OPTIMISÉES -->
             <div class="payment-options">
                 <div class="section-header animated-card" style="animation-delay: 0.3s">
@@ -1138,15 +1397,15 @@
                                 <td class="check">✓</td>
                             </tr>
                             <tr>
-                                <td>{{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</td>
-                                <td class="cross">✗</td>
+                                <td>{{ 'Parent dashboard access' if lang == 'en' else 'Accès tableau de bord parent' }}</td>
+                                <td class="check">✓</td>
                                 <td class="check">✓</td>
                                 <td class="check">✓</td>
                                 <td class="check">✓</td>
                             </tr>
                             <tr>
-                                <td>{{ 'Personalized learning roadmap' if lang == 'en' else 'Feuille de route personnalisée' }}</td>
-                                <td class="cross">✗</td>
+                                <td>{{ 'Progress reports to parent' if lang == 'en' else 'Rapports de progression aux parents' }}</td>
+                                <td class="check">✓</td>
                                 <td class="check">✓</td>
                                 <td class="check">✓</td>
                                 <td class="check">✓</td>
@@ -1193,7 +1452,7 @@
                             <li><i class="fas fa-check feature-included"></i> {{ 'Test all features' if lang == 'en' else 'Testez toutes les fonctionnalités' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'No credit card required' if lang == 'en' else 'Aucune carte requise' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Virtual teacher available' if lang == 'en' else 'Enseignant virtuel disponible' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Basic support' if lang == 'en' else 'Support de base' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Parent dashboard' if lang == 'en' else 'Tableau de bord parent' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
                         </ul>
                     </div>
@@ -1213,8 +1472,8 @@
                         <ul class="plan-features">
                             <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</strong></li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Personalized roadmap' if lang == 'en' else 'Feuille de route personnalisée' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Progress reports' if lang == 'en' else 'Rapports de progression' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Weekly progress reports' if lang == 'en' else 'Rapports hebdomadaires' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Parent notifications' if lang == 'en' else 'Notifications aux parents' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
                         </ul>
                     </div>
@@ -1235,7 +1494,7 @@
                             <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Save 4.32$/month' if lang == 'en' else 'Économisez 4.32$/mois' }}</strong></li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'All monthly features' if lang == 'en' else 'Toutes les fonctionnalités mensuelles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly assessments' if lang == 'en' else 'Évaluations trimestrielles' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Advanced analytics' if lang == 'en' else 'Analyses avancées' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Parent-teacher meetings' if lang == 'en' else 'Rencontres parent-enseignant' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
                         </ul>
                     </div>
@@ -1256,8 +1515,8 @@
                         <ul class="plan-features">
                             <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Only 16.67$/month' if lang == 'en' else 'Seulement 16.67$/mois' }}</strong></li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'All quarterly features' if lang == 'en' else 'Toutes les fonctionnalités trimestrielles' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Premium teacher features' if lang == 'en' else 'Fonctionnalités premium' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Priority email support' if lang == 'en' else 'Support email prioritaire' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Detailed annual report' if lang == 'en' else 'Rapport annuel détaillé' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Priority parent support' if lang == 'en' else 'Support parent prioritaire' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
                         </ul>
                     </div>
@@ -1481,9 +1740,40 @@
             console.log(`🔄 Bouton mis à jour pour: ${plan.buttonText}`);
         }
 
-        // Animation des cartes au chargement
+        // Gestion du toggle parent
         document.addEventListener('DOMContentLoaded', function() {
             console.log("🎓 TutoratAI Registration Form Loaded");
+            
+            // Gestion du toggle parent
+            const parentToggle = document.getElementById('include_parent');
+            const parentFields = document.getElementById('parentFields');
+            const parentToggleSwitch = document.getElementById('parentToggle');
+            
+            if (parentToggle && parentFields && parentToggleSwitch) {
+                function toggleParentFields() {
+                    if (parentToggle.checked) {
+                        parentFields.style.display = 'block';
+                        parentToggleSwitch.classList.add('active');
+                        // Rendre les champs requis
+                        document.querySelectorAll('#parentFields input[required], #parentFields select[required]').forEach(field => {
+                            field.required = true;
+                        });
+                    } else {
+                        parentFields.style.display = 'none';
+                        parentToggleSwitch.classList.remove('active');
+                        // Rendre les champs non requis
+                        document.querySelectorAll('#parentFields input, #parentFields select').forEach(field => {
+                            field.required = false;
+                        });
+                    }
+                }
+                
+                // Initialiser
+                toggleParentFields();
+                
+                // Écouter les changements
+                parentToggle.addEventListener('change', toggleParentFields);
+            }
             
             // Animation des cartes
             const planCards = document.querySelectorAll('.plan-card');
@@ -1534,6 +1824,33 @@
                             ? "You must accept the Terms and Conditions" 
                             : "Vous devez accepter les Conditions Générales d'Utilisation");
                         return;
+                    }
+                    
+                    // Vérifier les champs parent si activés
+                    const parentToggle = document.getElementById('include_parent');
+                    if (parentToggle && parentToggle.checked) {
+                        const parentEmail = document.getElementById('parent_email');
+                        const parentName = document.getElementById('parent_nom_complet');
+                        
+                        if (parentEmail && !parentEmail.value) {
+                            e.preventDefault();
+                            const lang = document.documentElement.lang || 'en';
+                            alert(lang === 'en' 
+                                ? "Parent email is required when parent information is included" 
+                                : "L'email du parent est requis lorsque les informations parentales sont incluses");
+                            parentEmail.focus();
+                            return;
+                        }
+                        
+                        if (parentName && !parentName.value) {
+                            e.preventDefault();
+                            const lang = document.documentElement.lang || 'en';
+                            alert(lang === 'en' 
+                                ? "Parent name is required when parent information is included" 
+                                : "Le nom du parent est requis lorsque les informations parentales sont incluses");
+                            parentName.focus();
+                            return;
+                        }
                     }
                     
                     // Animation de chargement
