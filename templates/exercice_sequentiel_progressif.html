@@ -519,7 +519,7 @@
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       border-radius: 15px;
       border-left: 5px solid var(--primary);
-      display: {% if show_feedback %}block{% else %}none{% endif %};
+      display: none; /* Par défaut caché */
       animation: fadeIn 0.5s ease;
     }
 
@@ -536,7 +536,7 @@
       width: 50px;
       height: 50px;
       border-radius: 50%;
-      background: var(--success);
+      background: var(--secondary);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1252,17 +1252,17 @@
       <h2 class="waiting-title">
         <i class="fas fa-hourglass-half"></i>
         {% if lang == 'fr' %}
-          Enseignant Virtuel en train de réfléchir...
+          Naima - Enseignante Virtuelle en train de réfléchir...
         {% else %}
-          Virtual Teacher is thinking...
+          Naima - Virtual Teacher is thinking...
         {% endif %}
       </h2>
       
       <p class="waiting-message">
         {% if lang == 'fr' %}
-          Notre enseignant virtuel analyse votre réponse et prépare une rétroaction personnalisée.
+          Naima, votre enseignante virtuelle, analyse votre réponse et prépare une rétroaction personnalisée.
         {% else %}
-          Our virtual teacher is analyzing your answer and preparing personalized feedback.
+          Naima, your virtual teacher, is analyzing your answer and preparing personalized feedback.
         {% endif %}
       </p>
 
@@ -1410,8 +1410,8 @@
         {% endif %}
       </div>
 
-      <!-- Formulaire de réponse (visible si pas de feedback ou si on veut modifier) -->
-      <form method="POST" action="/soumettre-sequentiel" id="answerForm" {% if reponse and not show_feedback %}style="display: none;"{% endif %}>
+      <!-- Formulaire de réponse (visible uniquement si pas de réponse existante) -->
+      <form method="POST" action="/soumettre-sequentiel" id="answerForm" {% if reponse %}style="display: none;"{% endif %}>
         <!-- Champs requis pour la route /soumettre-sequentiel -->
         <input type="hidden" name="username" value="{{ eleve.username }}">
         <input type="hidden" name="lang" value="{{ lang }}">
@@ -1494,13 +1494,13 @@
 
       <!-- Section de rétroaction (visible si réponse existante) -->
       {% if reponse %}
-      <div class="feedback-section" id="feedbackSection" {% if not show_feedback %}style="display: none;"{% endif %}>
+      <div class="feedback-section" id="feedbackSection" style="display: block;">
         <div class="feedback-header">
-          <div class="feedback-icon {% if reponse.etoiles < 2 %}warning{% endif %}" id="feedbackIcon">
-            <i class="fas fa-{% if reponse.etoiles >= 4 %}check-circle{% elif reponse.etoiles >= 2 %}lightbulb{% else %}exclamation-circle{% endif %}"></i>
+          <div class="feedback-icon {% if reponse.etoiles and reponse.etoiles < 2 %}warning{% endif %}" id="feedbackIcon">
+            <i class="fas fa-{% if reponse.etoiles and reponse.etoiles >= 4 %}check-circle{% elif reponse.etoiles and reponse.etoiles >= 2 %}lightbulb{% else %}exclamation-circle{% endif %}"></i>
           </div>
           <div class="feedback-content">
-            <h3>{{ 'Rétroaction de l\'IA' if lang == 'fr' else 'AI Feedback' }}</h3>
+            <h3>{{ 'Analyse de Naima - Enseignante Virtuelle' if lang == 'fr' else 'Naima - Virtual Teacher Analysis' }}</h3>
             <div class="stars" id="starsDisplay">
               {% if reponse.etoiles is not none %}
                 <strong>{{ reponse.etoiles }}/5 ⭐</strong>
@@ -1529,16 +1529,16 @@
               {% endif %}
               
               {% if sympy_start != -1 and sympy_end != -1 %}
-                {% set sympy_json = json_str[sympy_start+24:sympy_end+1] %}
-                {% set sympy_data = sympy_json|tojson|safe %}
+                {% set sympy_json = '{"symbolic_verification":' + json_str[sympy_start+24:sympy_end+1] + '}' %}
+                {% set sympy_data = sympy_json|fromjson %}
               {% endif %}
             {% endif %}
           {% endif %}
           
-          {% if has_sympy_data and sympy_data.was_verified %}
-          <div class="sympy-verification {% if sympy_data.is_correct %}correct{% else %}incorrect{% endif %}" id="sympyVerification">
+          {% if has_sympy_data and sympy_data.symbolic_verification and sympy_data.symbolic_verification.was_verified %}
+          <div class="sympy-verification {% if sympy_data.symbolic_verification.is_correct %}correct{% else %}incorrect{% endif %}" id="sympyVerification">
             <div class="sympy-header">
-              {% if sympy_data.is_correct %}
+              {% if sympy_data.symbolic_verification.is_correct %}
                 <i class="fas fa-check-circle"></i>
                 <div class="sympy-title">
                   {% if lang == 'fr' %}
@@ -1560,10 +1560,10 @@
             </div>
             
             <div class="sympy-details">
-              {% if sympy_data.feedback %}
-                {{ sympy_data.feedback|replace('\n', '<br>')|safe }}
+              {% if sympy_data.symbolic_verification.feedback %}
+                {{ sympy_data.symbolic_verification.feedback|replace('\n', '<br>')|safe }}
               {% else %}
-                {% if sympy_data.is_correct %}
+                {% if sympy_data.symbolic_verification.is_correct %}
                   {% if lang == 'fr' %}
                     <strong>SymPy</strong> a vérifié mathématiquement que votre réponse est correcte.
                   {% else %}
@@ -1578,14 +1578,14 @@
                 {% endif %}
               {% endif %}
               
-              {% if sympy_data.result and sympy_data.result.student_value and sympy_data.result.expected_value %}
+              {% if sympy_data.symbolic_verification.result and sympy_data.symbolic_verification.result.student_value and sympy_data.symbolic_verification.result.expected_value %}
                 <div class="sympy-equivalence">
                   {% if lang == 'fr' %}
-                    <div><strong>Votre réponse :</strong> ${{ sympy_data.result.student_value }}$</div>
-                    <div><strong>Résultat attendu :</strong> ${{ sympy_data.result.expected_value }}$</div>
+                    <div><strong>Votre réponse :</strong> ${{ sympy_data.symbolic_verification.result.student_value }}$</div>
+                    <div><strong>Résultat attendu :</strong> ${{ sympy_data.symbolic_verification.result.expected_value }}$</div>
                   {% else %}
-                    <div><strong>Your answer :</strong> ${{ sympy_data.result.student_value }}$</div>
-                    <div><strong>Expected result :</strong> ${{ sympy_data.result.expected_value }}$</div>
+                    <div><strong>Your answer :</strong> ${{ sympy_data.symbolic_verification.result.student_value }}$</div>
+                    <div><strong>Expected result :</strong> ${{ sympy_data.symbolic_verification.result.expected_value }}$</div>
                   {% endif %}
                 </div>
               {% endif %}
@@ -1607,7 +1607,7 @@
         <div class="ai-analysis">
           <div class="section-label">
             <i class="fas fa-robot"></i>
-            {{ 'Correction et analyse' if lang == 'fr' else 'Correction and Analysis' }}
+            {{ 'Correction et analyse de Naima' if lang == 'fr' else 'Naima\'s Correction and Analysis' }}
           </div>
           <div class="analysis-content math-content" id="aiAnalysisContent">
             {% if reponse and reponse.analyse_ia %}
@@ -1653,7 +1653,7 @@
                     |replace('\\\\', '\\')
                     |replace('\\n\\n\\n', '<br><br>')
                     |replace('\\n\\n', '<br><br>')
-                    |replace('\\n', ' ')
+                    |replace('\\n', '<br>')
                     |replace('  ', ' ')
                     |replace('\\t', ' ')
                     |replace('\\[', '$$')
@@ -1677,7 +1677,7 @@
                           |replace('\\\\', '\\')
                           |replace('\\n\\n\\n', '<br><br>')
                           |replace('\\n\\n', '<br><br>')
-                          |replace('\\n', ' ')
+                          |replace('\\n', '<br>')
                           |replace('  ', ' ')
                           |replace('\\[', '$$')
                           |replace('\\]', '$$')
@@ -1699,7 +1699,7 @@
                           |replace('\\\\', '\\')
                           |replace('\\n\\n\\n', '<br><br>')
                           |replace('\\n\\n', '<br><br>')
-                          |replace('\\n', ' ')
+                          |replace('\\n', '<br>')
                           |replace('  ', ' ')
                           |replace('\\[', '$$')
                           |replace('\\]', '$$')
@@ -1733,7 +1733,7 @@
                   |replace('\\\\', '\\')
                   |replace('\\n\\n\\n', '<br><br>')
                   |replace('\\n\\n', '<br><br>')
-                  |replace('\\n', ' ')
+                  |replace('\\n', '<br>')
                   |replace('  ', ' ')
                 %}
                 <div class="feedback-text">
@@ -1824,12 +1824,12 @@
           </div>
         </div>
 
-        <!-- Section contestation -->
-        {% if reponse and reponse.etoiles is not none and reponse.etoiles < 5 %}
+        <!-- Section contestation (afficher seulement si pas déjà contesté) -->
+        {% if reponse and reponse.etoiles is not none and reponse.etoiles < 5 and not reponse.est_conteste %}
         <div class="contest-container" id="contestContainer">
           <div class="contest-header">
             <h4><i class="fas fa-balance-scale"></i> 
-              {{ 'Vous n\'êtes pas d\'accord ?' if lang == 'fr' else 'Disagree?' }}
+              {{ 'Vous n\'êtes pas d\'accord avec Naima ?' if lang == 'fr' else 'Disagree with Naima?' }}
             </h4>
           </div>
           
@@ -1837,9 +1837,9 @@
             <p class="contest-description">
               <i class="fas fa-info-circle"></i>
               {% if lang == 'fr' %}
-                Si vous pensez que votre réponse mérite une meilleure note, expliquez pourquoi :
+                Si vous pensez que votre réponse mérite une meilleure note, expliquez pourquoi à Naima :
               {% else %}
-                If you think your answer deserves a better grade, explain why:
+                If you think your answer deserves a better grade, explain why to Naima:
               {% endif %}
             </p>
             
@@ -1878,7 +1878,7 @@
                 </button>
                 <button type="button" class="btn-submit" onclick="submitContest()">
                   <i class="fas fa-paper-plane"></i>
-                  {{ 'Envoyer la contestation' if lang == 'fr' else 'Submit Contest' }}
+                  {{ 'Envoyer la contestation à Naima' if lang == 'fr' else 'Submit Contest to Naima' }}
                 </button>
               </div>
             </div>
@@ -1898,7 +1898,7 @@
 
   <script>
     let currentAnswer = '';
-    let selectedContestStars = {{ reponse.etoiles if reponse and reponse.etoiles is not none else 3 }};
+    let selectedContestStars = {{ reponse.etoiles + 1 if reponse and reponse.etoiles is not none else 3 }};
     let editMode = {% if edit_mode %}true{% else %}false{% endif %};
 
     // Fonction pour traiter le contenu mathématique avec MathJax
@@ -2021,6 +2021,15 @@
     function showForm() {
       document.getElementById('feedbackSection').style.display = 'none';
       document.getElementById('answerForm').style.display = 'block';
+      
+      // Remplir l'éditeur avec la réponse existante
+      const visualEditor = document.getElementById('visualMathEditor');
+      const studentAnswer = document.getElementById('studentAnswerContent').textContent;
+      if (visualEditor && studentAnswer) {
+        visualEditor.innerHTML = studentAnswer;
+        updatePreview();
+      }
+      
       document.getElementById('answerForm').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -2062,7 +2071,7 @@
       }
       
       showNotification(
-        "{% if lang == 'fr' %}Envoi de votre contestation à l'IA pour réévaluation...{% else %}Sending your contest to AI for re-evaluation...{% endif %}",
+        "{% if lang == 'fr' %}Envoi de votre contestation à Naima pour réévaluation...{% else %}Sending your contest to Naima for re-evaluation...{% endif %}",
         'info'
       );
       
@@ -2090,7 +2099,7 @@
       .then(data => {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
+          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation à Naima{% else %}Submit Contest to Naima{% endif %}';
         }
         
         if (data.success) {
@@ -2098,7 +2107,7 @@
           
           showNotification(
             data.message || 
-            "{% if lang == 'fr' %}Contestation traitée avec succès !{% else %}Contest processed successfully!{% endif %}",
+            "{% if lang == 'fr' %}Contestation traitée avec succès par Naima !{% else %}Contest processed successfully by Naima!{% endif %}",
             'success'
           );
           
@@ -2106,7 +2115,7 @@
         } else {
           showNotification(
             data.message || 
-            "{% if lang == 'fr' %}Erreur lors du traitement.{% else %}Error during processing.{% endif %}",
+            "{% if lang == 'fr' %}Erreur lors du traitement par Naima.{% else %}Error during processing by Naima.{% endif %}",
             'error'
           );
         }
@@ -2115,7 +2124,7 @@
         console.error('Erreur:', error);
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation{% else %}Submit Contest{% endif %}';
+          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> {% if lang == "fr" %}Envoyer la contestation à Naima{% else %}Submit Contest to Naima{% endif %}';
         }
         showNotification(
           "{% if lang == 'fr' %}Erreur de connexion au serveur.{% else %}Server connection error.{% endif %}",
@@ -2138,13 +2147,24 @@
       updateFeedbackIcon(newStars);
       
       const feedbackElement = document.getElementById('aiAnalysisContent');
-      if (feedbackElement) {
+      if (feedbackElement && newFeedback) {
         feedbackElement.innerHTML = newFeedback;
         
         const updateMessage = document.createElement('div');
         updateMessage.className = 'update-message';
+        updateMessage.style.cssText = `
+          background: #e8f5e9;
+          padding: 10px 15px;
+          border-radius: 8px;
+          margin-bottom: 15px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #2e7d32;
+          font-weight: 500;
+        `;
         updateMessage.innerHTML = `
-          <i class="fas fa-sync-alt" style="color: var(--secondary);"></i>
+          <i class="fas fa-sync-alt"></i>
           <span>{% if lang == "fr" %}Correction mise à jour suite à votre contestation{% else %}Feedback updated following your contest{% endif %}</span>
         `;
         feedbackElement.prepend(updateMessage);
@@ -2154,16 +2174,10 @@
         }, 50);
       }
       
-      const feedbackHeader = document.querySelector('.feedback-header');
-      if (feedbackHeader && !feedbackHeader.querySelector('.feedback-updated-badge')) {
-        const badge = document.createElement('div');
-        badge.className = 'feedback-updated-badge';
-        badge.innerHTML = '<i class="fas fa-sync-alt"></i> {% if lang == "fr" %}Mis à jour{% else %}Updated{% endif %}';
-        feedbackHeader.appendChild(badge);
-      }
+      // Cacher la section contestation après soumission
+      hideContest();
       
       if (newStars >= 5) {
-        hideContest();
         showNotification(
           "{% if lang == 'fr' %}Félicitations ! Vous avez obtenu la note maximale. 🎉{% else %}Congratulations! You obtained the maximum grade. 🎉{% endif %}",
           'success'
@@ -2249,9 +2263,9 @@
       if (visualEditor) {
         visualEditor.addEventListener('input', updatePreview);
         
-        // Remplir l'éditeur avec la réponse existante si disponible
-        {% if reponse and reponse.reponse_eleve %}
-        visualEditor.innerHTML = '{{ reponse.reponse_eleve | escape }}';
+        // Remplir l'éditeur avec la réponse existante si disponible et en mode édition
+        {% if edit_mode and reponse and reponse.reponse_eleve %}
+        visualEditor.innerHTML = '{{ reponse.reponse_eleve | safe }}';
         updatePreview();
         {% endif %}
         
