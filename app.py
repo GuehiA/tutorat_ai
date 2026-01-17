@@ -5531,7 +5531,7 @@ def exercice_sequentiel_progressif():
     # 3️⃣ Gestion de la progression
     # --------------------------------------------------
     # Récupérer tous les exercices de la leçon
-    exercices = Exercice.query.filter_by(lecon_id=lecon.id).order_by(Exercice.ordre).all()
+    exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()
     
     if not exercices:
         print(f"⚠️ Aucun exercice pour la leçon: {lecon_id}")
