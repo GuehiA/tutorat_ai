@@ -395,7 +395,7 @@
                               <div class="progress-fill" style="width: {{ lecon_data.progress }}%"></div>
                             </div>
                           </div>
-                          <a href="{{ url_for('exercice_sequentiel_progressif', username=eleve.username, lecon_id=lecon.id, lang=lang, index=0) }}" 
+                          <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lecon_id={{ lecon.id }}&lang={{ lang }}&index=0" 
                              class="btn-start mt-2 mt-md-0">
                             <i class="fas fa-rocket me-1"></i>
                             {{ "Start" if lang == "en" else "Commencer" }}
