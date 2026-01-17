@@ -5483,10 +5483,13 @@ def create_profile():
        
 @app.route("/exercice-sequentiel-progressif")
 def exercice_sequentiel_progressif():
-    print("=== 🔍 DEBUG ARRIVÉE EXERCICE ===")
+    print("=" * 80)
+    print("🚨🚨🚨 EXERCICE SÉQUENTIEL - DÉBUT DE LA ROUTE")
+    print(f"URL: {request.url}")
     print(f"GET params: {dict(request.args)}")
     print(f"Session: {dict(session)}")
     print(f"Session ID: {session.get('_id', 'no-id')}")
+    print("=" * 80)
     
     # --------------------------------------------------
     # 1️⃣ Extraction des paramètres
@@ -5497,11 +5500,16 @@ def exercice_sequentiel_progressif():
     index = int(request.args.get("index", 0))
     show_feedback = request.args.get("show_feedback", "false").lower() == "true"
 
-    print(f"🔍 Paramètres extraits: username={username}, lecon_id={lecon_id}, lang={lang}, index={index}")
+    print(f"🔍 Paramètres extraits:")
+    print(f"  username: {username}")
+    print(f"  lecon_id: {lecon_id}")
+    print(f"  lang: {lang}")
+    print(f"  index: {index}")
+    print(f"  show_feedback: {show_feedback}")
     
     # Vérification des paramètres requis
     if not username or not lecon_id:
-        print("⚠️ Paramètres manquants, redirection dashboard")
+        print("❌ Paramètres manquants, redirection dashboard")
         flash("Paramètres manquants pour accéder à l'exercice.", "danger")
         return redirect(url_for("index", lang=lang))
 
@@ -5510,28 +5518,44 @@ def exercice_sequentiel_progressif():
     # --------------------------------------------------
     eleve = User.query.filter_by(username=username).first()
     if not eleve:
-        print(f"⚠️ Élève non trouvé: {username}")
+        print(f"❌ Élève non trouvé: {username}")
         flash("Élève non trouvé.", "danger")
         return redirect(url_for("index", lang=lang))
+    
+    print(f"✅ Élève trouvé: {eleve.nom_complet} (ID: {eleve.id})")
+    print(f"  - Role: {eleve.role}")
+    print(f"  - Statut: {eleve.statut}")
+    print(f"  - Statut paiement: {eleve.statut_paiement}")
 
     # Vérifier l'accès
+    print(f"🔐 Vérification accès plateforme...")
     if not eleve.a_acces_plateforme():
-        print(f"⚠️ Élève sans accès: {username}")
+        print(f"⛔ Élève SANS accès plateforme!")
+        print(f"  - est_actif(): {eleve.est_actif()}")
+        print(f"  - est_en_essai_gratuit(): {eleve.est_en_essai_gratuit()}")
         flash("Accès refusé (abonnement ou essai expiré).", "danger")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+    
+    print(f"✅ Accès plateforme autorisé")
 
     lecon = db.session.get(Lecon, lecon_id)
     if not lecon:
-        print(f"⚠️ Leçon non trouvée: {lecon_id}")
+        print(f"❌ Leçon non trouvée: {lecon_id}")
         flash("Leçon non trouvée.", "danger")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+    
+    print(f"✅ Leçon trouvée: {lecon.titre_fr} (ID: {lecon.id})")
+    print(f"  - Unité: {lecon.unite.nom if lecon.unite else 'N/A'}")
+    print(f"  - Matière: {lecon.unite.matiere.nom if lecon.unite and lecon.unite.matiere else 'N/A'}")
 
     # --------------------------------------------------
-    # 3️⃣ Gestion de la progression - CORRECTION ICI
+    # 3️⃣ Gestion de la progression
     # --------------------------------------------------
-    # Récupérer tous les exercices de la leçon - SUPPRIMER .order_by(Exercice.ordre)
-    # exercices = Exercice.query.filter_by(lecon_id=lecon.id).order_by(Exercice.ordre).all()  # ANCIENNE LIGNE
-    exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()  # NOUVELLE LIGNE
+    # Récupérer tous les exercices de la leçon
+    exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()
+    
+    print(f"🔍 Recherche exercices pour leçon {lecon.id}...")
+    print(f"  - Nombre d'exercices trouvés: {len(exercices)}")
     
     if not exercices:
         print(f"⚠️ Aucun exercice pour la leçon: {lecon_id}")
@@ -5544,6 +5568,7 @@ def exercice_sequentiel_progressif():
         index = 0
     
     exercice_actuel = exercices[index]
+    print(f"✅ Exercice actuel: ID {exercice_actuel.id}")
     
     # --------------------------------------------------
     # 4️⃣ Récupération de la réponse précédente (si existante)
@@ -5557,7 +5582,9 @@ def exercice_sequentiel_progressif():
     ).first()
     
     if reponse:
-        print(f"✅ Réponse existante trouvée pour exercice {exercice_actuel.id}")
+        print(f"📝 Réponse existante trouvée pour exercice {exercice_actuel.id}")
+        print(f"  - ID réponse: {reponse.id}")
+        print(f"  - Étoiles: {reponse.etoiles}")
         reponse_existante = reponse.reponse_eleve
         
         # Parser le feedback JSON
@@ -5568,6 +5595,8 @@ def exercice_sequentiel_progressif():
         except Exception as e:
             print(f"⚠️ Erreur parsing feedback: {e}")
             feedback_data = None
+    else:
+        print(f"📝 Aucune réponse existante pour cet exercice")
 
     # --------------------------------------------------
     # 5️⃣ Calcul de la progression
@@ -5584,6 +5613,8 @@ def exercice_sequentiel_progressif():
             exercices_completes += 1
     
     progression_pourcentage = int((exercices_completes / total_exercices) * 100) if total_exercices > 0 else 0
+    
+    print(f"📊 Progression: {exercices_completes}/{total_exercices} ({progression_pourcentage}%)")
     
     # --------------------------------------------------
     # 6️⃣ Préparation des données pour le template
@@ -5632,12 +5663,8 @@ def exercice_sequentiel_progressif():
     bouton_terminer = url_for("dashboard_eleve", username=username, lang=lang)
 
     # --------------------------------------------------
-    # 8️⃣ Affichage du template - AJOUTER TOUTES LES VARIABLES
+    # 8️⃣ Préparer les réponses status pour la navigation
     # --------------------------------------------------
-    print(f"=== ✅ PRÊT POUR AFFICHAGE ===")
-    print(f"Exercice {index+1}/{total_exercices}, Progression: {progression_pourcentage}%")
-    
-    # Préparer les status des réponses pour la navigation rapide
     reponses_status = []
     for ex in exercices:
         rep = StudentResponse.query.filter_by(
@@ -5649,29 +5676,83 @@ def exercice_sequentiel_progressif():
         else:
             reponses_status.append('not_started')
     
-    return render_template(
-        "exercice_sequentiel_progressif.html",
-        # VARIABLES ESSENTIELLES POUR LE TEMPLATE :
-        eleve=eleve,                    # L'objet User complet
-        username=username,              # Le username aussi
-        lecon=lecon,                    # L'objet Lecon
-        exercice=exercice_actuel,       # L'exercice actuel
-        index=index,                    # Index courant
-        total=total_exercices,          # Pour range(total) dans le template
-        total_exercices=total_exercices, # Pour compatibilité
-        progression_pourcentage=progression_pourcentage,
-        exercices_completes=exercices_completes,
-        reponse_existante=reponse_existante,
-        reponse=reponse,                # L'objet StudentResponse complet (peut être None)
-        reponses_status=reponses_status, # Liste des status pour navigation
-        corrige_disponible=corrige_disponible,
-        feedback=feedback_a_afficher,
-        show_feedback=show_feedback,
-        lang=lang,
-        bouton_precedent=bouton_precedent,
-        bouton_suivant=bouton_suivant,
-        bouton_terminer=bouton_terminer
-    )
+    print(f"📋 Status des réponses: {reponses_status}")
+
+    # --------------------------------------------------
+    # 9️⃣ DEBUG CRITIQUE - VÉRIFICATION DES VARIABLES
+    # --------------------------------------------------
+    print("=" * 80)
+    print("🔍 DEBUG CRITIQUE - VARIABLES À PASSER AU TEMPLATE:")
+    print(f"  eleve: {'✅ DÉFINI' if eleve else '❌ NON DÉFINI'}")
+    print(f"     - username: {eleve.username if eleve else 'N/A'}")
+    print(f"     - nom_complet: {eleve.nom_complet if eleve else 'N/A'}")
+    print(f"  lecon: {'✅ DÉFINI' if lecon else '❌ NON DÉFINI'}")
+    print(f"     - id: {lecon.id if lecon else 'N/A'}")
+    print(f"     - titre: {lecon.titre_fr if lecon else 'N/A'}")
+    print(f"  exercice: {'✅ DÉFINI' if exercice_actuel else '❌ NON DÉFINI'}")
+    print(f"  total_exercices: {total_exercices}")
+    print(f"  total (alias): {total_exercices}")
+    print(f"  reponse: {'✅ DÉFINI' if reponse else '❌ NON DÉFINI'}")
+    print(f"  reponses_status: {len(reponses_status)} éléments")
+    print(f"  lang: {lang}")
+    print("=" * 80)
+
+    # --------------------------------------------------
+    # 🔟 Affichage du template - TOUTES LES VARIABLES
+    # --------------------------------------------------
+    print(f"=== ✅ PRÊT POUR AFFICHAGE ===")
+    print(f"Exercice {index+1}/{total_exercices}, Progression: {progression_pourcentage}%")
+    print(f"Envoi du template exercice_sequentiel_progressif.html...")
+    
+    try:
+        result = render_template(
+            "exercice_sequentiel_progressif.html",
+            # VARIABLES ESSENTIELLES POUR LE TEMPLATE :
+            eleve=eleve,                    # ✅ L'objet User complet
+            username=username,              # ✅ Le username aussi
+            lecon=lecon,                    # ✅ L'objet Lecon complet
+            exercice=exercice_actuel,       # ✅ L'exercice actuel
+            index=index,                    # ✅ Index courant
+            total=total_exercices,          # ✅ Pour range(total) dans le template
+            total_exercices=total_exercices, # ✅ Pour compatibilité
+            progression_pourcentage=progression_pourcentage,
+            exercices_completes=exercices_completes,
+            reponse_existante=reponse_existante,
+            reponse=reponse,                # ✅ L'objet StudentResponse complet (peut être None)
+            reponses_status=reponses_status, # ✅ Liste des status pour navigation rapide
+            corrige_disponible=corrige_disponible,
+            feedback=feedback_a_afficher,
+            show_feedback=show_feedback,
+            lang=lang,
+            bouton_precedent=bouton_precedent,
+            bouton_suivant=bouton_suivant,
+            bouton_terminer=bouton_terminer
+        )
+        print("✅ Template rendu avec succès!")
+        return result
+        
+    except Exception as e:
+        print(f"🔥 ERREUR LORS DU RENDER TEMPLATE: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Fallback: retourner une page d'erreur simple
+        return f"""
+        <html>
+        <head><title>Erreur Template</title></head>
+        <body style="padding: 20px; font-family: Arial;">
+            <h1>Erreur lors du chargement de l'exercice</h1>
+            <p>Erreur: {str(e)}</p>
+            <p>Variables disponibles:</p>
+            <ul>
+                <li>eleve: {eleve.username if eleve else 'Non défini'}</li>
+                <li>lecon: {lecon.titre_fr if lecon else 'Non défini'}</li>
+                <li>total_exercices: {total_exercices}</li>
+            </ul>
+            <p><a href="/dashboard-eleve?username={username}&lang={lang}">Retour au tableau de bord</a></p>
+        </body>
+        </html>
+        """
 
 
 @app.route("/retour-exercices")
