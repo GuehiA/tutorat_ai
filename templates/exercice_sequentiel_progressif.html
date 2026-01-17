@@ -13,9 +13,9 @@
   <meta name="theme-color" content="#4361ee">
   <title>
     {% if lang == 'fr' %}
-      Exercice {{ index + 1 }} sur {{ total }}
+      Exercice {{ index + 1 }} sur {{ total_exercices }}
     {% else %}
-      Exercise {{ index + 1 }} of {{ total }}
+      Exercise {{ index + 1 }} of {{ total_exercices }}
     {% endif %}
   </title>
   
@@ -1216,7 +1216,7 @@
       <i class="fas fa-map"></i> {{ 'Navigation rapide' if lang == 'fr' else 'Quick Navigation' }}
     </h4>
     <div class="exercise-grid">
-      {% for i in range(total) %}
+      {% for i in range(total_exercices) %}
         <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
            class="exercise-dot {% if i == index %}active{% endif %} {% if reponses_status and reponses_status[i] == 'completed' %}completed{% endif %}"
            title="{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}">
@@ -1351,17 +1351,17 @@
         <div class="progress-header">
           <div class="progress-title">
             {% if lang == 'fr' %}
-              Exercice {{ index + 1 }} sur {{ total }}
+              Exercice {{ index + 1 }} sur {{ total_exercices }}
             {% else %}
-              Exercise {{ index + 1 }} of {{ total }}
+              Exercise {{ index + 1 }} of {{ total_exercices }}
             {% endif %}
           </div>
           <div class="progress-text">
-            {{ ((index + 1) / total * 100) | round | int }}%
+            {{ ((index + 1) / total_exercices * 100) | round | int }}%
           </div>
         </div>
         <div class="progress-bar">
-          <div class="progress-fill" style="width: {{ ((index + 1) / total * 100) | round | int }}%"></div>
+          <div class="progress-fill" style="width: {{ ((index + 1) / total_exercices * 100) | round | int }}%"></div>
         </div>
       </div>
 
@@ -1774,7 +1774,7 @@
                     {{ 'Choisir un exercice' if lang == 'fr' else 'Choose Exercise' }}
                   </button>
                   <div class="exercise-list" id="exerciseList">
-                    {% for i in range(total) %}
+                    {% for i in range(total_exercices) %}
                       <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
                          class="exercise-item">
                         <div style="display: flex; align-items: center; gap: 10px;">
@@ -1792,7 +1792,7 @@
                   </div>
                 </div>
                 
-                {% if index < total - 1 %}
+                {% if index < total_exercices - 1 %}
                 <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ index + 1 }}" 
                    class="action-btn">
                   <i class="fas fa-arrow-right"></i>
