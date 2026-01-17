@@ -44,15 +44,19 @@ from config import OPENAI_API_KEY
 app = Flask(__name__)
 load_dotenv()
 
-# --- Clé secrète ---
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-me')
-
 # --- Configuration de session ---
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-me')
 app.config['SESSION_COOKIE_NAME'] = 'tutorat_session'
 app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS seulement
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 7200  # 2 heures en secondes
+
+# AJOUTEZ CES LIGNES :
+app.config['SESSION_TYPE'] = 'filesystem'  # Ou 'redis' en production
+app.config['SESSION_PERMANENT'] = True
+app.config['SESSION_USE_SIGNER'] = True  # Signe les cookies
+app.config['SESSION_FILE_DIR'] = './flask_session'  # Dossier pour stocker les sessions
 
 
 # ====================================================================
@@ -5479,85 +5483,178 @@ def create_profile():
        
 @app.route("/exercice-sequentiel-progressif")
 def exercice_sequentiel_progressif():
+    print("=== 🔍 DEBUG ARRIVÉE EXERCICE ===")
+    print(f"GET params: {dict(request.args)}")
+    print(f"Session: {dict(session)}")
+    print(f"Session ID: {session.sid}")
+    
+    # --------------------------------------------------
+    # 1️⃣ Extraction des paramètres
+    # --------------------------------------------------
     username = request.args.get("username")
     lecon_id = request.args.get("lecon_id")
     lang = request.args.get("lang", "fr")
     index = int(request.args.get("index", 0))
+    show_feedback = request.args.get("show_feedback", "false").lower() == "true"
 
-    eleve = User.query.filter_by(username=username).first_or_404()
-    lecon = Lecon.query.get_or_404(lecon_id)
-    exercices = Exercice.query.filter_by(lecon_id=lecon.id).order_by(Exercice.id).all()
-
-    if not exercices:
-        flash("Aucun exercice trouvé dans cette leçon", "warning")
-        return redirect(url_for("contenus_eleve", username=username, lang=lang))
-
-    # MODIFICATION 1: Vérifier que l'index est valide
-    if index < 0 or index >= len(exercices):
-        flash("Numéro d'exercice invalide", "warning")
-        index = 0  # Revenir au premier exercice
-
-    # Récupérer l'exercice demandé directement
-    exercice = exercices[index]
+    # Debug des paramètres
+    print(f"🔍 Paramètres extraits: username={username}, lecon_id={lecon_id}, lang={lang}, index={index}")
     
-    # MODIFICATION 2: Récupérer la réponse existante pour cet exercice
-    reponse = StudentResponse.query.filter_by(
-        user_id=eleve.id, 
-        exercice_id=exercice.id
-    ).first()
+    # Vérification des paramètres requis
+    if not username or not lecon_id:
+        print("⚠️ Paramètres manquants, redirection dashboard")
+        flash("Paramètres manquants pour accéder à l'exercice.", "danger")
+        return redirect(url_for("index", lang=lang))
 
-    # MODIFICATION 3: Calculer le statut de tous les exercices pour l'affichage
-    exercices_status = []
+    # --------------------------------------------------
+    # 2️⃣ Récupération des données
+    # --------------------------------------------------
+    eleve = User.query.filter_by(username=username).first()
+    if not eleve:
+        print(f"⚠️ Élève non trouvé: {username}")
+        flash("Élève non trouvé.", "danger")
+        return redirect(url_for("index", lang=lang))
+
+    # Vérifier l'accès
+    if not eleve.a_acces_plateforme():
+        print(f"⚠️ Élève sans accès: {username}")
+        flash("Accès refusé (abonnement ou essai expiré).", "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    lecon = db.session.get(Lecon, lecon_id)
+    if not lecon:
+        print(f"⚠️ Leçon non trouvée: {lecon_id}")
+        flash("Leçon non trouvée.", "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    # --------------------------------------------------
+    # 3️⃣ Gestion de la progression
+    # --------------------------------------------------
+    # Récupérer tous les exercices de la leçon
+    exercices = Exercice.query.filter_by(lecon_id=lecon.id).order_by(Exercice.ordre).all()
+    
+    if not exercices:
+        print(f"⚠️ Aucun exercice pour la leçon: {lecon_id}")
+        flash("Aucun exercice disponible pour cette leçon.", "info")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    # Ajuster l'index si hors limites
+    if index >= len(exercices):
+        print(f"⚠️ Index {index} hors limites, ajustement à 0")
+        index = 0
+    
+    exercice_actuel = exercices[index]
+    
+    # --------------------------------------------------
+    # 4️⃣ Récupération de la réponse précédente (si existante)
+    # --------------------------------------------------
+    reponse_existante = None
+    feedback_data = None
+    
+    reponse = StudentResponse.query.filter_by(
+        user_id=eleve.id,
+        exercice_id=exercice_actuel.id
+    ).first()
+    
+    if reponse:
+        print(f"✅ Réponse existante trouvée pour exercice {exercice_actuel.id}")
+        reponse_existante = reponse.reponse_eleve
+        
+        # Parser le feedback JSON
+        try:
+            if reponse.analyse_ia and reponse.analyse_ia.startswith("{"):
+                feedback_data = json.loads(reponse.analyse_ia)
+                print(f"📊 Feedback chargé: {feedback_data.get('current_stars', 0)}/5 étoiles")
+        except Exception as e:
+            print(f"⚠️ Erreur parsing feedback: {e}")
+            feedback_data = None
+
+    # --------------------------------------------------
+    # 5️⃣ Calcul de la progression
+    # --------------------------------------------------
+    total_exercices = len(exercices)
+    exercices_completes = 0
+    
     for ex in exercices:
-        reponse_ex = StudentResponse.query.filter_by(
+        rep = StudentResponse.query.filter_by(
             user_id=eleve.id,
             exercice_id=ex.id
         ).first()
-        exercices_status.append({
-            'completed': reponse_ex is not None,
-            'reponse': reponse_ex
-        })
+        if rep:
+            exercices_completes += 1
+    
+    progression_pourcentage = int((exercices_completes / total_exercices) * 100) if total_exercices > 0 else 0
+    
+    # --------------------------------------------------
+    # 6️⃣ Préparation des données pour le template
+    # --------------------------------------------------
+    # Texte de l'exercice selon la langue
+    question = exercice_actuel.question_en if lang == "en" else exercice_actuel.question_fr
+    
+    # Vérifier s'il y a un corrigé
+    corrige_disponible = bool(exercice_actuel.reponse_en if lang == "en" else exercice_actuel.reponse_fr)
+    
+    # Données de feedback à afficher (si demandé)
+    feedback_a_afficher = None
+    if show_feedback and feedback_data:
+        feedback_a_afficher = {
+            "analyse": feedback_data.get("current_feedback", ""),
+            "etoiles": feedback_data.get("current_stars", 0),
+            "symbolic": feedback_data.get("symbolic_verification", {})
+        }
+        print(f"🎯 Feedback à afficher: {feedback_a_afficher['etoiles']}/5")
 
-    # MODIFICATION 4: Calculer la progression (exercices faits / total)
-    total_exercices = len(exercices)
-    exercices_faits = sum(1 for status in exercices_status if status['completed'])
-    progression_pourcentage = (exercices_faits / total_exercices * 100) if total_exercices > 0 else 0
+    # --------------------------------------------------
+    # 7️⃣ Préparation des boutons navigation
+    # --------------------------------------------------
+    bouton_precedent = None
+    bouton_suivant = None
+    
+    if index > 0:
+        bouton_precedent = url_for(
+            "exercice_sequentiel_progressif",
+            username=username,
+            lecon_id=lecon_id,
+            lang=lang,
+            index=index-1
+        )
+    
+    if index < total_exercices - 1:
+        bouton_suivant = url_for(
+            "exercice_sequentiel_progressif",
+            username=username,
+            lecon_id=lecon_id,
+            lang=lang,
+            index=index+1
+        )
+    
+    # Bouton terminer/retour au dashboard
+    bouton_terminer = url_for("dashboard_eleve", username=username, lang=lang)
 
-    # MODIFICATION 5: Déterminer s'il y a un exercice suivant/précédent pour la navigation
-    has_next = index < total_exercices - 1
-    has_prev = index > 0
-    next_index = index + 1 if has_next else index
-    prev_index = index - 1 if has_prev else index
-
-    # MODIFICATION 6: Préparer le statut des réponses pour le template
-    # Format: ['completed', 'not_started', etc.]
-    reponses_status = []
-    for status in exercices_status:
-        if status['completed']:
-            reponses_status.append('completed')
-        else:
-            reponses_status.append('not_started')
-
+    # --------------------------------------------------
+    # 8️⃣ Affichage du template
+    # --------------------------------------------------
+    print(f"=== ✅ PRÊT POUR AFFICHAGE ===")
+    print(f"Exercice {index+1}/{total_exercices}, Progression: {progression_pourcentage}%")
+    
     return render_template(
         "exercice_sequentiel_progressif.html",
-        exercice=exercice,
-        eleve=eleve,
+        username=username,
         lecon=lecon,
-        lang=lang,
-        index=index,  # Utiliser l'index demandé directement
-        total=total_exercices,
-        reponse=reponse,
+        exercice=exercice_actuel,
+        question=question,
+        index=index,
+        total_exercices=total_exercices,
         progression_pourcentage=progression_pourcentage,
-        exercices_faits=exercices_faits,
-        has_next=has_next,
-        has_prev=has_prev,
-        next_index=next_index,
-        prev_index=prev_index,
-        # NOUVEAU: Passer les informations de statut
-        exercices_status=exercices_status,
-        reponses_status=reponses_status,
-        # Pour la rétroaction
-        show_feedback=reponse is not None  # Afficher feedback si réponse existe
+        exercices_completes=exercices_completes,
+        reponse_existante=reponse_existante,
+        corrige_disponible=corrige_disponible,
+        feedback=feedback_a_afficher,
+        show_feedback=show_feedback,
+        lang=lang,
+        bouton_precedent=bouton_precedent,
+        bouton_suivant=bouton_suivant,
+        bouton_terminer=bouton_terminer
     )
 
 
@@ -6495,34 +6592,60 @@ def reset_contest(reponse_id):
 @app.route("/soumettre-sequentiel", methods=["POST"])
 def soumettre_sequentiel():
     print("=== 📝 SOUMISSION SÉQUENTIELLE AVEC SYMPY ===")
+    print(f"🔍 DEBUG - Données du formulaire reçues: {dict(request.form)}")
 
     # --------------------------------------------------
-    # 1️⃣ Données du formulaire
+    # 1️⃣ Données du formulaire avec validation
     # --------------------------------------------------
     username = request.form.get("username")
     lang = request.form.get("lang", "fr")
     lecon_id = request.form.get("lecon_id")
     exercice_id = request.form.get("exercice_id")
     reponse_eleve = request.form.get("reponse_eleve", "").strip()
-    index = int(request.form.get("index", 0))
+    index_str = request.form.get("index", "0")
+    
+    # Validation et conversion de l'index
+    try:
+        index = int(index_str)
+    except (ValueError, TypeError):
+        print(f"⚠️ DEBUG - Index invalide '{index_str}', utilisation de 0")
+        index = 0
+    
+    print(f"🔍 DEBUG - Paramètres extraits: username={username}, lang={lang}, lecon_id={lecon_id}, exercice_id={exercice_id}, index={index}")
+    print(f"🔍 DEBUG - Réponse élève (premiers 100 chars): {reponse_eleve[:100]}...")
 
     # --------------------------------------------------
-    # 2️⃣ Sécurité & accès
+    # 2️⃣ Sécurité & accès (VERSION CORRIGÉE SANS first_or_404)
     # --------------------------------------------------
-    eleve = User.query.filter_by(username=username).first_or_404()
+    eleve = User.query.filter_by(username=username).first()
+    if not eleve:
+        print(f"❌ DEBUG - Utilisateur non trouvé: {username}")
+        flash("Utilisateur non trouvé.", "danger")
+        return redirect(url_for("index", lang=lang))
+    
+    print(f"✅ DEBUG - Élève trouvé: {eleve.nom_complet} (ID: {eleve.id})")
 
+    # Vérifier l'accès à la plateforme
     if not eleve.a_acces_plateforme():
+        print(f"⛔ DEBUG - Élève sans accès: {username}")
         flash("Accès refusé (abonnement ou essai expiré).", "danger")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
 
+    # Récupérer leçon et exercice
     lecon = db.session.get(Lecon, lecon_id)
     exercice = db.session.get(Exercice, exercice_id)
 
     if not lecon or not exercice:
+        print(f"❌ DEBUG - Leçon ou exercice introuvable: leçon_id={lecon_id}, exercice_id={exercice_id}")
         flash("Leçon ou exercice introuvable.", "danger")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+    
+    print(f"✅ DEBUG - Leçon trouvée: {lecon.titre_fr}")
+    print(f"✅ DEBUG - Exercice trouvé: {exercice.id}")
 
+    # Validation de la réponse
     if not reponse_eleve:
+        print(f"⚠️ DEBUG - Réponse vide fournie")
         flash("Veuillez fournir une réponse.", "warning")
         return redirect(url_for(
             "exercice_sequentiel_progressif",
@@ -6539,6 +6662,11 @@ def soumettre_sequentiel():
         user_id=eleve.id,
         exercice_id=exercice.id
     ).first()
+
+    if reponse:
+        print(f"📝 DEBUG - Réponse existante trouvée, mise à jour")
+    else:
+        print(f"📝 DEBUG - Nouvelle réponse à créer")
 
     question = exercice.question_en if lang == "en" else exercice.question_fr
     reponse_attendue = exercice.reponse_en if lang == "en" else exercice.reponse_fr
@@ -6618,6 +6746,7 @@ Correction :
 - Résultat final : [Réponse exacte]
 """.strip()
 
+    print(f"🤖 DEBUG - Envoi du prompt à GPT-4...")
     try:
         completion = client.chat.completions.create(
             model="gpt-4",
@@ -6625,8 +6754,10 @@ Correction :
             temperature=0.3
         )
         analyse_ia = completion.choices[0].message.content.strip()
+        print(f"✅ DEBUG - Réponse GPT-4 reçue ({len(analyse_ia)} caractères)")
     except Exception as e:
         analyse_ia = f"Erreur IA : {str(e)[:200]}"
+        print(f"❌ DEBUG - Erreur GPT-4: {e}")
 
     # --------------------------------------------------
     # 6️⃣ Extraction de la note + ajustement intelligent
@@ -6648,6 +6779,8 @@ Correction :
             print(f"⚠️ Ajustement : {etoiles_gpt} → {etoiles_finales} (réponse incorrecte)")
     else:
         etoiles_finales = etoiles_gpt  # Garder la note GPT
+    
+    print(f"⭐ DEBUG - Note finale: {etoiles_finales}/5")
 
     # --------------------------------------------------
     # 7️⃣ Structuration JSON COMPLÈTE
@@ -6685,6 +6818,7 @@ Correction :
             "stars": ancien.get("current_stars", 0),
             "date": ancien.get("metadata", {}).get("updated_at", now)
         })
+        print(f"📜 DEBUG - Historique des contestations ajouté")
 
     # --------------------------------------------------
     # 8️⃣ Sauvegarde DB
@@ -6696,6 +6830,7 @@ Correction :
         reponse.analyse_ia = feedback_str
         reponse.etoiles = etoiles_finales
         reponse.timestamp = datetime.now(timezone.utc)
+        print(f"💾 DEBUG - Mise à jour de la réponse existante")
     else:
         reponse = StudentResponse(
             user_id=eleve.id,
@@ -6706,8 +6841,22 @@ Correction :
             timestamp=datetime.now(timezone.utc)
         )
         db.session.add(reponse)
+        print(f"💾 DEBUG - Création d'une nouvelle réponse")
 
-    db.session.commit()
+    try:
+        db.session.commit()
+        print(f"✅ DEBUG - Base de données sauvegardée avec succès")
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ DEBUG - Erreur base de données: {e}")
+        flash("Erreur lors de la sauvegarde de votre réponse.", "danger")
+        return redirect(url_for(
+            "exercice_sequentiel_progressif",
+            username=username,
+            lecon_id=lecon_id,
+            lang=lang,
+            index=index
+        ))
 
     # --------------------------------------------------
     # 9️⃣ Remédiation automatique intelligente
@@ -6737,19 +6886,42 @@ Correction :
         print(f"📚 Remédiation proposée (note: {etoiles_finales}/5)")
 
     # --------------------------------------------------
-    # 🔟 Redirection séquentielle
+    # 🔟 DEBUG ET REDIRECTION
     # --------------------------------------------------
+    print(f"=== 🐛 DEBUG AVANT REDIRECTION ===")
+    print(f"📌 Paramètres pour la redirection:")
+    print(f"  - username: {username}")
+    print(f"  - lecon_id: {lecon_id}")
+    print(f"  - lang: {lang}")
+    print(f"  - index: {index}")
+    print(f"  - show_feedback: True")
+    
+    # Générer l'URL manuellement pour vérifier
+    try:
+        redirect_url = url_for(
+            "exercice_sequentiel_progressif",
+            username=username,
+            lecon_id=lecon_id,
+            lang=lang,
+            index=index,
+            show_feedback=True
+        )
+        print(f"🔗 URL générée: {redirect_url}")
+    except Exception as e:
+        print(f"❌ ERREUR lors de la génération de l'URL: {e}")
+        # URL de secours
+        redirect_url = f"/exercice-sequentiel-progressif?username={username}&lecon_id={lecon_id}&lang={lang}&index={index}&show_feedback=true"
+        print(f"🔗 URL de secours: {redirect_url}")
+    
     print(f"=== ✅ RÉPONSE SAUVEGARDÉE : {etoiles_finales}/5 ===")
     print(f"=== 📊 VÉRIFICATION SYMPY : {symbolic_correct} ===")
     
-    return redirect(url_for(
-        "exercice_sequentiel_progressif",
-        username=username,
-        lecon_id=lecon_id,
-        lang=lang,
-        index=index,
-        show_feedback=True
-    ))
+    # Vérifier que l'URL est valide
+    if not redirect_url or 'error' in redirect_url.lower():
+        print(f"⚠️ URL invalide détectée, redirection vers le dashboard")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+    
+    return redirect(redirect_url)
 
 from datetime import datetime, timezone
 

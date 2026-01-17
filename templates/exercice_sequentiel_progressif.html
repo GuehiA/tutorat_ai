@@ -1410,7 +1410,7 @@
       </div>
 
       <!-- Formulaire de réponse (visible si pas de feedback ou si on veut modifier) -->
-      <form method="POST" action="/soumettre-sequentiel" id="answerForm" {% if reponse and not edit_mode %}style="display: none;"{% endif %}>
+      <form method="POST" action="/soumettre-sequentiel" id="answerForm" {% if reponse and not show_feedback %}style="display: none;"{% endif %}>
         <!-- Champs requis pour la route /soumettre-sequentiel -->
         <input type="hidden" name="username" value="{{ eleve.username }}">
         <input type="hidden" name="lang" value="{{ lang }}">
