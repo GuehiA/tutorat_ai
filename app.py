@@ -5497,7 +5497,6 @@ def exercice_sequentiel_progressif():
     index = int(request.args.get("index", 0))
     show_feedback = request.args.get("show_feedback", "false").lower() == "true"
 
-    # Debug des paramètres
     print(f"🔍 Paramètres extraits: username={username}, lecon_id={lecon_id}, lang={lang}, index={index}")
     
     # Vérification des paramètres requis
@@ -5528,10 +5527,11 @@ def exercice_sequentiel_progressif():
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
 
     # --------------------------------------------------
-    # 3️⃣ Gestion de la progression
+    # 3️⃣ Gestion de la progression - CORRECTION ICI
     # --------------------------------------------------
-    # Récupérer tous les exercices de la leçon
-    exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()
+    # Récupérer tous les exercices de la leçon - SUPPRIMER .order_by(Exercice.ordre)
+    # exercices = Exercice.query.filter_by(lecon_id=lecon.id).order_by(Exercice.ordre).all()  # ANCIENNE LIGNE
+    exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()  # NOUVELLE LIGNE
     
     if not exercices:
         print(f"⚠️ Aucun exercice pour la leçon: {lecon_id}")
@@ -5632,22 +5632,38 @@ def exercice_sequentiel_progressif():
     bouton_terminer = url_for("dashboard_eleve", username=username, lang=lang)
 
     # --------------------------------------------------
-    # 8️⃣ Affichage du template
+    # 8️⃣ Affichage du template - AJOUTER TOUTES LES VARIABLES
     # --------------------------------------------------
     print(f"=== ✅ PRÊT POUR AFFICHAGE ===")
     print(f"Exercice {index+1}/{total_exercices}, Progression: {progression_pourcentage}%")
     
+    # Préparer les status des réponses pour la navigation rapide
+    reponses_status = []
+    for ex in exercices:
+        rep = StudentResponse.query.filter_by(
+            user_id=eleve.id,
+            exercice_id=ex.id
+        ).first()
+        if rep:
+            reponses_status.append('completed')
+        else:
+            reponses_status.append('not_started')
+    
     return render_template(
         "exercice_sequentiel_progressif.html",
-        username=username,
-        lecon=lecon,
-        exercice=exercice_actuel,
-        question=question,
-        index=index,
-        total_exercices=total_exercices,
+        # VARIABLES ESSENTIELLES POUR LE TEMPLATE :
+        eleve=eleve,                    # L'objet User complet
+        username=username,              # Le username aussi
+        lecon=lecon,                    # L'objet Lecon
+        exercice=exercice_actuel,       # L'exercice actuel
+        index=index,                    # Index courant
+        total=total_exercices,          # Pour range(total) dans le template
+        total_exercices=total_exercices, # Pour compatibilité
         progression_pourcentage=progression_pourcentage,
         exercices_completes=exercices_completes,
         reponse_existante=reponse_existante,
+        reponse=reponse,                # L'objet StudentResponse complet (peut être None)
+        reponses_status=reponses_status, # Liste des status pour navigation
         corrige_disponible=corrige_disponible,
         feedback=feedback_a_afficher,
         show_feedback=show_feedback,
