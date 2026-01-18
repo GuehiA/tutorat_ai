@@ -571,7 +571,13 @@
             color: var(--success);
         }
 
-        /* BOUTON DE SOUMISSION */
+        /* BOUTON DE SOUMISSION - CORRECTION IMPORTANTE */
+        .btn-submit-container {
+            margin-top: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
         .btn-submit {
             width: 100%;
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -587,7 +593,6 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
-            margin-top: 40px;
             box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
             position: relative;
             overflow: hidden;
@@ -1822,17 +1827,19 @@
                 </div>
             </div>
 
-            <!-- BOUTON DE SOUMISSION -->
-            <button type="submit" class="btn-submit animated-card" id="submitButton" style="animation-delay: 0.85s">
-                <i class="fas fa-gift" id="submitIcon"></i>
-                <span id="submitText">
-                    {% if lang == 'en' %}
-                        Start 3-Day Free Trial
-                    {% else %}
-                        Commencer l'Essai Gratuit de 3 Jours
-                    {% endif %}
-                </span>
-            </button>
+            <!-- BOUTON DE SOUMISSION - CORRIGÉ -->
+            <div class="btn-submit-container animated-card" style="animation-delay: 0.85s">
+                <button type="submit" class="btn-submit" id="submitButton">
+                    <i class="fas fa-gift" id="submitIcon"></i>
+                    <span id="submitText">
+                        {% if lang == 'en' %}
+                            Start 3-Day Free Trial
+                        {% else %}
+                            Commencer l'Essai Gratuit de 3 Jours
+                        {% endif %}
+                    </span>
+                </button>
+            </div>
         </form>
 
         <!-- LIEN DE CONNEXION EN BAS -->
@@ -1884,6 +1891,7 @@
                 period: '3 days',
                 buttonText: 'Start 3-Day Free Trial',
                 buttonIcon: 'fas fa-gift',
+                buttonTextFr: 'Commencer l\'Essai Gratuit de 3 Jours',
                 monthlyPrice: '0$/month'
             },
             'monthly': {
@@ -1891,6 +1899,7 @@
                 price: '19.99$ CAD',
                 period: 'per month',
                 buttonText: 'Subscribe to Monthly Plan (19.99$/month)',
+                buttonTextFr: 'S\'abonner au Forfait Mensuel (19.99$/mois)',
                 buttonIcon: 'fas fa-calendar-alt',
                 monthlyPrice: '19.99$/month'
             },
@@ -1899,6 +1908,7 @@
                 price: '49.99$ CAD',
                 period: 'per 3 months',
                 buttonText: 'Subscribe to Quarterly Plan (49.99$/3 months)',
+                buttonTextFr: 'S\'abonner au Forfait Trimestriel (49.99$/3 mois)',
                 buttonIcon: 'fas fa-chart-line',
                 monthlyPrice: '16.66$/month'
             },
@@ -1907,28 +1917,9 @@
                 price: '149.99$ CAD',
                 period: 'per year',
                 buttonText: 'Subscribe to Annual Plan (149.99$/year)',
+                buttonTextFr: 'S\'abonner au Forfait Annuel (149.99$/an)',
                 buttonIcon: 'fas fa-crown',
                 monthlyPrice: '12.50$/month'
-            }
-        };
-
-        // Traductions en français
-        const frenchTranslations = {
-            'trial': {
-                name: 'Essai Gratuit',
-                buttonText: "Commencer l'Essai Gratuit de 3 Jours"
-            },
-            'monthly': {
-                name: 'Forfait Mensuel',
-                buttonText: "S'abonner au Forfait Mensuel (19.99$/mois)"
-            },
-            'quarterly': {
-                name: 'Forfait Trimestriel',
-                buttonText: "S'abonner au Forfait Trimestriel (49.99$/3 mois)"
-            },
-            'annual': {
-                name: 'Forfait Annuel',
-                buttonText: "S'abonner au Forfait Annuel (149.99$/an)"
             }
         };
 
@@ -1958,40 +1949,24 @@
         }
 
         function updateSubmitButton(planType) {
-            const lang = document.documentElement.lang || 'en';
-            let plan;
-            
-            if (lang === 'fr') {
-                plan = {
-                    ...plans[planType],
-                    name: frenchTranslations[planType].name,
-                    buttonText: frenchTranslations[planType].buttonText
-                };
-            } else {
-                plan = plans[planType];
-            }
-            
+            const lang = '{{ lang }}' || 'en';
             const submitText = document.getElementById('submitText');
-            const submitButton = document.getElementById('submitButton');
             const submitIcon = document.getElementById('submitIcon');
+            const plan = plans[planType];
             
-            if (submitText) {
-                submitText.textContent = plan.buttonText;
+            if (submitText && plan) {
+                if (lang === 'fr') {
+                    submitText.textContent = plan.buttonTextFr || plan.buttonText;
+                } else {
+                    submitText.textContent = plan.buttonText;
+                }
             }
             
-            if (submitIcon) {
+            if (submitIcon && plan) {
                 submitIcon.className = plan.buttonIcon;
             }
             
-            // Animation du bouton
-            if (submitButton) {
-                submitButton.style.animation = 'none';
-                setTimeout(() => {
-                    submitButton.style.animation = 'pulse 0.5s ease';
-                }, 10);
-            }
-            
-            console.log(`🔄 Bouton mis à jour pour: ${plan.buttonText}`);
+            console.log(`🔄 Bouton mis à jour pour: ${planType}`);
         }
 
         // Gestion du toggle parent
@@ -2056,7 +2031,7 @@
                     
                     if (!planTypeInput || !planTypeInput.value) {
                         e.preventDefault();
-                        const lang = document.documentElement.lang || 'en';
+                        const lang = '{{ lang }}' || 'en';
                         alert(lang === 'en' 
                             ? "Please select a plan" 
                             : "Veuillez sélectionner un forfait");
@@ -2065,7 +2040,7 @@
                     
                     if (cguCheckbox && !cguCheckbox.checked) {
                         e.preventDefault();
-                        const lang = document.documentElement.lang || 'en';
+                        const lang = '{{ lang }}' || 'en';
                         alert(lang === 'en' 
                             ? "You must accept the Terms and Conditions" 
                             : "Vous devez accepter les Conditions Générales d'Utilisation");
@@ -2080,7 +2055,7 @@
                         
                         if (parentEmail && !parentEmail.value) {
                             e.preventDefault();
-                            const lang = document.documentElement.lang || 'en';
+                            const lang = '{{ lang }}' || 'en';
                             alert(lang === 'en' 
                                 ? "Parent email is required when parent information is included" 
                                 : "L'email du parent est requis lorsque les informations parentales sont incluses");
@@ -2090,7 +2065,7 @@
                         
                         if (parentName && !parentName.value) {
                             e.preventDefault();
-                            const lang = document.documentElement.lang || 'en';
+                            const lang = '{{ lang }}' || 'en';
                             alert(lang === 'en' 
                                 ? "Parent name is required when parent information is included" 
                                 : "Le nom du parent est requis lorsque les informations parentales sont incluses");
@@ -2102,7 +2077,7 @@
                     // Animation de chargement
                     const btn = document.getElementById('submitButton');
                     const originalHTML = btn.innerHTML;
-                    const lang = document.documentElement.lang || 'en';
+                    const lang = '{{ lang }}' || 'en';
                     const processingText = lang === 'en' ? 'Processing...' : 'Traitement en cours...';
                     btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${processingText}`;
                     btn.disabled = true;
@@ -2114,40 +2089,11 @@
                     }, 10000);
                 });
             }
-            
-            // Tooltip pour les prix
-            const priceElements = document.querySelectorAll('.plan-price');
-            priceElements.forEach(price => {
-                price.addEventListener('mouseenter', function() {
-                    const planCard = this.closest('.plan-card');
-                    if (planCard) {
-                        planCard.style.transform = 'translateY(-12px) scale(1.02)';
-                    }
-                });
-                
-                price.addEventListener('mouseleave', function() {
-                    const planCard = this.closest('.plan-card');
-                    if (planCard && !planCard.classList.contains('selected')) {
-                        planCard.style.transform = 'translateY(-8px)';
-                    }
-                });
-            });
         });
-
-        // Animation de pulsation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.02); }
-                100% { transform: scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
 
         // Fonction pour afficher les CGU et politiques
         function showTerms(type) {
-            const lang = document.documentElement.lang || 'en';
+            const lang = '{{ lang }}' || 'en';
             let title, message;
             
             if (type === 'cgu') {
@@ -2232,6 +2178,11 @@ Note Forfait Annuel : Offre 12 mois d'accès continu. Accès été inclus pour r
             
             alert(`${title}\n\n${message}`);
         }
+
+        // S'assurer que le plan trial est sélectionné par défaut
+        window.onload = function() {
+            selectPlan('trial');
+        };
     </script>
 </body>
 </html>
