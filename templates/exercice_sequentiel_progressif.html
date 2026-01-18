@@ -154,7 +154,7 @@
       box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
     }
 
-    /* Navigation rapide */
+    /* Navigation rapide améliorée avec scroll */
     .quick-navigation {
       position: fixed;
       top: 100px;
@@ -164,33 +164,95 @@
       padding: 15px;
       box-shadow: 0 3px 15px rgba(0,0,0,0.1);
       z-index: 90;
-      max-width: 250px;
+      max-width: 300px;
+      width: 100%;
+      max-height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .quick-nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--light);
+    }
+
+    .quick-nav-header h4 {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .close-nav-btn {
+      background: none;
+      border: none;
+      color: var(--gray);
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: var(--transition);
+    }
+
+    .close-nav-btn:hover {
+      color: var(--danger);
+    }
+
+    .exercise-scroll-container {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 5px;
+      margin-bottom: 15px;
+    }
+
+    /* Custom scrollbar */
+    .exercise-scroll-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .exercise-scroll-container::-webkit-scrollbar-track {
+      background: var(--light);
+      border-radius: 3px;
+    }
+
+    .exercise-scroll-container::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 3px;
+    }
+
+    .exercise-scroll-container::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
     }
 
     .exercise-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
       gap: 8px;
     }
 
     .exercise-dot {
       display: block;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
       background: var(--light);
       color: var(--dark);
       text-decoration: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.8rem;
+      font-size: 0.9rem;
+      font-weight: 600;
       transition: all 0.2s;
       position: relative;
     }
 
     .exercise-dot:hover {
-      transform: scale(1.1);
+      transform: translateY(-2px);
       box-shadow: 0 3px 8px rgba(0,0,0,0.15);
     }
 
@@ -198,6 +260,7 @@
       background: var(--primary) !important;
       color: white !important;
       box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+      font-weight: bold;
     }
 
     .exercise-dot.completed {
@@ -206,23 +269,204 @@
     }
 
     .exercise-dot.completed:hover {
-      background: #27ae60 !important;
+      background: var(--secondary-dark) !important;
     }
 
     .exercise-dot.completed::after {
-      content: '';
+      content: '✓';
       position: absolute;
-      top: -2px;
-      right: -2px;
-      width: 12px;
-      height: 12px;
+      top: -5px;
+      right: -5px;
+      width: 18px;
+      height: 18px;
       background: var(--secondary);
       border-radius: 50%;
       border: 2px solid white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: bold;
     }
 
     .exercise-dot.active::after {
       display: none;
+    }
+
+    .quick-nav-footer {
+      padding-top: 10px;
+      border-top: 1px solid var(--light);
+      font-size: 0.8rem;
+      color: var(--gray);
+    }
+
+    .status-legend {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 5px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .status-color.default {
+      background: var(--light);
+    }
+
+    .status-color.completed {
+      background: var(--secondary);
+    }
+
+    /* Menu de sélection d'exercice modal */
+    .exercise-selector-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .exercise-selector-modal.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal-content {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 800px;
+      width: 90%;
+      max-height: 80vh;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.5s ease;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--light);
+    }
+
+    .modal-header h3 {
+      color: var(--dark);
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--gray);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .close-modal:hover {
+      color: var(--danger);
+    }
+
+    .modal-exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 12px;
+      max-height: 50vh;
+      overflow-y: auto;
+      padding-right: 10px;
+      margin-bottom: 25px;
+    }
+
+    .modal-exercise-grid::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .modal-exercise-grid::-webkit-scrollbar-track {
+      background: var(--light);
+      border-radius: 4px;
+    }
+
+    .modal-exercise-grid::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 4px;
+    }
+
+    .modal-exercise-grid::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
+    }
+
+    .modal-exercise-dot {
+      display: block;
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      background: var(--light);
+      color: var(--dark);
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .modal-exercise-dot:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    }
+
+    .modal-exercise-dot.active {
+      background: var(--primary) !important;
+      color: white !important;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+      font-weight: bold;
+    }
+
+    .modal-exercise-dot.completed {
+      background: var(--secondary) !important;
+      color: white !important;
+    }
+
+    .exercise-number {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .exercise-status {
+      font-size: 0.7rem;
+      margin-top: 2px;
+      opacity: 0.8;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+      padding-top: 20px;
+      border-top: 1px solid var(--light);
     }
 
     /* Menu de sélection d'exercice (pour feedback) */
@@ -240,10 +484,24 @@
       border-radius: 8px;
       box-shadow: 0 5px 15px rgba(0,0,0,0.1);
       z-index: 1000;
-      min-width: 200px;
+      min-width: 250px;
       margin-top: 5px;
-      max-height: 300px;
+      max-height: 400px;
       overflow-y: auto;
+    }
+
+    .exercise-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .exercise-list::-webkit-scrollbar-track {
+      background: var(--light);
+      border-radius: 3px;
+    }
+
+    .exercise-list::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 3px;
     }
 
     .exercise-item {
@@ -1172,21 +1430,43 @@
       }
 
       .quick-navigation {
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        z-index: 1001;
         display: none;
       }
 
-      .exercise-selector {
-        width: 100%;
+      .quick-navigation.active {
+        display: flex;
       }
 
-      .exercise-list {
-        width: 100%;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        max-width: 90%;
-        max-height: 70vh;
+      .exercise-selector-modal .modal-content {
+        padding: 20px;
+        width: 95%;
+      }
+
+      .modal-exercise-grid {
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        gap: 10px;
+      }
+
+      .modal-exercise-dot {
+        width: 50px;
+        height: 50px;
+      }
+
+      .exercise-number {
+        font-size: 1rem;
+      }
+
+      .exercise-status {
+        font-size: 0.6rem;
       }
 
       .feedback-actions {
@@ -1207,33 +1487,97 @@
         justify-content: center;
       }
     }
+
+    @media (max-width: 480px) {
+      .modal-exercise-grid {
+        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+        gap: 8px;
+      }
+
+      .modal-exercise-dot {
+        width: 45px;
+        height: 45px;
+      }
+    }
   </style>
 </head>
 <body>
   
-  <!-- Navigation rapide -->
-  <div class="quick-navigation">
-    <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--dark);">
-      <i class="fas fa-map"></i> {{ 'Navigation rapide' if lang == 'fr' else 'Quick Navigation' }}
-    </h4>
-    <div class="exercise-grid">
-      {% for i in range(total_exercices) %}
-        <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
-           class="exercise-dot {% if i == index %}active{% endif %} {% if reponses_status and reponses_status[i] == 'completed' %}completed{% endif %}"
-           title="{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}">
-          {{ i + 1 }}
-        </a>
-      {% endfor %}
+  <!-- Navigation rapide améliorée avec scroll -->
+  <div class="quick-navigation" id="quickNavigation">
+    <div class="quick-nav-header">
+      <h4>
+        <i class="fas fa-map"></i> {{ 'Navigation rapide' if lang == 'fr' else 'Quick Navigation' }}
+      </h4>
+      <button class="close-nav-btn" onclick="closeQuickNavigation()">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
-    <div style="margin-top: 10px; font-size: 0.8rem; color: var(--gray); text-align: center;">
-      <span style="display: inline-flex; align-items: center; gap: 5px; margin-right: 10px;">
-        <span style="display: inline-block; width: 12px; height: 12px; background: var(--light); border-radius: 50%;"></span>
-        {{ 'Non commencé' if lang == 'fr' else 'Not started' }}
-      </span>
-      <span style="display: inline-flex; align-items: center; gap: 5px;">
-        <span style="display: inline-block; width: 12px; height: 12px; background: var(--secondary); border-radius: 50%;"></span>
-        {{ 'Terminé' if lang == 'fr' else 'Completed' }}
-      </span>
+    
+    <div class="exercise-scroll-container">
+      <div class="exercise-grid">
+        {% for i in range(total_exercices) %}
+          <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
+             class="exercise-dot {% if i == index %}active{% endif %} {% if reponses_status and reponses_status[i] == 'completed' %}completed{% endif %}"
+             title="{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}">
+            {{ i + 1 }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <div class="quick-nav-footer">
+      <div class="status-legend">
+        <div class="status-item">
+          <span class="status-color default"></span>
+          <span>{{ 'Non commencé' if lang == 'fr' else 'Not started' }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-color completed"></span>
+          <span>{{ 'Terminé' if lang == 'fr' else 'Completed' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de sélection d'exercice -->
+  <div class="exercise-selector-modal" id="exerciseModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>
+          <i class="fas fa-list-ol"></i>
+          {{ 'Sélectionner un exercice' if lang == 'fr' else 'Select an Exercise' }}
+        </h3>
+        <button class="close-modal" onclick="closeExerciseModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-exercise-grid">
+        {% for i in range(total_exercices) %}
+          <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
+             class="modal-exercise-dot {% if i == index %}active{% endif %} {% if reponses_status and reponses_status[i] == 'completed' %}completed{% endif %}"
+             onclick="closeExerciseModal()">
+            <span class="exercise-number">{{ i + 1 }}</span>
+            <span class="exercise-status">
+              {% if i == index %}
+                {{ 'Actuel' if lang == 'fr' else 'Current' }}
+              {% elif reponses_status and reponses_status[i] == 'completed' %}
+                ✓
+              {% else %}
+                ●
+              {% endif %}
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+      
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeExerciseModal()">
+          <i class="fas fa-times"></i>
+          {{ 'Fermer' if lang == 'fr' else 'Close' }}
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1480,6 +1824,12 @@
             <button type="submit" class="btn" id="submitBtn">
               <i class="fas fa-paper-plane"></i>
               {% if lang == 'fr' %}Soumettre ma réponse{% else %}Submit answer{% endif %}
+            </button>
+            
+            <!-- Bouton pour ouvrir la navigation rapide -->
+            <button type="button" class="btn btn-outline" onclick="openQuickNavigation()">
+              <i class="fas fa-map"></i>
+              {{ 'Voir tous les exercices' if lang == 'fr' else 'View all exercises' }}
             </button>
             
             {% if reponse %}
@@ -1735,7 +2085,7 @@
               <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <!-- Menu de sélection d'exercice -->
                 <div class="exercise-selector">
-                  <button type="button" class="action-btn" onclick="toggleExerciseList()" 
+                  <button type="button" class="action-btn" onclick="openExerciseModal()" 
                           style="background: var(--primary); display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-list"></i>
                     {{ 'Choisir un exercice' if lang == 'fr' else 'Choose Exercise' }}
@@ -1780,6 +2130,11 @@
             <button type="button" class="action-btn secondary" onclick="showForm()">
               <i class="fas fa-edit"></i>
               {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
+            </button>
+            
+            <button type="button" class="action-btn" onclick="openQuickNavigation()">
+              <i class="fas fa-map"></i>
+              {{ 'Navigation rapide' if lang == 'fr' else 'Quick navigation' }}
             </button>
             
             <a href="/lecon/{{ lecon.id }}?username={{ eleve.username }}&lang={{ lang }}" 
@@ -1962,6 +2317,48 @@
           }
         }, 300);
       }, 4000);
+    }
+
+    // Gestion de la navigation rapide
+    function openQuickNavigation() {
+      const quickNav = document.getElementById('quickNavigation');
+      quickNav.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      
+      // Faire défiler jusqu'à l'exercice actuel
+      setTimeout(() => {
+        const activeDot = quickNav.querySelector('.exercise-dot.active');
+        if (activeDot) {
+          activeDot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+
+    function closeQuickNavigation() {
+      const quickNav = document.getElementById('quickNavigation');
+      quickNav.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Gestion du modal de sélection d'exercices
+    function openExerciseModal() {
+      const modal = document.getElementById('exerciseModal');
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      
+      // Faire défiler jusqu'à l'exercice actuel
+      setTimeout(() => {
+        const activeDot = modal.querySelector('.modal-exercise-dot.active');
+        if (activeDot) {
+          activeDot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+
+    function closeExerciseModal() {
+      const modal = document.getElementById('exerciseModal');
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
     }
 
     // Gestion du menu d'exercices
@@ -2257,6 +2654,35 @@
           sympySection.style.opacity = '1';
         }, 300);
       }
+
+      // Fermer la navigation rapide en cliquant en dehors
+      document.addEventListener('click', function(e) {
+        const quickNav = document.getElementById('quickNavigation');
+        if (quickNav.classList.contains('active') && 
+            !quickNav.contains(e.target) && 
+            !e.target.closest('.btn-outline') && 
+            !e.target.closest('.action-btn')) {
+          closeQuickNavigation();
+        }
+      });
+
+      // Fermer le modal en cliquant en dehors
+      document.addEventListener('click', function(e) {
+        const modal = document.getElementById('exerciseModal');
+        if (modal.classList.contains('active') && 
+            !modal.contains(e.target) && 
+            !e.target.closest('.action-btn')) {
+          closeExerciseModal();
+        }
+      });
+
+      // Fermer avec la touche Echap
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closeQuickNavigation();
+          closeExerciseModal();
+        }
+      });
     });
 
     // Réessayer MathJax si le contenu change
