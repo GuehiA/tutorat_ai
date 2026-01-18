@@ -149,7 +149,7 @@
 
         .header {
             text-align: center;
-            margin-bottom: 50px;
+            margin-bottom: 40px;
             margin-top: 20px;
             position: relative;
             z-index: 1;
@@ -571,7 +571,7 @@
             color: var(--success);
         }
 
-        /* BOUTON DE SOUMISSION - CORRIGÉ POUR NE PAS DISPARAÎTRE */
+        /* BOUTON DE SOUMISSION */
         .btn-submit {
             width: 100%;
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -583,7 +583,7 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
-            display: flex !important; /* FORCE l'affichage */
+            display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
@@ -592,8 +592,6 @@
             position: relative;
             overflow: hidden;
             z-index: 1;
-            visibility: visible !important;
-            opacity: 1 !important;
         }
 
         .btn-submit::before {
@@ -1217,26 +1215,24 @@
             </p>
         </div>
 
-        <!-- DESCRIPTION DE LA PLATEFORME -->
+        <!-- SECTION PROMOTIONNELLE POUR LES PLANS -->
         <div class="info-section animated-card" style="animation-delay: 0.1s">
-            <h3><i class="fas fa-brain"></i> {{ 'Intelligent Tutoring Platform' if lang == 'en' else 'Plateforme de Tutorat Intelligent' }}</h3>
+            <h3><i class="fas fa-gift"></i> {{ 'Special Offer - Save up to 37%!' if lang == 'en' else 'Offre Spéciale - Économisez jusqu\'à 37% !' }}</h3>
             {% if lang == 'en' %}
-                <p style="margin-bottom: 20px; color: #475569; line-height: 1.7;">Our AI-powered platform features a virtual teacher that uses <strong>Socratic questioning</strong> to guide students through exercises. When you're stuck, our intelligent assistant helps you discover the answers yourself through thoughtful questioning, just like a real tutor would.</p>
+                <p style="margin-bottom: 20px; color: #475569; line-height: 1.7;">Choose the <strong>Annual Plan</strong> and get <strong>12 months of access</strong> for only <strong>$149.99</strong> (≈$12.50/month). That's <strong>less than $0.42 per school day</strong> for personalized AI tutoring!</p>
                 <ul>
-                    <li>Personalized learning path based on your level</li>
-                    <li>Interactive exercises with step-by-step guidance</li>
-                    <li>Virtual teacher available 24/7 for help</li>
-                    <li>Progress tracking and performance analytics</li>
-                    <li>Adaptive difficulty based on your performance</li>
+                    <li>✓ <strong>37% savings</strong> compared to monthly billing</li>
+                    <li>✓ Full access during summer for review and consolidation</li>
+                    <li>✓ Priority parent support and detailed annual report</li>
+                    <li>✓ Cancel anytime with pro-rated refund</li>
                 </ul>
             {% else %}
-                <p style="margin-bottom: 20px; color: #475569; line-height: 1.7;">Notre plateforme alimentée par IA dispose d'un enseignant virtuel qui utilise le <strong>questionnement socratique</strong> pour guider les élèves dans les exercices. Quand vous êtes bloqué, notre assistant intelligent vous aide à découvrir les réponses par vous-même à travers un questionnement réfléchi, comme le ferait un vrai tuteur.</p>
+                <p style="margin-bottom: 20px; color: #475569; line-height: 1.7;">Choisissez le <strong>Forfait Annuel</strong> et obtenez <strong>12 mois d'accès</strong> pour seulement <strong>149,99 $</strong> (≈12,50 $/mois). C'est <strong>moins de 0,42 $ par jour d'école</strong> pour du tutorat IA personnalisé !</p>
                 <ul>
-                    <li>Parcours d'apprentissage personnalisé selon votre niveau</li>
-                    <li>Exercices interactifs avec guidage étape par étape</li>
-                    <li>Enseignant virtuel disponible 24h/24 pour vous aider</li>
-                    <li>Suivi de progression et analyse des performances</li>
-                    <li>Difficulté adaptative basée sur vos résultats</li>
+                    <li>✓ <strong>37% d'économies</strong> par rapport au mensuel</li>
+                    <li>✓ Accès complet pendant l'été pour révisions et consolidation</li>
+                    <li>✓ Support parent prioritaire et rapport annuel détaillé</li>
+                    <li>✓ Annulez à tout moment avec remboursement au prorata</li>
                 </ul>
             {% endif %}
         </div>
@@ -1266,7 +1262,7 @@
             </p>
         </div>
 
-        <!-- SECTION DE CONNEXION SIMPLIFIÉE (sans admin) -->
+        <!-- SECTION DE CONNEXION SIMPLIFIÉE -->
         <div class="login-section animated-card" style="animation-delay: 0.2s">
             <h4><i class="fas fa-sign-in-alt"></i> {{ 'Already Registered?' if lang == 'en' else 'Déjà Inscrit ?' }}</h4>
             <p style="color: #475569; margin-bottom: 15px; font-size: 16px;">
@@ -1554,7 +1550,11 @@
                 </div>
 
                 <p style="text-align: center; color: #64748b; margin-bottom: 20px; font-size: 16px;" class="animated-card" style="animation-delay: 0.4s">
-                    {{ 'Select the plan that best fits your learning needs. All plans include full platform access.' if lang == 'en' else "Sélectionnez le forfait qui correspond le mieux à vos besoins d'apprentissage. Tous les forfaits incluent l'accès complet à la plateforme." }}
+                    {% if lang == 'en' %}
+                        Select the plan that best fits your learning needs. <strong>All plans include full platform access with our AI virtual teacher.</strong>
+                    {% else %}
+                        Sélectionnez le forfait qui correspond le mieux à vos besoins d'apprentissage. <strong>Tous les forfaits incluent l'accès complet à la plateforme avec notre enseignant virtuel IA.</strong>
+                    {% endif %}
                 </p>
 
                 <!-- TABLEAU COMPARATIF -->
@@ -1599,8 +1599,8 @@
                                 <td class="check">✓</td>
                             </tr>
                             <tr>
-                                <td>{{ 'Progress reports to parent' if lang == 'en' else 'Rapports de progression aux parents' }}</td>
-                                <td class="check">✓</td>
+                                <td>{{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</td>
+                                <td class="cross">✗</td>
                                 <td class="check">✓</td>
                                 <td class="check">✓</td>
                                 <td class="check">✓</td>
@@ -1609,8 +1609,15 @@
                                 <td>{{ 'Monthly savings' if lang == 'en' else 'Économies mensuelles' }}</td>
                                 <td>-</td>
                                 <td>0%</td>
-                                <td>17%</td>
-                                <td>33%</td>
+                                <td>~17%</td>
+                                <td>~37%</td>
+                            </tr>
+                            <tr>
+                                <td>{{ 'Price per month' if lang == 'en' else 'Prix par mois' }}</td>
+                                <td>Free</td>
+                                <td>$19.99</td>
+                                <td>$16.66</td>
+                                <td>$12.50</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1631,7 +1638,7 @@
                     </small>
                 </div>
 
-                <!-- CARTES DES PLANS OPTIMISÉES -->
+                <!-- CARTES DES PLANS OPTIMISÉES - NOUVELLE GRILLE DE PRIX -->
                 <div class="plan-cards">
                     <!-- Essai Gratuit (3 Jours) -->
                     <div class="plan-card trial selected animated-card" style="animation-delay: 0.55s" onclick="selectPlan('trial')" id="trialPlan">
@@ -1652,17 +1659,19 @@
                         </ul>
                     </div>
 
-                    <!-- Mensuel (Populaire) -->
-                    <div class="plan-card monthly popular animated-card" style="animation-delay: 0.6s" onclick="selectPlan('monthly')" id="monthlyPlan">
-                        <div class="plan-badge">{{ 'POPULAR' if lang == 'en' else 'POPULAIRE' }}</div>
+                    <!-- Mensuel -->
+                    <div class="plan-card monthly animated-card" style="animation-delay: 0.6s" onclick="selectPlan('monthly')" id="monthlyPlan">
                         <div class="plan-header">
                             <div class="plan-icon monthly">
                                 <i class="fas fa-calendar-alt"></i>
                             </div>
                             <h3 class="plan-name">{{ 'Monthly' if lang == 'en' else 'Mensuel' }}</h3>
-                            <div class="plan-price monthly">24.99$ CAD</div>
+                            <div class="plan-price monthly">19.99$ CAD</div>
                             <div class="plan-period">{{ 'per month' if lang == 'en' else 'par mois' }}</div>
-                            <div class="price-per-month">{{ '24.99$/month' if lang == 'en' else '24.99$/mois' }}</div>
+                            <div class="price-per-month">{{ '19.99$/month' if lang == 'en' else '19.99$/mois' }}</div>
+                            <div class="plan-savings" style="background: linear-gradient(135deg, #64748b, #94a3b8);">
+                                {{ 'FLEXIBLE' if lang == 'en' else 'FLEXIBLE' }}
+                            </div>
                         </div>
                         <ul class="plan-features">
                             <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</strong></li>
@@ -1671,27 +1680,36 @@
                             <li><i class="fas fa-check feature-included"></i> {{ 'Parent notifications' if lang == 'en' else 'Notifications aux parents' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
                         </ul>
+                        <div style="margin-top: auto; font-size: 13px; color: #64748b; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
+                            <i class="fas fa-info-circle"></i>
+                            {{ 'Less than $1 per day' if lang == 'en' else 'Moins de 1$ par jour' }}
+                        </div>
                     </div>
 
                     <!-- Trimestriel -->
-                    <div class="plan-card quarterly animated-card" style="animation-delay: 0.65s" onclick="selectPlan('quarterly')" id="quarterlyPlan">
+                    <div class="plan-card quarterly popular animated-card" style="animation-delay: 0.65s" onclick="selectPlan('quarterly')" id="quarterlyPlan">
+                        <div class="plan-badge">{{ 'POPULAR' if lang == 'en' else 'POPULAIRE' }}</div>
                         <div class="plan-header">
                             <div class="plan-icon quarterly">
                                 <i class="fas fa-chart-line"></i>
                             </div>
                             <h3 class="plan-name">{{ 'Quarterly' if lang == 'en' else 'Trimestriel' }}</h3>
-                            <div class="plan-price quarterly">62$ CAD</div>
+                            <div class="plan-price quarterly">49.99$ CAD</div>
                             <div class="plan-period">{{ 'per 3 months' if lang == 'en' else 'par 3 mois' }}</div>
                             <div class="plan-savings">{{ 'SAVE 17%' if lang == 'en' else 'ÉCONOMISEZ 17%' }}</div>
-                            <div class="price-per-month">{{ '≈20.67$/month' if lang == 'en' else '≈20.67$/mois' }}</div>
+                            <div class="price-per-month">{{ '≈16.66$/month' if lang == 'en' else '≈16.66$/mois' }}</div>
                         </div>
                         <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Save 4.32$/month' if lang == 'en' else 'Économisez 4.32$/mois' }}</strong></li>
+                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Save 3.33$/month' if lang == 'en' else 'Économisez 3.33$/mois' }}</strong></li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'All monthly features' if lang == 'en' else 'Toutes les fonctionnalités mensuelles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly assessments' if lang == 'en' else 'Évaluations trimestrielles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Parent-teacher meetings' if lang == 'en' else 'Rencontres parent-enseignant' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
                         </ul>
+                        <div style="margin-top: auto; font-size: 13px; color: #64748b; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
+                            <i class="fas fa-graduation-cap"></i>
+                            {{ 'Ideal for a school session' if lang == 'en' else 'Idéal pour une session scolaire' }}
+                        </div>
                     </div>
 
                     <!-- Annuel (Meilleur rapport) -->
@@ -1702,18 +1720,22 @@
                                 <i class="fas fa-crown"></i>
                             </div>
                             <h3 class="plan-name">{{ 'Annual' if lang == 'en' else 'Annuel' }}</h3>
-                            <div class="plan-price annual">200$ CAD</div>
+                            <div class="plan-price annual">149.99$ CAD</div>
                             <div class="plan-period">{{ 'per year' if lang == 'en' else 'par an' }}</div>
-                            <div class="plan-savings">{{ 'SAVE 33%' if lang == 'en' else 'ÉCONOMISEZ 33%' }}</div>
-                            <div class="price-per-month">{{ '≈16.67$/month' if lang == 'en' else '≈16.67$/mois' }}</div>
+                            <div class="plan-savings">{{ 'SAVE 37%' if lang == 'en' else 'ÉCONOMISEZ 37%' }}</div>
+                            <div class="price-per-month">{{ '≈12.50$/month' if lang == 'en' else '≈12.50$/mois' }}</div>
                         </div>
                         <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Only 16.67$/month' if lang == 'en' else 'Seulement 16.67$/mois' }}</strong></li>
+                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Only 12.50$/month' if lang == 'en' else 'Seulement 12.50$/mois' }}</strong></li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'All quarterly features' if lang == 'en' else 'Toutes les fonctionnalités trimestrielles' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Detailed annual report' if lang == 'en' else 'Rapport annuel détaillé' }}</li>
                             <li><i class="fas fa-check feature-included"></i> {{ 'Priority parent support' if lang == 'en' else 'Support parent prioritaire' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
+                            <li><i class="fas fa-check feature-included"></i> {{ 'Access during summer for review' if lang == 'en' else 'Accès pendant l\'été pour révisions' }}</li>
                         </ul>
+                        <div style="margin-top: auto; font-size: 13px; color: #64748b; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
+                            <i class="fas fa-calendar-check"></i>
+                            {{ '12 months access - Best choice' if lang == 'en' else '12 mois d\'accès - Meilleur choix' }}
+                        </div>
                     </div>
                 </div>
 
@@ -1769,9 +1791,9 @@
                     {{ form.accepte_cgu(id="accepte_cgu_checkbox") }}
                     <label for="accepte_cgu_checkbox">
                         {% if lang == 'en' %}
-                        ✓ I confirm that I am at least 16 years old, or have obtained parental consent. I accept the Terms and Conditions and Privacy Policy.
+                        ✓ I confirm that I am at least 16 years old, or have obtained parental consent. I accept the Terms and Conditions and Privacy Policy. I understand that the Annual Plan provides 12 months of continuous access.
                         {% else %}
-                        ✓ Je confirme que j'ai au moins 16 ans, ou que j'ai obtenu le consentement parental. J'accepte les Conditions Générales d'Utilisation et la Politique de Confidentialité.
+                        ✓ Je confirme que j'ai au moins 16 ans, ou que j'ai obtenu le consentement parental. J'accepte les Conditions Générales d'Utilisation et la Politique de Confidentialité. Je comprends que le Forfait Annuel offre 12 mois d'accès continu.
                         {% endif %}
                     </label>
                 </div>
@@ -1800,7 +1822,7 @@
                 </div>
             </div>
 
-            <!-- BOUTON DE SOUMISSION - CORRIGÉ -->
+            <!-- BOUTON DE SOUMISSION -->
             <button type="submit" class="btn-submit animated-card" id="submitButton" style="animation-delay: 0.85s">
                 <i class="fas fa-gift" id="submitIcon"></i>
                 <span id="submitText">
@@ -1866,27 +1888,27 @@
             },
             'monthly': {
                 name: 'Monthly Plan',
-                price: '24.99$ CAD',
+                price: '19.99$ CAD',
                 period: 'per month',
-                buttonText: 'Subscribe to Monthly Plan (24.99$/month)',
+                buttonText: 'Subscribe to Monthly Plan (19.99$/month)',
                 buttonIcon: 'fas fa-calendar-alt',
-                monthlyPrice: '24.99$/month'
+                monthlyPrice: '19.99$/month'
             },
             'quarterly': {
                 name: 'Quarterly Plan',
-                price: '62$ CAD',
+                price: '49.99$ CAD',
                 period: 'per 3 months',
-                buttonText: 'Subscribe to Quarterly Plan (62$/3 months)',
+                buttonText: 'Subscribe to Quarterly Plan (49.99$/3 months)',
                 buttonIcon: 'fas fa-chart-line',
-                monthlyPrice: '20.67$/month'
+                monthlyPrice: '16.66$/month'
             },
             'annual': {
                 name: 'Annual Plan',
-                price: '200$ CAD',
+                price: '149.99$ CAD',
                 period: 'per year',
-                buttonText: 'Subscribe to Annual Plan (200$/year)',
+                buttonText: 'Subscribe to Annual Plan (149.99$/year)',
                 buttonIcon: 'fas fa-crown',
-                monthlyPrice: '16.67$/month'
+                monthlyPrice: '12.50$/month'
             }
         };
 
@@ -1898,19 +1920,19 @@
             },
             'monthly': {
                 name: 'Forfait Mensuel',
-                buttonText: "S'abonner au Forfait Mensuel (24.99$/mois)"
+                buttonText: "S'abonner au Forfait Mensuel (19.99$/mois)"
             },
             'quarterly': {
                 name: 'Forfait Trimestriel',
-                buttonText: "S'abonner au Forfait Trimestriel (62$/3 mois)"
+                buttonText: "S'abonner au Forfait Trimestriel (49.99$/3 mois)"
             },
             'annual': {
                 name: 'Forfait Annuel',
-                buttonText: "S'abonner au Forfait Annuel (200$/an)"
+                buttonText: "S'abonner au Forfait Annuel (149.99$/an)"
             }
         };
 
-        // Gestion de la sélection du plan - CORRIGÉE
+        // Gestion de la sélection du plan
         function selectPlan(planType) {
             console.log(`✅ Plan sélectionné: ${planType}`);
             
@@ -1931,7 +1953,7 @@
                 planTypeInput.value = planType;
             }
             
-            // Mettre à jour le bouton de soumission - CORRECTION
+            // Mettre à jour le bouton de soumission
             updateSubmitButton(planType);
         }
 
@@ -1955,22 +1977,14 @@
             
             if (submitText) {
                 submitText.textContent = plan.buttonText;
-                submitText.style.display = 'inline';
             }
             
             if (submitIcon) {
                 submitIcon.className = plan.buttonIcon;
-                submitIcon.style.display = 'inline-block';
             }
             
-            // FORCER l'affichage du bouton
+            // Animation du bouton
             if (submitButton) {
-                submitButton.style.display = 'flex !important';
-                submitButton.style.visibility = 'visible !important';
-                submitButton.style.opacity = '1 !important';
-                submitButton.style.pointerEvents = 'auto !important';
-                
-                // Animation du bouton
                 submitButton.style.animation = 'none';
                 setTimeout(() => {
                     submitButton.style.animation = 'pulse 0.5s ease';
@@ -2031,14 +2045,6 @@
             
             if (!fromAdmin && adminBackBtn) {
                 adminBackBtn.style.display = 'none';
-            }
-            
-            // FORCER l'affichage initial du bouton
-            const submitButton = document.getElementById('submitButton');
-            if (submitButton) {
-                submitButton.style.display = 'flex';
-                submitButton.style.visibility = 'visible';
-                submitButton.style.opacity = '1';
             }
             
             // Gestion de la soumission du formulaire
@@ -2136,13 +2142,6 @@
                 50% { transform: scale(1.02); }
                 100% { transform: scale(1); }
             }
-            
-            /* FORCER l'affichage du bouton */
-            #submitButton {
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-            }
         `;
         document.head.appendChild(style);
 
@@ -2167,6 +2166,7 @@ Key Points:
 • Stripe handles secure payment processing
 • Realistic cancellation policy (see details)
 • Data protection compliant with GDPR and PIPEDA
+• Annual Plan: 12 months continuous access, summer access included for review
 
 By registering, you accept our full Terms and Conditions available on our website.`
                     : `CONDITIONS GÉNÉRALES D'UTILISATION
@@ -2182,6 +2182,7 @@ Points Clés :
 • Stripe gère le traitement sécurisé des paiements
 • Politique d'annulation réaliste (voir détails)
 • Protection des données conforme au RGPD et PIPEDA
+• Forfait Annuel : 12 mois d'accès continu, accès été inclus pour révisions
 
 En vous inscrivant, vous acceptez nos Conditions Générales complètes disponibles sur notre site web.`;
             } else if (type === 'privacy') {
@@ -2210,14 +2211,18 @@ Nous collectons uniquement les informations nécessaires pour fournir nos servic
 • Monthly Plan: Cancel anytime, no cancellation fees
 • Quarterly/Annual Plans: Pro-rated refund for unused months
 • All cancellations take effect at the end of the current billing cycle
-• To cancel, contact support@tutoratai.com`
+• To cancel, contact support@tutoratai.com
+
+Annual Plan Note: Provides 12 months continuous access. Summer access included for review and consolidation.`
                     : `POLITIQUE D'ANNULATION
 
 • Essai Gratuit : Annulez à tout moment pendant la période d'essai sans frais
 • Forfait Mensuel : Annulez à tout moment, pas de frais d'annulation
 • Forfaits Trimestriels/Annuels : Remboursement au prorata des mois non utilisés
 • Toutes les annulations prennent effet à la fin du cycle de facturation en cours
-• Pour annuler, contactez support@tutoratai.com`;
+• Pour annuler, contactez support@tutoratai.com
+
+Note Forfait Annuel : Offre 12 mois d'accès continu. Accès été inclus pour révisions et consolidation.`;
             } else {
                 title = lang === 'en' ? 'Important Information' : 'Informations Importantes';
                 message = lang === 'en' 

@@ -2931,7 +2931,7 @@ def inscription_eleve():
                 )
                 db.session.add(relation_parent_eleve)
             
-            # Option 1: Essai gratuit (3 jours)
+            # Option 1: Essai gratuit (3 jours) - PAR DÉFAUT
             if payment_option == 'trial':
                 # Utiliser VOTRE méthode existante avec 72h (3 jours)
                 eleve.activer_essai_gratuit(72)  # 72 heures = 3 jours
@@ -2963,32 +2963,38 @@ def inscription_eleve():
                     if not stripe.api_key:
                         raise Exception("Stripe non configuré")
                     
-                    # CONFIGURATION DES PLANS (prix optimisés)
+                    # CONFIGURATION DES PLANS OPTIMISÉS (NOUVEAUX PRIX)
                     plan_config = {
                         'monthly': {
-                            'amount': 2499,  # 24.99 CAD
-                            'description_fr': "Forfait mensuel - Tutorat intelligent avec enseignant virtuel IA - 24.99$/mois",
-                            'description_en': "Monthly plan - Intelligent tutoring with AI virtual teacher - 24.99$/month",
-                            'product_name_fr': "Forfait Mensuel (24.99$/mois)",
-                            'product_name_en': "Monthly Plan (24.99$/month)",
-                            'interval': 'month'
+                            'amount': 1999,  # 19.99 CAD (nouveau prix optimisé)
+                            'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
+                            'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
+                            'product_name_fr': "Forfait Mensuel (19.99$/mois)",
+                            'product_name_en': "Monthly Plan (19.99$/month)",
+                            'interval': 'month',
+                            'features_fr': "• Enseignant virtuel 24/7 • Questionnement socratique • Toutes matières incluses • Suivi de progression • Annulez à tout moment",
+                            'features_en': "• Virtual teacher 24/7 • Socratic questioning • All subjects included • Progress tracking • Cancel anytime"
                         },
                         'quarterly': {
-                            'amount': 6200,  # 62.00 CAD
-                            'description_fr': "Forfait trimestriel - Tutorat intelligent avec enseignant virtuel IA - 62$/3 mois",
-                            'description_en': "Quarterly plan - Intelligent tutoring with AI virtual teacher - 62$/3 months",
-                            'product_name_fr': "Forfait Trimestriel (62$/3 mois)",
-                            'product_name_en': "Quarterly Plan (62$/3 months)",
+                            'amount': 4999,  # 49.99 CAD (nouveau prix optimisé)
+                            'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
+                            'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
+                            'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
+                            'product_name_en': "Quarterly Plan (49.99$/3 months)",
                             'interval': 'month',
-                            'interval_count': 3
+                            'interval_count': 3,
+                            'features_fr': "• Toutes fonctionnalités mensuelles • Support prioritaire • Revues trimestrielles • Feuille de route personnalisée • Économisez 10$/trimestre",
+                            'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap • Save 10$/quarter"
                         },
                         'annual': {
-                            'amount': 20000,  # 200.00 CAD
-                            'description_fr': "Forfait annuel - Tutorat intelligent avec enseignant virtuel IA - 200$/an",
-                            'description_en': "Annual plan - Intelligent tutoring with AI virtual teacher - 200$/year",
-                            'product_name_fr': "Forfait Annuel (200$/an)",
-                            'product_name_en': "Annual Plan (200$/year)",
-                            'interval': 'year'
+                            'amount': 14999,  # 149.99 CAD (nouveau prix optimisé)
+                            'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
+                            'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
+                            'product_name_fr': "Forfait Annuel (149.99$/an)",
+                            'product_name_en': "Annual Plan (149.99$/year)",
+                            'interval': 'year',
+                            'features_fr': "• Toutes fonctionnalités trimestrielles • Support premium • Rapports détaillés • Accès continu 12 mois • Économisez 37% (90$/an)",
+                            'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access • Save 37% (90$/year)"
                         }
                     }
                     
@@ -2998,8 +3004,10 @@ def inscription_eleve():
                     lang = session.get('lang', 'fr')
                     description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
                     product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
+                    features = plan_info[f'features_{lang}'] if f'features_{lang}' in plan_info else plan_info['features_fr']
                     
                     print(f"💰 Paiement Stripe pour {plan_type}: {plan_info['amount']/100}$ CAD")
+                    print(f"📊 Économies: {plan_type} - {plan_info['amount']/100}$")
                     
                     # Configurer le recurring
                     recurring_config = {
@@ -3007,6 +3015,14 @@ def inscription_eleve():
                         'interval_count': plan_info.get('interval_count', 1)
                     }
                     
+                    # Calcul du prix mensuel pour l'affichage Stripe
+                    monthly_price = plan_info['amount'] / 100
+                    if plan_type == 'quarterly':
+                        monthly_price = monthly_price / 3
+                    elif plan_type == 'annual':
+                        monthly_price = monthly_price / 12
+                    
+                    # Créer un produit Stripe avec les détails
                     checkout_session = stripe.checkout.Session.create(
                         payment_method_types=['card'],
                         line_items=[{
@@ -3017,8 +3033,12 @@ def inscription_eleve():
                                     'description': description,
                                     'metadata': {
                                         'plan_type': plan_type,
-                                        'lang': lang
-                                    }
+                                        'lang': lang,
+                                        'monthly_price': f"{monthly_price:.2f}"
+                                    },
+                                    'images': [
+                                        'https://advanceteach.com/static/images/logo.png'
+                                    ] if os.path.exists('static/images/logo.png') else []
                                 },
                                 'unit_amount': plan_info['amount'],
                                 'recurring': recurring_config
@@ -3030,23 +3050,45 @@ def inscription_eleve():
                             'metadata': {
                                 'eleve_id': eleve.id,
                                 'plan_type': plan_type,
-                                'lang': lang
-                            }
+                                'lang': lang,
+                                'monthly_effective_price': f"{monthly_price:.2f}",
+                                'original_price': f"{plan_info['amount']/100:.2f}",
+                                'student_name': eleve.nom_complet
+                            },
+                            'description': description
                         },
                         success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
-                        cancel_url=url_for('inscription_eleve', _external=True) + '?cancel=true',
+                        cancel_url=url_for('inscription_eleve', _external=True) + '?cancel=true&plan_type=' + plan_type,
                         customer_email=form.email.data,
                         metadata={
                             'eleve_id': eleve.id,
                             'plan_type': plan_type,
-                            'lang': lang
+                            'lang': lang,
+                            'student_name': eleve.nom_complet,
+                            'student_email': eleve.email,
+                            'monthly_price': f"{monthly_price:.2f}"
                         },
                         allow_promotion_codes=True,
                         billing_address_collection='required',
-                        phone_number_collection={'enabled': True}
+                        phone_number_collection={'enabled': True},
+                        custom_text={
+                            'submit': {
+                                'message': f"💡 {'Moins de 1$ par jour !' if lang == 'fr' else 'Less than $1 per day!'}" if plan_type == 'monthly' else 
+                                         f"🎓 {'Idéal pour une session scolaire !' if lang == 'fr' else 'Perfect for a school session!'}" if plan_type == 'quarterly' else
+                                         f"🏆 {'Meilleur rapport qualité-prix !' if lang == 'fr' else 'Best value for money!'}"
+                            }
+                        },
+                        discounts=[{
+                            'coupon': 'WELCOME10'  # Coupon de bienvenue optionnel
+                        }] if os.environ.get('STRIPE_WELCOME_COUPON') else []
                     )
                     
                     print(f"🔗 Redirection vers Stripe pour paiement immédiat")
+                    print(f"📝 Plan: {plan_type}, Montant: {plan_info['amount']/100}$ CAD")
+                    
+                    # Logger pour le suivi
+                    print(f"📊 Nouvelle inscription avec paiement: {eleve.email}, Plan: {plan_type}")
+                    
                     return redirect(checkout_session.url)
                     
                 except Exception as e:
@@ -3085,8 +3127,19 @@ def inscription_eleve():
     
     # Afficher un message d'annulation si l'utilisateur revient de Stripe
     if request.args.get('cancel') == 'true':
+        plan_type = request.args.get('plan_type', 'monthly')
         lang = session.get('lang', 'fr')
-        cancel_message = "Paiement annulé. Vous pouvez réessayer ou choisir l'essai gratuit." if lang == 'fr' else "Payment cancelled. You can try again or choose the free trial."
+        
+        # Message personnalisé selon le plan
+        if plan_type == 'monthly':
+            cancel_message = "Paiement mensuel annulé. Essayez l'essai gratuit ou choisissez un autre plan." if lang == 'fr' else "Monthly payment cancelled. Try the free trial or choose another plan."
+        elif plan_type == 'quarterly':
+            cancel_message = "Paiement trimestriel annulé. Le plan trimestriel offre 17% d'économies!" if lang == 'fr' else "Quarterly payment cancelled. The quarterly plan offers 17% savings!"
+        elif plan_type == 'annual':
+            cancel_message = "Paiement annuel annulé. Le plan annuel offre 37% d'économies - réessayez!" if lang == 'fr' else "Annual payment cancelled. The annual plan offers 37% savings - try again!"
+        else:
+            cancel_message = "Paiement annulé. Vous pouvez réessayer ou choisir l'essai gratuit." if lang == 'fr' else "Payment cancelled. You can try again or choose the free trial."
+        
         flash(cancel_message, "warning")
     
     lang = session.get('lang', 'fr')
@@ -3125,32 +3178,47 @@ def creer_session_paiement():
         data = request.get_json()
         plan_type = data.get('plan_type', 'quarterly')  # monthly, quarterly, annual
         
-        # ✅ CONFIGURATION DES PLANS OPTIMISÉE (nouveaux prix)
+        # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX)
         plan_config = {
             'monthly': {
-                'amount': 2499,  # 24.99 CAD (anciennement 50$)
-                'description_fr': "Forfait mensuel - Tutorat intelligent avec enseignant virtuel IA - 24.99$/mois",
-                'description_en': "Monthly plan - Intelligent tutoring with AI virtual teacher - 24.99$/month",
-                'product_name_fr': "Forfait Mensuel (24.99$/mois)",
-                'product_name_en': "Monthly Plan (24.99$/month)",
-                'interval': 'month'
+                'amount': 1999,  # 19.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
+                'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
+                'product_name_fr': "Forfait Mensuel (19.99$/mois)",
+                'product_name_en': "Monthly Plan (19.99$/month)",
+                'interval': 'month',
+                'features_fr': "• Enseignant virtuel 24/7 • Questionnement socratique • Toutes matières • Suivi de progression",
+                'features_en': "• Virtual teacher 24/7 • Socratic questioning • All subjects • Progress tracking",
+                'monthly_effective': 19.99,
+                'savings_percentage': 0,
+                'savings_amount': 0
             },
             'quarterly': {
-                'amount': 6200,  # 62.00 CAD (anciennement 120$)
-                'description_fr': "Forfait trimestriel - Tutorat intelligent avec enseignant virtuel IA - Économisez 17%",
-                'description_en': "Quarterly plan - Intelligent tutoring with AI virtual teacher - Save 17%",
-                'product_name_fr': "Forfait Trimestriel (62$/3 mois)",
-                'product_name_en': "Quarterly Plan (62$/3 months)",
+                'amount': 4999,  # 49.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
+                'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
+                'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
+                'product_name_en': "Quarterly Plan (49.99$/3 months)",
                 'interval': 'month',
-                'interval_count': 3
+                'interval_count': 3,
+                'features_fr': "• Toutes fonctionnalités mensuelles • Support prioritaire • Revues trimestrielles • Feuille de route personnalisée",
+                'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap",
+                'monthly_effective': 16.66,
+                'savings_percentage': 17,
+                'savings_amount': 10.00
             },
             'annual': {
-                'amount': 20000,  # 200.00 CAD (anciennement 450$)
-                'description_fr': "Forfait annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 33%",
-                'description_en': "Annual plan - Intelligent tutoring with AI virtual teacher - Save 33%",
-                'product_name_fr': "Forfait Annuel (200$/an)",
-                'product_name_en': "Annual Plan (200$/year)",
-                'interval': 'year'
+                'amount': 14999,  # 149.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
+                'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
+                'product_name_fr': "Forfait Annuel (149.99$/an)",
+                'product_name_en': "Annual Plan (149.99$/year)",
+                'interval': 'year',
+                'features_fr': "• Toutes fonctionnalités trimestrielles • Support premium • Rapports détaillés • Accès continu 12 mois",
+                'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access",
+                'monthly_effective': 12.50,
+                'savings_percentage': 37,
+                'savings_amount': 89.89
             }
         }
         
@@ -3164,6 +3232,7 @@ def creer_session_paiement():
         # Sélectionner les textes selon la langue
         product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
         description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
+        features = plan_info[f'features_{lang}'] if f'features_{lang}' in plan_info else plan_info['features_fr']
         
         # Configurer le recurring (spécial pour quarterly)
         recurring_config = {
@@ -3178,7 +3247,23 @@ def creer_session_paiement():
             db.session.commit()
             print(f"✅ Essai gratuit de 3 jours activé pour {eleve.email}")
         
-        # Créer une session de paiement Stripe
+        # Calcul du prix par jour pour l'affichage
+        price_per_day = 0
+        if plan_type == 'monthly':
+            price_per_day = plan_info['monthly_effective'] / 30
+        elif plan_type == 'annual':
+            price_per_day = plan_info['monthly_effective'] / 30  # Approximation
+        
+        # Créer un message personnalisé selon le plan
+        custom_message = ""
+        if plan_type == 'monthly':
+            custom_message = f"{'Moins de 1$ par jour !' if lang == 'fr' else 'Less than $1 per day!'}"
+        elif plan_type == 'quarterly':
+            custom_message = f"{'Économisez 10$/trimestre !' if lang == 'fr' else 'Save $10/quarter!'}"
+        elif plan_type == 'annual':
+            custom_message = f"{'Économisez 90$/an !' if lang == 'fr' else 'Save $90/year!'}"
+        
+        # Créer une session de paiement Stripe optimisée
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -3189,8 +3274,14 @@ def creer_session_paiement():
                         'description': description,
                         'metadata': {
                             'plan_type': plan_type,
-                            'lang': lang
-                        }
+                            'lang': lang,
+                            'monthly_price': f"{plan_info['monthly_effective']:.2f}",
+                            'savings_percentage': plan_info['savings_percentage'],
+                            'features': features[:100]  # Limité à 100 caractères
+                        },
+                        'images': [
+                            'https://advanceteach.com/static/images/logo.png'
+                        ] if os.path.exists('static/images/logo.png') else []
                     },
                     'unit_amount': plan_info['amount'],
                     'recurring': recurring_config
@@ -3202,24 +3293,63 @@ def creer_session_paiement():
                 'metadata': {
                     'eleve_id': eleve.id,
                     'plan_type': plan_type,
-                    'lang': lang
-                }
+                    'lang': lang,
+                    'student_name': eleve.nom_complet,
+                    'student_email': eleve.email,
+                    'monthly_effective_price': f"{plan_info['monthly_effective']:.2f}",
+                    'savings_amount': f"{plan_info['savings_amount']:.2f}",
+                    'savings_percentage': plan_info['savings_percentage'],
+                    'price_per_day': f"{price_per_day:.2f}"
+                },
+                'description': description,
+                'trial_period_days': 0  # Pas d'essai supplémentaire
             },
             success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
-            cancel_url=url_for('upgrade_options', _external=True) + '?cancel=true',
+            cancel_url=url_for('upgrade_options', _external=True) + f'?cancel=true&plan_type={plan_type}',
             customer_email=eleve.email,
             metadata={
                 'eleve_id': eleve.id,
                 'plan_type': plan_type,
                 'lang': lang,
-                'type': f'abonnement_{plan_type}'
+                'type': f'abonnement_{plan_type}',
+                'student_name': eleve.nom_complet,
+                'student_email': eleve.email,
+                'monthly_price': f"{plan_info['monthly_effective']:.2f}",
+                'savings_percentage': plan_info['savings_percentage']
             },
             allow_promotion_codes=True,
             billing_address_collection='required',
-            phone_number_collection={'enabled': True}
+            phone_number_collection={'enabled': True},
+            custom_text={
+                'submit': {
+                    'message': custom_message
+                },
+                'terms_of_service_acceptance': {
+                    'message': f"{'✅ En vous abonnant, vous acceptez nos conditions générales.' if lang == 'fr' else '✅ By subscribing, you accept our terms and conditions.'}"
+                }
+            },
+            discounts=[{
+                'coupon': 'WELCOME10'  # Coupon de bienvenue optionnel
+            }] if os.environ.get('STRIPE_WELCOME_COUPON') else [],
+            customer_creation='always',  # Toujours créer un client
+            invoice_creation={'enabled': True},  # Créer des factures
+            payment_intent_data={
+                'metadata': {
+                    'eleve_id': eleve.id,
+                    'plan_type': plan_type
+                }
+            },
+            # Expire la session après 30 minutes
+            expires_at=int(datetime.now().timestamp()) + 1800
         )
         
-        # Retourner l'URL de la session Stripe
+        # Log pour suivi
+        print(f"🎯 Session Stripe créée pour {eleve.email}")
+        print(f"📊 Plan: {plan_type}, Montant: {plan_info['amount']/100:.2f}$ CAD")
+        print(f"💰 Prix mensuel effectif: {plan_info['monthly_effective']:.2f}$/mois")
+        print(f"🎁 Économies: {plan_info['savings_percentage']}% ({plan_info['savings_amount']:.2f}$)")
+        
+        # Retourner l'URL de la session Stripe avec toutes les infos
         return jsonify({
             "session_id": checkout_session.id,
             "session_url": checkout_session.url,
@@ -3227,8 +3357,17 @@ def creer_session_paiement():
             "amount": plan_info['amount'],
             "amount_display": f"${plan_info['amount']/100:.2f}",
             "currency": "CAD",
+            "monthly_effective": plan_info['monthly_effective'],
+            "savings_percentage": plan_info['savings_percentage'],
+            "savings_amount": plan_info['savings_amount'],
+            "price_per_day": price_per_day,
             "essai_actif": eleve.est_en_essai_gratuit(),
-            "heures_restantes_essai": eleve.heures_restantes_essai() if eleve.est_en_essai_gratuit() else 0
+            "heures_restantes_essai": eleve.heures_restantes_essai() if eleve.est_en_essai_gratuit() else 0,
+            "student": {
+                "name": eleve.nom_complet,
+                "email": eleve.email,
+                "lang": lang
+            }
         })
         
     except Exception as e:
@@ -3247,7 +3386,9 @@ def paiement_direct():
         return redirect(url_for("login_eleve"))
     
     plan_type = request.args.get("type", "quarterly")
-    print(f"📋 Paiement direct - Plan demandé: {plan_type}")
+    amount_param = request.args.get("amount", None)
+    
+    print(f"📋 Paiement direct - Plan demandé: {plan_type}, Montant: {amount_param}")
     
     # Vérifier si le type de plan est valide
     valid_plans = ['monthly', 'quarterly', 'annual']
@@ -3255,34 +3396,61 @@ def paiement_direct():
         plan_type = 'quarterly'  # Fallback au plan trimestriel
     
     try:
-        # CONFIGURATION DES PLANS OPTIMISÉE
+        # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX)
         plan_config = {
             'monthly': {
-                'amount': 2499,  # 24.99 CAD
-                'description_fr': "Forfait mensuel - Tutorat intelligent avec enseignant virtuel IA",
-                'description_en': "Monthly plan - Intelligent tutoring with AI virtual teacher",
-                'product_name_fr': "Forfait Mensuel (24.99$/mois)",
-                'product_name_en': "Monthly Plan (24.99$/month)",
-                'interval': 'month'
+                'amount': 1999,  # 19.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
+                'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
+                'product_name_fr': "Forfait Mensuel (19.99$/mois)",
+                'product_name_en': "Monthly Plan (19.99$/month)",
+                'interval': 'month',
+                'features_fr': "• Enseignant virtuel 24/7 • Questionnement socratique • Toutes matières • Suivi de progression",
+                'features_en': "• Virtual teacher 24/7 • Socratic questioning • All subjects • Progress tracking",
+                'monthly_effective': 19.99,
+                'savings_percentage': 0,
+                'savings_amount': 0,
+                'price_per_day': 0.67  # 19.99 / 30
             },
             'quarterly': {
-                'amount': 6200,  # 62.00 CAD
-                'description_fr': "Forfait trimestriel - Tutorat intelligent avec enseignant virtuel IA - Économisez 17%",
-                'description_en': "Quarterly plan - Intelligent tutoring with AI virtual teacher - Save 17%",
-                'product_name_fr': "Forfait Trimestriel (62$/3 mois)",
-                'product_name_en': "Quarterly Plan (62$/3 months)",
+                'amount': 4999,  # 49.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
+                'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
+                'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
+                'product_name_en': "Quarterly Plan (49.99$/3 months)",
                 'interval': 'month',
-                'interval_count': 3
+                'interval_count': 3,
+                'features_fr': "• Toutes fonctionnalités mensuelles • Support prioritaire • Revues trimestrielles • Feuille de route personnalisée",
+                'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap",
+                'monthly_effective': 16.66,
+                'savings_percentage': 17,
+                'savings_amount': 10.00,
+                'price_per_day': 0.56  # 16.66 / 30
             },
             'annual': {
-                'amount': 20000,  # 200.00 CAD
-                'description_fr': "Forfait annuel - Tutorat intelligent avec enseignant virtuel IA - Économisez 33%",
-                'description_en': "Annual plan - Intelligent tutoring with AI virtual teacher - Save 33%",
-                'product_name_fr': "Forfait Annuel (200$/an)",
-                'product_name_en': "Annual Plan (200$/year)",
-                'interval': 'year'
+                'amount': 14999,  # 149.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
+                'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
+                'product_name_fr': "Forfait Annuel (149.99$/an)",
+                'product_name_en': "Annual Plan (149.99$/year)",
+                'interval': 'year',
+                'features_fr': "• Toutes fonctionnalités trimestrielles • Support premium • Rapports détaillés • Accès continu 12 mois",
+                'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access",
+                'monthly_effective': 12.50,
+                'savings_percentage': 37,
+                'savings_amount': 89.89,
+                'price_per_day': 0.42  # 12.50 / 30
             }
         }
+        
+        # Vérifier si un montant personnalisé est passé dans l'URL (pour compatibilité)
+        if amount_param:
+            try:
+                custom_amount = int(float(amount_param) * 100)
+                print(f"💰 Montant personnalisé détecté: {custom_amount/100}$ CAD")
+                plan_config[plan_type]['amount'] = custom_amount
+            except ValueError:
+                print(f"⚠️ Montant invalide: {amount_param}, utilisation du prix standard")
         
         plan_info = plan_config[plan_type]
         lang = session.get("lang", "fr")
@@ -3290,8 +3458,11 @@ def paiement_direct():
         # Sélectionner les textes selon la langue
         product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
         description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
+        features = plan_info[f'features_{lang}'] if f'features_{lang}' in plan_info else plan_info['features_fr']
         
         print(f"💰 Paiement direct - Montant pour {plan_type}: {plan_info['amount']/100}$ CAD")
+        print(f"📊 Prix mensuel effectif: {plan_info['monthly_effective']}$/mois")
+        print(f"🎁 Économies: {plan_info['savings_percentage']}%")
         
         # Configurer le recurring (spécial pour quarterly)
         recurring_config = {
@@ -3299,7 +3470,20 @@ def paiement_direct():
             'interval_count': plan_info.get('interval_count', 1)
         }
         
-        # Créer une session de paiement Stripe
+        # Créer un message personnalisé selon le plan
+        custom_message = ""
+        if plan_type == 'monthly':
+            custom_message = f"{'Moins de 1$ par jour !' if lang == 'fr' else 'Less than $1 per day!'}"
+        elif plan_type == 'quarterly':
+            custom_message = f"{'Économisez 10$/trimestre !' if lang == 'fr' else 'Save $10/quarter!'}"
+        elif plan_type == 'annual':
+            custom_message = f"{'Économisez 90$/an !' if lang == 'fr' else 'Save $90/year!'}"
+        
+        # Vérifier si l'utilisateur est en essai gratuit
+        essai_actif = eleve.est_en_essai_gratuit()
+        heures_restantes = eleve.heures_restantes_essai() if essai_actif else 0
+        
+        # Créer une session de paiement Stripe optimisée
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -3310,8 +3494,14 @@ def paiement_direct():
                         'description': description,
                         'metadata': {
                             'plan_type': plan_type,
-                            'lang': lang
-                        }
+                            'lang': lang,
+                            'monthly_price': f"{plan_info['monthly_effective']:.2f}",
+                            'savings_percentage': plan_info['savings_percentage'],
+                            'price_per_day': f"{plan_info['price_per_day']:.2f}"
+                        },
+                        'images': [
+                            'https://advanceteach.com/static/images/logo.png'
+                        ] if os.path.exists('static/images/logo.png') else []
                     },
                     'unit_amount': plan_info['amount'],
                     'recurring': recurring_config
@@ -3323,25 +3513,81 @@ def paiement_direct():
                 'metadata': {
                     'eleve_id': eleve.id,
                     'plan_type': plan_type,
-                    'lang': lang
-                }
+                    'lang': lang,
+                    'student_name': eleve.nom_complet,
+                    'student_email': eleve.email,
+                    'monthly_effective_price': f"{plan_info['monthly_effective']:.2f}",
+                    'savings_amount': f"{plan_info['savings_amount']:.2f}",
+                    'savings_percentage': plan_info['savings_percentage'],
+                    'price_per_day': f"{plan_info['price_per_day']:.2f}",
+                    'essai_actif': str(essai_actif),
+                    'heures_restantes_essai': str(heures_restantes)
+                },
+                'description': description
             },
             success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
-            cancel_url=url_for('upgrade_options', _external=True) + '?cancel=true',
+            cancel_url=url_for('upgrade_options', _external=True) + f'?cancel=true&plan_type={plan_type}',
             customer_email=eleve.email,
             metadata={
                 'eleve_id': eleve.id,
                 'plan_type': plan_type,
-                'lang': lang
+                'lang': lang,
+                'student_name': eleve.nom_complet,
+                'student_email': eleve.email,
+                'monthly_price': f"{plan_info['monthly_effective']:.2f}",
+                'savings_percentage': plan_info['savings_percentage'],
+                'amount_paid': f"{plan_info['amount']/100:.2f}",
+                'trial_active': str(essai_actif),
+                'trial_hours_left': str(heures_restantes)
             },
             allow_promotion_codes=True,
             billing_address_collection='required',
-            phone_number_collection={'enabled': True}
+            phone_number_collection={'enabled': True},
+            custom_text={
+                'submit': {
+                    'message': custom_message
+                },
+                'terms_of_service_acceptance': {
+                    'message': f"{'✅ En vous abonnant, vous acceptez nos conditions générales.' if lang == 'fr' else '✅ By subscribing, you accept our terms and conditions.'}"
+                }
+            },
+            discounts=[{
+                'coupon': 'WELCOME10'  # Coupon de bienvenue optionnel
+            }] if os.environ.get('STRIPE_WELCOME_COUPON') else [],
+            customer_creation='always',
+            invoice_creation={'enabled': True},
+            payment_intent_data={
+                'metadata': {
+                    'eleve_id': eleve.id,
+                    'plan_type': plan_type,
+                    'student_name': eleve.nom_complet
+                }
+            },
+            # Expire la session après 30 minutes
+            expires_at=int(datetime.now().timestamp()) + 1800
         )
+        
+        # Log détaillé pour le suivi
+        print(f"🎯 Paiement direct créé pour {eleve.email}")
+        print(f"📊 Plan: {plan_type}")
+        print(f"💰 Montant total: {plan_info['amount']/100:.2f}$ CAD")
+        print(f"📈 Prix mensuel effectif: {plan_info['monthly_effective']:.2f}$/mois")
+        print(f"🎁 Économies: {plan_info['savings_percentage']}% ({plan_info['savings_amount']:.2f}$)")
+        print(f"⏰ Prix par jour: {plan_info['price_per_day']:.2f}$/jour")
+        print(f"🔗 Session Stripe: {checkout_session.id}")
         
         # Redirection directe vers Stripe
         return redirect(checkout_session.url)
         
+    except stripe.error.StripeError as e:
+        print(f"❌ Erreur Stripe: {e.user_message if hasattr(e, 'user_message') else e}")
+        import traceback
+        traceback.print_exc()
+        
+        error_msg = "Erreur de paiement Stripe" if session.get('lang', 'fr') == 'fr' else "Stripe payment error"
+        flash(error_msg, "error")
+        return redirect(url_for('upgrade_options'))
+    
     except Exception as e:
         print(f"❌ Erreur paiement direct: {e}")
         import traceback
@@ -3430,7 +3676,9 @@ def paiement_success():
                 if eleve.statut_paiement == "paye" and eleve.date_fin_abonnement:
                     if datetime.utcnow() < eleve.date_fin_abonnement:
                         # L'utilisateur a déjà un abonnement actif
-                        flash("✅ Votre abonnement est déjà actif !", "success")
+                        lang = session.get('lang', 'fr')
+                        message = "✅ Votre abonnement est déjà actif !" if lang == 'fr' else "✅ Your subscription is already active!"
+                        flash(message, "success")
                         return redirect(url_for('dashboard_eleve'))
                 
                 # Déterminer la durée de l'abonnement selon le plan
@@ -3454,56 +3702,169 @@ def paiement_success():
                 eleve.preferences_notifications = eleve.preferences_notifications or {}
                 eleve.preferences_notifications['plan_type'] = plan_type
                 
+                # ✅ Stocker les détails du plan payé
+                eleve.preferences_notifications['paid_plan_details'] = {
+                    'plan_type': plan_type,
+                    'payment_date': datetime.utcnow().isoformat(),
+                    'stripe_session_id': session_id,
+                    'stripe_customer_id': stripe_session.get('customer'),
+                    'subscription_id': stripe_session.get('subscription')
+                }
+                
                 # Stocker le customer ID Stripe
                 eleve.stripe_customer_id = stripe_session.get('customer')
                 
                 # ✅ AJOUTER : marquer l'essai comme terminé si applicable
                 if eleve.statut_essai == 'actif' and eleve.est_en_essai_gratuit():
                     eleve.statut_essai = 'payant'
+                    eleve.statut_paiement = 'paye'
+                
+                # ✅ Récupérer le montant payé depuis Stripe pour référence
+                try:
+                    # Essayer de récupérer le montant depuis l'Invoice ou la Session
+                    if stripe_session.get('invoice'):
+                        invoice = stripe.Invoice.retrieve(stripe_session.invoice)
+                        amount_paid = invoice.amount_paid / 100  # Convertir en dollars
+                    else:
+                        amount_paid = stripe_session.amount_total / 100
+                    
+                    eleve.preferences_notifications['paid_amount'] = amount_paid
+                    
+                except Exception as invoice_error:
+                    print(f"⚠️ Impossible de récupérer le montant payé: {invoice_error}")
+                    # Utiliser les prix standards comme référence
+                    standard_prices = {
+                        'monthly': 19.99,
+                        'quarterly': 49.99,
+                        'annual': 149.99
+                    }
+                    amount_paid = standard_prices.get(plan_type, 49.99)
+                    eleve.preferences_notifications['paid_amount'] = amount_paid
                 
                 db.session.commit()
                 
-                # Connexion automatique si pas déjà connecté
+                # ✅ Connexion automatique si pas déjà connecté
                 if 'eleve_id' not in session:
                     session['eleve_id'] = eleve.id
                     session['eleve_username'] = eleve.username
                     session['eleve_nom_complet'] = eleve.nom_complet
                     session['role'] = 'élève'
                 
-                # Messages de succès selon la langue
+                # ✅ LOG pour suivi des paiements
+                print(f"🎉 PAIEMENT SUCCÈS: {eleve.email}")
+                print(f"📊 Plan: {plan_type}")
+                print(f"💰 Montant: {amount_paid}$ CAD")
+                print(f"📅 Durée: {duration_days} jours")
+                print(f"👤 Customer ID: {stripe_session.get('customer')}")
+                print(f"🔗 Session ID: {session_id}")
+                
+                # ✅ Messages de succès OPTIMISÉS selon la langue et les nouveaux prix
                 lang = session.get('lang', 'fr')
                 success_messages = {
                     'monthly': {
-                        'fr': "✅ Paiement confirmé ! Votre abonnement mensuel (24.99$/mois) est activé.",
-                        'en': "✅ Payment confirmed! Your monthly subscription (24.99$/month) is activated."
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement mensuel est activé. {amount_paid:.2f}$ CAD / mois",
+                        'en': f"✅ Payment confirmed! Your monthly subscription is activated. {amount_paid:.2f}$ CAD / month"
                     },
                     'quarterly': {
-                        'fr': "✅ Paiement confirmé ! Votre abonnement trimestriel (62$/3 mois) est activé pour 3 mois.",
-                        'en': "✅ Payment confirmed! Your quarterly subscription (62$/3 months) is activated for 3 months."
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement trimestriel est activé pour 3 mois. {amount_paid:.2f}$ CAD (≈ 16.66$/mois) - Économies réalisées !",
+                        'en': f"✅ Payment confirmed! Your quarterly subscription is activated for 3 months. {amount_paid:.2f}$ CAD (≈ 16.66$/month) - Savings achieved!"
                     },
                     'annual': {
-                        'fr': "✅ Paiement confirmé ! Votre abonnement annuel (200$/an) est activé pour 1 an.",
-                        'en': "✅ Payment confirmed! Your annual subscription (200$/year) is activated for 1 year."
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement annuel est activé pour 1 an. {amount_paid:.2f}$ CAD (≈ 12.50$/mois) - Vous économisez 37% !",
+                        'en': f"✅ Payment confirmed! Your annual subscription is activated for 1 year. {amount_paid:.2f}$ CAD (≈ 12.50$/month) - You save 37%!"
                     }
                 }
                 
                 message = success_messages.get(plan_type, success_messages['quarterly']).get(lang, success_messages['quarterly']['fr'])
                 flash(message, "success")
                 
-                return redirect(url_for('dashboard_eleve'))
+                # ✅ Envoyer un email de confirmation si configuré
+                try:
+                    if os.environ.get('SEND_CONFIRMATION_EMAIL', 'false').lower() == 'true':
+                        # Construire l'email de confirmation
+                        subject_fr = f"Confirmation de votre abonnement {plan_type} - TutoratAI"
+                        subject_en = f"Your {plan_type} subscription confirmation - TutoratAI"
+                        subject = subject_fr if lang == 'fr' else subject_en
+                        
+                        # Construire le corps du message
+                        body_fr = f"""
+                        Bonjour {eleve.nom_complet},
+                        
+                        Votre paiement a été confirmé avec succès !
+                        
+                        Détails de votre abonnement :
+                        • Plan : {plan_type}
+                        • Montant : {amount_paid:.2f}$ CAD
+                        • Durée : {duration_days} jours
+                        • Statut : Actif
+                        • Prochain renouvellement : {eleve.date_fin_abonnement.strftime('%d/%m/%Y') if eleve.date_fin_abonnement else 'N/A'}
+                        
+                        Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme.
+                        
+                        Merci pour votre confiance !
+                        L'équipe TutoratAI
+                        """
+                        
+                        body_en = f"""
+                        Hello {eleve.nom_complet},
+                        
+                        Your payment has been successfully confirmed!
+                        
+                        Subscription details:
+                        • Plan: {plan_type}
+                        • Amount: {amount_paid:.2f}$ CAD
+                        • Duration: {duration_days} days
+                        • Status: Active
+                        • Next renewal: {eleve.date_fin_abonnement.strftime('%Y-%m-%d') if eleve.date_fin_abonnement else 'N/A'}
+                        
+                        You can now access all platform features.
+                        
+                        Thank you for your trust!
+                        The TutoratAI Team
+                        """
+                        
+                        body = body_fr if lang == 'fr' else body_en
+                        
+                        # Ici vous intégreriez votre système d'envoi d'emails
+                        # send_email(eleve.email, subject, body)
+                        print(f"📧 Email de confirmation prêt pour {eleve.email}")
+                        
+                except Exception as email_error:
+                    print(f"⚠️ Erreur préparation email: {email_error}")
+                
+                # ✅ Rediriger vers le dashboard avec un paramètre de succès
+                return redirect(url_for('dashboard_eleve') + '?payment_success=true&plan=' + plan_type)
+                
             else:
-                flash("Élève non trouvé", "error")
+                lang = session.get('lang', 'fr')
+                error_msg = "Élève non trouvé" if lang == 'fr' else "Student not found"
+                flash(error_msg, "error")
+                return redirect(url_for('login_eleve'))
+                
         else:
-            flash("Paiement non confirmé", "error")
+            lang = session.get('lang', 'fr')
+            error_msg = "Paiement non confirmé" if lang == 'fr' else "Payment not confirmed"
+            flash(error_msg, "warning")
             
+            # ✅ Rediriger vers la page d'upgrade avec le type de plan pour réessayer
+            return redirect(url_for('upgrade_options') + f'?plan={plan_type}&payment_pending=true')
+            
+    except stripe.error.StripeError as e:
+        print(f"❌ Erreur Stripe lors de la confirmation: {e}")
+        lang = session.get('lang', 'fr')
+        error_msg = "Erreur de vérification du paiement" if lang == 'fr' else "Payment verification error"
+        flash(error_msg, "error")
+        
     except Exception as e:
         print(f"❌ Erreur confirmation paiement: {e}")
         import traceback
         traceback.print_exc()
         
-        error_msg = "Erreur lors de la confirmation du paiement" if session.get('lang', 'fr') == 'fr' else "Error confirming payment"
+        lang = session.get('lang', 'fr')
+        error_msg = "Erreur lors de la confirmation du paiement" if lang == 'fr' else "Error confirming payment"
         flash(error_msg, "error")
     
+    # Fallback redirection
     return redirect(url_for('upgrade_options'))
 
 @app.route("/paiement-cancel")
