@@ -30,6 +30,7 @@
             --quarterly: #8b5cf6;
             --annual: #f59e0b;
             --parent: #8b5cf6;
+            --teacher: #ec4899;
             --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             --hover-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
         }
@@ -240,6 +241,11 @@
             background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.1));
         }
 
+        .teacher-section .section-header i {
+            color: var(--teacher);
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(244, 114, 182, 0.1));
+        }
+
         .section-header h3 {
             color: var(--dark);
             font-size: 22px;
@@ -289,6 +295,11 @@
         .parent-section .form-control:focus {
             border-color: var(--parent);
             box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
+        .teacher-section .form-control:focus {
+            border-color: var(--teacher);
+            box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.1);
         }
 
         .form-row {
@@ -571,7 +582,7 @@
             color: var(--success);
         }
 
-        /* BOUTON DE SOUMISSION - CORRECTION IMPORTANTE */
+        /* BOUTON DE SOUMISSION */
         .btn-submit-container {
             margin-top: 40px;
             position: relative;
@@ -985,6 +996,29 @@
             margin-right: 10px;
         }
 
+        /* SECTION ENSEIGNANT - STYLE SPÉCIAL */
+        .teacher-section {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.05), rgba(244, 114, 182, 0.05));
+            border-color: rgba(236, 72, 153, 0.2);
+        }
+
+        .teacher-section:hover {
+            border-color: var(--teacher);
+        }
+
+        .teacher-info {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(244, 114, 182, 0.1));
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid var(--teacher);
+        }
+
+        .teacher-info i {
+            color: var(--teacher);
+            margin-right: 10px;
+        }
+
         /* TOGGLE SWITCH */
         .toggle-switch {
             display: flex;
@@ -1006,6 +1040,15 @@
         .toggle-switch.active {
             background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(167, 139, 250, 0.05));
             border-color: var(--parent);
+        }
+
+        .teacher-toggle:hover {
+            border-color: var(--teacher);
+        }
+
+        .teacher-toggle.active {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.05), rgba(244, 114, 182, 0.05));
+            border-color: var(--teacher);
         }
 
         .toggle-switch label {
@@ -1056,8 +1099,12 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        .parent-switch input:checked + .slider {
             background-color: var(--parent);
+        }
+
+        .teacher-switch input:checked + .slider {
+            background-color: var(--teacher);
         }
 
         input:checked + .slider:before {
@@ -1407,6 +1454,68 @@
                 </div>
             </div>
 
+            <!-- SECTION ENSEIGNANT TUTEUR (OPTIONNEL) -->
+            <div class="form-section teacher-section animated-card" style="animation-delay: 0.27s" id="teacherSection">
+                <div class="section-header">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <h3>{{ 'Tutor Teacher (Optional)' if lang == 'en' else 'Enseignant Tuteur (Optionnel)' }}</h3>
+                </div>
+
+                <!-- Information pour l'enseignant -->
+                <div class="teacher-info">
+                    <p>
+                        <i class="fas fa-info-circle"></i>
+                        {% if lang == 'en' %}
+                            <strong>Optional:</strong> You can choose a specific teacher as your tutor. If you don't have a preference, leave this section empty and the system will assign you to the appropriate teacher.
+                        {% else %}
+                            <strong>Optionnel :</strong> Vous pouvez choisir un enseignant spécifique comme tuteur. Si vous n'avez pas de préférence, laissez cette section vide et le système vous assignera à l'enseignant approprié.
+                        {% endif %}
+                    </p>
+                </div>
+
+                <!-- Toggle pour activer/désactiver l'enseignant -->
+                <div class="toggle-switch teacher-toggle" id="teacherToggle">
+                    <label for="include_teacher">
+                        <i class="fas fa-user-tie"></i>
+                        {% if lang == 'en' %}
+                            Specify a tutor teacher
+                        {% else %}
+                            Spécifier un enseignant tuteur
+                        {% endif %}
+                    </label>
+                    <div class="switch teacher-switch">
+                        <input type="checkbox" id="include_teacher" name="include_teacher">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+
+                <!-- Champ pour l'email de l'enseignant (affiché uniquement si activé) -->
+                <div id="teacherFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="teacher_email">
+                            <i class="fas fa-envelope"></i>
+                            {{ 'Teacher Email (Login Email)' if lang == 'en' else 'Email de l\'Enseignant (Email de connexion)' }}
+                        </label>
+                        <input type="email" 
+                               class="form-control" 
+                               id="teacher_email" 
+                               name="teacher_email" 
+                               placeholder="teacher@example.com"
+                               value="{{ request.form.get('teacher_email', '') }}"
+                               pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$">
+                        <small style="color: #64748b; margin-top: 5px; display: block;">
+                            <i class="fas fa-info-circle"></i>
+                            {% if lang == 'en' %}
+                                Enter the exact login email of your tutor teacher. This email must match the teacher's registered account.
+                            {% else %}
+                                Entrez l'email exact de connexion de votre enseignant tuteur. Cet email doit correspondre au compte enregistré de l'enseignant.
+                            {% endif %}
+                        </small>
+                        <div id="teacherValidation" style="margin-top: 8px;"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- SECTION INFORMATIONS PARENT/TUTEUR -->
             <div class="form-section parent-section animated-card" style="animation-delay: 0.3s" id="parentSection">
                 <div class="section-header">
@@ -1436,7 +1545,7 @@
                             Inclure les informations parent/tuteur
                         {% endif %}
                     </label>
-                    <div class="switch">
+                    <div class="switch parent-switch">
                         <input type="checkbox" id="include_parent" name="include_parent" checked>
                         <span class="slider"></span>
                     </div>
@@ -1562,7 +1671,7 @@
                     {% endif %}
                 </p>
 
-                <!-- TABLEAU COMPARATIF -->
+                <!-- TABLEAU COMPARATIF - MISES À JOUR DES PRIX -->
                 <div style="overflow-x: auto; margin-bottom: 40px;" class="animated-card" style="animation-delay: 0.45s">
                     <table class="comparison-table">
                         <thead>
@@ -1664,7 +1773,7 @@
                         </ul>
                     </div>
 
-                    <!-- Mensuel -->
+                    <!-- Mensuel - MIS À JOUR À 19.99$ -->
                     <div class="plan-card monthly animated-card" style="animation-delay: 0.6s" onclick="selectPlan('monthly')" id="monthlyPlan">
                         <div class="plan-header">
                             <div class="plan-icon monthly">
@@ -1687,11 +1796,11 @@
                         </ul>
                         <div style="margin-top: auto; font-size: 13px; color: #64748b; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
                             <i class="fas fa-info-circle"></i>
-                            {{ 'Less than $1 per day' if lang == 'en' else 'Moins de 1$ par jour' }}
+                            {{ 'Less than $0.67 per day' if lang == 'en' else 'Moins de 0,67$ par jour' }}
                         </div>
                     </div>
 
-                    <!-- Trimestriel -->
+                    <!-- Trimestriel - MIS À JOUR À 49.99$ -->
                     <div class="plan-card quarterly popular animated-card" style="animation-delay: 0.65s" onclick="selectPlan('quarterly')" id="quarterlyPlan">
                         <div class="plan-badge">{{ 'POPULAR' if lang == 'en' else 'POPULAIRE' }}</div>
                         <div class="plan-header">
@@ -1717,7 +1826,7 @@
                         </div>
                     </div>
 
-                    <!-- Annuel (Meilleur rapport) -->
+                    <!-- Annuel - MIS À JOUR À 149.99$ -->
                     <div class="plan-card annual best-value animated-card" style="animation-delay: 0.7s" onclick="selectPlan('annual')" id="annualPlan">
                         <div class="plan-badge">{{ 'BEST VALUE' if lang == 'en' else 'MEILLEUR RAPPORT' }}</div>
                         <div class="plan-header">
@@ -1896,7 +2005,7 @@
             },
             'monthly': {
                 name: 'Monthly Plan',
-                price: '19.99$ CAD',
+                price: '19.99$ CAD',  // MODIFIÉ À 19.99$
                 period: 'per month',
                 buttonText: 'Subscribe to Monthly Plan (19.99$/month)',
                 buttonTextFr: 'S\'abonner au Forfait Mensuel (19.99$/mois)',
@@ -1905,7 +2014,7 @@
             },
             'quarterly': {
                 name: 'Quarterly Plan',
-                price: '49.99$ CAD',
+                price: '49.99$ CAD',  // MIS À JOUR POUR REBFLECTER LE NOUVEAU CALCUL
                 period: 'per 3 months',
                 buttonText: 'Subscribe to Quarterly Plan (49.99$/3 months)',
                 buttonTextFr: 'S\'abonner au Forfait Trimestriel (49.99$/3 mois)',
@@ -1914,7 +2023,7 @@
             },
             'annual': {
                 name: 'Annual Plan',
-                price: '149.99$ CAD',
+                price: '149.99$ CAD',  // MIS À JOUR POUR REFLECTER LE NOUVEAU CALCUL
                 period: 'per year',
                 buttonText: 'Subscribe to Annual Plan (149.99$/year)',
                 buttonTextFr: 'S\'abonner au Forfait Annuel (149.99$/an)',
@@ -2004,6 +2113,75 @@
                 parentToggle.addEventListener('change', toggleParentFields);
             }
             
+            // Gestion du toggle enseignant
+            const teacherToggle = document.getElementById('include_teacher');
+            const teacherFields = document.getElementById('teacherFields');
+            const teacherToggleSwitch = document.getElementById('teacherToggle');
+            
+            if (teacherToggle && teacherFields && teacherToggleSwitch) {
+                function toggleTeacherFields() {
+                    if (teacherToggle.checked) {
+                        teacherFields.style.display = 'block';
+                        teacherToggleSwitch.classList.add('active');
+                        // Facultatif: Rendre le champ requis si activé
+                        const teacherEmail = document.getElementById('teacher_email');
+                        if (teacherEmail) {
+                            teacherEmail.required = true;
+                        }
+                    } else {
+                        teacherFields.style.display = 'none';
+                        teacherToggleSwitch.classList.remove('active');
+                        // Facultatif: Rendre le champ non requis si désactivé
+                        const teacherEmail = document.getElementById('teacher_email');
+                        if (teacherEmail) {
+                            teacherEmail.required = false;
+                        }
+                    }
+                }
+                
+                // Initialiser
+                toggleTeacherFields();
+                
+                // Écouter les changements
+                teacherToggle.addEventListener('change', toggleTeacherFields);
+                
+                // Validation de l'email de l'enseignant
+                const teacherEmailInput = document.getElementById('teacher_email');
+                const teacherValidation = document.getElementById('teacherValidation');
+                
+                if (teacherEmailInput && teacherValidation) {
+                    teacherEmailInput.addEventListener('blur', function() {
+                        const email = this.value.trim();
+                        if (email) {
+                            // Validation basique d'email
+                            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                            if (!emailRegex.test(email)) {
+                                showTeacherValidation('error', '{{ "Please enter a valid email address" if lang == "en" else "Veuillez entrer une adresse email valide" }}');
+                            } else {
+                                showTeacherValidation('success', '{{ "Valid email format" if lang == "en" else "Format d\'email valide" }}');
+                            }
+                        } else {
+                            teacherValidation.innerHTML = '';
+                        }
+                    });
+                }
+            }
+            
+            function showTeacherValidation(type, message) {
+                const teacherValidation = document.getElementById('teacherValidation');
+                if (!teacherValidation) return;
+                
+                teacherValidation.innerHTML = '';
+                const div = document.createElement('div');
+                div.className = type === 'success' ? 'error-message' : 'error-message';
+                div.style.background = type === 'success' ? 
+                    'linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(52, 211, 153, 0.1))' :
+                    'linear-gradient(135deg, rgba(239, 71, 111, 0.05), rgba(239, 71, 111, 0.1))';
+                div.style.borderLeft = type === 'success' ? '4px solid var(--success)' : '4px solid var(--danger)';
+                div.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> <small>${message}</small>`;
+                teacherValidation.appendChild(div);
+            }
+            
             // Animation des cartes
             const planCards = document.querySelectorAll('.plan-card');
             planCards.forEach((card, index) => {
@@ -2071,6 +2249,24 @@
                                 : "Le nom du parent est requis lorsque les informations parentales sont incluses");
                             parentName.focus();
                             return;
+                        }
+                    }
+                    
+                    // Vérifier l'email de l'enseignant si activé
+                    const teacherToggle = document.getElementById('include_teacher');
+                    if (teacherToggle && teacherToggle.checked) {
+                        const teacherEmail = document.getElementById('teacher_email');
+                        if (teacherEmail && teacherEmail.value.trim()) {
+                            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                            if (!emailRegex.test(teacherEmail.value.trim())) {
+                                e.preventDefault();
+                                const lang = '{{ lang }}' || 'en';
+                                alert(lang === 'en' 
+                                    ? "Please enter a valid teacher email address" 
+                                    : "Veuillez entrer une adresse email valide pour l'enseignant");
+                                teacherEmail.focus();
+                                return;
+                            }
                         }
                     }
                     

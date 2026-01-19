@@ -2859,7 +2859,7 @@ def connexion():
 @app.route("/inscription-eleve", methods=["GET", "POST"])
 def inscription_eleve():
     from forms import InscriptionEleveForm
-    from models import Niveau, User, Parent, ParentEleve, db
+    from models import Niveau, User, Parent, ParentEleve, Enseignant, db
     from datetime import datetime, timedelta
     
     form = InscriptionEleveForm()
@@ -2873,7 +2873,11 @@ def inscription_eleve():
         payment_option = request.form.get('payment_option', 'trial')
         plan_type = request.form.get('plan_type', 'monthly')
         
-        print(f"📋 Option: {payment_option}, Plan: {plan_type}")
+        # Récupérer l'email de l'enseignant tuteur (optionnel)
+        teacher_email = request.form.get('teacher_email')
+        teacher_tutor = None
+        
+        print(f"📋 Option: {payment_option}, Plan: {plan_type}, Teacher Email: {teacher_email}")
         
         # Vérifier les doublons
         if User.query.filter_by(email=form.email.data).first():
@@ -2884,11 +2888,29 @@ def inscription_eleve():
             flash("Ce nom d'utilisateur est déjà utilisé", "error")
             return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'))
         
+        # Vérifier si un enseignant est spécifié
+        if teacher_email and teacher_email.strip():
+            # Valider le format d'email
+            import re
+            email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_regex, teacher_email.strip()):
+                flash("Format d'email enseignant invalide", "error")
+                return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'))
+            
+            # Rechercher l'enseignant dans la base de données
+            teacher_tutor = Enseignant.query.filter_by(email=teacher_email.strip()).first()
+            if not teacher_tutor:
+                flash("Enseignant non trouvé avec cet email. Assurez-vous que l'enseignant est inscrit sur la plateforme.", "warning")
+                # Vous pouvez décider de continuer sans enseignant ou arrêter
+                # Ici, on continue mais sans assigner d'enseignant
+                teacher_tutor = None
+        
         # Récupérer les données du parent
         parent_nom_complet = request.form.get('parent_nom_complet')
         parent_email = request.form.get('parent_email')
         parent_telephone = request.form.get('parent_telephone')
         parent_telephone2 = request.form.get('parent_telephone2')
+        include_parent = request.form.get('include_parent', 'on') == 'on'  # Par défaut activé
         
         # Création de l'élève
         try:
@@ -2904,7 +2926,9 @@ def inscription_eleve():
                 inscrit_par_admin=False,
                 accepte_cgu=form.accepte_cgu.data,
                 date_acceptation_cgu=datetime.now() if form.accepte_cgu.data else None,
-                langue=session.get('lang', 'fr')  # Conserver la langue
+                langue=session.get('lang', 'fr'),  # Conserver la langue
+                # Assigner l'enseignant si trouvé
+                enseignant_id=teacher_tutor.id if teacher_tutor else None
             )
             
             eleve.mot_de_passe = form.mot_de_passe.data
@@ -2913,7 +2937,7 @@ def inscription_eleve():
             db.session.flush()  # Pour obtenir l'ID
             
             # Création du parent si les informations sont fournies
-            if parent_nom_complet and parent_email:
+            if include_parent and parent_nom_complet and parent_email:
                 parent = Parent.query.filter_by(email=parent_email).first()
                 if not parent:
                     parent = Parent(
@@ -2943,8 +2967,18 @@ def inscription_eleve():
                 session['eleve_nom_complet'] = eleve.nom_complet
                 session['role'] = 'élève'
                 
+                # Notifier l'enseignant si assigné
+                if teacher_tutor:
+                    try:
+                        # Vous pourriez ajouter ici un système de notification par email
+                        print(f"📧 Élève {eleve.nom_complet} assigné à l'enseignant {teacher_tutor.nom}")
+                    except Exception as e:
+                        print(f"⚠️ Erreur notification enseignant: {e}")
+                
                 lang = session.get('lang', 'fr')
                 flash_message = "✅ Essai gratuit de 3 jours activé ! Profitez de la plateforme." if lang == 'fr' else "✅ 3-day free trial activated! Enjoy the platform."
+                if teacher_tutor:
+                    flash_message += " Votre enseignant tuteur vous a été assigné." if lang == 'fr' else " Your tutor teacher has been assigned."
                 flash(flash_message, "success")
                 
                 return redirect(url_for('dashboard_eleve'))
@@ -2963,10 +2997,10 @@ def inscription_eleve():
                     if not stripe.api_key:
                         raise Exception("Stripe non configuré")
                     
-                    # CONFIGURATION DES PLANS OPTIMISÉS (NOUVEAUX PRIX)
+                    # CONFIGURATION DES PLANS OPTIMISÉS (NOUVEAUX PRIX MIS À JOUR)
                     plan_config = {
                         'monthly': {
-                            'amount': 1999,  # 19.99 CAD (nouveau prix optimisé)
+                            'amount': 1999,  # 19.99 CAD (NOUVEAU PRIX OPTIMISÉ)
                             'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
                             'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
                             'product_name_fr': "Forfait Mensuel (19.99$/mois)",
@@ -2976,25 +3010,25 @@ def inscription_eleve():
                             'features_en': "• Virtual teacher 24/7 • Socratic questioning • All subjects included • Progress tracking • Cancel anytime"
                         },
                         'quarterly': {
-                            'amount': 4999,  # 49.99 CAD (nouveau prix optimisé)
+                            'amount': 4999,  # 49.99 CAD (NOUVEAU PRIX OPTIMISÉ)
                             'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
                             'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
                             'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
                             'product_name_en': "Quarterly Plan (49.99$/3 months)",
                             'interval': 'month',
                             'interval_count': 3,
-                            'features_fr': "• Toutes fonctionnalités mensuelles • Support prioritaire • Revues trimestrielles • Feuille de route personnalisée • Économisez 10$/trimestre",
-                            'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap • Save 10$/quarter"
+                            'features_fr': "• Toutes fonctionnalités mensuelles • Support prioritaire • Revues trimestrielles • Feuille de route personnalisée • Économisez 3.33$/mois",
+                            'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap • Save 3.33$/month"
                         },
                         'annual': {
-                            'amount': 14999,  # 149.99 CAD (nouveau prix optimisé)
+                            'amount': 14999,  # 149.99 CAD (NOUVEAU PRIX OPTIMISÉ)
                             'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
                             'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
                             'product_name_fr': "Forfait Annuel (149.99$/an)",
                             'product_name_en': "Annual Plan (149.99$/year)",
                             'interval': 'year',
-                            'features_fr': "• Toutes fonctionnalités trimestrielles • Support premium • Rapports détaillés • Accès continu 12 mois • Économisez 37% (90$/an)",
-                            'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access • Save 37% (90$/year)"
+                            'features_fr': "• Toutes fonctionnalités trimestrielles • Support premium • Rapports détaillés • Accès continu 12 mois • Économisez 37% (89.89$/an)",
+                            'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access • Save 37% (89.89$/year)"
                         }
                     }
                     
@@ -3018,9 +3052,9 @@ def inscription_eleve():
                     # Calcul du prix mensuel pour l'affichage Stripe
                     monthly_price = plan_info['amount'] / 100
                     if plan_type == 'quarterly':
-                        monthly_price = monthly_price / 3
+                        monthly_price = monthly_price / 3  # 16.66$/mois
                     elif plan_type == 'annual':
-                        monthly_price = monthly_price / 12
+                        monthly_price = monthly_price / 12  # 12.50$/mois
                     
                     # Créer un produit Stripe avec les détails
                     checkout_session = stripe.checkout.Session.create(
@@ -3053,7 +3087,10 @@ def inscription_eleve():
                                 'lang': lang,
                                 'monthly_effective_price': f"{monthly_price:.2f}",
                                 'original_price': f"{plan_info['amount']/100:.2f}",
-                                'student_name': eleve.nom_complet
+                                'student_name': eleve.nom_complet,
+                                'student_email': eleve.email,
+                                'teacher_id': str(teacher_tutor.id) if teacher_tutor else '',
+                                'teacher_name': teacher_tutor.nom if teacher_tutor else ''
                             },
                             'description': description
                         },
@@ -3066,6 +3103,8 @@ def inscription_eleve():
                             'lang': lang,
                             'student_name': eleve.nom_complet,
                             'student_email': eleve.email,
+                            'teacher_id': str(teacher_tutor.id) if teacher_tutor else '',
+                            'teacher_email': teacher_email if teacher_email else '',
                             'monthly_price': f"{monthly_price:.2f}"
                         },
                         allow_promotion_codes=True,
@@ -3073,7 +3112,7 @@ def inscription_eleve():
                         phone_number_collection={'enabled': True},
                         custom_text={
                             'submit': {
-                                'message': f"💡 {'Moins de 1$ par jour !' if lang == 'fr' else 'Less than $1 per day!'}" if plan_type == 'monthly' else 
+                                'message': f"💡 {'Moins de 0.67$ par jour !' if lang == 'fr' else 'Less than $0.67 per day!'}" if plan_type == 'monthly' else 
                                          f"🎓 {'Idéal pour une session scolaire !' if lang == 'fr' else 'Perfect for a school session!'}" if plan_type == 'quarterly' else
                                          f"🏆 {'Meilleur rapport qualité-prix !' if lang == 'fr' else 'Best value for money!'}"
                             }
@@ -3085,6 +3124,8 @@ def inscription_eleve():
                     
                     print(f"🔗 Redirection vers Stripe pour paiement immédiat")
                     print(f"📝 Plan: {plan_type}, Montant: {plan_info['amount']/100}$ CAD")
+                    if teacher_tutor:
+                        print(f"👨‍🏫 Enseignant assigné: {teacher_tutor.nom} ({teacher_tutor.email})")
                     
                     # Logger pour le suivi
                     print(f"📊 Nouvelle inscription avec paiement: {eleve.email}, Plan: {plan_type}")
@@ -3112,6 +3153,8 @@ def inscription_eleve():
                     
                     lang = session.get('lang', 'fr')
                     flash_message = "⚠️ Paiement temporairement indisponible. Essai gratuit de 3 jours activé." if lang == 'fr' else "⚠️ Payment temporarily unavailable. 3-day free trial activated."
+                    if teacher_tutor:
+                        flash_message += " Votre enseignant tuteur vous a été assigné." if lang == 'fr' else " Your tutor teacher has been assigned."
                     flash(flash_message, "warning")
                     
                     return redirect(url_for('dashboard_eleve'))
@@ -3130,13 +3173,13 @@ def inscription_eleve():
         plan_type = request.args.get('plan_type', 'monthly')
         lang = session.get('lang', 'fr')
         
-        # Message personnalisé selon le plan
+        # Message personnalisé selon le plan avec les nouveaux prix
         if plan_type == 'monthly':
-            cancel_message = "Paiement mensuel annulé. Essayez l'essai gratuit ou choisissez un autre plan." if lang == 'fr' else "Monthly payment cancelled. Try the free trial or choose another plan."
+            cancel_message = "Paiement mensuel (19.99$/mois) annulé. Essayez l'essai gratuit ou choisissez un autre plan." if lang == 'fr' else "Monthly payment (19.99$/month) cancelled. Try the free trial or choose another plan."
         elif plan_type == 'quarterly':
-            cancel_message = "Paiement trimestriel annulé. Le plan trimestriel offre 17% d'économies!" if lang == 'fr' else "Quarterly payment cancelled. The quarterly plan offers 17% savings!"
+            cancel_message = "Paiement trimestriel (49.99$/3 mois) annulé. Le plan trimestriel offre 17% d'économies!" if lang == 'fr' else "Quarterly payment (49.99$/3 months) cancelled. The quarterly plan offers 17% savings!"
         elif plan_type == 'annual':
-            cancel_message = "Paiement annuel annulé. Le plan annuel offre 37% d'économies - réessayez!" if lang == 'fr' else "Annual payment cancelled. The annual plan offers 37% savings - try again!"
+            cancel_message = "Paiement annuel (149.99$/an) annulé. Le plan annuel offre 37% d'économies - réessayez!" if lang == 'fr' else "Annual payment (149.99$/year) cancelled. The annual plan offers 37% savings - try again!"
         else:
             cancel_message = "Paiement annulé. Vous pouvez réessayer ou choisir l'essai gratuit." if lang == 'fr' else "Payment cancelled. You can try again or choose the free trial."
         
@@ -3178,7 +3221,7 @@ def creer_session_paiement():
         data = request.get_json()
         plan_type = data.get('plan_type', 'quarterly')  # monthly, quarterly, annual
         
-        # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX)
+        # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX MIS À JOUR)
         plan_config = {
             'monthly': {
                 'amount': 1999,  # 19.99 CAD (NOUVEAU PRIX OPTIMISÉ)
@@ -3191,7 +3234,8 @@ def creer_session_paiement():
                 'features_en': "• Virtual teacher 24/7 • Socratic questioning • All subjects • Progress tracking",
                 'monthly_effective': 19.99,
                 'savings_percentage': 0,
-                'savings_amount': 0
+                'savings_amount': 0,
+                'price_per_day': 0.67  # 19.99 / 30
             },
             'quarterly': {
                 'amount': 4999,  # 49.99 CAD (NOUVEAU PRIX OPTIMISÉ)
@@ -3205,7 +3249,8 @@ def creer_session_paiement():
                 'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap",
                 'monthly_effective': 16.66,
                 'savings_percentage': 17,
-                'savings_amount': 10.00
+                'savings_amount': 3.33,  # 19.99 - 16.66 = 3.33$/mois
+                'price_per_day': 0.56  # 16.66 / 30
             },
             'annual': {
                 'amount': 14999,  # 149.99 CAD (NOUVEAU PRIX OPTIMISÉ)
@@ -3218,7 +3263,8 @@ def creer_session_paiement():
                 'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access",
                 'monthly_effective': 12.50,
                 'savings_percentage': 37,
-                'savings_amount': 89.89
+                'savings_amount': 89.89,  # (19.99*12) - 149.99 = 89.89$/an
+                'price_per_day': 0.42  # 12.50 / 30
             }
         }
         
@@ -3247,21 +3293,17 @@ def creer_session_paiement():
             db.session.commit()
             print(f"✅ Essai gratuit de 3 jours activé pour {eleve.email}")
         
-        # Calcul du prix par jour pour l'affichage
-        price_per_day = 0
-        if plan_type == 'monthly':
-            price_per_day = plan_info['monthly_effective'] / 30
-        elif plan_type == 'annual':
-            price_per_day = plan_info['monthly_effective'] / 30  # Approximation
+        # Calcul du prix par jour pour l'affichage (mise à jour avec les nouveaux prix)
+        price_per_day = plan_info['price_per_day']
         
-        # Créer un message personnalisé selon le plan
+        # Créer un message personnalisé selon le plan (mis à jour avec nouveaux prix)
         custom_message = ""
         if plan_type == 'monthly':
-            custom_message = f"{'Moins de 1$ par jour !' if lang == 'fr' else 'Less than $1 per day!'}"
+            custom_message = f"{'Moins de 0.67$ par jour !' if lang == 'fr' else 'Less than $0.67 per day!'}"
         elif plan_type == 'quarterly':
-            custom_message = f"{'Économisez 10$/trimestre !' if lang == 'fr' else 'Save $10/quarter!'}"
+            custom_message = f"{'Économisez 3.33$/mois !' if lang == 'fr' else 'Save $3.33/month!'}"
         elif plan_type == 'annual':
-            custom_message = f"{'Économisez 90$/an !' if lang == 'fr' else 'Save $90/year!'}"
+            custom_message = f"{'Économisez 89.89$/an !' if lang == 'fr' else 'Save $89.89/year!'}"
         
         # Créer une session de paiement Stripe optimisée
         checkout_session = stripe.checkout.Session.create(
@@ -3362,11 +3404,12 @@ def creer_session_paiement():
             "savings_amount": plan_info['savings_amount'],
             "price_per_day": price_per_day,
             "essai_actif": eleve.est_en_essai_gratuit(),
-            "heures_restantes_essai": eleve.heures_restantes_essai() if eleve.est_en_essai_gratuit() else 0,
+            "heures_restantes_essai": eleve.heures_restantes_essai() if hasattr(eleve, 'heures_restantes_essai') and callable(getattr(eleve, 'heures_restantes_essai')) else 0,
             "student": {
                 "name": eleve.nom_complet,
                 "email": eleve.email,
-                "lang": lang
+                "lang": lang,
+                "enseignant_id": eleve.enseignant_id if hasattr(eleve, 'enseignant_id') else None
             }
         })
         
@@ -3375,7 +3418,8 @@ def creer_session_paiement():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    
+
+
 @app.route("/paiement-direct")
 def paiement_direct():
     if "eleve_id" not in session:
@@ -3396,7 +3440,7 @@ def paiement_direct():
         plan_type = 'quarterly'  # Fallback au plan trimestriel
     
     try:
-        # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX)
+        # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX MIS À JOUR)
         plan_config = {
             'monthly': {
                 'amount': 1999,  # 19.99 CAD (NOUVEAU PRIX OPTIMISÉ)
@@ -3424,7 +3468,7 @@ def paiement_direct():
                 'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap",
                 'monthly_effective': 16.66,
                 'savings_percentage': 17,
-                'savings_amount': 10.00,
+                'savings_amount': 3.33,  # 19.99 - 16.66 = 3.33$/mois
                 'price_per_day': 0.56  # 16.66 / 30
             },
             'annual': {
@@ -3438,7 +3482,7 @@ def paiement_direct():
                 'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access",
                 'monthly_effective': 12.50,
                 'savings_percentage': 37,
-                'savings_amount': 89.89,
+                'savings_amount': 89.89,  # (19.99*12) - 149.99 = 89.89$/an
                 'price_per_day': 0.42  # 12.50 / 30
             }
         }
@@ -3470,18 +3514,28 @@ def paiement_direct():
             'interval_count': plan_info.get('interval_count', 1)
         }
         
-        # Créer un message personnalisé selon le plan
+        # Créer un message personnalisé selon le plan (mis à jour avec nouveaux prix)
         custom_message = ""
         if plan_type == 'monthly':
-            custom_message = f"{'Moins de 1$ par jour !' if lang == 'fr' else 'Less than $1 per day!'}"
+            custom_message = f"{'Moins de 0.67$ par jour !' if lang == 'fr' else 'Less than $0.67 per day!'}"
         elif plan_type == 'quarterly':
-            custom_message = f"{'Économisez 10$/trimestre !' if lang == 'fr' else 'Save $10/quarter!'}"
+            custom_message = f"{'Économisez 3.33$/mois !' if lang == 'fr' else 'Save $3.33/month!'}"
         elif plan_type == 'annual':
-            custom_message = f"{'Économisez 90$/an !' if lang == 'fr' else 'Save $90/year!'}"
+            custom_message = f"{'Économisez 89.89$/an !' if lang == 'fr' else 'Save $89.89/year!'}"
         
         # Vérifier si l'utilisateur est en essai gratuit
-        essai_actif = eleve.est_en_essai_gratuit()
-        heures_restantes = eleve.heures_restantes_essai() if essai_actif else 0
+        essai_actif = eleve.est_en_essai_gratuit() if hasattr(eleve, 'est_en_essai_gratuit') and callable(getattr(eleve, 'est_en_essai_gratuit')) else False
+        
+        # Récupérer l'enseignant assigné
+        teacher_info = {}
+        if hasattr(eleve, 'enseignant_id') and eleve.enseignant_id:
+            teacher = Enseignant.query.get(eleve.enseignant_id)
+            if teacher:
+                teacher_info = {
+                    'teacher_id': teacher.id,
+                    'teacher_name': teacher.nom,
+                    'teacher_email': teacher.email
+                }
         
         # Créer une session de paiement Stripe optimisée
         checkout_session = stripe.checkout.Session.create(
@@ -3521,7 +3575,8 @@ def paiement_direct():
                     'savings_percentage': plan_info['savings_percentage'],
                     'price_per_day': f"{plan_info['price_per_day']:.2f}",
                     'essai_actif': str(essai_actif),
-                    'heures_restantes_essai': str(heures_restantes)
+                    'enseignant_id': str(teacher_info.get('teacher_id', '')),
+                    'enseignant_name': teacher_info.get('teacher_name', '')
                 },
                 'description': description
             },
@@ -3538,7 +3593,8 @@ def paiement_direct():
                 'savings_percentage': plan_info['savings_percentage'],
                 'amount_paid': f"{plan_info['amount']/100:.2f}",
                 'trial_active': str(essai_actif),
-                'trial_hours_left': str(heures_restantes)
+                'enseignant_id': str(teacher_info.get('teacher_id', '')),
+                'enseignant_email': teacher_info.get('teacher_email', '')
             },
             allow_promotion_codes=True,
             billing_address_collection='required',
@@ -3560,7 +3616,8 @@ def paiement_direct():
                 'metadata': {
                     'eleve_id': eleve.id,
                     'plan_type': plan_type,
-                    'student_name': eleve.nom_complet
+                    'student_name': eleve.nom_complet,
+                    'enseignant_id': str(teacher_info.get('teacher_id', ''))
                 }
             },
             # Expire la session après 30 minutes
@@ -3574,6 +3631,7 @@ def paiement_direct():
         print(f"📈 Prix mensuel effectif: {plan_info['monthly_effective']:.2f}$/mois")
         print(f"🎁 Économies: {plan_info['savings_percentage']}% ({plan_info['savings_amount']:.2f}$)")
         print(f"⏰ Prix par jour: {plan_info['price_per_day']:.2f}$/jour")
+        print(f"👨‍🏫 Enseignant assigné: {teacher_info.get('teacher_name', 'Aucun')}")
         print(f"🔗 Session Stripe: {checkout_session.id}")
         
         # Redirection directe vers Stripe
@@ -3596,7 +3654,8 @@ def paiement_direct():
         error_msg = "Erreur lors de la création du paiement" if session.get('lang', 'fr') == 'fr' else "Error creating payment"
         flash(error_msg, "error")
         return redirect(url_for('upgrade_options'))
-    
+
+
 @app.route("/stripe-webhook", methods=["POST"])
 def stripe_webhook():
     payload = request.get_data(as_text=True)
@@ -3623,13 +3682,21 @@ def stripe_webhook():
             if eleve_id:
                 eleve = User.query.get(eleve_id)
                 if eleve:
-                    # Déterminer la durée
+                    # Déterminer la durée avec les nouveaux plans
                     plan_durations = {
-                        'monthly': 30,
-                        'quarterly': 90,
-                        'annual': 365
+                        'monthly': 30,     # 30 jours
+                        'quarterly': 90,   # 90 jours (3 mois)
+                        'annual': 365      # 365 jours (1 an)
                     }
                     duration_days = plan_durations.get(plan_type, 30)
+                    
+                    # Récupérer les informations de l'enseignant si présentes
+                    enseignant_id = session['metadata'].get('enseignant_id')
+                    if enseignant_id and enseignant_id != '':
+                        # Vérifier que l'enseignant existe encore
+                        teacher = Enseignant.query.get(enseignant_id)
+                        if teacher:
+                            eleve.enseignant_id = teacher.id
                     
                     # Utiliser VOS méthodes existantes
                     eleve.marquer_comme_paye(
@@ -3643,16 +3710,85 @@ def stripe_webhook():
                     eleve.preferences_notifications = eleve.preferences_notifications or {}
                     eleve.preferences_notifications['plan_type'] = plan_type
                     
+                    # Stocker les détails du paiement
+                    eleve.preferences_notifications['paid_plan_details'] = {
+                        'plan_type': plan_type,
+                        'payment_date': datetime.utcnow().isoformat(),
+                        'stripe_session_id': session['id'],
+                        'stripe_customer_id': session.get('customer'),
+                        'subscription_id': session.get('subscription'),
+                        'amount': float(session['metadata'].get('amount_paid', 0))
+                    }
+                    
                     # Stocker le customer ID
                     eleve.stripe_customer_id = session.get('customer')
                     
+                    # Récupérer le montant payé
+                    try:
+                        if session.get('invoice'):
+                            invoice = stripe.Invoice.retrieve(session.invoice)
+                            amount_paid = invoice.amount_paid / 100
+                        else:
+                            amount_paid = session.amount_total / 100 if session.amount_total else 0
+                        
+                        eleve.preferences_notifications['paid_amount'] = amount_paid
+                    except:
+                        # Utiliser les prix standards comme référence
+                        standard_prices = {
+                            'monthly': 19.99,
+                            'quarterly': 49.99,
+                            'annual': 149.99
+                        }
+                        amount_paid = standard_prices.get(plan_type, 49.99)
+                        eleve.preferences_notifications['paid_amount'] = amount_paid
+                    
                     db.session.commit()
-                    print(f"✅ Webhook: Élève {eleve_id} abonné avec succès au plan {plan_type}")
+                    print(f"✅ Webhook: Élève {eleve_id} abonné avec succès au plan {plan_type} ({amount_paid}$ CAD)")
+                    
+                    # Log détaillé
+                    print(f"📊 Plan: {plan_type}")
+                    print(f"💰 Montant: {amount_paid}$ CAD")
+                    print(f"📅 Durée: {duration_days} jours")
+                    print(f"👤 Customer ID: {session.get('customer')}")
+                    print(f"👨‍🏫 Enseignant ID: {enseignant_id if enseignant_id else 'Aucun'}")
+                    
         except Exception as e:
             print(f"❌ Erreur webhook: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # Gérer l'événement invoice.payment_succeeded
+    elif event['type'] == 'invoice.payment_succeeded':
+        invoice = event['data']['object']
+        
+        try:
+            customer_id = invoice.get('customer')
+            subscription_id = invoice.get('subscription')
+            
+            if customer_id:
+                # Trouver l'élève par customer_id
+                eleve = User.query.filter_by(stripe_customer_id=customer_id).first()
+                if eleve and subscription_id:
+                    # Vérifier si l'abonnement est encore actif
+                    subscription = stripe.Subscription.retrieve(subscription_id)
+                    
+                    if subscription.status in ['active', 'trialing']:
+                        # Calculer la nouvelle date de fin
+                        current_period_end = subscription.current_period_end
+                        new_end_date = datetime.fromtimestamp(current_period_end)
+                        
+                        # Mettre à jour la date de fin d'abonnement
+                        eleve.date_fin_abonnement = new_end_date
+                        eleve.date_dernier_paiement = datetime.utcnow()
+                        
+                        db.session.commit()
+                        print(f"✅ Webhook: Renouvellement abonnement pour {eleve.email} jusqu'au {new_end_date}")
+        
+        except Exception as e:
+            print(f"❌ Erreur webhook invoice: {e}")
     
     return jsonify({'status': 'success'})
-    
+
 
 @app.route("/paiement-success")
 def paiement_success():
@@ -3685,9 +3821,17 @@ def paiement_success():
                 plan_durations = {
                     'monthly': 30,     # 30 jours
                     'quarterly': 90,   # 90 jours (3 mois)
-                    'annual': 365      # 365 jours
+                    'annual': 365      # 365 jours (1 an)
                 }
                 duration_days = plan_durations.get(plan_type, 30)
+                
+                # Récupérer les informations de l'enseignant depuis Stripe
+                enseignant_id = stripe_session.metadata.get('enseignant_id')
+                if enseignant_id and enseignant_id != '' and enseignant_id != 'None':
+                    # Vérifier que l'enseignant existe
+                    teacher = Enseignant.query.get(enseignant_id)
+                    if teacher:
+                        eleve.enseignant_id = teacher.id
                 
                 # Utiliser VOTRE méthode existante marquer_comme_paye
                 eleve.marquer_comme_paye(
@@ -3708,25 +3852,25 @@ def paiement_success():
                     'payment_date': datetime.utcnow().isoformat(),
                     'stripe_session_id': session_id,
                     'stripe_customer_id': stripe_session.get('customer'),
-                    'subscription_id': stripe_session.get('subscription')
+                    'subscription_id': stripe_session.get('subscription'),
+                    'enseignant_id': enseignant_id if enseignant_id else None
                 }
                 
                 # Stocker le customer ID Stripe
                 eleve.stripe_customer_id = stripe_session.get('customer')
                 
                 # ✅ AJOUTER : marquer l'essai comme terminé si applicable
-                if eleve.statut_essai == 'actif' and eleve.est_en_essai_gratuit():
+                if hasattr(eleve, 'statut_essai') and eleve.statut_essai == 'actif':
                     eleve.statut_essai = 'payant'
                     eleve.statut_paiement = 'paye'
                 
                 # ✅ Récupérer le montant payé depuis Stripe pour référence
                 try:
-                    # Essayer de récupérer le montant depuis l'Invoice ou la Session
                     if stripe_session.get('invoice'):
                         invoice = stripe.Invoice.retrieve(stripe_session.invoice)
                         amount_paid = invoice.amount_paid / 100  # Convertir en dollars
                     else:
-                        amount_paid = stripe_session.amount_total / 100
+                        amount_paid = stripe_session.amount_total / 100 if stripe_session.amount_total else 0
                     
                     eleve.preferences_notifications['paid_amount'] = amount_paid
                     
@@ -3756,27 +3900,35 @@ def paiement_success():
                 print(f"💰 Montant: {amount_paid}$ CAD")
                 print(f"📅 Durée: {duration_days} jours")
                 print(f"👤 Customer ID: {stripe_session.get('customer')}")
+                print(f"👨‍🏫 Enseignant ID: {enseignant_id if enseignant_id else 'Aucun'}")
                 print(f"🔗 Session ID: {session_id}")
                 
-                # ✅ Messages de succès OPTIMISÉS selon la langue et les nouveaux prix
+                # ✅ Messages de succès OPTIMISÉS selon la langue et les NOUVEAUX PRIX
                 lang = session.get('lang', 'fr')
                 success_messages = {
                     'monthly': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement mensuel est activé. {amount_paid:.2f}$ CAD / mois",
-                        'en': f"✅ Payment confirmed! Your monthly subscription is activated. {amount_paid:.2f}$ CAD / month"
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement mensuel est activé. {amount_paid:.2f}$ CAD / mois (≈ 0.67$/jour)",
+                        'en': f"✅ Payment confirmed! Your monthly subscription is activated. {amount_paid:.2f}$ CAD / month (≈ $0.67/day)"
                     },
                     'quarterly': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement trimestriel est activé pour 3 mois. {amount_paid:.2f}$ CAD (≈ 16.66$/mois) - Économies réalisées !",
-                        'en': f"✅ Payment confirmed! Your quarterly subscription is activated for 3 months. {amount_paid:.2f}$ CAD (≈ 16.66$/month) - Savings achieved!"
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement trimestriel est activé pour 3 mois. {amount_paid:.2f}$ CAD (≈ 16.66$/mois) - Vous économisez 3.33$/mois !",
+                        'en': f"✅ Payment confirmed! Your quarterly subscription is activated for 3 months. {amount_paid:.2f}$ CAD (≈ $16.66/month) - You save $3.33/month!"
                     },
                     'annual': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement annuel est activé pour 1 an. {amount_paid:.2f}$ CAD (≈ 12.50$/mois) - Vous économisez 37% !",
-                        'en': f"✅ Payment confirmed! Your annual subscription is activated for 1 year. {amount_paid:.2f}$ CAD (≈ 12.50$/month) - You save 37%!"
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement annuel est activé pour 1 an. {amount_paid:.2f}$ CAD (≈ 12.50$/mois) - Vous économisez 89.89$/an (37%) !",
+                        'en': f"✅ Payment confirmed! Your annual subscription is activated for 1 year. {amount_paid:.2f}$ CAD (≈ $12.50/month) - You save $89.89/year (37%)!"
                     }
                 }
                 
                 message = success_messages.get(plan_type, success_messages['quarterly']).get(lang, success_messages['quarterly']['fr'])
                 flash(message, "success")
+                
+                # ✅ Ajouter un message spécial si enseignant assigné
+                if enseignant_id and enseignant_id != '' and enseignant_id != 'None':
+                    teacher = Enseignant.query.get(enseignant_id)
+                    if teacher:
+                        teacher_message = f"👨‍🏫 Votre enseignant tuteur: {teacher.nom}" if lang == 'fr' else f"👨‍🏫 Your tutor teacher: {teacher.nom}"
+                        flash(teacher_message, "info")
                 
                 # ✅ Envoyer un email de confirmation si configuré
                 try:
@@ -3798,6 +3950,7 @@ def paiement_success():
                         • Durée : {duration_days} jours
                         • Statut : Actif
                         • Prochain renouvellement : {eleve.date_fin_abonnement.strftime('%d/%m/%Y') if eleve.date_fin_abonnement else 'N/A'}
+                        {"• Enseignant tuteur : " + teacher.nom if enseignant_id and teacher else ""}
                         
                         Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme.
                         
@@ -3816,6 +3969,7 @@ def paiement_success():
                         • Duration: {duration_days} days
                         • Status: Active
                         • Next renewal: {eleve.date_fin_abonnement.strftime('%Y-%m-%d') if eleve.date_fin_abonnement else 'N/A'}
+                        {"• Tutor teacher: " + teacher.nom if enseignant_id and teacher else ""}
                         
                         You can now access all platform features.
                         

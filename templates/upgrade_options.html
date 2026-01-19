@@ -877,9 +877,9 @@
             </div>
         </div>
 
-        <!-- Container des plans - 3 CARTES OPTIMISÉES AVEC NOUVEAUX PRIX -->
+        <!-- Container des plans - 3 CARTES OPTIMISÉES AVEC NOUVEAUX PRIX MIS À JOUR -->
         <div class="plans-container">
-            <!-- Plan Mensuel -->
+            <!-- Plan Mensuel - MIS À JOUR À 19.99$ -->
             <div class="plan-card monthly fade-in-up" onclick="selectPlan('monthly')">
                 <div class="plan-badge">
                     <i class="fas fa-calendar-alt"></i> 
@@ -901,9 +901,9 @@
                 <div class="per-day-price">
                     <i class="fas fa-coins"></i>
                     {% if lang == 'en' %}
-                        Less than $1 per day
+                        Less than $0.67 per day
                     {% else %}
-                        Moins de 1$ par jour
+                        Moins de 0,67$ par jour
                     {% endif %}
                 </div>
                 
@@ -925,7 +925,7 @@
                 </a>
             </div>
             
-            <!-- Plan Trimestriel (Populaire) -->
+            <!-- Plan Trimestriel (Populaire) - MIS À JOUR À 49.99$ -->
             <div class="plan-card quarterly popular fade-in-up" onclick="selectPlan('quarterly')">
                 <div class="plan-badge">
                     <i class="fas fa-gem"></i> 
@@ -966,7 +966,7 @@
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Priority support{% else %}Support prioritaire{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Quarterly progress reviews{% else %}Revues trimestrielles{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Personalized roadmap{% else %}Feuille de route personnalisée{% endif %}</li>
-                    <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}Save 10$/quarter{% else %}Économisez 10$/trimestre{% endif %}</strong></li>
+                    <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}Save 3.33$/month{% else %}Économisez 3.33$/mois{% endif %}</strong></li>
                 </ul>
                 <a href="{{ url_for('paiement_direct') }}?type=quarterly&plan=quarterly&amount=49.99" 
                    class="upgrade-btn quarterly" onclick="trackUpgrade('quarterly')">
@@ -975,7 +975,7 @@
                 </a>
             </div>
             
-            <!-- Plan Annuel (Meilleur rapport) -->
+            <!-- Plan Annuel (Meilleur rapport) - MIS À JOUR À 149.99$ -->
             <div class="plan-card annual best-value fade-in-up" onclick="selectPlan('annual')">
                 <div class="plan-badge">
                     <i class="fas fa-crown"></i> 
@@ -1016,7 +1016,7 @@
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Quarterly progress reviews{% else %}Revues trimestrielles{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Premium support{% else %}Support premium{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Advanced analytics{% else %}Analyses avancées{% endif %}</li>
-                    <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}Save 90$/year{% else %}Économisez 90$/an{% endif %}</strong></li>
+                    <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}Save 89.89$/year{% else %}Économisez 89,89$/an{% endif %}</strong></li>
                 </ul>
                 <a href="{{ url_for('paiement_direct') }}?type=annual&plan=annual&amount=149.99" 
                    class="upgrade-btn annual" onclick="trackUpgrade('annual')">
@@ -1026,7 +1026,7 @@
             </div>
         </div>
 
-        <!-- Section calcul des économies OPTIMISÉE -->
+        <!-- Section calcul des économies OPTIMISÉE AVEC NOUVEAUX CALCULS -->
         <div class="savings-section fade-in-up">
             <h2><i class="fas fa-calculator"></i> 
                 {% if lang == 'en' %}
@@ -1090,7 +1090,7 @@
             </p>
         </div>
 
-        <!-- Tableau comparatif MIS À JOUR -->
+        <!-- Tableau comparatif MIS À JOUR AVEC NOUVEAUX PRIX -->
         <div class="comparison-section fade-in-up">
             <h2><i class="fas fa-chart-bar"></i> 
                 {% if lang == 'en' %}
@@ -1243,7 +1243,7 @@
                 }, index * 200);
             });
             
-            // Calcul dynamique des économies
+            // Calcul dynamique des économies avec les nouveaux prix
             calculateSavings();
             
             // Vérifier les paramètres URL pour les messages
@@ -1276,7 +1276,7 @@
                 }, 300);
             }
             
-            // Mettre à jour le lien du bouton principal
+            // Mettre à jour le lien du bouton principal avec les nouveaux montants
             const continueBtn = document.querySelector('.continue-btn');
             if (continueBtn) {
                 const amount = planType === 'monthly' ? '19.99' : 
@@ -1294,20 +1294,23 @@
             }
         }
         
-        // Calcul des économies avec les nouveaux prix
+        // Calcul des économies AVEC LES NOUVEAUX PRIX (19.99$, 49.99$, 149.99$)
         function calculateSavings() {
-            const monthlyCost = 19.99;
-            const quarterlyCost = 49.99;
-            const annualCost = 149.99;
+            const monthlyCost = 19.99; // PRIX MIS À JOUR
+            const quarterlyCost = 49.99; // PRIX MIS À JOUR
+            const annualCost = 149.99; // PRIX MIS À JOUR
             
             // Coûts annuels
-            const monthlyAnnual = monthlyCost * 12;
-            const quarterlyAnnual = quarterlyCost * 4;
+            const monthlyAnnual = monthlyCost * 12; // 19.99 * 12 = 239.88
+            const quarterlyAnnual = quarterlyCost * 4; // 49.99 * 4 = 199.96
             
             // Pourcentages d'économie
-            const quarterlySavings = ((monthlyAnnual - quarterlyAnnual) / monthlyAnnual * 100).toFixed(0);
-            const annualSavings = ((monthlyAnnual - annualCost) / monthlyAnnual * 100).toFixed(0);
+            const quarterlySavings = ((monthlyAnnual - quarterlyAnnual) / monthlyAnnual * 100).toFixed(0); // ~17%
+            const annualSavings = ((monthlyAnnual - annualCost) / monthlyAnnual * 100).toFixed(0); // ~37%
             
+            console.log("Nouveaux calculs d'économies:");
+            console.log("Monthly annual:", monthlyAnnual);
+            console.log("Quarterly annual:", quarterlyAnnual);
             console.log("Quarterly savings:", quarterlySavings + "%");
             console.log("Annual savings:", annualSavings + "%");
             
@@ -1322,7 +1325,7 @@
             });
             
             // Mettre à jour les économies totales dans la section savings
-            const totalSavings = monthlyAnnual - annualCost;
+            const totalSavings = monthlyAnnual - annualCost; // 239.88 - 149.99 = 89.89
             const savingsText = document.querySelector('.savings-section p strong');
             if (savingsText) {
                 savingsText.innerHTML = 
@@ -1330,22 +1333,22 @@
             }
             
             // Mettre à jour les montants d'économies dans les features
-            const quarterlySave = monthlyCost * 3 - quarterlyCost;
-            const annualSave = monthlyAnnual - annualCost;
+            const quarterlySave = monthlyCost * 3 - quarterlyCost; // 59.97 - 49.99 = 9.98
+            const annualSave = monthlyAnnual - annualCost; // 239.88 - 149.99 = 89.89
             
             document.querySelectorAll('.plan-features li strong').forEach(el => {
-                if (el.textContent.includes('10$')) {
-                    el.textContent = "{% if lang == 'en' %}Save " + quarterlySave.toFixed(0) + "$/quarter{% else %}Économisez " + quarterlySave.toFixed(0) + "$/trimestre{% endif %}";
+                if (el.textContent.includes('3.33$')) {
+                    el.textContent = "{% if lang == 'en' %}Save " + quarterlySave.toFixed(2) + "$/quarter{% else %}Économisez " + quarterlySave.toFixed(2) + "$/trimestre{% endif %}";
                 }
-                if (el.textContent.includes('90$')) {
-                    el.textContent = "{% if lang == 'en' %}Save " + annualSave.toFixed(0) + "$/year{% else %}Économisez " + annualSave.toFixed(0) + "$/an{% endif %}";
+                if (el.textContent.includes('89.89$')) {
+                    el.textContent = "{% if lang == 'en' %}Save " + annualSave.toFixed(2) + "$/year{% else %}Économisez " + annualSave.toFixed(2) + "$/an{% endif %}";
                 }
             });
             
             // Mettre à jour les prix par jour d'école
             const schoolDaysPerYear = 180; // ~9 mois × 20 jours/mois
-            const annualPricePerSchoolDay = (annualCost / schoolDaysPerYear).toFixed(2);
-            
+            const annualPricePerSchoolDay = (annualCost / schoolDaysPerYear).toFixed(2); // 149.99 / 180 = 0.83
+        
             const perSchoolDayElement = document.querySelector('.per-school-day');
             if (perSchoolDayElement) {
                 perSchoolDayElement.innerHTML = `
@@ -1354,6 +1357,20 @@
                         Less than $${annualPricePerSchoolDay} per school day
                     {% else %}
                         Moins de $${annualPricePerSchoolDay} par jour d'école
+                    {% endif %}
+                `;
+            }
+            
+            // Mettre à jour le prix par jour pour le mensuel (30 jours)
+            const monthlyPricePerDay = (monthlyCost / 30).toFixed(2); // 19.99 / 30 = 0.67
+            const perDayElement = document.querySelector('.per-day-price');
+            if (perDayElement && perDayElement.textContent.includes('day')) {
+                perDayElement.innerHTML = `
+                    <i class="fas fa-coins"></i>
+                    {% if lang == 'en' %}
+                        Less than $${monthlyPricePerDay} per day
+                    {% else %}
+                        Moins de $${monthlyPricePerDay} par jour
                     {% endif %}
                 `;
             }
