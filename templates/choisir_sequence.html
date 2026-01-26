@@ -70,23 +70,10 @@
       font-weight: 600;
       display: flex;
       align-items: center;
-      cursor: pointer;
-      user-select: none;
-      transition: background 0.3s;
-    }
-
-    .matiere-header:hover {
-      background: linear-gradient(135deg, #38a873 0%, #2e9968 100%);
     }
 
     .matiere-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease-out;
-    }
-
-    .matiere-content.expanded {
-      max-height: 2000px; /* Valeur suffisamment grande pour contenir tout */
+      padding: 0;
     }
 
     .unite-card {
@@ -101,25 +88,10 @@
     .unite-header {
       display: flex;
       align-items: center;
-      cursor: pointer;
       padding: 10px;
       border-radius: 8px;
-      transition: background 0.2s;
-    }
-
-    .unite-header:hover {
       background: rgba(67, 97, 238, 0.05);
-    }
-
-    .unite-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease-out;
-      padding-left: 15px;
-    }
-
-    .unite-content.expanded {
-      max-height: 2000px; /* Valeur suffisamment grande pour contenir tout */
+      margin-bottom: 15px;
     }
 
     .lecon-item {
@@ -133,7 +105,6 @@
 
     .lecon-item:hover {
       background: #e9ecef;
-      transform: translateX(5px);
     }
 
     .progress-bar {
@@ -214,21 +185,72 @@
       color: #6c757d;
     }
 
-    /* Icônes avec transition */
-    .matiere-header i.fa-chevron-down {
-      transition: transform 0.3s ease;
+    .exercice-details {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+      background: white;
+      border-radius: 8px;
+      margin-top: 10px;
+      border: 1px solid #dee2e6;
     }
 
-    .matiere-header.collapsed i.fa-chevron-down {
-      transform: rotate(-90deg);
+    .exercice-details.expanded {
+      max-height: 500px;
+      padding: 15px;
     }
 
-    .unite-header i.fa-chevron-right {
-      transition: transform 0.3s ease;
+    .toggle-exercices {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 5px 10px;
+      margin-top: 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
 
-    .unite-header.collapsed i.fa-chevron-right {
-      transform: rotate(90deg);
+    .toggle-exercices:hover {
+      color: var(--primary-dark);
+    }
+
+    .exercice-list {
+      padding: 10px;
+    }
+
+    .exercice-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f1f1f1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .exercice-item:last-child {
+      border-bottom: none;
+    }
+
+    .exercice-status {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .exercice-status.completed {
+      background-color: var(--success);
+    }
+
+    .exercice-status.pending {
+      background-color: #ffc107;
+    }
+
+    .exercice-status.not-started {
+      background-color: #dee2e6;
     }
 
     @media (max-width: 768px) {
@@ -310,16 +332,15 @@
 
           <div class="matiere-card">
             <!-- Matière Header -->
-            <div class="matiere-header collapsed" onclick="toggleMatiere(this)">
+            <div class="matiere-header">
               <i class="fas fa-book me-2"></i>
               {{ matiere_nom }}
               <span class="stats-badge">
                 {{ stats.completed_exercises }}/{{ stats.total_exercises }} {{ "exercises" if lang == "en" else "exercices" }}
               </span>
-              <i class="fas fa-chevron-down ms-auto"></i>
             </div>
 
-            <!-- Matière Content -->
+            <!-- Matière Content - TOUJOURS VISIBLE -->
             <div class="matiere-content">
               <!-- Progress bar for matiere -->
               <div class="px-4 pt-3 pb-2">
@@ -332,14 +353,14 @@
                 </div>
               </div>
 
-              <!-- Unités List -->
+              <!-- Unités List - TOUJOURS VISIBLE -->
               {% for unit_data in data.unites %}
                 {% set unite = unit_data.unite %}
                 {% set unit_completion = (unit_data.completed_exercises / unit_data.total_exercises * 100) if unit_data.total_exercises > 0 else 0 %}
 
                 <div class="unite-card">
                   <!-- Unité Header -->
-                  <div class="unite-header collapsed" onclick="toggleUnite(this)">
+                  <div class="unite-header">
                     <i class="fas fa-cube me-2 text-primary"></i>
                     <div class="flex-grow-1">
                       <strong>{{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}</strong>
@@ -354,11 +375,10 @@
                         </small>
                       </div>
                     </div>
-                    <i class="fas fa-chevron-right ms-2"></i>
                   </div>
 
-                  <!-- Unité Content -->
-                  <div class="unite-content">
+                  <!-- Unité Content - TOUJOURS VISIBLE -->
+                  <div>
                     <!-- Test Sommatif -->
                     {% for test in unit_data.tests %}
                       <div class="lecon-item d-flex justify-content-between align-items-center flex-wrap">
@@ -382,7 +402,7 @@
                       </div>
                     {% endfor %}
 
-                    <!-- Leçons -->
+                    <!-- Leçons - TOUJOURS VISIBLE -->
                     {% for lecon_data in unit_data.lecons %}
                       {% set lecon = lecon_data.lecon %}
                       {% if lecon_data.total_exercises > 0 %}
@@ -404,6 +424,37 @@
                             <div class="progress-bar">
                               <div class="progress-fill" style="width: {{ lecon_data.progress }}%"></div>
                             </div>
+
+                            <!-- Bouton pour voir les exercices (optionnel) -->
+                            {% if lecon_data.exercices %}
+                            <button class="toggle-exercices" onclick="toggleExercices(this)">
+                              <i class="fas fa-chevron-down"></i>
+                              {{ "Show exercises" if lang == "en" else "Voir les exercices" }}
+                              <span class="badge bg-secondary ms-2">{{ lecon_data.exercices|length }}</span>
+                            </button>
+                            
+                            <div class="exercice-details">
+                              <div class="exercice-list">
+                                {% for exercice in lecon_data.exercices %}
+                                <div class="exercice-item">
+                                  <div>
+                                    <span class="exercice-status {% if exercice.completed %}completed{% elif exercice.started %}pending{% else %}not-started{% endif %}"></span>
+                                    <span>{{ exercice.titre }}</span>
+                                  </div>
+                                  <small class="text-muted">
+                                    {% if exercice.difficulty == 'easy' %}
+                                      {{ "Easy" if lang == "en" else "Facile" }}
+                                    {% elif exercice.difficulty == 'medium' %}
+                                      {{ "Medium" if lang == "en" else "Moyen" }}
+                                    {% else %}
+                                      {{ "Hard" if lang == "en" else "Difficile" }}
+                                    {% endif %}
+                                  </small>
+                                </div>
+                                {% endfor %}
+                              </div>
+                            </div>
+                            {% endif %}
                           </div>
                           <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lecon_id={{ lecon.id }}&lang={{ lang }}&index=0"
                              class="btn-start mt-2 mt-md-0">
@@ -448,39 +499,21 @@
 </div>
 
 <script>
-  // Toggle matiere content
-  function toggleMatiere(element) {
-    const content = element.nextElementSibling;
-    const icon = element.querySelector('.fa-chevron-down');
+  // Fonction pour afficher/masquer les exercices détaillés
+  function toggleExercices(button) {
+    const details = button.nextElementSibling;
+    const icon = button.querySelector('i');
     
-    // Toggle collapsed class
-    element.classList.toggle('collapsed');
-    
-    // Toggle content
-    if (content.classList.contains('expanded')) {
-      content.style.maxHeight = '0';
-      content.classList.remove('expanded');
+    if (details.classList.contains('expanded')) {
+      details.classList.remove('expanded');
+      icon.classList.remove('fa-chevron-up');
+      icon.classList.add('fa-chevron-down');
+      button.innerHTML = button.innerHTML.replace("{{ 'Hide exercises' if lang == 'en' else 'Masquer les exercices' }}", "{{ 'Show exercises' if lang == 'en' else 'Voir les exercices' }}");
     } else {
-      content.style.maxHeight = content.scrollHeight + 'px';
-      content.classList.add('expanded');
-    }
-  }
-
-  // Toggle unite content
-  function toggleUnite(element) {
-    const content = element.nextElementSibling;
-    const icon = element.querySelector('.fa-chevron-right');
-    
-    // Toggle collapsed class
-    element.classList.toggle('collapsed');
-    
-    // Toggle content
-    if (content.classList.contains('expanded')) {
-      content.style.maxHeight = '0';
-      content.classList.remove('expanded');
-    } else {
-      content.style.maxHeight = content.scrollHeight + 'px';
-      content.classList.add('expanded');
+      details.classList.add('expanded');
+      icon.classList.remove('fa-chevron-down');
+      icon.classList.add('fa-chevron-up');
+      button.innerHTML = button.innerHTML.replace("{{ 'Show exercises' if lang == 'en' else 'Voir les exercices' }}", "{{ 'Hide exercises' if lang == 'en' else 'Masquer les exercices' }}");
     }
   }
 
@@ -488,18 +521,6 @@
   document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('matieres-container').style.display = 'block';
-    
-    // Dérouler automatiquement la première matière pour faciliter le test
-    const firstMatiere = document.querySelector('.matiere-header');
-    if (firstMatiere) {
-      toggleMatiere(firstMatiere);
-      
-      // Dérouler aussi la première unité de la première matière
-      const firstUnite = document.querySelector('.unite-header');
-      if (firstUnite) {
-        toggleUnite(firstUnite);
-      }
-    }
   });
 
   // Show loading initially
