@@ -79,14 +79,14 @@
       background: linear-gradient(135deg, #38a873 0%, #2e9968 100%);
     }
 
-    .matiere-header.collapsed i.fa-chevron-down {
-      transform: rotate(-90deg);
-    }
-
     .matiere-content {
       max-height: 0;
       overflow: hidden;
       transition: max-height 0.3s ease-out;
+    }
+
+    .matiere-content.expanded {
+      max-height: 2000px; /* Valeur suffisamment grande pour contenir tout */
     }
 
     .unite-card {
@@ -111,15 +111,15 @@
       background: rgba(67, 97, 238, 0.05);
     }
 
-    .unite-header.collapsed i.fa-chevron-right {
-      transform: rotate(-90deg);
-    }
-
     .unite-content {
       max-height: 0;
       overflow: hidden;
       transition: max-height 0.3s ease-out;
       padding-left: 15px;
+    }
+
+    .unite-content.expanded {
+      max-height: 2000px; /* Valeur suffisamment grande pour contenir tout */
     }
 
     .lecon-item {
@@ -214,6 +214,23 @@
       color: #6c757d;
     }
 
+    /* Icônes avec transition */
+    .matiere-header i.fa-chevron-down {
+      transition: transform 0.3s ease;
+    }
+
+    .matiere-header.collapsed i.fa-chevron-down {
+      transform: rotate(-90deg);
+    }
+
+    .unite-header i.fa-chevron-right {
+      transition: transform 0.3s ease;
+    }
+
+    .unite-header.collapsed i.fa-chevron-right {
+      transform: rotate(90deg);
+    }
+
     @media (max-width: 768px) {
       body {
         padding: 10px;
@@ -299,7 +316,7 @@
               <span class="stats-badge">
                 {{ stats.completed_exercises }}/{{ stats.total_exercises }} {{ "exercises" if lang == "en" else "exercices" }}
               </span>
-              <i class="fas fa-chevron-down ms-auto transition-all"></i>
+              <i class="fas fa-chevron-down ms-auto"></i>
             </div>
 
             <!-- Matière Content -->
@@ -337,7 +354,7 @@
                         </small>
                       </div>
                     </div>
-                    <i class="fas fa-chevron-right ms-2 transition-all"></i>
+                    <i class="fas fa-chevron-right ms-2"></i>
                   </div>
 
                   <!-- Unité Content -->
@@ -434,13 +451,13 @@
   // Toggle matiere content
   function toggleMatiere(element) {
     const content = element.nextElementSibling;
-    const isExpanded = content.classList.contains('expanded');
-
-    // Toggle icon
+    const icon = element.querySelector('.fa-chevron-down');
+    
+    // Toggle collapsed class
     element.classList.toggle('collapsed');
-
+    
     // Toggle content
-    if (isExpanded) {
+    if (content.classList.contains('expanded')) {
       content.style.maxHeight = '0';
       content.classList.remove('expanded');
     } else {
@@ -452,13 +469,13 @@
   // Toggle unite content
   function toggleUnite(element) {
     const content = element.nextElementSibling;
-    const isExpanded = content.classList.contains('expanded');
-
-    // Toggle icon
+    const icon = element.querySelector('.fa-chevron-right');
+    
+    // Toggle collapsed class
     element.classList.toggle('collapsed');
-
+    
     // Toggle content
-    if (isExpanded) {
+    if (content.classList.contains('expanded')) {
       content.style.maxHeight = '0';
       content.classList.remove('expanded');
     } else {
@@ -471,6 +488,18 @@
   document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('matieres-container').style.display = 'block';
+    
+    // Dérouler automatiquement la première matière pour faciliter le test
+    const firstMatiere = document.querySelector('.matiere-header');
+    if (firstMatiere) {
+      toggleMatiere(firstMatiere);
+      
+      // Dérouler aussi la première unité de la première matière
+      const firstUnite = document.querySelector('.unite-header');
+      if (firstUnite) {
+        toggleUnite(firstUnite);
+      }
+    }
   });
 
   // Show loading initially
