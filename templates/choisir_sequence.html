@@ -43,6 +43,8 @@
 
     .content-section {
       padding: 25px;
+      max-height: 70vh;
+      overflow-y: auto; /* Barre de défilement si nécessaire */
     }
 
     .welcome-card {
@@ -225,20 +227,20 @@
       body {
         padding: 10px;
       }
-      
+
       .header-section, .content-section {
         padding: 20px;
       }
-      
+
       .lecon-item {
         flex-direction: column;
         gap: 10px;
       }
-      
+
       .lecon-info {
         width: 100%;
       }
-      
+
       .btn-start, .btn-test {
         width: 100%;
         justify-content: center;
@@ -297,10 +299,10 @@
         {% for matiere_nom, data in matiere_data.items() %}
           {% set stats = data.stats %}
           {% set completion_rate = (stats.completed_exercises / stats.total_exercises * 100) if stats.total_exercises > 0 else 0 %}
-          
+
           <div class="matiere-card">
             <!-- Matière Header -->
-            <div class="matiere-header" onclick="toggleMatiere(this)">
+            <div class="matiere-header collapsed" onclick="toggleMatiere(this)">
               <i class="fas fa-book me-2"></i>
               {{ matiere_nom }}
               <span class="stats-badge">
@@ -326,10 +328,10 @@
               {% for unit_data in data.unites %}
                 {% set unite = unit_data.unite %}
                 {% set unit_completion = (unit_data.completed_exercises / unit_data.total_exercises * 100) if unit_data.total_exercises > 0 else 0 %}
-                
+
                 <div class="unite-card">
                   <!-- Unité Header -->
-                  <div class="unite-header" onclick="toggleUnite(this)">
+                  <div class="unite-header collapsed" onclick="toggleUnite(this)">
                     <i class="fas fa-cube me-2 text-primary"></i>
                     <div class="flex-grow-1">
                       <strong>{{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}</strong>
@@ -364,7 +366,7 @@
                             {{ "Test your knowledge of the unit" if lang == "en" else "Testez vos connaissances de l'unité" }}
                           </small>
                         </div>
-                        <a href="/test/{{ test.id }}?username={{ eleve.username }}&lang={{ lang }}" 
+                        <a href="/test/{{ test.id }}?username={{ eleve.username }}&lang={{ lang }}"
                            class="btn-test mt-2 mt-md-0">
                           <i class="fas fa-play-circle me-1"></i>
                           {{ "Start Test" if lang == "en" else "Commencer" }}
@@ -383,7 +385,7 @@
                               <strong>{{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}</strong>
                               <span class="badge-count ms-2">{{ lecon_data.total_exercises }}</span>
                             </div>
-                            
+
                             <!-- Progress for this lesson -->
                             <div class="d-flex justify-content-between mb-1">
                               <small class="text-muted">
@@ -395,7 +397,7 @@
                               <div class="progress-fill" style="width: {{ lecon_data.progress }}%"></div>
                             </div>
                           </div>
-                          <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lecon_id={{ lecon.id }}&lang={{ lang }}&index=0" 
+                          <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lecon_id={{ lecon.id }}&lang={{ lang }}&index=0"
                              class="btn-start mt-2 mt-md-0">
                             <i class="fas fa-rocket me-1"></i>
                             {{ "Start" if lang == "en" else "Commencer" }}
@@ -418,7 +420,7 @@
           <div class="p-4 text-center">
             <i class="fas fa-book-open fa-3x mb-3 text-muted"></i>
             <p class="text-muted mb-0">
-              {{ "No learning sequences are available for your level at the moment." if lang == "en" 
+              {{ "No learning sequences are available for your level at the moment." if lang == "en"
                  else "Aucune séquence d'apprentissage n'est disponible pour votre niveau pour le moment." }}
             </p>
           </div>
@@ -428,7 +430,7 @@
 
     <!-- Back Button -->
     <div class="text-center mt-4">
-      <a href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}" 
+      <a href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}"
          class="btn btn-outline-primary px-4 py-2">
         <i class="fas fa-arrow-left me-2"></i>
         {{ "Back to Dashboard" if lang == "en" else "Retour au tableau de bord" }}
@@ -442,10 +444,10 @@
   function toggleMatiere(element) {
     const content = element.nextElementSibling;
     const isExpanded = content.classList.contains('expanded');
-    
+
     // Toggle icon
     element.classList.toggle('collapsed');
-    
+
     // Toggle content
     if (isExpanded) {
       content.style.maxHeight = '0';
@@ -460,10 +462,10 @@
   function toggleUnite(element) {
     const content = element.nextElementSibling;
     const isExpanded = content.classList.contains('expanded');
-    
+
     // Toggle icon
     element.classList.toggle('collapsed');
-    
+
     // Toggle content
     if (isExpanded) {
       content.style.maxHeight = '0';
@@ -474,33 +476,8 @@
     }
   }
 
-  // Initialize - open first matiere
+  // Hide loading after content is loaded
   document.addEventListener('DOMContentLoaded', function() {
-    const firstMatiere = document.querySelector('.matiere-card');
-    if (firstMatiere) {
-      const header = firstMatiere.querySelector('.matiere-header');
-      const content = firstMatiere.querySelector('.matiere-content');
-      
-      // Open first matiere
-      header.classList.remove('collapsed');
-      content.classList.add('expanded');
-      content.style.maxHeight = content.scrollHeight + 'px';
-      
-      // Open first unite of first matiere
-      const firstUnite = firstMatiere.querySelector('.unite-card');
-      if (firstUnite) {
-        const uniteHeader = firstUnite.querySelector('.unite-header');
-        const uniteContent = firstUnite.querySelector('.unite-content');
-        
-        setTimeout(() => {
-          uniteHeader.classList.remove('collapsed');
-          uniteContent.classList.add('expanded');
-          uniteContent.style.maxHeight = uniteContent.scrollHeight + 'px';
-        }, 300);
-      }
-    }
-    
-    // Hide loading after content is loaded
     document.getElementById('loading').style.display = 'none';
     document.getElementById('matieres-container').style.display = 'block';
   });
@@ -508,7 +485,7 @@
   // Show loading initially
   document.getElementById('matieres-container').style.display = 'none';
   document.getElementById('loading').style.display = 'block';
-  
+
   // Hide loading after a timeout (fallback)
   setTimeout(() => {
     document.getElementById('loading').style.display = 'none';
