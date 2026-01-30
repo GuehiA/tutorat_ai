@@ -3425,7 +3425,7 @@ def paiement_direct():
     """Route de paiement direct pour les élèves"""
     # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("login_eleve"))  # CHANGÉ: "login_eleve"
     
     # Vérifier si c'est un élève
     if session.get("role") != "eleve":
@@ -3439,7 +3439,7 @@ def paiement_direct():
         eleve = UserModel.query.get(session["user_id"])
         if not eleve or eleve.role != "eleve":
             flash("Élève non trouvé", "error")
-            return redirect(url_for("login"))
+            return redirect(url_for("login_eleve"))  # CHANGÉ: "login_eleve"
         
         plan_type = request.args.get("type", "quarterly")
         amount_param = request.args.get("amount", None)
@@ -3552,7 +3552,7 @@ def paiement_direct():
                         'teacher_email': teacher.email
                     }
             
-            # Créer une session de paiement Stripe OPTIMISÉE (CORRECTION ICI)
+            # Créer une session de paiement Stripe OPTIMISÉE
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=[{
@@ -3608,8 +3608,8 @@ def paiement_direct():
                 discounts=[{
                     'coupon': 'WELCOME10'  # Coupon de bienvenue optionnel
                 }] if os.environ.get('STRIPE_WELCOME_COUPON') else [],
-                # SUPPRIMÉ: customer_creation='always',  ← CAUSE DE L'ERREUR
                 invoice_creation={'enabled': True},
+                # SUPPRIMÉ: customer_creation='always',  ← CAUSE DE L'ERREUR
                 payment_intent_data={
                     'metadata': {
                         'eleve_id': eleve.id,
