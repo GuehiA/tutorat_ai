@@ -3423,19 +3423,16 @@ def creer_session_paiement():
 @app.route("/paiement-direct")
 def paiement_direct():
     """Route de paiement direct pour les élèves"""
-    # CORRECTION : Vérifier les deux clés de session possibles
-    if "eleve_id" not in session and "user_id" not in session:
+    from models import User  # IMPORT DIRECT ICI
+    
+    # Vérifier si l'élève est connecté
+    if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
-    # Déterminer l'ID de l'élève
-    eleve_id = session.get("eleve_id") or session.get("user_id")
-    
     try:
-        UserModel = get_user_model()
-        
         # Récupérer l'élève
-        eleve = UserModel.query.get(eleve_id)
-        if not eleve or eleve.role != "élève":  # Note: "élève" avec accent
+        eleve = User.query.get(session["eleve_id"])
+        if not eleve or eleve.role != "élève":
             flash("Élève non trouvé", "error")
             return redirect(url_for("login_eleve"))
         
@@ -3504,6 +3501,7 @@ def paiement_direct():
             description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
             
             print(f"💰 Paiement direct - Montant pour {plan_type}: {plan_info['amount']/100}$ CAD")
+            print(f"🌐 Langue: {lang}")
             
             # Configurer le recurring
             recurring_config = {
@@ -3521,8 +3519,10 @@ def paiement_direct():
                 custom_message = f"{'Économisez 89.89$/an !' if lang == 'fr' else 'Save $89.89/year!'}"
             
             # Vérifier si l'utilisateur est en essai gratuit
-            essai_actif = eleve.est_en_essai_gratuit() if hasattr(eleve, 'est_en_essai_gratuit') and callable(getattr(eleve, 'est_en_essai_gratuit')) else False
+            essai_actif = eleve.est_en_essai_gratuit()
             print(f"🎯 Essai gratuit actif: {essai_actif}")
+            if essai_actif:
+                print(f"⏰ Date fin essai: {eleve.date_fin_essai}")
             
             # Créer une session de paiement Stripe SIMPLIFIÉE
             checkout_session = stripe.checkout.Session.create(
@@ -3556,6 +3556,11 @@ def paiement_direct():
             print(f"✅ Session Stripe créée pour {eleve.email}")
             print(f"🔗 URL Stripe: {checkout_session.url}")
             print(f"💰 Montant: {plan_info['amount']/100}$ CAD")
+            print(f"📋 Session ID: {checkout_session.id}")
+            
+            # Sauvegarder l'ID de session dans l'utilisateur
+            eleve.stripe_session_id = checkout_session.id
+            db.session.commit()
             
             # Redirection vers Stripe
             return redirect(checkout_session.url)
@@ -8822,7 +8827,7 @@ def supprimer_eleve(eleve_id):
 
 @app.route("/login-eleve", methods=["GET", "POST"])
 def login_eleve():
-    from models import User
+    from models import User, db  # AJOUT: import db aussi
     
     if request.method == 'POST':
         email = request.form.get("email")
@@ -8832,9 +8837,13 @@ def login_eleve():
         if eleve and eleve.verifier_mot_de_passe(mot_de_passe):
             # Vérifier si l'essai est expiré
             if eleve.essai_est_expire():
-                # 🔴 MODIFICATION ICI : Redirection vers upgrade_options
+                # STANDARDISATION DES SESSIONS - AJOUT ICI
                 session['eleve_id'] = eleve.id
                 session['eleve_username'] = eleve.username
+                session['user_id'] = eleve.id  # POUR COMPATIBILITÉ
+                session['role'] = 'élève'      # POUR COMPATIBILITÉ
+                session['current_student'] = eleve.username
+                
                 flash("Votre période d'essai gratuit de 48h est terminée. Veuillez choisir un abonnement.", "warning")
                 return redirect(url_for('upgrade_options'))
             
@@ -8851,10 +8860,20 @@ def login_eleve():
                 
                 flash(message, "info")
 
-            # Connexion - STOCKER DANS LA SESSION
+            # Connexion - STOCKER DANS LA SESSION (STANDARDISÉ)
             session['eleve_id'] = eleve.id
             session['eleve_username'] = eleve.username
+            session['user_id'] = eleve.id          # AJOUT: pour compatibilité
+            session['role'] = 'élève'              # AJOUT: pour compatibilité
             session['current_student'] = eleve.username  # ✅ Pour l'enseignant virtuel
+            
+            # Mettre à jour les statistiques de connexion
+            eleve.derniere_connexion = datetime.utcnow()
+            eleve.nombre_connexions = (eleve.nombre_connexions or 0) + 1
+            db.session.commit()
+            
+            print(f"✅ Connexion réussie: {eleve.nom_complet} (ID: {eleve.id})")
+            print(f"📊 Session stockée: eleve_id={session['eleve_id']}, user_id={session['user_id']}")
             
             return redirect(url_for('dashboard_eleve'))
         else:
