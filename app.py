@@ -3190,6 +3190,9 @@ def inscription_eleve():
 
 @app.route("/upgrade-options")
 def upgrade_options():
+    from models import User, db
+    from datetime import datetime
+    
     if "eleve_id" not in session:
         return redirect(url_for("login_eleve"))
     
@@ -3203,9 +3206,30 @@ def upgrade_options():
         eleve.statut = "inactif"
         db.session.commit()
     
-    lang = session.get("lang", "fr")
+    # Calculer le temps restant d'essai
+    temps_restant = None
+    heures_restantes = 0
+    if eleve.est_en_essai_gratuit() and eleve.date_fin_essai:
+        temps_restant = eleve.date_fin_essai - datetime.utcnow()
+        heures_restantes = max(0, int(temps_restant.total_seconds() / 3600))
     
-    return render_template("upgrade_options.html", eleve=eleve, lang=lang)
+    # Préparer les informations pour le template
+    essai_info = {
+        'actif': eleve.est_en_essai_gratuit(),
+        'expire': eleve.essai_est_expire(),
+        'heures_restantes': heures_restantes,
+        'date_fin': eleve.date_fin_essai,
+        'statut_paiement': eleve.statut_paiement
+    }
+    
+    print(f"📊 Upgrade options pour {eleve.email}")
+    print(f"🎯 Essai actif: {essai_info['actif']}, Heures restantes: {heures_restantes}")
+    
+    lang = session.get('lang', 'fr')
+    return render_template("upgrade_options.html", 
+                          eleve=eleve, 
+                          essai_info=essai_info, 
+                          lang=lang)
 
 @app.route("/creer-session-paiement", methods=["POST"])
 def creer_session_paiement():
