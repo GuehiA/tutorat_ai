@@ -3423,28 +3423,28 @@ def creer_session_paiement():
 @app.route("/paiement-direct")
 def paiement_direct():
     """Route de paiement direct pour les élèves"""
-    # Vérifier si l'utilisateur est connecté
-    if "user_id" not in session:
-        return redirect(url_for("login_eleve"))  # CHANGÉ: "login_eleve"
+    # CORRECTION : Vérifier les deux clés de session possibles
+    if "eleve_id" not in session and "user_id" not in session:
+        return redirect(url_for("login_eleve"))
     
-    # Vérifier si c'est un élève
-    if session.get("role") != "eleve":
-        flash("Accès réservé aux élèves", "error")
-        return redirect("/")
+    # Déterminer l'ID de l'élève
+    eleve_id = session.get("eleve_id") or session.get("user_id")
     
     try:
         UserModel = get_user_model()
         
         # Récupérer l'élève
-        eleve = UserModel.query.get(session["user_id"])
-        if not eleve or eleve.role != "eleve":
+        eleve = UserModel.query.get(eleve_id)
+        if not eleve or eleve.role != "élève":  # Note: "élève" avec accent
             flash("Élève non trouvé", "error")
-            return redirect(url_for("login_eleve"))  # CHANGÉ: "login_eleve"
+            return redirect(url_for("login_eleve"))
         
         plan_type = request.args.get("type", "quarterly")
         amount_param = request.args.get("amount", None)
         
         print(f"📋 Paiement direct - Plan demandé: {plan_type}, Montant: {amount_param}")
+        print(f"👤 Élève: {eleve.nom_complet} (ID: {eleve.id}, Email: {eleve.email})")
+        print(f"📊 Statut paiement: {eleve.statut_paiement}")
         
         # Vérifier si le type de plan est valide
         valid_plans = ['monthly', 'quarterly', 'annual']
@@ -3452,54 +3452,42 @@ def paiement_direct():
             plan_type = 'quarterly'  # Fallback au plan trimestriel
         
         try:
-            # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX MIS À JOUR)
+            # CONFIGURATION DES PLANS
             plan_config = {
                 'monthly': {
-                    'amount': 1999,  # 19.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                    'amount': 1999,  # 19.99 CAD
                     'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
                     'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
                     'product_name_fr': "Forfait Mensuel (19.99$/mois)",
                     'product_name_en': "Monthly Plan (19.99$/month)",
                     'interval': 'month',
-                    'features_fr': "• Enseignant virtuel 24/7 • Questionnement socratique • Toutes matières • Suivi de progression",
-                    'features_en': "• Virtual teacher 24/7 • Socratic questioning • All subjects • Progress tracking",
                     'monthly_effective': 19.99,
-                    'savings_percentage': 0,
-                    'savings_amount': 0,
-                    'price_per_day': 0.67  # 19.99 / 30
+                    'price_per_day': 0.67
                 },
                 'quarterly': {
-                    'amount': 4999,  # 49.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                    'amount': 4999,  # 49.99 CAD
                     'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
                     'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
                     'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
                     'product_name_en': "Quarterly Plan (49.99$/3 months)",
                     'interval': 'month',
                     'interval_count': 3,
-                    'features_fr': "• Toutes fonctionnalités mensuelles • Support prioritaire • Revues trimestrielles • Feuille de route personnalisée",
-                    'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap",
                     'monthly_effective': 16.66,
-                    'savings_percentage': 17,
-                    'savings_amount': 3.33,  # 19.99 - 16.66 = 3.33$/mois
-                    'price_per_day': 0.56  # 16.66 / 30
+                    'price_per_day': 0.56
                 },
                 'annual': {
-                    'amount': 14999,  # 149.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                    'amount': 14999,  # 149.99 CAD
                     'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
                     'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
                     'product_name_fr': "Forfait Annuel (149.99$/an)",
                     'product_name_en': "Annual Plan (149.99$/year)",
                     'interval': 'year',
-                    'features_fr': "• Toutes fonctionnalités trimestrielles • Support premium • Rapports détaillés • Accès continu 12 mois",
-                    'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access",
                     'monthly_effective': 12.50,
-                    'savings_percentage': 37,
-                    'savings_amount': 89.89,  # (19.99*12) - 149.99 = 89.89$/an
-                    'price_per_day': 0.42  # 12.50 / 30
+                    'price_per_day': 0.42
                 }
             }
             
-            # Vérifier si un montant personnalisé est passé dans l'URL (pour compatibilité)
+            # Vérifier si un montant personnalisé est passé dans l'URL
             if amount_param:
                 try:
                     custom_amount = int(float(amount_param) * 100)
@@ -3514,19 +3502,16 @@ def paiement_direct():
             # Sélectionner les textes selon la langue
             product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
             description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
-            features = plan_info[f'features_{lang}'] if f'features_{lang}' in plan_info else plan_info['features_fr']
             
             print(f"💰 Paiement direct - Montant pour {plan_type}: {plan_info['amount']/100}$ CAD")
-            print(f"📊 Prix mensuel effectif: {plan_info['monthly_effective']}$/mois")
-            print(f"🎁 Économies: {plan_info['savings_percentage']}%")
             
-            # Configurer le recurring (spécial pour quarterly)
+            # Configurer le recurring
             recurring_config = {
                 'interval': plan_info['interval'],
                 'interval_count': plan_info.get('interval_count', 1)
             }
             
-            # Créer un message personnalisé selon le plan (mis à jour avec nouveaux prix)
+            # Créer un message personnalisé selon le plan
             custom_message = ""
             if plan_type == 'monthly':
                 custom_message = f"{'Moins de 0.67$ par jour !' if lang == 'fr' else 'Less than $0.67 per day!'}"
@@ -3537,22 +3522,9 @@ def paiement_direct():
             
             # Vérifier si l'utilisateur est en essai gratuit
             essai_actif = eleve.est_en_essai_gratuit() if hasattr(eleve, 'est_en_essai_gratuit') and callable(getattr(eleve, 'est_en_essai_gratuit')) else False
+            print(f"🎯 Essai gratuit actif: {essai_actif}")
             
-            # Récupérer l'enseignant assigné
-            teacher_info = {}
-            if hasattr(eleve, 'enseignant_referent_id') and eleve.enseignant_referent_id:
-                teacher = UserModel.query.filter_by(
-                    id=eleve.enseignant_referent_id,
-                    role="enseignant"
-                ).first()
-                if teacher:
-                    teacher_info = {
-                        'teacher_id': teacher.id,
-                        'teacher_name': teacher.nom_complet,
-                        'teacher_email': teacher.email
-                    }
-            
-            # Créer une session de paiement Stripe OPTIMISÉE
+            # Créer une session de paiement Stripe SIMPLIFIÉE
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=[{
@@ -3561,16 +3533,6 @@ def paiement_direct():
                         'product_data': {
                             'name': product_name,
                             'description': description,
-                            'metadata': {
-                                'plan_type': plan_type,
-                                'lang': lang,
-                                'monthly_price': f"{plan_info['monthly_effective']:.2f}",
-                                'savings_percentage': plan_info['savings_percentage'],
-                                'price_per_day': f"{plan_info['price_per_day']:.2f}"
-                            },
-                            'images': [
-                                'https://advanceteach.com/static/images/logo.png'
-                            ] if os.path.exists('static/images/logo.png') else []
                         },
                         'unit_amount': plan_info['amount'],
                         'recurring': recurring_config
@@ -3582,64 +3544,24 @@ def paiement_direct():
                 cancel_url=url_for('upgrade_options', _external=True) + f'?cancel=true&plan_type={plan_type}',
                 customer_email=eleve.email,
                 metadata={
-                    'eleve_id': eleve.id,
+                    'eleve_id': str(eleve.id),
                     'plan_type': plan_type,
-                    'lang': lang,
                     'student_name': eleve.nom_complet,
-                    'student_email': eleve.email,
-                    'monthly_price': f"{plan_info['monthly_effective']:.2f}",
-                    'savings_percentage': plan_info['savings_percentage'],
-                    'amount_paid': f"{plan_info['amount']/100:.2f}",
-                    'trial_active': str(essai_actif),
-                    'enseignant_id': str(teacher_info.get('teacher_id', '')),
-                    'enseignant_email': teacher_info.get('teacher_email', '')
+                    'student_email': eleve.email
                 },
                 allow_promotion_codes=True,
-                billing_address_collection='required',
-                phone_number_collection={'enabled': True},
-                custom_text={
-                    'submit': {
-                        'message': custom_message
-                    },
-                    'terms_of_service_acceptance': {
-                        'message': f"{'✅ En vous abonnant, vous acceptez nos conditions générales.' if lang == 'fr' else '✅ By subscribing, you accept our terms and conditions.'}"
-                    }
-                },
-                discounts=[{
-                    'coupon': 'WELCOME10'  # Coupon de bienvenue optionnel
-                }] if os.environ.get('STRIPE_WELCOME_COUPON') else [],
-                invoice_creation={'enabled': True},
-                # SUPPRIMÉ: customer_creation='always',  ← CAUSE DE L'ERREUR
-                payment_intent_data={
-                    'metadata': {
-                        'eleve_id': eleve.id,
-                        'plan_type': plan_type,
-                        'student_name': eleve.nom_complet,
-                        'enseignant_id': str(teacher_info.get('teacher_id', ''))
-                    }
-                },
-                # Expire la session après 30 minutes
-                expires_at=int(datetime.now().timestamp()) + 1800
+                billing_address_collection='required'
             )
             
-            # Log détaillé pour le suivi
-            print(f"🎯 Paiement direct créé pour {eleve.email}")
-            print(f"📊 Plan: {plan_type}")
-            print(f"💰 Montant total: {plan_info['amount']/100:.2f}$ CAD")
-            print(f"📈 Prix mensuel effectif: {plan_info['monthly_effective']:.2f}$/mois")
-            print(f"🎁 Économies: {plan_info['savings_percentage']}% ({plan_info['savings_amount']:.2f}$)")
-            print(f"⏰ Prix par jour: {plan_info['price_per_day']:.2f}$/jour")
-            print(f"👨‍🏫 Enseignant assigné: {teacher_info.get('teacher_name', 'Aucun')}")
-            print(f"🔗 Session Stripe: {checkout_session.id}")
+            print(f"✅ Session Stripe créée pour {eleve.email}")
+            print(f"🔗 URL Stripe: {checkout_session.url}")
+            print(f"💰 Montant: {plan_info['amount']/100}$ CAD")
             
-            # Redirection directe vers Stripe
+            # Redirection vers Stripe
             return redirect(checkout_session.url)
             
         except stripe.error.StripeError as e:
-            print(f"❌ Erreur Stripe: {e.user_message if hasattr(e, 'user_message') else e}")
-            import traceback
-            traceback.print_exc()
-            
+            print(f"❌ Erreur Stripe: {e}")
             error_msg = "Erreur de paiement Stripe" if session.get('lang', 'fr') == 'fr' else "Stripe payment error"
             flash(error_msg, "error")
             return redirect(url_for('upgrade_options'))
@@ -3648,13 +3570,14 @@ def paiement_direct():
             print(f"❌ Erreur paiement direct: {e}")
             import traceback
             traceback.print_exc()
-            
             error_msg = "Erreur lors de la création du paiement" if session.get('lang', 'fr') == 'fr' else "Error creating payment"
             flash(error_msg, "error")
             return redirect(url_for('upgrade_options'))
             
     except Exception as e:
-        logger.error(f"Erreur route paiement_direct: {e}")
+        print(f"❌ Erreur route paiement_direct: {e}")
+        import traceback
+        traceback.print_exc()
         flash("Erreur lors de l'accès à la page de paiement", "error")
         return redirect("/")
 
