@@ -1,11 +1,11 @@
-# debug_eleve_invisible.py
+# debug_eleve_invisible.py - VERSION CORRIGÉE
 """
 DEBUG: Pourquoi l'élève créé n'apparaît pas dans la liste et ne peut pas se connecter
 """
 
-from app import app, db, create_app
+from app import app, db
 from models import User
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime
 
 def debug_eleve_invisible():
@@ -13,14 +13,13 @@ def debug_eleve_invisible():
     print("🔍 DEBUG: ÉLÈVE INVISIBLE ET CONNEXION IMPOSSIBLE")
     print("=" * 60)
     
-    app = create_app()
-    
     with app.app_context():
         print("\n1️⃣ ANALYSE DE TOUS LES UTILISATEURS:")
         print("-" * 40)
         
         # Compter par rôle EXACT
-        roles_counts = db.session.query(User.role, db.func.count(User.id)).group_by(User.role).all()
+        from sqlalchemy import func
+        roles_counts = db.session.query(User.role, func.count(User.id)).group_by(User.role).all()
         
         print("📊 Distribution par rôle:")
         for role, count in roles_counts:
@@ -52,7 +51,8 @@ def debug_eleve_invisible():
             print(f"\n📋 Élèves trouvés (premiers 5):")
             for i, eleve in enumerate(eleves_list[:5], 1):
                 ens_ref = eleve.enseignant_referent_id
-                ens_name = User.query.get(ens_ref).nom_complet if ens_ref else "Aucun"
+                ens = User.query.get(ens_ref) if ens_ref else None
+                ens_name = ens.nom_complet if ens else "Aucun"
                 print(f"   {i}. {eleve.email:35} - Enseignant: {ens_name}")
         
         # Vérifier s'il y a des élèves avec enseignant_referent_id NULL vs NOT NULL
@@ -119,21 +119,25 @@ def debug_eleve_invisible():
                 # Tester avec un mot de passe potentiel
                 test_passwords = [
                     "Test123!", "Password123!", "Motdepasse123!", 
-                    eleve.username + "123!", eleve.email.split('@')[0] + "123!"
+                    eleve.username + "123!", eleve.email.split('@')[0] + "123!",
+                    "123456", "password", "admin123"
                 ]
                 
+                found = False
                 for pwd in test_passwords:
                     if check_password_hash(eleve.mot_de_passe_hash, pwd):
                         print(f"   • 🔓 Mot de passe trouvé: '{pwd}'")
+                        found = True
                         break
+                
+                if not found:
+                    print(f"   • 🔒 Mot de passe non trouvé dans les tests")
         
         print("\n6️⃣ CRÉATION D'UN TEST DIRECT:")
         print("-" * 40)
         
         # Créer un élève de test
         test_email = f"debug_test_{datetime.now().strftime('%H%M%S')}@tutorat.com"
-        
-        from werkzeug.security import generate_password_hash
         
         try:
             # Vérifier
@@ -172,27 +176,25 @@ def debug_eleve_invisible():
                 
         except Exception as e:
             print(f"❌ Erreur création: {e}")
+            import traceback
+            traceback.print_exc()
         
-        print("\n7️⃣ VÉRIFICATION DU CODE DE LA ROUTE /admin/eleves:")
+        print("\n7️⃣ DERNIERS ÉLÈVES CRÉÉS (pour debug):")
         print("-" * 40)
         
-        print("🔎 Cherchez dans votre code app.py ou routes.py:")
-        print("""
-   @app.route('/admin/eleves')
-   def liste_eleves():
-       # Vérifiez cette logique:
-       
-       # 1. Comment filtrez-vous les élèves?
-       eleves = User.query.filter_by(role='eleve').all()  # ← Bon
-       # OU
-       eleves = User.query.filter(User.role.ilike('%eleve%')).all()  # ← Mauvais si accent
-       
-       # 2. Avez-vous des filtres supplémentaires?
-       # Ex: .filter(User.statut == 'actif') pourrait exclure certains
-       
-       # 3. Comment passez-vous au template?
-       return render_template('admin/eleves.html', eleves=eleves)
-        """)
+        derniers_eleves = User.query.filter_by(role='eleve').order_by(User.date_inscription.desc()).limit(5).all()
+        
+        if derniers_eleves:
+            for i, eleve in enumerate(derniers_eleves, 1):
+                print(f"\n{i}. {eleve.email}")
+                print(f"   • ID: {eleve.id}")
+                print(f"   • Nom: {eleve.nom_complet}")
+                print(f"   • Date création: {eleve.date_inscription}")
+                print(f"   • Enseignant réf ID: {eleve.enseignant_referent_id}")
+                print(f"   • Statut: {eleve.statut}")
+                print(f"   • Statut paiement: {eleve.statut_paiement}")
+        else:
+            print("Aucun élève trouvé!")
 
 if __name__ == "__main__":
     debug_eleve_invisible()
