@@ -60,7 +60,7 @@
       height: 100%;
     }
 
-    /* Header */
+    /* Header - ABSOLUMENT TOUT EN HAUT */
     .header {
       background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
       color: white;
@@ -71,6 +71,8 @@
       justify-content: space-between;
       align-items: center;
       box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+      /* FORCER EN HAUT */
+      order: 1;
     }
 
     .header-left {
@@ -107,7 +109,29 @@
       gap: 5px;
     }
 
-    /* Bannière de rémédiation - CACHÉE SANS EXERCICE */
+    /* Information de session */
+    .session-info {
+      background: rgba(67, 97, 238, 0.1);
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin: 10px 0 15px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      /* FORCER 2ÈME */
+      order: 2;
+    }
+
+    .session-matiere {
+      background: var(--accent);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+    }
+
+    /* Bannière de rémédiation */
     .remediation-context-banner {
       background: linear-gradient(135deg, #e8f4ff 0%, #d1e7ff 100%);
       padding: 15px;
@@ -115,6 +139,8 @@
       margin-bottom: 20px;
       border-left: 5px solid #4361ee;
       display: none;
+      /* FORCER 3ÈME */
+      order: 3;
     }
 
     /* Sélecteur de matière */
@@ -124,6 +150,8 @@
       padding: 15px;
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      /* FORCER 4ÈME */
+      order: 4;
     }
 
     .matiere-selector label {
@@ -171,55 +199,13 @@
       transform: translateX(-3px);
     }
 
-    /* Exercice en cours - CACHÉ SI PAS D'EXERCICE */
-    .exercice-header {
-      background: #e8f4ff;
-      border-left: 4px solid var(--primary);
-      padding: 12px 15px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      display: none;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .exercice-icon {
-      color: var(--primary);
-      font-size: 1.2rem;
-      margin-top: 2px;
-    }
-
-    .exercice-content {
-      flex: 1;
-    }
-
-    .exercice-title {
-      font-weight: 600;
-      color: #2c3e50;
-      margin-bottom: 5px;
-      font-size: 0.9rem;
-    }
-
-    .exercice-text {
-      color: #34495e;
-      line-height: 1.4;
-      font-size: 0.95rem;
-    }
-
-    .exercice-counter {
-      background: var(--primary);
-      color: white;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 500;
-    }
-
     /* Controls */
     .controls {
       display: flex;
       gap: 10px;
       margin-bottom: 15px;
+      /* FORCER 5ÈME */
+      order: 5;
     }
 
     .controls form {
@@ -266,6 +252,8 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      /* FORCER 6ÈME (DERNIER) */
+      order: 6;
     }
 
     /* Messages Area */
@@ -273,6 +261,7 @@
       flex: 1;
       overflow-y: auto;
       padding: 20px;
+      scroll-behavior: smooth;
     }
 
     .messages-area::-webkit-scrollbar {
@@ -336,11 +325,43 @@
       opacity: 0.8;
     }
 
+    /* Welcome message */
+    .welcome-message {
+      position: relative;
+    }
+
+    .welcome-message .message-bubble {
+      background: linear-gradient(135deg, #f0f2f5 0%, #e8eaff 100%);
+      border-left: 4px solid var(--primary);
+      padding: 20px;
+    }
+
+    .welcome-message h4 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.4rem;
+    }
+
+    .welcome-message ol {
+      margin: 15px 0;
+      padding-left: 20px;
+    }
+
+    .welcome-message li {
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
     /* Input Area */
     .input-area {
       border-top: 1px solid #e2e8f0;
       padding: 15px;
       background: white;
+      flex-shrink: 0;
     }
 
     .input-group {
@@ -393,31 +414,6 @@
       transform: scale(0.98);
     }
 
-    /* Welcome message */
-    .welcome-message .message-bubble {
-      background: linear-gradient(135deg, #f0f2f5 0%, #e8eaff 100%);
-      border-left: 4px solid var(--primary);
-      padding: 20px;
-    }
-
-    .welcome-message h4 {
-      margin-top: 0;
-      margin-bottom: 10px;
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .welcome-message ol {
-      margin: 10px 0;
-      padding-left: 20px;
-    }
-
-    .welcome-message li {
-      margin-bottom: 8px;
-    }
-
     /* Teacher's Last Question */
     .teacher-question {
       background: #fff9e6;
@@ -434,26 +430,6 @@
       display: flex;
       align-items: center;
       gap: 8px;
-    }
-
-    /* Session info */
-    .session-info {
-      background: rgba(67, 97, 238, 0.1);
-      border-radius: 8px;
-      padding: 10px 15px;
-      margin: 10px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.9rem;
-    }
-
-    .session-matiere {
-      background: var(--accent);
-      color: white;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.8rem;
     }
 
     /* Spinner */
@@ -477,6 +453,12 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
+    }
+
+    /* CONTENEUR PRINCIPAL POUR ORDRE ABSOLU */
+    .main-content {
+      display: flex;
+      flex-direction: column;
     }
 
     /* Responsive */
@@ -514,15 +496,6 @@
         flex-direction: column;
       }
 
-      .exercice-header {
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .exercice-counter {
-        align-self: flex-start;
-      }
-
       .chat-container {
         height: calc(100vh - 270px);
       }
@@ -540,250 +513,256 @@
 
 <body>
   <div class="container">
-    <!-- Header -->
-    <header class="header">
-      <div class="header-left">
-        <div class="student-info">
-          <div class="avatar">
-            {{ eleve.nom_complet.split(' ')[0][0] }}
-            {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
-          </div>
-          <div>
-            <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
-              <i class="fas fa-robot"></i>
-              {% if lang == 'en' %}Virtual Teacher Naima{% else %}Enseignant Virtuel Naima{% endif %}
-              <span class="badge-enseignant">
-                <i class="fas fa-bolt"></i>
-                {% if lang == 'en' %}24/7{% else %}24h/24{% endif %}
-              </span>
-            </h3>
-            <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
-              {{ eleve.nom_complet.split(' ')[0] }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Bouton de retour au dashboard -->
-        <a href="{{ url_for('dashboard_eleve') }}" class="btn-back">
-          <i class="fas fa-arrow-left"></i>
-          <span>{% if lang == 'en' %}Dashboard{% else %}Retour{% endif %}</span>
-        </a>
-      </div>
-
-      <div class="niveau-badge">
-        <i class="fas fa-graduation-cap"></i>
-        {{ eleve.niveau.nom if eleve.niveau else ('6th grade' if lang == 'en' else '6ème') }}
-      </div>
-    </header>
-
-    <!-- Information de session -->
-    <div class="session-info">
-      <div>
-        <i class="fas fa-clock" style="margin-right: 5px; color: var(--primary);"></i>
-        <span id="currentTime">{{ date_du_jour.strftime('%H:%M') if date_du_jour else '' }}</span>
-      </div>
-      <div class="session-matiere" id="currentSubject">
-        <i class="fas fa-book"></i>
-        {{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics')|title }}
-      </div>
-    </div>
-
-    <!-- Sélecteur de matière -->
-    <div class="matiere-selector">
-      <label for="matiere">
-        <i class="fas fa-book-open"></i>
-        {% if lang == 'en' %}Select Subject:{% else %}Choisir la matière :{% endif %}
-      </label>
-      <select name="matiere" id="matiereSelect">
-        {% if lang == 'fr' %}
-          <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>Mathématiques</option>
-          <option value="français" {% if matiere == 'français' %}selected{% endif %}>Français</option>
-          <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>Histoire</option>
-          <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>Sciences</option>
-          <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>Géographie</option>
-        {% else %}
-          <option value="mathematics" {% if matiere == 'mathematics' %}selected{% endif %}>Mathematics</option>
-          <option value="french" {% if matiere == 'french' %}selected{% endif %}>French</option>
-          <option value="history" {% if matiere == 'history' %}selected{% endif %}>History</option>
-          <option value="science" {% if matiere == 'science' %}selected{% endif %}>Science</option>
-          <option value="geography" {% if matiere == 'geography' %}selected{% endif %}>Geography</option>
-        {% endif %}
-      </select>
-    </div>
-
-    <!-- Bannière de contexte de rémédiation - AFFICHÉE SEULEMENT SI exercice_remediation existe -->
-    {% if exercice_remediation %}
-    <div class="remediation-context-banner" id="remediationBanner" style="display: block;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="flex: 1;">
-          <h4 style="margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1rem;">
-            <i class="fas fa-life-ring" style="margin-right: 8px; color: #4361ee;"></i>
-            {% if lang == 'en' %}Remediation Help{% else %}Aide à la rémédiation{% endif %}
-          </h4>
-          <p style="margin: 0; color: #34495e; font-size: 0.9rem;">
-            {% if lang == 'en' %}
-              Exercise: {{ exercice_remediation.question_en[:100] if exercice_remediation.question_en else 'Math exercise' }}...
-            {% else %}
-              Exercice : {{ exercice_remediation.question_fr[:100] if exercice_remediation.question_fr else 'Exercice de maths' }}...
-            {% endif %}
-          </p>
-        </div>
-        <div style="background: #4361ee; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
-          {% if lang == 'en' %}Session {{ access_count }}/5{% else %}Session {{ access_count }}/5{% endif %}
-        </div>
-      </div>
-      <p style="margin: 10px 0 0 0; font-size: 0.85rem; color: #666;">
-        <i class="fas fa-lightbulb" style="margin-right: 5px;"></i>
-        {% if lang == 'en' %}
-          Naima will guide you to understand this exercise step by step.
-        {% else %}
-          Naima vous guidera pour comprendre cet exercice étape par étape.
-        {% endif %}
-      </p>
-    </div>
-    {% endif %}
-
-    <!-- Controls -->
-    <div class="controls">
-      <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
-        <button type="submit" class="btn btn-new" id="newExerciseBtn">
-          <i class="fas fa-plus-circle"></i>
-          {% if lang == 'en' %}New Conversation{% else %}Nouvelle Conversation{% endif %}
-        </button>
-      </form>
-    </div>
-
-    <!-- Chat Container -->
-    <div class="chat-container">
-      <!-- Messages Area -->
-      <div class="messages-area" id="messagesArea">
-        <!-- Conversation - AFFICHÉE SEULEMENT SI EXISTE -->
-        {% set conversation = session.get('conversation', []) %}
-
-        {% if conversation and conversation|length > 0 %}
-          {% for message in conversation %}
-            {% if '👤 Student:' in message or '👤 Élève:' in message %}
-              <div class="message user-message">
-                <div class="message-header">
-                  <i class="fas fa-user"></i>
-                  <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
-                </div>
-                <div class="message-bubble">
-                  {{ message.replace('👤 Student: ', '').replace('👤 Élève: ', '')|safe }}
-                </div>
-              </div>
-            {% elif '🤖 Teacher:' in message or '🤖 Enseignant:' in message %}
-              <div class="message bot-message">
-                <div class="message-header">
-                  <i class="fas fa-robot"></i>
-                  <span>{% if lang == 'en' %}Naima{% else %}Naima{% endif %}</span>
-                </div>
-                <div class="message-bubble">
-                  {{ message.replace('🤖 Teacher: ', '').replace('🤖 Enseignant: ', '')|safe }}
-                </div>
-              </div>
-            {% endif %}
-          {% endfor %}
-
-        {% else %}
-          <!-- Welcome Message - TOUJOURS AFFICHÉ QUAND PAS DE CONVERSATION -->
-          <div class="message bot-message welcome-message">
-            <div class="message-bubble">
-              <h4><i class="fas fa-graduation-cap"></i>
-                {% if lang == 'en' %}Hello {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Bonjour {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}
-              </h4>
-
-              <p><strong>{% if lang == 'en' %}I'm Naima, your Virtual Teacher{% else %}Je suis Naima, ton Enseignante Virtuelle{% endif %}</strong>
-                {% if lang == 'en' %}👩‍🏫{% else %}👩‍🏫{% endif %}
-              </p>
-
-              <p>{% if lang == 'en' %}
-                I'm here to help you understand concepts and solve problems in any subject!
-                <strong>I won't give direct answers</strong>, but I'll guide you step by step so you discover the solutions yourself.
-              {% else %}
-                Je suis là pour t'aider à comprendre les concepts et résoudre des problèmes dans toutes les matières !
-                <strong>Je ne donnerai pas les réponses directement</strong>, mais je te guiderai pas à pas pour que tu découvres les solutions toi-même.
-              {% endif %}</p>
-
-              <p><strong>{% if lang == 'en' %}How to use:{% else %}Comment utiliser :{% endif %}</strong></p>
-              <ol>
-                <li>{% if lang == 'en' %}Select your subject above{% else %}Choisis ta matière ci-dessus{% endif %}</li>
-                <li>{% if lang == 'en' %}Ask your question{% else %}Pose ta question{% endif %}</li>
-                <li>{% if lang == 'en' %}I'll guide you with questions{% else %}Je te guiderai avec des questions{% endif %}</li>
-                <li>{% if lang == 'en' %}Answer my questions{% else %}Réponds à mes questions{% endif %}</li>
-                <li>{% if lang == 'en' %}Together we'll find the solution!{% else %}Ensemble on trouvera la solution !{% endif %}</li>
-              </ol>
-
-              <p style="margin-top: 15px; padding: 10px; background: rgba(67, 97, 238, 0.1); border-radius: 8px;">
-                <i class="fas fa-lightbulb" style="color: #fcc419;"></i>
-                <strong>{% if lang == 'en' %}Pro tip:{% else %}Astuce :{% endif %}</strong>
-                {% if lang == 'en' %}
-                  You can ask about homework, exam preparation, concept explanations, or practice exercises.
-                {% else %}
-                  Tu peux poser des questions sur tes devoirs, la préparation d'examens, l'explication de concepts ou des exercices d'entraînement.
-                {% endif %}
-              </p>
-
-              <p style="text-align: center; margin-top: 20px;">
-                <em>✨ {% if lang == 'en' %}Ready to learn? Write your question below!{% else %}Prêt à apprendre ? Écris ta question ci-dessous !{% endif %}</em>
+    <!-- CONTENEUR PRINCIPAL POUR CONTRÔLER L'ORDRE -->
+    <div class="main-content">
+      
+      <!-- Header - ABSOLUMENT TOUT EN HAUT -->
+      <header class="header">
+        <div class="header-left">
+          <div class="student-info">
+            <div class="avatar">
+              {{ eleve.nom_complet.split(' ')[0][0] }}
+              {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+            </div>
+            <div>
+              <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-robot"></i>
+                {% if lang == 'en' %}Virtual Teacher Naima{% else %}Enseignant Virtuel Naima{% endif %}
+                <span class="badge-enseignant">
+                  <i class="fas fa-bolt"></i>
+                  {% if lang == 'en' %}24/7{% else %}24h/24{% endif %}
+                </span>
+              </h3>
+              <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
+                {{ eleve.nom_complet.split(' ')[0] }}
               </p>
             </div>
           </div>
-        {% endif %}
+
+          <!-- Bouton de retour au dashboard -->
+          <a href="{{ url_for('dashboard_eleve') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            <span>{% if lang == 'en' %}Dashboard{% else %}Retour{% endif %}</span>
+          </a>
+        </div>
+
+        <div class="niveau-badge">
+          <i class="fas fa-graduation-cap"></i>
+          {{ eleve.niveau.nom if eleve.niveau else ('6th grade' if lang == 'en' else '6ème') }}
+        </div>
+      </header>
+
+      <!-- Information de session -->
+      <div class="session-info">
+        <div>
+          <i class="fas fa-clock" style="margin-right: 5px; color: var(--primary);"></i>
+          <span id="currentTime">{{ date_du_jour.strftime('%H:%M') if date_du_jour else '' }}</span>
+        </div>
+        <div class="session-matiere" id="currentSubject">
+          <i class="fas fa-book"></i>
+          {{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics')|title }}
+        </div>
       </div>
 
-      <!-- Teacher's Last Question - AFFICHÉ SEULEMENT SI EXISTE -->
-      {% set derniere_q_ia = session.get('derniere_q_ia') %}
-      {% if derniere_q_ia and conversation|length > 0 %}
-      <div class="teacher-question" id="teacherQuestion" style="display: block;">
-        <h5><i class="fas fa-question-circle"></i>
-          {% if lang == 'en' %}Naima's question for you:{% else %}Question de Naima pour toi :{% endif %}
-        </h5>
-        <p>{{ derniere_q_ia }}</p>
-        <small style="color: #666; display: block; margin-top: 5px;">
-          <i class="fas fa-hand-point-right"></i>
-          {% if lang == 'en' %}Answer in the box below{% else %}Réponds dans la zone ci-dessous{% endif %}
-        </small>
+      <!-- Sélecteur de matière -->
+      <div class="matiere-selector">
+        <label for="matiere">
+          <i class="fas fa-book-open"></i>
+          {% if lang == 'en' %}Select Subject:{% else %}Choisir la matière :{% endif %}
+        </label>
+        <select name="matiere" id="matiereSelect">
+          {% if lang == 'fr' %}
+            <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>Mathématiques</option>
+            <option value="français" {% if matiere == 'français' %}selected{% endif %}>Français</option>
+            <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>Histoire</option>
+            <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>Sciences</option>
+            <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>Géographie</option>
+          {% else %}
+            <option value="mathematics" {% if matiere == 'mathematics' %}selected{% endif %}>Mathematics</option>
+            <option value="french" {% if matiere == 'french' %}selected{% endif %}>French</option>
+            <option value="history" {% if matiere == 'history' %}selected{% endif %}>History</option>
+            <option value="science" {% if matiere == 'science' %}selected{% endif %}>Science</option>
+            <option value="geography" {% if matiere == 'geography' %}selected{% endif %}>Geography</option>
+          {% endif %}
+        </select>
+      </div>
+
+      <!-- Bannière de contexte de rémédiation - AFFICHÉE SEULEMENT SI exercice_remediation existe -->
+      {% if exercice_remediation %}
+      <div class="remediation-context-banner" id="remediationBanner" style="display: block;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <h4 style="margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1rem;">
+              <i class="fas fa-life-ring" style="margin-right: 8px; color: #4361ee;"></i>
+              {% if lang == 'en' %}Remediation Help{% else %}Aide à la rémédiation{% endif %}
+            </h4>
+            <p style="margin: 0; color: #34495e; font-size: 0.9rem;">
+              {% if lang == 'en' %}
+                Exercise: {{ exercice_remediation.question_en[:100] if exercice_remediation.question_en else 'Math exercise' }}...
+              {% else %}
+                Exercice : {{ exercice_remediation.question_fr[:100] if exercice_remediation.question_fr else 'Exercice de maths' }}...
+              {% endif %}
+            </p>
+          </div>
+          <div style="background: #4361ee; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
+            {% if lang == 'en' %}Session {{ access_count }}/5{% else %}Session {{ access_count }}/5{% endif %}
+          </div>
+        </div>
+        <p style="margin: 10px 0 0 0; font-size: 0.85rem; color: #666;">
+          <i class="fas fa-lightbulb" style="margin-right: 5px;"></i>
+          {% if lang == 'en' %}
+            Naima will guide you to understand this exercise step by step.
+          {% else %}
+            Naima vous guidera pour comprendre cet exercice étape par étape.
+          {% endif %}
+        </p>
       </div>
       {% endif %}
 
-      <!-- Input Area -->
-      <div class="input-area">
-        <!-- FORMULAIRE AVEC ACTION CORRECTE -->
-        <form method="POST" action="{{ url_for('enseignant_virtuel') }}" id="mainForm">
-          <!-- Champ caché pour la matière -->
-          <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics') }}">
-
-          <div class="input-group">
-            <textarea
-              name="question"
-              id="questionInput"
-              placeholder="{% if derniere_q_ia and conversation|length > 0 %}{% if lang == 'en' %}Answer Naima's question...{% else %}Réponds à la question de Naima...{% endif %}{% else %}{% if lang == 'en' %}Ask your question to Naima about {{ matiere|default('mathematics') }}...{% else %}Pose ta question à Naima sur {{ matiere|default('mathématiques') }}...{% endif %}{% endif %}"
-              required
-              autofocus
-              rows="3"></textarea>
-
-            <button type="submit" class="btn-send" id="submitBtn" title="{% if lang == 'en' %}Send message{% else %}Envoyer le message{% endif %}">
-              <i class="fas fa-paper-plane"></i>
-            </button>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-            <small style="color: #666; font-size: 0.85rem;">
-              <i class="fas fa-keyboard"></i>
-              {% if lang == 'en' %}Press Shift+Enter for new line{% else %}Shift+Entrée pour aller à la ligne{% endif %}
-            </small>
-            <small id="charCount" style="color: #999; font-size: 0.85rem;">0/500</small>
-          </div>
+      <!-- Controls -->
+      <div class="controls">
+        <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
+          <button type="submit" class="btn btn-new" id="newExerciseBtn">
+            <i class="fas fa-plus-circle"></i>
+            {% if lang == 'en' %}New Conversation{% else %}Nouvelle Conversation{% endif %}
+          </button>
         </form>
       </div>
-    </div>
+
+      <!-- Chat Container -->
+      <div class="chat-container">
+        <!-- Messages Area -->
+        <div class="messages-area" id="messagesArea">
+          <!-- Conversation - AFFICHÉE SEULEMENT SI EXISTE -->
+          {% set conversation = session.get('conversation', []) %}
+          {% set has_conversation = conversation and conversation|length > 0 %}
+
+          {% if has_conversation %}
+            {% for message in conversation %}
+              {% if '👤 Student:' in message or '👤 Élève:' in message %}
+                <div class="message user-message">
+                  <div class="message-header">
+                    <i class="fas fa-user"></i>
+                    <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
+                  </div>
+                  <div class="message-bubble">
+                    {{ message.replace('👤 Student: ', '').replace('👤 Élève: ', '')|safe }}
+                  </div>
+                </div>
+              {% elif '🤖 Teacher:' in message or '🤖 Enseignant:' in message %}
+                <div class="message bot-message">
+                  <div class="message-header">
+                    <i class="fas fa-robot"></i>
+                    <span>{% if lang == 'en' %}Naima{% else %}Naima{% endif %}</span>
+                  </div>
+                  <div class="message-bubble">
+                    {{ message.replace('🤖 Teacher: ', '').replace('🤖 Enseignant: ', '')|safe }}
+                  </div>
+                </div>
+              {% endif %}
+            {% endfor %}
+
+          {% else %}
+            <!-- Welcome Message - TOUJOURS AFFICHÉ QUAND PAS DE CONVERSATION -->
+            <div class="message bot-message welcome-message" id="welcomeMessage">
+              <div class="message-bubble">
+                <h4><i class="fas fa-graduation-cap"></i>
+                  {% if lang == 'en' %}Hello {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Bonjour {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}
+                </h4>
+
+                <p><strong>{% if lang == 'en' %}I'm Naima, your Virtual Teacher{% else %}Je suis Naima, ton Enseignante Virtuelle{% endif %}</strong>
+                  {% if lang == 'en' %}👩‍🏫{% else %}👩‍🏫{% endif %}
+                </p>
+
+                <p>{% if lang == 'en' %}
+                  I'm here to help you understand concepts and solve problems in any subject!
+                  <strong>I won't give direct answers</strong>, but I'll guide you step by step so you discover the solutions yourself.
+                {% else %}
+                  Je suis là pour t'aider à comprendre les concepts et résoudre des problèmes dans toutes les matières !
+                  <strong>Je ne donnerai pas les réponses directement</strong>, mais je te guiderai pas à pas pour que tu découvres les solutions toi-même.
+                {% endif %}</p>
+
+                <p><strong>{% if lang == 'en' %}How to use:{% else %}Comment utiliser :{% endif %}</strong></p>
+                <ol>
+                  <li>{% if lang == 'en' %}Select your subject above{% else %}Choisis ta matière ci-dessus{% endif %}</li>
+                  <li>{% if lang == 'en' %}Ask your question{% else %}Pose ta question{% endif %}</li>
+                  <li>{% if lang == 'en' %}I'll guide you with questions{% else %}Je te guiderai avec des questions{% endif %}</li>
+                  <li>{% if lang == 'en' %}Answer my questions{% else %}Réponds à mes questions{% endif %}</li>
+                  <li>{% if lang == 'en' %}Together we'll find the solution!{% else %}Ensemble on trouvera la solution !{% endif %}</li>
+                </ol>
+
+                <p style="margin-top: 15px; padding: 10px; background: rgba(67, 97, 238, 0.1); border-radius: 8px;">
+                  <i class="fas fa-lightbulb" style="color: #fcc419;"></i>
+                  <strong>{% if lang == 'en' %}Pro tip:{% else %}Astuce :{% endif %}</strong>
+                  {% if lang == 'en' %}
+                    You can ask about homework, exam preparation, concept explanations, or practice exercises.
+                  {% else %}
+                    Tu peux poser des questions sur tes devoirs, la préparation d'examens, l'explication de concepts ou des exercices d'entraînement.
+                  {% endif %}
+                </p>
+
+                <p style="text-align: center; margin-top: 20px;">
+                  <em>✨ {% if lang == 'en' %}Ready to learn? Write your question below!{% else %}Prêt à apprendre ? Écris ta question ci-dessous !{% endif %}</em>
+                </p>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Teacher's Last Question - AFFICHÉ SEULEMENT SI EXISTE -->
+        {% set derniere_q_ia = session.get('derniere_q_ia') %}
+        {% if derniere_q_ia and has_conversation %}
+        <div class="teacher-question" id="teacherQuestion" style="display: block;">
+          <h5><i class="fas fa-question-circle"></i>
+            {% if lang == 'en' %}Naima's question for you:{% else %}Question de Naima pour toi :{% endif %}
+          </h5>
+          <p>{{ derniere_q_ia }}</p>
+          <small style="color: #666; display: block; margin-top: 5px;">
+            <i class="fas fa-hand-point-right"></i>
+            {% if lang == 'en' %}Answer in the box below{% else %}Réponds dans la zone ci-dessous{% endif %}
+          </small>
+        </div>
+        {% endif %}
+
+        <!-- Input Area -->
+        <div class="input-area">
+          <!-- FORMULAIRE AVEC ACTION CORRECTE -->
+          <form method="POST" action="{{ url_for('enseignant_virtuel') }}" id="mainForm">
+            <!-- Champ caché pour la matière -->
+            <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics') }}">
+
+            <div class="input-group">
+              <textarea
+                name="question"
+                id="questionInput"
+                placeholder="{% if derniere_q_ia and has_conversation %}{% if lang == 'en' %}Answer Naima's question...{% else %}Réponds à la question de Naima...{% endif %}{% else %}{% if lang == 'en' %}Ask your question to Naima about {{ matiere|default('mathematics') }}...{% else %}Pose ta question à Naima sur {{ matiere|default('mathématiques') }}...{% endif %}{% endif %}"
+                required
+                autofocus
+                rows="3"></textarea>
+
+              <button type="submit" class="btn-send" id="submitBtn" title="{% if lang == 'en' %}Send message{% else %}Envoyer le message{% endif %}">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+              <small style="color: #666; font-size: 0.85rem;">
+                <i class="fas fa-keyboard"></i>
+                {% if lang == 'en' %}Press Shift+Enter for new line{% else %}Shift+Entrée pour aller à la ligne{% endif %}
+              </small>
+              <small id="charCount" style="color: #999; font-size: 0.85rem;">0/500</small>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+    </div> <!-- Fin du main-content -->
   </div>
 
   <!-- Bootstrap JS for alerts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- JavaScript SIMPLIFIÉ -->
+  <!-- JavaScript CORRIGÉ -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       console.log("📱 Enseignant Virtuel Naima - Page chargée");
@@ -796,11 +775,29 @@
       const currentSubject = document.getElementById('currentSubject');
       const charCount = document.getElementById('charCount');
       const form = document.getElementById('mainForm');
+      const messagesArea = document.getElementById('messagesArea');
 
-      // Auto-focus
+      // Vérifier si une conversation existe déjà
+      const hasConversation = {{ has_conversation|tojson|safe if has_conversation is defined else 'false' }};
+
+      // FORCER LE SCROLL AU TOP
+      if (messagesArea && !hasConversation) {
+        const forceScroll = () => {
+          messagesArea.scrollTop = 0;
+          messagesArea.scrollTo({ top: 0, behavior: 'instant' });
+        };
+        
+        // Essayer plusieurs fois
+        forceScroll();
+        setTimeout(forceScroll, 10);
+        setTimeout(forceScroll, 100);
+        setTimeout(forceScroll, 300);
+      }
+
+      // Auto-focus sur le textarea
       if (textarea) {
         textarea.focus();
-
+        
         // Compteur de caractères
         textarea.addEventListener('input', function() {
           const length = this.value.length;
@@ -814,6 +811,16 @@
         if (charCount) {
           charCount.textContent = `${textarea.value.length}/500`;
         }
+
+        // Gérer Shift+Enter pour nouvelle ligne
+        textarea.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (form && textarea.value.trim().length >= 3) {
+              form.requestSubmit();
+            }
+          }
+        });
       }
 
       // Sélecteur de matière
@@ -839,12 +846,6 @@
           }
         });
       }
-
-      // Scroll to bottom
-      setTimeout(() => {
-        const area = document.getElementById('messagesArea');
-        if (area) area.scrollTop = area.scrollHeight;
-      }, 100);
 
       // Validation simple du formulaire
       if (form) {
