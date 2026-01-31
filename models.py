@@ -388,12 +388,15 @@ class Lecon(db.Model):
     objectif_fr = db.Column(db.Text)
     objectif_en = db.Column(db.Text)
     unite_id = db.Column(db.Integer, db.ForeignKey('unites.id'))
-    exercices = db.relationship("Exercice", backref="lecon", cascade="all, delete-orphan")
-
-    # Relation avec cascade pour supprimer tous les exercices
-    exercices = db.relationship("Exercice", backref="lecon", 
+    
+    # ⚠️ CORRECTION : UNE SEULE relation exercices
+    exercices = db.relationship("Exercice", 
+                               backref="lecon", 
                                cascade="all, delete-orphan",
-                               lazy=True)
+                               lazy=True)  # Gardez seulement cette ligne
+    
+    # Supprimez la ligne dupliquée :
+    # exercices = db.relationship("Exercice", backref="lecon", cascade="all, delete-orphan")
 
 ### --- Exercices & Tests --- ###
 
