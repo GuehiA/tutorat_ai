@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="{{ 'en' if lang == 'en' else 'fr' }}" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if lang == 'en' %}Manual Payments Management{% else %}Gestion des Paiements Manuels{% endif %} - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f8fafc;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+        }
+        
+        .stats-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid;
+            transition: transform 0.3s;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stats-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stats-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: #4b5563;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            padding: 15px 12px;
+        }
+        
+        .table td {
+            padding: 15px 12px;
+            vertical-align: middle;
+        }
+        
+        .badge-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .badge-approved {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .badge-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .badge-cancelled {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+        
+        .badge-processing {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+        
+        .badge-demande {
+            background: #f3e8ff;
+            color: #5b21b6;
+        }
+        
+        .teacher-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            margin: 2px;
+        }
+        
+        .btn-view {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+        
+        .btn-view:hover {
+            background: #bae6fd;
+        }
+        
+        .btn-approve {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .btn-approve:hover {
+            background: #a7f3d0;
+        }
+        
+        .btn-reject {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .btn-reject:hover {
+            background: #fecaca;
+        }
+        
+        .btn-edit {
+            background: #f3e8ff;
+            color: #5b21b6;
+        }
+        
+        .btn-edit:hover {
+            background: #e9d5ff;
+        }
+        
+        .btn-process {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .btn-process:hover {
+            background: #bfdbfe;
+        }
+        
+        .btn-add {
+            background: linear-gradient(135deg, var(--primary), #3a56d4);
+            -webkit-background-clip: border-box;
+            background-clip: border-box;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+        }
+        
+        .btn-add:hover {
+            background: linear-gradient(135deg, #3a56d4, #2e46c0);
+            -webkit-background-clip: border-box;
+            background-clip: border-box;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .form-select {
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            padding: 10px 15px;
+        }
+        
+        .date-range {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .date-range input {
+            flex: 1;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            padding: 10px 15px;
+        }
+        
+        .search-box {
+            position: relative;
+        }
+        
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+        
+        .search-box input {
+            padding-left: 45px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            width: 300px;
+        }
+        
+        .amount-cell {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .page-link {
+            border-radius: 8px;
+            margin: 0 3px;
+            border: 1px solid #e5e7eb;
+            color: var(--primary);
+        }
+        
+        .page-item.active .page-link {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .payment-method {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: #f3f4f6;
+            font-size: 0.85rem;
+        }
+        
+        .payment-method.cash {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .payment-method.check {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+        
+        .payment-method.bank {
+            background: #f3e8ff;
+            color: #5b21b6;
+        }
+        
+        .payment-method.other {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 3px;
+            flex-wrap: wrap;
+        }
+        
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary), #3a56d4);
+            -webkit-background-clip: border-box;
+            background-clip: border-box;
+            color: white;
+            border-radius: 12px 12px 0 0;
+            padding: 20px;
+        }
+        
+        .modal-body {
+            padding: 30px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 8px;
+        }
+        
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            padding: 12px 15px;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+        
+        .notes-box {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        @media (max-width: 768px) {
+            .search-box input {
+                width: 100%;
+            }
+            
+            .date-range {
+                flex-direction: column;
+            }
+            
+            .stats-card {
+                margin-bottom: 15px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-buttons .btn {
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- En-tête -->
+        <div class="header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-2">
+                        <i class="fas fa-hand-holding-usd text-primary me-2"></i>
+                        {% if lang == 'en' %}Manual Payments Management{% else %}Gestion des Paiements Manuels{% endif %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% if lang == 'en' %}Process and track manual payments to teachers{% else %}Traitez et suivez les paiements manuels aux enseignants{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="/admin/dashboard" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
+                    </a>
+                    <!-- CORRECTION ICI : type="button" pour éviter la soumission -->
+                    <button type="button" class="btn btn-add" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        {% if lang == 'en' %}Add Manual Payment{% else %}Ajouter Paiement Manuel{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cartes de statistiques -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--primary);">
+                    <div class="stats-number text-primary">
+                        {% if versements %}
+                            ${{ "%.2f"|format(versements|selectattr('statut', 'equalto', 'complete')|map(attribute='montant_total')|sum) }}
+                        {% else %}
+                            $0.00
+                        {% endif %}
+                    </div>
+                    <div class="stats-label">{% if lang == 'en' %}Total Paid{% else %}Total Payé{% endif %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--warning);">
+                    <div class="stats-number text-warning">
+                        {% if versements %}
+                            ${{ "%.2f"|format(versements|selectattr('statut', 'equalto', 'demande')|map(attribute='montant_total')|sum) }}
+                        {% else %}
+                            $0.00
+                        {% endif %}
+                    </div>
+                    <div class="stats-label">{% if lang == 'en' %}Pending{% else %}En Attente{% endif %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--info);">
+                    <div class="stats-number text-info">
+                        {% if versements %}
+                            {{ versements|selectattr('statut', 'equalto', 'en_cours')|list|length }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </div>
+                    <div class="stats-label">{% if lang == 'en' %}In Progress{% else %}En Cours{% endif %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: var(--danger);">
+                    <div class="stats-number text-danger">
+                        {% if versements %}
+                            {{ versements|selectattr('statut', 'equalto', 'rejete')|list|length }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </div>
+                    <div class="stats-label">{% if lang == 'en' %}Rejected{% else %}Rejetés{% endif %}</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filtres -->
+        <div class="filters">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="form-control" 
+                               placeholder="{% if lang == 'en' %}Search teacher...{% else %}Rechercher enseignant...{% endif %}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="statusFilter">
+                        <option value="">{% if lang == 'en' %}All Status{% else %}Tous les statuts{% endif %}</option>
+                        <option value="demande">{% if lang == 'en' %}Request{% else %}Demande{% endif %}</option>
+                        <option value="en_cours">{% if lang == 'en' %}In Progress{% else %}En cours{% endif %}</option>
+                        <option value="complete">{% if lang == 'en' %}Completed{% else %}Complété{% endif %}</option>
+                        <option value="rejete">{% if lang == 'en' %}Rejected{% else %}Rejeté{% endif %}</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="date-range">
+                        <input type="date" id="startDate" class="form-control" placeholder="{% if lang == 'en' %}Start Date{% else %}Date de début{% endif %}">
+                        <input type="date" id="endDate" class="form-control" placeholder="{% if lang == 'en' %}End Date{% else %}Date de fin{% endif %}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="fas fa-filter me-2"></i>
+                        {% if lang == 'en' %}Filter{% else %}Filtrer{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tableau des versements manuels -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover" id="paymentsTable">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}</th>
+                            <th>{% if lang == 'en' %}Request Date{% else %}Date Demande{% endif %}</th>
+                            <th>{% if lang == 'en' %}Amount{% else %}Montant{% endif %}</th>
+                            <th>{% if lang == 'en' %}Payment Method{% else %}Méthode Paiement{% endif %}</th>
+                            <th>{% if lang == 'en' %}Status{% else %}Statut{% endif %}</th>
+                            <th>{% if lang == 'en' %}Payment Date{% else %}Date Paiement{% endif %}</th>
+                            <th>{% if lang == 'en' %}Actions{% else %}Actions{% endif %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if versements and versements|length > 0 %}
+                            {% for versement in versements %}
+                            <tr data-id="{{ versement.id }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% set colors = ['#4361ee', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] %}
+                                        {% set color_index = loop.index0 % colors|length %}
+                                        <div class="teacher-avatar me-3" style="background: {{ colors[color_index] }};">
+                                            {% if versement.enseignant and versement.enseignant.nom_complet %}
+                                                {{ versement.enseignant.nom_complet[0] }}
+                                            {% else %}
+                                                ?
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">
+                                                {% if versement.enseignant %}
+                                                    {{ versement.enseignant.nom_complet }}
+                                                {% else %}
+                                                    Enseignant ID: {{ versement.enseignant_id }}
+                                                {% endif %}
+                                            </div>
+                                            <small class="text-muted">
+                                                {{ versement.email_interac or '' }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if versement.date_demande %}
+                                        {{ versement.date_demande.strftime('%Y-%m-%d') }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td class="amount-cell">
+                                    ${{ "%.2f"|format(versement.montant_total) if versement.montant_total else '0.00' }}
+                                    {% if versement.montant_net %}
+                                        <br><small class="text-muted">Net: ${{ "%.2f"|format(versement.montant_net) }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if versement.methode_paiement %}
+                                        {% if versement.methode_paiement == 'interac' %}
+                                            <span class="payment-method bank">
+                                                <i class="fas fa-university"></i>
+                                                Interac
+                                            </span>
+                                        {% elif versement.methode_paiement == 'bank_transfer' %}
+                                            <span class="payment-method bank">
+                                                <i class="fas fa-building"></i>
+                                                Virement bancaire
+                                            </span>
+                                        {% elif versement.methode_paiement == 'check' %}
+                                            <span class="payment-method check">
+                                                <i class="fas fa-money-check"></i>
+                                                Chèque
+                                            </span>
+                                        {% elif versement.methode_paiement == 'cash' %}
+                                            <span class="payment-method cash">
+                                                <i class="fas fa-money-bill-wave"></i>
+                                                Espèces
+                                            </span>
+                                        {% else %}
+                                            <span class="payment-method other">
+                                                <i class="fas fa-wallet"></i>
+                                                {{ versement.methode_paiement }}
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="payment-method bank">
+                                            <i class="fas fa-university"></i>
+                                            Interac
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if versement.statut == 'demande' %}
+                                        <span class="badge-status badge-demande">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Demande
+                                        </span>
+                                    {% elif versement.statut == 'en_cours' %}
+                                        <span class="badge-status badge-processing">
+                                            <i class="fas fa-spinner me-1"></i>
+                                            En cours
+                                        </span>
+                                    {% elif versement.statut == 'complete' %}
+                                        <span class="badge-status badge-completed">
+                                            <i class="fas fa-check-double me-1"></i>
+                                            Complété
+                                        </span>
+                                    {% elif versement.statut == 'rejete' %}
+                                        <span class="badge-status badge-rejected">
+                                            <i class="fas fa-times-circle me-1"></i>
+                                            Rejeté
+                                        </span>
+                                    {% else %}
+                                        <span class="badge-status">
+                                            {{ versement.statut or 'N/A' }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if versement.date_versement %}
+                                        {{ versement.date_versement.strftime('%Y-%m-%d') }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button type="button" class="btn btn-view action-btn" onclick="viewPayment({{ versement.id }})" title="{% if lang == 'en' %}View details{% else %}Voir détails{% endif %}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        
+                                        {% if versement.statut == 'demande' %}
+                                            <button type="button" class="btn btn-approve action-btn" onclick="processPayment({{ versement.id }})" title="{% if lang == 'en' %}Process{% else %}Traiter{% endif %}">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-reject action-btn" onclick="rejectPayment({{ versement.id }})" title="{% if lang == 'en' %}Reject{% else %}Rejeter{% endif %}">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        {% elif versement.statut == 'en_cours' %}
+                                            <button type="button" class="btn btn-approve action-btn" onclick="completePayment({{ versement.id }})" title="{% if lang == 'en' %}Complete{% else %}Compléter{% endif %}">
+                                                <i class="fas fa-check-double"></i>
+                                            </button>
+                                        {% endif %}
+                                        
+                                        <button type="button" class="btn btn-edit action-btn" onclick="editPayment({{ versement.id }})" title="{% if lang == 'en' %}Edit{% else %}Modifier{% endif %}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <i class="fas fa-hand-holding-usd"></i>
+                                        <h5>{% if lang == 'en' %}No manual payments found{% else %}Aucun paiement manuel trouvé{% endif %}</h5>
+                                        <p>{% if lang == 'en' %}Start by adding a new manual payment{% else %}Commencez par ajouter un nouveau paiement manuel{% endif %}</p>
+                                        <button type="button" class="btn btn-add mt-3" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                                            <i class="fas fa-plus-circle me-2"></i>
+                                            {% if lang == 'en' %}Add First Payment{% else %}Ajouter Premier Paiement{% endif %}
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if versements and versements|length > 10 %}
+            <div class="pagination-container">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination">
+                        <li class="page-item">
+                            <a class="page-link" href="#" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Notes d'information -->
+        <div class="table-container">
+            <h5 class="mb-3">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                {% if lang == 'en' %}About Manual Payments{% else %}À propos des Paiements Manuels{% endif %}
+            </h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="notes-box">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>{% if lang == 'en' %}Approval Process{% else %}Processus de Traitement{% endif %}</h6>
+                        <p class="mb-0 small">
+                            {% if lang == 'en' %}Manual payments go through a 3-step process: Request → In Progress → Completed. Only administrators can process payments.{% else %}Les paiements manuels passent par un processus en 3 étapes : Demande → En cours → Complété. Seuls les administrateurs peuvent traiter les paiements.{% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="notes-box">
+                        <h6><i class="fas fa-clock text-warning me-2"></i>{% if lang == 'en' %}Processing Time{% else %}Délai de Traitement{% endif %}</h6>
+                        <p class="mb-0 small">
+                            {% if lang == 'en' %}Payments are typically processed within 1-3 business days. Teachers receive Interac transfers directly to their registered email.{% else %}Les paiements sont généralement traités dans les 1-3 jours ouvrables. Les enseignants reçoivent des transferts Interac directement à leur email enregistré.{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour ajouter un paiement -->
+    <div class="modal fade" id="addPaymentModal" tabindex="-1" aria-labelledby="addPaymentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addPaymentModalLabel">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        {% if lang == 'en' %}Add Manual Payment{% else %}Ajouter Paiement Manuel{% endif %}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addPaymentForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Select Teacher{% else %}Sélectionner un Enseignant{% endif %} *</label>
+                                <select class="form-select" id="teacherSelect" name="enseignant_id" required>
+                                    <option value="">{% if lang == 'en' %}Choose a teacher...{% else %}Choisir un enseignant...{% endif %}</option>
+                                    {% if teachers %}
+                                        {% for teacher in teachers %}
+                                            {% set interac_email = teacher.email_interac_paiement or teacher.email %}
+                                            {% set interac_name = teacher.nom_complet_interac or teacher.nom_complet %}
+                                            <option value="{{ teacher.id }}" 
+                                                    data-email="{{ interac_email }}"
+                                                    data-name="{{ interac_name }}"
+                                                    data-methode="{{ teacher.methode_versement or 'interac' }}">
+                                                {{ teacher.nom_complet }} - {{ teacher.email }}
+                                                {% if teacher.email_interac_paiement %}
+                                                    (Interac: {{ teacher.email_interac_paiement }})
+                                                {% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="" disabled>
+                                            {% if lang == 'en' %}No teachers found{% else %}Aucun enseignant trouvé{% endif %}
+                                        </option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Amount ($){% else %}Montant ($){% endif %} *</label>
+                                <input type="number" class="form-control" id="amount" name="montant" 
+                                       min="0.01" step="0.01" placeholder="0.00" required>
+                                <small class="text-muted">{% if lang == 'en' %}Total amount before fees{% else %}Montant total avant frais{% endif %}</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Interac Email{% else %}Email Interac{% endif %} *</label>
+                                <input type="email" class="form-control" id="emailInterac" name="email_interac" 
+                                       placeholder="teacher@example.com" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Payment Method{% else %}Méthode de Paiement{% endif %}</label>
+                                <select class="form-select" id="paymentMethod" name="methode_paiement">
+                                    <option value="interac">Interac</option>
+                                    <option value="bank_transfer">Virement bancaire</option>
+                                    <option value="check">Chèque</option>
+                                    <option value="cash">Espèces</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Transaction Fee ($){% else %}Frais de Transaction ($){% endif %}</label>
+                                <input type="number" class="form-control" id="transactionFee" name="frais_transaction" 
+                                       min="0.00" step="0.01" value="1.00" required>
+                                <small class="text-muted">{% if lang == 'en' %}Default: $1.00{% else %}Par défaut: $1.00{% endif %}</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Payment Date{% else %}Date de Paiement{% endif %}</label>
+                                <input type="date" class="form-control" id="paymentDate" name="date_versement">
+                                <small class="text-muted">{% if lang == 'en' %}Leave empty for current date{% else %}Laissez vide pour la date actuelle{% endif %}</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">{% if lang == 'en' %}Interac Reference{% else %}Référence Interac{% endif %}</label>
+                                <input type="text" class="form-control" id="reference" name="reference_interac" 
+                                       placeholder="{% if lang == 'en' %}Interac reference...{% else %}Référence Interac...{% endif %}">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">{% if lang == 'en' %}Status{% else %}Statut{% endif %}</label>
+                                <select class="form-select" id="statusSelect" name="statut">
+                                    <option value="demande">Demande</option>
+                                    <option value="en_cours">En cours</option>
+                                    <option value="complete">Complété</option>
+                                    <option value="rejete">Rejeté</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">{% if lang == 'en' %}Admin Notes{% else %}Notes Administrateur{% endif %}</label>
+                                <textarea class="form-control" id="notesAdmin" name="notes_admin" rows="2" 
+                                          placeholder="{% if lang == 'en' %}Optional admin notes...{% else %}Notes optionnelles pour l'administrateur...{% endif %}"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                {% if lang == 'en' %}Save Payment{% else %}Enregistrer Paiement{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour voir les détails -->
+    <div class="modal fade" id="viewPaymentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>
+                        {% if lang == 'en' %}Payment Details{% else %}Détails du Paiement{% endif %}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="paymentDetailsContent">
+                    <!-- Les détails seront chargés dynamiquement -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Empêcher la soumission du formulaire par défaut
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ajouter un écouteur pour empêcher le comportement par défaut des boutons
+            document.querySelectorAll('button[type="button"]').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                });
+            });
+            
+            // Initialiser les modales Bootstrap
+            var addPaymentModal = new bootstrap.Modal(document.getElementById('addPaymentModal'));
+            var viewPaymentModal = new bootstrap.Modal(document.getElementById('viewPaymentModal'));
+        });
+        
+        // Fonction pour voir les détails d'un paiement
+        function viewPayment(paymentId) {
+            fetch(`/admin/versements-manuels/${paymentId}/details`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const p = data.payment;
+                        const lang = "{{ lang }}";
+                        
+                        let details = `
+                            <h6>${lang === 'en' ? 'Payment Details #' : 'Détails du Versement #'}${p.id}</h6>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>${lang === 'en' ? 'Teacher:' : 'Enseignant:'}</strong> ${p.enseignant_nom || 'N/A'}</p>
+                                    <p><strong>${lang === 'en' ? 'Teacher ID:' : 'ID Enseignant:'}</strong> ${p.enseignant_id || 'N/A'}</p>
+                                    <p><strong>${lang === 'en' ? 'Interac Email:' : 'Email Interac:'}</strong> ${p.email_interac || 'N/A'}</p>
+                                    <p><strong>${lang === 'en' ? 'Status:' : 'Statut:'}</strong> <span class="badge badge-${getStatusBadgeClass(p.statut)}">${getStatusText(p.statut)}</span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>${lang === 'en' ? 'Total Amount:' : 'Montant total:'}</strong> $${p.montant_total ? p.montant_total.toFixed(2) : '0.00'}</p>
+                                    <p><strong>${lang === 'en' ? 'Transaction Fee:' : 'Frais transaction:'}</strong> $${p.frais_transaction ? p.frais_transaction.toFixed(2) : '1.00'}</p>
+                                    <p><strong>${lang === 'en' ? 'Net Amount:' : 'Montant net:'}</strong> $${p.montant_net ? p.montant_net.toFixed(2) : '0.00'}</p>
+                                    <p><strong>${lang === 'en' ? 'Request Date:' : 'Date demande:'}</strong> ${p.date_demande || 'N/A'}</p>
+                                </div>
+                            </div>
+                        `;
+                        
+                        if (p.date_versement) {
+                            details += `<p><strong>${lang === 'en' ? 'Payment Date:' : 'Date versement:'}</strong> ${p.date_versement}</p>`;
+                        }
+                        
+                        if (p.reference_interac) {
+                            details += `<p><strong>${lang === 'en' ? 'Interac Reference:' : 'Référence Interac:'}</strong> ${p.reference_interac}</p>`;
+                        }
+                        
+                        if (p.notes_admin) {
+                            details += `<hr><p><strong>${lang === 'en' ? 'Notes:' : 'Notes:'}</strong><br>${p.notes_admin}</p>`;
+                        }
+                        
+                        document.getElementById('paymentDetailsContent').innerHTML = details;
+                        new bootstrap.Modal(document.getElementById('viewPaymentModal')).show();
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: '{{ "Erreur" if lang == "fr" else "Error" }}',
+                            text: data.message || '{{ "Impossible de charger les détails" if lang == "fr" else "Unable to load details" }}'
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '{{ "Erreur" if lang == "fr" else "Error" }}',
+                        text: '{{ "Erreur lors du chargement" if lang == "fr" else "Error loading" }}: ' + error
+                    });
+                });
+        }
+        
+        // Fonction pour traiter un paiement (demande -> en_cours)
+        function processPayment(paymentId) {
+            const lang = "{{ lang }}";
+            const confirmMsg = lang === 'en' ? 'Process this payment?' : 'Traiter ce versement ?';
+            
+            Swal.fire({
+                title: lang === 'en' ? 'Confirm Processing' : 'Confirmer le Traitement',
+                text: confirmMsg,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: lang === 'en' ? 'Yes, process' : 'Oui, traiter',
+                cancelButtonText: lang === 'en' ? 'Cancel' : 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/admin/versements-manuels/${paymentId}/process`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'}
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: lang === 'en' ? 'Success' : 'Succès',
+                                text: data.message || (lang === 'en' ? 'Payment processed' : 'Paiement traité')
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: lang === 'en' ? 'Error' : 'Erreur',
+                                text: data.message
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Fonction pour compléter un paiement (en_cours -> complete)
+        function completePayment(paymentId) {
+            const lang = "{{ lang }}";
+            const promptMsg = lang === 'en' ? 'Enter Interac reference:' : 'Entrez la référence Interac:';
+            
+            Swal.fire({
+                title: lang === 'en' ? 'Complete Payment' : 'Compléter le Paiement',
+                input: 'text',
+                inputLabel: promptMsg,
+                showCancelButton: true,
+                confirmButtonText: lang === 'en' ? 'Complete' : 'Compléter',
+                cancelButtonText: lang === 'en' ? 'Cancel' : 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed && result.value.trim() !== '') {
+                    fetch(`/admin/versements-manuels/${paymentId}/complete`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({reference_interac: result.value})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: lang === 'en' ? 'Success' : 'Succès',
+                                text: data.message || (lang === 'en' ? 'Payment completed' : 'Paiement complété')
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: lang === 'en' ? 'Error' : 'Erreur',
+                                text: data.message || (lang === 'en' ? 'Error completing payment' : 'Erreur lors du complément')
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Fonction pour rejeter un paiement
+        function rejectPayment(paymentId) {
+            const lang = "{{ lang }}";
+            
+            Swal.fire({
+                title: lang === 'en' ? 'Reject Payment' : 'Rejeter le Paiement',
+                input: 'text',
+                inputLabel: lang === 'en' ? 'Reason for rejection:' : 'Raison du rejet:',
+                showCancelButton: true,
+                confirmButtonText: lang === 'en' ? 'Reject' : 'Rejeter',
+                cancelButtonText: lang === 'en' ? 'Cancel' : 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/admin/versements-manuels/${paymentId}/reject`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({reason: result.value})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: lang === 'en' ? 'Success' : 'Succès',
+                                text: data.message || (lang === 'en' ? 'Payment rejected' : 'Paiement rejeté')
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: lang === 'en' ? 'Error' : 'Erreur',
+                                text: data.message
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Fonction pour éditer un paiement
+        function editPayment(paymentId) {
+            alert('Fonction d\'édition à implémenter pour le paiement #' + paymentId);
+        }
+        
+        // Gestion du formulaire d'ajout
+        document.getElementById('addPaymentForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            // Convertir FormData en objet JSON
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+            
+            // Convertir les nombres
+            data.montant_total = parseFloat(data.montant || 0);
+            data.frais_transaction = parseFloat(data.frais_transaction || 1.00);
+            data.montant_net = data.montant_total - data.frais_transaction;
+            
+            const lang = "{{ lang }}";
+            
+            fetch('/admin/versements-manuels/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData).toString()
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: lang === 'en' ? 'Success' : 'Succès',
+                        text: data.message || (lang === 'en' ? 'Payment added successfully' : 'Paiement ajouté avec succès')
+                    }).then(() => {
+                        // Fermer la modal et recharger la page
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('addPaymentModal'));
+                        modal.hide();
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: lang === 'en' ? 'Error' : 'Erreur',
+                        text: data.message || (lang === 'en' ? 'Error adding payment' : 'Erreur lors de l\'ajout du paiement')
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: lang === 'en' ? 'Error' : 'Erreur',
+                    text: error.message || (lang === 'en' ? 'Network error' : 'Erreur réseau')
+                });
+            });
+        });
+        
+        // Pré-remplir l'email Interac quand un enseignant est sélectionné
+        document.getElementById('teacherSelect')?.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const teacherId = this.value;
+            
+            if (teacherId && selectedOption) {
+                // Récupérer les données depuis les attributs data
+                const teacherEmail = selectedOption.getAttribute('data-email');
+                const teacherMethod = selectedOption.getAttribute('data-methode');
+                
+                if (teacherEmail) {
+                    document.getElementById('emailInterac').value = teacherEmail;
+                }
+                
+                if (teacherMethod) {
+                    document.getElementById('paymentMethod').value = teacherMethod;
+                }
+            }
+        });
+        
+        // Fonctions utilitaires
+        function getStatusBadgeClass(status) {
+            switch(status) {
+                case 'demande': return 'warning';
+                case 'en_cours': return 'info';
+                case 'complete': return 'success';
+                case 'rejete': return 'danger';
+                default: return 'secondary';
+            }
+        }
+        
+        function getStatusText(status) {
+            switch(status) {
+                case 'demande': return 'Demande';
+                case 'en_cours': return 'En cours';
+                case 'complete': return 'Complété';
+                case 'rejete': return 'Rejeté';
+                default: return status || 'N/A';
+            }
+        }
+        
+        // Appliquer les filtres
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value;
+            const status = document.getElementById('statusFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            let url = '/admin/versements-manuels?';
+            const params = [];
+            
+            if (search) params.push(`search=${encodeURIComponent(search)}`);
+            if (status) params.push(`statut=${encodeURIComponent(status)}`);
+            if (startDate) params.push(`start_date=${startDate}`);
+            if (endDate) params.push(`end_date=${endDate}`);
+            
+            if (params.length > 0) {
+                url += params.join('&');
+                window.location.href = url;
+            } else {
+                window.location.href = '/admin/versements-manuels';
+            }
+        }
+        
+        // Au chargement de la page, vérifier si des filtres sont présents dans l'URL
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if (urlParams.has('search')) {
+                document.getElementById('searchInput').value = urlParams.get('search');
+            }
+            if (urlParams.has('statut')) {
+                document.getElementById('statusFilter').value = urlParams.get('statut');
+            }
+            if (urlParams.has('start_date')) {
+                document.getElementById('startDate').value = urlParams.get('start_date');
+            }
+            if (urlParams.has('end_date')) {
+                document.getElementById('endDate').value = urlParams.get('end_date');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        {% if lang == 'en' %}
+            Payment Configuration - TutoratAI
+        {% else %}
+            Configuration des Paiements - TutoratAI
+        {% endif %}
+    </title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --primary-dark: #3a56d4;
+            --primary-light: #e0e7ff;
+            --secondary-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-color: #1e293b;
+            --light-color: #f8fafc;
+            --gray-color: #64748b;
+            --border-radius: 12px;
+            --box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            --box-shadow-hover: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Header avec dégradé */
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(-20px, -20px) rotate(5deg); }
+            66% { transform: translate(20px, 20px) rotate(-5deg); }
+        }
+
+        /* Navigation */
+        .nav-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .back-btn .btn {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            transition: var(--transition);
+        }
+
+        .back-btn .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-3px);
+        }
+
+        /* Cartes */
+        .config-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .config-card:hover {
+            box-shadow: var(--box-shadow-hover);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            border-bottom: none;
+            padding: 1.5rem 2rem;
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        /* Méthodes de paiement */
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .payment-method-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .payment-method-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .payment-method-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .payment-method-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(67, 97, 238, 0.1);
+        }
+
+        .payment-method-card.selected {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+        }
+
+        .payment-method-card.selected::before {
+            transform: scaleX(1);
+        }
+
+        .payment-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Formulaires */
+        .form-section {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+            outline: none;
+        }
+
+        .input-group {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .input-group-text {
+            background: var(--primary-light);
+            border: 2px solid #e2e8f0;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .form-text {
+            color: var(--gray-color);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Boutons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            border: none;
+            padding: 0.875rem 2rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-outline-secondary {
+            border: 2px solid #e2e8f0;
+            color: var(--gray-color);
+            transition: var(--transition);
+        }
+
+        .btn-outline-secondary:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: var(--primary-light);
+        }
+
+        .btn-group {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .btn-group .btn {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1rem;
+            transition: var(--transition);
+        }
+
+        /* Alertes */
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Section informations */
+        .info-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-top: 2rem;
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-list li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+
+        .info-list .icon {
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            margin-top: 0.25rem;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.8s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .page-header {
+                padding: 1.5rem;
+                text-align: center;
+            }
+            
+            .nav-controls {
+                position: relative;
+                top: 0;
+                right: 0;
+                justify-content: center;
+                margin-top: 1rem;
+            }
+            
+            .back-btn {
+                position: relative;
+                top: 0;
+                left: 0;
+                margin-bottom: 1rem;
+            }
+            
+            .payment-methods {
+                grid-template-columns: 1fr;
+            }
+            
+            .card-body {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Accessibilité */
+        :focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        /* Amélioration du contraste */
+        .text-primary { color: var(--primary-color) !important; }
+        .text-secondary { color: var(--secondary-color) !important; }
+        .text-warning { color: var(--warning-color) !important; }
+        .text-danger { color: var(--danger-color) !important; }
+        .text-dark { color: var(--dark-color) !important; }
+        .text-muted { color: var(--gray-color) !important; }
+
+        /* États de chargement */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Badges */
+        .badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: 50px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4 fade-in">
+        <!-- En-tête de page -->
+        <div class="page-header text-center">
+            <!-- Navigation -->
+            <div class="back-btn">
+                <a href="{{ url_for('enseignant_commissions') }}" class="btn btn-sm">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {% if lang == 'en' %}Back to Commissions{% else %}Retour aux commissions{% endif %}
+                </a>
+            </div>
+
+            <!-- Sélecteur de langue -->
+            <div class="nav-controls">
+                <div class="btn-group" role="group">
+                    <a href="?lang=fr" class="btn btn-sm {{ 'btn-primary' if lang == 'fr' else 'btn-outline-light' }}">
+                        <i class="fas fa-flag me-1"></i> FR
+                    </a>
+                    <a href="?lang=en" class="btn btn-sm {{ 'btn-primary' if lang == 'en' else 'btn-outline-light' }}">
+                        <i class="fas fa-flag me-1"></i> EN
+                    </a>
+                </div>
+            </div>
+
+            <!-- Titre principal -->
+            <div class="header-content">
+                <div class="mb-3">
+                    <div class="display-1 mb-3">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h1 class="display-5 fw-bold mb-2">
+                        {% if lang == 'en' %}
+                            Payment Settings
+                        {% else %}
+                            Paramètres de Paiement
+                        {% endif %}
+                    </h1>
+                    <p class="lead mb-0 opacity-90">
+                        {% if lang == 'en' %}
+                            Configure how you receive your commission payments securely
+                        {% else %}
+                            Configurez de manière sécurisée la réception de vos commissions
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" 
+                         role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} 
+                                      fa-lg me-3"></i>
+                            <div class="flex-grow-1">
+                                <strong class="d-block mb-1">
+                                    {% if category == 'success' %}
+                                        {% if lang == 'en' %}Success!{% else %}Succès !{% endif %}
+                                    {% else %}
+                                        {% if lang == 'en' %}Error{% else %}Erreur{% endif %}
+                                    {% endif %}
+                                </strong>
+                                {{ message }}
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" 
+                                    aria-label="{% if lang == 'en' %}Close{% else %}Fermer{% endif %}"></button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Carte de configuration principale -->
+        <div class="config-card mb-4">
+            <div class="card-header text-white">
+                <h3 class="mb-0">
+                    <i class="fas fa-wallet me-2"></i>
+                    {% if lang == 'en' %}
+                        Payment Information
+                    {% else %}
+                        Informations de Paiement
+                    {% endif %}
+                </h3>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST" id="paymentForm" novalidate>
+                    <!-- Étape 1: Méthode de Paiement -->
+                    <div class="form-section">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                 style="width: 36px; height: 36px;">
+                                <span class="fw-bold">1</span>
+                            </div>
+                            <h4 class="mb-0 ms-3">
+                                <i class="fas fa-credit-card me-2 text-primary"></i>
+                                {% if lang == 'en' %}
+                                    Select Payment Method
+                                {% else %}
+                                    Choisissez la méthode de paiement
+                                {% endif %}
+                            </h4>
+                        </div>
+                        
+                        <div class="payment-methods">
+                            <!-- Interac -->
+                            <div class="payment-method-card {{ 'selected' if not info_versement or info_versement.methode_versement == 'interac' }}"
+                                 onclick="selectPaymentMethod('interac')" 
+                                 role="button"
+                                 tabindex="0"
+                                 aria-label="{% if lang == 'en' %}Select Interac e-Transfer{% else %}Sélectionner Interac virement{% endif %}"
+                                 onkeypress="if(event.key === 'Enter') selectPaymentMethod('interac')">
+                                <div class="payment-icon">
+                                    <i class="fas fa-money-bill-transfer"></i>
+                                </div>
+                                <h5 class="fw-bold mb-2">
+                                    {% if lang == 'en' %}
+                                        Interac e-Transfer
+                                    {% else %}
+                                        Interac virement
+                                    {% endif %}
+                                </h5>
+                                <p class="text-muted mb-2">
+                                    {% if lang == 'en' %}
+                                        Receive funds directly to your email (Canada only)
+                                    {% else %}
+                                        Recevez les fonds directement par email (Canada seulement)
+                                    {% endif %}
+                                </p>
+                                <div class="mt-2">
+                                    <span class="badge bg-primary">
+                                        {% if lang == 'en' %}Recommended{% else %}Recommandé{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- PayPal -->
+                            <div class="payment-method-card {{ 'selected' if info_versement and info_versement.methode_versement == 'paypal' }}"
+                                 onclick="selectPaymentMethod('paypal')"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-label="{% if lang == 'en' %}Select PayPal{% else %}Sélectionner PayPal{% endif %}"
+                                 onkeypress="if(event.key === 'Enter') selectPaymentMethod('paypal')">
+                                <div class="payment-icon">
+                                    <i class="fab fa-paypal"></i>
+                                </div>
+                                <h5 class="fw-bold mb-2">PayPal</h5>
+                                <p class="text-muted mb-2">
+                                    {% if lang == 'en' %}
+                                        International payments via PayPal
+                                    {% else %}
+                                        Paiements internationaux via PayPal
+                                    {% endif %}
+                                </p>
+                                <div class="mt-2">
+                                    <span class="badge bg-secondary">
+                                        {% if lang == 'en' %}International{% else %}International{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="methode_versement" name="methode_versement" 
+                               value="{{ info_versement.methode_versement if info_versement else 'interac' }}">
+                    </div>
+
+                    <!-- Étape 2: Email de Paiement -->
+                    <div class="form-section" id="emailSection">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                 style="width: 36px; height: 36px;">
+                                <span class="fw-bold">2</span>
+                            </div>
+                            <h4 class="mb-0 ms-3">
+                                <i class="fas fa-envelope me-2 text-primary"></i>
+                                {% if lang == 'en' %}
+                                    Payment Email Address
+                                {% else %}
+                                    Adresse email de paiement
+                                {% endif %}
+                            </h4>
+                        </div>
+                        
+                        <!-- Email Interac -->
+                        <div class="mb-4">
+                            <label for="email_interac" class="form-label">
+                                <i class="fas fa-envelope me-2 text-primary"></i>
+                                {% if lang == 'en' %}
+                                    Interac Email Address
+                                {% else %}
+                                    Adresse email Interac
+                                {% endif %}
+                                <span class="text-danger ms-1">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary-light">
+                                    <i class="fas fa-at text-primary"></i>
+                                </span>
+                                <input type="email" 
+                                       class="form-control" 
+                                       id="email_interac" 
+                                       name="email_interac" 
+                                       value="{{ info_versement.email_interac if info_versement else enseignant.email_interac_paiement if enseignant.email_interac_paiement else '' }}"
+                                       required
+                                       placeholder="votre@email.com"
+                                       aria-describedby="emailHelp">
+                            </div>
+                            <div id="emailHelp" class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                {% if lang == 'en' %}
+                                    You will receive Interac transfers at this email address
+                                {% else %}
+                                    Vous recevrez les virements Interac à cette adresse email
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Email PayPal (conditionnel) -->
+                        <div class="mb-3" id="paypalEmailSection" style="display: none;">
+                            <label for="email_paypal" class="form-label">
+                                <i class="fab fa-paypal me-2 text-primary"></i>
+                                PayPal Email Address
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-warning-light">
+                                    <i class="fas fa-at text-warning"></i>
+                                </span>
+                                <input type="email" 
+                                       class="form-control" 
+                                       id="email_paypal" 
+                                       name="email_paypal"
+                                       value="{{ info_versement.email_paypal if info_versement else enseignant.email_paypal if enseignant.email_paypal else '' }}"
+                                       placeholder="votre@paypal.com">
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                {% if lang == 'en' %}
+                                    Your PayPal email for international transfers
+                                {% else %}
+                                    Votre email PayPal pour les transferts internationaux
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Étape 3: Fréquence -->
+                    <div class="form-section">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                 style="width: 36px; height: 36px;">
+                                <span class="fw-bold">3</span>
+                            </div>
+                            <h4 class="mb-0 ms-3">
+                                <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                                {% if lang == 'en' %}
+                                    Payment Frequency
+                                {% else %}
+                                    Fréquence de paiement
+                                {% endif %}
+                            </h4>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="frequence_versement" class="form-label">
+                                <i class="fas fa-history me-2"></i>
+                                {% if lang == 'en' %}
+                                    How often would you like to receive payments?
+                                {% else %}
+                                    À quelle fréquence souhaitez-vous recevoir vos paiements ?
+                                {% endif %}
+                            </label>
+                            <select class="form-select" 
+                                    id="frequence_versement" 
+                                    name="frequence_versement"
+                                    aria-label="{% if lang == 'en' %}Payment frequency selection{% else %}Sélection de la fréquence de paiement{% endif %}">
+                                <option value="mensuel" {% if not info_versement or info_versement.frequence_versement == 'mensuel' %}selected{% endif %}>
+                                    {% if lang == 'en' %}Monthly (recommended){% else %}Mensuel (recommandé){% endif %}
+                                </option>
+                                <option value="hebdomadaire" {% if info_versement and info_versement.frequence_versement == 'hebdomadaire' %}selected{% endif %}>
+                                    {% if lang == 'en' %}Weekly{% else %}Hebdomadaire{% endif %}
+                                </option>
+                                <option value="quotidien" {% if info_versement and info_versement.frequence_versement == 'quotidien' %}selected{% endif %}>
+                                    {% if lang == 'en' %}Daily{% else %}Quotidien{% endif %}
+                                </option>
+                                <option value="manuelle" {% if info_versement and info_versement.frequence_versement == 'manuelle' %}selected{% endif %}>
+                                    {% if lang == 'en' %}On Demand{% else %}Sur demande{% endif %}
+                                </option>
+                            </select>
+                            <div class="form-text mt-2">
+                                <i class="fas fa-lightbulb me-1 text-warning"></i>
+                                {% if lang == 'en' %}
+                                    Monthly payments are processed on the 1st of each month
+                                {% else %}
+                                    Les paiements mensuels sont traités le 1er de chaque mois
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Étape 4: Seuil Minimum -->
+                    <div class="form-section">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                 style="width: 36px; height: 36px;">
+                                <span class="fw-bold">4</span>
+                            </div>
+                            <h4 class="mb-0 ms-3">
+                                <i class="fas fa-chart-line me-2 text-primary"></i>
+                                {% if lang == 'en' %}
+                                    Minimum Payout Threshold
+                                {% else %}
+                                    Seuil minimum de paiement
+                                {% endif %}
+                            </h4>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="seuil_minimum" class="form-label">
+                                <i class="fas fa-money-bill-wave me-2"></i>
+                                {% if lang == 'en' %}
+                                    Minimum amount for automatic payment
+                                {% else %}
+                                    Montant minimum pour paiement automatique
+                                {% endif %}
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-success text-white">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </span>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="seuil_minimum" 
+                                       name="seuil_minimum"
+                                       value="{{ info_versement.seuil_minimum if info_versement else enseignant.seuil_minimum_paiement if enseignant.seuil_minimum_paiement else 25.00 }}"
+                                       min="10" 
+                                       max="500" 
+                                       step="0.01"
+                                       aria-describedby="thresholdHelp">
+                                <span class="input-group-text">CAD</span>
+                            </div>
+                            <div id="thresholdHelp" class="form-text">
+                                <div class="d-flex align-items-center mt-2">
+                                    <i class="fas fa-info-circle me-2 text-primary"></i>
+                                    <div>
+                                        {% if lang == 'en' %}
+                                            <strong>Recommended: $25</strong> - This is the minimum amount that must accumulate before we automatically send your payment. Lower amounts may incur higher relative fees.
+                                        {% else %}
+                                            <strong>Recommandé : 25$</strong> - C'est le montant minimum qui doit s'accumuler avant que nous envoyions automatiquement votre paiement. Les montants plus bas peuvent entraîner des frais relatifs plus élevés.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4 pt-3 border-top">
+                        <a href="{{ url_for('enseignant_commissions') }}" 
+                           class="btn btn-outline-secondary px-4 py-2 me-md-2">
+                            <i class="fas fa-times me-2"></i>
+                            {% if lang == 'en' %}
+                                Cancel
+                            {% else %}
+                                Annuler
+                            {% endif %}
+                        </a>
+                        <button type="submit" 
+                                class="btn btn-primary px-4 py-2"
+                                id="submitBtn">
+                            <i class="fas fa-save me-2"></i>
+                            {% if lang == 'en' %}
+                                Save Payment Settings
+                            {% else %}
+                                Enregistrer les paramètres
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Section Informations Importantes -->
+        <div class="info-section">
+            <h4 class="mb-3">
+                <i class="fas fa-info-circle me-2 text-primary"></i>
+                {% if lang == 'en' %}
+                    Important Information
+                {% else %}
+                    Informations importantes
+                {% endif %}
+            </h4>
+            
+            <ul class="info-list">
+                <li>
+                    <i class="fas fa-check-circle icon text-success"></i>
+                    <div>
+                        <strong>
+                            {% if lang == 'en' %}
+                                Interac Transfers
+                            {% else %}
+                                Virements Interac
+                            {% endif %}
+                        </strong>
+                        <p class="mb-0 text-muted">
+                            {% if lang == 'en' %}
+                                Processed within 2-3 business days. A $1 fee applies to cover transaction costs.
+                            {% else %}
+                                Traités dans 2-3 jours ouvrables. Un frais de 1$ s'applique pour couvrir les coûts de transaction.
+                            {% endif %}
+                        </p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-clock icon text-warning"></i>
+                    <div>
+                        <strong>
+                            {% if lang == 'en' %}
+                                Payment Schedule
+                            {% else %}
+                                Calendrier des paiements
+                            {% endif %}
+                        </strong>
+                        <p class="mb-0 text-muted">
+                            {% if lang == 'en' %}
+                                Monthly payments: 1st of each month<br>
+                                Weekly payments: Every Friday<br>
+                                Daily payments: Every business day
+                            {% else %}
+                                Paiements mensuels : 1er de chaque mois<br>
+                                Paiements hebdomadaires : Chaque vendredi<br>
+                                Paiements quotidiens : Chaque jour ouvrable
+                            {% endif %}
+                        </p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-shield-alt icon text-info"></i>
+                    <div>
+                        <strong>
+                            {% if lang == 'en' %}
+                                Security & Privacy
+                            {% else %}
+                                Sécurité & Confidentialité
+                            {% endif %}
+                        </strong>
+                        <p class="mb-0 text-muted">
+                            {% if lang == 'en' %}
+                                Your payment information is encrypted and stored securely. We never share your financial details with third parties.
+                            {% else %}
+                                Vos informations de paiement sont chiffrées et stockées de manière sécurisée. Nous ne partageons jamais vos données financières avec des tiers.
+                            {% endif %}
+                        </p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-question-circle icon text-secondary"></i>
+                    <div>
+                        <strong>
+                            {% if lang == 'en' %}
+                                Need Help?
+                            {% else %}
+                                Besoin d'aide ?
+                            {% endif %}
+                        </strong>
+                        <p class="mb-0 text-muted">
+                            {% if lang == 'en' %}
+                                Contact our support team at <a href="mailto:commission@tutoratai.ca" class="text-primary">commission@tutoratai.ca</a> or call (555) 123-4567
+                            {% else %}
+                                Contactez notre équipe support à <a href="mailto:commission@tutoratai.ca" class="text-primary">commission@tutoratai.ca</a> ou appelez au (555) 123-4567
+                            {% endif %}
+                        </p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+    // Sélection de la méthode de paiement
+    function selectPaymentMethod(method) {
+        // Mettre à jour l'état visuel
+        document.querySelectorAll('.payment-method-card').forEach(card => {
+            card.classList.remove('selected');
+            card.setAttribute('aria-selected', 'false');
+        });
+        
+        const selectedCard = event.currentTarget || event.target.closest('.payment-method-card');
+        selectedCard.classList.add('selected');
+        selectedCard.setAttribute('aria-selected', 'true');
+        
+        // Focus sur la carte sélectionnée pour l'accessibilité
+        selectedCard.focus();
+        
+        // Mettre à jour le champ caché
+        document.getElementById('methode_versement').value = method;
+        
+        // Afficher/masquer les champs email appropriés
+        const paypalSection = document.getElementById('paypalEmailSection');
+        const interacInput = document.getElementById('email_interac');
+        
+        if (method === 'paypal') {
+            paypalSection.style.display = 'block';
+            interacInput.required = false;
+            interacInput.parentElement.classList.remove('was-validated');
+        } else {
+            paypalSection.style.display = 'none';
+            interacInput.required = true;
+        }
+        
+        // Annoncer le changement pour les lecteurs d'écran
+        announceScreenReader('{% if lang == "en" %}Selected payment method: ' + method + '{% else %}Méthode de paiement sélectionnée : ' + method + '{% endif %}');
+    }
+    
+    // Annoncer les changements pour les lecteurs d'écran
+    function announceScreenReader(message) {
+        const announcement = document.getElementById('sr-announcement') || createAnnouncementElement();
+        announcement.textContent = message;
+    }
+    
+    function createAnnouncementElement() {
+        const announcement = document.createElement('div');
+        announcement.id = 'sr-announcement';
+        announcement.setAttribute('aria-live', 'polite');
+        announcement.setAttribute('aria-atomic', 'true');
+        announcement.style.position = 'absolute';
+        announcement.style.width = '1px';
+        announcement.style.height = '1px';
+        announcement.style.padding = '0';
+        announcement.style.margin = '-1px';
+        announcement.style.overflow = 'hidden';
+        announcement.style.clip = 'rect(0, 0, 0, 0)';
+        announcement.style.whiteSpace = 'nowrap';
+        announcement.style.border = '0';
+        document.body.appendChild(announcement);
+        return announcement;
+    }
+    
+    // Initialiser l'affichage au chargement
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentMethod = document.getElementById('methode_versement').value;
+        selectPaymentMethod(currentMethod);
+        
+        // Animation des cartes
+        const cards = document.querySelectorAll('.payment-method-card');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                card.style.transition = 'all 0.5s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+        
+        // Validation Bootstrap
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                
+                form.classList.add('was-validated');
+            }, false);
+        });
+        
+        // Gestion du seuil minimum
+        const seuilInput = document.getElementById('seuil_minimum');
+        if (seuilInput) {
+            seuilInput.addEventListener('input', function() {
+                const value = parseFloat(this.value);
+                const min = parseFloat(this.min);
+                const max = parseFloat(this.max);
+                
+                if (value < min) {
+                    this.value = min;
+                } else if (value > max) {
+                    this.value = max;
+                }
+                
+                // Mettre à jour le feedback visuel
+                updateThresholdFeedback(value);
+            });
+        }
+        
+        // Gestion de la soumission
+        const form = document.getElementById('paymentForm');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const method = document.getElementById('methode_versement').value;
+                const interacEmail = document.getElementById('email_interac').value;
+                
+                if (method === 'interac' && !interacEmail) {
+                    e.preventDefault();
+                    
+                    // Animation d'erreur
+                    const emailInput = document.getElementById('email_interac');
+                    emailInput.classList.add('is-invalid');
+                    emailInput.focus();
+                    
+                    // Message d'erreur
+                    const errorMessage = '{% if lang == "en" %}Please enter your Interac email address{% else %}Veuillez entrer votre adresse email Interac{% endif %}';
+                    alert(errorMessage);
+                    return false;
+                }
+                
+                // Confirmation
+                const confirmationMessage = '{% if lang == "en" %}Save payment settings?{% else %}Enregistrer les paramètres de paiement ?{% endif %}';
+                if (!confirm(confirmationMessage)) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // État de chargement
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> {% if lang == "en" %}Saving...{% else %}Enregistrement...{% endif %}';
+                    submitBtn.disabled = true;
+                }
+                
+                return true;
+            });
+        }
+    });
+    
+    // Mettre à jour le feedback visuel pour le seuil
+    function updateThresholdFeedback(value) {
+        const thresholdHelp = document.getElementById('thresholdHelp');
+        if (!thresholdHelp) return;
+        
+        const recommended = 25.00;
+        let feedback = '';
+        
+        if (value < recommended) {
+            feedback = '{% if lang == "en" %}<span class="text-warning">Lower threshold may result in more frequent payments with higher relative fees.</span>{% else %}<span class="text-warning">Un seuil plus bas peut entraîner des paiements plus fréquents avec des frais relatifs plus élevés.</span>{% endif %}';
+        } else if (value > recommended) {
+            feedback = '{% if lang == "en" %}<span class="text-info">Higher threshold means less frequent payments but lower relative fees.</span>{% else %}<span class="text-info">Un seuil plus élevé signifie des paiements moins fréquents mais des frais relatifs plus bas.</span>{% endif %}';
+        } else {
+            feedback = '{% if lang == "en" %}<span class="text-success">Perfect! This is the recommended threshold for optimal balance.</span>{% else %}<span class="text-success">Parfait ! C\'est le seuil recommandé pour un équilibre optimal.</span>{% endif %}';
+        }
+        
+        thresholdHelp.innerHTML = `<div class="d-flex align-items-center mt-2"><i class="fas fa-info-circle me-2 text-primary"></i><div>${feedback}</div></div>`;
+    }
+    
+    // Gestion du changement de langue
+    document.querySelectorAll('.lang-switch a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const lang = this.getAttribute('href').split('=')[1];
+            
+            // Effet de transition
+            document.body.classList.add('loading');
+            document.body.style.opacity = '0.7';
+            
+            // Redirection après un délai
+            setTimeout(() => {
+                window.location.href = window.location.pathname + '?lang=' + lang;
+            }, 300);
+        });
+    });
+    
+    // Accessibilité : navigation au clavier
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            window.location.href = "{{ url_for('enseignant_commissions') }}";
+        }
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{% if lang == 'fr' %}Affectation Exercices{% else %}Assign Exercises{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>{% if lang == 'fr' %}Affectation des exercices pour {{ eleve.nom_complet }}{% else %}Assign Exercises to {{ eleve.nom_complet }}{% endif %}</h1>
+
+    {% for matiere_data in matieres_data %}
+      <h2>{{ matiere_data.matiere.nom }}</h2>
+      {% for lecon_data in matiere_data.lecons %}
+        <h3>{{ lecon_data.lecon.titre_fr if lang == 'fr' else lecon_data.lecon.titre_en }}</h3>
+        <ul>
+          {% for ex_data in lecon_data.exercices %}
+            <li>
+              {{ ex_data.exercice.question_fr if lang == 'fr' else ex_data.exercice.question_en }}
+              {% if ex_data.recommande %}
+                <span style="color:blue">★ Recommandé</span>
+              {% else %}
+                <form action="{{ url_for('affecter_exercice') }}" method="POST" style="display:inline;">
+                  <input type="hidden" name="eleve_id" value="{{ eleve.id }}">
+                  <input type="hidden" name="exercice_id" value="{{ ex_data.exercice.id }}">
+                  <button type="submit">{% if lang == 'fr' %}Recommander{% else %}Recommend{% endif %}</button>
+                </form>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endfor %}
+    {% endfor %}
+
+    <a href="{{ url_for('dashboard_enseignant') }}">
+      {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to Dashboard{% endif %}
+    </a>
+  </div>
+</body>
+</html>

@@ -28,6 +28,8 @@
       --white: #ffffff;
       --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       --transition: all 0.3s ease;
+      --naima-purple: #9b59b6;
+      --naima-light: #e8dff2;
     }
     * {
       margin: 0;
@@ -226,25 +228,26 @@
       line-height: 1.4;
     }
     
-    /* CARTE ENSEIGNANT VIRTUEL */
-    .enseignant-virtuel-card {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* CARTE NAIMA - ENSEIGNANT VIRTUEL */
+    .naima-card {
+      background: linear-gradient(135deg, #667eea 0%, var(--naima-purple) 100%);
       color: white;
-      border-left: 5px solid #9b59b6;
+      border-left: 5px solid var(--naima-purple);
     }
     
-    .enseignant-virtuel-card .main-action-icon {
+    .naima-card .main-action-icon {
       background: rgba(255, 255, 255, 0.2);
       color: white;
     }
     
-    .enseignant-virtuel-card:hover {
-      background: #9b59b6;
+    .naima-card:hover {
+      background: var(--naima-purple);
+      color: white;
     }
     
-    .enseignant-virtuel-card:hover .main-action-icon {
+    .naima-card:hover .main-action-icon {
       background: white;
-      color: #9b59b6;
+      color: var(--naima-purple);
     }
     
     /* SECTION TABLEAU DE BORD */
@@ -288,69 +291,88 @@
       color: var(--primary);
     }
     
-    /* SECTION IA PEDAGOGIQUE */
-    .ia-pedagogique-section {
+    /* SECTION NAIMA PEDAGOGIQUE */
+    .naima-section {
       grid-column: 1 / -1;
-      background: linear-gradient(135deg, #f8f9ff 0%, #e3e9ff 100%);
+      background: linear-gradient(135deg, #f8f9ff 0%, var(--naima-light) 100%);
       border-radius: 20px;
       padding: 25px;
       margin-bottom: 25px;
       box-shadow: var(--shadow);
-      border-left: 5px solid var(--accent);
+      border-left: 5px solid var(--naima-purple);
+      position: relative;
+      overflow: hidden;
     }
     
-    .ia-header {
+    .naima-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 150px;
+      height: 150px;
+      background: radial-gradient(circle, rgba(155, 89, 182, 0.1) 0%, transparent 70%);
+    }
+    
+    .naima-header {
       display: flex;
       align-items: center;
       gap: 15px;
       margin-bottom: 20px;
+      position: relative;
+      z-index: 2;
     }
     
-    .ia-avatar {
+    .naima-avatar {
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #4361ee, #9b59b6);
+      background: linear-gradient(135deg, #4361ee, var(--naima-purple));
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.8rem;
       color: white;
+      border: 3px solid white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     
-    .ia-info h3 {
+    .naima-info h3 {
       margin: 0;
       color: #2c3e50;
       font-size: 1.6rem;
     }
     
-    .ia-info p {
+    .naima-info p {
       margin: 5px 0 0 0;
       color: #7f8c8d;
       font-size: 0.95rem;
     }
     
-    .ia-insights {
+    .naima-insights {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 20px;
       margin-top: 20px;
+      position: relative;
+      z-index: 2;
     }
     
-    .ia-card {
+    .naima-card-insight {
       background: white;
       border-radius: 12px;
       padding: 18px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       transition: var(--transition);
+      border-top: 4px solid var(--naima-purple);
     }
     
-    .ia-card:hover {
+    .naima-card-insight:hover {
       transform: translateY(-3px);
       box-shadow: 0 8px 20px rgba(0,0,0,0.12);
     }
     
-    .ia-card-title {
+    .naima-card-title {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -359,10 +381,36 @@
       font-size: 1.1rem;
     }
     
-    .ia-card-content {
+    .naima-card-title i {
+      color: var(--naima-purple);
+    }
+    
+    .naima-card-content {
       color: #34495e;
       line-height: 1.5;
       font-size: 0.9rem;
+    }
+    
+    .naima-cta-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: linear-gradient(135deg, var(--naima-purple), #764ba2);
+      color: white;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      transition: var(--transition);
+      margin-top: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    
+    .naima-cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(155, 89, 182, 0.3);
     }
     
     /* COMPTEUR D'ESSAI */
@@ -815,6 +863,17 @@
       color: white;
     }
     
+    .badge-naima {
+      background: var(--naima-purple);
+      color: white;
+      animation: naimaGlow 2s infinite alternate;
+    }
+    
+    @keyframes naimaGlow {
+      from { box-shadow: 0 0 5px rgba(155, 89, 182, 0.5); }
+      to { box-shadow: 0 0 10px rgba(155, 89, 182, 0.8); }
+    }
+    
     /* ÉTOILES */
     .stars-container {
       display: flex;
@@ -886,6 +945,17 @@
     .animated-card {
       animation: fadeInUp 0.5s ease forwards;
     }
+    
+    /* ANIMATION SPÉCIALE NAIMA */
+    @keyframes naimaPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .naima-pulse {
+      animation: naimaPulse 2s infinite;
+    }
   </style>
 </head>
 <body>
@@ -946,28 +1016,28 @@
     <!-- SECTION ACTIONS PRINCIPALES EN PREMIER -->
     <div class="main-actions-section">
       <div class="main-actions-grid">
-        <!-- CARTE ENSEIGNANT VIRTUEL -->
-        <a href="/enseignant-virtuel" class="main-action-card enseignant-virtuel-card animated-card" style="animation-delay: 0.1s;">
+        <!-- CARTE NAIMA - ENSEIGNANTE VIRTUELLE -->
+        <a href="/enseignant-virtuel" class="main-action-card naima-card animated-card naima-pulse" style="animation-delay: 0.1s;">
           <div class="main-action-icon">
             <i class="fas fa-robot"></i>
           </div>
           <h4>
             {% if lang == 'en' %}
-              Virtual Teacher
+              Naima - Virtual Teacher
             {% else %}
-              Enseignant Virtuel
+              Naima - Enseignante Virtuelle
             {% endif %}
           </h4>
           <p>
             {% if lang == 'en' %}
-              Get help from AI teacher for any subject
+              Get help from Naima, your AI teacher for any subject
             {% else %}
-              Obtenez de l'aide d'un enseignant IA pour toutes les matières
+              Obtenez de l'aide de Naima, votre enseignante IA pour toutes les matières
             {% endif %}
           </p>
-          <span class="badge" style="background: #9b59b6; color: white; margin-top: 5px;">
-            <i class="fas fa-bolt"></i>
-            {% if lang == 'en' %}NEW{% else %}NOUVEAU{% endif %}
+          <span class="badge badge-naima">
+            <i class="fas fa-star"></i>
+            {% if lang == 'en' %}MEET NAIMA{% else %}RENCONTREZ NAIMA{% endif %}
           </span>
         </a>
         
@@ -1039,121 +1109,160 @@
       </div>
     </div>
 
-    <!-- SECTION : IA PEDAGOGIQUE -->
-    <div class="ia-pedagogique-section animated-card" style="animation-delay: 0.7s;">
-      <div class="ia-header">
-        <div class="ia-avatar">
-          <i class="fas fa-brain"></i>
+    <!-- SECTION : NAIMA L'ENSEIGNANTE VIRTUELLE -->
+    <div class="naima-section animated-card" style="animation-delay: 0.7s;">
+      <div class="naima-header">
+        <div class="naima-avatar">
+          <i class="fas fa-robot"></i>
         </div>
-        <div class="ia-info">
+        <div class="naima-info">
           <h3>
             {% if lang == 'en' %}
-              🧠 Pedagogical AI Assistant
+              👩‍🏫 Meet Naima - Your Virtual Teacher
             {% else %}
-              🧠 Assistant Pédagogique IA
+              👩‍🏫 Naima - Votre Enseignante Virtuelle
             {% endif %}
           </h3>
           <p>
             {% if lang == 'en' %}
-              Personalized insights based on your learning journey
+              Your personal AI teacher available 24/7 to guide you
             {% else %}
-              Analyses personnalisées basées sur votre parcours
+              Votre enseignante IA personnelle disponible 24h/24 pour vous guider
             {% endif %}
           </p>
         </div>
       </div>
       
-      <div class="ia-insights">
-        <div class="ia-card">
-          <div class="ia-card-title">
-            <i class="fas fa-book-open" style="color: #4361ee;"></i>
+      <div class="naima-insights">
+        <div class="naima-card-insight">
+          <div class="naima-card-title">
+            <i class="fas fa-comments"></i>
             {% if lang == 'en' %}
-              Detected Chapter
+              How Naima Helps You
             {% else %}
-              Chapitre Détecté
+              Comment Naima vous aide
             {% endif %}
           </div>
-          <div class="ia-card-content">
-            <strong style="color: #2c3e50; font-size: 1.1rem;">
-              {{ ai_stats.chapitre_actuel if ai_stats and ai_stats.chapitre_actuel else 'Fractions' }}
-            </strong>
-            <p style="margin-top: 8px; font-size: 0.9rem;">
+          <div class="naima-card-content">
+            <p style="margin-bottom: 10px;">
+              <strong style="color: var(--naima-purple);">
+                {% if lang == 'en' %}
+                  Interactive Guidance:
+                {% else %}
+                  Guidance Interactive :
+                {% endif %}
+              </strong>
               {% if lang == 'en' %}
-                Based on your recent exercises, you're focusing on this topic.
+                Naima asks questions step by step to help you find answers yourself.
               {% else %}
-                Basé sur vos exercices récents, vous travaillez sur ce sujet.
+                Naima pose des questions étape par étape pour vous aider à trouver les réponses vous-même.
+              {% endif %}
+            </p>
+            <p>
+              <strong style="color: var(--naima-purple);">
+                {% if lang == 'en' %}
+                  All Subjects Covered:
+                {% else %}
+                  Toutes Matières :
+                {% endif %}
+              </strong>
+              {% if lang == 'en' %}
+                Mathematics, French, History, Science, Geography, and more!
+              {% else %}
+                Mathématiques, Français, Histoire, Sciences, Géographie, et plus !
               {% endif %}
             </p>
           </div>
+          <a href="/enseignant-virtuel" class="naima-cta-button">
+            <i class="fas fa-graduation-cap"></i>
+            {% if lang == 'en' %}
+              Ask Naima a Question
+            {% else %}
+              Poser une question à Naima
+            {% endif %}
+          </a>
         </div>
         
-        <div class="ia-card">
-          <div class="ia-card-title">
-            <i class="fas fa-chart-line" style="color: #3fba83;"></i>
+        <div class="naima-card-insight">
+          <div class="naima-card-title">
+            <i class="fas fa-lightbulb"></i>
             {% if lang == 'en' %}
-              Detected Level
+              Naima's Teaching Method
             {% else %}
-              Niveau Détecté
+              Méthode d'enseignement de Naima
             {% endif %}
           </div>
-          <div class="ia-card-content">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <span style="font-size: 1.1rem; font-weight: bold; color: #2c3e50;">
-                {% if ai_stats and ai_stats.niveau_detecte %}
-                  {{ 'Primary' if ai_stats.niveau_detecte == 'primaire' else 'Secondary' }}
-                {% else %}
-                  {{ 'Primary' if eleve.niveau and 'prim' in eleve.niveau.nom.lower() else 'Secondary' }}
-                {% endif %}
-              </span>
-              <span style="background: #e0f7ed; color: #38a873; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem;">
+          <div class="naima-card-content">
+            <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+              <li style="margin-bottom: 5px;">
                 {% if lang == 'en' %}
-                  Auto-detected
+                  <strong>Never gives direct answers</strong> - guides you to discover them
                 {% else %}
-                  Auto-détecté
+                  <strong>Ne donne jamais de réponses directes</strong> - vous guide pour les découvrir
                 {% endif %}
-              </span>
-            </div>
-            <p style="margin-top: 8px; font-size: 0.9rem;">
-              {% if lang == 'en' %}
-                The AI adapts explanations to your learning level.
-              {% else %}
-                L'IA adapte les explications à votre niveau d'apprentissage.
-              {% endif %}
-            </p>
+              </li>
+              <li style="margin-bottom: 5px;">
+                {% if lang == 'en' %}
+                  <strong>Adapts to your level</strong> - uses simple, clear explanations
+                {% else %}
+                  <strong>S'adapte à votre niveau</strong> - utilise des explications simples et claires
+                {% endif %}
+              </li>
+              <li>
+                {% if lang == 'en' %}
+                  <strong>Encourages and praises</strong> - builds your confidence
+                {% else %}
+                  <strong>Encourage et félicite</strong> - renforce votre confiance
+                {% endif %}
+              </li>
+            </ul>
           </div>
+          <button class="naima-cta-button" onclick="showNaimaDemo()">
+            <i class="fas fa-play-circle"></i>
+            {% if lang == 'en' %}
+              See Naima in Action
+            {% else %}
+              Voir Naima en action
+            {% endif %}
+          </button>
         </div>
         
-        <div class="ia-card">
-          <div class="ia-card-title">
-            <i class="fas fa-life-ring" style="color: #1976d2;"></i>
+        <div class="naima-card-insight">
+          <div class="naima-card-title">
+            <i class="fas fa-clock"></i>
             {% if lang == 'en' %}
-              AI Teacher Available
+              Available 24/7
             {% else %}
-              Enseignant IA Disponible
+              Disponible 24h/24
             {% endif %}
           </div>
-          <div class="ia-card-content">
-            <div style="margin-bottom: 10px;">
-              <span style="font-weight: 600; color: #2c3e50; font-size: 0.95rem;">
-                {% if lang == 'en' %}
-                  Accessible 24/7
-                {% else %}
-                  Accessible 24h/24
-                {% endif %}
-              </span>
-            </div>
-            <p style="font-size: 0.9rem;">
+          <div class="naima-card-content">
+            <p style="margin-bottom: 10px;">
               {% if lang == 'en' %}
-                🎯 <strong>Virtual Teacher now available anytime!</strong> Get help with any subject or question.
+                🎯 <strong>Naima is always here for you!</strong> Whether it's homework help, exam prep, or concept explanations.
               {% else %}
-                🎯 <strong>Enseignant Virtuel disponible à tout moment !</strong> Obtenez de l'aide pour toute matière ou question.
+                🎯 <strong>Naima est toujours là pour vous !</strong> Que ce soit pour l'aide aux devoirs, la préparation d'examens ou l'explication de concepts.
               {% endif %}
             </p>
-            <a href="/enseignant-virtuel" style="display: inline-block; margin-top: 10px; padding: 6px 12px; background: #4361ee; color: white; border-radius: 6px; text-decoration: none; font-size: 0.85rem; transition: all 0.3s ease;">
-              <i class="fas fa-arrow-right"></i>
-              {% if lang == 'en' %}Try now{% else %}Essayer maintenant{% endif %}
-            </a>
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-top: 10px;">
+              <p style="margin: 0; font-size: 0.85rem; color: #666;">
+                <i class="fas fa-tip" style="color: var(--naima-purple);"></i>
+                {% if lang == 'en' %}
+                  <strong>Tip:</strong> Start with "Hello Naima, I need help with..."
+                {% else %}
+                  <strong>Astuce :</strong> Commencez par "Bonjour Naima, j'ai besoin d'aide pour..."
+                {% endif %}
+              </p>
+            </div>
           </div>
+          <a href="/enseignant-virtuel" class="naima-cta-button" style="background: linear-gradient(135deg, #4361ee, var(--naima-purple));">
+            <i class="fas fa-arrow-right"></i>
+            {% if lang == 'en' %}
+              Start Chatting with Naima
+            {% else %}
+              Commencer à discuter avec Naima
+            {% endif %}
+          </a>
         </div>
       </div>
     </div>
@@ -1372,7 +1481,7 @@
             </div>
           </div>
 
-          <!-- Objectif 3: Utiliser l'enseignant virtuel -->
+          <!-- Objectif 3: Utiliser Naima -->
           <div class="goal-item {% if objectifs_du_jour[2].completed %}goal-completed{% endif %}">
             <div class="goal-checkbox">
               <input type="checkbox" id="goal3" 
@@ -1534,10 +1643,16 @@
                   Commencez votre premier exercice !
                 {% endif %}
               </p>
-              <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-secondary" style="margin-top: 10px;">
-                <i class="fas fa-play"></i>
-                {% if lang == 'en' %}Start Learning{% else %}Commencer à apprendre{% endif %}
-              </a>
+              <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center;">
+                <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-secondary">
+                  <i class="fas fa-play"></i>
+                  {% if lang == 'en' %}Start Learning{% else %}Commencer à apprendre{% endif %}
+                </a>
+                <a href="/enseignant-virtuel" class="btn" style="background: var(--naima-purple);">
+                  <i class="fas fa-robot"></i>
+                  {% if lang == 'en' %}Ask Naima{% else %}Demander à Naima{% endif %}
+                </a>
+              </div>
             </div>
           {% endif %}
         </div>
@@ -1553,7 +1668,7 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const cards = document.querySelectorAll('.card, .main-action-card, .remediation-compact-card, .ia-card, .welcome-card, .logout-btn');
+      const cards = document.querySelectorAll('.card, .main-action-card, .remediation-compact-card, .naima-card-insight, .welcome-card, .logout-btn');
       cards.forEach((card, index) => {
         if (!card.classList.contains('animated-card')) {
           card.style.opacity = '0';
@@ -1588,6 +1703,19 @@
           card.style.animation = 'fadeInUp 0.5s ease forwards';
         }, delay * 1000);
       });
+      
+      // Animation spéciale pour la carte Naima
+      const naimaCard = document.querySelector('.naima-card');
+      if (naimaCard) {
+        naimaCard.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-8px) scale(1.05)';
+          this.style.boxShadow = '0 15px 30px rgba(155, 89, 182, 0.3)';
+        });
+        naimaCard.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(-5px) scale(1)';
+          this.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
+        });
+      }
     });
 
     function startTrialCountdown(totalSeconds, initialPercentage) {
@@ -1638,15 +1766,117 @@
       window.location.href = "/upgrade-options?username={{ eleve.username }}&lang={{ lang }}";
     }
     
-    // Animation au survol de l'enseignant virtuel
-    const enseignantCard = document.querySelector('.enseignant-virtuel-card');
-    if (enseignantCard) {
-      enseignantCard.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-5px) scale(1.02)';
-      });
-      enseignantCard.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateY(-5px)';
-      });
+    function showNaimaDemo() {
+      // Créer une modale de démonstration
+      const modal = document.createElement('div');
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.width = '100%';
+      modal.style.height = '100%';
+      modal.style.backgroundColor = 'rgba(0,0,0,0.7)';
+      modal.style.display = 'flex';
+      modal.style.justifyContent = 'center';
+      modal.style.alignItems = 'center';
+      modal.style.zIndex = '9999';
+      
+      const modalContent = document.createElement('div');
+      modalContent.style.background = 'white';
+      modalContent.style.padding = '30px';
+      modalContent.style.borderRadius = '15px';
+      modalContent.style.maxWidth = '500px';
+      modalContent.style.width = '90%';
+      modalContent.style.position = 'relative';
+      
+      const closeBtn = document.createElement('button');
+      closeBtn.innerHTML = '&times;';
+      closeBtn.style.position = 'absolute';
+      closeBtn.style.top = '10px';
+      closeBtn.style.right = '10px';
+      closeBtn.style.background = 'none';
+      closeBtn.style.border = 'none';
+      closeBtn.style.fontSize = '24px';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.style.color = '#666';
+      
+      closeBtn.onclick = function() {
+        document.body.removeChild(modal);
+      };
+      
+      modalContent.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 15px; border-radius: 50%; background: linear-gradient(135deg, #4361ee, #9b59b6); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white;">
+            <i class="fas fa-robot"></i>
+          </div>
+          <h3 style="color: #9b59b6; margin-bottom: 10px;">
+            {% if lang == 'en' %}
+              Meet Naima - Your Virtual Teacher
+            {% else %}
+              Rencontrez Naima - Votre Enseignante Virtuelle
+            {% endif %}
+          </h3>
+        </div>
+        
+        <div style="background: #f8f9ff; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #9b59b6;">
+          <p style="margin-bottom: 15px;">
+            {% if lang == 'en' %}
+              <strong>Example conversation with Naima:</strong>
+            {% else %}
+              <strong>Exemple de conversation avec Naima :</strong>
+            {% endif %}
+          </p>
+          
+          <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0;">
+            <p style="margin: 0; font-style: italic; color: #4361ee;">
+              <strong>{% if lang == 'en' %}You:{% else %}Toi :{% endif %}</strong> 
+              {% if lang == 'en' %}
+                "How do I solve 2x + 3 = 11?"
+              {% else %}
+                "Comment je résous 2x + 3 = 11 ?"
+              {% endif %}
+            </p>
+          </div>
+          
+          <div style="background: #e8dff2; padding: 15px; border-radius: 8px;">
+            <p style="margin: 0; color: #2c3e50;">
+              <strong>{% if lang == 'en' %}Naima:{% else %}Naima :{% endif %}</strong> 
+              {% if lang == 'en' %}
+                "Hello! I'm Naima, your virtual teacher. Great question! Let's start step by step. What do you think should be the first operation to isolate x? 🤔"
+              {% else %}
+                "Bonjour ! Je suis Naima, ton enseignante virtuelle. Excellente question ! Commençons étape par étape. Selon toi, quelle devrait être la première opération pour isoler x ? 🤔"
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">
+          {% if lang == 'en' %}
+            Naima guides you with questions, never gives direct answers, and adapts to your level!
+          {% else %}
+            Naima vous guide avec des questions, ne donne jamais de réponses directes, et s'adapte à votre niveau !
+          {% endif %}
+        </p>
+        
+        <a href="/enseignant-virtuel" style="display: block; text-align: center; padding: 12px 20px; background: linear-gradient(135deg, #9b59b6, #764ba2); color: white; text-decoration: none; border-radius: 50px; font-weight: 600; transition: all 0.3s ease;">
+          <i class="fas fa-graduation-cap"></i>
+          {% if lang == 'en' %}
+            Start Chatting with Naima Now
+          {% else %}
+            Commencer à discuter avec Naima maintenant
+          {% endif %}
+        </a>
+      `;
+      
+      modalContent.prepend(closeBtn);
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+      
+      // Fermer en cliquant à l'extérieur
+      modal.onclick = function(e) {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      };
     }
   </script>
 </body>

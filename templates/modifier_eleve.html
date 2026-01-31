@@ -167,12 +167,22 @@
     {% endif %}
   {% endwith %}
 
+  <!-- DEBUG SECTION (à enlever après test) -->
+  <div style="background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;">
+    <strong>Debug:</strong><br>
+    Élève ID: {{ eleve.id }}<br>
+    Élève nom: {{ eleve.nom_complet }}<br>
+    Élève enseignant_referent_id: {{ eleve.enseignant_referent_id }}<br>
+    Élève statut: {{ eleve.statut }}<br>
+    Élève statut_paiement: {{ eleve.statut_paiement }}
+  </div>
+
   <form method="POST">
     <input type="hidden" name="lang" value="{{ lang }}">
     
     <!-- Informations de base -->
-    <label for="nom">{{ 'Full Name' if lang == 'en' else 'Nom complet' }}</label>
-    <input type="text" id="nom" name="nom" value="{{ eleve.nom_complet }}" required>
+    <label for="nom_complet">{{ 'Full Name' if lang == 'en' else 'Nom complet' }}</label>
+    <input type="text" id="nom_complet" name="nom_complet" value="{{ eleve.nom_complet }}" required>
 
     <label for="email">{{ 'Email Address' if lang == 'en' else 'Adresse e-mail' }}</label>
     <input type="email" id="email" name="email" value="{{ eleve.email }}" required>
@@ -196,14 +206,39 @@
     </select>
 
     <label for="enseignant_id">{{ 'Reference Teacher' if lang == 'en' else 'Enseignant référent' }}</label>
-    <select id="enseignant_id" name="enseignant_id" required>
+    <select id="enseignant_id" name="enseignant_id">
       <option value="">-- {{ 'Choose a teacher' if lang == 'en' else 'Choisir un enseignant' }} --</option>
       {% for enseignant in enseignants %}
-      <option value="{{ enseignant.id }}" {% if eleve.enseignant_id == enseignant.id %}selected{% endif %}>
-        {{ enseignant.nom }} ({{ enseignant.email }})
+      <option value="{{ enseignant.id }}" {% if eleve.enseignant_referent_id == enseignant.id %}selected{% endif %}>
+        {{ enseignant.nom_complet }} ({{ enseignant.email }})
       </option>
       {% endfor %}
     </select>
+    <div class="info-text">{{ 'Optional - can be left empty' if lang == 'en' else 'Optionnel - peut être laissé vide' }}</div>
+
+    <!-- Informations de contact -->
+    <label for="telephone">{{ 'Phone (Optional)' if lang == 'en' else 'Téléphone (Optionnel)' }}</label>
+    <input type="tel" id="telephone" name="telephone" value="{{ eleve.telephone or '' }}"
+           placeholder="+1 (555) 123-4567">
+
+    <!-- Adresse optionnelle -->
+    <label for="adresse">{{ 'Address (Optional)' if lang == 'en' else 'Adresse (Optionnel)' }}</label>
+    <input type="text" id="adresse" name="adresse" value="{{ eleve.adresse or '' }}" 
+           placeholder="{{ '123 Main Street' if lang == 'en' else '123 Rue Principale' }}">
+
+    <label for="ville">{{ 'City (Optional)' if lang == 'en' else 'Ville (Optionnel)' }}</label>
+    <input type="text" id="ville" name="ville" value="{{ eleve.ville or '' }}">
+
+    <label for="province">{{ 'Province (Optional)' if lang == 'en' else 'Province (Optionnel)' }}</label>
+    <input type="text" id="province" name="province" value="{{ eleve.province or '' }}">
+
+    <label for="code_postal">{{ 'Postal Code (Optional)' if lang == 'en' else 'Code postal (Optionnel)' }}</label>
+    <input type="text" id="code_postal" name="code_postal" value="{{ eleve.code_postal or '' }}" 
+           placeholder="H3A 1B2">
+
+    <!-- Date de naissance -->
+    <label for="date_naissance">{{ 'Birth Date (Optional)' if lang == 'en' else 'Date de naissance (Optionnel)' }}</label>
+    <input type="date" id="date_naissance" name="date_naissance" value="{{ date_naissance or '' }}">
 
     <!-- Section mot de passe -->
     <div class="password-section">
@@ -259,6 +294,9 @@
       <option value="essai_gratuit" {% if eleve.statut_paiement == 'essai_gratuit' %}selected{% endif %}>
         {{ 'Free Trial' if lang == 'en' else 'Essai gratuit' }}
       </option>
+      <option value="non_paye" {% if eleve.statut_paiement == 'non_paye' %}selected{% endif %}>
+        {{ 'Not Paid' if lang == 'en' else 'Non payé' }}
+      </option>
       <option value="en_attente" {% if eleve.statut_paiement == 'en_attente' %}selected{% endif %}>
         {{ 'Pending' if lang == 'en' else 'En attente' }}
       </option>
@@ -266,11 +304,6 @@
         {{ 'Expired' if lang == 'en' else 'Expiré' }}
       </option>
     </select>
-
-    <!-- Informations de contact optionnelles -->
-    <label for="telephone">{{ 'Phone (Optional)' if lang == 'en' else 'Téléphone (Optionnel)' }}</label>
-    <input type="tel" id="telephone" name="telephone" value="{{ eleve.telephone or '' }}"
-           placeholder="+1 (555) 123-4567">
 
     <!-- Bouton de soumission -->
     <button type="submit" onclick="return validateForm()">
@@ -311,21 +344,25 @@
       }
     }
     
+    // Vérifier que le nom d'utilisateur est fourni
+    const username = document.getElementById('username').value;
+    if (!username || username.trim() === '') {
+      alert('{{ "Username is required" if lang == "en" else "Le nom d\'utilisateur est requis" }}');
+      return false;
+    }
+    
     return true;
   }
 
   // Initialiser l'état des champs de mot de passe au chargement
   document.addEventListener('DOMContentLoaded', function() {
     togglePasswordFields();
-  });
-
-  // Afficher/cacher le bouton de retour admin
-  document.addEventListener('DOMContentLoaded', function() {
+    
+    // Ajouter un bouton de retour au tableau de bord élève si on vient de là
     const urlParams = new URLSearchParams(window.location.search);
     const fromAdmin = urlParams.get('from_admin') === 'true';
     
     if (!fromAdmin) {
-      // Ajouter un bouton de retour au tableau de bord élève si on vient de là
       const topLinks = document.querySelector('.top-links');
       const dashboardLink = document.createElement('a');
       dashboardLink.href = "/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}";

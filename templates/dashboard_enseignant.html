@@ -222,6 +222,37 @@
       animation: pulse 2s infinite;
     }
 
+    .badge-commission {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: linear-gradient(135deg, #fcc419, #f59f00);
+      color: white;
+      border-radius: 50%;
+      width: 25px;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      animation: pulse 2s infinite;
+    }
+
+    .commission-card {
+      background: linear-gradient(135deg, #f8f9ff 0%, #e0e7ff 100%);
+      border: 2px solid rgba(67, 97, 238, 0.2);
+      position: relative;
+    }
+
+    .commission-card .action-icon {
+      color: #3fba83;
+    }
+
+    .commission-card::before {
+      background: linear-gradient(90deg, #3fba83, #4361ee);
+    }
+
     .chart-container {
       background: var(--card-bg);
       border-radius: var(--radius);
@@ -261,6 +292,175 @@
       transform: translateY(-2px);
     }
 
+    .exercises-card {
+      background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
+      border: 2px solid rgba(33, 150, 243, 0.2);
+      position: relative;
+    }
+
+    .exercises-card .action-icon {
+      color: #2196f3;
+    }
+
+    .exercises-card::before {
+      background: linear-gradient(90deg, #2196f3, #21cbf3);
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      padding: 0 10px;
+    }
+
+    /* SECTION MATIERES & EXERCICES */
+    .subjects-section {
+      margin: 40px 0;
+    }
+
+    .subjects-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .subject-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: var(--transition);
+      cursor: pointer;
+    }
+
+    .subject-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .subject-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .subject-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .subject-icon {
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+
+    .subject-name {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .subject-stats {
+      display: flex;
+      gap: 15px;
+    }
+
+    .subject-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 15px;
+      background: var(--primary-light);
+      border-radius: 10px;
+      min-width: 80px;
+    }
+
+    .stat-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stat-label-small {
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+
+    .exercises-container {
+      display: none;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .exercises-container.show {
+      display: block;
+    }
+
+    .exercises-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    .exercise-card {
+      background: var(--light);
+      border-radius: 12px;
+      padding: 15px;
+      border: 1px solid rgba(67, 97, 238, 0.1);
+      transition: var(--transition);
+    }
+
+    .exercise-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+    }
+
+    .exercise-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .exercise-difficulty {
+      font-size: 0.8rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .exercise-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-top: 10px;
+    }
+
+    .no-exercises {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-light);
+      font-style: italic;
+    }
+
+    .chevron-icon {
+      transition: transform 0.3s ease;
+    }
+
+    .subject-card.active .chevron-icon {
+      transform: rotate(180deg);
+    }
+
     @keyframes float {
       0%, 100% { transform: translateY(0) rotate(0deg); }
       50% { transform: translateY(-20px) rotate(5deg); }
@@ -273,6 +473,30 @@
 
     .content-section {
       padding: 30px;
+    }
+
+    .commission-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .commission-stat {
+      text-align: center;
+    }
+
+    .commission-amount {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #3fba83;
+    }
+
+    .commission-label {
+      font-size: 0.8rem;
+      color: var(--text-light);
     }
 
     /* Responsive */
@@ -301,6 +525,33 @@
         margin-bottom: 15px;
         width: fit-content;
       }
+      
+      .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      
+      .subjects-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .subject-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .subject-stats {
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      .exercises-list {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -326,7 +577,7 @@
     </div>
     
     <h1 class="mb-2">
-      {% if lang == 'en' %}Welcome, Professor {{ enseignant.nom }}{% else %}Bienvenue, Professeur {{ enseignant.nom }}{% endif %}
+      {% if lang == 'en' %}Welcome, Professor {{ enseignant.nom_complet }}{% else %}Bienvenue, Professeur {{ enseignant.nom_complet }}{% endif %}
     </h1>
     <p class="mb-0 opacity-75">
       {% if lang == 'en' %}Your educational dashboard - Track and manage student progress{% else %}Votre tableau de bord pédagogique - Suivez et gérez la progression des élèves{% endif %}
@@ -335,6 +586,14 @@
 
   <!-- Content Section -->
   <div class="content-section">
+    <!-- Logout Button moved to top -->
+    <div class="header-actions">
+      <a href="/logout" class="logout-btn">
+        <i class="fas fa-sign-out-alt"></i>
+        {% if lang == 'en' %}Log Out{% else %}Se Déconnecter{% endif %}
+      </a>
+    </div>
+
     <!-- Statistics Grid -->
     <div class="stats-grid">
       <div class="stat-card">
@@ -356,9 +615,9 @@
       </div>
       
       <div class="stat-card">
-        <div class="stat-icon">🛠️</div>
-        <div class="stat-number">{{ nv_count if nv_count else '0' }}</div>
-        <div class="stat-label">{% if lang == 'en' %}Pending Remediations{% else %}Remédiations en Attente{% endif %}</div>
+        <div class="stat-icon">💰</div>
+        <div class="stat-number">{{ "%.2f"|format(total_commissions) if total_commissions else '0' }}$</div>
+        <div class="stat-label">{% if lang == 'en' %}Total Commissions{% else %}Commissions Totales{% endif %}</div>
       </div>
     </div>
 
@@ -408,6 +667,47 @@
         </div>
       </a>
 
+      <!-- CARTE DES EXERCICES DES ÉLÈVES -->
+      <a href="{{ url_for('enseignant_exercices') }}" class="action-card exercises-card position-relative">
+        <div class="action-icon">
+          <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="action-title">
+          {% if lang == 'en' %}Students' Exercises{% else %}Exercices des Élèves{% endif %}
+        </div>
+        <div class="action-description">
+          {% if lang == 'en' %}Access all your students' exercises, sorted by subject and lesson{% else %}Accède à tous les exercices de tes élèves, classés par matière et leçon{% endif %}
+        </div>
+      </a>
+
+      <!-- CARTE DES COMMISSIONS -->
+      <a href="/enseignant/commissions" class="action-card commission-card position-relative">
+        {% if commissions_pending > 0 %}
+          <div class="badge-commission">{{ commissions_pending if commissions_pending else '0' }}</div>
+        {% endif %}
+        <div class="action-icon">
+          <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <div class="action-title">
+          {% if lang == 'en' %}My Commissions{% else %}Mes Commissions{% endif %}
+        </div>
+        <div class="action-description">
+          {% if lang == 'en' %}Track your earnings and request payments{% else %}Suivez vos revenus et demandez des versements{% endif %}
+        </div>
+        
+        <!-- Mini statistiques des commissions -->
+        <div class="commission-stats">
+          <div class="commission-stat">
+            <div class="commission-amount">{{ "%.2f"|format(commissions_available) if commissions_available else '0.00' }}$</div>
+            <div class="commission-label">{% if lang == 'en' %}Available{% else %}Disponible{% endif %}</div>
+          </div>
+          <div class="commission-stat">
+            <div class="commission-amount">{{ "%.2f"|format(commissions_paid) if commissions_paid else '0.00' }}$</div>
+            <div class="commission-label">{% if lang == 'en' %}Paid{% else %}Versé{% endif %}</div>
+          </div>
+        </div>
+      </a>
+
       <a href="/enseignant/creer-contenu" class="action-card">
         <div class="action-icon">
           <i class="fas fa-plus-circle"></i>
@@ -419,6 +719,8 @@
           {% if lang == 'en' %}Add new lessons, exercises, and assessments{% else %}Ajoutez de nouvelles leçons, exercices et évaluations{% endif %}
         </div>
       </a>
+
+      
     </div>
 
     <!-- Charts Section -->
@@ -444,13 +746,39 @@
       </div>
     </div>
 
-    <!-- Logout Button -->
-    <div class="text-center">
-      <a href="/logout" class="logout-btn">
-        <i class="fas fa-sign-out-alt"></i>
-        {% if lang == 'en' %}Log Out{% else %}Se Déconnecter{% endif %}
-      </a>
+    <!-- Commission Summary Card -->
+    {% if total_commissions > 0 %}
+    <div class="chart-container mt-4">
+      <div class="chart-title">
+        <i class="fas fa-chart-line text-success"></i>
+        {% if lang == 'en' %}Commission Summary{% else %}Résumé des Commissions{% endif %}
+      </div>
+      <div class="row">
+        <div class="col-md-4 text-center">
+          <div class="stat-number text-success">{{ "%.2f"|format(total_commissions) }}$</div>
+          <div class="stat-label">{% if lang == 'en' %}Total Earnings{% else %}Gains Totaux{% endif %}</div>
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="stat-number text-warning">{{ "%.2f"|format(commissions_available) }}$</div>
+          <div class="stat-label">{% if lang == 'en' %}Available for Payout{% else %}Disponible au Versement{% endif %}</div>
+          {% if commissions_available >= 25 %}
+          <a href="/enseignant/commissions" class="btn btn-success btn-sm mt-2">
+            <i class="fas fa-paper-plane me-1"></i>
+            {% if lang == 'en' %}Request Payout{% else %}Demander Versement{% endif %}
+          </a>
+          {% else %}
+          <small class="text-muted">
+            {% if lang == 'en' %}Minimum $25 required{% else %}Minimum 25$ requis{% endif %}
+          </small>
+          {% endif %}
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="stat-number text-primary">{{ commissions_pending }}</div>
+          <div class="stat-label">{% if lang == 'en' %}Pending Commissions{% else %}Commissions en Attente{% endif %}</div>
+        </div>
+      </div>
     </div>
+    {% endif %}
   </div>
 </div>
 
@@ -462,7 +790,7 @@
     data: {
       labels: {{ niveaux | tojson }},
       datasets: [{
-        label: '{{ "Number of students" if lang == "en" else "Nombre d'élèves" }}',
+        label: '{{ "Number of students" if lang == "en" else "Nombre d\'élèves" }}',
         data: {{ counts | tojson }},
         backgroundColor: 'rgba(67, 97, 238, 0.7)',
         borderColor: 'rgba(67, 97, 238, 1)',
@@ -501,7 +829,7 @@
     data: {
       labels: {{ noms_eleves | tojson }},
       datasets: [{
-        label: '{{ "Average stars" if lang == "en" else "Moyenne d'étoiles" }}',
+        label: '{{ "Average stars" if lang == "en" else "Moyenne d\'étoiles" }}',
         data: {{ moyennes | tojson }},
         backgroundColor: 'rgba(63, 186, 131, 0.7)',
         borderColor: 'rgba(63, 186, 131, 1)',
@@ -538,9 +866,52 @@
     }
   });
 
+  // Commission Animation
+  const commissionCard = document.querySelector('.commission-card');
+  if (commissionCard) {
+    setInterval(() => {
+      commissionCard.style.transform = 'scale(1.02)';
+      setTimeout(() => {
+        commissionCard.style.transform = 'scale(1)';
+      }, 300);
+    }, 5000);
+  }
+
+  // Exercises Card Animation
+  const exercisesCard = document.querySelector('.exercises-card');
+  if (exercisesCard) {
+    exercisesCard.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-5px) scale(1.02)';
+    });
+    
+    exercisesCard.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateY(-5px)';
+    });
+  }
+
+  // Toggle subjects function
+  function toggleSubject(card, subjectId) {
+    card.classList.toggle('active');
+    const exercisesContainer = document.getElementById(`exercises-${subjectId}`);
+    exercisesContainer.classList.toggle('show');
+    
+    // Close other open subjects if needed
+    const allSubjects = document.querySelectorAll('.subject-card');
+    allSubjects.forEach(subject => {
+      if (subject !== card && subject.classList.contains('active')) {
+        const otherId = subject.getAttribute('onclick').match(/'([^']+)'/)[1];
+        const otherExercises = document.getElementById(`exercises-${otherId}`);
+        if (otherExercises) {
+          otherExercises.classList.remove('show');
+          subject.classList.remove('active');
+        }
+      }
+    });
+  }
+
   // Add loading animation
   document.addEventListener('DOMContentLoaded', function() {
-    const cards = document.querySelectorAll('.stat-card, .action-card');
+    const cards = document.querySelectorAll('.stat-card, .action-card, .subject-card');
     cards.forEach((card, index) => {
       card.style.opacity = '0';
       card.style.transform = 'translateY(20px)';

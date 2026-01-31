@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{% if lang == 'en' %}Exercise Preview{% else %}Aperçu de l'exercice{% endif %}</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- MathJax -->
+  <script>
+    window.MathJax = {
+      tex: {inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$','$$'], ['\\[','\\]']]},
+      svg: {fontCache: 'global'}
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #2d3748;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .main-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px;
+    }
+    h1,h2,h3 { font-family: 'Poppins', sans-serif; font-weight: 600; }
+    .exercise-section { margin-bottom: 20px; }
+    .exercise-image { margin-top: 15px; border-radius: 8px; }
+    .exercise-nav {
+      display: flex;
+      justify-content: space-between;
+      margin: 25px 0;
+    }
+    .palette-container {
+      overflow-x: auto;
+      white-space: nowrap;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .palette a {
+      display: inline-block;
+      width: 36px;
+      height: 36px;
+      line-height: 36px;
+      margin: 0 4px;
+      border-radius: 50%;
+      text-align: center;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: white;
+      background-color: #6c757d;
+    }
+    .palette a.active {
+      background-color: #0d6efd;
+    }
+    
+    /* Sélecteur de langue simplifié */
+    .lang-switcher {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px 15px;
+      border-radius: 25px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .lang-switcher .btn {
+      padding: 5px 15px;
+      font-size: 0.9rem;
+      border-radius: 20px;
+    }
+    
+    @media (max-width: 768px) {
+      .lang-switcher {
+        position: static;
+        margin: 0 auto 20px;
+        width: fit-content;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sélecteur de langue SIMPLE avec liens -->
+<div class="lang-switcher">
+  <a href="{{ url_for('enseignant_exercice_visualisation', exercice_id=exercice.id, index=index, lang='fr') }}" 
+     class="btn {% if lang == 'fr' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    🇫🇷 Français
+  </a>
+  <a href="{{ url_for('enseignant_exercice_visualisation', exercice_id=exercice.id, index=index, lang='en') }}" 
+     class="btn {% if lang == 'en' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    🇬🇧 English
+  </a>
+</div>
+
+<div class="main-container">
+
+  <!-- Header -->
+  <div class="text-center mb-4">
+    <h1>{% if lang == 'en' %}Exercise Preview{% else %}Aperçu de l'exercice{% endif %}</h1>
+    <p>
+      <strong>{% if lang == 'en' %}Lesson:{% else %}Leçon :{% endif %}</strong>
+      {{ lecon.titre }}
+    </p>
+    <p class="text-muted">
+      <i class="fas fa-language me-1"></i>
+      {% if lang == 'en' %}Viewing in English - Switch to French below{% else %}Affichage en Français - Basculer en Anglais ci-dessus{% endif %}
+    </p>
+  </div>
+
+  <!-- Question -->
+  <div class="exercise-section">
+    <h3>{% if lang == 'en' %}Question{% else %}Question{% endif %}</h3>
+    <div>
+      {{ exercice.question_fr|safe if lang == 'fr' else exercice.question_en|safe }}
+    </div>
+  </div>
+
+  <!-- Réponse -->
+  {% if exercice.reponse_fr or exercice.reponse_en %}
+  <div class="exercise-section">
+    <h3>{% if lang == 'en' %}Correct Answer{% else %}Réponse corrigée{% endif %}</h3>
+    <div>
+      {{ exercice.reponse_fr|safe if lang == 'fr' else exercice.reponse_en|safe }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Explication -->
+  {% if exercice.explication_fr or exercice.explication_en %}
+  <div class="exercise-section">
+    <h3>{% if lang == 'en' %}Explanation{% else %}Explication{% endif %}</h3>
+    <div>
+      {{ exercice.explication_fr|safe if lang == 'fr' else exercice.explication_en|safe }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Image / Contexte -->
+  {% if exercice.image_context %}
+  <div class="exercise-section">
+    <h3>{% if lang == 'en' %}Image / Context{% else %}Image / Contexte{% endif %}</h3>
+    <div class="exercise-image">
+      {{ exercice.image_context|safe }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Navigation Précédent / Suivant -->
+  <div class="exercise-nav">
+    {% if index > 0 %}
+      <a href="{{ url_for(
+        'enseignant_exercice_visualisation',
+        exercice_id=exercices[index-1].id,
+        index=index-1,
+        lang=lang
+      ) }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        {% if lang == 'en' %}Previous{% else %}Précédent{% endif %}
+      </a>
+    {% else %}
+      <span></span>
+    {% endif %}
+
+    {% if index < total_exercices - 1 %}
+      <a href="{{ url_for(
+        'enseignant_exercice_visualisation',
+        exercice_id=exercices[index+1].id,
+        index=index+1,
+        lang=lang
+      ) }}" class="btn btn-primary">
+        {% if lang == 'en' %}Next{% else %}Suivant{% endif %}
+        <i class="fas fa-arrow-right"></i>
+      </a>
+    {% else %}
+      <span></span>
+    {% endif %}
+  </div>
+
+  <!-- Palette numérotée -->
+  <div class="palette-container">
+    <div class="palette">
+      {% for i in range(total_exercices) %}
+        <a href="{{ url_for(
+          'enseignant_exercice_visualisation',
+          exercice_id=exercices[i].id,
+          index=i,
+          lang=lang
+        ) }}"
+        class="{% if i == index %}active{% endif %}">
+          {{ i + 1 }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Retour -->
+  <div class="text-center mt-4">
+    <a href="{{ url_for('enseignant_exercices') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>
+      {% if lang == 'en' %}Back to exercises{% else %}Retour aux exercices{% endif %}
+    </a>
+  </div>
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // Réinitialiser MathJax après le chargement
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.MathJax) {
+      window.MathJax.typesetPromise();
+    }
+  });
+</script>
+</body>
+</html>

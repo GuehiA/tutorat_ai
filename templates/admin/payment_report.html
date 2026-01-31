@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="{{ 'en' if lang == 'en' else 'fr' }}" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if lang == 'en' %}Payment Reports{% else %}Rapports de Paiements{% endif %} - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f8fafc;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+        }
+        
+        .report-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.3s;
+        }
+        
+        .report-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .report-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .report-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #1f2937;
+        }
+        
+        .report-description {
+            color: #6b7280;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .btn-generate {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .btn-generate:hover {
+            background: #3a56d4;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 8px;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            padding: 12px 15px;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+        
+        .date-range {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .date-range .form-control {
+            flex: 1;
+        }
+        
+        .preview-section {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px dashed #d1d5db;
+        }
+        
+        .preview-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 15px;
+        }
+        
+        .preview-content {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        .report-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .option-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .option-btn:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+        
+        .option-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .format-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .format-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .format-btn:hover {
+            border-color: var(--primary);
+        }
+        
+        .format-btn.active {
+            border-color: var(--primary);
+            background: rgba(67, 97, 238, 0.1);
+        }
+        
+        .format-icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .format-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        @media (max-width: 768px) {
+            .date-range {
+                flex-direction: column;
+            }
+            
+            .report-options {
+                flex-direction: column;
+            }
+            
+            .format-options {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- En-tête -->
+        <div class="header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-2">
+                        <i class="fas fa-file-export text-primary me-2"></i>
+                        {% if lang == 'en' %}Payment Reports Generator{% else %}Générateur de Rapports de Paiements{% endif %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% if lang == 'en' %}Generate detailed reports for commissions, payments, and teacher earnings{% else %}Générez des rapports détaillés pour les commissions, paiements et revenus des enseignants{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="/admin/dashboard" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sélection du type de rapport -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="report-card">
+                    <div class="report-icon" style="background: rgba(67, 97, 238, 0.1); color: #4361ee;">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <h3 class="report-title">{% if lang == 'en' %}Commissions Report{% else %}Rapport des Commissions{% endif %}</h3>
+                    <p class="report-description">
+                        {% if lang == 'en' %}Detailed breakdown of all teacher commissions by status, date, and amount{% else %}Détails de toutes les commissions des enseignants par statut, date et montant{% endif %}
+                    </p>
+                    <button class="btn-generate" onclick="selectReport('commissions')">
+                        <i class="fas fa-play-circle me-2"></i>
+                        {% if lang == 'en' %}Generate Report{% else %}Générer Rapport{% endif %}
+                    </button>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="report-card">
+                    <div class="report-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <h3 class="report-title">{% if lang == 'en' %}Payments Report{% else %}Rapport des Paiements{% endif %}</h3>
+                    <p class="report-description">
+                        {% if lang == 'en' %}Overview of all payments made to teachers, including Interac transfers and manual payments{% else %}Aperçu de tous les paiements aux enseignants, transferts Interac et paiements manuels{% endif %}
+                    </p>
+                    <button class="btn-generate" onclick="selectReport('payments')">
+                        <i class="fas fa-play-circle me-2"></i>
+                        {% if lang == 'en' %}Generate Report{% else %}Générer Rapport{% endif %}
+                    </button>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="report-card">
+                    <div class="report-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="report-title">{% if lang == 'en' %}Earnings Summary{% else %}Résumé des Revenus{% endif %}</h3>
+                    <p class="report-description">
+                        {% if lang == 'en' %}Monthly and yearly earnings summary with charts and comparison data{% else %}Résumé mensuel et annuel des revenus avec graphiques et comparaisons{% endif %}
+                    </p>
+                    <button class="btn-generate" onclick="selectReport('earnings')">
+                        <i class="fas fa-play-circle me-2"></i>
+                        {% if lang == 'en' %}Generate Report{% else %}Générer Rapport{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Formulaire de génération de rapport -->
+        <div class="form-container" id="reportFormContainer" style="display: none;">
+            <h3 class="mb-4" id="reportTitle"></h3>
+            
+            <form id="reportForm">
+                <!-- Type de rapport (caché) -->
+                <input type="hidden" id="reportType" name="reportType">
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">{% if lang == 'en' %}Date Range{% else %}Période{% endif %} *</label>
+                        <div class="date-range">
+                            <input type="date" class="form-control" id="startDate" name="startDate" required>
+                            <span>{% if lang == 'en' %}to{% else %}à{% endif %}</span>
+                            <input type="date" class="form-control" id="endDate" name="endDate" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{% if lang == 'en' %}Teacher (Optional){% else %}Enseignant (Optionnel){% endif %}</label>
+                        <select class="form-select" id="teacherId" name="teacherId">
+                            <option value="">{% if lang == 'en' %}All Teachers{% else %}Tous les enseignants{% endif %}</option>
+                            <option value="1">Jean Dupont</option>
+                            <option value="2">Marie Martin</option>
+                            <option value="3">Pierre Leroy</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Options spécifiques au type de rapport -->
+                <div class="row mb-4" id="reportOptions" style="display: none;">
+                    <div class="col-md-12">
+                        <label class="form-label">{% if lang == 'en' %}Report Options{% else %}Options du rapport{% endif %}</label>
+                        <div class="report-options" id="dynamicOptions"></div>
+                    </div>
+                </div>
+                
+                <!-- Format de sortie -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <label class="form-label">{% if lang == 'en' %}Output Format{% else %}Format de sortie{% endif %} *</label>
+                        <div class="format-options">
+                            <div class="format-btn" onclick="selectFormat('pdf')">
+                                <i class="fas fa-file-pdf format-icon" style="color: #ef4444;"></i>
+                                <div class="format-name">PDF</div>
+                                <small class="text-muted">{% if lang == 'en' %}Best for printing{% else %}Idéal pour impression{% endif %}</small>
+                            </div>
+                            <div class="format-btn active" onclick="selectFormat('excel')">
+                                <i class="fas fa-file-excel format-icon" style="color: #10b981;"></i>
+                                <div class="format-name">Excel</div>
+                                <small class="text-muted">{% if lang == 'en' %}For data analysis{% else %}Pour analyse de données{% endif %}</small>
+                            </div>
+                            <div class="format-btn" onclick="selectFormat('csv')">
+                                <i class="fas fa-file-csv format-icon" style="color: #3b82f6;"></i>
+                                <div class="format-name">CSV</div>
+                                <small class="text-muted">{% if lang == 'en' %}Simple data export{% else %}Export simple de données{% endif %}</small>
+                            </div>
+                        </div>
+                        <input type="hidden" id="outputFormat" name="outputFormat" value="excel">
+                    </div>
+                </div>
+                
+                <!-- Options avancées -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="includeCharts" name="includeCharts">
+                            <label class="form-check-label" for="includeCharts">
+                                {% if lang == 'en' %}Include charts and graphs{% else %}Inclure graphiques et diagrammes{% endif %}
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="groupByMonth" name="groupByMonth" checked>
+                            <label class="form-check-label" for="groupByMonth">
+                                {% if lang == 'en' %}Group data by month{% else %}Grouper les données par mois{% endif %}
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sendEmail" name="sendEmail">
+                            <label class="form-check-label" for="sendEmail">
+                                {% if lang == 'en' %}Send report to my email{% else %}Envoyer le rapport à mon email{% endif %}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Boutons d'action -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" onclick="cancelReport()">
+                                <i class="fas fa-times me-2"></i>
+                                {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
+                            </button>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-primary" onclick="previewReport()">
+                                    <i class="fas fa-eye me-2"></i>
+                                    {% if lang == 'en' %}Preview{% else %}Aperçu{% endif %}
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-file-download me-2"></i>
+                                    {% if lang == 'en' %}Generate & Download{% else %}Générer & Télécharger{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            
+            <!-- Section d'aperçu -->
+            <div class="preview-section" id="previewSection" style="display: none;">
+                <h5 class="preview-title">
+                    <i class="fas fa-eye me-2"></i>
+                    {% if lang == 'en' %}Report Preview{% else %}Aperçu du Rapport{% endif %}
+                </h5>
+                <div class="preview-content" id="previewContent">
+                    <!-- Contenu de l'aperçu -->
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="closePreview()">
+                        <i class="fas fa-times me-1"></i>
+                        {% if lang == 'en' %}Close Preview{% else %}Fermer l'aperçu{% endif %}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Indicateur de chargement -->
+            <div class="loading-spinner" id="loadingSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3">{% if lang == 'en' %}Generating report...{% else %}Génération du rapport...{% endif %}</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        let currentReportType = '';
+        
+        // Sélectionner un type de rapport
+        function selectReport(type) {
+            currentReportType = type;
+            document.getElementById('reportFormContainer').style.display = 'block';
+            document.getElementById('reportOptions').style.display = 'block';
+            document.getElementById('previewSection').style.display = 'none';
+            
+            // Définir les titres
+            const titles = {
+                'commissions': '{% if lang == "en" %}Commissions Report{% else %}Rapport des Commissions{% endif %}',
+                'payments': '{% if lang == "en" %}Payments Report{% else %}Rapport des Paiements{% endif %}',
+                'earnings': '{% if lang == "en" %}Earnings Summary Report{% else %}Résumé des Revenus{% endif %}'
+            };
+            
+            document.getElementById('reportTitle').textContent = titles[type];
+            document.getElementById('reportType').value = type;
+            
+            // Définir les dates par défaut
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - 1); // Il y a un mois
+            
+            document.getElementById('startDate').valueAsDate = startDate;
+            document.getElementById('endDate').valueAsDate = endDate;
+            
+            // Générer les options dynamiques
+            generateOptions(type);
+            
+            // Faire défiler jusqu'au formulaire
+            document.getElementById('reportFormContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Générer les options selon le type de rapport
+        function generateOptions(type) {
+            const optionsContainer = document.getElementById('dynamicOptions');
+            optionsContainer.innerHTML = '';
+            
+            const options = {
+                'commissions': [
+                    { id: 'includePending', label: '{% if lang == "en" %}Include Pending{% else %}Inclure En Attente{% endif %}', checked: true },
+                    { id: 'includePaid', label: '{% if lang == "en" %}Include Paid{% else %}Inclure Payées{% endif %}', checked: true },
+                    { id: 'groupByTeacher', label: '{% if lang == "en" %}Group by Teacher{% else %}Grouper par Enseignant{% endif %}', checked: true },
+                    { id: 'showDetails', label: '{% if lang == "en" %}Show Details{% else %}Afficher Détails{% endif %}', checked: false }
+                ],
+                'payments': [
+                    { id: 'paymentTypeAll', label: '{% if lang == "en" %}All Types{% else %}Tous Types{% endif %}', checked: true },
+                    { id: 'paymentTypeInterac', label: '{% if lang == "en" %}Interac Only{% else %}Interac Seulement{% endif %}', checked: false },
+                    { id: 'paymentTypeManual', label: '{% if lang == "en" %}Manual Only{% else %}Manuel Seulement{% endif %}', checked: false },
+                    { id: 'includeFees', label: '{% if lang == "en" %}Include Fees{% else %}Inclure Frais{% endif %}', checked: true }
+                ],
+                'earnings': [
+                    { id: 'comparePrevious', label: '{% if lang == "en" %}Compare with Previous Period{% else %}Comparer avec Période Précédente{% endif %}', checked: true },
+                    { id: 'showGrowth', label: '{% if lang == "en" %}Show Growth Rate{% else %}Afficher Taux de Croissance{% endif %}', checked: true },
+                    { id: 'topTeachers', label: '{% if lang == "en" %}Highlight Top Teachers{% else %}Mettre en Valeur Meilleurs Enseignants{% endif %}', checked: true },
+                    { id: 'projections', label: '{% if lang == "en" %}Include Projections{% else %}Inclure Projections{% endif %}', checked: false }
+                ]
+            };
+            
+            options[type].forEach(option => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `option-btn ${option.checked ? 'active' : ''}`;
+                button.textContent = option.label;
+                button.dataset.id = option.id;
+                button.onclick = function() {
+                    this.classList.toggle('active');
+                };
+                optionsContainer.appendChild(button);
+            });
+        }
+        
+        // Sélectionner le format de sortie
+        function selectFormat(format) {
+            document.getElementById('outputFormat').value = format;
+            
+            // Mettre à jour les boutons
+            document.querySelectorAll('.format-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.format-btn').classList.add('active');
+        }
+        
+        // Annuler la génération
+        function cancelReport() {
+            document.getElementById('reportFormContainer').style.display = 'none';
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('reportForm').reset();
+        }
+        
+        // Aperçu du rapport
+        function previewReport() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const teacher = document.getElementById('teacherId').value;
+            
+            if (!startDate || !endDate) {
+                Swal.fire({
+                    title: '{% if lang == "en" %}Missing Information{% else %}Informations manquantes{% endif %}',
+                    text: '{% if lang == "en" %}Please select a date range{% else %}Veuillez sélectionner une période{% endif %}',
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+            
+            // Simuler un aperçu
+            const previewContent = document.getElementById('previewContent');
+            previewContent.innerHTML = `
+                <div style="color: #1f2937;">
+                    <div style="margin-bottom: 15px;">
+                        <strong>{% if lang == "en" %}Report Type:{% else %}Type de rapport:{% endif %}</strong> ${document.getElementById('reportTitle').textContent}
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <strong>{% if lang == "en" %}Period:{% else %}Période:{% endif %}</strong> ${startDate} to ${endDate}
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <strong>{% if lang == "en" %}Teacher:{% else %}Enseignant:{% endif %}</strong> ${teacher ? 'Selected' : 'All Teachers'}
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <strong>{% if lang == "en" %}Format:{% else %}Format:{% endif %}</strong> ${document.getElementById('outputFormat').value.toUpperCase()}
+                    </div>
+                    <hr>
+                    <div style="font-style: italic; color: #6b7280;">
+                        {% if lang == "en" %}This is a preview of the report structure. The actual report will contain detailed data based on your selection.{% else %}Ceci est un aperçu de la structure du rapport. Le rapport réel contiendra des données détaillées basées sur votre sélection.{% endif %}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('previewSection').style.display = 'block';
+            document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Fermer l'aperçu
+        function closePreview() {
+            document.getElementById('previewSection').style.display = 'none';
+        }
+        
+        // Soumettre le formulaire
+        document.getElementById('reportForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const format = document.getElementById('outputFormat').value;
+            
+            if (!startDate || !endDate) {
+                Swal.fire({
+                    title: '{% if lang == "en" %}Missing Information{% else %}Informations manquantes{% endif %}',
+                    text: '{% if lang == "en" %}Please select a date range{% else %}Veuillez sélectionner une période{% endif %}',
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+            
+            // Afficher l'indicateur de chargement
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('previewSection').style.display = 'none';
+            
+            // Simuler la génération du rapport
+            setTimeout(() => {
+                document.getElementById('loadingSpinner').style.display = 'none';
+                
+                Swal.fire({
+                    title: '{% if lang == "en" %}Report Generated!{% else %}Rapport Généré !{% endif %}',
+                    html: `
+                        <div class="text-left">
+                            <p><strong>{% if lang == "en" %}Report:{% else %}Rapport:{% endif %}</strong> ${document.getElementById('reportTitle').textContent}</p>
+                            <p><strong>{% if lang == "en" %}Format:{% else %}Format:{% endif %}</strong> ${format.toUpperCase()}</p>
+                            <p><strong>{% if lang == "en" %}Period:{% else %}Période:{% endif %}</strong> ${startDate} to ${endDate}</p>
+                        </div>
+                    `,
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonText: '{% if lang == "en" %}Download Report{% else %}Télécharger Rapport{% endif %}',
+                    cancelButtonText: '{% if lang == "en" %}Close{% else %}Fermer{% endif %}'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Simuler le téléchargement
+                        const link = document.createElement('a');
+                        link.href = '#';
+                        link.download = `report_${currentReportType}_${startDate}_to_${endDate}.${format}`;
+                        link.click();
+                        
+                        Swal.fire({
+                            title: '{% if lang == "en" %}Download Started{% else %}Téléchargement Démarré{% endif %}',
+                            text: '{% if lang == "en" %}Your report download has started{% else %}Le téléchargement de votre rapport a commencé{% endif %}',
+                            icon: 'info',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                });
+            }, 2000);
+        });
+        
+        // Initialiser les dates
+        document.addEventListener('DOMContentLoaded', function() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - 1);
+            
+            // Formater les dates pour l'input
+            const formatDate = (date) => {
+                return date.toISOString().split('T')[0];
+            };
+            
+            // Ces valeurs seront utilisées si le formulaire est affiché
+            document.getElementById('startDate').value = formatDate(startDate);
+            document.getElementById('endDate').value = formatDate(endDate);
+            
+            // Initialiser le format PDF comme actif
+            selectFormat('excel');
+        });
+    </script>
+</body>
+</html>

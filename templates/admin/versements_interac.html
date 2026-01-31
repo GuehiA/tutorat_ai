@@ -1,0 +1,191 @@
+<!-- templates/admin/versements_interac.html -->
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if lang == 'en' %}Interac Payments Management{% else %}Gestion des Paiements Interac{% endif %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <h1 class="mb-4">
+            <i class="fas fa-money-bill-transfer me-2"></i>
+            {% if lang == 'en' %}Interac Payments Management{% else %}Gestion des Paiements Interac{% endif %}
+        </h1>
+        
+        <!-- Filtres -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="btn-group" role="group">
+                    <a href="?statut=demande" class="btn {{ 'btn-primary' if current_statut == 'demande' else 'btn-outline-primary' }}">
+                        <i class="fas fa-clock me-1"></i>
+                        En attente ({{ stats.demande }})
+                    </a>
+                    <a href="?statut=en_cours" class="btn {{ 'btn-primary' if current_statut == 'en_cours' else 'btn-outline-secondary' }}">
+                        <i class="fas fa-spinner me-1"></i>
+                        En cours ({{ stats.en_cours }})
+                    </a>
+                    <a href="?statut=paye" class="btn {{ 'btn-primary' if current_statut == 'paye' else 'btn-outline-success' }}">
+                        <i class="fas fa-check me-1"></i>
+                        Payés ({{ stats.paye }})
+                    </a>
+                    <a href="?statut=all" class="btn {{ 'btn-primary' if current_statut == 'all' else 'btn-outline-dark' }}">
+                        <i class="fas fa-list me-1"></i>
+                        Tous ({{ stats.total }})
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Liste des versements -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Enseignant</th>
+                                <th>Montant net</th>
+                                <th>Email Interac</th>
+                                <th>Date demande</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in versements %}
+                            <tr>
+                                <td><strong>#{{ v.id }}</strong></td>
+                                <td>
+                                    <div class="fw-bold">{{ v.enseignant.nom_complet if v.enseignant else 'N/A' }}</div>
+                                    <small class="text-muted">ID: {{ v.enseignant_id }}</small>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ "%.2f"|format(v.montant_net) }}$</div>
+                                    <small class="text-muted">Brut: {{ "%.2f"|format(v.montant_total) }}$</small>
+                                </td>
+                                <td>
+                                    <code>{{ v.email_interac }}</code>
+                                    {% if v.enseignant and v.enseignant.nom_complet_interac %}
+                                        <br><small>Nom: {{ v.enseignant.nom_complet_interac }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ v.date_demande.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>
+                                    {% if v.statut == 'demande' %}
+                                        <span class="badge bg-warning">En attente</span>
+                                    {% elif v.statut == 'en_cours' %}
+                                        <span class="badge bg-info">En cours</span>
+                                    {% elif v.statut == 'paye' %}
+                                        <span class="badge bg-success">Payé</span>
+                                        <br><small>{{ v.date_versement.strftime('%d/%m/%Y') if v.date_versement }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if v.statut == 'demande' %}
+                                        <!-- Marquer comme en traitement -->
+                                        <form method="POST" class="d-inline">
+                                            <input type="hidden" name="versement_id" value="{{ v.id }}">
+                                            <input type="hidden" name="action" value="mark_processing">
+                                            <button type="submit" class="btn btn-outline-info">
+                                                <i class="fas fa-play me-1"></i> Traiter
+                                            </button>
+                                        </form>
+                                        
+                                        <!-- Modal pour marquer comme payé -->
+                                        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#markPaidModal{{ v.id }}">
+                                            <i class="fas fa-check me-1"></i> Payé
+                                        </button>
+                                        {% endif %}
+                                        
+                                        <!-- Voir détails -->
+                                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#detailsModal{{ v.id }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Modal Détails -->
+                                    <div class="modal fade" id="detailsModal{{ v.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Détails versement #{{ v.id }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <dl class="row">
+                                                        <dt class="col-sm-4">Enseignant:</dt>
+                                                        <dd class="col-sm-8">{{ v.enseignant.nom_complet if v.enseignant else 'N/A' }}</dd>
+                                                        
+                                                        <dt class="col-sm-4">Email Interac:</dt>
+                                                        <dd class="col-sm-8"><code>{{ v.email_interac }}</code></dd>
+                                                        
+                                                        <dt class="col-sm-4">Montant net:</dt>
+                                                        <dd class="col-sm-8">{{ "%.2f"|format(v.montant_net) }}$</dd>
+                                                        
+                                                        <dt class="col-sm-4">Frais:</dt>
+                                                        <dd class="col-sm-8">{{ "%.2f"|format(v.frais_transaction) }}$</dd>
+                                                        
+                                                        <dt class="col-sm-4">Référence:</dt>
+                                                        <dd class="col-sm-8">{{ v.reference_interac or 'Non spécifiée' }}</dd>
+                                                        
+                                                        {% if v.notes_admin %}
+                                                        <dt class="col-sm-4">Notes:</dt>
+                                                        <dd class="col-sm-8">{{ v.notes_admin }}</dd>
+                                                        {% endif %}
+                                                    </dl>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Modal Marquer comme Payé -->
+                                    <div class="modal fade" id="markPaidModal{{ v.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <form method="POST">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Marquer comme payé - #{{ v.id }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="versement_id" value="{{ v.id }}">
+                                                        <input type="hidden" name="action" value="mark_paid">
+                                                        
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Référence Interac *</label>
+                                                            <input type="text" class="form-control" name="reference_interac" 
+                                                                   placeholder="EX: EMT123456789" required>
+                                                            <div class="form-text">La référence de transaction Interac</div>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Notes (optionnel)</label>
+                                                            <textarea class="form-control" name="notes_admin" rows="3"
+                                                                      placeholder="Notes internes..."></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                                        <button type="submit" class="btn btn-success">Confirmer le paiement</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

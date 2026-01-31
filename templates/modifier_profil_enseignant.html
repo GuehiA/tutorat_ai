@@ -482,7 +482,7 @@
     <div class="card">
       <div class="header">
         <div class="profile-avatar">
-          {{ enseignant.nom[0] if enseignant.nom else '?' }}
+          {{ enseignant.nom_complet[0] if enseignant.nom_complet else '?' }}
         </div>
         <h1 class="title">
           {% if lang == 'en' %}Edit My Profile{% else %}Modifier mon profil{% endif %}
@@ -527,7 +527,7 @@
               type="text" 
               id="nom" 
               name="nom" 
-              value="{{ enseignant.nom }}" 
+              value="{{ enseignant.nom_complet }}" 
               class="form-input" 
               required
               placeholder="{% if lang == 'en' %}Enter your full name{% else %}Entrez votre nom complet{% endif %}"

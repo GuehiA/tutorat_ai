@@ -1,4 +1,4 @@
-from models import db, User, Exercise, Parent, ParentEleve, Enseignant, Niveau, Matiere
+from models import db, User, Exercise, Parent, ParentEleve, , Niveau, Matiere
 from app import app
 from datetime import datetime
 

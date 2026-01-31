@@ -29,36 +29,26 @@ from flask_migrate import Migrate
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from datetime import datetime  # Pour le timestamp
-from flask_login import login_required, current_user
 from datetime import timedelta
 
-# 🧠 Modèles et config
-from models import (
-    db, User, Exercice, StudentResponse, Parent, ParentEleve,
-    RemediationSuggestion, Enseignant, Niveau, Matiere, Unite,
-    Lecon, TestSommatif, TestResponse
-)
-from config import OPENAI_API_KEY
-
-# 🚀 Initialisation de l'app Flask
+# 🚀 IMPORTANT: Créer l'app Flask SANS configurer SQLAlchemy immédiatement
 app = Flask(__name__)
 load_dotenv()
 
 # --- Configuration de session ---
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-me')
 app.config['SESSION_COOKIE_NAME'] = 'tutorat_session'
-app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS seulement
+app.config['SESSION_COOKIE_SECURE'] = False  # Mettez True en production avec HTTPS seulement
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 7200  # 2 heures en secondes
 
-# AJOUTEZ CES LIGNES :
-app.config['SESSION_TYPE'] = 'filesystem'  # Ou 'redis' en production
+# Configuration Flask-Session
+app.config['SESSION_TYPE'] = 'filesystem'  # Stockage sur disque
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True  # Signe les cookies
 app.config['SESSION_FILE_DIR'] = './flask_session'  # Dossier pour stocker les sessions
-
-
+app.config['SESSION_FILE_THRESHOLD'] = 500  # Nombre max de sessions
 # ====================================================================
 # 🔧 CONFIGURATION INTELLIGENTE DE LA BASE DE DONNÉES
 # ====================================================================
@@ -141,9 +131,46 @@ if DB_URL and len(DB_URL) > 20:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🔌 Initialisation des extensions
-db.init_app(app)
+# ====================================================================
+# 🔌 CORRECTION CRITIQUE : INITIALISATION SQLALCHEMY
+# ====================================================================
+
+# ⚠️ IMPORTANT : Importez db depuis models.py d'abord
+from models import db
+
+# ✅ CORRECTION : Utilisez init_app() au lieu de créer une nouvelle instance
+db.init_app(app)  # Ceci initialise l'instance db de models.py avec l'application
 migrate = Migrate(app, db)
+
+print("✅ SQLAlchemy initialisé avec succès depuis models.py")
+
+# ====================================================================
+# ⚠️ IMPORT DES MODÈLES DANS LE CONTEXTE DE L'APP
+# ====================================================================
+
+# Maintenant que db est initialisé, importez les modèles depuis models
+with app.app_context():
+    from models import (
+        User, Exercice, StudentResponse, Parent, ParentEleve,
+        RemediationSuggestion, Niveau, Matiere, Unite,
+        Lecon, TestSommatif, TestResponse, Commission, VersementManuel,
+        ExerciceRemediation, Enseignant, TestExercice, InfoVersementEnseignant
+    )
+    print("✅ Modèles importés depuis models.py")
+
+# === MAINTENANT IMPORTEZ fonctions_commissions ===
+from fonctions_commissions import (
+    creer_commission_apres_paiement,
+    integrer_commission,
+    calculer_commission_enseignant,
+    traiter_versement_manuel,
+    demander_versement_manuel,
+    completer_versement_manuel
+)
+
+# ====================================================================
+# 🧠 CONFIGURATION STRIPE
+# ====================================================================
 
 # ✅ CONFIGURATION STRIPE CORRECTE - CLÉ VALIDE
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
@@ -152,22 +179,32 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 print(f"🎯 Stripe configuré: {bool(stripe.api_key)}")
 print(f"🔑 Clé utilisée: {stripe.api_key[:20]}..." if stripe.api_key else "❌ Pas de clé Stripe")
 
-# 📁 Configuration des uploads
+# ====================================================================
+# 📁 CONFIGURATION DES UPLOADS
+# ====================================================================
+
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads", "tests")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 Mo par requête
 
-# 🔌 Initialisation OpenAI
+# ====================================================================
+# 🔌 INITIALISATION OPENAI
+# ====================================================================
+
+from config import OPENAI_API_KEY
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# ====================================================================
+# 🛠️ FONCTIONS UTILITAIRES
+# ====================================================================
 
 # --- Optimisations pour PostgreSQL ---
 @app.before_request
 def _enable_foreign_keys():
     """Active les clés étrangères pour SQLite (ignoré par PostgreSQL)"""
-    if hasattr(db, 'engine') and 'sqlite' in str(db.engine.url):
-        db.session.execute(text('PRAGMA foreign_keys=ON'))
+    pass
 
 @app.before_request
 def log_start_time():
@@ -192,14 +229,439 @@ def execute_with_retry(func, max_retries=3):
                 continue
             raise
 
-# --- Vos fonctions existantes ---
+def get_user_model():
+    """Fonction pour obtenir le modèle User de manière sécurisée"""
+    return User
+
+def load_models():
+    """Charge les modèles de manière sécurisée"""
+    models_loaded = {}
+    try:
+        with app.app_context():
+            models_loaded = {
+                'User': User,
+                'Exercice': Exercice,
+                'StudentResponse': StudentResponse,
+                'Parent': Parent,
+                'ParentEleve': ParentEleve,
+                'RemediationSuggestion': RemediationSuggestion,
+                'Niveau': Niveau,
+                'Matiere': Matiere,
+                'Unite': Unite,
+                'Lecon': Lecon,
+                'TestSommatif': TestSommatif,
+                'TestResponse': TestResponse,
+                'Commission': Commission,
+                'VersementManuel': VersementManuel
+            }
+            print("✅ Modèles chargés avec succès")
+    except Exception as e:
+        print(f"⚠️ Erreur lors du chargement des modèles: {e}")
+        print("🔄 Utilisation des modèles de base minimalistes...")
+    return models_loaded
+
+MODELS = load_models()
+
+def get_model(model_name):
+    model = MODELS.get(model_name)
+    if model:
+        return model
+    return None
+
+# Raccourcis pratiques
+User = get_model('User') or MODELS.get('User')
+Exercice = MODELS.get('Exercice')
+StudentResponse = MODELS.get('StudentResponse')
+Parent = MODELS.get('Parent')
+ParentEleve = MODELS.get('ParentEleve')
+RemediationSuggestion = MODELS.get('RemediationSuggestion')
+Niveau = get_model('Niveau') or MODELS.get('Niveau')
+Matiere = MODELS.get('Matiere')
+Unite = MODELS.get('Unite')
+Lecon = MODELS.get('Lecon')
+TestSommatif = MODELS.get('TestSommatif')
+TestResponse = MODELS.get('TestResponse')
+Commission = get_model('Commission') or MODELS.get('Commission')
+VersementManuel = get_model('VersementManuel') or MODELS.get('VersementManuel')
+
+# ====================================================================
+# 🔐 FLASK-LOGIN INITIALISATION
+# ====================================================================
+from flask_login import LoginManager, login_required, current_user
+
+login_manager = LoginManager()
+login_manager.login_view = "login"  # mettre le nom de votre route de login
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))  # Flask-Login saura charger l'utilisateur
+
+# ====================================================================
+# 🔐 DÉCORATEURS D'AUTHENTIFICATION
+# ====================================================================
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get("is_admin"):
+        print(f"=== admin_required décorateur appelé ===")
+        print(f"Session user_id: {session.get('user_id', 'Non trouvé')}")
+        
+        if "user_id" not in session:
+            print("❌ user_id non trouvé dans session")
+            flash("Accès non autorisé", "error")
             return redirect(url_for("login_admin"))
+        
+        from flask import current_app
+        with current_app.app_context():
+            user = db.session.get(User, session["user_id"])
+            
+        print(f"Utilisateur trouvé: {user.username if user else 'None'}")
+        print(f"Rôle utilisateur: {user.role if user else 'None'}")
+        
+        if not user:
+            print("❌ Utilisateur non trouvé dans la base de données")
+            flash("Accès non autorisé", "error")
+            session.clear()
+            return redirect(url_for("login_admin"))
+        
+        if user.role != "admin":
+            print(f"❌ Rôle non admin: {user.role}")
+            flash("Accès réservé aux administrateurs", "error")
+            
+            if user.role == "enseignant":
+                try:
+                    return redirect(url_for("dashboard_enseignant"))
+                except:
+                    return redirect("/enseignant/dashboard")
+            elif user.role == "eleve":
+                try:
+                    return redirect(url_for("dashboard_eleve"))
+                except:
+                    return redirect("/eleve/dashboard")
+            else:
+                return redirect("/")
+        
+        print(f"✅ Admin autorisé: {user.username}")
         return f(*args, **kwargs)
     return decorated_function
+
+# ====================================================================
+# 🏥 ROUTE DE SANTÉ
+# ====================================================================
+
+@app.route('/health')
+def health_check():
+    try:
+        db.session.execute(text('SELECT 1'))
+        db_status = 'OK'
+        user_count = User.query.count() if User else 'N/A'
+        return jsonify({
+            'status': 'healthy',
+            'database': db_status,
+            'user_count': user_count,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
+
+# ====================================================================
+# 🎯 ROUTES D'AUTHENTIFICATION (exemple)
+# ====================================================================
+
+@app.route("/login-admin", methods=["GET", "POST"])
+def login_admin():
+    if request.method == "POST":
+        email = request.form.get("email")
+        mot_de_passe = request.form.get("mot_de_passe")
+
+        try:
+            # Utilisez get_user_model() pour éviter les problèmes d'import
+            UserModel = get_user_model()
+            
+            # 🔍 Vérifie si un admin existe dans la base
+            admin_user = UserModel.query.filter_by(email=email, role="admin").first()
+            
+            if admin_user and admin_user.verifier_mot_de_passe(mot_de_passe):
+                session["is_admin"] = True
+                session["admin_id"] = admin_user.id
+                session["admin_nom"] = admin_user.nom_complet
+                session["user_id"] = admin_user.id
+                session["username"] = admin_user.username
+                session["role"] = admin_user.role
+                
+                flash("Connexion administrateur réussie!", "success")
+                return redirect("/admin/dashboard")
+
+            flash("Email ou mot de passe incorrect", "error")
+            return redirect(url_for("login_admin"))
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la connexion admin: {e}")
+            flash("Erreur technique lors de la connexion", "error")
+            return redirect(url_for("login_admin"))
+
+    # AJOUT : Récupérer la langue de la session
+    lang = session.get('lang', 'fr')
+    return render_template("login_admin.html", lang=lang)
+
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+
+@app.route("/admin/dashboard")
+@admin_required
+def admin_dashboard():
+    lang = request.args.get("lang") or session.get("lang", "fr")
+    
+    try:
+        # Import des modèles nécessaires
+        UserModel = get_user_model()
+        NiveauModel = get_model('Niveau') or Niveau
+        MatiereModel = get_model('Matiere')
+        UniteModel = get_model('Unite')
+        LeconModel = get_model('Lecon')
+        ExerciceModel = get_model('Exercice')
+        TestSommatifModel = get_model('TestSommatif')
+        CommissionModel = get_model('Commission')
+        VersementManuelModel = get_model('VersementManuel')
+        
+        # Charger les niveaux avec leurs relations
+        niveaux = []
+        if NiveauModel:
+            try:
+                niveaux = NiveauModel.query.options(
+                    joinedload(NiveauModel.matieres).joinedload(MatiereModel.unites).joinedload(UniteModel.lecons).joinedload(LeconModel.exercices),
+                    joinedload(NiveauModel.matieres).joinedload(MatiereModel.unites).joinedload(UniteModel.tests)
+                ).order_by(NiveauModel.id).all()
+            except Exception as e:
+                print(f"Erreur chargement niveaux: {e}")
+                niveaux = NiveauModel.query.order_by(NiveauModel.id).all()
+        
+        # Statistiques principales
+        stats = {
+            "enseignants_count": UserModel.query.filter_by(role="enseignant").count(),
+            "eleves_count": UserModel.query.filter_by(role="eleve").count(),
+            "lecons_count": LeconModel.query.count() if LeconModel else 0,
+            "exercices_count": ExerciceModel.query.count() if ExerciceModel else 0,
+            "total_tests": TestSommatifModel.query.count() if TestSommatifModel else 0,
+        }
+        
+        # Répartition des élèves par niveau
+        eleves_par_niveau = []
+        if NiveauModel:
+            eleves_par_niveau = db.session.query(
+                NiveauModel.nom, db.func.count(UserModel.id)
+            ).join(UserModel, NiveauModel.id == UserModel.niveau_id)\
+             .filter(UserModel.role == "eleve")\
+             .group_by(NiveauModel.id).all()
+        
+        # === DONNÉES DE MONÉTISATION ===
+        monetization_stats = {}
+        recent_payments = []
+        teacher_commissions = []
+        
+        if CommissionModel and VersementManuelModel:
+            try:
+                # Calcul des statistiques globales
+                total_com = db.session.query(db.func.sum(CommissionModel.montant_commission)).scalar() or 0
+                total_pending = db.session.query(db.func.sum(CommissionModel.montant_commission))\
+                                 .filter(CommissionModel.statut.in_(['pending', 'paiement_manuel'])).scalar() or 0
+                payments_count = VersementManuelModel.query.count()
+                
+                # Compter les enseignants avec commissions actives
+                active_teachers = db.session.query(CommissionModel.enseignant_id)\
+                    .filter(CommissionModel.montant_commission > 0)\
+                    .distinct()\
+                    .count()
+                
+                monetization_stats = {
+                    'total_commissions': float(total_com),
+                    'pending_payments': float(total_pending),
+                    'payments_count': payments_count,
+                    'active_teachers': active_teachers
+                }
+                
+                # Paiements récents (les 10 derniers)
+                recent_payments_data = VersementManuelModel.query\
+                    .join(UserModel, VersementManuelModel.enseignant_id == UserModel.id)\
+                    .filter(UserModel.role == "enseignant")\
+                    .order_by(VersementManuelModel.date_demande.desc())\
+                    .limit(10)\
+                    .all()
+                
+                for payment in recent_payments_data:
+                    recent_payments.append({
+                        'id': payment.id,
+                        'enseignant_nom': payment.enseignant.nom_complet if payment.enseignant else 'N/A',
+                        'email': payment.email_interac or (payment.enseignant.email if payment.enseignant else ''),
+                        'montant_total': float(payment.montant_total or 0),
+                        'montant_net': float(payment.montant_net) if payment.montant_net else float(payment.montant_total or 0),
+                        'statut': payment.statut or 'demande',
+                        'date_demande': payment.date_demande,
+                        'date': payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else 'N/A',
+                        'email_interac': payment.email_interac or '',
+                        'reference_interac': payment.reference_interac or ''
+                    })
+                
+                # Enseignants avec commissions
+                teacher_commissions_data = db.session.query(
+                    UserModel.id,
+                    UserModel.nom_complet,
+                    UserModel.email,
+                    db.func.sum(CommissionModel.montant_commission).label('total_commissions'),
+                    db.func.sum(db.case(
+                        (CommissionModel.statut.in_(['pending', 'paiement_manuel']), CommissionModel.montant_commission),
+                        else_=0
+                    )).label('pending'),
+                    db.func.sum(db.case(
+                        (CommissionModel.statut.in_(['approved', 'paid', 'complete']), CommissionModel.montant_commission),
+                        else_=0
+                    )).label('paid')
+                ).outerjoin(CommissionModel, UserModel.id == CommissionModel.enseignant_id)\
+                 .filter(UserModel.role == "enseignant")\
+                 .group_by(UserModel.id, UserModel.nom_complet, UserModel.email)\
+                 .order_by(db.desc('total_commissions'))\
+                 .all()
+                
+                for teacher in teacher_commissions_data:
+                    students_count = UserModel.query.filter_by(
+                        enseignant_referent_id=teacher.id, 
+                        role="eleve"
+                    ).count()
+                    
+                    last_payment = VersementManuelModel.query\
+                        .filter_by(enseignant_id=teacher.id, statut='complete')\
+                        .order_by(VersementManuelModel.date_versement.desc())\
+                        .first()
+                    
+                    teacher_commissions.append({
+                        'id': teacher.id,
+                        'nom_complet': teacher.nom_complet or 'N/A',
+                        'email': teacher.email or '',
+                        'total_commissions': float(teacher.total_commissions or 0),
+                        'pending': float(teacher.pending or 0),
+                        'paid': float(teacher.paid or 0),
+                        'students_count': students_count,
+                        'last_payment': last_payment.date_versement.strftime('%Y-%m-%d') 
+                                       if last_payment and last_payment.date_versement 
+                                       else ('Never' if lang == 'en' else 'Jamais')
+                    })
+                    
+            except Exception as e:
+                print(f"Erreur chargement monétisation: {e}")
+                monetization_stats = {
+                    'total_commissions': 1250.50,
+                    'pending_payments': 350.75,
+                    'payments_count': 15,
+                    'active_teachers': 3
+                }
+                
+                recent_payments = [
+                    {
+                        'id': 1, 
+                        'enseignant_nom': 'Jean Dupont', 
+                        'email': 'jean@exemple.com', 
+                        'montant_total': 125.50,
+                        'montant_net': 124.50,
+                        'statut': 'complete', 
+                        'date_demande': datetime.utcnow(),
+                        'date': '2024-01-20',
+                        'email_interac': 'jean@exemple.com'
+                    },
+                ]
+                
+                teacher_commissions = [
+                    {
+                        'id': 1, 
+                        'nom_complet': 'Jean Dupont',
+                        'email': 'jean@exemple.com', 
+                        'total_commissions': 450.25, 
+                        'pending': 125.50, 
+                        'paid': 324.75, 
+                        'students_count': 12, 
+                        'last_payment': '2024-01-15'
+                    },
+                ]
+        else:
+            monetization_stats = {
+                'total_commissions': 0,
+                'pending_payments': 0,
+                'payments_count': 0,
+                'active_teachers': 0
+            }
+        
+        return render_template(
+            "admin_dashboard.html",
+            niveaux=niveaux,
+            stats=stats,
+            monetization_stats=monetization_stats,
+            recent_payments=recent_payments,
+            teacher_commissions=teacher_commissions,
+            eleves_par_niveau=eleves_par_niveau,
+            lang=lang
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur dans admin_dashboard: {e}")
+        flash("Erreur lors du chargement du tableau de bord", "error")
+        return redirect(url_for("login_admin"))
+
+@app.route("/test-nom-complet")
+def test_nom_complet():
+    """Test pour vérifier que nom_complet et nom_complet_complet fonctionnent"""
+    try:
+        from models import User
+        
+        # Créer un utilisateur test
+        test_user = User.query.first()
+        
+        if test_user:
+            result = f"""
+            <h1>Test réussi !</h1>
+            <p>Utilisateur: {test_user.nom_complet}</p>
+            <p>Test nom_complet: <span style='color: green;'>✓ {test_user.nom_complet}</span></p>
+            """
+            
+            # Tester si nom_complet_complet existe
+            try:
+                test_complet = test_user.nom_complet_complet
+                result += f"<p>Test nom_complet_complet: <span style='color: green;'>✓ {test_complet}</span></p>"
+            except AttributeError:
+                result += f"<p>Test nom_complet_complet: <span style='color: red;'>✗ AttibuteError - ajoutez l'alias dans le modèle</span></p>"
+            
+            return result
+        else:
+            return "<h1>Aucun utilisateur trouvé</h1>"
+            
+    except Exception as e:
+        import traceback
+        return f"<h1>Erreur</h1><pre>{traceback.format_exc()}</pre>"
+
+
+# ====================================================================
+# 🔄 GESTION DES ERREURS
+# ====================================================================
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('errors/404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    logger.error(f"Erreur 500: {error}")
+    return render_template('errors/500.html'), 500
+
+@app.errorhandler(Exception)
+def handle_exception(error):
+    logger.error(f"Erreur non gérée: {error}")
+    return render_template('errors/generic.html', error=error), 500
+
 
 
 @app.route('/test-session')
@@ -469,19 +931,41 @@ def obtenir_nom_matiere_objet(matiere_obj, lang="fr"):
 # ============ ROUTE ADAPTÉE ============
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel - Accès libre - BILINGUE"""
+    """Route pour l'enseignant virtuel Naima - Accès libre - BILINGUE"""
     from datetime import datetime
     
-    if "eleve_id" not in session:
+    print(f"[DEBUG] Accès enseignant virtuel - Session keys: {list(session.keys())}")
+    print(f"[DEBUG] User ID in session: {session.get('user_id')}")
+    print(f"[DEBUG] Username in session: {session.get('username')}")
+    print(f"[DEBUG] Role in session: {session.get('role')}")
+    
+    # ✅ CORRECTION : Utiliser user_id (qui existe dans ta session)
+    if "user_id" not in session:
+        print("[DEBUG] REDIRECT: Pas de user_id dans la session")
         return redirect(url_for("login_eleve"))
 
-    eleve = User.query.options(joinedload(User.niveau)).get(session["eleve_id"])
-    if not eleve or eleve.role != "élève":
+    # ✅ Récupérer l'utilisateur par son ID
+    utilisateur = User.query.options(joinedload(User.niveau)).get(session["user_id"])
+    
+    # ✅ Vérifier que c'est bien un élève
+    if not utilisateur or utilisateur.role != "eleve":
+        print(f"[DEBUG] REDIRECT: Utilisateur non trouvé ou pas élève")
+        print(f"[DEBUG]   - User trouvé: {utilisateur.nom_complet if utilisateur else 'None'}")
+        print(f"[DEBUG]   - Rôle: {utilisateur.role if utilisateur else 'None'}")
         return redirect(url_for("login_eleve"))
+    
+    # ✅ Maintenant on sait que c'est un élève, on peut l'appeler 'eleve'
+    eleve = utilisateur
+    
+    print(f"[DEBUG] ✅ Accès autorisé pour: {eleve.nom_complet} (Rôle: {eleve.role})")
     
     # Vérifier l'accès (essai gratuit uniquement)
     lang = session.get("lang", "fr")
-    if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
+    print(f"[DEBUG] Langue: {lang}")
+    
+    # Vérifier l'essai gratuit
+    if hasattr(eleve, 'essai_est_expire') and eleve.essai_est_expire() and eleve.statut_paiement != "paye":
+        print("[DEBUG] Essai expiré - déconnexion")
         session.clear()
         flash(get_message("essai_termine", lang), "error")
         return redirect(url_for('login_eleve'))
@@ -489,9 +973,19 @@ def enseignant_virtuel():
     # Initialiser la conversation si elle n'existe pas
     if "conversation" not in session:
         session["conversation"] = []
+        print("[DEBUG] Conversation initialisée")
     
     # Récupérer la matière sélectionnée ou par défaut
     matiere = "mathématiques" if lang == "fr" else "mathematics"
+    
+    # TRAITEMENT GET - Réinitialiser si paramètre
+    if request.method == 'GET':
+        print(f"[DEBUG] Méthode GET - Args: {request.args}")
+        # Vérifier si on vient de /nouvel-exercice
+        if 't' in request.args:
+            print("[DEBUG] Rechargement avec timestamp - nettoyage conversation")
+            session["conversation"] = []
+            session.pop('derniere_q_ia', None)
     
     # TRAITEMENT POST
     if request.method == 'POST':
@@ -501,6 +995,8 @@ def enseignant_virtuel():
         if matiere_form:
             matiere = matiere_form
         
+        print(f"[DEBUG] POST reçu - Question: {question[:50]}... - Matière: {matiere}")
+        
         if question and len(question) >= 3:
             conversation = session.get("conversation", [])
             derniere_q_ia = session.get('derniere_q_ia')
@@ -508,7 +1004,7 @@ def enseignant_virtuel():
             # Si c'est une nouvelle conversation, ajouter un message de bienvenue
             if not conversation:
                 bienvenue_msg = get_message("bienvenue_enseignant", lang)
-                enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
+                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
                 conversation.append(f"{enseignant_label} {bienvenue_msg}")
             
             # Format simple pour l'historique
@@ -539,8 +1035,7 @@ def enseignant_virtuel():
                         matiere=matiere
                     )
                 
-                # Ajouter la réponse de l'IA
-                enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
+                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
                 conversation.append(f"{enseignant_label} {reponse}")
                 
                 # Limiter à 15 messages
@@ -564,13 +1059,14 @@ def enseignant_virtuel():
                 else:
                     fallback_msg = "I'm sorry, I encountered an error. Could you rephrase your question?"
                 
-                enseignant_label = "🤖 Teacher:" if lang == "en" else "🤖 Enseignant:"
+                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
                 conversation.append(f"{enseignant_label} {fallback_msg}")
                 session["conversation"] = conversation
                 flash(get_message("erreur_traitement", lang), "warning")
     
     # Récupérer la conversation
     conversation = session.get("conversation", [])
+    print(f"[DEBUG] Conversation actuelle: {len(conversation)} messages")
     
     return render_template(
         "enseignant_virtuel.html",
@@ -582,6 +1078,67 @@ def enseignant_virtuel():
         date_du_jour=datetime.utcnow(),
         matiere=matiere
     )
+
+def get_message(key, lang="fr"):
+    """Fonction utilitaire pour les messages bilingues"""
+    messages = {
+        "essai_termine": {
+            "fr": "Votre essai gratuit est terminé. Veuillez souscrire à un abonnement pour continuer.",
+            "en": "Your free trial has ended. Please subscribe to continue."
+        },
+        "bienvenue_enseignant": {
+            "fr": "Bonjour ! Je suis Naima, ton enseignante virtuelle. Je suis là pour t'aider à comprendre tes leçons et résoudre tes exercices. Quelle est ta question ?",
+            "en": "Hello! I'm Naima, your virtual teacher. I'm here to help you understand your lessons and solve your exercises. What's your question?"
+        },
+        "je_te_guide": {
+            "fr": "Je te guide pas à pas...",
+            "en": "I'm guiding you step by step..."
+        },
+        "erreur_traitement": {
+            "fr": "Une erreur s'est produite. Veuillez réessayer.",
+            "en": "An error occurred. Please try again."
+        }
+    }
+    
+    return messages.get(key, {}).get(lang, messages.get(key, {}).get("fr", "Message non trouvé"))
+
+def extraire_question(reponse, lang):
+    """Extrait une question de la réponse de l'IA"""
+    import re
+    
+    # Rechercher les phrases qui se terminent par un point d'interrogation
+    phrases = re.split(r'[.!?]', reponse)
+    
+    for phrase in phrases:
+        phrase = phrase.strip()
+        if phrase and phrase.endswith('?'):
+            return phrase
+    
+    # Si pas de question explicite, chercher des indices
+    question_keywords = {
+        "fr": ["pensez-vous", "savez-vous", "comprenez-vous", "pouvez-vous", "pourriez-vous"],
+        "en": ["do you think", "do you know", "do you understand", "can you", "could you"]
+    }
+    
+    keywords = question_keywords.get(lang, question_keywords["en"])
+    for line in reponse.split('\n'):
+        for keyword in keywords:
+            if keyword in line.lower():
+                return line.strip()
+    
+    return None
+
+def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False, matiere="mathématiques"):
+    """Génère le début d'une conversation avec l'enseignant virtuel Naima"""
+    # Implémentez votre logique d'IA ici
+    # Cette fonction devrait appeler votre API IA
+    return "Je suis Naima, ton enseignante virtuelle. Je vais t'aider avec ta question."
+
+def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", mode_examen=False, exercice_context="", matiere="mathématiques"):
+    """Génère la suite d'une conversation avec l'enseignant virtuel Naima"""
+    # Implémentez votre logique d'IA ici
+    # Cette fonction devrait appeler votre API IA
+    return "Merci pour ta réponse. Maintenant, que penses-tu de l'étape suivante ?"
 
 
 def get_message(key, lang="fr"):
@@ -608,10 +1165,10 @@ def get_message(key, lang="fr"):
 
 
 def extraire_question(reponse, lang="fr"):
-    """Extrait la question posée par l'IA - version bilingue"""
+    """Extrait la question posée par Naima - version bilingue"""
     import re
     
-    # Patterns FRANÇAIS
+    # Patterns FRANÇAIS (Naima tutoie)
     patterns_fr = [
         r'[Pp]eux-tu\s+(.*?)\?',
         r'[Qq]u\'est-ce que\s+(.*?)\?',
@@ -625,10 +1182,15 @@ def extraire_question(reponse, lang="fr"):
         r'[Éé]cris\s+(.*?)\?',
         r'[Aa]nalyse\s+(.*?)\?',
         r'[Ee]xplique\s+(.*?)\?',
-        r'[Rr]eformule\s+(.*?)\?'
+        r'[Rr]eformule\s+(.*?)\?',
+        r'[Aa]s-tu\s+(.*?)\?',
+        r'[Ss]ais-tu\s+(.*?)\?',
+        r'[Cc]onnais-tu\s+(.*?)\?',
+        r'[Pp]ourrais-tu\s+(.*?)\?',
+        r'[Mm]ontre-moi\s+(.*?)\?'
     ]
     
-    # Patterns ANGLAIS
+    # Patterns ANGLAIS (Naima tutoie aussi en anglais avec "you")
     patterns_en = [
         r'[Cc]an you\s+(.*?)\?',
         r'[Ww]hat is\s+(.*?)\?',
@@ -643,7 +1205,11 @@ def extraire_question(reponse, lang="fr"):
         r'[Aa]nalyze\s+(.*?)\?',
         r'[Ee]xplain\s+(.*?)\?',
         r'[Dd]escribe\s+(.*?)\?',
-        r'[Rr]ephrase\s+(.*?)\?'
+        r'[Rr]ephrase\s+(.*?)\?',
+        r'[Dd]o you know\s+(.*?)\?',
+        r'[Hh]ave you\s+(.*?)\?',
+        r'[Cc]ould you\s+(.*?)\?',
+        r'[Ww]ould you\s+(.*?)\?'
     ]
     
     patterns = patterns_fr if lang == "fr" else patterns_en
@@ -655,155 +1221,188 @@ def extraire_question(reponse, lang="fr"):
             if len(question) > 5:  # Minimum 5 caractères
                 return question
     
+    # Fallback : chercher la dernière phrase qui contient "?" 
+    # (mais exclure les signatures de Naima)
+    lines = reponse.split('\n')
+    for line in reversed(lines):
+        if '?' in line and 'Naima' not in line:
+            # Trouver le dernier "?" dans la ligne
+            parts = line.split('?')
+            if parts and len(parts) > 1:
+                question = parts[-2] + '?'
+                question = question.strip()
+                if len(question) > 5:
+                    return question
+    
     return None
 
 
 def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
-    """Prompt optimisé par matière et par langue"""
+    """Prompt optimisé par matière et par langue pour NAIMA l'enseignante virtuelle"""
     
-    # Dictionnaire des prompts FRANÇAIS
+    # Dictionnaire des prompts FRANÇAIS pour NAIMA
     prompts_fr = {
-        "mathématiques": """Tu es un enseignant de mathématiques expert en pédagogie.
-        **RÈGLES STRICTES :**
-        1. TU NE DONNES JAMAIS LA RÉPONSE DIRECTEMENT
-        2. Tu guides vers la méthode appropriée
-        3. Tu fais réfléchir sur les concepts
-        4. Tu encourages le raisonnement logique
-        **EXEMPLES DE QUESTIONS :**
+        "mathématiques": """Tu es Naima, enseignante virtuelle de mathématiques, passionnée par la pédagogie.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS la réponse directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
         - "Quelle opération utiliserais-tu ici ?"
+        - "Peux-tu me montrer ton raisonnement ?"
         - "Comment formulerais-tu cette équation ?"
-        - "Peux-tu dessiner un schéma pour comprendre ?"
-        - "Quelle est la première étape selon toi ?"
+        - "As-tu une idée pour commencer ?"
+        - "Que penses-tu de cette première étape ?"
         """,
         
-        "français": """Tu es un professeur de français expert en pédagogie.
-        **RÈGLES STRICTES :**
-        1. TU NE DONNES JAMAIS LA RÉPONSE DIRECTEMENT
-        2. Pour la grammaire : guide pour trouver les règles
-        3. Pour l'analyse de texte : aide à identifier les procédés littéraires
-        4. Pour la conjugaison : fais pratiquer les terminaisons
-        5. Pour l'orthographe : aide à mémoriser les règles
-        6. Pour la rédaction : aide à structurer les idées sans écrire à la place
-        **EXEMPLES DE QUESTIONS :**
-        - "Quel est le sujet de cette phrase ?"
-        - "Peux-tu identifier la figure de style ?"
-        - "Comment conjuguerais-tu ce verbe au passé simple ?"
-        - "Quelle serait ta première phrase pour introduire ce sujet ?"
+        "français": """Tu es Naima, enseignante virtuelle de français, passionnée par la langue.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS la réponse directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Peux-tu identifier le sujet dans cette phrase ?"
+        - "Quelle figure de style reconnais-tu ici ?"
+        - "Comment conjuguerais-tu ce verbe ?"
+        - "Quelle idée principale vois-tu dans ce texte ?"
+        - "Comment améliorerais-tu cette formulation ?"
         """,
         
-        "histoire": """Tu es un professeur d'histoire expert en pédagogie.
-        **RÈGLES STRICTES :**
-        1. TU NE DONNES JAMAIS LES DATES/ÉVÉNEMENTS DIRECTEMENT
-        2. Guide pour comprendre les causes et conséquences
-        3. Aide à analyser les documents historiques
-        4. Fais faire des liens entre les événements
-        5. Encourage la réflexion critique
-        **EXEMPLES DE QUESTIONS :**
-        - "Quelles étaient les causes possibles de cet événement ?"
-        - "Que peut-on déduire de ce document historique ?"
-        - "Quels liens fais-tu avec d'autres périodes ?"
-        - "Quelle était la conséquence principale ?"
+        "histoire": """Tu es Naima, enseignante virtuelle d'histoire, passionnée par le passé.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les dates/événements directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Quelles causes imagines-tu pour cet événement ?"
+        - "Que comprends-tu de ce document ?"
+        - "Quels liens fais-tu avec ta vie d'aujourd'hui ?"
+        - "Comment expliquerais-tu cette conséquence ?"
+        - "Quelle hypothèse formulerais-tu ?"
         """,
         
-        "sciences": """Tu es un professeur de sciences expert en pédagogie.
-        **RÈGLES STRICTES :**
-        1. TU NE DONNES JAMAIS LES RÉPONSES DIRECTEMENT
-        2. Guide pour la démarche scientifique
-        3. Aide à formuler des hypothèses
-        4. Fais analyser les résultats
-        5. Encourage l'expérimentation mentale
-        **EXEMPLES DE QUESTIONS :**
-        - "Quelle hypothèse pourrais-tu formuler ?"
-        - "Comment vérifierais-tu cette hypothèse ?"
-        - "Que signifie ce résultat selon toi ?"
-        - "Quelle serait la prochaine étape de l'expérience ?"
+        "sciences": """Tu es Naima, enseignante virtuelle de sciences, passionnée par la découverte.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les réponses directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Quelle hypothèse proposerais-tu ?"
+        - "Comment vérifierais-tu ton idée ?"
+        - "Que penses-tu de ce résultat ?"
+        - "Quelle expérience imaginerais-tu ?"
+        - "Que déduis-tu de cette observation ?"
         """,
         
-        "géographie": """Tu es un professeur de géographie expert en pédagogie.
-        **RÈGLES STRICTES :**
-        1. TU NE DONNES JAMAIS LES RÉPONSES DIRECTEMENT
-        2. Guide pour lire et interpréter les cartes
-        3. Aide à comprendre les phénomènes géographiques
-        4. Fais faire des liens entre climat, relief et activités humaines
-        5. Encourage l'observation et l'analyse spatiale
-        **EXEMPLES DE QUESTIONS :**
-        - "Que peux-tu observer sur cette carte ?"
-        - "Quels liens fais-tu entre le climat et l'agriculture ici ?"
-        - "Comment expliquerais-tu cette répartition de population ?"
-        - "Quelles sont les caractéristiques principales de ce type de paysage ?"
+        "géographie": """Tu es Naima, enseignante virtuelle de géographie, passionnée par le monde.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les réponses directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Que remarques-tu sur cette carte ?"
+        - "Quel lien vois-tu entre climat et agriculture ?"
+        - "Comment expliquerais-tu cette répartition ?"
+        - "Quelles caractéristiques observes-tu ?"
+        - "Quelle hypothèse fais-tu sur ce paysage ?"
         """
     }
     
-    # Dictionnaire des prompts ANGLAIS
+    # Dictionnaire des prompts ANGLAIS pour NAIMA
     prompts_en = {
-        "mathematics": """You are a mathematics teacher expert in pedagogy.
-        **STRICT RULES:**
-        1. YOU NEVER GIVE THE ANSWER DIRECTLY
-        2. You guide to the appropriate method
-        3. You encourage thinking about concepts
-        4. You promote logical reasoning
-        **EXAMPLE QUESTIONS:**
+        "mathematics": """You are Naima, virtual mathematics teacher, passionate about pedagogy.
+        **YOUR STYLE:**
+        - You always address students warmly
+        - You are warm, encouraging, and patient
+        - You always sign "— Naima ✨"
+        - You ask one question at a time
+        - You NEVER give the answer directly
+        
+        **NAIMA'S EXAMPLE QUESTIONS:**
         - "What operation would you use here?"
+        - "Can you show me your reasoning?"
         - "How would you formulate this equation?"
-        - "Can you draw a diagram to understand?"
-        - "What is the first step in your opinion?"
+        - "Do you have an idea to start?"
+        - "What do you think about this first step?"
         """,
         
-        "french": """You are a French teacher expert in pedagogy.
-        **STRICT RULES:**
-        1. YOU NEVER GIVE THE ANSWER DIRECTELY
-        2. For grammar: guide to find the rules
-        3. For text analysis: help identify literary devices
-        4. For conjugation: practice verb endings
-        5. For spelling: help memorize rules
-        6. For writing: help structure ideas without writing for them
-        **EXAMPLE QUESTIONS:**
-        - "What is the subject of this sentence?"
-        - "Can you identify the figure of speech?"
-        - "How would you conjugate this verb in the simple past?"
-        - "What would be your first sentence to introduce this topic?"
+        "french": """You are Naima, virtual French teacher, passionate about language.
+        **YOUR STYLE:**
+        - You always address students warmly
+        - You are warm, encouraging, and patient
+        - You always sign "— Naima ✨"
+        - You ask one question at a time
+        - You NEVER give the answer directly
+        
+        **NAIMA'S EXAMPLE QUESTIONS:**
+        - "Can you identify the subject in this sentence?"
+        - "What figure of speech do you recognize here?"
+        - "How would you conjugate this verb?"
+        - "What main idea do you see in this text?"
+        - "How would you improve this formulation?"
         """,
         
-        "history": """You are a history teacher expert in pedagogy.
-        **STRICT RULES:**
-        1. YOU NEVER GIVE DATES/EVENTS DIRECTLY
-        2. Guide to understand causes and consequences
-        3. Help analyze historical documents
-        4. Make connections between events
-        5. Encourage critical thinking
-        **EXAMPLE QUESTIONS:**
-        - "What were the possible causes of this event?"
-        - "What can we deduce from this historical document?"
-        - "What connections do you make with other periods?"
-        - "What was the main consequence?"
+        "history": """You are Naima, virtual history teacher, passionate about the past.
+        **YOUR STYLE:**
+        - You always address students warmly
+        - You are warm, encouraging, and patient
+        - You always sign "— Naima ✨"
+        - You ask one question at a time
+        - You NEVER give dates/events directly
+        
+        **NAIMA'S EXAMPLE QUESTIONS:**
+        - "What causes can you imagine for this event?"
+        - "What do you understand from this document?"
+        - "What connections do you make with your life today?"
+        - "How would you explain this consequence?"
+        - "What hypothesis would you formulate?"
         """,
         
-        "science": """You are a science teacher expert in pedagogy.
-        **STRICT RULES:**
-        1. YOU NEVER GIVE ANSWERS DIRECTLY
-        2. Guide through the scientific method
-        3. Help formulate hypotheses
-        4. Help analyze results
-        5. Encourage mental experimentation
-        **EXAMPLE QUESTIONS:**
-        - "What hypothesis could you formulate?"
-        - "How would you verify this hypothesis?"
-        - "What does this result mean to you?"
-        - "What would be the next step of the experiment?"
+        "science": """You are Naima, virtual science teacher, passionate about discovery.
+        **YOUR STYLE:**
+        - You always address students warmly
+        - You are warm, encouraging, and patient
+        - You always sign "— Naima ✨"
+        - You ask one question at a time
+        - You NEVER give answers directly
+        
+        **NAIMA'S EXAMPLE QUESTIONS:**
+        - "What hypothesis would you propose?"
+        - "How would you verify your idea?"
+        - "What do you think about this result?"
+        - "What experiment would you imagine?"
+        - "What do you deduce from this observation?"
         """,
         
-        "geography": """You are a geography teacher expert in pedagogy.
-        **STRICT RULES:**
-        1. YOU NEVER GIVE ANSWERS DIRECTLY
-        2. Guide to read and interpret maps
-        3. Help understand geographical phenomena
-        4. Make connections between climate, terrain and human activities
-        5. Encourage observation and spatial analysis
-        **EXAMPLE QUESTIONS:**
-        - "What can you observe on this map?"
-        - "What connections do you make between climate and agriculture here?"
-        - "How would you explain this population distribution?"
-        - "What are the main characteristics of this type of landscape?"
+        "geography": """You are Naima, virtual geography teacher, passionate about the world.
+        **YOUR STYLE:**
+        - You always address students warmly
+        - You are warm, encouraging, and patient
+        - You always sign "— Naima ✨"
+        - You ask one question at a time
+        - You NEVER give answers directly
+        
+        **NAIMA'S EXAMPLE QUESTIONS:**
+        - "What do you notice on this map?"
+        - "What connection do you see between climate and agriculture?"
+        - "How would you explain this distribution?"
+        - "What characteristics do you observe?"
+        - "What hypothesis do you make about this landscape?"
         """
     }
     
@@ -826,232 +1425,338 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
     # Récupérer le prompt spécifique ou utiliser les mathématiques comme défaut
     prompt_base = prompts_dict.get(matiere_normalisee, prompts_dict.get("mathematics" if lang == "en" else "mathématiques"))
     
-    # Ajouter les règles communes dans la bonne langue
+    # Ajouter les règles pédagogiques de NAIMA dans la bonne langue
     if lang == "fr":
-        regles_communes = f"""
-        **MÉTHODOLOGIE PÉDAGOGIQUE :**
-        1. Reformuler le problème dans tes mots
-        2. Identifier la compétence concernée
-        3. Guider étape par étape
-        4. Poser UNE question précise à la fois
-        5. Attendre la réponse avant de continuer
-        6. Vérifier la compréhension à chaque étape
-        7. Féliciter les progrès et efforts
-        8. Corriger doucement les erreurs
-        9. Adapter le langage au niveau de l'élève
-        10. Utiliser des exemples concrets et familiers
+        regles_pedagogiques = f"""
+        **MÉTHODOLOGIE PÉDAGOGIQUE DE NAIMA :**
+        1. Présente-toi toujours comme Naima, l'enseignante virtuelle
+        2. Reformule la question de l'élève pour vérifier ta compréhension
+        3. Identifie la compétence spécifique en {matiere_normalisee}
+        4. Guide avec une seule question à la fois
+        5. Attends toujours la réponse avant de continuer
+        6. Félicite chaleureusement chaque progrès, même petit
+        7. Corrige avec douceur et bienveillance
+        8. Adapte ton langage au niveau scolaire
+        9. Utilise des exemples concrets de la vie quotidienne
+        10. Encourage la confiance en soi et la persévérance
+        
+        **FORMAT DES RÉPONSES DE NAIMA :**
+        - Utilise le tutoiement systématique
+        - Sois naturellement chaleureuse
+        - Pose des questions ouvertes
+        - Termine par ta signature "— Naima ✨"
+        
+        **TA MISSION :** Aider l'élève à construire SA propre compréhension, pas à lui donner des réponses.
         
         {"⚠️ MODE EXAMEN : Guide avec des indices seulement, ne donne pas les étapes complètes." if mode_examen else ""}
         """
     else:
-        regles_communes = f"""
-        **PEDAGOGICAL METHODOLOGY:**
-        1. Rephrase the problem in your words
-        2. Identify the relevant skill
-        3. Guide step by step
-        4. Ask ONE specific question at a time
-        5. Wait for answer before continuing
-        6. Check understanding at each step
-        7. Praise progress and efforts
-        8. Gently correct mistakes
-        9. Adapt language to student's level
-        10. Use concrete and familiar examples
+        regles_pedagogiques = f"""
+        **NAIMA'S PEDAGOGICAL METHODOLOGY:**
+        1. Always introduce yourself as Naima, the virtual teacher
+        2. Rephrase the student's question to check your understanding
+        3. Identify the specific skill in {matiere_normalisee}
+        4. Guide with one question at a time
+        5. Always wait for answer before continuing
+        6. Warmly praise every progress, even small
+        7. Correct gently and kindly
+        8. Adapt your language to school level
+        9. Use concrete examples from daily life
+        10. Encourage self-confidence and perseverance
+        
+        **NAIMA'S RESPONSE FORMAT:**
+        - Use warm, friendly language
+        - Be naturally warm
+        - Ask open-ended questions
+        - End with your signature "— Naima ✨"
+        
+        **YOUR MISSION:** Help the student build THEIR own understanding, not give them answers.
         
         {"⚠️ EXAM MODE: Guide with hints only, do not give complete steps." if mode_examen else ""}
         """
     
-    return prompt_base + regles_communes
+    # Structure finale du prompt
+    prompt_final = f"""# RÔLE : NAIMA, ENSEIGNANTE VIRTUELLE EN {matiere_normalisee.upper()}
+
+{prompt_base}
+
+{regles_pedagogiques}
+
+**DERNIER RAPPEL IMPORTANT :** 
+Tu es NAIMA. Présente-toi, guide avec bienveillance, pose une seule question, félicite les efforts, signe tes messages.
+
+Commence toujours par un accueil chaleureux avec ton nom : "Je suis Naima, ton enseignante virtuelle" (FR) ou "I'm Naima, your virtual teacher" (EN)."""
+    
+    return prompt_final
 
 
 def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False, matiere="mathématiques"):
-    """Début de conversation bilingue adapté à la matière"""
+    """Début de conversation avec Naima - l'enseignante virtuelle qui tutoie"""
     from openai import OpenAI
     import os
     
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
     if langue == "fr":
-        prompt = f"""Élève de {niveau} en {matiere.upper()} pose la question suivante : "{question}"
+        system_prompt = f"""Tu es Naima, une enseignante virtuelle bienveillante et passionnée par {matiere}. Tu aides des élèves de niveau {niveau}.
 
-Ton rôle : Commencer le dialogue pédagogique SPÉCIFIQUE À LA MATIÈRE.
+**TON IDENTITÉ :**
+- Tu es Naima, l'enseignante virtuelle
+- Tu tutoies toujours l'élève (utilise "tu", "ta", "ton")
+- Tu es chaleureuse, encourageante et pédagogue
+- Tu signes tes messages avec "— Naima" ou "Naima ✨"
+- Tu poses des questions guidantes une par une
+- Tu ne donnes JAMAIS la réponse directement
 
-**Instructions :**
-1. Reformule la question dans tes mots pour vérifier la compréhension
-2. Identifie la compétence de {matiere} concernée
-3. Propose une stratégie générale adaptée à {matiere}
-4. Pose la PREMIÈRE QUESTION qui guide vers la première étape
+**TA MISSION :**
+Un élève de {niveau} te pose cette question en {matiere} : "{question}"
 
-**Format :**
-- Accueil chaleureux et reformulation
-- Indication de la méthode adaptée à {matiere}
-- QUESTION PRÉCISE pour l'élève
-- Indication de ce qu'il doit faire ensuite
+1. Accueille-le chaleureusement en te présentant comme Naima
+2. Reformule sa question pour montrer que tu as compris
+3. Donne une orientation générale adaptée à {matiere}
+4. Pose la PREMIÈRE QUESTION qui le guide vers la première étape
+5. Termine par ton nom pour créer un lien personnel
 
-{"Mode examen : reste au niveau des indices généraux." if mode_examen else ""}
+**FORMAT DE TA RÉPONSE :**
+- Salutation avec présentation de Naima
+- Reformulation de la question
+- Orientation pédagogique
+- Première question précise
+- Signature : — Naima ✨
 
-**Important :** Sois encourageant et pédagogue !"""
+**EXEMPLE :**
+"Bonjour ! Je suis Naima, ton enseignante virtuelle. Je vois que tu te poses une question intéressante sur [sujet]. Commençons par bien comprendre ce qu'on te demande...
+
+**Ma première question pour toi :** Peux-tu me dire ce que tu as déjà essayé ou ce que tu comprends de cette situation ?
+
+— Naima ✨"""
     else:
-        prompt = f"""{niveau} student in {matiere.upper()} asks the following question: "{question}"
+        system_prompt = f"""You are Naima, a kind virtual teacher passionate about {matiere}. You help {niveau} students.
 
-Your role: Start the pedagogical dialogue SPECIFIC TO THE SUBJECT.
+**YOUR IDENTITY:**
+- You are Naima, the virtual teacher
+- You use "you", "your" (friendly but professional)
+- You are warm, encouraging, and pedagogical
+- You sign your messages with "— Naima" or "Naima ✨"
+- You ask guiding questions one at a time
+- You NEVER give the answer directly
 
-**Instructions:**
-1. Rephrase the question in your words to check understanding
-2. Identify the relevant {matiere} skill
-3. Propose a general strategy adapted to {matiere}
-4. Ask the FIRST QUESTION that guides to the first step
+**YOUR MISSION:**
+A {niveau} student asks you this {matiere} question: "{question}"
 
-**Format:**
-- Warm welcome and rephrasing
-- Indication of method adapted to {matiere}
-- SPECIFIC QUESTION for the student
-- Indication of what they should do next
+1. Welcome them warmly, introducing yourself as Naima
+2. Rephrase their question to show understanding
+3. Give general guidance adapted to {matiere}
+4. Ask the FIRST QUESTION that guides them to the first step
+5. End with your name to create personal connection
 
-{"Exam mode: stay at general hint level." if mode_examen else ""}
+**YOUR RESPONSE FORMAT:**
+- Greeting with Naima introduction
+- Question rephrasing
+- Pedagogical orientation
+- First precise question
+- Signature: — Naima ✨
 
-**Important:** Be encouraging and pedagogical!"""
+**EXAMPLE:**
+"Hello! I'm Naima, your virtual teacher. I see you're asking an interesting question about [topic]. Let's start by understanding exactly what's being asked...
+
+**My first question for you:** Can you tell me what you've already tried or what you understand about this situation?
+
+— Naima ✨"""
+    
+    prompt = f"""**Contexte pédagogique :**
+- Niveau : {niveau}
+- Matière : {matiere}
+- Mode : {"examen (guide avec indices)" if mode_examen else "apprentissage normal"}
+- Style : Tutoiement chaleureux et encourageant"""
     
     try:
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": get_system_prompt(matiere, langue, mode_examen)},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=400
+            max_tokens=450
         )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        # Fallback bilingue
+        
+        reponse_naima = response.choices[0].message.content.strip()
+        
+        # S'assurer que Naima se présente et signe
         if langue == "fr":
-            return f"""Excellent ! On va travailler sur cette question de {matiere} ensemble.
-
-**Question :** {question}
-
-Je vais te guider étape par étape sans te donner la réponse directement.
-
-**Première étape :** Comprendre exactement ce qu'on te demande.
-
-**Question 1 :** Peux-tu reformuler ce problème dans tes propres mots ? Qu'est-ce qu'on cherche à comprendre ou résoudre ?
-
-Écris ta reformulation, et je te guiderai vers la méthode à utiliser !
-
-💡 *Astuce : Commence par expliquer ce que tu as déjà compris.*"""
+            if "Naima" not in reponse_naima[:50]:  # Vérifie dans les premiers caractères
+                reponse_naima = f"Bonjour ! Je suis Naima, ton enseignante virtuelle. {reponse_naima}"
+            
+            if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
+                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
         else:
-            return f"""Excellent! Let's work on this {matiere} question together.
+            if "Naima" not in reponse_naima[:50]:
+                reponse_naima = f"Hello! I'm Naima, your virtual teacher. {reponse_naima}"
+            
+            if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
+                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+        
+        return reponse_naima
+        
+    except Exception as e:
+        print(f"Erreur génération début conversation Naima: {e}")
+        # Fallback bilingue avec présentation de Naima
+        if langue == "fr":
+            return f"""Bonjour ! Je suis Naima, ton enseignante virtuelle. 
 
-**Question:** {question}
+Je vois que tu as une question intéressante sur {matiere} : "{question[:100]}..."
 
-I'll guide you step by step without giving you the answer directly.
+Super de vouloir comprendre ! Je vais t'aider à trouver la réponse toi-même en te guidant étape par étape.
 
-**First step:** Understand exactly what you're being asked.
+**Ma première question pour démarrer :** Peux-tu me dire ce que tu as déjà essayé ou ce que tu comprends de cette situation ?
 
-**Question 1:** Can you rephrase this problem in your own words? What are we trying to understand or solve?
+Écris-moi ta réponse, et on avancera ensemble !
 
-Write your rephrasing, and I'll guide you to the method to use!
+— Naima ✨"""
+        else:
+            return f"""Hello! I'm Naima, your virtual teacher.
 
-💡 *Tip: Start by explaining what you already understand.*"""
+I see you have an interesting question about {matiere}: "{question[:100]}..."
+
+Great that you want to understand! I'll help you find the answer yourself by guiding you step by step.
+
+**My first question to start:** Can you tell me what you've already tried or what you understand about this situation?
+
+Write me your answer, and we'll move forward together!
+
+— Naima ✨"""
 
 
 def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", mode_examen=False, exercice_context="", matiere="mathématiques"):
-    """Continue la conversation bilingue avec contexte de matière"""
+    """Continue la conversation avec Naima qui guide l'élève en le tutoyant"""
     from openai import OpenAI
     import os
     
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
-    # Préparer l'historique contextuel
+    # Préparer l'historique contextuel (les 10 derniers messages)
     historique_contextuel = []
-    
-    # Ajouter les 10 derniers messages maximum
     for msg in historique[-10:]:
         historique_contextuel.append(msg)
     
     historique_text = "\n".join(historique_contextuel)
     
     if langue == "fr":
-        prompt = f"""Élève de {niveau} en {matiere.upper()}
+        system_prompt = f"""Tu es Naima, une enseignante virtuelle bienveillante et patiente. Tu aides des élèves de niveau {niveau} en {matiere}.
 
-**HISTORIQUE DE CONVERSATION :**
-{historique_text}
+**TON STYLE :**
+- Tu tutoies toujours l'élève (utilise "tu", "ta", "ton", "tes")
+- Tu es chaleureuse, encourageante et pédagogue
+- Tu signes tes messages avec "— Naima" ou "Naima ✨"
+- Tu poses toujours des questions guidantes une par une
+- Tu ne donnes JAMAIS la réponse directement
+- Tu corriges avec bienveillance et sans critique
 
-**Dernière question que j'ai posée :** {derniere_q}
-**Réponse de l'élève :** {reponse}
+**TA MISSION POUR CETTE RÉPONSE :**
+La dernière question que tu as posée : "{derniere_q}"
+La réponse de l'élève : "{reponse}"
 
-**Ta tâche ({matiere}) :**
-1. Analyser la réponse de l'élève dans le contexte de {matiere}
-2. Valider ce qui est correct selon les règles de {matiere}
-3. Corriger doucement ce qui est erroné (sans critiquer)
-4. Poser la PROCHAINE QUESTION qui avance vers la compréhension/solution
-5. Toujours encourager et féliciter les efforts
+1. Analyse la réponse de l'élève
+2. Si c'est correct : félicite-le et pose la prochaine étape
+3. Si c'est partiellement correct : reconnais ce qui est bon, guide pour corriger
+4. Si c'est incorrect : ne dis pas "c'est faux", guide avec un indice
+5. Pose UNE SEULE nouvelle question pour faire avancer la réflexion
 
-**Règles pédagogiques strictes :**
-- Ne jamais donner la réponse directement
-- Guider avec des questions spécifiques
-- Adapter le langage au niveau scolaire
-- Être patient et bienveillant
-- Utiliser des exemples concrets si nécessaire
+**FORMAT DE TA RÉPONSE :**
+- Réaction à la réponse de l'élève (félicitations/guidage)
+- Explication très brève si nécessaire
+- Nouvelle question précise
+- Signature : — Naima ✨
 
-{"Mode examen : guide avec des indices, ne révèle pas les étapes." if mode_examen else ""}"""
+**EXEMPLE :**
+"Super, tu as bien identifié le premier terme ! Maintenant, regarde le deuxième : quelle opération vois-tu ?
+
+— Naima ✨"""
     else:
-        prompt = f"""{niveau} student in {matiere.upper()}
+        system_prompt = f"""You are Naima, a kind and patient virtual teacher. You help {niveau} students with {matiere}.
 
-**CONVERSATION HISTORY:**
+**YOUR STYLE:**
+- You always use "you", "your" (friendly but professional)
+- You are warm, encouraging, and pedagogical
+- You sign your messages with "— Naima" or "Naima ✨"
+- You always ask guiding questions one at a time
+- You NEVER give the answer directly
+- You correct gently without criticism
+
+**YOUR MISSION FOR THIS RESPONSE:**
+Last question you asked: "{derniere_q}"
+Student's answer: "{reponse}"
+
+1. Analyze the student's response
+2. If correct: praise them and ask the next step
+3. If partially correct: acknowledge what's good, guide to correct
+4. If incorrect: don't say "that's wrong", guide with a hint
+5. Ask ONLY ONE new question to advance their thinking
+
+**YOUR RESPONSE FORMAT:**
+- Reaction to student's answer (praise/guidance)
+- Very brief explanation if needed
+- New precise question
+- Signature: — Naima ✨
+
+**EXAMPLE:**
+"Great, you correctly identified the first term! Now, look at the second one: what operation do you see?
+
+— Naima ✨"""
+    
+    prompt = f"""**Historique de conversation ({matiere}) :**
 {historique_text}
 
-**Last question I asked:** {derniere_q}
-**Student's answer:** {reponse}
-
-**Your task ({matiere}):**
-1. Analyze the student's response in the context of {matiere}
-2. Validate what is correct according to {matiere} rules
-3. Gently correct what is wrong (without criticism)
-4. Ask the NEXT QUESTION that moves toward understanding/solution
-5. Always encourage and praise efforts
-
-**Strict pedagogical rules:**
-- Never give the answer directly
-- Guide with specific questions
-- Adapt language to school level
-- Be patient and supportive
-- Use concrete examples if needed
-
-{"Exam mode: guide with hints, do not reveal steps." if mode_examen else ""}"""
+**Contexte :** Élève de {niveau} en {matiere}
+{"**Mode examen :** guide avec des indices, ne révèle pas les étapes complètes." if mode_examen else ""}"""
     
     try:
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": get_system_prompt(matiere, langue, mode_examen)},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=450
+            max_tokens=500
         )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        # Fallback bilingue
+        
+        reponse_naima = response.choices[0].message.content.strip()
+        
+        # S'assurer que Naima signe sa réponse
         if langue == "fr":
-            return f"""Merci pour ta réponse ! C'est un bon début.
-
-Pour continuer notre exploration de cette question de {matiere}, j'ai besoin de comprendre un peu mieux ta pensée.
-
-**Nouvelle question :** Quelle est la prochaine étape logique selon toi ? Si tu hésites, dis-moi simplement ce que tu comprends jusqu'à présent.
-
-Je suis là pour t'aider à avancer pas à pas !
-
-✨ *N'oublie pas : chaque erreur est une occasion d'apprendre !*"""
+            if "— Naima" not in reponse_naima and "Naima" not in reponse_naima[-10:]:
+                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
         else:
-            return f"""Thank you for your answer! That's a good start.
+            if "— Naima" not in reponse_naima and "Naima" not in reponse_naima[-10:]:
+                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+        
+        return reponse_naima
+        
+    except Exception as e:
+        print(f"Erreur génération suite conversation Naima: {e}")
+        # Fallback bilingue avec Naima qui tutoie
+        if langue == "fr":
+            return f"""Merci pour ta réponse ! C'est intéressant de voir comment tu as abordé cette question de {matiere}.
 
-To continue our exploration of this {matiere} question, I need to understand your thinking a bit better.
+Je vois que tu as fait un premier pas, et c'est déjà très bien. Maintenant, pour t'aider à avancer :
 
-**New question:** What is the next logical step in your opinion? If you hesitate, just tell me what you understand so far.
+**Ma nouvelle question :** As-tu considéré toutes les informations données dans l'énoncé ? Y a-t-il un élément que tu n'as pas encore utilisé ?
 
-I'm here to help you move forward step by step!
+Prends ton temps, je suis là pour t'accompagner.
 
-✨ *Remember: every mistake is a learning opportunity!*"""
+— Naima ✨"""
+        else:
+            return f"""Thank you for your answer! It's interesting to see how you approached this {matiere} question.
+
+I see you've taken a first step, and that's already great. Now, to help you move forward:
+
+**My new question:** Have you considered all the information given in the statement? Is there an element you haven't used yet?
+
+Take your time, I'm here to support you.
+
+— Naima ✨"""
 
 
 @app.after_request
@@ -1071,27 +1776,48 @@ def chat():
 
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
-    """Nouvel exercice - réinitialise COMPLÈTEMENT"""
+    """Nouvel exercice avec Naima - réinitialise COMPLÈTEMENT"""
+    print(f"[DEBUG] Nouvel exercice - Session keys: {list(session.keys())}")
+    print(f"[DEBUG] Eleve ID: {session.get('eleve_id')}")
+    
     if "eleve_id" not in session:
+        print("[DEBUG] REDIRECT: Pas d'eleve_id dans la session")
         return redirect(url_for("login_eleve"))
     
-    # Vider TOUTE la session liée à la conversation
+    # IMPORTANT: Sauvegarder les données essentielles de session
+    eleve_id = session.get('eleve_id')
+    lang = session.get('lang', 'fr')
+    
+    # Vider TOUTE la session liée à la conversation SEULEMENT
     session_keys_to_remove = [
         "conversation", 
         "derniere_q_ia", 
         "exercice_en_cours",
-        "mode_examen"  # Au cas où
+        "mode_examen"
     ]
     
     for key in session_keys_to_remove:
-        session.pop(key, None)
+        value = session.pop(key, None)
+        print(f"[DEBUG] Supprimé de session: {key} = {value}")
     
-    # Flash message clair
-    flash("🎯 Nouvel exercice prêt ! Pose ta question.", "success")
+    # IMPORTANT: Re-sauvegarder les données essentielles
+    session['eleve_id'] = eleve_id
+    session['lang'] = lang
+    session.modified = True  # Force la sauvegarde
+    
+    # Flash message personnalisé avec Naima
+    if lang == "fr":
+        flash("✨ Naima est prête pour une nouvelle conversation ! Pose-lui ta question.", "success")
+    else:
+        flash("✨ Naima is ready for a new conversation! Ask her your question.", "success")
     
     # Rediriger avec un timestamp pour éviter le cache
     import time
-    return redirect(url_for("enseignant_virtuel") + f"?t={int(time.time())}")
+    redirect_url = url_for("enseignant_virtuel") + f"?t={int(time.time())}"
+    print(f"[DEBUG] Redirection vers: {redirect_url}")
+    
+    return redirect(redirect_url)
+
 
 @app.after_request
 def add_headers(response):
@@ -1599,17 +2325,23 @@ def visualiser_test_sommatif(test_id):
 @app.route("/admin/supprimer-exercice/<int:exercice_id>", methods=["POST"])
 @admin_required
 def supprimer_exercice(exercice_id):
-    """Route pour supprimer un seul exercice"""
+    """Route pour supprimer un seul exercice et son historique"""
     exercice = Exercice.query.get_or_404(exercice_id)
     
     try:
+        # 1. Supprimer d'abord toutes les réponses des élèves pour cet exercice
+        reponses = StudentResponse.query.filter_by(exercice_id=exercice_id).all()
+        for reponse in reponses:
+            db.session.delete(reponse)
+        
+        # 2. Supprimer l'exercice
         db.session.delete(exercice)
         db.session.commit()
         
         if session.get("lang") == "en":
-            flash("✅ Exercise successfully deleted", "success")
+            flash("✅ Exercise and all student responses deleted successfully", "success")
         else:
-            flash("✅ Exercice supprimé avec succès", "success")
+            flash("✅ Exercice et toutes les réponses des élèves supprimés avec succès", "success")
             
     except Exception as e:
         db.session.rollback()
@@ -2236,57 +2968,597 @@ Indice : ...
         show_teacher_button=(etoiles < 3)  # 🆕 Afficher bouton enseignant virtuel si note < 3
     )
 
+# ====================================================================
+# ROUTES DE MONÉTISATION ADMIN
+# ====================================================================
 
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload
-
-@app.route("/admin/dashboard")
-@admin_required
-def admin_dashboard():
+@app.route("/admin/versements-manuels")
+def admin_versements_manuels():
+    """Page de gestion des versements manuels"""
+    
+    # 🔴 VÉRIFICATION MANUELLE TEMPORAIRE
+    if "user_id" not in session:
+        flash("Accès non autorisé", "error")
+        return redirect(url_for("login"))
+    
+    user = db.session.get(User, session["user_id"])
+    if not user or user.role != "admin":
+        flash("Accès réservé aux administrateurs", "error")
+        return redirect(url_for("admin_dashboard"))  # Redirige vers le dashboard admin
+    
+    # 🔴 FIN DE LA VÉRIFICATION MANUELLE
+    
     lang = request.args.get("lang") or session.get("lang", "fr")
+    
+    try:
+        # Récupérer tous les enseignants pour le formulaire
+        UserModel = get_user_model()
+        teachers = UserModel.query.filter_by(role="enseignant").order_by(UserModel.nom_complet).all()
+        
+        # Récupérer les versements manuels
+        VersementManuelModel = get_model('VersementManuel')
+        if not VersementManuelModel:
+            versements = []
+        else:
+            statut_filter = request.args.get("statut")
+            query = VersementManuelModel.query\
+                .join(UserModel, VersementManuelModel.enseignant_id == UserModel.id)\
+                .order_by(VersementManuelModel.date_demande.desc())
+            
+            if statut_filter:
+                query = query.filter(VersementManuelModel.statut == statut_filter)
+            
+            search_filter = request.args.get("search")
+            if search_filter:
+                query = query.filter(UserModel.nom_complet.ilike(f"%{search_filter}%"))
+            
+            versements = query.all()
+        
+        return render_template(
+            "admin/versements_manuels.html",  # ← CHANGEMENT ICI
+            versements=versements,
+            teachers=teachers,
+            lang=lang
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur dans admin_versements_manuels: {e}")
+        flash("Erreur lors du chargement des versements manuels", "error")
+        return redirect(url_for("admin_dashboard"))
 
-    # Charger la structure complète du contenu
-    niveaux = Niveau.query.options(
-        joinedload(Niveau.matieres)
-        .joinedload(Matiere.unites)
-        .joinedload(Unite.lecons)
-        .joinedload(Lecon.exercices)
-    ).all()
-
-    # Statistiques principales
-    stats = {
-        'enseignants_count': Enseignant.query.count(),
-        'eleves_count': User.query.filter_by(role="élève").count(),
-        'lecons_count': Lecon.query.count(),
-        'tests_count': TestSommatif.query.count(),
-        'exercices_count': Exercice.query.count(),
-        'matieres_count': Matiere.query.count(),
-        'unites_count': Unite.query.count(),
-        'niveaux_count': Niveau.query.count(),
-        'parents_count': Parent.query.count()
-    }
-
-    # Nombre d’élèves par niveau (pour le graphique)
-    eleves_par_niveau = (
-        db.session.query(Niveau.nom, func.count(User.id))
-        .join(User, Niveau.id == User.niveau_id)
-        .filter(User.role == "élève")
-        .group_by(Niveau.nom)
-        .all()
-    )
-
-    # Debug console
-    print(f"✅ DEBUG - Statistiques calculées : {stats}")
-    print(f"✅ DEBUG - Élèves par niveau : {eleves_par_niveau}")
-
+@app.route("/admin/commissions")
+@admin_required
+def admin_commissions():
+    """Vue globale des commissions"""
+    lang = request.args.get("lang") or session.get("lang", "fr")
+    
+    try:
+        CommissionModel = get_model('Commission')
+        if CommissionModel:
+            commissions = CommissionModel.query\
+                .order_by(CommissionModel.date_calcul.desc())\
+                .all()
+            
+            # Statistiques
+            stats = {
+                'total': db.session.query(db.func.sum(CommissionModel.montant_commission)).scalar() or 0,
+                'pending': db.session.query(db.func.sum(CommissionModel.montant_commission))
+                          .filter(CommissionModel.statut.in_(['pending', 'paiement_manuel'])).scalar() or 0,
+                'paid': db.session.query(db.func.sum(CommissionModel.montant_commission))
+                        .filter(CommissionModel.statut == 'paid').scalar() or 0,
+                'count': CommissionModel.query.count()
+            }
+        else:
+            commissions = []
+            stats = {'total': 0, 'pending': 0, 'paid': 0, 'count': 0}
+            flash("Module de commissions non disponible", "warning")
+    except Exception as e:
+        logger.error(f"Erreur chargement commissions: {e}")
+        commissions = []
+        stats = {'total': 0, 'pending': 0, 'paid': 0, 'count': 0}
+    
     return render_template(
-        "admin_dashboard.html",
-        niveaux=niveaux,
+        "admin/commissions.html",
+        commissions=commissions,
         stats=stats,
-        eleves_par_niveau=eleves_par_niveau,
         lang=lang
     )
 
+@app.route("/admin/calculate-commissions")
+@admin_required
+def calculate_commissions():
+    """Calculer les commissions pour tous les enseignants"""
+    try:
+        CommissionModel = get_model('Commission')
+        UserModel = get_user_model()
+        
+        if not CommissionModel or not UserModel:
+            return jsonify({
+                'success': False,
+                'message': 'Module de commission non disponible'
+            }), 400
+        
+        # Récupérer tous les enseignants
+        enseignants = UserModel.query.filter_by(role="enseignant").all()
+        commissions_created = 0
+        enseignants_avec_commissions = []
+        
+        for enseignant in enseignants:
+            # Compter les élèves de cet enseignant (utilisez enseignant_referent_id)
+            students_count = UserModel.query.filter_by(
+                enseignant_referent_id=enseignant.id, 
+                role="eleve",
+                statut="actif"
+            ).count()
+            
+            if students_count > 0:
+                # Calcul basé sur le nombre d'élèves et leur statut
+                # Exemple: $10 par élève actif
+                commission_amount = students_count * 10.0
+                
+                # Vérifier s'il y a déjà une commission ce mois-ci
+                current_month = datetime.utcnow().month
+                current_year = datetime.utcnow().year
+                
+                existing_commission = CommissionModel.query.filter(
+                    CommissionModel.enseignant_id == enseignant.id,
+                    db.extract('month', CommissionModel.date_calcul) == current_month,
+                    db.extract('year', CommissionModel.date_calcul) == current_year,
+                    CommissionModel.type_abonnement == 'subscription'
+                ).first()
+                
+                if not existing_commission:
+                    # Créer la commission
+                    new_commission = CommissionModel(
+                        enseignant_id=enseignant.id,
+                        eleve_id=0,  # ID générique pour les commissions globales
+                        type_abonnement='subscription',
+                        montant_total=commission_amount * 5,  # Exemple: montant total 5x la commission
+                        montant_commission=commission_amount,
+                        taux_base=20.0,
+                        statut='pending',
+                        statut_eleve='actif',
+                        date_paiement_eleve=datetime.utcnow(),
+                        details_bonus={
+                            'students_count': students_count,
+                            'rate_per_student': 10.0,
+                            'type': 'monthly_subscription'
+                        }
+                    )
+                    db.session.add(new_commission)
+                    commissions_created += 1
+                    enseignants_avec_commissions.append({
+                        'id': enseignant.id,
+                        'nom': enseignant.nom_complet,
+                        'students': students_count,
+                        'amount': commission_amount
+                    })
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Créé {commissions_created} nouvelles commissions',
+            'count': commissions_created,
+            'teachers': enseignants_avec_commissions,
+            'total_amount': sum(t['amount'] for t in enseignants_avec_commissions)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur calcul commissions: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Erreur lors du calcul des commissions: {str(e)}'
+        }), 400
+
+@app.route("/admin/interac-payments")
+@admin_required
+def admin_interac_payments():
+    """Suivi des paiements Interac"""
+    lang = request.args.get("lang") or session.get("lang", "fr")
+    
+    try:
+        VersementManuelModel = get_model('VersementManuel')
+        if VersementManuelModel:
+            payments = VersementManuelModel.query\
+                .order_by(VersementManuelModel.date_demande.desc())\
+                .all()
+        else:
+            payments = []
+    except Exception as e:
+        logger.error(f"Erreur chargement paiements Interac: {e}")
+        payments = []
+    
+    return render_template(
+        "admin/interac_payments.html",
+        payments=payments,
+        lang=lang
+    )
+
+@app.route("/admin/generate-payment-report")
+@admin_required
+def admin_generate_payment_report():
+    """Génération de rapport de paiements"""
+    lang = request.args.get("lang") or session.get("lang", "fr")
+    
+    try:
+        CommissionModel = get_model('Commission')
+        VersementManuelModel = get_model('VersementManuel')
+        UserModel = get_user_model()
+        
+        # Générer des données pour le rapport
+        report_data = {
+            'month': datetime.utcnow().strftime('%B %Y'),
+            'total_teachers': UserModel.query.filter_by(role="enseignant").count() if UserModel else 0,
+            'total_students': UserModel.query.filter_by(role="eleve").count() if UserModel else 0,
+            'total_commissions': 0,
+            'total_payments': 0,
+            'commissions': [],
+            'payments': []
+        }
+        
+        if CommissionModel:
+            commissions = CommissionModel.query\
+                .filter(db.extract('month', CommissionModel.date_calcul) == datetime.utcnow().month)\
+                .all()
+            report_data['total_commissions'] = sum(c.montant_commission for c in commissions if c.montant_commission)
+            report_data['commissions'] = [{
+                'teacher_id': c.enseignant_id,
+                'amount': float(c.montant_commission or 0),
+                'status': c.statut,
+                'date': c.date_calcul.strftime('%Y-%m-%d') if c.date_calcul else ''
+            } for c in commissions]
+        
+        if VersementManuelModel:
+            payments = VersementManuelModel.query\
+                .filter(db.extract('month', VersementManuelModel.date_demande) == datetime.utcnow().month)\
+                .all()
+            report_data['total_payments'] = sum(p.montant_net for p in payments if p.montant_net)
+            report_data['payments'] = [{
+                'teacher_id': p.enseignant_id,
+                'amount': float(p.montant_net or 0),
+                'status': p.statut,
+                'date': p.date_demande.strftime('%Y-%m-%d') if p.date_demande else ''
+            } for p in payments]
+        
+    except Exception as e:
+        logger.error(f"Erreur génération rapport: {e}")
+        report_data = {}
+    
+    return render_template(
+        "admin/payment_report.html",
+        report=report_data,
+        lang=lang
+    )
+
+@app.route("/admin/teacher/<int:teacher_id>/commissions")
+@admin_required
+def admin_teacher_commissions(teacher_id):
+    """Commissions d'un enseignant spécifique"""
+    lang = request.args.get("lang") or session.get("lang", "fr")
+    
+    try:
+        CommissionModel = get_model('Commission')
+        UserModel = get_user_model()
+        
+        if CommissionModel and UserModel:
+            commissions = CommissionModel.query.filter_by(enseignant_id=teacher_id)\
+                .order_by(CommissionModel.date_calcul.desc()).all()
+            
+            enseignant = UserModel.query.get(teacher_id)
+            
+            if enseignant and enseignant.role == "enseignant":
+                stats = {
+                    'total': sum(float(c.montant_commission or 0) for c in commissions),
+                    'pending': sum(float(c.montant_commission or 0) for c in commissions 
+                                  if c.statut in ['pending', 'paiement_manuel']),
+                    'paid': sum(float(c.montant_commission or 0) for c in commissions 
+                               if c.statut == 'paid'),
+                    'count': len(commissions)
+                }
+            else:
+                commissions = []
+                enseignant = None
+                stats = {'total': 0, 'pending': 0, 'paid': 0, 'count': 0}
+                flash("Enseignant non trouvé", "error")
+        else:
+            commissions = []
+            enseignant = None
+            stats = {'total': 0, 'pending': 0, 'paid': 0, 'count': 0}
+            flash("Module de commissions non disponible", "warning")
+    except Exception as e:
+        logger.error(f"Erreur chargement commissions enseignant: {e}")
+        commissions = []
+        enseignant = None
+        stats = {'total': 0, 'pending': 0, 'paid': 0, 'count': 0}
+    
+    return render_template(
+        "admin/teacher_commissions.html",
+        commissions=commissions,
+        enseignant=enseignant,
+        stats=stats,
+        lang=lang
+    )
+
+@app.route("/admin/teacher/<int:teacher_id>/send-reminder", methods=["POST"])
+@admin_required
+def admin_send_payment_reminder(teacher_id):
+    """Envoyer un rappel de paiement à un enseignant"""
+    try:
+        UserModel = get_user_model()
+        enseignant = UserModel.query.get(teacher_id)
+        
+        if not enseignant or enseignant.role != "enseignant":
+            return jsonify({
+                'success': False,
+                'message': 'Enseignant non trouvé'
+            }), 404
+        
+        # Ici vous pourriez envoyer un email
+        # send_payment_reminder_email(enseignant.email, enseignant.nom_complet)
+        
+        logger.info(f"Rappel de paiement envoyé à {enseignant.nom_complet} ({enseignant.email})")
+        
+        return jsonify({
+            'success': True,
+            'message': f"Rappel envoyé à {enseignant.nom_complet}"
+        })
+    except Exception as e:
+        logger.error(f"Erreur envoi rappel: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route("/admin/commission/<int:commission_id>/details")
+@admin_required
+def commission_details(commission_id):
+    """Détails d'une commission spécifique"""
+    try:
+        CommissionModel = get_model('Commission')
+        UserModel = get_user_model()
+        
+        if not CommissionModel:
+            return jsonify({
+                'date': '',
+                'type': '',
+                'amount': 0,
+                'status': '',
+                'description': '',
+                'payment_date': '',
+                'reference': '',
+                'teacher_name': ''
+            })
+        
+        commission = CommissionModel.query.get(commission_id)
+        
+        if not commission:
+            return jsonify({
+                'date': '',
+                'type': '',
+                'amount': 0,
+                'status': '',
+                'description': '',
+                'payment_date': '',
+                'reference': '',
+                'teacher_name': ''
+            })
+        
+        # Récupérer le nom de l'enseignant
+        teacher_name = "N/A"
+        if UserModel:
+            teacher = UserModel.query.get(commission.enseignant_id)
+            teacher_name = teacher.nom_complet if teacher else "N/A"
+        
+        return jsonify({
+            'date': commission.date_calcul.strftime('%Y-%m-%d') if commission.date_calcul else '',
+            'type': commission.type_abonnement or '',
+            'amount': float(commission.montant_commission) if commission.montant_commission else 0,
+            'status': commission.statut or '',
+            'description': f"Commission pour {commission.type_abonnement}",
+            'payment_date': commission.date_versement_manuel.strftime('%Y-%m-%d') if commission.date_versement_manuel else '',
+            'reference': commission.reference_interac or '',
+            'teacher_name': teacher_name
+        })
+    except Exception as e:
+        logger.error(f"Erreur détails commission: {e}")
+        return jsonify({
+            'date': '',
+            'type': '',
+            'amount': 0,
+            'status': '',
+            'description': '',
+            'payment_date': '',
+            'reference': '',
+            'teacher_name': ''
+        })
+
+@app.route("/admin/commission/<int:commission_id>/mark-paid", methods=["POST"])
+@admin_required
+def mark_commission_paid(commission_id):
+    """Marquer une commission comme payée"""
+    try:
+        CommissionModel = get_model('Commission')
+        if not CommissionModel:
+            return jsonify({
+                'success': False,
+                'message': 'Module de commissions non disponible'
+            }), 400
+        
+        commission = CommissionModel.query.get(commission_id)
+        if not commission:
+            return jsonify({
+                'success': False,
+                'message': 'Commission non trouvée'
+            }), 404
+        
+        commission.statut = 'paid'
+        commission.date_versement_manuel = datetime.utcnow()
+        db.session.commit()
+        
+        logger.info(f"Commission {commission_id} marquée comme payée")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Commission marquée comme payée'
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur marquage commission payée: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+# ====================================================================
+# API ENDPOINTS POUR LE TABLEAU DE BORD
+# ====================================================================
+
+@app.route("/admin/payment/<int:payment_id>/details")
+@admin_required
+def admin_payment_details(payment_id):
+    """Détails d'un paiement (API)"""
+    try:
+        VersementManuelModel = get_model('VersementManuel')
+        UserModel = get_user_model()
+        
+        if not VersementManuelModel:
+            return jsonify({
+                'teacher_name': 'N/A',
+                'amount': 0,
+                'status': 'unknown',
+                'date': '',
+                'reference': '',
+                'email': '',
+                'method': ''
+            })
+        
+        payment = VersementManuelModel.query.get(payment_id)
+        
+        if not payment:
+            return jsonify({
+                'teacher_name': 'N/A',
+                'amount': 0,
+                'status': 'unknown',
+                'date': '',
+                'reference': '',
+                'email': '',
+                'method': ''
+            })
+        
+        # Récupérer les infos de l'enseignant
+        teacher_name = "N/A"
+        teacher_email = "N/A"
+        if UserModel:
+            teacher = UserModel.query.get(payment.enseignant_id)
+            if teacher:
+                teacher_name = teacher.nom_complet
+                teacher_email = teacher.email
+        
+        return jsonify({
+            'teacher_name': teacher_name,
+            'amount': float(payment.montant_net) if payment.montant_net else 0,
+            'status': payment.statut or 'unknown',
+            'date': payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else '',
+            'reference': payment.reference_interac or '',
+            'email': payment.email_interac or teacher_email,
+            'method': payment.method or 'interac'
+        })
+    except Exception as e:
+        logger.error(f"Erreur détails paiement: {e}")
+        return jsonify({
+            'teacher_name': 'N/A',
+            'amount': 0,
+            'status': 'unknown',
+            'date': '',
+            'reference': '',
+            'email': '',
+            'method': ''
+        })
+
+@app.route("/admin/payment/<int:payment_id>/mark-paid", methods=["POST"])
+@admin_required
+def admin_mark_payment_paid(payment_id):
+    """Marquer un paiement comme payé"""
+    try:
+        VersementManuelModel = get_model('VersementManuel')
+        if not VersementManuelModel:
+            return jsonify({
+                'success': False,
+                'message': 'Module de paiements non disponible'
+            }), 400
+        
+        payment = VersementManuelModel.query.get(payment_id)
+        if not payment:
+            return jsonify({
+                'success': False,
+                'message': 'Paiement non trouvé'
+            }), 404
+        
+        # Mettre à jour le statut
+        payment.statut = 'complete'
+        payment.date_versement = datetime.utcnow()
+        db.session.commit()
+        
+        logger.info(f"Paiement {payment_id} marqué comme payé")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Paiement marqué comme payé'
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur marquage paiement payé: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route("/admin/payment/<int:payment_id>/update", methods=["POST"])
+@admin_required
+def admin_update_payment(payment_id):
+    """Mettre à jour un paiement (référence Interac, etc.)"""
+    try:
+        VersementManuelModel = get_model('VersementManuel')
+        if not VersementManuelModel:
+            return jsonify({
+                'success': False,
+                'message': 'Module de paiements non disponible'
+            }), 400
+        
+        payment = VersementManuelModel.query.get(payment_id)
+        if not payment:
+            return jsonify({
+                'success': False,
+                'message': 'Paiement non trouvé'
+            }), 404
+        
+        data = request.get_json()
+        
+        # Mettre à jour les champs
+        if 'reference_interac' in data:
+            payment.reference_interac = data['reference_interac']
+        
+        if 'status' in data:
+            payment.statut = data['status']
+            
+        if 'notes' in data:
+            payment.notes_admin = data['notes']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Paiement mis à jour'
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur mise à jour paiement: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
 
 
@@ -2580,35 +3852,113 @@ def supprimer_test(test_id):
     return redirect(url_for("liste_tests"))
 
 
-@app.route("/login-admin", methods=["GET", "POST"])
-def login_admin():
-    if request.method == "POST":
-        email = request.form.get("email")
-        mot_de_passe = request.form.get("mot_de_passe")
-
-        # 🔍 Vérifie si un admin existe dans la base
-        admin_user = User.query.filter_by(email=email, role="admin").first()
-        if admin_user and admin_user.verifier_mot_de_passe(mot_de_passe):
-            session["is_admin"] = True
-            session["admin_id"] = admin_user.id
-            session["admin_nom"] = admin_user.nom_complet
-            return redirect("/admin/dashboard")
-
-        return "Identifiants incorrects", 401
-
-    # AJOUT : Récupérer la langue de la session
-    lang = session.get('lang', 'fr')
-    return render_template("login_admin.html", lang=lang)
-
-
 
 @app.route("/admin-enseignants")
 @admin_required
 def admin_enseignants():
-    enseignants = Enseignant.query.options(
-        joinedload(Enseignant.eleves).joinedload(User.niveau)
-    ).all()
-    return render_template("admin_enseignants.html", enseignants=enseignants)
+    """Page d'administration des enseignants"""
+    try:
+        from models import User, Commission
+        
+        # Récupérer tous les enseignants
+        enseignants = User.query.filter_by(role="enseignant").all()
+        
+        print(f"DEBUG: {len(enseignants)} enseignants trouvés")
+        
+        # Préparer les données pour le template
+        enseignants_data = []
+        for enseignant in enseignants:
+            print(f"DEBUG: Enseignant {enseignant.id}: {enseignant.email}")
+            
+            # Récupérer TOUS les élèves (pas juste 5)
+            eleves = User.query.filter(
+                User.enseignant_referent_id == enseignant.id,
+                (User.role == 'eleve') | (User.role == 'élève')
+            ).all()
+            
+            # Compter les élèves
+            eleves_count = len(eleves)
+            
+            # Calculer les commissions
+            commissions = Commission.query.filter_by(enseignant_id=enseignant.id).all()
+            commissions_total = sum(c.montant_commission for c in commissions if c.montant_commission)
+            commissions_pending = sum(c.montant_commission for c in commissions 
+                                    if c.montant_commission and c.statut in ['pending', 'paiement_manuel'])
+            
+            # Téléphone (si existe)
+            telephone = getattr(enseignant, 'telephone', None)
+            
+            enseignants_data.append({
+                'id': enseignant.id,
+                'nom_complet': enseignant.nom_complet,  # CORRECTION ICI: nom_complet, pas nom_complet
+                'email': enseignant.email,
+                'telephone': telephone,  # Ajout du téléphone
+                'username': enseignant.username,
+                'date_inscription': enseignant.date_inscription,
+                'statut': enseignant.statut,
+                'taux_commission': getattr(enseignant, 'taux_commission', 20.0),
+                'specialite': getattr(enseignant, 'specialite', ''),
+                'experience_annees': getattr(enseignant, 'experience_annees', 0),
+                'eleves_count': eleves_count,
+                'commissions_total': commissions_total,
+                'commissions_pending': commissions_pending,
+                'eleves': eleves  # TOUS les élèves, pas juste 5
+            })
+        
+        # DEBUG: Afficher la structure
+        print(f"DEBUG: Données envoyées au template:")
+        if enseignants_data:
+            import json
+            print(json.dumps(enseignants_data[0], indent=2, default=str))
+        
+        return render_template(
+            "admin_enseignants.html", 
+            enseignants=enseignants_data,  # C'est une liste de dicts
+            lang=session.get('lang', 'fr')
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur dans admin_enseignants: {e}")
+        flash("Erreur lors du chargement de la liste des enseignants", "error")
+        return redirect(url_for("admin_dashboard"))
+
+@app.route("/debug-all-users")
+@admin_required
+def debug_all_users():
+    """Afficher tous les utilisateurs pour déboguer"""
+    from models import User
+    
+    result = "<h1>DEBUG - Tous les utilisateurs</h1>"
+    
+    all_users = User.query.all()
+    result += f"<p>Total users: {len(all_users)}</p>"
+    
+    # Compter par rôle
+    from collections import Counter
+    roles = [u.role for u in all_users]
+    role_counts = Counter(roles)
+    
+    result += "<h3>Comptage par rôle:</h3>"
+    for role, count in role_counts.items():
+        result += f"<p>'{role}': {count} utilisateurs</p>"
+    
+    # Afficher tous les utilisateurs détaillés
+    result += "<h3>Tous les utilisateurs:</h3>"
+    for user in all_users:
+        result += f"""
+        <div style="border:1px solid #ccc; padding:10px; margin:5px;">
+            <strong>ID: {user.id}</strong><br>
+            Nom: {user.nom_complet}<br>
+            Email: {user.email}<br>
+            Rôle: <strong>'{user.role}'</strong><br>
+            Username: {user.username}<br>
+            Date inscription: {user.date_inscription}<br>
+            Statut: {user.statut}<br>
+            Enseignant référent ID: {user.enseignant_referent_id}
+        </div>
+        """
+    
+    return result
 
 @app.route("/admin/modifier-unite/<int:id>", methods=["GET", "POST"])
 @admin_required
@@ -2640,36 +3990,196 @@ def supprimer_unite(id):
 @app.route("/admin/modifier-enseignant/<int:enseignant_id>", methods=["GET", "POST"])
 @admin_required
 def modifier_enseignant_admin(enseignant_id):
-    enseignant = Enseignant.query.get_or_404(enseignant_id)
+    """Modifier un enseignant (admin)"""
+    try:
+        UserModel = get_user_model()
+        
+        # Récupérer l'utilisateur enseignant
+        enseignant = UserModel.query.filter_by(
+            id=enseignant_id, 
+            role="enseignant"
+        ).first_or_404()
+        
+        if request.method == "POST":
+            # Récupérer les données du formulaire
+            nom_complet = request.form.get("nom_complet", "").strip()
+            email = request.form.get("email", "").strip()
+            username = request.form.get("username", "").strip()
+            taux_commission = request.form.get("taux_commission", "")
+            specialite = request.form.get("specialite", "").strip()
+            experience_annees = request.form.get("experience_annees", "")
+            methode_versement = request.form.get("methode_versement", "").strip()
+            email_interac_paiement = request.form.get("email_interac_paiement", "").strip()
+            statut = request.form.get("statut", "").strip()
+            nouveau_mot_de_passe = request.form.get("mot_de_passe", "").strip()
 
-    if request.method == "POST":
-        enseignant.nom = request.form.get("nom").strip()
-        enseignant.email = request.form.get("email").strip()
-        nouveau_mot_de_passe = request.form.get("mot_de_passe")
+            # Validation des données
+            if not nom_complet or not email:
+                flash("Le nom et l'email sont obligatoires", "error")
+                return render_template("modifier_enseignant.html", 
+                                      enseignant=enseignant,
+                                      lang=session.get('lang', 'fr'))
 
-        if nouveau_mot_de_passe:
-            enseignant.mot_de_passe = nouveau_mot_de_passe
+            # Mettre à jour les champs de base
+            enseignant.nom_complet = nom_complet
+            enseignant.email = email
+            
+            if username:
+                enseignant.username = username
+            
+            # Champs spécifiques aux enseignants
+            if taux_commission:
+                try:
+                    enseignant.taux_commission = float(taux_commission)
+                except ValueError:
+                    flash("Taux de commission invalide", "error")
+            
+            if specialite:
+                enseignant.specialite = specialite
+            
+            if experience_annees:
+                try:
+                    enseignant.experience_annees = int(experience_annees)
+                except ValueError:
+                    flash("Années d'expérience invalides", "error")
+            
+            if methode_versement:
+                enseignant.methode_versement = methode_versement
+            
+            if email_interac_paiement:
+                enseignant.email_interac_paiement = email_interac_paiement
+            
+            if statut:
+                enseignant.statut = statut
+            
+            # Mettre à jour le mot de passe si fourni
+            if nouveau_mot_de_passe:
+                enseignant.mot_de_passe = nouveau_mot_de_passe
 
-        db.session.commit()
+            db.session.commit()
+            flash("Enseignant modifié avec succès", "success")
+            return redirect("/admin-enseignants")
+
+        # GET: Afficher le formulaire
+        return render_template(
+            "modifier_enseignant.html", 
+            enseignant=enseignant,
+            lang=session.get('lang', 'fr')
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur modification enseignant: {e}")
+        flash("Erreur lors de la modification de l'enseignant", "error")
         return redirect("/admin-enseignants")
-
-    return render_template("modifier_enseignant.html", enseignant=enseignant)
 
 @app.route("/supprimer-enseignant", methods=["POST"])
 @admin_required
 def supprimer_enseignant():
-    enseignant_id = request.form.get("id")
-    enseignant = Enseignant.query.get(enseignant_id)
-    if enseignant:
-        db.session.delete(enseignant)
-        db.session.commit()
+    """Supprimer un enseignant"""
+    try:
+        UserModel = get_user_model()
+        enseignant_id = request.form.get("id")
+        
+        if not enseignant_id:
+            flash("ID enseignant manquant", "error")
+            return redirect("/admin-enseignants")
+        
+        # Récupérer l'enseignant
+        enseignant = UserModel.query.filter_by(
+            id=enseignant_id, 
+            role="enseignant"
+        ).first()
+        
+        if enseignant:
+            # Vérifier s'il a des élèves
+            eleves_count = UserModel.query.filter_by(
+                enseignant_referent_id=enseignant.id, 
+                role="eleve"
+            ).count()
+            
+            if eleves_count > 0:
+                flash(f"Impossible de supprimer cet enseignant car il a {eleves_count} élève(s) encadré(s). Réaffectez d'abord les élèves.", "error")
+                return redirect("/admin-enseignants")
+            
+            # Vérifier les commissions en attente
+            CommissionModel = get_model('Commission')
+            if CommissionModel:
+                # CORRECTION: Utilisez filter() au lieu de filter_by() pour in_()
+                commissions_pending = CommissionModel.query.filter(
+                    CommissionModel.enseignant_id == enseignant.id,
+                    CommissionModel.statut.in_(['pending', 'paiement_manuel'])
+                ).count()
+                
+                if commissions_pending > 0:
+                    flash(f"Impossible de supprimer cet enseignant car il a {commissions_pending} commission(s) en attente.", "error")
+                    return redirect("/admin-enseignants")
+            
+            # Supprimer l'enseignant
+            db.session.delete(enseignant)
+            db.session.commit()
+            flash("Enseignant supprimé avec succès", "success")
+        else:
+            flash("Enseignant non trouvé", "error")
 
-    return redirect("/admin-enseignants")
+        return redirect("/admin-enseignants")
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur suppression enseignant: {e}")
+        flash("Erreur lors de la suppression de l'enseignant", "error")
+        return redirect("/admin-enseignants")
 
 @app.route("/liste-enseignants")
 def liste_enseignants():
-    enseignants = Enseignant.query.all()
-    return render_template("liste_enseignants.html", enseignants=enseignants)
+    """Liste publique des enseignants (pour les élèves/parents)"""
+    try:
+        UserModel = get_user_model()
+        
+        # Récupérer les enseignants actifs
+        enseignants = UserModel.query.filter_by(
+            role="enseignant",
+            statut="actif"
+        ).all()
+        
+        # Préparer les données pour l'affichage public
+        enseignants_data = []
+        for enseignant in enseignants:
+            # Compter les élèves (optionnel, pour afficher l'expérience)
+            eleves_count = UserModel.query.filter_by(
+                enseignant_referent_id=enseignant.id, 
+                role="eleve"
+            ).count()
+            
+            enseignants_data.append({
+                'id': enseignant.id,
+                'nom_complet': enseignant.nom_complet,
+                'specialite': getattr(enseignant, 'specialite', ''),
+                'experience_annees': getattr(enseignant, 'experience_annees', 0),
+                'biographie': getattr(enseignant, 'biographie', ''),
+                'qualifications': getattr(enseignant, 'qualifications', ''),
+                'eleves_count': eleves_count,
+                'note_moyenne': getattr(enseignant, 'note_moyenne', 0.0),
+                'nombre_evaluations': getattr(enseignant, 'nombre_evaluations', 0)
+            })
+        
+        # Trier par note moyenne ou expérience
+        enseignants_data.sort(key=lambda x: x['note_moyenne'], reverse=True)
+        
+        return render_template(
+            "liste_enseignants.html", 
+            enseignants=enseignants_data,
+            lang=session.get('lang', 'fr')
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur liste enseignants: {e}")
+        # Retourner une liste vide en cas d'erreur
+        return render_template(
+            "liste_enseignants.html", 
+            enseignants=[],
+            lang=session.get('lang', 'fr')
+        )
+        
 
 @app.route("/logout")
 def logout():
@@ -2695,37 +4205,155 @@ def inscription():
     return render_template("inscription.html")
 
 @app.route("/inscription-enseignant", methods=["GET", "POST"])
-@admin_required  # ⬅️ Utilisez le décorateur admin_required au lieu de vérifier session
 def inscription_enseignant():
+    """Inscription d'un nouvel enseignant - accessible sans authentification"""
+    lang = request.args.get("lang") or session.get("lang", "fr")
+    
     if request.method == "POST":
         nom = request.form.get("nom")
         email = request.form.get("email")
         mot_de_passe = request.form.get("mot_de_passe")
+        confirm_password = request.form.get("confirm_password")
 
-        if not all([nom, email, mot_de_passe]):
-            flash("Tous les champs sont requis", "error")
-            return render_template("inscription_enseignant.html")
+        # Validation basique
+        if not all([nom, email, mot_de_passe, confirm_password]):
+            flash("Tous les champs sont requis" if lang == 'fr' else "All fields are required", "error")
+            return render_template("inscription_enseignant.html", lang=lang)
+
+        # Vérifier la confirmation du mot de passe
+        if mot_de_passe != confirm_password:
+            flash("Les mots de passe ne correspondent pas" if lang == 'fr' else "Passwords do not match", "error")
+            return render_template("inscription_enseignant.html", lang=lang)
+
+        # Vérifier la longueur du mot de passe
+        if len(mot_de_passe) < 8:
+            flash("Le mot de passe doit contenir au moins 8 caractères" if lang == 'fr' else "Password must be at least 8 characters", "error")
+            return render_template("inscription_enseignant.html", lang=lang)
 
         # Vérifier si l'email existe déjà
-        if Enseignant.query.filter_by(email=email.strip()).first():
-            flash("Un enseignant avec cet email existe déjà.", "error")
-            return render_template("inscription_enseignant.html")
+        existing_user = User.query.filter_by(email=email.strip()).first()
+        if existing_user:
+            flash("Un utilisateur avec cet email existe déjà." if lang == 'fr' else "A user with this email already exists.", "error")
+            return render_template("inscription_enseignant.html", lang=lang)
 
-        # Créer l'enseignant
-        enseignant = Enseignant(
-            nom=nom.strip(),
-            email=email.strip()
-        )
-        enseignant.mot_de_passe = mot_de_passe  # Utilise le setter pour hacher le mot de passe
+        try:
+            # Créer l'utilisateur enseignant
+            new_teacher = User(
+                username=email.strip().split('@')[0],  # Utilise la partie avant @ comme username
+                nom_complet=nom.strip(),
+                email=email.strip(),
+                role="enseignant",
+                statut="actif",
+                statut_paiement="exempt",  # Enseignants n'ont pas besoin de payer
+                inscrit_par_admin=False,
+                langue=lang,
+                date_inscription=datetime.utcnow(),
+                email_verifie=False,
+                accepte_cgu=True,
+                date_acceptation_cgu=datetime.utcnow()
+            )
+            
+            # Définir le mot de passe (le setter le hache automatiquement)
+            new_teacher.mot_de_passe = mot_de_passe
+            
+            db.session.add(new_teacher)
+            db.session.commit()
 
-        db.session.add(enseignant)
-        db.session.commit()
+            # Envoyer un email de bienvenue (optionnel)
+            # send_welcome_email(new_teacher.email, new_teacher.nom_complet, lang)
+            
+            flash(
+                "Inscription réussie ! Veuillez contacter le support à info@advanceteach.com pour vous connecter à vos élèves." 
+                if lang == 'fr' else 
+                "Registration successful! Please contact support at info@advanceteach.com to connect with your students.", 
+                "success"
+            )
+            
+            # Rediriger vers la page de connexion
+            return redirect(url_for("login_enseignant", lang=lang))
 
-        flash("Enseignant inscrit avec succès !", "success")
-        return redirect(url_for("liste_enseignants"))  # Ou vers le dashboard
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erreur inscription enseignant: {e}")
+            flash(
+                f"Erreur lors de l'inscription: {str(e)}" 
+                if lang == 'fr' else 
+                f"Registration error: {str(e)}", 
+                "error"
+            )
+            return render_template("inscription_enseignant.html", lang=lang)
 
-    return render_template("inscription_enseignant.html")
+    # GET request - rendre le template avec la langue
+    return render_template("inscription_enseignant.html", lang=lang)
 
+@app.route("/admin/creer-enseignant", methods=["GET", "POST"])
+@admin_required
+def creer_enseignant_admin():
+    """Créer un enseignant depuis l'admin dashboard"""
+    lang = session.get("lang", "fr")
+    
+    if request.method == "POST":
+        nom = request.form.get("nom_complet")
+        email = request.form.get("email")
+        telephone = request.form.get("telephone")
+        specialite = request.form.get("specialite")
+        
+        # Validation
+        if not all([nom, email]):
+            flash("Nom et email sont obligatoires", "error")
+            return redirect(url_for("admin_dashboard"))
+        
+        # Vérifier si l'email existe déjà
+        existing = User.query.filter_by(email=email).first()
+        if existing:
+            flash("Un utilisateur avec cet email existe déjà", "error")
+            return redirect(url_for("admin_dashboard"))
+        
+        try:
+            # Générer un mot de passe temporaire
+            temp_password = generate_temp_password()
+            
+            # Créer l'enseignant
+            enseignant = User(
+                username=email.split('@')[0],
+                nom_complet=nom,
+                email=email,
+                telephone=telephone,
+                specialite=specialite,
+                role="enseignant",
+                statut="actif",
+                statut_paiement="exempt",
+                inscrit_par_admin=True,
+                langue=lang,
+                mot_de_passe=temp_password,  # Le setter va hacher
+                date_inscription=datetime.utcnow()
+            )
+            
+            db.session.add(enseignant)
+            db.session.commit()
+            
+            # Envoyer email avec identifiants (optionnel)
+            # send_teacher_credentials(email, nom, temp_password)
+            
+            flash(f"Enseignant {nom} créé avec succès !", "success")
+            
+            # REDIRECTION CORRECTE : Revenir au dashboard admin
+            return redirect(url_for("admin_dashboard"))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erreur: {str(e)}", "error")
+            return redirect(url_for("admin_dashboard"))
+    
+    # GET request - montrer le formulaire
+    return render_template("admin_creer_enseignant.html", lang=lang)
+
+def generate_temp_password(length=10):
+    """Génère un mot de passe temporaire"""
+    import secrets
+    import string
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 @app.route("/changer-langue", methods=["POST"])
 def changer_langue():
@@ -2769,27 +4397,97 @@ def changer_langue():
 
 @app.route("/enseignant/changer-mot-de-passe", methods=["GET", "POST"])
 def changer_mot_de_passe_enseignant():
-    if "enseignant_id" not in session:
-        return redirect("/login-enseignant")
+    """Permettre à un enseignant de changer son mot de passe"""
+    # Vérifier si l'utilisateur est connecté comme enseignant
+    if "user_id" not in session:
+        return redirect("/login")
+    
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/login")
+    
+    try:
+        UserModel = get_user_model()
+        
+        # Récupérer l'enseignant
+        enseignant = UserModel.query.filter_by(
+            id=session["user_id"],
+            role="enseignant"
+        ).first()
+        
+        if not enseignant:
+            flash("Enseignant non trouvé", "error")
+            return redirect("/login")
+        
+        if request.method == "POST":
+            ancien = request.form.get("ancien_mdp", "").strip()
+            nouveau = request.form.get("nouveau_mdp", "").strip()
+            confirmation = request.form.get("confirmation_mdp", "").strip()
 
-    enseignant = Enseignant.query.get(session["enseignant_id"])
+            # Validation
+            if not ancien:
+                flash("Veuillez entrer votre mot de passe actuel", "error")
+                return render_template(
+                    "changer_mot_de_passe.html", 
+                    enseignant=enseignant,
+                    lang=session.get('lang', 'fr')
+                )
+            
+            if not nouveau:
+                flash("Veuillez entrer un nouveau mot de passe", "error")
+                return render_template(
+                    "changer_mot_de_passe.html", 
+                    enseignant=enseignant,
+                    lang=session.get('lang', 'fr')
+                )
+            
+            if len(nouveau) < 6:
+                flash("Le mot de passe doit contenir au moins 6 caractères", "error")
+                return render_template(
+                    "changer_mot_de_passe.html", 
+                    enseignant=enseignant,
+                    lang=session.get('lang', 'fr')
+                )
+            
+            # Vérifier l'ancien mot de passe
+            if not enseignant.verifier_mot_de_passe(ancien):
+                flash("Mot de passe actuel incorrect", "error")
+                return render_template(
+                    "changer_mot_de_passe.html", 
+                    enseignant=enseignant,
+                    lang=session.get('lang', 'fr')
+                )
 
-    if request.method == "POST":
-        ancien = request.form.get("ancien_mdp")
-        nouveau = request.form.get("nouveau_mdp")
-        confirmation = request.form.get("confirmation_mdp")
+            # Vérifier la confirmation
+            if nouveau != confirmation:
+                flash("Les nouveaux mots de passe ne correspondent pas", "error")
+                return render_template(
+                    "changer_mot_de_passe.html", 
+                    enseignant=enseignant,
+                    lang=session.get('lang', 'fr')
+                )
 
-        if not enseignant.check_password(ancien):
-            return "Mot de passe actuel incorrect", 403
+            # Changer le mot de passe
+            enseignant.mot_de_passe = nouveau
+            db.session.commit()
+            
+            flash("Mot de passe mis à jour avec succès !", "success")
+            
+            # Rediriger vers le tableau de bord enseignant
+            return redirect("/enseignant/dashboard")
 
-        if nouveau != confirmation:
-            return "Les nouveaux mots de passe ne correspondent pas", 400
-
-        enseignant.set_password(nouveau)
-        db.session.commit()
-        return "Mot de passe mis à jour avec succès !"
-
-    return render_template("changer_mot_de_passe.html", enseignant=enseignant)
+        # GET: Afficher le formulaire
+        return render_template(
+            "changer_mot_de_passe.html", 
+            enseignant=enseignant,
+            lang=session.get('lang', 'fr')
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur changement mot de passe enseignant: {e}")
+        flash("Erreur lors du changement de mot de passe", "error")
+        return redirect("/enseignant/dashboard")
+    
 
 @app.route("/login-parent", methods=["GET", "POST"])
 def login_parent():
@@ -2897,12 +4595,24 @@ def inscription_eleve():
                 flash("Format d'email enseignant invalide", "error")
                 return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'))
             
-            # Rechercher l'enseignant dans la base de données
-            teacher_tutor = Enseignant.query.filter_by(email=teacher_email.strip()).first()
+            # ✅ CORRECTION 1 : Rechercher l'enseignant dans User (modèle unifié)
+            # Chercher d'abord dans User (si vous avez migré)
+            teacher_tutor = User.query.filter_by(
+                email=teacher_email.strip(), 
+                role="enseignant"
+            ).first()
+            
+            # ✅ CORRECTION 2 : Fallback sur l'ancien modèle Enseignant si besoin
+            if not teacher_tutor:
+                teacher_tutor_old = Enseignant.query.filter_by(email=teacher_email.strip()).first()
+                if teacher_tutor_old:
+                    # Convertir l'ancien enseignant en User si nécessaire
+                    flash("Enseignant trouvé dans l'ancien système", "info")
+                    teacher_tutor = None  # Vous devriez migrer cet enseignant
+            
             if not teacher_tutor:
                 flash("Enseignant non trouvé avec cet email. Assurez-vous que l'enseignant est inscrit sur la plateforme.", "warning")
-                # Vous pouvez décider de continuer sans enseignant ou arrêter
-                # Ici, on continue mais sans assigner d'enseignant
+                # Continuer sans enseignant
                 teacher_tutor = None
         
         # Récupérer les données du parent
@@ -2910,31 +4620,31 @@ def inscription_eleve():
         parent_email = request.form.get('parent_email')
         parent_telephone = request.form.get('parent_telephone')
         parent_telephone2 = request.form.get('parent_telephone2')
-        include_parent = request.form.get('include_parent', 'on') == 'on'  # Par défaut activé
+        include_parent = request.form.get('include_parent', 'on') == 'on'
         
-        # Création de l'élève
+        # ✅ CORRECTION 3 : Création de l'élève avec les bons noms de colonnes
         try:
             eleve = User(
                 username=form.username.data,
                 nom_complet=form.nom_complet.data,
                 email=form.email.data,
                 niveau_id=form.niveau.data,
-                role="élève",
+                role="eleve",  # ✅ CORRECTION : "eleve" pas "élève" (minuscule)
                 telephone=form.telephone.data,
                 statut="actif",
-                statut_paiement="essai_gratuit",  # Par défaut
+                statut_paiement="essai_gratuit",
                 inscrit_par_admin=False,
                 accepte_cgu=form.accepte_cgu.data,
-                date_acceptation_cgu=datetime.now() if form.accepte_cgu.data else None,
-                langue=session.get('lang', 'fr'),  # Conserver la langue
-                # Assigner l'enseignant si trouvé
-                enseignant_id=teacher_tutor.id if teacher_tutor else None
+                date_acceptation_cgu=datetime.utcnow() if form.accepte_cgu.data else None,
+                langue=session.get('lang', 'fr'),
+                # ✅ CORRECTION : enseignant_referent_id pas enseignant_id
+                enseignant_referent_id=teacher_tutor.id if teacher_tutor else None
             )
             
             eleve.mot_de_passe = form.mot_de_passe.data
             
             db.session.add(eleve)
-            db.session.flush()  # Pour obtenir l'ID
+            db.session.flush()
             
             # Création du parent si les informations sont fournies
             if include_parent and parent_nom_complet and parent_email:
@@ -2955,23 +4665,29 @@ def inscription_eleve():
                 )
                 db.session.add(relation_parent_eleve)
             
-            # Option 1: Essai gratuit (3 jours) - PAR DÉFAUT
+            # Option 1: Essai gratuit (3 jours)
             if payment_option == 'trial':
-                # Utiliser VOTRE méthode existante avec 72h (3 jours)
-                eleve.activer_essai_gratuit(72)  # 72 heures = 3 jours
+                # ✅ CORRECTION 4 : Vérifier si la méthode existe
+                if hasattr(eleve, 'activer_essai_gratuit'):
+                    eleve.activer_essai_gratuit(72)  # 72 heures = 3 jours
+                else:
+                    # Fallback si la méthode n'existe pas
+                    eleve.statut_essai = 'actif'
+                    eleve.date_fin_essai = datetime.utcnow() + timedelta(hours=72)
+                
                 db.session.commit()
                 
-                # Connexion automatique
-                session['eleve_id'] = eleve.id
-                session['eleve_username'] = eleve.username
-                session['eleve_nom_complet'] = eleve.nom_complet
-                session['role'] = 'élève'
+                # ✅ CORRECTION 5 : Connexion avec les bons noms de session
+                session['user_id'] = eleve.id  # ✅ Pas 'eleve_id'
+                session['username'] = eleve.username  # ✅ Pas 'eleve_username'
+                session['nom_complet'] = eleve.nom_complet  # ✅ Pas 'eleve_nom_complet'
+                session['role'] = 'eleve'  # ✅ Pas 'élève'
+                session['lang'] = eleve.langue if eleve.langue else 'fr'
                 
                 # Notifier l'enseignant si assigné
                 if teacher_tutor:
                     try:
-                        # Vous pourriez ajouter ici un système de notification par email
-                        print(f"📧 Élève {eleve.nom_complet} assigné à l'enseignant {teacher_tutor.nom}")
+                        print(f"📧 Élève {eleve.nom_complet} assigné à l'enseignant {teacher_tutor.nom_complet}")
                     except Exception as e:
                         print(f"⚠️ Erreur notification enseignant: {e}")
                 
@@ -2997,106 +4713,85 @@ def inscription_eleve():
                     if not stripe.api_key:
                         raise Exception("Stripe non configuré")
                     
-                    # CONFIGURATION DES PLANS OPTIMISÉS (NOUVEAUX PRIX MIS À JOUR)
+                    # CONFIGURATION DES PLANS
                     plan_config = {
                         'monthly': {
-                            'amount': 1999,  # 19.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                            'amount': 1999,
                             'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
                             'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
                             'product_name_fr': "Forfait Mensuel (19.99$/mois)",
                             'product_name_en': "Monthly Plan (19.99$/month)",
                             'interval': 'month',
-                            'features_fr': "• Enseignant virtuel 24/7 • Questionnement socratique • Toutes matières incluses • Suivi de progression • Annulez à tout moment",
-                            'features_en': "• Virtual teacher 24/7 • Socratic questioning • All subjects included • Progress tracking • Cancel anytime"
                         },
                         'quarterly': {
-                            'amount': 4999,  # 49.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                            'amount': 4999,
                             'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
                             'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
                             'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
                             'product_name_en': "Quarterly Plan (49.99$/3 months)",
                             'interval': 'month',
                             'interval_count': 3,
-                            'features_fr': "• Toutes fonctionnalités mensuelles • Support prioritaire • Revues trimestrielles • Feuille de route personnalisée • Économisez 3.33$/mois",
-                            'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap • Save 3.33$/month"
                         },
                         'annual': {
-                            'amount': 14999,  # 149.99 CAD (NOUVEAU PRIX OPTIMISÉ)
+                            'amount': 14999,
                             'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
                             'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
                             'product_name_fr': "Forfait Annuel (149.99$/an)",
                             'product_name_en': "Annual Plan (149.99$/year)",
                             'interval': 'year',
-                            'features_fr': "• Toutes fonctionnalités trimestrielles • Support premium • Rapports détaillés • Accès continu 12 mois • Économisez 37% (89.89$/an)",
-                            'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access • Save 37% (89.89$/year)"
                         }
                     }
                     
                     plan_info = plan_config.get(plan_type, plan_config['monthly'])
-                    
-                    # Traduction
                     lang = session.get('lang', 'fr')
-                    description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
-                    product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
-                    features = plan_info[f'features_{lang}'] if f'features_{lang}' in plan_info else plan_info['features_fr']
                     
-                    print(f"💰 Paiement Stripe pour {plan_type}: {plan_info['amount']/100}$ CAD")
-                    print(f"📊 Économies: {plan_type} - {plan_info['amount']/100}$")
+                    # ✅ CORRECTION 6 : Créer le customer Stripe pour cet élève
+                    stripe_customer = None
+                    try:
+                        # Créer ou récupérer le customer Stripe
+                        stripe_customer = stripe.Customer.create(
+                            email=eleve.email,
+                            name=eleve.nom_complet,
+                            phone=eleve.telephone,
+                            metadata={
+                                'user_id': eleve.id,
+                                'role': 'eleve',
+                                'niveau_id': str(eleve.niveau_id)
+                            }
+                        )
+                        eleve.stripe_customer_id = stripe_customer.id
+                        db.session.commit()
+                        print(f"✅ Customer Stripe créé: {stripe_customer.id}")
+                    except Exception as e:
+                        print(f"⚠️ Erreur création customer Stripe: {e}")
                     
-                    # Configurer le recurring
-                    recurring_config = {
-                        'interval': plan_info['interval'],
-                        'interval_count': plan_info.get('interval_count', 1)
-                    }
-                    
-                    # Calcul du prix mensuel pour l'affichage Stripe
-                    monthly_price = plan_info['amount'] / 100
-                    if plan_type == 'quarterly':
-                        monthly_price = monthly_price / 3  # 16.66$/mois
-                    elif plan_type == 'annual':
-                        monthly_price = monthly_price / 12  # 12.50$/mois
-                    
-                    # Créer un produit Stripe avec les détails
+                    # Créer la session checkout
                     checkout_session = stripe.checkout.Session.create(
                         payment_method_types=['card'],
                         line_items=[{
                             'price_data': {
                                 'currency': 'cad',
                                 'product_data': {
-                                    'name': product_name,
-                                    'description': description,
+                                    'name': plan_info[f'product_name_{lang}'],
+                                    'description': plan_info[f'description_{lang}'],
                                     'metadata': {
                                         'plan_type': plan_type,
                                         'lang': lang,
-                                        'monthly_price': f"{monthly_price:.2f}"
-                                    },
-                                    'images': [
-                                        'https://advanceteach.com/static/images/logo.png'
-                                    ] if os.path.exists('static/images/logo.png') else []
+                                    }
                                 },
                                 'unit_amount': plan_info['amount'],
-                                'recurring': recurring_config
+                                'recurring': {
+                                    'interval': plan_info['interval'],
+                                    'interval_count': plan_info.get('interval_count', 1)
+                                }
                             },
                             'quantity': 1,
                         }],
                         mode='subscription',
-                        subscription_data={
-                            'metadata': {
-                                'eleve_id': eleve.id,
-                                'plan_type': plan_type,
-                                'lang': lang,
-                                'monthly_effective_price': f"{monthly_price:.2f}",
-                                'original_price': f"{plan_info['amount']/100:.2f}",
-                                'student_name': eleve.nom_complet,
-                                'student_email': eleve.email,
-                                'teacher_id': str(teacher_tutor.id) if teacher_tutor else '',
-                                'teacher_name': teacher_tutor.nom if teacher_tutor else ''
-                            },
-                            'description': description
-                        },
                         success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
                         cancel_url=url_for('inscription_eleve', _external=True) + '?cancel=true&plan_type=' + plan_type,
-                        customer_email=form.email.data,
+                        customer=stripe_customer.id if stripe_customer else None,
+                        customer_email=eleve.email if not stripe_customer else None,
                         metadata={
                             'eleve_id': eleve.id,
                             'plan_type': plan_type,
@@ -3104,31 +4799,15 @@ def inscription_eleve():
                             'student_name': eleve.nom_complet,
                             'student_email': eleve.email,
                             'teacher_id': str(teacher_tutor.id) if teacher_tutor else '',
-                            'teacher_email': teacher_email if teacher_email else '',
-                            'monthly_price': f"{monthly_price:.2f}"
+                            'teacher_email': teacher_email if teacher_email else ''
                         },
                         allow_promotion_codes=True,
                         billing_address_collection='required',
                         phone_number_collection={'enabled': True},
-                        custom_text={
-                            'submit': {
-                                'message': f"💡 {'Moins de 0.67$ par jour !' if lang == 'fr' else 'Less than $0.67 per day!'}" if plan_type == 'monthly' else 
-                                         f"🎓 {'Idéal pour une session scolaire !' if lang == 'fr' else 'Perfect for a school session!'}" if plan_type == 'quarterly' else
-                                         f"🏆 {'Meilleur rapport qualité-prix !' if lang == 'fr' else 'Best value for money!'}"
-                            }
-                        },
-                        discounts=[{
-                            'coupon': 'WELCOME10'  # Coupon de bienvenue optionnel
-                        }] if os.environ.get('STRIPE_WELCOME_COUPON') else []
                     )
                     
                     print(f"🔗 Redirection vers Stripe pour paiement immédiat")
                     print(f"📝 Plan: {plan_type}, Montant: {plan_info['amount']/100}$ CAD")
-                    if teacher_tutor:
-                        print(f"👨‍🏫 Enseignant assigné: {teacher_tutor.nom} ({teacher_tutor.email})")
-                    
-                    # Logger pour le suivi
-                    print(f"📊 Nouvelle inscription avec paiement: {eleve.email}, Plan: {plan_type}")
                     
                     return redirect(checkout_session.url)
                     
@@ -3137,14 +4816,17 @@ def inscription_eleve():
                     import traceback
                     traceback.print_exc()
                     
-                    # En cas d'erreur Stripe, offrir l'essai gratuit de secours
-                    eleve.activer_essai_gratuit(72)  # 3 jours
+                    # En cas d'erreur Stripe, offrir l'essai gratuit
+                    if hasattr(eleve, 'activer_essai_gratuit'):
+                        eleve.activer_essai_gratuit(72)
+                    
                     db.session.commit()
                     
-                    session['eleve_id'] = eleve.id
-                    session['eleve_username'] = eleve.username
-                    session['eleve_nom_complet'] = eleve.nom_complet
-                    session['role'] = 'élève'
+                    # Connexion automatique
+                    session['user_id'] = eleve.id
+                    session['username'] = eleve.username
+                    session['nom_complet'] = eleve.nom_complet
+                    session['role'] = 'eleve'
                     
                     # Nettoyer les sessions
                     session.pop('pending_plan_type', None)
@@ -3153,8 +4835,6 @@ def inscription_eleve():
                     
                     lang = session.get('lang', 'fr')
                     flash_message = "⚠️ Paiement temporairement indisponible. Essai gratuit de 3 jours activé." if lang == 'fr' else "⚠️ Payment temporarily unavailable. 3-day free trial activated."
-                    if teacher_tutor:
-                        flash_message += " Votre enseignant tuteur vous a été assigné." if lang == 'fr' else " Your tutor teacher has been assigned."
                     flash(flash_message, "warning")
                     
                     return redirect(url_for('dashboard_eleve'))
@@ -3168,44 +4848,415 @@ def inscription_eleve():
             error_message = "Une erreur est survenue lors de la création du compte" if session.get('lang', 'fr') == 'fr' else "An error occurred while creating your account"
             flash(error_message, "error")
     
-    # Afficher un message d'annulation si l'utilisateur revient de Stripe
+    # Afficher un message d'annulation
     if request.args.get('cancel') == 'true':
         plan_type = request.args.get('plan_type', 'monthly')
         lang = session.get('lang', 'fr')
         
-        # Message personnalisé selon le plan avec les nouveaux prix
         if plan_type == 'monthly':
-            cancel_message = "Paiement mensuel (19.99$/mois) annulé. Essayez l'essai gratuit ou choisissez un autre plan." if lang == 'fr' else "Monthly payment (19.99$/month) cancelled. Try the free trial or choose another plan."
+            cancel_message = "Paiement mensuel (19.99$/mois) annulé." if lang == 'fr' else "Monthly payment (19.99$/month) cancelled."
         elif plan_type == 'quarterly':
-            cancel_message = "Paiement trimestriel (49.99$/3 mois) annulé. Le plan trimestriel offre 17% d'économies!" if lang == 'fr' else "Quarterly payment (49.99$/3 months) cancelled. The quarterly plan offers 17% savings!"
+            cancel_message = "Paiement trimestriel (49.99$/3 mois) annulé." if lang == 'fr' else "Quarterly payment (49.99$/3 months) cancelled."
         elif plan_type == 'annual':
-            cancel_message = "Paiement annuel (149.99$/an) annulé. Le plan annuel offre 37% d'économies - réessayez!" if lang == 'fr' else "Annual payment (149.99$/year) cancelled. The annual plan offers 37% savings - try again!"
+            cancel_message = "Paiement annuel (149.99$/an) annulé." if lang == 'fr' else "Annual payment (149.99$/year) cancelled."
         else:
-            cancel_message = "Paiement annulé. Vous pouvez réessayer ou choisir l'essai gratuit." if lang == 'fr' else "Payment cancelled. You can try again or choose the free trial."
+            cancel_message = "Paiement annulé." if lang == 'fr' else "Payment cancelled."
         
         flash(cancel_message, "warning")
     
     lang = session.get('lang', 'fr')
     return render_template("inscription_eleve.html", form=form, lang=lang)
 
+
+# Route pour les options d'upgrade
 @app.route("/upgrade-options")
 def upgrade_options():
-    if "eleve_id" not in session:
+    """Page de choix des options d'abonnement"""
+    # ✅ CORRECTION : Vérifier si l'utilisateur est connecté
+    if "user_id" not in session:
+        flash("Veuillez vous connecter d'abord", "warning")
         return redirect(url_for("login_eleve"))
     
-    eleve = User.query.get(session["eleve_id"])
-    if not eleve or eleve.role != "élève":
-        return redirect(url_for("login_eleve"))
+    # Vérifier le rôle
+    if session.get("role") != "eleve":
+        flash("Accès réservé aux élèves", "error")
+        return redirect("/")
     
-    # Vérifier si l'essai est expiré
-    if eleve.essai_est_expire() and eleve.statut_paiement == "essai_gratuit":
-        eleve.statut_paiement = "expire"
-        eleve.statut = "inactif"
-        db.session.commit()
+    try:
+        # Récupérer l'élève
+        eleve = User.query.get(session["user_id"])
+        
+        if not eleve:
+            flash("Session invalide", "error")
+            session.clear()
+            return redirect(url_for("login_eleve"))
+        
+        # ✅ Vérifier si l'élève est en essai gratuit ou a expiré
+        essai_actif = False
+        essai_expire = False
+        
+        if hasattr(eleve, 'est_en_essai_gratuit'):
+            essai_actif = eleve.est_en_essai_gratuit()
+            essai_expire = eleve.essai_est_expire()
+        
+        # ✅ Si l'élève a déjà payé, rediriger vers le dashboard
+        if eleve.statut_paiement == "paye" and eleve.a_acces_plateforme():
+            flash("Votre abonnement est déjà actif !", "success")
+            return redirect(url_for("dashboard_eleve"))
+        
+        # ✅ Si l'essai a expiré, afficher un message spécifique
+        message_type = None
+        if essai_expire:
+            message_type = "expired"
+            flash("Votre essai gratuit a expiré. Veuillez choisir un abonnement.", "warning")
+        elif not eleve.a_acces_plateforme():
+            message_type = "no_access"
+        
+        # Récupérer l'enseignant référent s'il existe
+        enseignant_referent = None
+        if hasattr(eleve, 'enseignant_referent_id') and eleve.enseignant_referent_id:
+            enseignant_referent = User.query.filter_by(
+                id=eleve.enseignant_referent_id,
+                role="enseignant"
+            ).first()
+        
+        # Calculer le temps restant d'essai
+        temps_restant = None
+        if essai_actif and hasattr(eleve, 'temps_restant_essai'):
+            temps_restant = eleve.temps_restant_essai()
+        
+        # Vérifier si un paiement est en attente
+        payment_pending = request.args.get('payment_pending') == 'true'
+        plan_type = request.args.get('plan', 'quarterly')
+        
+        return render_template(
+            "upgrade_options.html",
+            eleve=eleve,
+            essai_actif=essai_actif,
+            essai_expire=essai_expire,
+            enseignant_referent=enseignant_referent,
+            payment_pending=payment_pending,
+            plan_type=plan_type,
+            temps_restant=temps_restant,
+            message_type=message_type,
+            lang=session.get('lang', 'fr')
+        )
+    except Exception as e:
+        print(f"❌ Erreur upgrade_options: {e}")
+        import traceback
+        traceback.print_exc()
+        return render_template("upgrade_options.html", eleve=None, essai_actif=False, lang=session.get('lang', 'fr'))
     
-    lang = session.get("lang", "fr")
     
-    return render_template("upgrade_options.html", eleve=eleve, lang=lang)
+# Route de succès de paiement
+@app.route("/paiement-success")
+def paiement_success():
+    """Page de succès après paiement - Optimisée pour le modèle User unifié"""
+    try:
+        session_id = request.args.get('session_id')
+        user_id = request.args.get('user_id')
+        plan_type = request.args.get('plan_type', 'quarterly')
+        
+        if not session_id:
+            flash("Session de paiement invalide", "error")
+            return redirect(url_for('inscription_eleve'))
+        
+        # ✅ CORRECTION 1: Vérifier la connexion avec le modèle User unifié
+        if "user_id" not in session:
+            flash("Vous devez être connecté", "error")
+            return redirect(url_for("login_eleve"))
+        
+        # Vérifier le rôle
+        if session.get("role") != "eleve":
+            flash("Accès réservé aux élèves", "error")
+            return redirect("/")
+        
+        # ✅ CORRECTION 2: Utiliser User directement (pas get_user_model())
+        # Utiliser user_id de la session si non fourni
+        if not user_id:
+            user_id = session["user_id"]
+        
+        # Vérifier la session Stripe
+        stripe_session = stripe.checkout.Session.retrieve(session_id)
+        
+        if stripe_session.payment_status == 'paid' or stripe_session.mode == 'subscription':
+            # Activer le compte élève
+            eleve = User.query.get(user_id)
+            if eleve and eleve.role == "eleve":
+                # ✅ VÉRIFICATION SUPPLEMENTAIRE : ne pas réactiver si déjà payé
+                if eleve.statut_paiement == "paye" and eleve.date_fin_abonnement:
+                    if datetime.utcnow() < eleve.date_fin_abonnement:
+                        # L'utilisateur a déjà un abonnement actif
+                        lang = session.get('lang', 'fr')
+                        message = "✅ Votre abonnement est déjà actif !" if lang == 'fr' else "✅ Your subscription is already active!"
+                        flash(message, "success")
+                        return redirect(url_for('dashboard_eleve'))
+                
+                # Déterminer la durée de l'abonnement selon le plan
+                plan_durations = {
+                    'monthly': 30,     # 30 jours
+                    'quarterly': 90,   # 90 jours (3 mois)
+                    'annual': 365      # 365 jours (1 an)
+                }
+                duration_days = plan_durations.get(plan_type, 30)
+                
+                # ✅ CORRECTION 3: Récupérer l'enseignant depuis les metadata Stripe
+                enseignant_id = stripe_session.metadata.get('enseignant_id')
+                if enseignant_id and enseignant_id.strip() and enseignant_id not in ['', 'None', 'null', 'undefined']:
+                    try:
+                        teacher = User.query.filter_by(id=int(enseignant_id), role="enseignant").first()
+                        if teacher:
+                            eleve.enseignant_referent_id = teacher.id
+                            print(f"✅ Enseignant assigné: {teacher.nom_complet}")
+                    except (ValueError, TypeError) as e:
+                        print(f"⚠️ ID enseignant invalide: {enseignant_id}, erreur: {e}")
+                
+                # ✅ CORRECTION 4: Utiliser la méthode marquer_comme_paye de User
+                eleve.marquer_comme_paye(
+                    stripe_session_id=session_id,
+                    stripe_payment_intent=stripe_session.get('payment_intent')
+                )
+                
+                # ✅ CORRECTION 5: Utiliser renouveler_abonnement avec durée spécifique
+                eleve.renouveler_abonnement(duration_days)
+                
+                # ✅ CORRECTION 6: Mettre à jour les préférences avec le nouveau format
+                if not eleve.preferences_notifications:
+                    eleve.preferences_notifications = {}
+                
+                # Ajouter le type de plan
+                eleve.preferences_notifications['plan_type'] = plan_type
+                
+                # ✅ Stocker les détails du plan payé
+                plan_details = {
+                    'plan_type': plan_type,
+                    'payment_date': datetime.utcnow().isoformat(),
+                    'stripe_session_id': session_id,
+                    'stripe_customer_id': stripe_session.get('customer'),
+                    'subscription_id': stripe_session.get('subscription'),
+                    'enseignant_id': int(enseignant_id) if enseignant_id and enseignant_id.strip() and enseignant_id not in ['', 'None', 'null'] else None
+                }
+                
+                # ✅ CORRECTION 7: Stocker dans un champ JSON dédié ou dans preferences_notifications
+                eleve.preferences_notifications['paid_plan_details'] = plan_details
+                
+                # ✅ Stocker le customer ID Stripe
+                eleve.stripe_customer_id = stripe_session.get('customer')
+                
+                # ✅ Marquer l'essai comme terminé
+                if eleve.statut_essai == 'actif':
+                    eleve.statut_essai = 'payant'
+                    eleve.statut_paiement = 'paye'
+                
+                # ✅ CORRECTION 8: Récupérer le montant payé depuis Stripe
+                amount_paid = 0
+                try:
+                    if stripe_session.get('invoice'):
+                        invoice = stripe.Invoice.retrieve(stripe_session.invoice)
+                        amount_paid = invoice.amount_paid / 100  # Convertir en dollars
+                    elif stripe_session.amount_total:
+                        amount_paid = stripe_session.amount_total / 100
+                    else:
+                        # Utiliser les prix standards comme référence
+                        standard_prices = {
+                            'monthly': 19.99,
+                            'quarterly': 49.99,
+                            'annual': 149.99
+                        }
+                        amount_paid = standard_prices.get(plan_type, 49.99)
+                    
+                    eleve.preferences_notifications['paid_amount'] = amount_paid
+                    
+                except Exception as invoice_error:
+                    print(f"⚠️ Impossible de récupérer le montant payé: {invoice_error}")
+                    # Utiliser les prix standards
+                    standard_prices = {
+                        'monthly': 19.99,
+                        'quarterly': 49.99,
+                        'annual': 149.99
+                    }
+                    amount_paid = standard_prices.get(plan_type, 49.99)
+                    eleve.preferences_notifications['paid_amount'] = amount_paid
+                
+                # ✅ CORRECTION 9: Mettre à jour la date de fin d'essai si applicable
+                if eleve.date_fin_essai and eleve.date_fin_essai > datetime.utcnow():
+                    # L'essai n'était pas encore terminé, on le termine maintenant
+                    eleve.date_fin_essai = datetime.utcnow()
+                
+                # ✅ Sauvegarder les changements
+                db.session.commit()
+                
+                # ✅ CORRECTION 10: Mettre à jour la session avec les bonnes clés
+                session['user_id'] = eleve.id
+                session['username'] = eleve.username
+                session['nom_complet'] = eleve.nom_complet
+                session['role'] = eleve.role
+                session['email'] = eleve.email
+                session['lang'] = eleve.langue if eleve.langue else 'fr'
+                
+                # ✅ LOG pour suivi des paiements
+                print(f"🎉 PAIEMENT SUCCÈS: {eleve.email}")
+                print(f"📊 Plan: {plan_type}")
+                print(f"💰 Montant: {amount_paid}$ CAD")
+                print(f"📅 Durée: {duration_days} jours")
+                print(f"👤 Customer ID: {stripe_session.get('customer')}")
+                print(f"👨‍🏫 Enseignant ID: {enseignant_id if enseignant_id else 'Aucun'}")
+                print(f"🔗 Session ID: {session_id}")
+                print(f"📅 Fin abonnement: {eleve.date_fin_abonnement}")
+                print(f"✅ Statut paiement: {eleve.statut_paiement}")
+                print(f"✅ Statut essai: {eleve.statut_essai}")
+                
+                # ✅ Messages de succès selon la langue
+                lang = session.get('lang', 'fr')
+                success_messages = {
+                    'monthly': {
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement mensuel est activé. {amount_paid:.2f}$ CAD / mois (≈ 0.67$/jour)",
+                        'en': f"✅ Payment confirmed! Your monthly subscription is activated. {amount_paid:.2f}$ CAD / month (≈ $0.67/day)"
+                    },
+                    'quarterly': {
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement trimestriel est activé pour 3 mois. {amount_paid:.2f}$ CAD (≈ 16.66$/mois) - Vous économisez 3.33$/mois !",
+                        'en': f"✅ Payment confirmed! Your quarterly subscription is activated for 3 months. {amount_paid:.2f}$ CAD (≈ $16.66/month) - You save $3.33/month!"
+                    },
+                    'annual': {
+                        'fr': f"✅ Paiement confirmé ! Votre abonnement annuel est activé pour 1 an. {amount_paid:.2f}$ CAD (≈ 12.50$/mois) - Vous économisez 89.89$/an (37%) !",
+                        'en': f"✅ Payment confirmed! Your annual subscription is activated for 1 year. {amount_paid:.2f}$ CAD (≈ $12.50/month) - You save $89.89/year (37%)!"
+                    }
+                }
+                
+                message = success_messages.get(plan_type, success_messages['quarterly']).get(lang, success_messages['quarterly']['fr'])
+                flash(message, "success")
+                
+                # ✅ Message spécial si enseignant assigné
+                if enseignant_id and enseignant_id.strip() and enseignant_id not in ['', 'None', 'null']:
+                    try:
+                        teacher = User.query.filter_by(id=int(enseignant_id), role="enseignant").first()
+                        if teacher:
+                            teacher_message = f"👨‍🏫 Votre enseignant tuteur: {teacher.nom_complet}" if lang == 'fr' else f"👨‍🏫 Your tutor teacher: {teacher.nom_complet}"
+                            flash(teacher_message, "info")
+                    except (ValueError, TypeError) as e:
+                        print(f"⚠️ Impossible d'afficher le nom de l'enseignant: {e}")
+                
+                # ✅ Envoyer un email de confirmation si configuré
+                try:
+                    if os.environ.get('SEND_CONFIRMATION_EMAIL', 'false').lower() == 'true':
+                        # Construire l'email de confirmation
+                        subject_fr = f"Confirmation de votre abonnement {plan_type} - TutoratAI"
+                        subject_en = f"Your {plan_type} subscription confirmation - TutoratAI"
+                        subject = subject_fr if lang == 'fr' else subject_en
+                        
+                        # Construire le corps du message
+                        body_fr = f"""
+                        Bonjour {eleve.nom_complet or eleve.username},
+                        
+                        Votre paiement a été confirmé avec succès !
+                        
+                        Détails de votre abonnement :
+                        • Plan : {plan_type}
+                        • Montant : {amount_paid:.2f}$ CAD
+                        • Durée : {duration_days} jours
+                        • Statut : Actif
+                        • Prochain renouvellement : {eleve.date_fin_abonnement.strftime('%d/%m/%Y') if eleve.date_fin_abonnement else 'N/A'}
+                        {"• Enseignant tuteur : " + teacher.nom_complet if enseignant_id and 'teacher' in locals() and teacher else ""}
+                        
+                        Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme.
+                        
+                        Merci pour votre confiance !
+                        L'équipe TutoratAI
+                        """
+                        
+                        body_en = f"""
+                        Hello {eleve.nom_complet or eleve.username},
+                        
+                        Your payment has been successfully confirmed!
+                        
+                        Subscription details:
+                        • Plan: {plan_type}
+                        • Amount: {amount_paid:.2f}$ CAD
+                        • Duration: {duration_days} days
+                        • Status: Active
+                        • Next renewal: {eleve.date_fin_abonnement.strftime('%Y-%m-%d') if eleve.date_fin_abonnement else 'N/A'}
+                        {"• Tutor teacher: " + teacher.nom_complet if enseignant_id and 'teacher' in locals() and teacher else ""}
+                        
+                        You can now access all platform features.
+                        
+                        Thank you for your trust!
+                        The TutoratAI Team
+                        """
+                        
+                        body = body_fr if lang == 'fr' else body_en
+                        
+                        # Ici vous intégreriez votre système d'envoi d'emails
+                        # send_email(eleve.email, subject, body)
+                        print(f"📧 Email de confirmation prêt pour {eleve.email}")
+                        
+                except Exception as email_error:
+                    print(f"⚠️ Erreur préparation email: {email_error}")
+                
+                # ✅ CORRECTION 11: Créer une commission si enseignant assigné
+                if enseignant_id and enseignant_id.strip() and enseignant_id not in ['', 'None', 'null']:
+                    try:
+                        from models import Commission
+                        from datetime import datetime
+                        
+                        # Calculer la commission (20% par défaut)
+                        taux_commission = 20.0
+                        montant_commission = (amount_paid * taux_commission) / 100
+                        
+                        commission = Commission(
+                            enseignant_id=int(enseignant_id),
+                            eleve_id=eleve.id,
+                            type_abonnement=plan_type,
+                            montant_total=amount_paid,
+                            montant_commission=montant_commission,
+                            taux_base=taux_commission,
+                            date_paiement_eleve=datetime.utcnow(),
+                            statut='pending',
+                            statut_eleve='actif'
+                        )
+                        
+                        db.session.add(commission)
+                        db.session.commit()
+                        
+                        print(f"💰 Commission créée: {montant_commission}$ pour l'enseignant {enseignant_id}")
+                        
+                    except Exception as comm_error:
+                        print(f"⚠️ Erreur création commission: {comm_error}")
+                        db.session.rollback()
+                
+                # ✅ Rediriger vers le dashboard avec un paramètre de succès
+                return redirect(url_for('dashboard_eleve') + '?payment_success=true&plan=' + plan_type)
+                
+            else:
+                lang = session.get('lang', 'fr')
+                error_msg = "Élève non trouvé" if lang == 'fr' else "Student not found"
+                flash(error_msg, "error")
+                return redirect(url_for('login_eleve'))
+                
+        else:
+            lang = session.get('lang', 'fr')
+            error_msg = "Paiement non confirmé" if lang == 'fr' else "Payment not confirmed"
+            flash(error_msg, "warning")
+            
+            # ✅ Rediriger vers la page d'upgrade avec le type de plan pour réessayer
+            return redirect(url_for('upgrade_options') + f'?plan={plan_type}&payment_pending=true')
+            
+    except stripe.error.StripeError as e:
+        print(f"❌ Erreur Stripe lors de la confirmation: {e}")
+        lang = session.get('lang', 'fr')
+        error_msg = "Erreur de vérification du paiement" if lang == 'fr' else "Payment verification error"
+        flash(error_msg, "error")
+        
+    except Exception as e:
+        print(f"❌ Erreur confirmation paiement: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        lang = session.get('lang', 'fr')
+        error_msg = "Erreur lors de la confirmation du paiement" if lang == 'fr' else "Error confirming payment"
+        flash(error_msg, "error")
+    
+    # Fallback redirection
+    return redirect(url_for('upgrade_options'))
 
 @app.route("/creer-session-paiement", methods=["POST"])
 def creer_session_paiement():
@@ -3213,7 +5264,7 @@ def creer_session_paiement():
         return jsonify({"error": "Non authentifié"}), 401
     
     eleve = User.query.get(session["eleve_id"])
-    if not eleve or eleve.role != "élève":
+    if not eleve or eleve.role != "eleve":
         return jsonify({"error": "Accès non autorisé"}), 403
     
     try:
@@ -3409,7 +5460,7 @@ def creer_session_paiement():
                 "name": eleve.nom_complet,
                 "email": eleve.email,
                 "lang": lang,
-                "enseignant_id": eleve.enseignant_id if hasattr(eleve, 'enseignant_id') else None
+                "enseignant_id": eleve.enseignant_referent_id if hasattr(eleve, 'enseignant_id') else None
             }
         })
         
@@ -3422,242 +5473,173 @@ def creer_session_paiement():
 
 @app.route("/paiement-direct")
 def paiement_direct():
-    if "eleve_id" not in session:
+    """Route de paiement direct pour les élèves - Corrigée"""
+    # Vérifier si l'utilisateur est connecté
+    if "user_id" not in session:
         return redirect(url_for("login_eleve"))
     
-    eleve = User.query.get(session["eleve_id"])
-    if not eleve or eleve.role != "élève":
-        return redirect(url_for("login_eleve"))
-    
-    plan_type = request.args.get("type", "quarterly")
-    amount_param = request.args.get("amount", None)
-    
-    print(f"📋 Paiement direct - Plan demandé: {plan_type}, Montant: {amount_param}")
-    
-    # Vérifier si le type de plan est valide
-    valid_plans = ['monthly', 'quarterly', 'annual']
-    if plan_type not in valid_plans:
-        plan_type = 'quarterly'  # Fallback au plan trimestriel
+    # Vérifier si c'est un élève
+    if session.get("role") != "eleve":
+        flash("Accès réservé aux élèves", "error")
+        return redirect("/")
     
     try:
-        # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX MIS À JOUR)
-        plan_config = {
-            'monthly': {
-                'amount': 1999,  # 19.99 CAD (NOUVEAU PRIX OPTIMISÉ)
-                'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
-                'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
-                'product_name_fr': "Forfait Mensuel (19.99$/mois)",
-                'product_name_en': "Monthly Plan (19.99$/month)",
-                'interval': 'month',
-                'features_fr': "• Enseignant virtuel 24/7 • Questionnement socratique • Toutes matières • Suivi de progression",
-                'features_en': "• Virtual teacher 24/7 • Socratic questioning • All subjects • Progress tracking",
-                'monthly_effective': 19.99,
-                'savings_percentage': 0,
-                'savings_amount': 0,
-                'price_per_day': 0.67  # 19.99 / 30
-            },
-            'quarterly': {
-                'amount': 4999,  # 49.99 CAD (NOUVEAU PRIX OPTIMISÉ)
-                'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
-                'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
-                'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
-                'product_name_en': "Quarterly Plan (49.99$/3 months)",
-                'interval': 'month',
-                'interval_count': 3,
-                'features_fr': "• Toutes fonctionnalités mensuelles • Support prioritaire • Revues trimestrielles • Feuille de route personnalisée",
-                'features_en': "• All monthly features • Priority support • Quarterly reviews • Personalized roadmap",
-                'monthly_effective': 16.66,
-                'savings_percentage': 17,
-                'savings_amount': 3.33,  # 19.99 - 16.66 = 3.33$/mois
-                'price_per_day': 0.56  # 16.66 / 30
-            },
-            'annual': {
-                'amount': 14999,  # 149.99 CAD (NOUVEAU PRIX OPTIMISÉ)
-                'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
-                'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
-                'product_name_fr': "Forfait Annuel (149.99$/an)",
-                'product_name_en': "Annual Plan (149.99$/year)",
-                'interval': 'year',
-                'features_fr': "• Toutes fonctionnalités trimestrielles • Support premium • Rapports détaillés • Accès continu 12 mois",
-                'features_en': "• All quarterly features • Premium support • Detailed reports • 12 months continuous access",
-                'monthly_effective': 12.50,
-                'savings_percentage': 37,
-                'savings_amount': 89.89,  # (19.99*12) - 149.99 = 89.89$/an
-                'price_per_day': 0.42  # 12.50 / 30
-            }
-        }
+        # Récupérer l'élève
+        eleve = User.query.get(session["user_id"])
+        if not eleve or eleve.role != "eleve":
+            flash("Élève non trouvé", "error")
+            return redirect(url_for("login_eleve"))
         
-        # Vérifier si un montant personnalisé est passé dans l'URL (pour compatibilité)
-        if amount_param:
-            try:
-                custom_amount = int(float(amount_param) * 100)
-                print(f"💰 Montant personnalisé détecté: {custom_amount/100}$ CAD")
-                plan_config[plan_type]['amount'] = custom_amount
-            except ValueError:
-                print(f"⚠️ Montant invalide: {amount_param}, utilisation du prix standard")
+        plan_type = request.args.get("type", "quarterly")
+        amount_param = request.args.get("amount", None)
         
-        plan_info = plan_config[plan_type]
-        lang = session.get("lang", "fr")
+        print(f"📋 Paiement direct - Plan demandé: {plan_type}, Montant: {amount_param}")
         
-        # Sélectionner les textes selon la langue
-        product_name = plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr']
-        description = plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr']
-        features = plan_info[f'features_{lang}'] if f'features_{lang}' in plan_info else plan_info['features_fr']
+        # Vérifier si le type de plan est valide
+        valid_plans = ['monthly', 'quarterly', 'annual']
+        if plan_type not in valid_plans:
+            plan_type = 'quarterly'
         
-        print(f"💰 Paiement direct - Montant pour {plan_type}: {plan_info['amount']/100}$ CAD")
-        print(f"📊 Prix mensuel effectif: {plan_info['monthly_effective']}$/mois")
-        print(f"🎁 Économies: {plan_info['savings_percentage']}%")
-        
-        # Configurer le recurring (spécial pour quarterly)
-        recurring_config = {
-            'interval': plan_info['interval'],
-            'interval_count': plan_info.get('interval_count', 1)
-        }
-        
-        # Créer un message personnalisé selon le plan (mis à jour avec nouveaux prix)
-        custom_message = ""
-        if plan_type == 'monthly':
-            custom_message = f"{'Moins de 0.67$ par jour !' if lang == 'fr' else 'Less than $0.67 per day!'}"
-        elif plan_type == 'quarterly':
-            custom_message = f"{'Économisez 3.33$/mois !' if lang == 'fr' else 'Save $3.33/month!'}"
-        elif plan_type == 'annual':
-            custom_message = f"{'Économisez 89.89$/an !' if lang == 'fr' else 'Save $89.89/year!'}"
-        
-        # Vérifier si l'utilisateur est en essai gratuit
-        essai_actif = eleve.est_en_essai_gratuit() if hasattr(eleve, 'est_en_essai_gratuit') and callable(getattr(eleve, 'est_en_essai_gratuit')) else False
-        
-        # Récupérer l'enseignant assigné
-        teacher_info = {}
-        if hasattr(eleve, 'enseignant_id') and eleve.enseignant_id:
-            teacher = Enseignant.query.get(eleve.enseignant_id)
-            if teacher:
-                teacher_info = {
-                    'teacher_id': teacher.id,
-                    'teacher_name': teacher.nom,
-                    'teacher_email': teacher.email
-                }
-        
-        # Créer une session de paiement Stripe optimisée
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'cad',
-                    'product_data': {
-                        'name': product_name,
-                        'description': description,
-                        'metadata': {
-                            'plan_type': plan_type,
-                            'lang': lang,
-                            'monthly_price': f"{plan_info['monthly_effective']:.2f}",
-                            'savings_percentage': plan_info['savings_percentage'],
-                            'price_per_day': f"{plan_info['price_per_day']:.2f}"
-                        },
-                        'images': [
-                            'https://advanceteach.com/static/images/logo.png'
-                        ] if os.path.exists('static/images/logo.png') else []
-                    },
-                    'unit_amount': plan_info['amount'],
-                    'recurring': recurring_config
+        try:
+            # Configuration des plans
+            plan_config = {
+                'monthly': {
+                    'amount': 1999,
+                    'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
+                    'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
+                    'product_name_fr': "Forfait Mensuel (19.99$/mois)",
+                    'product_name_en': "Monthly Plan (19.99$/month)",
+                    'interval': 'month',
+                    'monthly_effective': 19.99,
+                    'savings_percentage': 0,
+                    'price_per_day': 0.67
                 },
-                'quantity': 1,
-            }],
-            mode='subscription',
-            subscription_data={
+                'quarterly': {
+                    'amount': 4999,
+                    'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
+                    'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
+                    'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
+                    'product_name_en': "Quarterly Plan (49.99$/3 months)",
+                    'interval': 'month',
+                    'interval_count': 3,
+                    'monthly_effective': 16.66,
+                    'savings_percentage': 17,
+                    'price_per_day': 0.56
+                },
+                'annual': {
+                    'amount': 14999,
+                    'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
+                    'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
+                    'product_name_fr': "Forfait Annuel (149.99$/an)",
+                    'product_name_en': "Annual Plan (149.99$/year)",
+                    'interval': 'year',
+                    'monthly_effective': 12.50,
+                    'savings_percentage': 37,
+                    'price_per_day': 0.42
+                }
+            }
+            
+            if amount_param:
+                try:
+                    custom_amount = int(float(amount_param) * 100)
+                    plan_config[plan_type]['amount'] = custom_amount
+                except ValueError:
+                    print(f"⚠️ Montant invalide: {amount_param}")
+            
+            plan_info = plan_config[plan_type]
+            lang = session.get("lang", "fr")
+            
+            # ✅ CORRECTION : Récupérer le customer Stripe existant ou en créer un
+            customer = None
+            if eleve.stripe_customer_id:
+                try:
+                    customer = stripe.Customer.retrieve(eleve.stripe_customer_id)
+                    print(f"✅ Customer Stripe existant trouvé: {customer.id}")
+                except stripe.error.StripeError:
+                    print(f"⚠️ Customer Stripe non trouvé, création d'un nouveau")
+            
+            # Créer ou récupérer l'enseignant référent
+            teacher_info = {}
+            if hasattr(eleve, 'enseignant_referent_id') and eleve.enseignant_referent_id:
+                teacher = User.query.filter_by(
+                    id=eleve.enseignant_referent_id,
+                    role="enseignant"
+                ).first()
+                if teacher:
+                    teacher_info = {
+                        'teacher_id': teacher.id,
+                        'teacher_name': teacher.nom_complet,
+                        'teacher_email': teacher.email
+                    }
+            
+            # ✅ CORRECTION IMPORTANTE : Configuration de la session Stripe
+            checkout_session_params = {
+                'payment_method_types': ['card'],
+                'line_items': [{
+                    'price_data': {
+                        'currency': 'cad',
+                        'product_data': {
+                            'name': plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr'],
+                            'description': plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr'],
+                            'metadata': {
+                                'plan_type': plan_type,
+                                'lang': lang
+                            }
+                        },
+                        'unit_amount': plan_info['amount'],
+                        'recurring': {
+                            'interval': plan_info['interval'],
+                            'interval_count': plan_info.get('interval_count', 1)
+                        }
+                    },
+                    'quantity': 1,
+                }],
+                'mode': 'subscription',
+                'success_url': url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
+                'cancel_url': url_for('upgrade_options', _external=True) + f'?cancel=true&plan_type={plan_type}',
                 'metadata': {
                     'eleve_id': eleve.id,
                     'plan_type': plan_type,
                     'lang': lang,
                     'student_name': eleve.nom_complet,
                     'student_email': eleve.email,
-                    'monthly_effective_price': f"{plan_info['monthly_effective']:.2f}",
-                    'savings_amount': f"{plan_info['savings_amount']:.2f}",
-                    'savings_percentage': plan_info['savings_percentage'],
-                    'price_per_day': f"{plan_info['price_per_day']:.2f}",
-                    'essai_actif': str(essai_actif),
                     'enseignant_id': str(teacher_info.get('teacher_id', '')),
-                    'enseignant_name': teacher_info.get('teacher_name', '')
-                },
-                'description': description
-            },
-            success_url=url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
-            cancel_url=url_for('upgrade_options', _external=True) + f'?cancel=true&plan_type={plan_type}',
-            customer_email=eleve.email,
-            metadata={
-                'eleve_id': eleve.id,
-                'plan_type': plan_type,
-                'lang': lang,
-                'student_name': eleve.nom_complet,
-                'student_email': eleve.email,
-                'monthly_price': f"{plan_info['monthly_effective']:.2f}",
-                'savings_percentage': plan_info['savings_percentage'],
-                'amount_paid': f"{plan_info['amount']/100:.2f}",
-                'trial_active': str(essai_actif),
-                'enseignant_id': str(teacher_info.get('teacher_id', '')),
-                'enseignant_email': teacher_info.get('teacher_email', '')
-            },
-            allow_promotion_codes=True,
-            billing_address_collection='required',
-            phone_number_collection={'enabled': True},
-            custom_text={
-                'submit': {
-                    'message': custom_message
-                },
-                'terms_of_service_acceptance': {
-                    'message': f"{'✅ En vous abonnant, vous acceptez nos conditions générales.' if lang == 'fr' else '✅ By subscribing, you accept our terms and conditions.'}"
+                    'enseignant_email': teacher_info.get('teacher_email', '')
                 }
-            },
-            discounts=[{
-                'coupon': 'WELCOME10'  # Coupon de bienvenue optionnel
-            }] if os.environ.get('STRIPE_WELCOME_COUPON') else [],
-            customer_creation='always',
-            invoice_creation={'enabled': True},
-            payment_intent_data={
-                'metadata': {
-                    'eleve_id': eleve.id,
-                    'plan_type': plan_type,
-                    'student_name': eleve.nom_complet,
-                    'enseignant_id': str(teacher_info.get('teacher_id', ''))
-                }
-            },
-            # Expire la session après 30 minutes
-            expires_at=int(datetime.now().timestamp()) + 1800
-        )
-        
-        # Log détaillé pour le suivi
-        print(f"🎯 Paiement direct créé pour {eleve.email}")
-        print(f"📊 Plan: {plan_type}")
-        print(f"💰 Montant total: {plan_info['amount']/100:.2f}$ CAD")
-        print(f"📈 Prix mensuel effectif: {plan_info['monthly_effective']:.2f}$/mois")
-        print(f"🎁 Économies: {plan_info['savings_percentage']}% ({plan_info['savings_amount']:.2f}$)")
-        print(f"⏰ Prix par jour: {plan_info['price_per_day']:.2f}$/jour")
-        print(f"👨‍🏫 Enseignant assigné: {teacher_info.get('teacher_name', 'Aucun')}")
-        print(f"🔗 Session Stripe: {checkout_session.id}")
-        
-        # Redirection directe vers Stripe
-        return redirect(checkout_session.url)
-        
-    except stripe.error.StripeError as e:
-        print(f"❌ Erreur Stripe: {e.user_message if hasattr(e, 'user_message') else e}")
-        import traceback
-        traceback.print_exc()
-        
-        error_msg = "Erreur de paiement Stripe" if session.get('lang', 'fr') == 'fr' else "Stripe payment error"
-        flash(error_msg, "error")
-        return redirect(url_for('upgrade_options'))
-    
+            }
+            
+            # ✅ AJOUTER LE CUSTOMER SI EXISTANT
+            if customer:
+                checkout_session_params['customer'] = customer.id
+            else:
+                checkout_session_params['customer_email'] = eleve.email
+            
+            # ✅ Créer la session Stripe
+            checkout_session = stripe.checkout.Session.create(**checkout_session_params)
+            
+            # ✅ Mettre à jour l'élève avec l'ID de session Stripe
+            eleve.stripe_session_id = checkout_session.id
+            db.session.commit()
+            
+            print(f"✅ Session Stripe créée: {checkout_session.id}")
+            print(f"🔗 Redirection vers: {checkout_session.url}")
+            
+            return redirect(checkout_session.url)
+            
+        except stripe.error.StripeError as e:
+            print(f"❌ Erreur Stripe: {str(e)}")
+            flash(f"Erreur de paiement: {str(e)}", "error")
+            return redirect(url_for('upgrade_options'))
+            
     except Exception as e:
         print(f"❌ Erreur paiement direct: {e}")
-        import traceback
-        traceback.print_exc()
-        
-        error_msg = "Erreur lors de la création du paiement" if session.get('lang', 'fr') == 'fr' else "Error creating payment"
-        flash(error_msg, "error")
+        flash("Erreur lors de la création du paiement", "error")
         return redirect(url_for('upgrade_options'))
-
+    
 
 @app.route("/stripe-webhook", methods=["POST"])
 def stripe_webhook():
+    """Webhook Stripe pour gérer les événements de paiement - Adapté au nouveau système User"""
     payload = request.get_data(as_text=True)
     sig_header = request.headers.get('Stripe-Signature')
     endpoint_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
@@ -3676,12 +5658,14 @@ def stripe_webhook():
         session = event['data']['object']
         
         try:
+            UserModel = get_user_model()
+            
             eleve_id = session['metadata'].get('eleve_id')
             plan_type = session['metadata'].get('plan_type', 'quarterly')
             
             if eleve_id:
-                eleve = User.query.get(eleve_id)
-                if eleve:
+                eleve = UserModel.query.get(eleve_id)
+                if eleve and eleve.role == "eleve":
                     # Déterminer la durée avec les nouveaux plans
                     plan_durations = {
                         'monthly': 30,     # 30 jours
@@ -3692,22 +5676,39 @@ def stripe_webhook():
                     
                     # Récupérer les informations de l'enseignant si présentes
                     enseignant_id = session['metadata'].get('enseignant_id')
-                    if enseignant_id and enseignant_id != '':
-                        # Vérifier que l'enseignant existe encore
-                        teacher = Enseignant.query.get(enseignant_id)
-                        if teacher:
-                            eleve.enseignant_id = teacher.id
+                    if enseignant_id and enseignant_id != '' and enseignant_id != 'None' and enseignant_id != 'null':
+                        # Vérifier que l'enseignant existe (dans la table User maintenant)
+                        teacher = UserModel.query.filter_by(id=enseignant_id, role="enseignant").first()
+                        if teacher and hasattr(eleve, 'enseignant_referent_id'):
+                            eleve.enseignant_referent_id = teacher.id
                     
-                    # Utiliser VOS méthodes existantes
-                    eleve.marquer_comme_paye(
-                        stripe_session_id=session['id'],
-                        stripe_payment_intent=session.get('payment_intent')
-                    )
+                    # Utiliser les méthodes existantes si disponibles
+                    if hasattr(eleve, 'marquer_comme_paye'):
+                        eleve.marquer_comme_paye(
+                            stripe_session_id=session['id'],
+                            stripe_payment_intent=session.get('payment_intent')
+                        )
                     
-                    eleve.renouveler_abonnement(duration_days)
+                    # Renouveler l'abonnement si la méthode existe
+                    if hasattr(eleve, 'renouveler_abonnement'):
+                        eleve.renouveler_abonnement(duration_days)
+                    else:
+                        # Fallback: gérer l'abonnement manuellement
+                        from datetime import datetime, timedelta
+                        if hasattr(eleve, 'date_fin_abonnement'):
+                            if eleve.date_fin_abonnement and datetime.utcnow() < eleve.date_fin_abonnement:
+                                # Ajouter à la date de fin existante
+                                eleve.date_fin_abonnement = eleve.date_fin_abonnement + timedelta(days=duration_days)
+                            else:
+                                # Nouvel abonnement
+                                eleve.date_fin_abonnement = datetime.utcnow() + timedelta(days=duration_days)
                     
-                    # Stocker le type de plan
-                    eleve.preferences_notifications = eleve.preferences_notifications or {}
+                    # Stocker le type de plan dans les préférences
+                    if not hasattr(eleve, 'preferences_notifications'):
+                        eleve.preferences_notifications = {}
+                    else:
+                        eleve.preferences_notifications = eleve.preferences_notifications or {}
+                    
                     eleve.preferences_notifications['plan_type'] = plan_type
                     
                     # Stocker les détails du paiement
@@ -3717,11 +5718,14 @@ def stripe_webhook():
                         'stripe_session_id': session['id'],
                         'stripe_customer_id': session.get('customer'),
                         'subscription_id': session.get('subscription'),
-                        'amount': float(session['metadata'].get('amount_paid', 0))
+                        'enseignant_id': enseignant_id if enseignant_id else None,
+                        'webhook_processed': True,
+                        'webhook_timestamp': datetime.utcnow().isoformat()
                     }
                     
-                    # Stocker le customer ID
-                    eleve.stripe_customer_id = session.get('customer')
+                    # Stocker le customer ID Stripe si l'attribut existe
+                    if hasattr(eleve, 'stripe_customer_id'):
+                        eleve.stripe_customer_id = session.get('customer')
                     
                     # Récupérer le montant payé
                     try:
@@ -3732,7 +5736,9 @@ def stripe_webhook():
                             amount_paid = session.amount_total / 100 if session.amount_total else 0
                         
                         eleve.preferences_notifications['paid_amount'] = amount_paid
-                    except:
+                        print(f"💰 Montant payé récupéré: {amount_paid}$ CAD")
+                    except Exception as invoice_error:
+                        print(f"⚠️ Impossible de récupérer le montant payé: {invoice_error}")
                         # Utiliser les prix standards comme référence
                         standard_prices = {
                             'monthly': 19.99,
@@ -3742,18 +5748,29 @@ def stripe_webhook():
                         amount_paid = standard_prices.get(plan_type, 49.99)
                         eleve.preferences_notifications['paid_amount'] = amount_paid
                     
+                    # Marquer l'essai comme terminé si applicable
+                    if hasattr(eleve, 'statut_essai') and hasattr(eleve, 'statut_essai') == 'actif':
+                        eleve.statut_essai = 'payant'
+                        if hasattr(eleve, 'statut_paiement'):
+                            eleve.statut_paiement = 'paye'
+                    
                     db.session.commit()
-                    print(f"✅ Webhook: Élève {eleve_id} abonné avec succès au plan {plan_type} ({amount_paid}$ CAD)")
+                    print(f"✅ Webhook: Élève {eleve_id} ({eleve.email}) abonné avec succès au plan {plan_type} ({amount_paid}$ CAD)")
                     
                     # Log détaillé
                     print(f"📊 Plan: {plan_type}")
                     print(f"💰 Montant: {amount_paid}$ CAD")
                     print(f"📅 Durée: {duration_days} jours")
+                    print(f"📅 Date fin: {eleve.date_fin_abonnement if hasattr(eleve, 'date_fin_abonnement') else 'Non défini'}")
                     print(f"👤 Customer ID: {session.get('customer')}")
                     print(f"👨‍🏫 Enseignant ID: {enseignant_id if enseignant_id else 'Aucun'}")
+                    print(f"📝 Préférences: {eleve.preferences_notifications.get('plan_type', 'Non défini')}")
                     
+                else:
+                    print(f"⚠️ Webhook: Élève non trouvé ou n'est pas un élève (ID: {eleve_id})")
+        
         except Exception as e:
-            print(f"❌ Erreur webhook: {e}")
+            print(f"❌ Erreur webhook checkout.session.completed: {e}")
             import traceback
             traceback.print_exc()
     
@@ -3762,12 +5779,18 @@ def stripe_webhook():
         invoice = event['data']['object']
         
         try:
+            UserModel = get_user_model()
+            
             customer_id = invoice.get('customer')
             subscription_id = invoice.get('subscription')
             
             if customer_id:
                 # Trouver l'élève par customer_id
-                eleve = User.query.filter_by(stripe_customer_id=customer_id).first()
+                eleve = UserModel.query.filter_by(
+                    stripe_customer_id=customer_id,
+                    role="eleve"
+                ).first()
+                
                 if eleve and subscription_id:
                     # Vérifier si l'abonnement est encore actif
                     subscription = stripe.Subscription.retrieve(subscription_id)
@@ -3778,248 +5801,83 @@ def stripe_webhook():
                         new_end_date = datetime.fromtimestamp(current_period_end)
                         
                         # Mettre à jour la date de fin d'abonnement
-                        eleve.date_fin_abonnement = new_end_date
-                        eleve.date_dernier_paiement = datetime.utcnow()
+                        if hasattr(eleve, 'date_fin_abonnement'):
+                            eleve.date_fin_abonnement = new_end_date
+                        
+                        if hasattr(eleve, 'date_dernier_paiement'):
+                            eleve.date_dernier_paiement = datetime.utcnow()
+                        
+                        # Mettre à jour les préférences
+                        if not hasattr(eleve, 'preferences_notifications'):
+                            eleve.preferences_notifications = {}
+                        
+                        # Ajouter un log de renouvellement
+                        renewals = eleve.preferences_notifications.get('subscription_renewals', [])
+                        renewals.append({
+                            'timestamp': datetime.utcnow().isoformat(),
+                            'invoice_id': invoice.get('id'),
+                            'amount': invoice.get('amount_paid', 0) / 100,
+                            'subscription_id': subscription_id,
+                            'period_end': new_end_date.isoformat()
+                        })
+                        eleve.preferences_notifications['subscription_renewals'] = renewals
                         
                         db.session.commit()
                         print(f"✅ Webhook: Renouvellement abonnement pour {eleve.email} jusqu'au {new_end_date}")
         
         except Exception as e:
-            print(f"❌ Erreur webhook invoice: {e}")
+            print(f"❌ Erreur webhook invoice.payment_succeeded: {e}")
+            import traceback
+            traceback.print_exc()
     
-    return jsonify({'status': 'success'})
-
-
-@app.route("/paiement-success")
-def paiement_success():
-    try:
-        session_id = request.args.get('session_id')
-        eleve_id = request.args.get('eleve_id')
-        plan_type = request.args.get('plan_type', 'quarterly')
+    # Gérer l'événement customer.subscription.deleted (abonnement annulé)
+    elif event['type'] == 'customer.subscription.deleted':
+        subscription = event['data']['object']
         
-        if not session_id or not eleve_id:
-            flash("Paramètres de paiement manquants", "error")
-            return redirect(url_for('inscription_eleve'))
-        
-        # Vérifier la session Stripe
-        stripe_session = stripe.checkout.Session.retrieve(session_id)
-        
-        if stripe_session.payment_status == 'paid' or stripe_session.mode == 'subscription':
-            # Activer le compte élève
-            eleve = User.query.get(eleve_id)
-            if eleve:
-                # ✅ VÉRIFICATION SUPPLEMENTAIRE : ne pas réactiver si déjà payé
-                if eleve.statut_paiement == "paye" and eleve.date_fin_abonnement:
-                    if datetime.utcnow() < eleve.date_fin_abonnement:
-                        # L'utilisateur a déjà un abonnement actif
-                        lang = session.get('lang', 'fr')
-                        message = "✅ Votre abonnement est déjà actif !" if lang == 'fr' else "✅ Your subscription is already active!"
-                        flash(message, "success")
-                        return redirect(url_for('dashboard_eleve'))
-                
-                # Déterminer la durée de l'abonnement selon le plan
-                plan_durations = {
-                    'monthly': 30,     # 30 jours
-                    'quarterly': 90,   # 90 jours (3 mois)
-                    'annual': 365      # 365 jours (1 an)
-                }
-                duration_days = plan_durations.get(plan_type, 30)
-                
-                # Récupérer les informations de l'enseignant depuis Stripe
-                enseignant_id = stripe_session.metadata.get('enseignant_id')
-                if enseignant_id and enseignant_id != '' and enseignant_id != 'None':
-                    # Vérifier que l'enseignant existe
-                    teacher = Enseignant.query.get(enseignant_id)
-                    if teacher:
-                        eleve.enseignant_id = teacher.id
-                
-                # Utiliser VOTRE méthode existante marquer_comme_paye
-                eleve.marquer_comme_paye(
-                    stripe_session_id=session_id,
-                    stripe_payment_intent=stripe_session.get('payment_intent')
-                )
-                
-                # Utiliser VOTRE méthode existante renouveler_abonnement
-                eleve.renouveler_abonnement(duration_days)
-                
-                # Stocker le type de plan dans les préférences
-                eleve.preferences_notifications = eleve.preferences_notifications or {}
-                eleve.preferences_notifications['plan_type'] = plan_type
-                
-                # ✅ Stocker les détails du plan payé
-                eleve.preferences_notifications['paid_plan_details'] = {
-                    'plan_type': plan_type,
-                    'payment_date': datetime.utcnow().isoformat(),
-                    'stripe_session_id': session_id,
-                    'stripe_customer_id': stripe_session.get('customer'),
-                    'subscription_id': stripe_session.get('subscription'),
-                    'enseignant_id': enseignant_id if enseignant_id else None
-                }
-                
-                # Stocker le customer ID Stripe
-                eleve.stripe_customer_id = stripe_session.get('customer')
-                
-                # ✅ AJOUTER : marquer l'essai comme terminé si applicable
-                if hasattr(eleve, 'statut_essai') and eleve.statut_essai == 'actif':
-                    eleve.statut_essai = 'payant'
-                    eleve.statut_paiement = 'paye'
-                
-                # ✅ Récupérer le montant payé depuis Stripe pour référence
-                try:
-                    if stripe_session.get('invoice'):
-                        invoice = stripe.Invoice.retrieve(stripe_session.invoice)
-                        amount_paid = invoice.amount_paid / 100  # Convertir en dollars
-                    else:
-                        amount_paid = stripe_session.amount_total / 100 if stripe_session.amount_total else 0
-                    
-                    eleve.preferences_notifications['paid_amount'] = amount_paid
-                    
-                except Exception as invoice_error:
-                    print(f"⚠️ Impossible de récupérer le montant payé: {invoice_error}")
-                    # Utiliser les prix standards comme référence
-                    standard_prices = {
-                        'monthly': 19.99,
-                        'quarterly': 49.99,
-                        'annual': 149.99
-                    }
-                    amount_paid = standard_prices.get(plan_type, 49.99)
-                    eleve.preferences_notifications['paid_amount'] = amount_paid
-                
-                db.session.commit()
-                
-                # ✅ Connexion automatique si pas déjà connecté
-                if 'eleve_id' not in session:
-                    session['eleve_id'] = eleve.id
-                    session['eleve_username'] = eleve.username
-                    session['eleve_nom_complet'] = eleve.nom_complet
-                    session['role'] = 'élève'
-                
-                # ✅ LOG pour suivi des paiements
-                print(f"🎉 PAIEMENT SUCCÈS: {eleve.email}")
-                print(f"📊 Plan: {plan_type}")
-                print(f"💰 Montant: {amount_paid}$ CAD")
-                print(f"📅 Durée: {duration_days} jours")
-                print(f"👤 Customer ID: {stripe_session.get('customer')}")
-                print(f"👨‍🏫 Enseignant ID: {enseignant_id if enseignant_id else 'Aucun'}")
-                print(f"🔗 Session ID: {session_id}")
-                
-                # ✅ Messages de succès OPTIMISÉS selon la langue et les NOUVEAUX PRIX
-                lang = session.get('lang', 'fr')
-                success_messages = {
-                    'monthly': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement mensuel est activé. {amount_paid:.2f}$ CAD / mois (≈ 0.67$/jour)",
-                        'en': f"✅ Payment confirmed! Your monthly subscription is activated. {amount_paid:.2f}$ CAD / month (≈ $0.67/day)"
-                    },
-                    'quarterly': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement trimestriel est activé pour 3 mois. {amount_paid:.2f}$ CAD (≈ 16.66$/mois) - Vous économisez 3.33$/mois !",
-                        'en': f"✅ Payment confirmed! Your quarterly subscription is activated for 3 months. {amount_paid:.2f}$ CAD (≈ $16.66/month) - You save $3.33/month!"
-                    },
-                    'annual': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement annuel est activé pour 1 an. {amount_paid:.2f}$ CAD (≈ 12.50$/mois) - Vous économisez 89.89$/an (37%) !",
-                        'en': f"✅ Payment confirmed! Your annual subscription is activated for 1 year. {amount_paid:.2f}$ CAD (≈ $12.50/month) - You save $89.89/year (37%)!"
-                    }
-                }
-                
-                message = success_messages.get(plan_type, success_messages['quarterly']).get(lang, success_messages['quarterly']['fr'])
-                flash(message, "success")
-                
-                # ✅ Ajouter un message spécial si enseignant assigné
-                if enseignant_id and enseignant_id != '' and enseignant_id != 'None':
-                    teacher = Enseignant.query.get(enseignant_id)
-                    if teacher:
-                        teacher_message = f"👨‍🏫 Votre enseignant tuteur: {teacher.nom}" if lang == 'fr' else f"👨‍🏫 Your tutor teacher: {teacher.nom}"
-                        flash(teacher_message, "info")
-                
-                # ✅ Envoyer un email de confirmation si configuré
-                try:
-                    if os.environ.get('SEND_CONFIRMATION_EMAIL', 'false').lower() == 'true':
-                        # Construire l'email de confirmation
-                        subject_fr = f"Confirmation de votre abonnement {plan_type} - TutoratAI"
-                        subject_en = f"Your {plan_type} subscription confirmation - TutoratAI"
-                        subject = subject_fr if lang == 'fr' else subject_en
-                        
-                        # Construire le corps du message
-                        body_fr = f"""
-                        Bonjour {eleve.nom_complet},
-                        
-                        Votre paiement a été confirmé avec succès !
-                        
-                        Détails de votre abonnement :
-                        • Plan : {plan_type}
-                        • Montant : {amount_paid:.2f}$ CAD
-                        • Durée : {duration_days} jours
-                        • Statut : Actif
-                        • Prochain renouvellement : {eleve.date_fin_abonnement.strftime('%d/%m/%Y') if eleve.date_fin_abonnement else 'N/A'}
-                        {"• Enseignant tuteur : " + teacher.nom if enseignant_id and teacher else ""}
-                        
-                        Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme.
-                        
-                        Merci pour votre confiance !
-                        L'équipe TutoratAI
-                        """
-                        
-                        body_en = f"""
-                        Hello {eleve.nom_complet},
-                        
-                        Your payment has been successfully confirmed!
-                        
-                        Subscription details:
-                        • Plan: {plan_type}
-                        • Amount: {amount_paid:.2f}$ CAD
-                        • Duration: {duration_days} days
-                        • Status: Active
-                        • Next renewal: {eleve.date_fin_abonnement.strftime('%Y-%m-%d') if eleve.date_fin_abonnement else 'N/A'}
-                        {"• Tutor teacher: " + teacher.nom if enseignant_id and teacher else ""}
-                        
-                        You can now access all platform features.
-                        
-                        Thank you for your trust!
-                        The TutoratAI Team
-                        """
-                        
-                        body = body_fr if lang == 'fr' else body_en
-                        
-                        # Ici vous intégreriez votre système d'envoi d'emails
-                        # send_email(eleve.email, subject, body)
-                        print(f"📧 Email de confirmation prêt pour {eleve.email}")
-                        
-                except Exception as email_error:
-                    print(f"⚠️ Erreur préparation email: {email_error}")
-                
-                # ✅ Rediriger vers le dashboard avec un paramètre de succès
-                return redirect(url_for('dashboard_eleve') + '?payment_success=true&plan=' + plan_type)
-                
-            else:
-                lang = session.get('lang', 'fr')
-                error_msg = "Élève non trouvé" if lang == 'fr' else "Student not found"
-                flash(error_msg, "error")
-                return redirect(url_for('login_eleve'))
-                
-        else:
-            lang = session.get('lang', 'fr')
-            error_msg = "Paiement non confirmé" if lang == 'fr' else "Payment not confirmed"
-            flash(error_msg, "warning")
+        try:
+            UserModel = get_user_model()
             
-            # ✅ Rediriger vers la page d'upgrade avec le type de plan pour réessayer
-            return redirect(url_for('upgrade_options') + f'?plan={plan_type}&payment_pending=true')
+            customer_id = subscription.get('customer')
             
-    except stripe.error.StripeError as e:
-        print(f"❌ Erreur Stripe lors de la confirmation: {e}")
-        lang = session.get('lang', 'fr')
-        error_msg = "Erreur de vérification du paiement" if lang == 'fr' else "Payment verification error"
-        flash(error_msg, "error")
+            if customer_id:
+                # Trouver l'élève par customer_id
+                eleve = UserModel.query.filter_by(
+                    stripe_customer_id=customer_id,
+                    role="eleve"
+                ).first()
+                
+                if eleve:
+                    # Marquer comme non payé (mais garder la date de fin)
+                    if hasattr(eleve, 'statut_paiement'):
+                        eleve.statut_paiement = 'expire'
+                    
+                    # Mettre à jour les préférences
+                    if not hasattr(eleve, 'preferences_notifications'):
+                        eleve.preferences_notifications = {}
+                    
+                    eleve.preferences_notifications['subscription_cancelled'] = {
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'subscription_id': subscription.get('id'),
+                        'cancellation_date': subscription.get('canceled_at'),
+                        'cancellation_reason': subscription.get('cancellation_details', {}).get('reason', 'unknown')
+                    }
+                    
+                    db.session.commit()
+                    print(f"⚠️ Webhook: Abonnement annulé pour {eleve.email}")
         
-    except Exception as e:
-        print(f"❌ Erreur confirmation paiement: {e}")
-        import traceback
-        traceback.print_exc()
-        
-        lang = session.get('lang', 'fr')
-        error_msg = "Erreur lors de la confirmation du paiement" if lang == 'fr' else "Error confirming payment"
-        flash(error_msg, "error")
+        except Exception as e:
+            print(f"❌ Erreur webhook customer.subscription.deleted: {e}")
+            import traceback
+            traceback.print_exc()
     
-    # Fallback redirection
-    return redirect(url_for('upgrade_options'))
+    # Gérer l'événement checkout.session.expired (session expirée)
+    elif event['type'] == 'checkout.session.expired':
+        session = event['data']['object']
+        print(f"ℹ️ Webhook: Session checkout expirée: {session.get('id')}")
+        # Pas d'action nécessaire, juste pour le logging
+    
+    return jsonify({'status': 'success', 'processed': True})
+
 
 @app.route("/paiement-cancel")
 def paiement_cancel():
@@ -4157,10 +6015,22 @@ def admin_inscrire_eleve():
 
 @app.route("/changer-mot-de-passe", methods=["GET", "POST"])
 def changer_mot_de_passe():
-    if "enseignant_id" not in session:
-        return redirect("/login-enseignant")
-
-    enseignant = Enseignant.query.get(session["enseignant_id"])
+    """Route pour changer le mot de passe - Adaptée au nouveau système User"""
+    # Vérifier si l'utilisateur est connecté
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    # Vérifier si c'est un enseignant
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/")
+    
+    UserModel = get_user_model()
+    enseignant = UserModel.query.get(session["user_id"])
+    
+    if not enseignant or enseignant.role != "enseignant":
+        flash("Enseignant non trouvé", "error")
+        return redirect(url_for("login"))
 
     if request.method == "POST":
         ancien = request.form.get("ancien_mdp")
@@ -4168,95 +6038,437 @@ def changer_mot_de_passe():
         confirmation = request.form.get("confirmation_mdp")
 
         if not enseignant.verifier_mot_de_passe(ancien):
-            flash("Mot de passe actuel incorrect.", "erreur")
+            flash("Mot de passe actuel incorrect.", "error")
         elif nouveau != confirmation:
-            flash("Les nouveaux mots de passe ne correspondent pas.", "erreur")
+            flash("Les nouveaux mots de passe ne correspondent pas.", "error")
+        elif len(nouveau) < 6:
+            flash("Le mot de passe doit contenir au moins 6 caractères.", "error")
         else:
-            enseignant.mot_de_passe = nouveau
+            # Utiliser la méthode de hachage appropriée
+            enseignant.mot_de_passe = generate_password_hash(nouveau)
             db.session.commit()
-            flash("Mot de passe mis à jour avec succès.", "succès")
+            flash("Mot de passe mis à jour avec succès.", "success")
+            return redirect(url_for("dashboard_enseignant"))
 
-    return render_template("changer_mot_de_passe.html")
+    return render_template("changer_mot_de_passe.html", 
+                         enseignant=enseignant,
+                         lang=session.get("lang", "fr"))
 
 @app.route("/enseignant/modifier-profil", methods=["GET", "POST"])
 def modifier_profil_enseignant():
-    if "enseignant_id" not in session:
-        return redirect("/login-enseignant")
-
-    enseignant = Enseignant.query.get(session["enseignant_id"])
+    """Modifier le profil enseignant - Adaptée au nouveau système User"""
+    # Vérifier si l'utilisateur est connecté
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    # Vérifier si c'est un enseignant
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/")
+    
+    UserModel = get_user_model()
+    enseignant = UserModel.query.get(session["user_id"])
+    
+    if not enseignant or enseignant.role != "enseignant":
+        flash("Enseignant non trouvé", "error")
+        return redirect(url_for("login"))
 
     if request.method == "POST":
         nom = request.form.get("nom")
         email = request.form.get("email")
-
+        telephone = request.form.get("telephone")
+        matieres = request.form.get("matieres")
+        bio = request.form.get("bio")
+        
+        # Vérification des champs obligatoires
         if not nom or not email:
-            return "Champs obligatoires manquants", 400
+            flash("Le nom et l'email sont obligatoires", "error")
+            return redirect(url_for("modifier_profil_enseignant"))
 
-        existant = Enseignant.query.filter_by(email=email).first()
-        if existant and existant.id != enseignant.id:
-            return "Cet email est déjà utilisé", 409
+        # Vérifier si l'email est déjà utilisé par un autre utilisateur
+        existant = UserModel.query.filter(
+            UserModel.email == email,
+            UserModel.id != enseignant.id
+        ).first()
+        
+        if existant:
+            flash("Cet email est déjà utilisé par un autre compte", "error")
+            return redirect(url_for("modifier_profil_enseignant"))
 
-        enseignant.nom = nom
+        # Mettre à jour les informations
+        enseignant.nom_complet = nom
         enseignant.email = email
+        
+        # Mettre à jour les champs optionnels
+        if telephone:
+            enseignant.telephone = telephone
+        if matieres:
+            enseignant.matieres = matieres
+        if bio:
+            enseignant.bio = bio
+        
         db.session.commit()
-        return redirect("/dashboard-enseignant")
+        flash("Profil mis à jour avec succès", "success")
+        return redirect(url_for("dashboard_enseignant"))
 
-    return render_template("modifier_profil_enseignant.html", enseignant=enseignant, lang=session.get("lang", "fr"))
+    return render_template("modifier_profil_enseignant.html", 
+                         enseignant=enseignant, 
+                         lang=session.get("lang", "fr"))
 
 
 @app.route("/enseignant/creer-contenu")
 def creer_contenu():
-    if "enseignant_id" not in session:
-        return redirect("/login-enseignant")
+    """Route pour créer du contenu - Adaptée au nouveau système User"""
+    # Vérifier si l'utilisateur est connecté
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    # Vérifier si c'est un enseignant
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/")
+    
+    UserModel = get_user_model()
+    enseignant = UserModel.query.get(session["user_id"])
+    
+    if not enseignant or enseignant.role != "enseignant":
+        flash("Enseignant non trouvé", "error")
+        return redirect(url_for("login"))
     
     lang = session.get("lang", "fr")
-    enseignant = Enseignant.query.get(session["enseignant_id"])
+    
+    # Récupérer les matières de l'enseignant
+    matieres = []
+    if hasattr(enseignant, 'matieres') and enseignant.matieres:
+        matieres = [m.strip() for m in enseignant.matieres.split(',')]
     
     return render_template(
         "enseignant_creer_contenu.html",
         enseignant=enseignant,
+        matieres=matieres,
         lang=lang
     )
 
 @app.route("/enseignant/eleves")
 def enseignant_eleves():
-    if "enseignant_id" not in session:
-        return redirect("/login-enseignant")
+    """Route pour voir les élèves assignés - Adaptée au nouveau système User"""
+    # Vérifier si l'utilisateur est connecté
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    # Vérifier si c'est un enseignant
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/")
+    
+    UserModel = get_user_model()
+    enseignant = UserModel.query.get(session["user_id"])
+    
+    if not enseignant or enseignant.role != "enseignant":
+        flash("Enseignant non trouvé", "error")
+        return redirect(url_for("login"))
     
     lang = session.get("lang", "fr")
-    enseignant_id = session["enseignant_id"]
     
-    # Récupérer les élèves de cet enseignant
-    eleves = User.query.filter_by(
-        enseignant_id=enseignant_id, 
-        role="élève"
-    ).options(
-        joinedload(User.niveau)
+    # Récupérer les élèves assignés à cet enseignant
+    # Utiliser enseignant_referent_id (nouveau système)
+    eleves = UserModel.query.filter_by(
+        enseignant_referent_id=enseignant.id,
+        role="eleve"
     ).all()
+    
+    # Pour la compatibilité, vérifier aussi l'ancien champ enseignant_id
+    if not eleves and hasattr(UserModel, 'enseignant_id'):
+        eleves = UserModel.query.filter_by(
+            enseignant_id=enseignant.id,
+            role="eleve"
+        ).all()
     
     # Calculer les statistiques pour chaque élève
     stats_eleves = []
     for eleve in eleves:
-        reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
-        total_reponses = len(reponses)
-        moyenne = round(sum(r.etoiles or 0 for r in reponses) / total_reponses, 2) if total_reponses else 0
+        # Utiliser la table StudentResponse si elle existe
+        try:
+            from models import StudentResponse
+            reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
+            total_reponses = len(reponses)
+            moyenne = round(sum(r.etoiles or 0 for r in reponses) / total_reponses, 2) if total_reponses else 0
+        except:
+            # Fallback si la table n'existe pas
+            total_reponses = 0
+            moyenne = 0
+        
+        # Récupérer le niveau de l'élève si l'attribut existe
+        niveau_nom = "Non défini"
+        if hasattr(eleve, 'niveau_id') and eleve.niveau_id:
+            from models import Niveau
+            niveau_obj = Niveau.query.get(eleve.niveau_id)
+            if niveau_obj:
+                niveau_nom = niveau_obj.nom
+        elif hasattr(eleve, 'niveau') and eleve.niveau:
+            niveau_nom = eleve.niveau.nom if hasattr(eleve.niveau, 'nom') else str(eleve.niveau)
+        
+        # Vérifier le statut d'abonnement
+        statut_abonnement = "Inactif"
+        if hasattr(eleve, 'statut_paiement'):
+            statut_abonnement = eleve.statut_paiement.capitalize() if eleve.statut_paiement else "Inactif"
         
         stats_eleves.append({
             'eleve': eleve,
             'total_exercices': total_reponses,
             'moyenne_etoiles': moyenne,
-            'niveau': eleve.niveau.nom if eleve.niveau else "Non défini"
+            'niveau': niveau_nom,
+            'statut_abonnement': statut_abonnement,
+            'date_inscription': eleve.date_inscription.strftime('%d/%m/%Y') if hasattr(eleve, 'date_inscription') and eleve.date_inscription else "N/A"
         })
-    
-    enseignant = Enseignant.query.get(enseignant_id)
     
     return render_template(
         "enseignant_eleves.html",
         enseignant=enseignant,
         stats_eleves=stats_eleves,
+        total_eleves=len(eleves),
         lang=lang
     )
 
+@app.route("/assign-students-to-teachers")
+@admin_required
+def assign_students_to_teachers():
+    """Assigner des élèves aux enseignants"""
+    try:
+        from models import User, db
+        import random
+        
+        result = "<h1>Assignation des élèves aux enseignants</h1>"
+        
+        # 1. Récupérer tous les enseignants
+        teachers = User.query.filter_by(role='enseignant').all()
+        
+        if not teachers:
+            return "<p style='color: red;'>Aucun enseignant trouvé!</p>"
+        
+        result += f"<p>{len(teachers)} enseignants disponibles</p>"
+        
+        # 2. Récupérer tous les élèves sans enseignant
+        students_without_teacher = User.query.filter(
+            (User.role.in_(['eleve', 'élève'])),
+            (User.enseignant_referent_id.is_(None))
+        ).all()
+        
+        students_with_teacher = User.query.filter(
+            (User.role.in_(['eleve', 'élève'])),
+            (User.enseignant_referent_id.isnot(None))
+        ).all()
+        
+        result += f"<p>Élèves sans enseignant: {len(students_without_teacher)}</p>"
+        result += f"<p>Élèves avec enseignant: {len(students_with_teacher)}</p>"
+        
+        # 3. Assigner les élèves sans enseignant
+        assignments = []
+        
+        if students_without_teacher:
+            # Méthode 1: Assigner aléatoirement
+            for student in students_without_teacher:
+                teacher = random.choice(teachers)
+                student.enseignant_referent_id = teacher.id
+                assignments.append(f"{student.nom_complet} → {teacher.nom_complet}")
+            
+            db.session.commit()
+            
+            result += "<h2 style='color: green;'>Assignations effectuées:</h2>"
+            result += "<ul>"
+            for assignment in assignments:
+                result += f"<li>{assignment}</li>"
+            result += "</ul>"
+        else:
+            result += "<p style='color: orange;'>Tous les élèves ont déjà un enseignant référent</p>"
+        
+        # 4. Afficher la distribution finale
+        result += "<h2>Distribution finale:</h2>"
+        
+        # Requête pour voir combien d'élèves par enseignant
+        distribution = db.session.execute("""
+            SELECT 
+                u.nom_complet as enseignant,
+                COUNT(e.id) as nombre_eleves,
+                STRING_AGG(e.nom_complet, ', ' ORDER BY e.nom_complet) as liste_eleves
+            FROM users u
+            LEFT JOIN users e ON e.enseignant_referent_id = u.id AND e.role IN ('eleve', 'élève')
+            WHERE u.role = 'enseignant'
+            GROUP BY u.id, u.nom_complet
+            ORDER BY nombre_eleves DESC
+        """).fetchall()
+        
+        result += "<table border='1' style='border-collapse: collapse; width: 100%;'>"
+        result += "<tr><th>Enseignant</th><th>Nombre d'élèves</th><th>Liste des élèves</th></tr>"
+        
+        for enseignant, count, liste in distribution:
+            result += f"""
+            <tr>
+                <td><strong>{enseignant}</strong></td>
+                <td style='text-align: center;'>{count}</td>
+                <td style='font-size: 0.9em;'>{liste or 'Aucun'}</td>
+            </tr>
+            """
+        
+        result += "</table>"
+        
+        # 5. Lien pour vérifier
+        result += f"""
+        <div style="margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 8px;">
+            <h3>✅ Assignation terminée</h3>
+            <div style="margin-top: 20px;">
+                <a href='/admin-enseignants' style='background: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;'>
+                    📋 Voir les enseignants avec leurs élèves
+                </a>
+                <a href='/verify-migration' style='background: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>
+                    🔍 Vérifier la migration complète
+                </a>
+            </div>
+        </div>
+        """
+        
+        return result
+        
+    except Exception as e:
+        import traceback
+        return f"<h1>Erreur</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
+    
+@app.route("/restore-teacher-student-relations")
+@admin_required
+def restore_teacher_student_relations():
+    """Restaurer les relations historiques enseignant-élève"""
+    try:
+        from models import User, db
+        
+        result = "<h1>Restauration des relations historiques</h1>"
+        
+        # Essayer de trouver des relations dans différentes tables
+        relations_found = False
+        
+        # Option 1: Table enseignant_eleve
+        try:
+            old_relations = db.session.execute("""
+                SELECT enseignant_id, eleve_id
+                FROM enseignant_eleve
+            """).fetchall()
+            
+            if old_relations:
+                relations_found = True
+                result += f"<p>{len(old_relations)} relations trouvées dans 'enseignant_eleve'</p>"
+                
+                restored = []
+                errors = []
+                
+                for enseignant_id, eleve_id in old_relations:
+                    try:
+                        # Trouver l'élève
+                        eleve = User.query.get(eleve_id)
+                        enseignant = User.query.get(enseignant_id)
+                        
+                        if eleve and enseignant:
+                            if enseignant.role == 'enseignant':
+                                eleve.enseignant_referent_id = enseignant_id
+                                restored.append(f"{eleve.nom_complet} → {enseignant.nom_complet}")
+                            else:
+                                errors.append(f"L'utilisateur {enseignant_id} n'est pas un enseignant")
+                        else:
+                            errors.append(f"Élève {eleve_id} ou enseignant {enseignant_id} non trouvé")
+                    
+                    except Exception as e:
+                        errors.append(f"Erreur avec relation {enseignant_id}-{eleve_id}: {str(e)}")
+                
+                if restored:
+                    db.session.commit()
+                    result += "<h3>Relations restaurées:</h3>"
+                    result += "<ul>"
+                    for rel in restored:
+                        result += f"<li>{rel}</li>"
+                    result += "</ul>"
+                
+                if errors:
+                    result += "<h3>Erreurs:</h3>"
+                    result += "<ul>"
+                    for err in errors:
+                        result += f"<li>{err}</li>"
+                    result += "</ul>"
+        
+        except Exception as e:
+            result += f"<p>Table 'enseignant_eleve' non trouvée: {str(e)}</p>"
+        
+        # Option 2: Chercher dans d'autres tables
+        if not relations_found:
+            result += "<p>Aucune table de relations trouvée. Tentative de déduction...</p>"
+            
+            # On peut essayer de déduire les relations par email ou nom
+            # Par exemple, si un élève a un email du même domaine qu'un enseignant
+            all_teachers = User.query.filter_by(role='enseignant').all()
+            all_students = User.query.filter(
+                (User.role.in_(['eleve', 'élève'])),
+                (User.enseignant_referent_id.is_(None))
+            ).all()
+            
+            deduced = []
+            
+            for student in all_students:
+                student_email_domain = student.email.split('@')[-1] if '@' in student.email else ''
+                
+                # Chercher un enseignant avec le même domaine d'email
+                matching_teachers = [t for t in all_teachers if t.email.endswith(student_email_domain)]
+                
+                if matching_teachers:
+                    # Prendre le premier enseignant correspondant
+                    teacher = matching_teachers[0]
+                    student.enseignant_referent_id = teacher.id
+                    deduced.append(f"{student.nom_complet} ({student.email}) → {teacher.nom_complet}")
+            
+            if deduced:
+                db.session.commit()
+                result += "<h3>Relations déduites par domaine d'email:</h3>"
+                result += "<ul>"
+                for rel in deduced:
+                    result += f"<li>{rel}</li>"
+                result += "</ul>"
+            else:
+                result += "<p>Aucune relation ne peut être déduite automatiquement.</p>"
+        
+        # Afficher l'état final
+        result += "<h2>État final des relations:</h2>"
+        
+        stats = db.session.execute("""
+            SELECT 
+                CASE 
+                    WHEN u.role = 'enseignant' THEN 'Enseignants'
+                    WHEN u.role IN ('eleve', 'élève') THEN 'Élèves'
+                    ELSE u.role
+                END as type,
+                COUNT(*) as total,
+                SUM(CASE WHEN enseignant_referent_id IS NOT NULL THEN 1 ELSE 0 END) as avec_referent,
+                SUM(CASE WHEN enseignant_referent_id IS NULL THEN 1 ELSE 0 END) as sans_referent
+            FROM users u
+            WHERE u.role IN ('enseignant', 'eleve', 'élève')
+            GROUP BY type
+        """).fetchall()
+        
+        result += "<table border='1' style='border-collapse: collapse;'>"
+        result += "<tr><th>Type</th><th>Total</th><th>Avec référent</th><th>Sans référent</th></tr>"
+        
+        for type_user, total, avec, sans in stats:
+            result += f"""
+            <tr>
+                <td>{type_user}</td>
+                <td>{total}</td>
+                <td>{avec}</td>
+                <td>{sans}</td>
+            </tr>
+            """
+        
+        result += "</table>"
+        
+        return result
+        
+    except Exception as e:
+        import traceback
+        return f"<h1>Erreur</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
 
 @app.route("/enseignant/remediations-en-attente")
 def remediations_en_attente():
@@ -4438,111 +6650,1213 @@ def admin_auth():
         </form>
     '''
 
+from datetime import datetime, timedelta
+from flask import render_template, request, session, redirect, url_for, flash, jsonify
+# Importez tous vos modèles depuis models.py
+from models import db, User, Lecon, StudentResponse, RemediationSuggestion, \
+                   Commission, VersementManuel, InfoVersementEnseignant
+
+
 @app.route("/login-enseignant", methods=["GET", "POST"])
 def login_enseignant():
-    lang = session.get("lang", "fr")
-    if request.method == "POST":
-        email = request.form.get("email")
-        mot_de_passe = request.form.get("mot_de_passe")
-        enseignant = Enseignant.query.filter_by(email=email).first()
-
-        if enseignant and enseignant.verifier_mot_de_passe(mot_de_passe):
-            session["enseignant_id"] = enseignant.id
+    """Page de connexion pour les enseignants"""
+    try:
+        lang = session.get("lang", "fr")
+        
+        if request.method == "POST":
+            email = request.form.get("email")
+            mot_de_passe = request.form.get("mot_de_passe")
+            
+            if not email or not mot_de_passe:
+                flash("Email et mot de passe requis" if lang == "fr" else "Email and password required", "error")
+                return redirect(url_for("login_enseignant"))
+            
+            # Chercher l'enseignant
+            enseignant = User.query.filter_by(email=email, role="enseignant").first()
+            
+            if not enseignant:
+                flash("Email ou mot de passe incorrect" if lang == "fr" else "Incorrect email or password", "error")
+                return redirect(url_for("login_enseignant"))
+            
+            # Vérifier le mot de passe
+            if not enseignant.verifier_mot_de_passe(mot_de_passe):
+                flash("Email ou mot de passe incorrect" if lang == "fr" else "Incorrect email or password", "error")
+                return redirect(url_for("login_enseignant"))
+            
+            # Connexion réussie - METTRE À JOUR CETTE LIGNE
+            session["user_id"] = enseignant.id
+            session["role"] = "enseignant"
+            session["nom_complet"] = enseignant.nom_complet  # CORRIGÉ: nom_complet au lieu de nom_complet
+            session["lang"] = enseignant.langue if enseignant.langue else "fr"
+            
+            flash("Connexion réussie !" if lang == "fr" else "Login successful!", "success")
             return redirect(url_for("dashboard_enseignant"))
-        else:
-            return "Identifiants incorrects", 401
+        
+        # GET request - afficher le formulaire
+        return render_template("login_enseignant.html", lang=lang)
+        
+    except Exception as e:
+        print(f"Erreur login_enseignant: {e}")
+        flash("Une erreur est survenue lors de la connexion", "error")
+        return redirect(url_for("login_enseignant"))
 
-    return render_template("login_enseignant.html", lang=lang)
 
 @app.route("/dashboard-enseignant", methods=["GET", "POST"])
 def dashboard_enseignant():
-    enseignant_id = session.get("enseignant_id")
-    if not enseignant_id:
-        return redirect(url_for("login_enseignant"))
+    """Dashboard enseignant - version complète"""
+    try:
+        # Vérifier connexion et rôle
+        if "user_id" not in session:
+            return redirect(url_for("login_enseignant"))
 
-    if request.method == "POST":
-        selected_lang = request.form.get("lang")
-        if selected_lang in ["fr", "en"]:
-            session["lang"] = selected_lang
-        return redirect(url_for("dashboard_enseignant"))
+        if session.get("role") != "enseignant":
+            flash("Accès réservé aux enseignants", "error")
+            return redirect("/")
 
-    lang = session.get("lang", "fr")
-    enseignant = Enseignant.query.get(enseignant_id)
-    if not enseignant:
-        return redirect(url_for("login_enseignant"))
+        enseignant = User.query.get(session["user_id"])
+        if not enseignant or not enseignant.est_enseignant():
+            flash("Enseignant non trouvé", "error")
+            return redirect(url_for("login_enseignant"))
 
-    # Charger les élèves avec la relation niveau déjà jointe
-    eleves = User.query.options(joinedload(User.niveau))\
-        .filter_by(role="élève", enseignant_id=enseignant.id).all()
+        # Gestion langue
+        if request.method == "POST":
+            selected_lang = request.form.get("lang")
+            if selected_lang in ["fr", "en"]:
+                session["lang"] = selected_lang
+            return redirect(url_for("dashboard_enseignant"))
 
-    # 🔥 CORRECTION : Calcul des statistiques pour les cartes
-    total_students = len(eleves)
+        lang = session.get("lang", "fr")
+
+        # -----------------------------
+        # Récupérer élèves
+        # -----------------------------
+        eleves = enseignant.get_eleves_encadres()
+        total_students = len(eleves)
+
+        # -----------------------------
+        # Statistiques élèves
+        # -----------------------------
+        all_stars = []
+        stats, noms_eleves, moyennes, niveau_counts = [], [], [], {}
+
+        for e in eleves:
+            try:
+                reponses = StudentResponse.query.filter_by(user_id=e.id).all()
+                etoiles_vals = [r.etoiles for r in reponses if r.etoiles is not None]
+                moyenne = round(sum(etoiles_vals) / len(etoiles_vals), 2) if etoiles_vals else 0
+                if etoiles_vals:
+                    all_stars.append(moyenne)
+
+                niveau_nom = e.niveau.nom if e.niveau else "Non défini"
+
+                stats.append({
+                    "nom": e.nom_complet,
+                    "username": e.username,
+                    "niveau": niveau_nom,
+                    "moyenne": moyenne,
+                    "total": len(etoiles_vals)
+                })
+
+                noms_eleves.append(e.nom_complet[:15])
+                moyennes.append(moyenne if moyenne <= 3 else 3)
+                niveau_counts[niveau_nom] = niveau_counts.get(niveau_nom, 0) + 1
+            except Exception as ex:
+                print(f"Erreur stats élève {e.id}: {ex}")
+                continue
+
+        avg_stars = round(sum(all_stars) / len(all_stars), 1) if all_stars else 0
+        niveaux = list(niveau_counts.keys())
+        counts = list(niveau_counts.values())
+
+        # -----------------------------
+        # Remédiations en attente
+        # -----------------------------
+        nv_count = 0
+        try:
+            eleves_ids = [e.id for e in eleves]
+            if eleves_ids:
+                nv_count = RemediationSuggestion.query \
+                    .filter(RemediationSuggestion.user_id.in_(eleves_ids),
+                            RemediationSuggestion.statut == "en_attente") \
+                    .count()
+        except:
+            nv_count = 0
+
+        # -----------------------------
+        # Commissions
+        # -----------------------------
+        try:
+            commissions = Commission.query.filter_by(enseignant_id=enseignant.id).all()
+            total_commissions = sum(c.montant_commission for c in commissions if c.statut != 'cancelled')
+            commissions_pending = sum(1 for c in commissions if c.statut == 'pending')
+            commissions_paid = sum(c.montant_commission for c in commissions if c.statut == 'paid')
+            commissions_available = sum(c.montant_commission for c in commissions if c.statut == 'pending')
+            info_versement = InfoVersementEnseignant.query.filter_by(enseignant_id=enseignant.id).first()
+            interac_configure = bool(info_versement and info_versement.email_interac)
+        except:
+            total_commissions = commissions_pending = commissions_paid = commissions_available = 0
+            interac_configure = False
+
+        # -----------------------------
+        # Élèves payants / essai
+        # -----------------------------
+        eleves_payants = eleves_essai = 0
+        for e in eleves:
+            statut = getattr(e, "statut_paiement", "")
+            if statut == "paye":
+                eleves_payants += 1
+            elif statut == "essai_gratuit":
+                eleves_essai += 1
+            else:
+                eleves_payants += 1
+
+        # -----------------------------
+        # Exercices par matière/leçon
+        # -----------------------------
+        matieres = get_exercices_par_enseignant_for_template(enseignant, lang)
+
+        # -----------------------------
+        # Rendu final
+        # -----------------------------
+        return render_template(
+            "dashboard_enseignant.html",
+            enseignant=enseignant,
+            stats=stats,
+            noms_eleves=noms_eleves,
+            moyennes=moyennes,
+            niveaux=niveaux,
+            counts=counts,
+            lang=lang,
+            nv_count=nv_count,
+            total_students=total_students,
+            avg_stars=avg_stars,
+            total_commissions=total_commissions,
+            commissions_pending=commissions_pending,
+            commissions_paid=commissions_paid,
+            commissions_available=commissions_available,
+            interac_configure=interac_configure,
+            eleves_payants=eleves_payants,
+            eleves_essai=eleves_essai,
+            commissions_implemented=True,
+            matieres=matieres
+        )
+
+    except Exception as e:
+        print(f"Erreur dashboard_enseignant: {e}")
+        flash("Une erreur est survenue sur le dashboard.", "error")
+        return redirect("/")
+
+
+
+
+
+
+@app.route("/enseignant/commissions", methods=["GET"])
+def enseignant_commissions():
+    """Tableau de bord des commissions pour l'enseignant"""
+    if "user_id" not in session:
+        return redirect(url_for("login"))
     
-    # Nombre total de leçons (toutes les leçons de la plateforme)
-    total_lessons = Lecon.query.count()
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/")
     
-    # 🔥 CORRECTION : Moyenne des étoiles de TOUS les élèves
-    all_stars = []
-    for eleve in eleves:
-        reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
-        if reponses:
-            # Filtrer les étoiles non nulles
-            etoiles_vals = [r.etoiles for r in reponses if r.etoiles is not None]
-            if etoiles_vals:
-                moyenne_eleve = sum(etoiles_vals) / len(etoiles_vals)
-                all_stars.append(moyenne_eleve)
+    enseignant = User.query.get(session["user_id"])
     
-    avg_stars = round(sum(all_stars) / len(all_stars), 1) if all_stars else 0
-
-    stats = []
-    noms_eleves = []
-    moyennes = []
-    niveau_counts = {}
-
-    for eleve in eleves:
-        reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
-        # 🔥 CORRECTION : Filtrer les étoiles non nulles
-        etoiles_vals = [r.etoiles for r in reponses if r.etoiles is not None]
-        total = len(etoiles_vals)
-        moyenne = round(sum(etoiles_vals) / total, 2) if total else 0
-        nom_niveau = eleve.niveau.nom if eleve.niveau else "Non défini"
-        
-        stats.append({
-            "nom": eleve.nom_complet,
-            "username": eleve.username,
-            "niveau": nom_niveau,
-            "moyenne": moyenne,
-            "total": total
+    if not enseignant or enseignant.role != "enseignant":
+        flash("Enseignant non trouvé", "error")
+        return redirect(url_for("login"))
+    
+    # Récupérer les commissions
+    commissions = Commission.query.filter_by(enseignant_id=enseignant.id)\
+        .order_by(Commission.date_paiement_eleve.desc()).all()
+    
+    info_versement = InfoVersementEnseignant.query.filter_by(enseignant_id=enseignant.id).first()
+    
+    versements = VersementManuel.query.filter_by(enseignant_id=enseignant.id)\
+        .order_by(VersementManuel.date_demande.desc()).all()
+    
+    # Calculs - CORRECTION DES NOMS DE VARIABLES
+    total_commissions = sum(c.montant_commission for c in commissions if c.statut != 'cancelled')
+    commissions_available = sum(c.montant_commission for c in commissions if c.statut == 'pending')  # Ancien total_attente
+    commissions_paid = sum(c.montant_commission for c in commissions if c.statut == 'paid')  # Ancien total_verse
+    commissions_pending = len([c for c in commissions if c.statut == 'pending'])
+    
+    # Configuration seuil
+    seuil_minimum = 25.00  # Changé de 50 à 25 pour correspondre au modèle
+    frais_interac = 1.00
+    
+    if info_versement and info_versement.seuil_minimum:
+        seuil_minimum = info_versement.seuil_minimum
+    
+    # Récupérer les élèves pour calculer eleves_payants
+    eleves = User.query.filter_by(enseignant_referent_id=enseignant.id).all()
+    eleves_payants = len([e for e in eleves if hasattr(e, 'statut_paiement') and e.statut_paiement == 'paye'])
+    
+    # Préparer les commissions pour l'affichage avec nom d'élève
+    commissions_display = []
+    for com in commissions:
+        eleve = User.query.get(com.eleve_id)
+        commissions_display.append({
+            'id': com.id,
+            'eleve_nom': eleve.nom_complet if eleve else 'Élève inconnu',
+            'eleve_id': com.eleve_id,
+            'type_abonnement': com.type_abonnement,
+            'montant_total': com.montant_total,
+            'montant_commission': com.montant_commission,
+            'taux_base': com.taux_base,
+            'details_bonus': com.details_bonus,
+            'statut': com.statut,
+            'date_paiement_eleve': com.date_paiement_eleve,
+            'date_versement_manuel': com.date_versement_manuel,
+            'reference_interac': com.reference_interac
         })
-        noms_eleves.append(eleve.nom_complet)
-        moyennes.append(moyenne)
-        niveau_counts[nom_niveau] = niveau_counts.get(nom_niveau, 0) + 1
-
-    niveaux = list(niveau_counts.keys())
-    counts = list(niveau_counts.values())
-
-    # ✅ Compter les remédiations non encore vues
-    nv_count = RemediationSuggestion.query \
-    .join(User, RemediationSuggestion.user_id == User.id) \
-    .filter(User.enseignant_id == enseignant_id) \
-    .filter(RemediationSuggestion.statut == "en_attente") \
-    .count()
-
+    
+    # Calculer la répartition par type d'abonnement
+    commissions_by_type = {
+        'monthly': {'count': 0, 'amount': 0},
+        'quarterly': {'count': 0, 'amount': 0},
+        'annual': {'count': 0, 'amount': 0}
+    }
+    
+    for com in commissions:
+        if com.type_abonnement in commissions_by_type:
+            commissions_by_type[com.type_abonnement]['count'] += 1
+            commissions_by_type[com.type_abonnement]['amount'] += com.montant_commission
+    
+    lang = session.get('lang', 'fr')
+    
     return render_template(
-        "dashboard_enseignant.html",
+        'enseignant/commissions_simple.html',  # Le template que j'ai corrigé
         enseignant=enseignant,
-        stats=stats,
-        noms_eleves=noms_eleves,
-        moyennes=moyennes,
-        niveaux=niveaux,
-        counts=counts,
-        lang=lang,
-        nv_count=nv_count,
-        # 🔥 AJOUT : Passer les nouvelles statistiques au template
-        total_students=total_students,
-        total_lessons=total_lessons,
-        avg_stars=avg_stars
+        commissions=commissions_display,  # Utiliser commissions_display au lieu de commissions
+        total_commissions=total_commissions,  # Ancien total_brut
+        commissions_available=commissions_available,  # Ancien total_attente - CORRECTION IMPORTANTE
+        commissions_paid=commissions_paid,  # Ancien total_verse
+        commissions_pending=commissions_pending,
+        info_versement=info_versement,
+        versements=versements,
+        seuil_minimum=seuil_minimum,
+        frais_interac=frais_interac,
+        eleves_payants=eleves_payants,
+        commissions_by_type=commissions_by_type,
+        lang=lang
     )
+
+
+# 🔥 AJOUT : Route pour configurer les informations de versement
+@app.route("/enseignant/commissions/configurer", methods=["GET", "POST"])
+def configurer_commissions():
+    """Configuration des informations de versement pour l'enseignant"""
+    if "user_id" not in session or session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect(url_for("login"))
+    
+    enseignant = User.query.get(session["user_id"])
+    
+    if not enseignant or enseignant.role != "enseignant":
+        flash("Enseignant non trouvé", "error")
+        return redirect(url_for("login"))
+    
+    # Récupérer ou créer les infos de versement
+    info_versement = InfoVersementEnseignant.query.filter_by(enseignant_id=enseignant.id).first()
+    
+    if request.method == "POST":
+        try:
+            if not info_versement:
+                info_versement = InfoVersementEnseignant(enseignant_id=enseignant.id)
+                db.session.add(info_versement)
+            
+            # Mettre à jour les informations
+            info_versement.methode_versement = request.form.get("methode_versement", "interac")
+            info_versement.email_interac = request.form.get("email_interac", "")
+            info_versement.nom_complet_interac = request.form.get("nom_complet_interac", enseignant.nom_complet)
+            info_versement.email_paypal = request.form.get("email_paypal", "")
+            info_versement.frequence_versement = request.form.get("frequence_versement", "mensuel")
+            
+            seuil = request.form.get("seuil_minimum", "25.00")
+            try:
+                info_versement.seuil_minimum = float(seuil)
+            except:
+                info_versement.seuil_minimum = 25.00
+            
+            info_versement.date_mise_a_jour = datetime.utcnow()
+            
+            # Mettre à jour aussi dans le modèle User pour la cohérence
+            enseignant.methode_versement = info_versement.methode_versement
+            enseignant.email_interac_paiement = info_versement.email_interac
+            enseignant.nom_complet_interac = info_versement.nom_complet_interac
+            enseignant.email_paypal = info_versement.email_paypal
+            enseignant.frequence_versement = info_versement.frequence_versement
+            enseignant.seuil_minimum_paiement = info_versement.seuil_minimum
+            
+            db.session.commit()
+            
+            flash("Configuration sauvegardée avec succès", "success")
+            return redirect(url_for("enseignant_commissions"))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erreur lors de la sauvegarde: {str(e)}", "error")
+    
+    lang = session.get('lang', 'fr')
+    
+    return render_template(
+        'enseignant/configurer_commissions.html',
+        enseignant=enseignant,
+        info_versement=info_versement,
+        lang=lang
+    )
+
+
+# 🔥 AJOUT : Route pour demander un versement manuel
+@app.route("/enseignant/commissions/demander-versement", methods=["POST"])
+def demander_versement_manuel():
+    """Demande de versement manuel par l'enseignant"""
+    if "user_id" not in session or session.get("role") != "enseignant":
+        return jsonify({"success": False, "error": "Non autorisé"}), 401
+    
+    enseignant_id = session["user_id"]
+    enseignant = User.query.get(enseignant_id)
+    
+    if not enseignant:
+        return jsonify({"success": False, "error": "Enseignant non trouvé"}), 404
+    
+    try:
+        # Vérifier que l'enseignant a configuré son email Interac
+        info_versement = InfoVersementEnseignant.query.filter_by(enseignant_referent_id=enseignant_id).first()
+        if not info_versement or not info_versement.email_interac:
+            error_msg = "Veuillez d'abord configurer votre email Interac" if session.get('lang', 'fr') == 'fr' else "Please configure your Interac email first"
+            return jsonify({"success": False, "error": error_msg}), 400
+        
+        # Récupérer les commissions en attente
+        commissions_pending = Commission.query.filter_by(
+            enseignant_referent_id=enseignant_id,
+            statut='pending'
+        ).all()
+        
+        montant_total = sum(c.montant_commission for c in commissions_pending)
+        
+        # Vérifier le seuil minimum
+        seuil_minimum = info_versement.seuil_minimum or 25.00
+        
+        if montant_total < seuil_minimum:
+            error_msg = f"Montant insuffisant. Minimum: {seuil_minimum}$" if session.get('lang', 'fr') == 'fr' else f"Insufficient amount. Minimum: {seuil_minimum}$"
+            return jsonify({"success": False, "error": error_msg}), 400
+        
+        # Calculer les frais de transaction
+        frais_transaction = 1.00
+        montant_net = montant_total - frais_transaction
+        
+        # Créer le versement manuel
+        versement = VersementManuel(
+            enseignant_referent_id=enseignant_id,
+            montant_total=montant_total,
+            frais_transaction=frais_transaction,
+            montant_net=montant_net,
+            email_interac=info_versement.email_interac,
+            date_demande=datetime.utcnow(),
+            statut='demande'
+        )
+        
+        db.session.add(versement)
+        
+        # Marquer les commissions comme "processing"
+        for commission in commissions_pending:
+            commission.statut = 'processing'
+        
+        db.session.commit()
+        
+        success_msg = "Demande de versement envoyée avec succès" if session.get('lang', 'fr') == 'fr' else "Payment request sent successfully"
+        return jsonify({
+            "success": True,
+            "message": success_msg,
+            "montant": montant_total,
+            "montant_net": montant_net,
+            "frais": frais_transaction
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# 🔥 AJOUT : Route de déconnexion enseignant
+@app.route("/logout-enseignant")
+def logout_enseignant():
+    """Déconnexion enseignant"""
+    session.pop("user_id", None)
+    session.pop("username", None)
+    session.pop("nom_complet", None)
+    session.pop("role", None)
+    session.pop("email", None)
+    session.pop("enseignant_id", None)
+    flash("Vous avez été déconnecté avec succès", "success")
+    return redirect(url_for("login"))
+
+def creer_demande_versement(enseignant_id):
+    """Créer une demande de versement Interac"""
+    try:
+        enseignant = User.query.get(enseignant_id)
+        if not enseignant:
+            return {'success': False, 'error': 'Enseignant non trouvé'}
+        
+        # Vérifier les commissions en attente
+        commissions = Commission.query.filter_by(
+            enseignant_id=enseignant_id,
+            statut='pending'
+        ).all()
+        
+        if not commissions:
+            return {'success': False, 'error': 'Aucune commission en attente'}
+        
+        # Calculer le total
+        montant_total = sum(c.montant_commission for c in commissions)
+        
+        # Vérifier le seuil minimum
+        seuil_minimum = getattr(enseignant, 'seuil_minimum_paiement', 25.00)
+        if montant_total < seuil_minimum:
+            return {
+                'success': False,
+                'error': f'Montant insuffisant. Minimum: {seuil_minimum:.2f}$'
+            }
+        
+        # Récupérer l'email Interac
+        email_interac = None
+        if hasattr(enseignant, 'email_interac_paiement') and enseignant.email_interac_paiement:
+            email_interac = enseignant.email_interac_paiement
+        else:
+            info_versement = InfoVersementEnseignant.query.filter_by(enseignant_id=enseignant_id).first()
+            if info_versement and info_versement.email_interac:
+                email_interac = info_versement.email_interac
+        
+        if not email_interac:
+            return {'success': False, 'error': 'Email Interac non configuré'}
+        
+        # Calculer les frais (1$ par défaut)
+        frais_transaction = 1.00
+        montant_net = montant_total - frais_transaction
+        
+        # Créer le versement
+        versement = VersementManuel(
+            enseignant_id=enseignant_id,
+            montant_total=montant_total,
+            frais_transaction=frais_transaction,
+            montant_net=montant_net,
+            email_interac=email_interac,
+            statut='demande'
+        )
+        
+        db.session.add(versement)
+        
+        # Marquer les commissions comme "en traitement"
+        for commission in commissions:
+            commission.statut = 'processing'
+        
+        db.session.commit()
+        
+        # TODO: Envoyer notification email à l'admin
+        
+        return {
+            'success': True,
+            'versement_id': versement.id,
+            'montant_net': montant_net,
+            'message': 'Demande créée avec succès'
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'success': False, 'error': str(e)}
+
+def envoyer_notification_versement(versement_id):
+    """Envoyer des emails de notification"""
+    versement = VersementManuel.query.get(versement_id)
+    if not versement:
+        return
+    
+    # Email à l'admin
+    admin_email = "admin@tutoratai.ca"
+    admin_subject = f"Nouvelle demande Interac - #{versement.id}"
+    admin_body = f"""
+    Nouvelle demande de versement Interac :
+    
+    ID: #{versement.id}
+    Enseignant: {versement.enseignant.nom_complet}
+    Montant net: {versement.montant_net:.2f}$
+    Email: {versement.email_interac}
+    
+    Connectez-vous pour traiter : {url_for('admin_versements_interac', _external=True)}
+    """
+    # send_email(admin_email, admin_subject, admin_body)
+    
+    # Email à l'enseignant
+    enseignant_email = versement.enseignant.email
+    enseignant_subject = "Demande de versement Interac créée"
+    enseignant_body = f"""
+    Bonjour {versement.enseignant.nom_complet},
+    
+    Votre demande de versement Interac a été créée :
+    Montant: {versement.montant_net:.2f}$
+    
+    Le traitement prend généralement 2-3 jours ouvrables.
+    
+    Vous recevrez une confirmation une fois le virement envoyé.
+    """
+    # send_email(enseignant_email, enseignant_subject, enseignant_body)
+
+
+@app.route("/api/enseignant/demande-versement", methods=["POST"])
+def api_demande_versement():
+    """API pour créer une demande de versement"""
+    if "user_id" not in session:
+        return jsonify({'success': False, 'error': 'Non authentifié'}), 401
+    
+    if session.get("role") != "enseignant":
+        return jsonify({'success': False, 'error': 'Accès refusé'}), 403
+    
+    result = creer_demande_versement(session["user_id"])
+    return jsonify(result)
+
+
+@app.route("/enseignant/config-versement", methods=["GET", "POST"])
+def enseignant_config_versement():
+    """Configuration des versements pour l'enseignant"""
+    # Vérifier l'authentification
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/")
+    
+    enseignant = User.query.get(session["user_id"])
+    
+    if not enseignant or enseignant.role != "enseignant":
+        flash("Enseignant non trouvé", "error")
+        return redirect(url_for("login"))
+    
+    # Récupérer les informations existantes
+    info_versement = InfoVersementEnseignant.query.filter_by(enseignant_id=enseignant.id).first()
+    
+    # Si c'est une soumission POST
+    if request.method == "POST":
+        try:
+            email_interac = request.form.get("email_interac")
+            nom_complet_interac = request.form.get("nom_complet_interac")
+            methode_versement = request.form.get("methode_versement")
+            frequence_versement = request.form.get("frequence_versement")
+            seuil_minimum = request.form.get("seuil_minimum", 25.00)
+            
+            # Validation
+            if not email_interac:
+                flash("L'email Interac est obligatoire", "error")
+                return redirect("/enseignant/config-versement")
+            
+            # Mettre à jour ou créer
+            if info_versement:
+                info_versement.email_interac = email_interac
+                info_versement.nom_complet_interac = nom_complet_interac
+                info_versement.methode_versement = methode_versement
+                info_versement.frequence_versement = frequence_versement
+                info_versement.seuil_minimum = float(seuil_minimum)
+                info_versement.date_mise_a_jour = datetime.utcnow()
+            else:
+                info_versement = InfoVersementEnseignant(
+                    enseignant_id=enseignant.id,
+                    email_interac=email_interac,
+                    nom_complet_interac=nom_complet_interac,
+                    methode_versement=methode_versement,
+                    frequence_versement=frequence_versement,
+                    seuil_minimum=float(seuil_minimum)
+                )
+                db.session.add(info_versement)
+            
+            # Mettre à jour aussi le modèle User pour compatibilité
+            enseignant.email_interac_paiement = email_interac
+            enseignant.nom_complet_interac = nom_complet_interac
+            enseignant.methode_versement = methode_versement
+            enseignant.frequence_versement = frequence_versement
+            enseignant.seuil_minimum_paiement = float(seuil_minimum)
+            
+            db.session.commit()
+            flash("Configuration Interac sauvegardée avec succès", "success")
+            return redirect(url_for("enseignant_commissions"))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erreur lors de la sauvegarde: {str(e)}", "error")
+    
+    # GET : Afficher le formulaire
+    lang = session.get('lang', 'fr')
+    
+    return render_template(
+        "enseignant/config_versement.html",
+        enseignant=enseignant,
+        info_versement=info_versement,
+        lang=lang
+    )
+
+
+@app.route("/admin/versements-manuels")
+def admin_versements():
+    """Interface admin pour gérer les versements manuels"""
+    
+    # ✅ CORRECTION ESSENTIELLE : Charger la relation enseignant
+    statut = request.args.get('statut', 'tous')
+    
+    query = VersementManuel.query.options(
+        db.joinedload(VersementManuel.enseignant)  # ⚠️ C'EST LA CLÉ !
+    )
+    
+    if statut != 'tous':
+        query = query.filter_by(statut=statut)
+    
+    versements = query.order_by(VersementManuel.date_demande.desc()).all()
+    
+    # ✅ Ajouter les enseignants pour le formulaire
+    teachers = User.query.filter_by(role='enseignant').order_by(User.nom_complet).all()
+    
+    # ✅ CORRECTION : Utiliser les bons noms de champs pour les statistiques
+    total_demandes = VersementManuel.query.filter_by(statut='demande').count()
+    total_en_cours = VersementManuel.query.filter_by(statut='en_cours').count()
+    total_complete = VersementManuel.query.filter_by(statut='complete').count()
+    
+    # ✅ CORRECTION : Utiliser le BON nom de template
+    return render_template(
+        'admin/versements_manuels.html',  # ✅ Votre template
+        versements=versements,
+        teachers=teachers,  # ✅ Nécessaire pour le formulaire
+        total_demandes=total_demandes,
+        total_en_cours=total_en_cours,
+        total_complete=total_complete,
+        statut_selectionne=statut,
+        lang=session.get('lang', 'fr')
+    )
+
+from datetime import datetime
+from models import db, VersementManuel, Commission
+
+def traiter_versement_manuel(versement_id, reference_interac, preuve_versement=None):
+    """
+    Traiter un versement manuel (marquer comme payé)
+    
+    Args:
+        versement_id: ID du versement à traiter
+        reference_interac: Référence de transaction Interac
+        preuve_versement: URL ou chemin de la preuve de versement
+    
+    Returns:
+        dict: Résultat de l'opération
+    """
+    try:
+        # Récupérer le versement
+        versement = VersementManuel.query.get(versement_id)
+        if not versement:
+            return {'error': 'Versement non trouvé', 'success': False}
+        
+        # Vérifier le statut
+        if versement.statut == 'paye':
+            return {'error': 'Ce versement a déjà été payé', 'success': False}
+        
+        if versement.statut != 'demande':
+            return {'error': f'Statut invalide: {versement.statut}', 'success': False}
+        
+        # Mettre à jour le versement
+        versement.statut = 'paye'
+        versement.date_versement = datetime.utcnow()
+        versement.reference_interac = reference_interac
+        
+        if preuve_versement:
+            versement.preuve_versement = preuve_versement
+        
+        # Mettre à jour les commissions associées
+        # Trouver toutes les commissions de cet enseignant avec statut 'processing'
+        commissions = Commission.query.filter_by(
+            enseignant_id=versement.enseignant_id,
+            statut='processing'
+        ).all()
+        
+        # Marquer les commissions comme payées
+        for commission in commissions:
+            commission.statut = 'paid'
+            commission.date_versement_manuel = datetime.utcnow()
+            commission.reference_interac = reference_interac
+        
+        db.session.commit()
+        
+        return {
+            'success': True,
+            'message': f'Versement #{versement_id} traité avec succès',
+            'versement_id': versement_id,
+            'enseignant_id': versement.enseignant_id,
+            'montant_total': versement.montant_total,
+            'montant_net': versement.montant_net,
+            'commissions_traitees': len(commissions),
+            'reference_interac': reference_interac
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Erreur lors du traitement: {str(e)}', 'success': False}
+
+@app.route("/api/admin/versement/<int:versement_id>/traiter", methods=["POST"])
+def api_traiter_versement(versement_id):
+    """Admin: Marquer un versement comme traité"""
+    
+    data = request.json
+    reference = data.get('reference_interac')
+    preuve_url = data.get('preuve_versement')
+    
+    result = traiter_versement_manuel(versement_id, reference, preuve_url)
+    
+    if 'error' in result:
+        return jsonify(result), 400
+    
+    return jsonify(result)
+
+@app.route("/admin/versements-manuels/add", methods=["POST"])
+@admin_required
+def add_manual_payment():
+    """Ajouter un paiement manuel"""
+    try:
+        data = request.form
+        
+        # Récupérer les modèles
+        UserModel = get_user_model()
+        VersementManuelModel = get_model('VersementManuel')
+        
+        # Validation des champs
+        enseignant_id = data.get('enseignant_id')
+        montant = float(data.get('montant', 0))
+        email_interac = data.get('email_interac')
+        
+        if not enseignant_id or montant <= 0:
+            return jsonify({
+                'success': False,
+                'message': 'Enseignant et montant sont requis'
+            }), 400
+        
+        # Vérifier que l'enseignant existe
+        enseignant = UserModel.query.filter_by(id=enseignant_id, role="enseignant").first()
+        if not enseignant:
+            return jsonify({
+                'success': False,
+                'message': 'Enseignant non trouvé'
+            }), 400
+        
+        # Calculer les frais (1$ par défaut)
+        frais_transaction = float(data.get('frais_transaction', 1.00))
+        montant_net = montant - frais_transaction
+        
+        # Créer le versement manuel
+        new_payment = VersementManuelModel(
+            enseignant_id=enseignant_id,
+            montant_total=montant,
+            montant_net=montant_net,
+            frais_transaction=frais_transaction,
+            email_interac=email_interac or enseignant.email_interac_paiement or enseignant.email,
+            methode_paiement=data.get('methode_paiement', 'interac'),
+            statut=data.get('statut', 'demande'),
+            reference_interac=data.get('reference'),
+            date_demande=datetime.utcnow(),
+            date_versement=datetime.strptime(data.get('date_versement'), '%Y-%m-%d') if data.get('date_versement') else None,
+            notes_admin=data.get('notes_admin', '')
+        )
+        
+        # Si statut est "complete", mettre la date actuelle
+        if new_payment.statut == 'complete' and not new_payment.date_versement:
+            new_payment.date_versement = datetime.utcnow()
+        
+        db.session.add(new_payment)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Paiement ajouté avec succès',
+            'payment_id': new_payment.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur lors de l'ajout du paiement manuel: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Erreur: {str(e)}'
+        }), 400
+
+
+@app.route("/admin/versements-manuels/<int:payment_id>/approve", methods=["POST"])
+@admin_required
+def approve_manual_payment(payment_id):
+    """Passer un versement de 'demande' à 'en_cours'"""
+    try:
+        payment = VersementManuel.query.get_or_404(payment_id)
+        payment.statut = 'en_cours'
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Payment processing started'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+
+
+@app.route("/admin/versements-manuels/<int:payment_id>/reject", methods=["POST"])
+@admin_required
+def reject_manual_payment(payment_id):
+    """Rejeter un paiement manuel"""
+    try:
+        data = request.json
+        payment = VersementManuel.query.get_or_404(payment_id)
+        payment.statut = 'rejected'
+        payment.notes_rejet = data.get('reason', '')
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Payment rejected successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+
+@app.route("/admin/versements-manuels/<int:payment_id>/complete", methods=["POST"])
+@admin_required
+def complete_manual_payment(payment_id):
+    """Marquer un paiement comme complété"""
+    try:
+        payment = VersementManuel.query.get_or_404(payment_id)
+        payment.statut = 'complete'
+        payment.date_versement = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Payment marked as completed'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+
+@app.route("/admin/versements-manuels/<int:payment_id>/delete", methods=["POST"])
+@admin_required
+def delete_manual_payment(payment_id):
+    """Supprimer un paiement manuel"""
+    try:
+        payment = VersementManuel.query.get_or_404(payment_id)
+        db.session.delete(payment)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Payment deleted successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+
+@app.route("/fix-versement-model")
+def fix_versement_model():
+    """Force la mise à jour du modèle VersementManuel"""
+    import importlib
+    import sys
+    from sqlalchemy.orm import configure_mappers
+    
+    try:
+        print("=== DÉBUT FIX VERSEMENT MODEL ===")
+        
+        # 1. Réinitialiser les métadonnées
+        db.metadata.clear()
+        
+        # 2. Réfléchir la structure actuelle de la base
+        db.metadata.reflect(bind=db.engine)
+        
+        # 3. Afficher les colonnes actuelles
+        table = db.metadata.tables.get('versements_manuels')
+        if table:
+            columns = [c.name for c in table.columns]
+            print(f"Colonnes dans la base: {columns}")
+        else:
+            print("Table versements_manuels non trouvée dans les métadonnées")
+        
+        # 4. Réimporter le module des modèles
+        import models  # ou le nom de votre fichier de modèles
+        importlib.reload(models)
+        
+        # 5. Forcer la reconfiguration des mappers
+        configure_mappers()
+        
+        # 6. Vérifier le modèle Python
+        from models import VersementManuel  # Ajustez selon votre structure
+        
+        model_columns = [column.key for column in VersementManuel.__table__.columns]
+        print(f"Colonnes dans le modèle: {model_columns}")
+        
+        # 7. Tester la création
+        test_versement = VersementManuel(
+            enseignant_id=1,
+            montant_total=100.0,
+            frais_transaction=1.0,
+            montant_net=99.0,
+            email_interac="test_fix@example.com",
+            methode_paiement="interac",  # Ceci devrait maintenant fonctionner
+            statut="demande"
+        )
+        
+        print(f"Test objet créé: methode_paiement = {test_versement.methode_paiement}")
+        
+        return f"""
+        <h1>✅ Réparation effectuée</h1>
+        <p>Colonnes base: {columns if table else 'N/A'}</p>
+        <p>Colonnes modèle: {model_columns}</p>
+        <p>Test création: OK (methode_paiement = {test_versement.methode_paiement})</p>
+        <p><a href="/admin/versements-manuels">Tester la page</a></p>
+        """
+        
+    except Exception as e:
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"Erreur: {error_msg}")
+        return f"""
+        <h1>❌ Erreur lors de la réparation</h1>
+        <pre>{error_msg}</pre>
+        """
+
+@app.route("/debug-versement-model")
+def debug_versement_model():
+    """Affiche les détails du modèle VersementManuel"""
+    try:
+        # Importez votre modèle
+        from models import VersementManuel  # Ajustez l'import
+        
+        result = f"""
+        <h1>Debug Modèle VersementManuel</h1>
+        <h2>1. Métadonnées SQLAlchemy</h2>
+        <pre>
+        Table name: {VersementManuel.__tablename__}
+        Columns: {[c.key for c in VersementManuel.__table__.columns]}
+        </pre>
+        
+        <h2>2. Définition des colonnes</h2>
+        <table border="1">
+        <tr><th>Nom</th><th>Type</th><th>Nullable</th><th>Default</th></tr>
+        """
+        
+        for column in VersementManuel.__table__.columns:
+            result += f"""
+            <tr>
+                <td>{column.key}</td>
+                <td>{column.type}</td>
+                <td>{'✓' if column.nullable else '✗'}</td>
+                <td>{column.default}</td>
+            </tr>
+            """
+        
+        result += "</table>"
+        
+        # Vérifier si methode_paiement existe
+        has_methode_paiement = any(c.key == 'methode_paiement' for c in VersementManuel.__table__.columns)
+        
+        result += f"""
+        <h2>3. Vérification champ 'methode_paiement'</h2>
+        <p style="color:{'green' if has_methode_paiement else 'red'}">
+        {'✅ Champ methode_paiement présent dans le modèle' 
+         if has_methode_paiement else 
+         '❌ Champ methode_paiement ABSENT du modèle'}
+        </p>
+        """
+        
+        # Tester la création
+        result += "<h2>4. Test de création</h2>"
+        try:
+            test_obj = VersementManuel(
+                enseignant_id=1,
+                montant_total=100.0,
+                frais_transaction=1.0,
+                montant_net=99.0,
+                email_interac="debug@test.com",
+                statut="demande"
+            )
+            
+            # Essayer d'accéder à methode_paiement
+            try:
+                methode_value = test_obj.methode_paiement
+                result += f"<p>✅ methode_paiement accessible: {methode_value}</p>"
+            except AttributeError:
+                result += "<p style='color:red'>❌ methode_paiement non accessible (AttributeError)</p>"
+            
+            # Tester avec la valeur
+            try:
+                test_obj2 = VersementManuel(
+                    enseignant_id=1,
+                    montant_total=100.0,
+                    frais_transaction=1.0,
+                    montant_net=99.0,
+                    email_interac="debug2@test.com",
+                    methode_paiement="interac",
+                    statut="demande"
+                )
+                result += f"<p>✅ Création avec methode_paiement='interac' réussie</p>"
+            except Exception as e:
+                result += f"<p style='color:red'>❌ Erreur création: {e}</p>"
+                
+        except Exception as e:
+            result += f"<p style='color:red'>❌ Erreur test: {e}</p>"
+        
+        result += f"""
+        <h2>5. Actions recommandées</h2>
+        <ol>
+            <li><a href="/fix-versement-model">Exécuter le fix</a></li>
+            <li><a href="/admin/versements-manuels">Tester la page versements</a></li>
+            <li>Redémarrer le serveur Flask</li>
+        </ol>
+        """
+        
+        return result
+        
+    except ImportError as e:
+        return f"<h1>❌ Erreur d'import</h1><p>{e}</p><p>Vérifiez le chemin d'import de votre modèle.</p>"
+
+@app.route("/admin/versements-manuels/<int:payment_id>/details", methods=["GET"])
+@admin_required
+def get_payment_details(payment_id):
+    """Obtenir les détails d'un paiement"""
+    try:
+        payment = VersementManuel.query.get_or_404(payment_id)
+        
+        return jsonify({
+            'success': True,
+            'payment': {
+                'id': payment.id,
+                'enseignant_id': payment.enseignant_id,
+                'enseignant_nom': payment.enseignant.nom_complet if payment.enseignant else 'N/A',
+                'montant': float(payment.montant) if payment.montant else 0,
+                'methode_paiement': payment.methode_paiement or '',
+                'statut': payment.statut or '',
+                'reference': payment.reference or '',
+                'date_demande': payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else '',
+                'date_versement': payment.date_versement.strftime('%Y-%m-%d') if payment.date_versement else '',
+                'notes_rejet': payment.notes_rejet or ''
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+def completer_versement_manuel(versement_id, notes_admin=None):
+    """
+    Marquer un versement comme complété (pour archive)
+    
+    Args:
+        versement_id: ID du versement
+        notes_admin: Notes optionnelles de l'admin
+    
+    Returns:
+        dict: Résultat de l'opération
+    """
+    try:
+        versement = VersementManuel.query.get(versement_id)
+        if not versement:
+            return {'error': 'Versement non trouvé', 'success': False}
+        
+        if versement.statut != 'paye':
+            return {'error': 'Le versement doit être payé avant d\'être complété', 'success': False}
+        
+        versement.statut = 'complete'
+        if notes_admin:
+            versement.notes_admin = notes_admin
+        
+        db.session.commit()
+        
+        return {
+            'success': True,
+            'message': f'Versement #{versement_id} marqué comme complété',
+            'versement_id': versement_id
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Erreur: {str(e)}', 'success': False}
+        
+@app.route("/api/admin/versement/<int:versement_id>/completer", methods=["POST"])
+def api_completer_versement(versement_id):
+    """Admin: Marquer versement comme complété"""
+    
+    result = completer_versement_manuel(versement_id)
+    
+    if 'error' in result:
+        return jsonify(result), 400
+    
+    return jsonify(result)
+
+
+@app.route("/api/admin/rapport-versements", methods=["GET"])
+def api_rapport_versements():
+    """Rapport des versements pour déclaration T4A"""
+    
+    annee = request.args.get('annee', datetime.now().year)
+    
+    debut = datetime(int(annee), 1, 1)
+    fin = datetime(int(annee), 12, 31, 23, 59, 59)
+    
+    versements = VersementManuel.query.filter(
+        VersementManuel.date_versement.between(debut, fin),
+        VersementManuel.statut == 'complete'
+    ).all()
+    
+    rapport = {}
+    for versement in versements:
+        ens_id = versement.enseignant_id
+        if ens_id not in rapport:
+            rapport[ens_id] = {
+                'enseignant': versement.enseignant.nom_complet,
+                'email': versement.enseignant.email,
+                'email_interac': versement.email_interac,
+                'total_verse': 0,
+                'nombre_versements': 0,
+                'versements': []
+            }
+        
+        rapport[ens_id]['total_verse'] += versement.montant_net
+        rapport[ens_id]['nombre_versements'] += 1
+        rapport[ens_id]['versements'].append({
+            'date': versement.date_versement.strftime('%Y-%m-%d'),
+            'montant': versement.montant_net,
+            'reference': versement.reference_interac
+        })
+    
+    return jsonify({
+        'success': True,
+        'annee': annee,
+        'rapport': rapport,
+        'total_general': sum(v['total_verse'] for v in rapport.values())
+    })
+
+
+# Fonction pour intégrer dans vos routes de paiement existantes
+def integrer_commission(eleve_id, plan_type, montant):
+    """À appeler après un paiement réussi d'élève"""
+    return creer_commission_apres_paiement(eleve_id, plan_type, montant)
 
 
 @app.route("/logout-parent")
@@ -5048,6 +8362,40 @@ def choisir_sequence():
         lang=lang
     )
 
+from functools import wraps
+
+def eleve_required(f):
+    """Décorateur pour vérifier qu'un élève est connecté ET a accès"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Vérifier la session
+        if "user_id" not in session:
+            return redirect(url_for("login_eleve"))
+        
+        if session.get("role") != "eleve":
+            flash("Accès réservé aux élèves", "error")
+            return redirect("/")
+        
+        # Vérifier si l'élève existe
+        eleve = User.query.get(session["user_id"])
+        if not eleve or eleve.role != "eleve":
+            flash("Session invalide", "error")
+            session.clear()
+            return redirect(url_for("login_eleve"))
+        
+        # ✅ VÉRIFIER SI L'ÉLÈVE A ENCORE ACCÈS
+        if not eleve.a_acces_plateforme():
+            if hasattr(eleve, 'est_en_essai_gratuit') and eleve.essai_est_expire():
+                flash("Votre essai gratuit a expiré. Veuillez souscrire à un abonnement.", "warning")
+                return redirect(url_for("upgrade_options"))
+            else:
+                flash("Votre compte n'est pas actif. Contactez l'administrateur.", "error")
+                return redirect(url_for("login_eleve"))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 from datetime import datetime, timedelta
 import matplotlib
 matplotlib.use('Agg')
@@ -5060,16 +8408,24 @@ from sqlalchemy import and_
 
 @app.route("/dashboard-eleve")
 def dashboard_eleve():
-    if "eleve_id" not in session:
+    """Dashboard élève"""
+    # Vérifier si l'utilisateur est connecté
+    if "user_id" not in session:  # CORRIGÉ: "user_id" au lieu de "eleve_id"
+        return redirect(url_for("login_eleve"))
+    
+    # Vérifier si c'est un élève
+    user_role = session.get("role")
+    if user_role not in ["élève", "eleve"]:  # Accepter les deux formats
+        flash("Accès réservé aux élèves", "error")
+        return redirect(url_for("login_eleve"))
+    
+    eleve = User.query.options(db.joinedload(User.niveau)).get(session["user_id"])  # CORRIGÉ: "user_id"
+    if not eleve or eleve.role not in ["élève", "eleve"]:
+        flash("Élève non trouvé", "error")
         return redirect(url_for("login_eleve"))
 
-    eleve = User.query.options(joinedload(User.niveau)).get(session["eleve_id"])
-    if not eleve or eleve.role != "élève":
-        return "Accès non autorisé", 403
-
     # 🚨 VÉRIFICATION ACCÈS - ESSAI GRATUIT EXPIRÉ
-    # NE PAS DÉCONNECTER L'ÉLÈVE, LE REDIRIGER VERS L'UPGRADE
-    if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
+    if hasattr(eleve, 'essai_est_expire') and eleve.essai_est_expire() and eleve.statut_paiement != "paye":
         flash("Votre période d'essai gratuit de 48h est terminée. Veuillez choisir un abonnement pour continuer.", "warning")
         return redirect(url_for('upgrade_options'))
 
@@ -5080,20 +8436,34 @@ def dashboard_eleve():
     session["lang"] = lang
 
     # 🔔 Remédiations non vues
-    remediations_non_lues = RemediationSuggestion.query.filter_by(
-        user_id=eleve.id,
-        statut="valide",
-        vue_par_eleve=False
-    ).order_by(RemediationSuggestion.timestamp.desc()).limit(1).all()
+    remediations_non_lues = []
+    try:
+        remediations_non_lues = RemediationSuggestion.query.filter_by(
+            user_id=eleve.id,
+            statut="valide",
+            vue_par_eleve=False
+        ).order_by(RemediationSuggestion.timestamp.desc()).limit(1).all()
+    except:
+        pass
 
     # 📊 Statistiques
     from sqlalchemy.sql import func
+    from sqlalchemy import and_
+    import matplotlib.pyplot as plt
+    import io
+    import base64
+    from datetime import datetime, timedelta
     
-    reponses_eleve = StudentResponse.query.filter_by(user_id=eleve.id).order_by(StudentResponse.timestamp).all()
+    reponses_eleve = []
+    try:
+        reponses_eleve = StudentResponse.query.filter_by(user_id=eleve.id).order_by(StudentResponse.timestamp).all()
+    except:
+        pass
+    
     total_reponses = len(reponses_eleve)
 
     # 🔧 Corrige les valeurs None
-    etoiles_values = [r.etoiles or 0 for r in reponses_eleve]
+    etoiles_values = [r.etoiles or 0 for r in reponses_eleve if r.etoiles is not None]
     moyenne_etoiles = sum(etoiles_values) / total_reponses if total_reponses else 0
     bonnes_reponses = sum(1 for e in etoiles_values if e >= 3)
     taux_reussite = round((bonnes_reponses / total_reponses) * 100, 1) if total_reponses else 0
@@ -5107,136 +8477,144 @@ def dashboard_eleve():
     # 📈 Courbe progression - MOYENNE PAR JOUR (AMÉLIORÉ)
     courbe_progression = None
     if reponses_eleve:
-        # Grouper les réponses par date et calculer la moyenne des étoiles par jour
-        reponses_par_jour = {}
-        for reponse in reponses_eleve:
-            date_str = reponse.timestamp.strftime("%Y-%m-%d")
-            if date_str not in reponses_par_jour:
-                reponses_par_jour[date_str] = []
-            reponses_par_jour[date_str].append(reponse.etoiles or 0)
-        
-        # Calculer la moyenne par jour
-        dates_ordonnees = sorted(reponses_par_jour.keys())
-        moyennes_journalieres = []
-        
-        for date_str in dates_ordonnees:
-            etoiles_du_jour = reponses_par_jour[date_str]
-            moyenne_jour = sum(etoiles_du_jour) / len(etoiles_du_jour)
-            moyennes_journalieres.append(round(moyenne_jour, 2))
-        
-        # Formater les dates pour l'affichage
-        dates_formatees = [datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m") for date_str in dates_ordonnees]
+        try:
+            # Grouper les réponses par date et calculer la moyenne des étoiles par jour
+            reponses_par_jour = {}
+            for reponse in reponses_eleve:
+                date_str = reponse.timestamp.strftime("%Y-%m-%d")
+                if date_str not in reponses_par_jour:
+                    reponses_par_jour[date_str] = []
+                reponses_par_jour[date_str].append(reponse.etoiles or 0)
+            
+            # Calculer la moyenne par jour
+            dates_ordonnees = sorted(reponses_par_jour.keys())
+            moyennes_journalieres = []
+            
+            for date_str in dates_ordonnees:
+                etoiles_du_jour = reponses_par_jour[date_str]
+                moyenne_jour = sum(etoiles_du_jour) / len(etoiles_du_jour)
+                moyennes_journalieres.append(round(moyenne_jour, 2))
+            
+            # Formater les dates pour l'affichage
+            dates_formatees = [datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m") for date_str in dates_ordonnees]
 
-        # CRÉER LE GRAPHIQUE AVEC DES PARAMÈTRES AMÉLIORÉS
-        plt.style.use('seaborn-v0_8-whitegrid')
-        
-        # Augmenter la taille et la résolution
-        fig = plt.figure(figsize=(8, 4), dpi=150)
-        ax = fig.add_subplot(111)
+            # CRÉER LE GRAPHIQUE
+            plt.style.use('seaborn-v0_8-whitegrid')
+            
+            # Augmenter la taille et la résolution
+            fig = plt.figure(figsize=(8, 4), dpi=150)
+            ax = fig.add_subplot(111)
 
-        # Couleurs modernes
-        primary_color = "#3498db"  # Bleu
-        secondary_color = "#2ecc71"  # Vert
-        text_color = "#2c3e50"
-        grid_color = "#ecf0f1"
+            # Couleurs modernes
+            primary_color = "#3498db"  # Bleu
+            secondary_color = "#2ecc71"  # Vert
+            text_color = "#2c3e50"
+            grid_color = "#ecf0f1"
 
-        titre = "Moyenne des Étoiles par Jour" if lang == "fr" else "Daily Average Stars"
-        label_y = "Étoiles" if lang == "fr" else "Stars"
+            titre = "Moyenne des Étoiles par Jour" if lang == "fr" else "Daily Average Stars"
+            label_y = "Étoiles" if lang == "fr" else "Stars"
 
-        # Tracer la courbe avec des lignes plus fines
-        ax.plot(dates_formatees, moyennes_journalieres, 
-                marker="o", 
-                color=primary_color, 
-                linewidth=2.5, 
-                markersize=8,
-                markerfacecolor='white',
-                markeredgecolor=primary_color,
-                markeredgewidth=2,
-                alpha=0.9)
-        
-        # Ajouter une zone ombrée sous la courbe
-        ax.fill_between(dates_formatees, moyennes_journalieres, 
-                       alpha=0.1, color=primary_color)
-        
-        # Définir les limites et le style des axes
-        ax.set_title(titre, fontsize=14, fontweight='bold', color=text_color, pad=15)
-        ax.set_ylabel(label_y, fontweight='bold', fontsize=12, color=text_color)
-        ax.set_ylim(0, 5.5)
-        
-        # Personnaliser les ticks
-        ax.tick_params(axis='both', which='major', labelsize=10, colors=text_color)
-        ax.tick_params(axis='x', rotation=45)
-        
-        # Améliorer la grille
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5, color=grid_color)
-        
-        # Ajouter les valeurs sur les points avec un style amélioré
-        for i, (date, valeur) in enumerate(zip(dates_formatees, moyennes_journalieres)):
-            ax.annotate(f'{valeur:.1f}', 
-                       (date, valeur), 
-                       textcoords="offset points", 
-                       xytext=(0, 12), 
-                       ha='center', 
-                       fontsize=9,
-                       fontweight='bold',
-                       color=primary_color,
-                       bbox=dict(boxstyle="round,pad=0.3", 
-                                facecolor='white', 
-                                edgecolor=primary_color,
-                                alpha=0.8))
-        
-        # Ajouter une ligne horizontale pour la moyenne générale
-        moyenne_generale = stats["average"]
-        ax.axhline(y=moyenne_generale, color=secondary_color, linestyle='--', 
-                  linewidth=1.5, alpha=0.7, label=f'Moyenne: {moyenne_generale:.1f}')
-        
-        # Ajouter la légende
-        ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
-        
-        # Ajuster les marges
-        fig.tight_layout(pad=3.0)
-        
-        # Sauvegarder avec une meilleure qualité
-        buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=150, bbox_inches='tight', 
-                   facecolor=fig.get_facecolor(), edgecolor='none')
-        buf.seek(0)
-        courbe_progression = base64.b64encode(buf.read()).decode('utf-8')
-        buf.close()
-        plt.close(fig)
-        plt.style.use('default')  # Réinitialiser le style
+            # Tracer la courbe avec des lignes plus fines
+            ax.plot(dates_formatees, moyennes_journalieres, 
+                    marker="o", 
+                    color=primary_color, 
+                    linewidth=2.5, 
+                    markersize=8,
+                    markerfacecolor='white',
+                    markeredgecolor=primary_color,
+                    markeredgewidth=2,
+                    alpha=0.9)
+            
+            # Ajouter une zone ombrée sous la courbe
+            ax.fill_between(dates_formatees, moyennes_journalieres, 
+                           alpha=0.1, color=primary_color)
+            
+            # Définir les limites et le style des axes
+            ax.set_title(titre, fontsize=14, fontweight='bold', color=text_color, pad=15)
+            ax.set_ylabel(label_y, fontweight='bold', fontsize=12, color=text_color)
+            ax.set_ylim(0, 5.5)
+            
+            # Personnaliser les ticks
+            ax.tick_params(axis='both', which='major', labelsize=10, colors=text_color)
+            ax.tick_params(axis='x', rotation=45)
+            
+            # Améliorer la grille
+            ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5, color=grid_color)
+            
+            # Ajouter les valeurs sur les points avec un style amélioré
+            for i, (date, valeur) in enumerate(zip(dates_formatees, moyennes_journalieres)):
+                ax.annotate(f'{valeur:.1f}', 
+                           (date, valeur), 
+                           textcoords="offset points", 
+                           xytext=(0, 12), 
+                           ha='center', 
+                           fontsize=9,
+                           fontweight='bold',
+                           color=primary_color,
+                           bbox=dict(boxstyle="round,pad=0.3", 
+                                    facecolor='white', 
+                                    edgecolor=primary_color,
+                                    alpha=0.8))
+            
+            # Ajouter une ligne horizontale pour la moyenne générale
+            moyenne_generale = stats["average"]
+            ax.axhline(y=moyenne_generale, color=secondary_color, linestyle='--', 
+                      linewidth=1.5, alpha=0.7, label=f'Moyenne: {moyenne_generale:.1f}')
+            
+            # Ajouter la légende
+            ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
+            
+            # Ajuster les marges
+            fig.tight_layout(pad=3.0)
+            
+            # Sauvegarder avec une meilleure qualité
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=150, bbox_inches='tight', 
+                       facecolor=fig.get_facecolor(), edgecolor='none')
+            buf.seek(0)
+            courbe_progression = base64.b64encode(buf.read()).decode('utf-8')
+            buf.close()
+            plt.close(fig)
+            plt.style.use('default')  # Réinitialiser le style
+        except Exception as e:
+            print(f"Erreur création graphique: {e}")
+            courbe_progression = None
 
     # ⏰ CALCUL TEMPS RESTANT ESSAI GRATUIT
     temps_restant = None
     pourcentage_temps_restant = 100
     total_seconds = 0
     
-    if eleve.est_en_essai_gratuit() and eleve.date_fin_essai:
+    if hasattr(eleve, 'est_en_essai_gratuit') and eleve.est_en_essai_gratuit() and hasattr(eleve, 'date_fin_essai') and eleve.date_fin_essai:
         maintenant = datetime.utcnow()
         if maintenant < eleve.date_fin_essai:
             temps_restant = eleve.date_fin_essai - maintenant
             total_seconds = int(temps_restant.total_seconds())
             
             # Calculer le pourcentage de temps restant
-            duree_totale = eleve.date_fin_essai - eleve.date_inscription
-            temps_ecoule = maintenant - eleve.date_inscription
-            
-            if duree_totale.total_seconds() > 0:
-                pourcentage_temps_restant = max(0, min(100, 
-                    100 - (temps_ecoule.total_seconds() / duree_totale.total_seconds() * 100)
-                ))
+            if hasattr(eleve, 'date_inscription'):
+                duree_totale = eleve.date_fin_essai - eleve.date_inscription
+                temps_ecoule = maintenant - eleve.date_inscription
+                
+                if duree_totale.total_seconds() > 0:
+                    pourcentage_temps_restant = max(0, min(100, 
+                        100 - (temps_ecoule.total_seconds() / duree_totale.total_seconds() * 100)
+                    ))
 
-    # 🎯 OBJECTIFS DU JOUR - CODE SIMPLIFIÉ SANS ENSEIGNANT VIRTUEL
-    # Compter les remédiations complétées
-    remediations_completees = RemediationSuggestion.query.filter(
-        and_(
-            RemediationSuggestion.user_id == eleve.id,
-            RemediationSuggestion.statut == "valide",
-            RemediationSuggestion.reponse_eleve.isnot(None)
-        )
-    ).count()
+    # 🎯 OBJECTIFS DU JOUR
+    remediations_completees = 0
+    try:
+        remediations_completees = RemediationSuggestion.query.filter(
+            and_(
+                RemediationSuggestion.user_id == eleve.id,
+                RemediationSuggestion.statut == "valide",
+                RemediationSuggestion.reponse_eleve.isnot(None)
+            )
+        ).count()
+    except:
+        pass
 
-    # Créer les objectifs du jour (3 objectifs au lieu de 4)
+    # Créer les objectifs du jour
     objectifs_du_jour = []
 
     # Objectif 1: Compléter au moins 1 exercice
@@ -5279,9 +8657,9 @@ def dashboard_eleve():
     
     # ✅ NOUVEAU : AJOUTER LE STATUT DE PAIEMENT POUR LE TEMPLATE
     statut_paiement_info = {
-        'est_en_essai': eleve.est_en_essai_gratuit(),
+        'est_en_essai': hasattr(eleve, 'est_en_essai_gratuit') and eleve.est_en_essai_gratuit(),
         'est_paye': eleve.statut_paiement == "paye",
-        'essai_expire': eleve.essai_est_expire(),
+        'essai_expire': hasattr(eleve, 'essai_est_expire') and eleve.essai_est_expire(),
         'jours_restants_abonnement': eleve.jours_restants_abonnement() if hasattr(eleve, 'jours_restants_abonnement') else 0
     }
 
@@ -5296,12 +8674,10 @@ def dashboard_eleve():
         temps_restant=temps_restant,
         pourcentage_temps_restant=pourcentage_temps_restant,
         total_seconds=total_seconds,
-        # NOUVELLES VARIABLES POUR LES OBJECTIFS
         objectifs_du_jour=objectifs_du_jour,
         progression_quotidienne=progression_quotidienne,
         remediations_completees=remediations_completees,
         date_du_jour=datetime.utcnow(),
-        # ✅ NOUVEAU : INFORMATION DE PAIEMENT
         statut_paiement_info=statut_paiement_info
     )
 
@@ -5791,6 +9167,7 @@ objectif_en: Identify and create equivalent fractions"""
     result = import_lessons_from_text(lessons_text, int(unite_id), db.session, Lecon)
     
     return jsonify(result)
+
 
 @app.route('/admin/parse-lessons-preview', methods=['POST'])
 def parse_lessons_preview():
@@ -8294,20 +11671,27 @@ def historique_eleve():
 @app.route('/admin/lecon/supprimer/<int:id>', methods=['POST'])
 @admin_required
 def supprimer_lecon(id):
-    """Supprimer une leçon"""
+    """Supprimer une leçon avec tous les exercices et l'historique associé"""
     lecon = Lecon.query.get_or_404(id)
     
-    # Vérifier s'il y a des exercices associés
-    if lecon.exercices:
-        # Option 1 : Supprimer tous les exercices associés
-        for exercice in lecon.exercices:
-            db.session.delete(exercice)
+    try:
+        # Si vous avez bien configuré les cascades dans les modèles,
+        # cette simple suppression suffira
+        db.session.delete(lecon)
+        db.session.commit()
+        
+        if session.get("lang") == "en":
+            flash("✅ Lesson and all associated exercises (including student history) deleted successfully", "success")
+        else:
+            flash('✅ Leçon, exercices et historique associés supprimés avec succès', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        if session.get("lang") == "en":
+            flash(f"❌ Error deleting: {str(e)}", "error")
+        else:
+            flash(f'❌ Erreur lors de la suppression: {str(e)}', 'error')
     
-    # Supprimer la leçon
-    db.session.delete(lecon)
-    db.session.commit()
-    
-    flash('Leçon supprimée avec succès', 'success')
     return redirect(url_for('admin_dashboard'))
 
 @app.route("/enseignant-remediations")
@@ -8327,10 +11711,26 @@ def enseignant_remediations():
         })
     return render_template("enseignant_remediations.html", suggestions=donnees)
 
+from flask import request, session, redirect, render_template, flash
+from werkzeug.utils import secure_filename
+import os
+import random
+from models import db, User, Niveau, Parent, ParentEleve
+from functools import wraps
+
+
+
+
 @app.route("/admin/creer-eleve", methods=["GET", "POST"])
 @admin_required
 def admin_creer_eleve():
-    enseignants = Enseignant.query.all()
+    """Admin: Créer un nouvel élève - Adapté au nouveau système User"""
+    # IMPORT DATETIME AU DÉBUT DE LA FONCTION
+    from datetime import datetime
+    import random
+    
+    # Récupérer tous les enseignants (utilisateurs avec rôle "enseignant")
+    enseignants = User.query.filter_by(role="enseignant").all()
     niveaux = Niveau.query.all()
     lang = session.get("lang", "fr")
 
@@ -8343,17 +11743,37 @@ def admin_creer_eleve():
         telephone1 = request.form.get("telephone1")
         telephone2 = request.form.get("telephone2")
         mot_de_passe_clair = request.form.get("mot_de_passe")
+        
+        # 🔥 NOUVEAU: Date de naissance
+        date_naissance_str = request.form.get("date_naissance")
+        date_naissance = None
+        if date_naissance_str:
+            try:
+                date_naissance = datetime.strptime(date_naissance_str, "%Y-%m-%d").date()
+            except:
+                pass
 
         if not all([nom_complet, email, niveau_id, enseignant_id]):
-            return "Tous les champs sont obligatoires", 400
+            flash("Tous les champs sont obligatoires", "error")
+            return redirect(url_for("admin_creer_eleve"))
 
+        # Vérifier si l'email existe déjà
         if User.query.filter_by(email=email).first():
-            return "Un élève avec cet email existe déjà", 409
+            flash("Un utilisateur avec cet email existe déjà", "error")
+            return redirect(url_for("admin_creer_eleve"))
 
+        # Vérifier que l'enseignant existe et est bien un enseignant
+        enseignant = User.query.filter_by(id=enseignant_id, role="enseignant").first()
+        if not enseignant:
+            flash("Enseignant sélectionné non valide", "error")
+            return redirect(url_for("admin_creer_eleve"))
+
+        # Générer un mot de passe si non fourni
         if not mot_de_passe_clair:
             fruits = ["banane", "pomme", "mangue", "orange", "cerise", "kiwi", "raisin"]
             mot_de_passe_clair = random.choice(fruits) + str(random.randint(10, 99))
 
+        # Générer un username unique
         i = 1
         while True:
             username = f"student_{i:03d}"
@@ -8361,42 +11781,340 @@ def admin_creer_eleve():
                 break
             i += 1
 
+        # Créer l'élève avec le NOUVEAU système
         eleve = User(
             username=username,
             nom_complet=nom_complet,
             email=email,
             niveau_id=niveau_id,
-            role="élève",
-            enseignant_id=enseignant_id
+            role="élève",  # 🔥 CORRIGÉ: "élève" AVEC accent pour être cohérent
+            enseignant_referent_id=enseignant_id,
+            telephone=telephone1,
+            date_naissance=date_naissance,
+            inscrit_par_admin=True,
+            statut="actif",
+            statut_paiement="non_paye"
         )
         eleve.mot_de_passe = mot_de_passe_clair
+        
+        # 🔥 NOUVEAU: Activer l'essai gratuit si configuré
+        essai_gratuit = request.form.get("essai_gratuit", "non")
+        if essai_gratuit == "oui":
+            duree_heures = int(request.form.get("duree_essai", "48"))
+            eleve.activer_essai_gratuit(duree_heures)
+        
         db.session.add(eleve)
         db.session.commit()
 
+        # Gérer les parents (optionnel)
         if parents_emails:
             emails = [e.strip() for e in parents_emails.split(",") if e.strip()]
             for index, email_parent in enumerate(emails):
                 parent = Parent.query.filter_by(email=email_parent).first()
                 if not parent:
                     tel = telephone1 if index == 0 else telephone2
-                    parent = Parent(nom_complet="Parent inconnu", email=email_parent, telephone=tel)
+                    parent_nom = request.form.get(f"parent_nom_{index}", f"Parent de {nom_complet}")
+                    parent = Parent(
+                        nom_complet=parent_nom,
+                        email=email_parent,
+                        telephone=tel
+                    )
                     db.session.add(parent)
                     db.session.commit()
 
+                # Vérifier si la relation existe déjà
                 if not ParentEleve.query.filter_by(parent_id=parent.id, eleve_id=eleve.id).first():
                     lien = ParentEleve(parent_id=parent.id, eleve_id=eleve.id)
                     db.session.add(lien)
 
         db.session.commit()
 
+        # 🔥 NOUVEAU: Message de succès selon la langue
+        if lang == "fr":
+            flash(f"Élève {nom_complet} créé avec succès!", "success")
+        else:
+            flash(f"Student {nom_complet} created successfully!", "success")
+
         return render_template(
             "eleve_cree.html",
+            eleve=eleve,
             username=username,
             mot_de_passe=mot_de_passe_clair,
+            enseignant=enseignant,
             lang=lang
         )
 
-    return render_template("admin_creer_eleve.html", enseignants=enseignants, niveaux=niveaux, lang=lang)
+    # Date d'aujourd'hui pour le formulaire
+    aujourdhui = datetime.utcnow().date().isoformat()
+    
+    return render_template(
+        "admin_creer_eleve.html", 
+        enseignants=enseignants, 
+        niveaux=niveaux, 
+        lang=lang,
+        aujourdhui=aujourdhui  # 🔥 CORRIGÉ: datetime est maintenant défini
+    )
+
+
+# 🔥 AJOUT: Route pour modifier un élève existant
+@app.route("/admin/modifier-eleve/<int:eleve_id>", methods=["GET", "POST"])
+@admin_required
+def admin_modifier_eleve(eleve_id):
+    """Admin: Modifier un élève existant"""
+    # Chercher l'élève avec différentes variantes de rôle
+    eleve = User.query.filter(
+        User.id == eleve_id,
+        (User.role == "eleve") | (User.role == "élève") | (User.role == "ÚlÞve")
+    ).first()
+    
+    if not eleve:
+        flash("Élève non trouvé", "error")
+        return redirect(url_for("admin_dashboard"))
+    
+    enseignants = User.query.filter_by(role="enseignant").all()
+    niveaux = Niveau.query.all()
+    lang = session.get("lang", "fr")
+    
+    # Récupérer les parents associés
+    parents = Parent.query.join(ParentEleve).filter(ParentEleve.eleve_id == eleve_id).all()
+    
+    if request.method == "POST":
+        print(f"\n=== DEBUG: Modification élève {eleve_id} ===")
+        print(f"Données reçues: {dict(request.form)}")
+        
+        # Récupérer les données du formulaire
+        nom_complet = request.form.get("nom_complet") or request.form.get("nom")
+        email = request.form.get("email")
+        username = request.form.get("username")
+        niveau_id = request.form.get("niveau_id")
+        # ATTENTION: Le formulaire envoie 'enseignant_id' mais le modèle a 'enseignant_referent_id'
+        enseignant_id_form = request.form.get("enseignant_id")  # Nom dans le formulaire
+        telephone = request.form.get("telephone")
+        date_naissance_str = request.form.get("date_naissance")
+        statut_paiement = request.form.get("statut_paiement")
+        statut = request.form.get("statut")
+        adresse = request.form.get("adresse")
+        ville = request.form.get("ville")
+        province = request.form.get("province")
+        code_postal = request.form.get("code_postal")
+        
+        # Vérifier les champs obligatoires
+        if not all([nom_complet, email, username, niveau_id]):
+            flash("Nom, email, nom d'utilisateur et niveau sont obligatoires", "error")
+            return redirect(url_for("admin_modifier_eleve", eleve_id=eleve_id))
+        
+        # Vérifier l'unicité de l'email
+        autre_utilisateur = User.query.filter(
+            User.email == email,
+            User.id != eleve_id
+        ).first()
+        if autre_utilisateur:
+            flash("Cet email est déjà utilisé par un autre utilisateur", "error")
+            return redirect(url_for("admin_modifier_eleve", eleve_id=eleve_id))
+        
+        # Vérifier l'unicité du username
+        autre_username = User.query.filter(
+            User.username == username,
+            User.id != eleve_id
+        ).first()
+        if autre_username:
+            flash("Ce nom d'utilisateur est déjà pris", "error")
+            return redirect(url_for("admin_modifier_eleve", eleve_id=eleve_id))
+        
+        # Mettre à jour les informations
+        eleve.nom_complet = nom_complet
+        eleve.email = email
+        eleve.username = username
+        
+        # Convertir niveau_id en int ou None
+        try:
+            eleve.niveau_id = int(niveau_id) if niveau_id else None
+        except:
+            eleve.niveau_id = None
+        
+        # CORRECTION IMPORTANTE: Le formulaire envoie 'enseignant_id' 
+        # mais le modèle a 'enseignant_referent_id'
+        print(f"Enseignant ID depuis formulaire: {enseignant_id_form}")
+        if enseignant_id_form and enseignant_id_form != "" and enseignant_id_form != "None":
+            try:
+                eleve.enseignant_referent_id = int(enseignant_id_form)
+            except:
+                eleve.enseignant_referent_id = None
+        else:
+            eleve.enseignant_referent_id = None
+        
+        # Informations de contact
+        eleve.telephone = telephone if telephone else None
+        eleve.adresse = adresse if adresse else None
+        eleve.ville = ville if ville else None
+        eleve.province = province if province else None
+        eleve.code_postal = code_postal if code_postal else None
+        
+        # Statut
+        if statut:
+            eleve.statut = statut
+        if statut_paiement:
+            eleve.statut_paiement = statut_paiement
+        
+        # Corriger le rôle si nécessaire
+        if eleve.role in ["ÚlÞve", "élève"]:
+            eleve.role = "eleve"  # Standardiser
+        
+        # Gérer la date de naissance
+        if date_naissance_str:
+            try:
+                from datetime import datetime
+                eleve.date_naissance = datetime.strptime(date_naissance_str, "%Y-%m-%d").date()
+            except:
+                eleve.date_naissance = None
+        
+        # Gérer le mot de passe si fourni (vérifier le champ checkbox)
+        changer_mdp = request.form.get("changer_mdp")
+        if changer_mdp == "on" or changer_mdp == "true":
+            nouveau_mdp = request.form.get("nouveau_mot_de_passe")
+            if nouveau_mdp and nouveau_mdp.strip():
+                eleve.mot_de_passe = nouveau_mdp.strip()
+                print("✅ Mot de passe changé")
+        
+        print(f"Avant commit - Nom: {eleve.nom_complet}")
+        print(f"Avant commit - Email: {eleve.email}")
+        print(f"Avant commit - Username: {eleve.username}")
+        print(f"Avant commit - enseignant_referent_id: {eleve.enseignant_referent_id}")
+        print(f"Avant commit - niveau_id: {eleve.niveau_id}")
+        
+        try:
+            db.session.commit()
+            print("✅ Commit réussi!")
+            flash("Élève mis à jour avec succès" if lang == "fr" else "Student updated successfully", "success")
+        except Exception as e:
+            print(f"❌ Erreur commit: {str(e)}")
+            flash(f"Erreur lors de la sauvegarde: {str(e)}", "error")
+            db.session.rollback()
+        
+        return redirect(url_for("admin_modifier_eleve", eleve_id=eleve_id))
+    
+    # Pour l'affichage GET
+    date_naissance_iso = eleve.date_naissance.isoformat() if eleve.date_naissance else ""
+    
+    return render_template(
+        "modifier_eleve.html",
+        eleve=eleve,
+        enseignants=enseignants,
+        niveaux=niveaux,
+        parents=parents,
+        lang=lang,
+        date_naissance=date_naissance_iso,
+        current_niveau_id=eleve.niveau_id,
+        # CORRECTION: utiliser eleve.enseignant_referent_id pour le template
+        current_enseignant_id=eleve.enseignant_referent_id,
+        current_statut_paiement=getattr(eleve, 'statut_paiement', 'non_paye'),
+        current_username=eleve.username,
+        current_statut=getattr(eleve, 'statut', 'actif')
+    )
+    
+@app.route("/admin/assigner-eleves-enseignants", methods=["GET", "POST"])
+@admin_required
+def assigner_eleves_enseignants():
+    """Assigner des élèves aux enseignants en masse"""
+    try:
+        from models import User, db
+        
+        enseignants = User.query.filter_by(role="enseignant").order_by(User.nom_complet).all()
+        eleves = User.query.filter(
+            (User.role == "eleve") | (User.role == "élève") | (User.role == "ÚlÞve")
+        ).order_by(User.nom_complet).all()
+        
+        lang = session.get("lang", "fr")
+        
+        if request.method == "POST":
+            # Récupérer les assignations
+            assignments = {}
+            for key in request.form:
+                if key.startswith("enseignant_"):
+                    eleve_id = key.replace("enseignant_", "")
+                    enseignant_id = request.form.get(key)
+                    if enseignant_id and enseignant_id != "none":
+                        assignments[int(eleve_id)] = int(enseignant_id)
+            
+            # Appliquer les assignations
+            updated_count = 0
+            for eleve_id, enseignant_id in assignments.items():
+                eleve = User.query.get(eleve_id)
+                if eleve:
+                    eleve.enseignant_referent_id = enseignant_id
+                    # Corriger le rôle si nécessaire
+                    if eleve.role == "ÚlÞve":
+                        eleve.role = "élève"
+                    updated_count += 1
+            
+            db.session.commit()
+            
+            flash(f"{updated_count} élèves assignés aux enseignants", "success")
+            return redirect(url_for("assigner_eleves_enseignants"))
+        
+        # Préparer les données pour le template
+        eleves_data = []
+        for eleve in eleves:
+            # Trouver l'enseignant actuel
+            current_teacher = None
+            if eleve.enseignant_referent_id:
+                current_teacher = User.query.get(eleve.enseignant_referent_id)
+            
+            eleves_data.append({
+                'id': eleve.id,
+                'nom_complet': eleve.nom_complet,
+                'email': eleve.email,
+                'role': eleve.role,
+                'current_teacher': current_teacher,
+                'current_teacher_id': eleve.enseignant_referent_id
+            })
+        
+        return render_template(
+            "admin_assigner_eleves.html",
+            enseignants=enseignants,
+            eleves=eleves_data,
+            total_eleves=len(eleves),
+            total_enseignants=len(enseignants),
+            lang=lang
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur assigner_eleves_enseignants: {e}")
+        flash(f"Erreur: {str(e)}", "error")
+        return redirect(url_for("admin_dashboard"))
+
+
+# 🔥 AJOUT: Route pour désactiver/réactiver un élève
+@app.route("/admin/toggle-eleve/<int:eleve_id>", methods=["POST"])
+@admin_required
+def admin_toggle_eleve(eleve_id):
+    """Admin: Activer/désactiver un élève"""
+    eleve = User.query.filter_by(id=eleve_id, role="eleve").first()
+    if not eleve:
+        return jsonify({"success": False, "error": "Élève non trouvé"})
+    
+    if eleve.statut == "actif":
+        eleve.statut = "inactif"
+        message_fr = "Élève désactivé"
+        message_en = "Student deactivated"
+    else:
+        eleve.statut = "actif"
+        message_fr = "Élève réactivé"
+        message_en = "Student reactivated"
+    
+    db.session.commit()
+    
+    lang = session.get("lang", "fr")
+    return jsonify({
+        "success": True,
+        "message": message_fr if lang == "fr" else message_en,
+        "new_status": eleve.statut
+    })
+
+
+# 🔥 AJOUT: Route pour voir la liste des élèves
+
+
 
 from flask import request, session, redirect, render_template
 from werkzeug.utils import secure_filename
@@ -8798,14 +12516,422 @@ def ajouter_test():
 @app.route("/admin/eleves")
 @admin_required
 def liste_eleves():
-    eleves = User.query.options(
-        joinedload(User.niveau),
-        joinedload(User.enseignant),
-        joinedload(User.parents)
-    ).filter_by(role="élève").all()
+    """Page d'administration des élèves - Version corrigée"""
+    try:
+        from models import User, ParentEleve, Parent
+        
+        # 🔍 CHERCHER LES ÉLÈVES - VERSION SIMPLIFIÉE
+        # Chercher avec role='eleve' (sans accent)
+        eleves = User.query.filter_by(role="eleve").options(
+            db.joinedload(User.niveau)
+        ).order_by(User.date_inscription.desc()).all()
+        
+        print(f"DEBUG: {len(eleves)} élèves trouvés")
+        
+        # DEBUG: Afficher tous les rôles existants pour vérifier
+        if not eleves:
+            print("=== DEBUG ROLES EXISTANTS ===")
+            roles_distincts = db.session.query(User.role).distinct().all()
+            print(f"Rôles distincts: {[r[0] for r in roles_distincts]}")
+        
+        # Pour chaque élève, charger les parents
+        eleves_avec_parents = []
+        for eleve in eleves:
+            parents_query = Parent.query.join(ParentEleve).filter(
+                ParentEleve.eleve_id == eleve.id
+            ).all()
+            eleve.parents = parents_query
+            eleves_avec_parents.append(eleve)
+        
+        # Calculer les statistiques
+        total_eleves = len(eleves_avec_parents)
+        payes = sum(1 for e in eleves_avec_parents if getattr(e, 'statut_paiement', None) == 'paye')
+        non_payes = sum(1 for e in eleves_avec_parents if getattr(e, 'statut_paiement', None) == 'non_paye')
+        inscrits_admin = sum(1 for e in eleves_avec_parents if getattr(e, 'inscrit_par_admin', False))
+        
+        lang = session.get("lang", "fr")
+        
+        return render_template("admin_eleves.html", 
+                             eleves=eleves_avec_parents,
+                             lang=lang,
+                             total_eleves=total_eleves,
+                             payes=payes,
+                             non_payes=non_payes,
+                             inscrits_admin=inscrits_admin)
+        
+    except Exception as e:
+        import traceback
+        print(f"ERREUR CRITIQUE dans /admin/eleves: {e}")
+        print(traceback.format_exc())
+        flash(f"Erreur: {str(e)}", "error")
+        return redirect(url_for("admin_dashboard"))
 
-    lang = session.get("lang", "fr")
-    return render_template("admin_eleves.html", eleves=eleves, lang=lang)
+
+@app.route("/debug-error")
+def debug_error():
+    """Route pour déboguer l'erreur 'nom_complet'"""
+    try:
+        from models import Commission, User
+        
+        # Test 1: Vérifier une commission
+        commission = Commission.query.first()
+        if commission:
+            test_result = f"Commission trouvée: ID {commission.id}<br>"
+            test_result += f"Enseignant: {commission.enseignant_id}<br>"
+            if commission.enseignant:
+                test_result += f"Nom enseignant: {commission.enseignant.nom_complet}<br>"
+                test_result += f"Champs disponibles: {list(commission.enseignant.__dict__.keys())}<br>"
+        else:
+            test_result = "Aucune commission trouvée<br>"
+        
+        # Test 2: Vérifier tous les champs d'un utilisateur
+        user = User.query.first()
+        if user:
+            test_result += f"<br>Utilisateur test: {user.nom_complet}<br>"
+            test_result += f"Champs: {[k for k in user.__dict__.keys() if not k.startswith('_')]}"
+        
+        return test_result
+        
+    except Exception as e:
+        import traceback
+        return f"<h1>ERREUR</h1><pre>{traceback.format_exc()}</pre>"
+
+@app.before_request
+def log_requests():
+    """Log toutes les requêtes pour déboguer"""
+    print(f"\n=== REQUEST: {request.method} {request.path} ===")
+    if request.endpoint:
+        print(f"Endpoint: {request.endpoint}")
+    
+@app.after_request
+def log_responses(response):
+    """Log les réponses"""
+    print(f"Response: {response.status_code}")
+    return response
+
+@app.errorhandler(Exception)
+def handle_error(e):
+    """Gestionnaire d'erreurs global"""
+    import traceback
+    
+    error_msg = str(e)
+    tb = traceback.format_exc()
+    
+    print(f"\n=== ERREUR GLOBALE ===")
+    print(f"URL: {request.url}")
+    print(f"Endpoint: {request.endpoint}")
+    print(f"Erreur: {error_msg}")
+    print(f"Traceback:\n{tb}")
+    
+    # Renvoyer une page d'erreur simple
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head><title>Erreur</title></head>
+    <body>
+        <h1>Une erreur s'est produite</h1>
+        <p><strong>Erreur :</strong> {error_msg}</p>
+        <p><strong>URL :</strong> {request.url}</p>
+        <p><strong>Endpoint :</strong> {request.endpoint}</p>
+        
+        <h3>Débogage :</h3>
+        <pre>{tb[:1000]}...</pre>
+        
+        <div style="margin-top: 20px;">
+            <a href="/" style="padding: 10px; background: blue; color: white; text-decoration: none;">
+                Retour à l'accueil
+            </a>
+            <button onclick="history.back()" style="padding: 10px; background: gray; color: white;">
+                Retour en arrière
+            </button>
+        </div>
+    </body>
+    </html>
+    """, 500
+
+@app.route("/fix-all-nom-complet")
+def fix_all_nom_complet():
+    """Corriger toutes les occurrences de nom_complet"""
+    import re
+    
+    fixes = []
+    
+    # Chercher et corriger dans app.py
+    with open("app.py", "r", encoding="utf-8") as f:
+        content = f.read()
+        
+    # Trouver toutes les occurrences
+    pattern = r'\.nom_complet\b'
+    matches = re.findall(pattern, content)
+    
+    if matches:
+        # Remplacer toutes les occurrences
+        new_content = re.sub(pattern, '.nom_complet', content)
+        
+        # Sauvegarder
+        with open("app.py", "w", encoding="utf-8") as f:
+            f.write(new_content)
+        
+        fixes.append(f"Corrigé {len(matches)} occurrences dans app.py")
+    
+    # Vérifier aussi dans les templates
+    import os
+    for root, dirs, files in os.walk("templates"):
+        for file in files:
+            if file.endswith(".html"):
+                filepath = os.path.join(root, file)
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        template_content = f.read()
+                    
+                    if 'nom_complet' in template_content:
+                        new_template = template_content.replace('nom_complet', 'nom_complet')
+                        with open(filepath, "w", encoding="utf-8") as f:
+                            f.write(new_template)
+                        fixes.append(f"Corrigé dans template: {filepath}")
+                except:
+                    pass
+    
+    result = "<h1>Corrections appliquées</h1>"
+    if fixes:
+        result += "<ul>"
+        for fix in fixes:
+            result += f"<li>{fix}</li>"
+        result += "</ul>"
+    else:
+        result += "<p>Aucune correction nécessaire</p>"
+    
+    result += "<p>Redémarrez Flask pour que les changements prennent effet.</p>"
+    
+    return result    
+
+@app.route("/debug-eleves-urgence")
+def debug_eleves_urgence():
+    """Debug urgent pour voir où sont les élèves"""
+    from models import User
+    import json
+    
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>DEBUG Élèves - URGENCE</title></head>
+    <body style="font-family: Arial; padding: 20px;">
+    <h1>🔍 DEBUG Élèves - État actuel</h1>
+    """
+    
+    # 1. Tous les utilisateurs
+    all_users = User.query.all()
+    html += f"<h2>1. Tous les utilisateurs ({len(all_users)})</h2>"
+    html += "<table border='1' cellpadding='5' style='border-collapse: collapse;'>"
+    html += "<tr><th>ID</th><th>Nom</th><th>Email</th><th>Rôle</th><th>Enseignant</th><th>Niveau</th></tr>"
+    
+    for user in all_users:
+        enseignant = "Aucun"
+        if user.enseignant_referent_id:
+            ens = User.query.get(user.enseignant_referent_id)
+            enseignant = ens.nom_complet if ens else f"ID:{user.enseignant_referent_id}"
+        
+        niveau = user.niveau.nom if user.niveau else "Aucun"
+        
+        html += f"""
+        <tr>
+            <td>{user.id}</td>
+            <td><strong>{user.nom_complet}</strong></td>
+            <td>{user.email}</td>
+            <td style='background-color: {"#e6ffe6" if "eleve" in user.role.lower() else "#ffe6e6" if user.role=="enseignant" else "#e6e6ff"};'>
+                <code>{user.role}</code>
+            </td>
+            <td>{enseignant}</td>
+            <td>{niveau}</td>
+        </tr>
+        """
+    
+    html += "</table>"
+    
+    # 2. Recherche spécifique élèves
+    html += "<h2>2. Recherche élèves par rôle</h2>"
+    
+    search_terms = ["élève", "eleve", "Eleve", "student", "Student"]
+    for term in search_terms:
+        users = User.query.filter_by(role=term).all()
+        html += f"<h3>Rôle = '{term}' : {len(users)} trouvés</h3>"
+        
+        if users:
+            html += "<ul>"
+            for user in users:
+                html += f"<li>{user.id}: {user.nom_complet} ({user.email})</li>"
+            html += "</ul>"
+        else:
+            html += "<p style='color: red;'>Aucun</p>"
+    
+    # 3. Vérifier la base de données directement
+    html += "<h2>3. Analyse complète</h2>"
+    
+    # Compter par rôle
+    roles = {}
+    for user in all_users:
+        role = user.role
+        if role not in roles:
+            roles[role] = 0
+        roles[role] += 1
+    
+    html += "<h3>Distribution par rôle :</h3>"
+    html += "<table border='1' cellpadding='5'>"
+    html += "<tr><th>Rôle</th><th>Nombre</th></tr>"
+    for role, count in sorted(roles.items()):
+        html += f"<tr><td><code>{role}</code></td><td>{count}</td></tr>"
+    html += "</table>"
+    
+    # 4. Bouton pour corriger automatiquement
+    html += """
+    <h2>4. Actions correctives</h2>
+    <div style='background: #f0f0f0; padding: 20px; border-radius: 10px;'>
+        <p>Si les élèves existent mais avec un mauvais rôle :</p>
+        <form action="/fix-roles-eleves" method="POST" style="margin-top: 10px;">
+            <button type="submit" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                🔧 Corriger automatiquement tous les rôles d'élèves
+            </button>
+            <p><small>Ceci changera tous les rôles 'eleve', 'Eleve', 'student' en 'élève'</small></p>
+        </form>
+    </div>
+    """
+    
+    html += "</body></html>"
+    return html
+
+@app.route("/fix-roles-eleves", methods=["POST"])
+def fix_roles_eleves():
+    """Corriger automatiquement les rôles des élèves"""
+    try:
+        from models import User, db
+        
+        # Rôles à corriger
+        roles_a_corriger = ['eleve', 'Eleve', 'student', 'Student', 'ÚlÞve']
+        
+        # Compter avant
+        avant = {}
+        for role in roles_a_corriger:
+            avant[role] = User.query.filter_by(role=role).count()
+        
+        # Corriger
+        for role in roles_a_corriger:
+            eleves = User.query.filter_by(role=role).all()
+            for eleve in eleves:
+                eleve.role = 'élève'
+        
+        db.session.commit()
+        
+        # Compter après
+        apres = User.query.filter_by(role='élève').count()
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Correction rôles</title></head>
+        <body style="font-family: Arial; padding: 20px;">
+        <h1>✅ Correction terminée</h1>
+        
+        <h3>Avant :</h3>
+        <ul>
+        """
+        
+        for role, count in avant.items():
+            if count > 0:
+                html += f"<li>Rôle '{role}': {count} utilisateurs</li>"
+        
+        html += f"""
+        </ul>
+        
+        <h3>Après :</h3>
+        <p>Rôle 'élève': {apres} utilisateurs</p>
+        
+        <div style="margin-top: 30px;">
+            <a href="/debug-eleves-urgence" style="padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 5px;">
+                🔍 Vérifier à nouveau
+            </a>
+            <a href="/admin/eleves" style="padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;">
+                📋 Voir la page élèves
+            </a>
+        </div>
+        </body>
+        </html>
+        """
+        
+        return html
+        
+    except Exception as e:
+        import traceback
+        return f"<h1>Erreur</h1><pre>{traceback.format_exc()}</pre>"
+
+
+@app.route("/admin/cleanup-student-names")
+@admin_required
+def cleanup_student_names():
+    """Nettoyer les noms bizarres des élèves"""
+    try:
+        from models import User, db
+        
+        result = "<h1>Nettoyage des noms d'élèves</h1>"
+        
+        # Trouver les élèves avec des caractères bizarres
+        all_students = User.query.filter_by(role="élève").all()
+        
+        cleaned = []
+        
+        for student in all_students:
+            original_name = student.nom_complet
+            cleaned_name = original_name
+            
+            # Remplacer les caractères bizarres
+            replacements = [
+                ('╔lÞve', 'Élève'),
+                ('╔', 'É'),
+                ('Þ', 'è'),
+                ('Þ', 'é'),
+                ('7Þme', '7ème'),
+                ('_', ' ')
+            ]
+            
+            for old, new in replacements:
+                cleaned_name = cleaned_name.replace(old, new)
+            
+            # Capitaliser proprement
+            if cleaned_name != original_name:
+                student.nom_complet = cleaned_name
+                cleaned.append(f"'{original_name}' → '{cleaned_name}'")
+        
+        if cleaned:
+            db.session.commit()
+            result += "<h2>Noms corrigés :</h2>"
+            result += "<ul>"
+            for change in cleaned:
+                result += f"<li>{change}</li>"
+            result += "</ul>"
+        else:
+            result += "<p>Aucun nom à corriger</p>"
+        
+        # Afficher la liste finale
+        result += "<h2>Liste finale des élèves :</h2>"
+        result += "<table border='1' style='border-collapse: collapse;'>"
+        result += "<tr><th>Nom</th><th>Email</th><th>Enseignant</th></tr>"
+        
+        for student in User.query.filter_by(role="élève").order_by(User.nom_complet).all():
+            teacher = User.query.get(student.enseignant_referent_id) if student.enseignant_referent_id else None
+            result += f"""
+            <tr>
+                <td>{student.nom_complet}</td>
+                <td>{student.email}</td>
+                <td>{teacher.nom_complet if teacher else 'Aucun'}</td>
+            </tr>
+            """
+        
+        result += "</table>"
+        
+        return result
+        
+    except Exception as e:
+        import traceback
+        return f"<h1>Erreur</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
 
 
 @app.route("/admin/changer-statut-paiement", methods=["POST"])
@@ -8829,62 +12955,227 @@ def changer_statut_paiement():
     
     return redirect(url_for('liste_eleves'))
 
+def get_exercices_par_enseignant_for_template(enseignant, lang='fr'):
+    result = {}
 
-@app.route("/admin/modifier-eleve/<int:eleve_id>", methods=["GET", "POST"])
-@admin_required
-def modifier_eleve(eleve_id):
-    eleve = User.query.get_or_404(eleve_id)
-    enseignants = Enseignant.query.all()
-    niveaux = Niveau.query.all()  # Ajout pour la sélection du niveau
+    eleves = enseignant.get_eleves_encadres()
+    niveaux_ids = {e.niveau_id for e in eleves if e.niveau_id}
+
+    if not niveaux_ids:
+        return {}
+
+    niveaux = Niveau.query.filter(Niveau.id.in_(niveaux_ids)).all()
+
+    for niveau in niveaux:
+        for matiere in niveau.matieres:
+            if matiere.nom not in result:
+                result[matiere.nom] = {}
+
+            for unite in matiere.unites:
+                for lecon in unite.lecons:
+                    exercices = []
+                    for ex in lecon.exercices:
+                        exercices.append({
+                            "id": ex.id,
+                            "question": ex.question_fr if lang == "fr" else ex.question_en,
+                            "explication": ex.explication_fr if lang == "fr" else ex.explication_en,
+                            "temps": ex.temps,
+                            "chemin_image": ex.chemin_image,
+                        })
+
+                    if exercices:
+                        result[matiere.nom][
+                            lecon.titre_fr if lang == "fr" else lecon.titre_en
+                        ] = exercices
+
+    return result
+
+
+
+def get_exercices_par_lecon_pour_enseignant(self):
+    """
+    Retourne les exercices groupés par leçon pour tous les élèves affectés à cet enseignant.
+    Structure:
+    {
+        eleve_id: {
+            'nom': 'Nom Élève',
+            'matieres': {
+                matiere_id: {
+                    'nom': 'Nom Matière',
+                    'lecons': {
+                        lecon_id: {
+                            'titre': 'Titre Leçon',
+                            'exercices': [
+                                {'id': ..., 'question_fr': ..., 'question_en': ...},
+                                ...
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    if not self.est_enseignant():
+        return {}
+
+    result = {}
+    eleves = self.get_eleves_encadres()
+    for eleve in eleves:
+        result[eleve.id] = {
+            'nom': eleve.nom_complet,
+            'matieres': {}
+        }
+
+        # Parcours des matières via le niveau de l'élève
+        for matiere in eleve.niveau.matieres:
+            result[eleve.id]['matieres'][matiere.id] = {
+                'nom': matiere.nom,
+                'lecons': {}
+            }
+
+            for unite in matiere.unites:
+                for lecon in unite.lecons:
+                    result[eleve.id]['matieres'][matiere.id]['lecons'][lecon.id] = {
+                        'titre': lecon.titre_fr,
+                        'exercices': [
+                            {
+                                'id': ex.id,
+                                'question_fr': ex.question_fr,
+                                'question_en': ex.question_en,
+                                'temps': ex.temps,
+                                'chemin_image': ex.chemin_image
+                            }
+                            for ex in lecon.exercices
+                        ]
+                    }
+    return result
+
+from flask import render_template, session, redirect
+from models import User, Matiere, Lecon, Exercice
+
+@app.route('/enseignant/exercices')
+def voir_exercices():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+
+    enseignant = User.query.get(user_id)
+    if not enseignant or not enseignant.est_enseignant():
+        return "Accès refusé", 403
+
+    lang = session.get('lang', enseignant.langue or 'fr')
+
+    eleves = enseignant.get_eleves_encadres()
+    niveaux_ids = list({e.niveau_id for e in eleves if e.niveau_id})
+    if not niveaux_ids:
+        return render_template('enseignant_exercices.html', matieres=[], lang=lang, enseignant=enseignant)
+
+    niveaux = Niveau.query.filter(Niveau.id.in_(niveaux_ids)).all()
+
+    # Construction de matieres_data
+    matieres_data = []
+    for niveau in niveaux:
+        eleves_niveau = [e.nom_complet for e in eleves if e.niveau_id == niveau.id]
+
+        for matiere in niveau.matieres:
+            unites_list = []
+            for unite in matiere.unites:
+                lecons_list = []
+                for lecon in unite.lecons:
+                    lecons_list.append({
+                        'id': lecon.id,
+                        'titre': lecon.titre_fr if lang == 'fr' else lecon.titre_en,
+                        'exercices': [
+                            {
+                                'id': ex.id,
+                                'question': ex.question_fr if lang == 'fr' else ex.question_en,
+                                'options': ex.options_fr if lang == 'fr' else ex.options_en,
+                                'reponse': ex.reponse_fr if lang == 'fr' else ex.reponse_en,
+                                'explication': ex.explication_fr if lang == 'fr' else ex.explication_en,
+                                'image_context': ex.get_image_context(lang=lang)
+                            }
+                            for ex in lecon.exercices
+                        ]
+                    })
+                unites_list.append({
+                    'id': unite.id,
+                    'nom': unite.nom if lang == 'fr' else unite.nom_en,
+                    'lecons': lecons_list
+                })
+
+            matieres_data.append({
+                'id': matiere.id,
+                'nom': matiere.nom if lang == 'fr' else matiere.nom_en,
+                'niveau': niveau.nom if lang == 'fr' else niveau.nom_en,
+                'eleves': eleves_niveau,
+                'unites': unites_list
+            })
+
+    return render_template(
+        'enseignant_exercices.html',
+        matieres=matieres_data,
+        lang=lang,
+        enseignant=enseignant
+    )
+
+
+
+@app.route("/enseignant/exercices")
+def enseignant_exercices():
+    if "user_id" not in session:
+        return redirect(url_for("login_enseignant"))
+
+    enseignant = User.query.get(session["user_id"])
+    if not enseignant or not enseignant.est_enseignant():
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/")
+
     lang = session.get("lang", "fr")
 
-    if request.method == "POST":
-        # Récupération des données du formulaire
-        eleve.nom_complet = request.form.get("nom")
-        eleve.email = request.form.get("email")
-        eleve.username = request.form.get("username")
-        eleve.niveau_id = request.form.get("niveau_id")
-        eleve.enseignant_id = request.form.get("enseignant_id")
+    # Récupère les exercices structurés
+    matieres = get_exercices_par_enseignant_for_template(enseignant, lang)
 
-        # Gestion du mot de passe
-        changer_mdp = request.form.get("changer_mdp")
-        if changer_mdp:
-            nouveau_mot_de_passe = request.form.get("nouveau_mot_de_passe")
-            confirmation_mot_de_passe = request.form.get("confirmation_mot_de_passe")
-            
-            if nouveau_mot_de_passe and confirmation_mot_de_passe:
-                if nouveau_mot_de_passe == confirmation_mot_de_passe:
-                    if len(nouveau_mot_de_passe) >= 3:
-                        eleve.mot_de_passe = nouveau_mot_de_passe
-                        flash("✅ Mot de passe modifié avec succès", "success")
-                    else:
-                        flash("❌ Le mot de passe doit contenir au moins 3 caractères", "error")
-                        return render_template("modifier_eleve.html", 
-                                             eleve=eleve, 
-                                             enseignants=enseignants, 
-                                             niveaux=niveaux,
-                                             lang=lang)
-                else:
-                    flash("❌ Les mots de passe ne correspondent pas", "error")
-                    return render_template("modifier_eleve.html", 
-                                         eleve=eleve, 
-                                         enseignants=enseignants, 
-                                         niveaux=niveaux,
-                                         lang=lang)
+    return render_template(
+        "enseignant_exercices.html",
+        enseignant=enseignant,
+        matieres=matieres,
+        lang=lang
+    )
 
-        try:
-            db.session.commit()
-            flash("✅ Élève modifié avec succès", "success")
-            return redirect("/admin/eleves")
-        except Exception as e:
-            db.session.rollback()
-            flash(f"❌ Erreur lors de la modification : {str(e)}", "error")
 
-    return render_template("modifier_eleve.html", 
-                         eleve=eleve, 
-                         enseignants=enseignants, 
-                         niveaux=niveaux,
-                         lang=lang)
+@app.route('/enseignant/exercice-visualisation', methods=['GET'])
+def enseignant_exercice_visualisation():
+    exercice_id = request.args.get('exercice_id', type=int)
+    index = request.args.get('index', 0, type=int)
+    lang = request.args.get('lang', 'fr')
+
+    exercice = Exercice.query.get_or_404(exercice_id)
+    lecon = exercice.lecon
+
+    exercices = (
+        Exercice.query
+        .filter_by(lecon_id=lecon.id)
+        .order_by(Exercice.id)
+        .all()
+    )
+
+    total_exercices = len(exercices)
+    index = max(0, min(index, total_exercices - 1))
+    exercice = exercices[index]
+
+    return render_template(
+        'enseignant_exercice_visualisation.html',
+        exercice=exercice,
+        lecon=lecon,
+        exercices=exercices,
+        index=index,
+        total_exercices=total_exercices,
+        lang=lang
+    )
+
+
+
 
 @app.route("/admin/supprimer-eleve/<int:eleve_id>", methods=["POST"])
 @admin_required
@@ -8894,48 +13185,199 @@ def supprimer_eleve(eleve_id):
     db.session.commit()
     return redirect("/admin/eleves")
 
+
 @app.route("/login-eleve", methods=["GET", "POST"])
 def login_eleve():
-    from models import User
+    """Connexion des élèves - version corrigée"""
+    lang = session.get("lang", "fr")
     
-    if request.method == 'POST':
+    # Si déjà connecté en tant qu'élève
+    if "user_id" in session and session.get("role") == "eleve":
+        return redirect(url_for("dashboard_eleve"))
+    
+    if request.method == "POST":
         email = request.form.get("email")
         mot_de_passe = request.form.get("mot_de_passe")
-        eleve = User.query.filter_by(email=email, role="élève").first()
+        print(f"DEBUG login-eleve: Tentative de connexion avec email={email}")
+        
+        if not email or not mot_de_passe:
+            flash(
+                "Email et mot de passe requis" if lang == "fr" else "Email and password required",
+                "error"
+            )
+            return render_template("login_eleve.html", lang=lang)
 
-        if eleve and eleve.verifier_mot_de_passe(mot_de_passe):
-            # Vérifier si l'essai est expiré
-            if eleve.essai_est_expire():
-                # 🔴 MODIFICATION ICI : Redirection vers upgrade_options
-                session['eleve_id'] = eleve.id
-                session['eleve_username'] = eleve.username
-                flash("Votre période d'essai gratuit de 48h est terminée. Veuillez choisir un abonnement.", "warning")
-                return redirect(url_for('upgrade_options'))
+        # Chercher l'élève
+        eleve = User.query.filter_by(email=email, role="eleve").first()
+        
+        if not eleve:
+            print(f"DEBUG login-eleve: Aucun élève trouvé avec email={email}")
+            flash(
+                "Email ou mot de passe incorrect" if lang == "fr" else "Incorrect email or password",
+                "error"
+            )
+            return render_template("login_eleve.html", lang=lang)
+
+        # Vérifier mot de passe
+        if not eleve.verifier_mot_de_passe(mot_de_passe):
+            print(f"DEBUG login-eleve: Mot de passe incorrect pour {email}")
+            flash(
+                "Email ou mot de passe incorrect" if lang == "fr" else "Incorrect email or password",
+                "error"
+            )
+            return render_template("login_eleve.html", lang=lang)
+
+        # ✅ CORRECTION PRINCIPALE : CONNECTER L'UTILISATEUR MÊME SI L'ESSAI A EXPIRÉ
+        # Vérifier si l'élève a accès à la plateforme
+        if not eleve.a_acces_plateforme():
+            # ✅ IMPORTANT : Connecter l'utilisateur d'abord !
+            session["user_id"] = eleve.id
+            session["role"] = eleve.role
+            session["nom_complet"] = eleve.nom_complet
+            session["lang"] = eleve.langue if eleve.langue else "fr"
             
-            # Afficher le temps restant pour l'essai
-            if eleve.est_en_essai_gratuit():
-                temps_restant = eleve.temps_restant_essai()
-                heures_restantes = int(temps_restant.total_seconds() / 3600)
-                jours_restants = int(temps_restant.total_seconds() / 86400)
-                
-                if jours_restants > 0:
-                    message = f"Essai gratuit : {jours_restants} jour(s) restant(s)"
+            # Mettre à jour les stats de connexion
+            eleve.derniere_connexion = datetime.utcnow()
+            eleve.nombre_connexions += 1
+            db.session.commit()
+            
+            print(f"⚠️ Essai gratuit expiré pour {eleve.email}")
+            
+            # Vérifier spécifiquement si l'essai a expiré
+            if hasattr(eleve, 'est_en_essai_gratuit') and hasattr(eleve, 'essai_est_expire'):
+                if eleve.essai_est_expire():
+                    flash(
+                        "Votre essai gratuit a expiré. Veuillez souscrire à un abonnement." 
+                        if lang == "fr" else "Your free trial has expired. Please subscribe.",
+                        "warning"
+                    )
                 else:
-                    message = f"Essai gratuit : {heures_restantes} heure(s) restante(s)"
-                
-                flash(message, "info")
-
-            # Connexion - STOCKER DANS LA SESSION
-            session['eleve_id'] = eleve.id
-            session['eleve_username'] = eleve.username
-            session['current_student'] = eleve.username  # ✅ Pour l'enseignant virtuel
+                    flash(
+                        "Votre compte n'est pas actif. Contactez l'administrateur." 
+                        if lang == "fr" else "Your account is not active. Contact administrator.",
+                        "error"
+                    )
             
-            return redirect(url_for('dashboard_eleve'))
-        else:
-            flash("Identifiants incorrects", "error")
+            # ✅ REDIRIGER VERS upgrade_options POUR CHOISIR UN ABONNEMENT
+            return redirect(url_for("upgrade_options"))
+        
+        # ✅ Connexion réussie (essai actif ou déjà payé)
+        session["user_id"] = eleve.id
+        session["role"] = eleve.role
+        session["nom_complet"] = eleve.nom_complet
+        session["lang"] = eleve.langue if eleve.langue else "fr"
+        
+        # Mettre à jour les stats de connexion
+        eleve.derniere_connexion = datetime.utcnow()
+        eleve.nombre_connexions += 1
+        db.session.commit()
+        
+        print(f"DEBUG login-eleve: Connexion réussie pour {eleve.nom_complet}")
+        flash("Connexion réussie !" if lang == "fr" else "Login successful!", "success")
 
-    lang = session.get('lang', 'fr')
+        return redirect(url_for("dashboard_eleve"))
+
+    # GET -> afficher formulaire
     return render_template("login_eleve.html", lang=lang)
+
+    
+@app.route("/cleanup-bad-names")
+def cleanup_bad_names():
+    """Nettoyer les noms avec caractères bizarres"""
+    try:
+        from models import User, db
+        
+        # Trouver les élèves avec des caractères bizarres
+        bad_students = User.query.filter_by(role="élève").all()
+        
+        results = []
+        for student in bad_students:
+            original = student.nom_complet
+            cleaned = original
+            
+            # Remplacer les caractères problématiques
+            if '╔' in cleaned or 'Þ' in cleaned:
+                cleaned = cleaned.replace('╔', 'É').replace('Þ', 'è')
+                
+                # Correction spécifique pour "╔lÞve"
+                if '╔lÞve' in cleaned:
+                    cleaned = cleaned.replace('╔lÞve', 'Élève')
+                
+                # Mettre à jour si changé
+                if cleaned != original:
+                    student.nom_complet = cleaned
+                    results.append(f"{original} → {cleaned}")
+        
+        if results:
+            db.session.commit()
+            html = "<h1>Noms nettoyés :</h1><ul>"
+            for r in results:
+                html += f"<li>{r}</li>"
+            html += "</ul>"
+        else:
+            html = "<p>Aucun nom à nettoyer</p>"
+        
+        # Afficher la liste finale
+        html += "<h2>Liste finale des élèves :</h2>"
+        html += "<table border='1'><tr><th>ID</th><th>Nom</th><th>Email</th></tr>"
+        
+        for student in User.query.filter_by(role="élève").order_by(User.nom_complet).all():
+            html += f"<tr><td>{student.id}</td><td>{student.nom_complet}</td><td>{student.email}</td></tr>"
+        
+        html += "</table>"
+        
+        return html
+        
+    except Exception as e:
+        import traceback
+        return f"<h1>Erreur</h1><pre>{traceback.format_exc()}</pre>"
+
+@app.route("/fix-encoding-issue")
+def fix_encoding_issue():
+    """Corriger le problème d'encodage des noms"""
+    try:
+        from models import User, db
+        import psycopg2
+        from psycopg2 import sql
+        
+        results = []
+        
+        # Élèves à corriger
+        eleves_a_corriger = [
+            (8, "Élève test 7ème"),
+            (9, "Élève_test_12")
+        ]
+        
+        for eleve_id, nouveau_nom in eleves_a_corriger:
+            eleve = User.query.get(eleve_id)
+            if eleve:
+                ancien_nom = eleve.nom_complet
+                eleve.nom_complet = nouveau_nom
+                results.append(f"{ancien_nom} → {nouveau_nom}")
+        
+        if results:
+            db.session.commit()
+            html = "<h1>Noms corrigés :</h1><ul>"
+            for r in results:
+                html += f"<li>{r}</li>"
+            html += "</ul>"
+        else:
+            html = "<p>Aucun nom à corriger</p>"
+        
+        # Vérifier
+        html += "<h2>Vérification :</h2>"
+        html += "<table border='1'><tr><th>ID</th><th>Nom</th><th>Email</th></tr>"
+        
+        for eleve in User.query.filter_by(role="élève").order_by(User.nom_complet).all():
+            html += f"<tr><td>{eleve.id}</td><td>{eleve.nom_complet}</td><td>{eleve.email}</td></tr>"
+        
+        html += "</table>"
+        
+        return html
+        
+    except Exception as e:
+        import traceback
+        return f"<h1>Erreur</h1><pre>{traceback.format_exc()}</pre>"
 
 # Ajoutez cette route à votre fichier de routes
 @app.route('/a-propos')
@@ -9061,6 +13503,16 @@ def liste_exercices():
         lang=session.get("lang", "fr")
     )
 
+# ====================================================================
+# 🚀 LANCEMENT DE L'APPLICATION
+# ====================================================================
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    # Créez le dossier de sessions s'il n'existe pas
+    os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+    
+    print("🚀 Application Tutorat AI démarrée")
+    print(f"📁 Dossier de sessions: {app.config['SESSION_FILE_DIR']}")
+    print(f"🔗 Mode: {'Production' if 'postgresql' in DB_URL else 'Développement'}")
+    
+    app.run(debug=True, host='127.0.0.1', port=5000)

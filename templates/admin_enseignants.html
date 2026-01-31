@@ -621,10 +621,10 @@
             <td>
               <div class="teacher-info">
                 <div class="teacher-avatar">
-                  {{ enseignant.nom.split(' ')[0][0] }}{{ enseignant.nom.split(' ')[1][0] if enseignant.nom.split(' ')|length > 1 else '' }}
+                  {{ enseignant.nom_complet.split(' ')[0][0] }}{{ enseignant.nom_complet.split(' ')[1][0] if enseignant.nom_complet.split(' ')|length > 1 else '' }}
                 </div>
                 <div class="teacher-details">
-                  <div class="teacher-name">{{ enseignant.nom }}</div>
+                  <div class="teacher-name">{{ enseignant.nom_complet }}</div>
                   <div class="teacher-email">{{ enseignant.email }}</div>
                 </div>
               </div>
@@ -676,7 +676,7 @@
               <div class="students-content">
                 <div class="students-title">
                   <i class="fas fa-user-graduate"></i>
-                  {% if lang == 'en' %}Students of{% else %}Élèves de{% endif %} {{ enseignant.nom }}
+                  {% if lang == 'en' %}Students of{% else %}Élèves de{% endif %} {{ enseignant.nom_complet }}
                 </div>
                 
                 {% if enseignant.eleves %}

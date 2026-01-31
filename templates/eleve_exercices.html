@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{% if lang == 'fr' %}Mes Exercices{% else %}My Exercises{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1, h2, h3 { margin: 10px 0; }
+    .matiere, .lecon { margin-bottom: 15px; }
+    .exercices-list { list-style: none; padding-left: 20px; }
+    .exercices-list li { margin-bottom: 5px; }
+    .badge-recommande {
+      background-color: #28a745;
+      color: white;
+      font-size: 0.8em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 5px;
+    }
+    .accordion { cursor: pointer; padding: 10px; border: none; text-align: left; outline: none; font-size: 1em; transition: 0.4s; }
+    .accordion.active, .accordion:hover { background-color: #ddd; }
+    .panel { padding: 0 10px; display: none; overflow: hidden; background-color: #f9f9f9; }
+    a { text-decoration: none; color: #007bff; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>{% if lang == 'fr' %}Mes Exercices{% else %}My Exercises{% endif %}</h1>
+    <div><strong>{{ eleve.nom_complet }}</strong></div>
+  </header>
+
+  {% for matiere_data in matieres_data %}
+    <div class="matiere">
+      <button class="accordion">{{ matiere_data.matiere.nom }}</button>
+      <div class="panel">
+        {% for lecon_data in matiere_data.lecons %}
+          <div class="lecon">
+            <button class="accordion">{{ lecon_data.lecon.titre_fr if lang=='fr' else lecon_data.lecon.titre_en }}</button>
+            <div class="panel">
+              <ul class="exercices-list">
+                {% for ex_data in lecon_data.exercices %}
+                  <li>
+                    <a href="{{ url_for('eleve_exercice_detail', exercice_id=ex_data.exercice.id) }}">
+                      {{ (ex_data.exercice.question_fr[:50] if lang=='fr' else ex_data.exercice.question_en[:50]) }}...
+                    </a>
+                    {% if ex_data.recommande %}
+                      <span class="badge-recommande">{% if lang=='fr' %}Recommandé{% else %}Recommended{% endif %}</span>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+
+</div>
+
+<script>
+  // Accordéons
+  var acc = document.getElementsByClassName("accordion");
+  for (var i = 0; i < acc.length; i++) {
+    acc[i].addEventListener("click", function() {
+      this.classList.toggle("active");
+      var panel = this.nextElementSibling;
+      if (panel.style.display === "block") {
+        panel.style.display = "none";
+      } else {
+        panel.style.display = "block";
+      }
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -1,8 +1,11 @@
-from datetime import datetime, timedelta
+# models.py - VERSION OPTIMISÉE
+from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import JSON
 
 db = SQLAlchemy()
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -12,68 +15,53 @@ class User(db.Model):
     nom_complet = db.Column(db.String(128), nullable=False)
     email = db.Column(db.String(128), unique=True, nullable=False)
 
-    # 🔗 Relations pédagogiques
     niveau_id = db.Column(db.Integer, db.ForeignKey('niveaux.id'))
     niveau = db.relationship('Niveau', backref='eleves')
 
-    enseignant_id = db.Column(db.Integer, db.ForeignKey('enseignants.id'))
-    enseignant = db.relationship("Enseignant", backref="eleves")
+    enseignant_referent_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    parents = db.relationship(
+        'Parent',
+        secondary='parent_eleve',
+        backref='eleves',
+        lazy='dynamic'
+    )
 
     role = db.Column(db.String(20), nullable=False)
     mot_de_passe_hash = db.Column(db.String(256), nullable=False)
 
-    # 🔁 Relation vers les remédiations
-    remediations = db.relationship(
-        "RemediationSuggestion",
-        back_populates="user",
-        cascade="all, delete-orphan"
-    )
-
-    # 🌍 Préférence de langue
     langue = db.Column(db.String(10), default="fr")
 
-    # 👨‍👩‍👧 Relation avec les parents
-    parents = db.relationship("Parent", secondary="parent_eleve", backref="enfants")
-
-    # 🆕 CHAMPS POUR LE SYSTÈME DE PAIEMENT ET INSCRIPTION
+    # Paiement et statut
     statut = db.Column(db.String(20), default="actif")
     statut_paiement = db.Column(db.String(20), default="non_paye")
+    statut_essai = db.Column(db.String(20), default='actif')
     inscrit_par_admin = db.Column(db.Boolean, default=False)
-    
-    # 🆕 INFORMATIONS DE FACTURATION CANADIENNES
+
+    # Facturation
     telephone = db.Column(db.String(20), nullable=True)
     adresse = db.Column(db.Text, nullable=True)
     ville = db.Column(db.String(100), nullable=True)
     province = db.Column(db.String(50), nullable=True)
     code_postal = db.Column(db.String(10), nullable=True)
     pays = db.Column(db.String(50), default="Canada")
-    
-    # 🆕 INFORMATIONS STRIPE
+
     stripe_session_id = db.Column(db.String(255), nullable=True)
     stripe_payment_intent = db.Column(db.String(255), nullable=True)
     stripe_customer_id = db.Column(db.String(255), nullable=True)
-    
-    # 🆕 DATES IMPORTANTES
+
+    # Dates importantes
     date_naissance = db.Column(db.Date, nullable=True)
     date_inscription = db.Column(db.DateTime, default=datetime.utcnow)
     date_dernier_paiement = db.Column(db.DateTime, nullable=True)
     date_fin_abonnement = db.Column(db.DateTime, nullable=True)
-    
-    # 🆕 NOUVEAUX CHAMPS POUR L'ESSAI GRATUIT
     date_fin_essai = db.Column(db.DateTime, nullable=True)
-    statut_essai = db.Column(db.String(20), default='actif')
-    
-    # 🆕 MÉTADONNÉES SUPPLEMENTAIRES
+
+    # Métadonnées
     email_verifie = db.Column(db.Boolean, default=False)
     telephone_verifie = db.Column(db.Boolean, default=False)
     accepte_cgu = db.Column(db.Boolean, default=False)
     date_acceptation_cgu = db.Column(db.DateTime, nullable=True)
-    
-    # 🆕 RELATIONS AVEC LES RÉPONSES ET TESTS
-    tests_soumis = db.relationship("TestResponse", backref="user", cascade="all, delete-orphan")
-    reponses_exercices = db.relationship("StudentResponse", backref="user", cascade="all, delete-orphan")
-    
-    # 🆕 CHAMPS POUR LE SUIVI ET ANALYTIQUES
     derniere_connexion = db.Column(db.DateTime, nullable=True)
     nombre_connexions = db.Column(db.Integer, default=0)
     timezone = db.Column(db.String(50), default="America/Toronto")
@@ -83,7 +71,33 @@ class User(db.Model):
         'email_marketing': False
     })
 
-    # 🛡️ Gestion du mot de passe
+    # Enseignant
+    methode_versement = db.Column(db.String(50), default='interac')
+    email_interac_paiement = db.Column(db.String(255))
+    nom_complet_interac = db.Column(db.String(255))
+    email_paypal = db.Column(db.String(255))
+    frequence_versement = db.Column(db.String(20), default='mensuel')
+    seuil_minimum_paiement = db.Column(db.Float, default=25.00)
+    date_mise_a_jour = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    taux_commission = db.Column(db.Float, default=20.0)
+    specialite = db.Column(db.String(100))
+    biographie = db.Column(db.Text)
+    qualifications = db.Column(db.Text)
+    experience_annees = db.Column(db.Integer, default=0)
+    telephone_professionnel = db.Column(db.String(20))
+    site_web = db.Column(db.String(255))
+    linkedin = db.Column(db.String(255))
+    statut_enseignant = db.Column(db.String(20), default='actif')
+    disponibilites = db.Column(db.JSON, default=lambda: {
+        'lundi': [], 'mardi': [], 'mercredi': [], 'jeudi': [],
+        'vendredi': [], 'samedi': [], 'dimanche': []
+    })
+
+    # Notes et évaluations
+    note_moyenne = db.Column(db.Float, default=0.0)
+    nombre_evaluations = db.Column(db.Integer, default=0)
+
+    # -------------------- Gestion mot de passe --------------------
     @property
     def mot_de_passe(self):
         raise AttributeError("Accès interdit au mot de passe en clair.")
@@ -94,10 +108,60 @@ class User(db.Model):
 
     def verifier_mot_de_passe(self, mot_saisi):
         return check_password_hash(self.mot_de_passe_hash, mot_saisi)
-    
-    # 🆕 MÉTHODES POUR LA GESTION DES PAIEMENTS ET ESSAI
+
+    # -------------------- Statut utilisateur --------------------
+    def est_enseignant(self):
+        return self.role == 'enseignant'
+
+    def est_eleve(self):
+        return self.role == 'eleve'
+
+    def est_admin(self):
+        return self.role == 'admin'
+
+    def est_actif(self):
+        if self.role == 'admin':
+            return True
+        if self.statut_paiement == "paye":
+            return True
+        if self.est_en_essai_gratuit():
+            return True
+        return False
+
+    def est_en_attente_paiement(self):
+        return self.statut == "en_attente_paiement"
+
+    def a_acces_plateforme(self):
+        return self.est_actif()
+
+    # -------------------- Essai gratuit --------------------
+    def activer_essai_gratuit(self, duree_heures=48):
+        self.statut = "actif"
+        self.statut_paiement = "essai_gratuit"
+        self.statut_essai = "actif"
+        self.date_fin_essai = datetime.utcnow() + timedelta(hours=duree_heures)
+
+    def est_en_essai_gratuit(self):
+        if self.statut_paiement != "essai_gratuit":
+            return False
+        if not self.date_fin_essai:
+            return False
+        return datetime.utcnow() < self.date_fin_essai
+
+    def essai_est_expire(self):
+        if self.statut_paiement != "essai_gratuit":
+            return False
+        if not self.date_fin_essai:
+            return True
+        return datetime.utcnow() >= self.date_fin_essai
+
+    def temps_restant_essai(self):
+        if not self.est_en_essai_gratuit():
+            return None
+        return self.date_fin_essai - datetime.utcnow()
+
+    # -------------------- Paiement --------------------
     def marquer_comme_paye(self, stripe_session_id=None, stripe_payment_intent=None):
-        """Marquer l'utilisateur comme payé"""
         self.statut = "actif"
         self.statut_paiement = "paye"
         self.statut_essai = "payant"
@@ -107,126 +171,91 @@ class User(db.Model):
             self.stripe_payment_intent = stripe_payment_intent
         self.date_dernier_paiement = datetime.utcnow()
         self.date_fin_abonnement = datetime.utcnow() + timedelta(days=365)
-    
-    def activer_essai_gratuit(self, duree_heures=48):
-        """Activer l'essai gratuit"""
-        self.statut = "actif"
-        self.statut_paiement = "essai_gratuit"
-        self.statut_essai = "actif"
-        self.date_fin_essai = datetime.utcnow() + timedelta(hours=duree_heures)
-    
-    def est_en_essai_gratuit(self):
-        """Vérifier si l'utilisateur est en essai gratuit"""
-        if self.statut_paiement != "essai_gratuit":
-            return False
-        
-        if not self.date_fin_essai:
-            return False
-            
-        return datetime.utcnow() < self.date_fin_essai
-    
-    def essai_est_expire(self):
-        """Vérifier si l'essai gratuit est expiré"""
-        if self.statut_paiement != "essai_gratuit":
-            return False
-            
-        if not self.date_fin_essai:
-            return True
-            
-        return datetime.utcnow() >= self.date_fin_essai
-    
-    def temps_restant_essai(self):
-        """Obtenir le temps restant de l'essai"""
-        if not self.est_en_essai_gratuit():
-            return None
-            
-        temps_restant = self.date_fin_essai - datetime.utcnow()
-        return temps_restant
-    
-    def est_actif(self):
-        """Vérifier si l'utilisateur est actif (payé ou en essai valide)"""
-        if self.role == "admin":
-            return True
-            
-        if self.statut_paiement == "paye":
-            return True
-            
-        if self.est_en_essai_gratuit():
-            return True
-            
-        return False
-    
-    def est_en_attente_paiement(self):
-        """Vérifier si l'utilisateur est en attente de paiement"""
-        return self.statut == "en_attente_paiement"
-    
-    def a_acces_plateforme(self):
-        """Vérifier si l'utilisateur a accès à la plateforme"""
-        return self.est_actif()
-    
-    def obtenir_adresse_complete(self):
-        """Obtenir l'adresse complète formatée"""
-        if not self.adresse:
-            return None
-        elements = [self.adresse]
-        if self.ville:
-            elements.append(self.ville)
-        if self.province:
-            elements.append(self.province)
-        if self.code_postal:
-            elements.append(self.code_postal)
-        if self.pays:
-            elements.append(self.pays)
-        return ", ".join(filter(None, elements))
-    
-    def ajouter_parent(self, parent):
-        """Ajouter un parent à l'élève"""
-        if parent not in self.parents:
-            self.parents.append(parent)
-    
-    def to_dict(self):
-        """Convertir l'utilisateur en dictionnaire pour l'API"""
-        return {
-            'id': self.id,
-            'username': self.username,
-            'nom_complet': self.nom_complet,
-            'email': self.email,
-            'role': self.role,
-            'statut': self.statut,
-            'statut_paiement': self.statut_paiement,
-            'niveau': self.niveau.nom if self.niveau else None,
-            'date_inscription': self.date_inscription.isoformat() if self.date_inscription else None,
-            'est_actif': self.est_actif(),
-            'est_en_essai': self.est_en_essai_gratuit()
-        }
-    
-    def jours_restants_abonnement(self):
-        """Calculer le nombre de jours restants dans l'abonnement"""
-        if not self.date_fin_abonnement:
-            return 0
-        aujourdhui = datetime.utcnow()
-        if self.date_fin_abonnement < aujourdhui:
-            return 0
-        return (self.date_fin_abonnement - aujourdhui).days
-    
+
     def renouveler_abonnement(self, duree_jours=365):
-        """Renouveler l'abonnement pour une durée donnée"""
         self.date_dernier_paiement = datetime.utcnow()
         self.date_fin_abonnement = datetime.utcnow() + timedelta(days=duree_jours)
         self.statut_paiement = "paye"
         self.statut = "actif"
         self.statut_essai = "payant"
-    
+
+    def jours_restants_abonnement(self):
+        if not self.date_fin_abonnement:
+            return 0
+        delta = self.date_fin_abonnement - datetime.utcnow()
+        return max(delta.days, 0)
+
+    # -------------------- Relations pédagogiques --------------------
+    def get_enseignant_referent(self):
+        if self.enseignant_referent_id:
+            return User.query.get(self.enseignant_referent_id)
+        return None
+
+    def get_eleves_encadres(self):
+        if self.est_enseignant():
+            return User.query.filter_by(enseignant_referent_id=self.id, role='eleve').all()
+        return []
+
+    def count_eleves_encadres(self):
+        if self.est_enseignant():
+            return User.query.filter_by(enseignant_referent_id=self.id, role='eleve').count()
+        return 0
+
+    def ajouter_eleve(self, eleve):
+        if self.est_enseignant() and eleve.est_eleve():
+            eleve.enseignant_referent_id = self.id
+            db.session.commit()
+
+    # -------------------- Commissions --------------------
+    def calculer_commission_totale(self):
+        if not self.est_enseignant():
+            return 0
+        commissions = Commission.query.filter_by(enseignant_id=self.id, statut='approved').all()
+        return sum(c.montant_commission for c in commissions)
+
+    def calculer_commission_en_attente(self):
+        if not self.est_enseignant():
+            return 0
+        commissions = Commission.query.filter_by(enseignant_id=self.id, statut='pending').all()
+        return sum(c.montant_commission for c in commissions)
+
+    def get_all_commissions(self):
+        enseignant_comms = Commission.query.filter_by(enseignant_id=self.id).all()
+        eleve_comms = Commission.query.filter_by(eleve_id=self.id).all()
+        return enseignant_comms + eleve_comms
+
+    # -------------------- Adresse --------------------
+    def obtenir_adresse_complete(self):
+        if not self.adresse:
+            return None
+        elements = [self.adresse, self.ville, self.province, self.code_postal, self.pays]
+        return ", ".join(filter(None, elements))
+
+    # -------------------- Représentation --------------------
     def __repr__(self):
         return f"<User {self.username} ({self.email}) - {self.role}>"
 
+# --- Relations remédiations ---
+User.remediations = db.relationship(
+    "RemediationSuggestion",
+    back_populates="user",
+    lazy='dynamic',
+    foreign_keys='RemediationSuggestion.user_id',
+    cascade="all, delete-orphan"
+)
+
+# -------------------------------------------------------------------------------------------------
+# Les autres classes restent identiques : ExerciceRemediation, RemediationSuggestion, Parent, ParentEleve,
+# Niveau, Matiere, Unite, Lecon, Exercice, TestExercice, TestSommatif, StudentResponse,
+# Commission, VersementManuel, InfoVersementEnseignant
+# -------------------------------------------------------------------------------------------------
 
 class ExerciceRemediation(db.Model):
     __tablename__ = "exercice_remediation"
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # 🔗 Relation vers la suggestion d’origine
+    # 🔗 Relation vers la suggestion d' origine
     suggestion_id = db.Column(
         db.Integer,
         db.ForeignKey("remediation_suggestion.id", ondelete="CASCADE"),
@@ -239,7 +268,7 @@ class ExerciceRemediation(db.Model):
     analyse_ia = db.Column(db.Text, nullable=True)
 
     # 🕓 Suivi
-    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    date_creation = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     statut = db.Column(db.String(20), default="proposé")  # proposé, validé, rejeté
 
     # 🔁 Relation bidirectionnelle avec RemediationSuggestion
@@ -254,7 +283,7 @@ class RemediationSuggestion(db.Model):
     # 🔗 Relation vers l'élève concerné
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
 
-    # ✅ Relation corrigée — cohérente avec User.remediations
+    # ✅ Relation corrigée - cohérente avec User.remediations
     user = db.relationship("User", back_populates="remediations")
 
     # 🎓 Contexte pédagogique
@@ -270,7 +299,7 @@ class RemediationSuggestion(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     vue_par_eleve = db.Column(db.Boolean, default=False)
 
-    # 📥 Réponse de l’élève après remédiation
+    # 📥 Réponse de l'élève après remédiation
     reponse_eleve = db.Column(db.Text)
     date_soumission = db.Column(db.DateTime)
 
@@ -280,7 +309,6 @@ class RemediationSuggestion(db.Model):
         back_populates="suggestion",
         cascade="all, delete-orphan"
     )
-
 
 
 class Enseignant(db.Model):
@@ -361,13 +389,14 @@ class Lecon(db.Model):
     objectif_en = db.Column(db.Text)
     unite_id = db.Column(db.Integer, db.ForeignKey('unites.id'))
     exercices = db.relationship("Exercice", backref="lecon", cascade="all, delete-orphan")
-    # ✅ Supprimé : les tests ne sont plus liés à la leçon
-# tests = db.relationship("TestSommatif", backref="lecon", cascade="all, delete-orphan")
 
+    # Relation avec cascade pour supprimer tous les exercices
+    exercices = db.relationship("Exercice", backref="lecon", 
+                               cascade="all, delete-orphan",
+                               lazy=True)
 
 ### --- Exercices & Tests --- ###
 
-# Dans TestResponse - MODIFIEZ COMME ÇA
 class TestResponse(db.Model):
     __tablename__ = "test_responses"
     id = db.Column(db.Integer, primary_key=True)
@@ -375,11 +404,6 @@ class TestResponse(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='CASCADE'), nullable=False)
     test_id = db.Column(db.Integer, db.ForeignKey("tests_sommatifs.id"), nullable=False)
 
-    # 🟡 PROBLÈME : La relation user est commentée mais utilisée dans User.tests_soumis
-    # ✅ CORRECTION : Supprimez complètement cette ligne ou décommentez proprement
-    # user = db.relationship("User", foreign_keys=[user_id], overlaps="tests_soumis,user")
-    
-    # ✅ GARDEZ cette ligne
     test = db.relationship("TestSommatif", backref="reponses")
 
     reponses_exercices = db.Column(db.JSON)
@@ -416,6 +440,12 @@ class Exercice(db.Model):
     image_keywords = db.Column(db.String(500))  # Mots-clés pour l'IA
     image_elements = db.Column(db.Text)  # Éléments visuels importants (JSON)
 
+    # Relation avec les réponses des élèves
+    reponses_eleves = db.relationship("StudentResponse", 
+                                     backref="exercice",
+                                     cascade="all, delete-orphan",
+                                     lazy=True)
+    
     @property
     def theme(self):
         try:
@@ -492,7 +522,7 @@ class StudentResponse(db.Model):
     __tablename__ = "student_responses"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    exercice_id = db.Column(db.Integer, db.ForeignKey('exercices.id'), nullable=True)
+    exercice_id = db.Column(db.Integer, db.ForeignKey('exercices.id', ondelete='CASCADE'), nullable=True)
     test_exercice_id = db.Column(db.Integer, db.ForeignKey('test_exercices.id'), nullable=True)
     test_id = db.Column(db.Integer, db.ForeignKey('tests_sommatifs.id'), nullable=True)
 
@@ -503,6 +533,139 @@ class StudentResponse(db.Model):
 
     # Relations utiles
     test_exercice = db.relationship("TestExercice")
+
+
+### --- MODÈLES DE COMMISSIONS --- ###
+
+class Commission(db.Model):
+    __tablename__ = "commissions"
     
-    # 🟡 PROBLÈME : Cette ligne est commentée mais doit être supprimée
-    # user = db.relationship("User")
+    id = db.Column(db.Integer, primary_key=True)
+    enseignant_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    eleve_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    type_abonnement = db.Column(db.String(20), nullable=False)
+    montant_total = db.Column(db.Float, nullable=False)
+    montant_commission = db.Column(db.Float, nullable=False)
+    taux_base = db.Column(db.Float, nullable=False)
+    details_bonus = db.Column(JSON)
+    statut = db.Column(db.String(20), default='pending')
+    statut_eleve = db.Column(db.String(20), default='actif')
+    date_paiement_eleve = db.Column(db.DateTime, nullable=False)
+    date_calcul = db.Column(db.DateTime, default=datetime.utcnow)
+    date_approbation = db.Column(db.DateTime)
+    date_versement_manuel = db.Column(db.DateTime)
+    reference_interac = db.Column(db.String(100))
+    email_interac = db.Column(db.String(255))
+    preuve_versement = db.Column(db.String(255))
+    
+    # Relations
+    enseignant = db.relationship('User', 
+                               foreign_keys=[enseignant_id],
+                               backref='commissions_comme_enseignant')
+    
+    eleve = db.relationship('User', 
+                          foreign_keys=[eleve_id],
+                          backref='commissions_comme_eleve')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'enseignant_id': self.enseignant_id,
+            'enseignant_nom': self.enseignant.nom_complet if self.enseignant else '',
+            'eleve_id': self.eleve_id,
+            'eleve_nom': self.eleve.nom_complet if self.eleve else '',
+            'type_abonnement': self.type_abonnement,
+            'montant_total': self.montant_total,
+            'montant_commission': self.montant_commission,
+            'taux_base': self.taux_base,
+            'details_bonus': self.details_bonus,
+            'statut': self.statut,
+            'statut_eleve': self.statut_eleve,
+            'date_paiement_eleve': self.date_paiement_eleve.isoformat() if self.date_paiement_eleve else None,
+            'date_calcul': self.date_calcul.isoformat() if self.date_calcul else None,
+            'date_versement_manuel': self.date_versement_manuel.isoformat() if self.date_versement_manuel else None,
+            'reference_interac': self.reference_interac,
+            'email_interac': self.email_interac
+        }
+
+
+class VersementManuel(db.Model):
+    __tablename__ = "versements_manuels"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    enseignant_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    montant_total = db.Column(db.Float, nullable=False)
+    frais_transaction = db.Column(db.Float, default=1.00)
+    montant_net = db.Column(db.Float, nullable=False)
+    email_interac = db.Column(db.String(255), nullable=False)
+    date_demande = db.Column(db.DateTime, default=datetime.utcnow)
+    date_versement = db.Column(db.DateTime)
+    statut = db.Column(db.String(20), default='demande')
+    methode_paiement = db.Column(db.String(20), default='interac')  # ← Valeur par défaut ici
+    reference_interac = db.Column(db.String(100))
+    preuve_versement = db.Column(db.String(255))
+    notes_admin = db.Column(db.Text)
+    
+    enseignant = db.relationship('User', 
+                               foreign_keys=[enseignant_id],
+                               backref='versements_manuels')
+    
+    # Pas besoin de __init__ personnalisé, SQLAlchemy gère les valeurs par défaut
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'enseignant_id': self.enseignant_id,
+            'enseignant_nom': self.enseignant.nom_complet if self.enseignant else '',
+            'montant_total': self.montant_total,
+            'frais_transaction': self.frais_transaction,
+            'montant_net': self.montant_net,
+            'email_interac': self.email_interac,
+            'methode_paiement': self.methode_paiement,
+            'date_demande': self.date_demande.isoformat() if self.date_demande else None,
+            'date_versement': self.date_versement.isoformat() if self.date_versement else None,
+            'statut': self.statut,
+            'reference_interac': self.reference_interac
+        }
+
+
+class InfoVersementEnseignant(db.Model):
+    __tablename__ = "info_versement_enseignant"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    enseignant_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    methode_versement = db.Column(db.String(50), default='interac')
+    email_interac = db.Column(db.String(255))
+    nom_complet_interac = db.Column(db.String(255))
+    email_paypal = db.Column(db.String(255))
+    frequence_versement = db.Column(db.String(20), default='mensuel')
+    seuil_minimum = db.Column(db.Float, default=25.00)
+    date_mise_a_jour = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    enseignant = db.relationship('User', 
+                               foreign_keys=[enseignant_id],
+                               backref=db.backref('info_versement', uselist=False))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'enseignant_id': self.enseignant_id,
+            'methode_versement': self.methode_versement,
+            'email_interac': self.email_interac,
+            'frequence_versement': self.frequence_versement,
+            'seuil_minimum': self.seuil_minimum,
+            'date_mise_a_jour': self.date_mise_a_jour.isoformat() if self.date_mise_a_jour else None
+        }
+
+# ⚠️ CORRECTION IMPORTANTE: Ajouter la relation remediations à la classe User
+# Nous devons le faire après la définition de RemediationSuggestion
+User.remediations = db.relationship(
+    "RemediationSuggestion", 
+    back_populates="user",
+    lazy='dynamic',
+    foreign_keys='RemediationSuggestion.user_id',
+    cascade="all, delete-orphan"
+)
+
+print("✅ Tous les modèles définis avec succès")

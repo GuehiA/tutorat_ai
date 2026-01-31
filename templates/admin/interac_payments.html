@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="{{ 'en' if lang == 'en' else 'fr' }}" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if lang == 'en' %}Interac Payments{% else %}Paiements Interac{% endif %} - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f8fafc;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+        }
+        
+        .stats-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid;
+            transition: transform 0.3s;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stats-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stats-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: #4b5563;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            padding: 15px 12px;
+        }
+        
+        .table td {
+            padding: 15px 12px;
+            vertical-align: middle;
+        }
+        
+        .badge-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .badge-sent {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .badge-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .interac-icon {
+            color: #ff6b00;
+            font-size: 1.5rem;
+        }
+        
+        .payment-method {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .form-select {
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            padding: 10px 15px;
+        }
+        
+        .btn-send-interac {
+            background: linear-gradient(135deg, #ff6b00, #ff8c00);
+background-clip: border-box; /* ou padding-box/content-box selon vos besoins */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-send-interac:hover {
+            background: linear-gradient(135deg, #e55a00, #e57c00);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+        }
+        
+        .modal-header {
+            background: var(--primary);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            padding: 20px;
+        }
+        
+        .modal-body {
+            padding: 30px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 8px;
+        }
+        
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            padding: 12px 15px;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+        
+        .payment-details {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #4b5563;
+        }
+        
+        .detail-value {
+            color: #1f2937;
+            font-weight: 500;
+        }
+        
+        .search-box {
+            position: relative;
+        }
+        
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+        
+        .search-box input {
+            padding-left: 45px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            width: 300px;
+        }
+        
+        @media (max-width: 768px) {
+            .search-box input {
+                width: 100%;
+            }
+            
+            .stats-card {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- En-tête -->
+        <div class="header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-2">
+                        <i class="fas fa-exchange-alt text-primary me-2"></i>
+                        {% if lang == 'en' %}Interac Transfers Management{% else %}Gestion des Transferts Interac{% endif %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% if lang == 'en' %}Send and track Interac e-Transfers to teachers{% else %}Envoyez et suivez les transferts Interac aux enseignants{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="/admin/dashboard" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
+                    </a>
+                    <button class="btn btn-send-interac" data-bs-toggle="modal" data-bs-target="#sendInteracModal">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        {% if lang == 'en' %}Send Interac{% else %}Envoyer Interac{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cartes de statistiques -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: #ff6b00;">
+                    <div class="stats-number" style="color: #ff6b00;">$4,250.00</div>
+                    <div class="stats-label">{% if lang == 'en' %}Total Sent{% else %}Total Envoyé{% endif %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: #f59e0b;">
+                    <div class="stats-number text-warning">$850.75</div>
+                    <div class="stats-label">{% if lang == 'en' %}Pending{% else %}En Attente{% endif %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: #10b981;">
+                    <div class="stats-number text-success">28</div>
+                    <div class="stats-label">{% if lang == 'en' %}Completed{% else %}Complétés{% endif %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-left-color: #ef4444;">
+                    <div class="stats-number text-danger">2</div>
+                    <div class="stats-label">{% if lang == 'en' %}Failed{% else %}Échoués{% endif %}</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filtres -->
+        <div class="filters">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="form-control" 
+                               placeholder="{% if lang == 'en' %}Search teacher or email...{% else %}Rechercher enseignant ou email...{% endif %}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="statusFilter">
+                        <option value="">{% if lang == 'en' %}All Status{% else %}Tous les statuts{% endif %}</option>
+                        <option value="pending">{% if lang == 'en' %}Pending{% else %}En attente{% endif %}</option>
+                        <option value="sent">{% if lang == 'en' %}Sent{% else %}Envoyé{% endif %}</option>
+                        <option value="completed">{% if lang == 'en' %}Completed{% else %}Complété{% endif %}</option>
+                        <option value="failed">{% if lang == 'en' %}Failed{% else %}Échoué{% endif %}</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                        <input type="month" id="monthFilter" class="form-control" 
+                               value="{{ now.strftime('%Y-%m') if now else '' }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="fas fa-filter me-2"></i>
+                        {% if lang == 'en' %}Filter{% else %}Filtrer{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tableau des paiements Interac -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover" id="interacTable">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}</th>
+                            <th>{% if lang == 'en' %}Email{% else %}Email{% endif %}</th>
+                            <th>{% if lang == 'en' %}Amount{% else %}Montant{% endif %}</th>
+                            <th>{% if lang == 'en' %}Status{% else %}Statut{% endif %}</th>
+                            <th>{% if lang == 'en' %}Sent Date{% else %}Date d'envoi{% endif %}</th>
+                            <th>{% if lang == 'en' %}Reference{% else %}Référence{% endif %}</th>
+                            <th>{% if lang == 'en' %}Actions{% else %}Actions{% endif %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Données de démonstration -->
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="teacher-avatar me-3" style="background: #4361ee;">
+                                        J
+                                    </div>
+                                    <div class="fw-bold">Jean Dupont</div>
+                                </div>
+                            </td>
+                            <td>jean@exemple.com</td>
+                            <td class="fw-bold">$125.50</td>
+                            <td>
+                                <span class="badge-status badge-completed">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    {% if lang == 'en' %}Completed{% else %}Complété{% endif %}
+                                </span>
+                            </td>
+                            <td>2024-01-20</td>
+                            <td><code>INTERAC202401201234</code></td>
+                            <td>
+                                <button class="btn btn-outline-primary btn-sm" onclick="viewInteracDetails(1)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-success btn-sm" onclick="resendInterac(1)">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="teacher-avatar me-3" style="background: #10b981;">
+                                        M
+                                    </div>
+                                    <div class="fw-bold">Marie Martin</div>
+                                </div>
+                            </td>
+                            <td>marie@exemple.com</td>
+                            <td class="fw-bold">$85.25</td>
+                            <td>
+                                <span class="badge-status badge-pending">
+                                    <i class="fas fa-clock me-1"></i>
+                                    {% if lang == 'en' %}Pending{% else %}En attente{% endif %}
+                                </span>
+                            </td>
+                            <td>2024-01-19</td>
+                            <td><code>INTERAC202401198765</code></td>
+                            <td>
+                                <button class="btn btn-outline-primary btn-sm" onclick="viewInteracDetails(2)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-warning btn-sm" onclick="cancelInterac(2)">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="teacher-avatar me-3" style="background: #f59e0b;">
+                                        P
+                                    </div>
+                                    <div class="fw-bold">Pierre Leroy</div>
+                                </div>
+                            </td>
+                            <td>pierre@exemple.com</td>
+                            <td class="fw-bold">$62.00</td>
+                            <td>
+                                <span class="badge-status badge-sent">
+                                    <i class="fas fa-paper-plane me-1"></i>
+                                    {% if lang == 'en' %}Sent{% else %}Envoyé{% endif %}
+                                </span>
+                            </td>
+                            <td>2024-01-18</td>
+                            <td><code>INTERAC202401185432</code></td>
+                            <td>
+                                <button class="btn btn-outline-primary btn-sm" onclick="viewInteracDetails(3)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" onclick="remindTeacher(3)">
+                                    <i class="fas fa-bell"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Section historique -->
+        <div class="table-container">
+            <h5 class="mb-3">
+                <i class="fas fa-history me-2"></i>
+                {% if lang == 'en' %}Recent Activity{% else %}Activité Récente{% endif %}
+            </h5>
+            <div class="activity-timeline">
+                <div class="activity-item d-flex mb-3">
+                    <div class="activity-icon bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-check text-white"></i>
+                    </div>
+                    <div>
+                        <p class="mb-0">Interac transfer to Jean Dupont completed</p>
+                        <small class="text-muted">2 hours ago</small>
+                    </div>
+                </div>
+                <div class="activity-item d-flex mb-3">
+                    <div class="activity-icon bg-warning rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-paper-plane text-white"></i>
+                    </div>
+                    <div>
+                        <p class="mb-0">Interac sent to Marie Martin</p>
+                        <small class="text-muted">Yesterday</small>
+                    </div>
+                </div>
+                <div class="activity-item d-flex">
+                    <div class="activity-icon bg-info rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-plus text-white"></i>
+                    </div>
+                    <div>
+                        <p class="mb-0">New Interac transfer initiated for Pierre Leroy</p>
+                        <small class="text-muted">2 days ago</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour envoyer Interac -->
+    <div class="modal fade" id="sendInteracModal" tabindex="-1" aria-labelledby="sendInteracModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sendInteracModalLabel">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        {% if lang == 'en' %}Send Interac Transfer{% else %}Envoyer un Transfert Interac{% endif %}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="sendInteracForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Select Teacher{% else %}Sélectionner un Enseignant{% endif %} *</label>
+                                <select class="form-select" id="teacherSelect" required>
+                                    <option value="">{% if lang == 'en' %}Choose a teacher...{% else %}Choisir un enseignant...{% endif %}</option>
+                                    <option value="1">Jean Dupont (jean@exemple.com)</option>
+                                    <option value="2">Marie Martin (marie@exemple.com)</option>
+                                    <option value="3">Pierre Leroy (pierre@exemple.com)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Amount ($){% else %}Montant ($){% endif %} *</label>
+                                <input type="number" class="form-control" id="amount" min="0.01" step="0.01" 
+                                       placeholder="0.00" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">{% if lang == 'en' %}Email Address for Interac{% else %}Adresse Email pour Interac{% endif %} *</label>
+                                <input type="email" class="form-control" id="interacEmail" 
+                                       placeholder="email@example.com" required>
+                                <small class="text-muted">{% if lang == 'en' %}The email where Interac will be sent{% else %}L'email où le transfert Interac sera envoyé{% endif %}</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Security Question{% else %}Question de Sécurité{% endif %}</label>
+                                <input type="text" class="form-control" id="securityQuestion" 
+                                       placeholder="{% if lang == 'en' %}e.g., What is your pet's name?{% else %}Ex: Quel est le nom de votre animal ?{% endif %}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{% if lang == 'en' %}Answer{% else %}Réponse{% endif %}</label>
+                                <input type="text" class="form-control" id="securityAnswer" 
+                                       placeholder="{% if lang == 'en' %}Answer to security question{% else %}Réponse à la question{% endif %}">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">{% if lang == 'en' %}Message (Optional){% else %}Message (Optionnel){% endif %}</label>
+                                <textarea class="form-control" id="message" rows="3" 
+                                          placeholder="{% if lang == 'en' %}Add a personal message...{% else %}Ajouter un message personnel...{% endif %}"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="payment-details">
+                            <div class="detail-row">
+                                <span class="detail-label">{% if lang == 'en' %}Transfer Fee{% else %}Frais de transfert{% endif %}</span>
+                                <span class="detail-value">$1.50</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">{% if lang == 'en' %}Total Amount{% else %}Montant total{% endif %}</span>
+                                <span class="detail-value fw-bold">$<span id="totalAmount">0.00</span></span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="confirmSend" required>
+                                <label class="form-check-label" for="confirmSend">
+                                    {% if lang == 'en' %}I confirm that all information is correct and I have permission to send this transfer{% else %}Je confirme que toutes les informations sont correctes et j'ai l'autorisation d'envoyer ce transfert{% endif %}
+                                </label>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
+                                </button>
+                                <button type="submit" class="btn btn-send-interac">
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    {% if lang == 'en' %}Send Interac{% else %}Envoyer Interac{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Calcul du montant total
+        document.getElementById('amount').addEventListener('input', function() {
+            const amount = parseFloat(this.value) || 0;
+            const fee = 1.50;
+            const total = amount + fee;
+            document.getElementById('totalAmount').textContent = total.toFixed(2);
+        });
+        
+        // Soumission du formulaire Interac
+        document.getElementById('sendInteracForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const teacher = document.getElementById('teacherSelect').value;
+            const amount = document.getElementById('amount').value;
+            const email = document.getElementById('interacEmail').value;
+            
+            if (!teacher || !amount || !email) {
+                Swal.fire({
+                    title: '{% if lang == "en" %}Missing Information{% else %}Informations manquantes{% endif %}',
+                    text: '{% if lang == "en" %}Please fill all required fields{% else %}Veuillez remplir tous les champs obligatoires{% endif %}',
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+            
+            Swal.fire({
+                title: '{% if lang == "en" %}Confirm Interac Transfer{% else %}Confirmer le transfert Interac{% endif %}',
+                html: `
+                    <div class="text-left">
+                        <p><strong>{% if lang == "en" %}Amount:{% else %}Montant:{% endif %}</strong> $${parseFloat(amount).toFixed(2)}</p>
+                        <p><strong>{% if lang == "en" %}Fee:{% else %}Frais:{% endif %}</strong> $1.50</p>
+                        <p><strong>{% if lang == "en" %}Total:{% else %}Total:{% endif %}</strong> $${(parseFloat(amount) + 1.50).toFixed(2)}</p>
+                        <p><strong>{% if lang == "en" %}Email:{% else %}Email:{% endif %}</strong> ${email}</p>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#ff6b00',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '{% if lang == "en" %}Yes, send now{% else %}Oui, envoyer maintenant{% endif %}',
+                cancelButtonText: '{% if lang == "en" %}Cancel{% else %}Annuler{% endif %}'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Simuler l'envoi
+                    setTimeout(() => {
+                        Swal.fire({
+                            title: '{% if lang == "en" %}Success!{% else %}Succès !{% endif %}',
+                            text: '{% if lang == "en" %}Interac transfer has been initiated{% else %}Le transfert Interac a été initié{% endif %}',
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            // Fermer le modal et rafraîchir
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('sendInteracModal'));
+                            modal.hide();
+                            location.reload();
+                        });
+                    }, 1500);
+                }
+            });
+        });
+        
+        // Fonctions pour les actions
+        function viewInteracDetails(id) {
+            Swal.fire({
+                title: '{% if lang == "en" %}Interac Transfer Details{% else %}Détails du transfert Interac{% endif %}',
+                html: `
+                    <div class="text-left">
+                        <p><strong>{% if lang == "en" %}Teacher:{% else %}Enseignant:{% endif %}</strong> Jean Dupont</p>
+                        <p><strong>{% if lang == "en" %}Email:{% else %}Email:{% endif %}</strong> jean@exemple.com</p>
+                        <p><strong>{% if lang == "en" %}Amount:{% else %}Montant:{% endif %}</strong> $125.50</p>
+                        <p><strong>{% if lang == "en" %}Status:{% else %}Statut:{% endif %}</strong> <span class="badge-status badge-completed">Completed</span></p>
+                        <p><strong>{% if lang == "en" %}Reference:{% else %}Référence:{% endif %}</strong> INTERAC202401201234</p>
+                        <p><strong>{% if lang == "en" %}Sent Date:{% else %}Date d'envoi:{% endif %}</strong> 2024-01-20 14:30</p>
+                        <p><strong>{% if lang == "en" %}Completed Date:{% else %}Date de complétion:{% endif %}</strong> 2024-01-20 15:45</p>
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonText: 'OK',
+                width: 600
+            });
+        }
+        
+        function resendInterac(id) {
+            Swal.fire({
+                title: '{% if lang == "en" %}Resend Interac{% else %}Renvoyer Interac{% endif %}',
+                text: '{% if lang == "en" %}Resend this Interac transfer to the teacher?{% else %}Renvoyer ce transfert Interac à l\'enseignant ?{% endif %}',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#ff6b00',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '{% if lang == "en" %}Yes, resend{% else %}Oui, renvoyer{% endif %}',
+                cancelButtonText: '{% if lang == "en" %}Cancel{% else %}Annuler{% endif %}'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: '{% if lang == "en" %}Success!{% else %}Succès !{% endif %}',
+                        text: '{% if lang == "en" %}Interac has been resent{% else %}Interac a été renvoyé{% endif %}',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        }
+        
+        function cancelInterac(id) {
+            Swal.fire({
+                title: '{% if lang == "en" %}Cancel Interac{% else %}Annuler Interac{% endif %}',
+                text: '{% if lang == "en" %}Are you sure you want to cancel this Interac transfer?{% else %}Êtes-vous sûr de vouloir annuler ce transfert Interac ?{% endif %}',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '{% if lang == "en" %}Yes, cancel{% else %}Oui, annuler{% endif %}',
+                cancelButtonText: '{% if lang == "en" %}Cancel{% else %}Annuler{% endif %}'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: '{% if lang == "en" %}Cancelled{% else %}Annulé{% endif %}',
+                        text: '{% if lang == "en" %}Interac transfer has been cancelled{% else %}Le transfert Interac a été annulé{% endif %}',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                }
+            });
+        }
+        
+        function remindTeacher(id) {
+            Swal.fire({
+                title: '{% if lang == "en" %}Send Reminder{% else %}Envoyer un rappel{% endif %}',
+                text: '{% if lang == "en" %}Send a reminder email to the teacher about pending Interac?{% else %}Envoyer un email de rappel à l\'enseignant concernant l\'Interac en attente ?{% endif %}',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3b82f6',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '{% if lang == "en" %}Yes, send reminder{% else %}Oui, envoyer rappel{% endif %}',
+                cancelButtonText: '{% if lang == "en" %}Cancel{% else %}Annuler{% endif %}'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: '{% if lang == "en" %}Reminder Sent{% else %}Rappel envoyé{% endif %}',
+                        text: '{% if lang == "en" %}Reminder email has been sent to the teacher{% else %}L\'email de rappel a été envoyé à l\'enseignant{% endif %}',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        }
+        
+        // Filtrage
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            const month = document.getElementById('monthFilter').value;
+            
+            const rows = document.querySelectorAll('#interacTable tbody tr');
+            
+            rows.forEach(row => {
+                let show = true;
+                const teacherName = row.cells[0].textContent.toLowerCase();
+                const teacherEmail = row.cells[1].textContent.toLowerCase();
+                const rowStatus = row.cells[3].textContent.toLowerCase();
+                const date = row.cells[4].textContent;
+                
+                // Recherche
+                if (search && !teacherName.includes(search) && !teacherEmail.includes(search)) {
+                    show = false;
+                }
+                
+                // Filtre par statut
+                if (status) {
+                    const statusMap = {
+                        'pending': 'pending',
+                        'sent': 'sent',
+                        'completed': 'completed',
+                        'failed': 'failed'
+                    };
+                    if (!rowStatus.includes(statusMap[status])) {
+                        show = false;
+                    }
+                }
+                
+                // Filtre par mois
+                if (month && date) {
+                    const rowMonth = date.substring(0, 7); // YYYY-MM
+                    if (rowMonth !== month) {
+                        show = false;
+                    }
+                }
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+        
+        // Recherche en temps réel
+        document.getElementById('searchInput').addEventListener('keyup', applyFilters);
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simuler des données pour le calcul initial
+            document.getElementById('amount').dispatchEvent(new Event('input'));
+        });
+    </script>
+</body>
+</html>

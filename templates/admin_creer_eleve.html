@@ -346,7 +346,7 @@
             <label for="enseignant_id">{% if lang == 'en' %}Associated Teacher:{% else %}Enseignant associé :{% endif %}</label>
             <select name="enseignant_id" id="enseignant_id" required>
               {% for enseignant in enseignants %}
-                <option value="{{ enseignant.id }}">{{ enseignant.nom }}</option>
+                <option value="{{ enseignant.id }}">{{ enseignant.nom_complet }}</option>
               {% endfor %}
             </select>
           </div>

@@ -43,6 +43,9 @@
       --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
       --radius: 12px;
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      --monetization: #10b981;
+      --monetization-dark: #0da271;
+      --monetization-light: #e0f7ed;
     }
     [data-theme="dark"] {
       --light: #121826;
@@ -95,6 +98,7 @@
     .dashboard-card:nth-child(1) { animation-delay: 0.1s; }
     .dashboard-card:nth-child(2) { animation-delay: 0.2s; }
     .dashboard-card:nth-child(3) { animation-delay: 0.3s; }
+    .dashboard-card:nth-child(4) { animation-delay: 0.4s; }
     .dashboard-card:hover {
       transform: translateY(-8px) scale(1.01);
       box-shadow: var(--shadow-lg);
@@ -242,6 +246,18 @@
     .evaluations .action-btn i {
       color: var(--warning);
     }
+    /* Monetization */
+    .monetization .card-header {
+      background: linear-gradient(135deg, var(--monetization) 0%, var(--monetization-dark) 100%);
+      color: white;
+    }
+    .monetization .action-btn:hover {
+      background: linear-gradient(135deg, var(--monetization-light) 0%, #c0ebd9 100%);
+      color: var(--monetization-dark);
+    }
+    .monetization .action-btn i {
+      color: var(--monetization);
+    }
     .stats-card {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -271,7 +287,6 @@
     .stats-number {
       font-size: 2.5rem;
       font-weight: 700;
-      color: var(--primary);
       margin-bottom: 5px;
     }
     .stats-label {
@@ -437,6 +452,66 @@
     .import-batch-btn i {
       color: white !important;
     }
+    /* Table styling */
+    .table-monetization {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .table-monetization thead {
+      background: linear-gradient(135deg, var(--monetization) 0%, var(--monetization-dark) 100%);
+      color: white;
+    }
+    .table-monetization th {
+      border: none;
+      padding: 15px;
+      font-weight: 600;
+    }
+    .table-monetization td {
+      padding: 12px 15px;
+      vertical-align: middle;
+      border-color: var(--border);
+    }
+    .table-monetization tbody tr:hover {
+      background: rgba(16, 185, 129, 0.05);
+    }
+    /* Badge status */
+    .badge-paid {
+      background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+      color: white;
+    }
+    .badge-pending {
+      background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
+      color: white;
+    }
+    .badge-processing {
+      background: linear-gradient(135deg, var(--info) 0%, var(--info-dark) 100%);
+      color: white;
+    }
+    .badge-demande {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: white;
+    }
+    /* Payment details */
+    .payment-details {
+      background: var(--monetization-light);
+      border-radius: var(--radius);
+      padding: 15px;
+      margin-top: 10px;
+    }
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .payment-label {
+      color: var(--text-light);
+    }
+    .payment-value {
+      font-weight: 600;
+      color: var(--monetization-dark);
+    }
     /* Animations */
     @keyframes fadeInUp {
       from {
@@ -556,19 +631,19 @@
   <div class="row mb-4">
     <div class="col-md-4">
       <div class="stats-card">
-        <div class="stats-number">{{ stats.enseignants_count if stats else '24' }}</div>
+        <div class="stats-number">{{ stats.enseignants_count if stats and stats.enseignants_count else '0' }}</div>
         <div class="stats-label">{% if lang == 'en' %}Teachers{% else %}Enseignants{% endif %}</div>
       </div>
     </div>
     <div class="col-md-4">
       <div class="stats-card">
-        <div class="stats-number">{{ stats.eleves_count if stats else '156' }}</div>
+        <div class="stats-number">{{ stats.eleves_count if stats and stats.eleves_count else '0' }}</div>
         <div class="stats-label">{% if lang == 'en' %}Students{% else %}Élèves{% endif %}</div>
       </div>
     </div>
     <div class="col-md-4">
       <div class="stats-card">
-        <div class="stats-number">{{ stats.lecons_count if stats else '42' }}</div>
+        <div class="stats-number">{{ stats.lecons_count if stats and stats.lecons_count else '0' }}</div>
         <div class="stats-label">{% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}</div>
       </div>
     </div>
@@ -583,6 +658,11 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab">
         <i class="fas fa-sitemap me-2"></i>{% if lang == 'en' %}Content Structure{% else %}Structure du Contenu{% endif %}
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="monetization-tab" data-bs-toggle="tab" data-bs-target="#monetization" type="button" role="tab">
+        <i class="fas fa-money-bill-wave me-2"></i>{% if lang == 'en' %}Monetization{% else %}Monétisation{% endif %}
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -604,7 +684,7 @@
               {% if lang == 'en' %}User Management{% else %}Gestion des Utilisateurs{% endif %}
             </div>
             <div class="card-body">
-              <a href="/inscription-enseignant" class="btn action-btn">
+              <a href="{{ url_for('creer_enseignant_admin') }}" class="btn action-btn">
                 <i class="fas fa-plus-circle"></i>
                 {% if lang == 'en' %}Add Teacher{% else %}Ajouter un Enseignant{% endif %}
               </a>
@@ -649,8 +729,8 @@
                 {% if lang == 'en' %}Add Lesson{% else %}Ajouter une Leçon{% endif %}
               </a>
               
-              <!-- IMPORTATION EN LOT DE LECONS (NOUVEAU) -->
-              <a href="{{ url_for('admin_import_lessons') }}" class="btn action-btn import-batch-btn">
+              <!-- IMPORTATION EN LOT DE LECONS -->
+              <a href="/admin/import-lessons" class="btn action-btn import-batch-btn">
                 <i class="fas fa-file-import"></i>
                 <div>
                   <strong>{% if lang == 'en' %}Batch Import Lessons{% else %}Importation de Leçons en Lot{% endif %}</strong>
@@ -662,7 +742,7 @@
               </a>
               
               <!-- Importation en lot d'exercices -->
-              <a href="{{ url_for('batch_create_exercises_admin') }}" class="btn action-btn" 
+              <a href="/admin/batch-create-exercises" class="btn action-btn" 
                  style="border-left: 4px solid #9b59b6; background: rgba(155, 89, 182, 0.1);">
                 <i class="fas fa-file-import" style="color: #9b59b6;"></i>
                 <div>
@@ -726,7 +806,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau{{ niveau.id }}" aria-expanded="false" aria-controls="collapseNiveau{{ niveau.id }}">
                   <i class="fas fa-layer-group me-2 text-primary"></i>
                   {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
-                  <span class="badge bg-primary badge-pill ms-2">{{ niveau.matieres|length }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}</span>
+                  <span class="badge bg-primary badge-pill ms-2">{{ niveau.matieres|length if niveau.matieres else 0 }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}</span>
                 </button>
               </h2>
               <div id="collapseNiveau{{ niveau.id }}" class="accordion-collapse collapse" aria-labelledby="headingNiveau{{ niveau.id }}" data-bs-parent="#contentAccordion">
@@ -739,7 +819,7 @@
                           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMatiere{{ matiere.id }}" aria-expanded="false" aria-controls="collapseMatiere{{ matiere.id }}">
                             <i class="fas fa-book me-2 text-success"></i>
                             {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
-                            <span class="badge bg-success badge-pill ms-2">{{ matiere.unites|length }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
+                            <span class="badge bg-success badge-pill ms-2">{{ matiere.unites|length if matiere.unites else 0 }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
                           </button>
                         </h2>
                         <div id="collapseMatiere{{ matiere.id }}" class="accordion-collapse collapse" aria-labelledby="headingMatiere{{ matiere.id }}" data-bs-parent="#matiereAccordion{{ niveau.id }}">
@@ -747,10 +827,10 @@
                             <!-- Boutons d'action pour la matière -->
                             <div class="d-flex justify-content-end mb-3">
                               <div class="action-buttons">
-                                <a href="{{ url_for('modifier_matiere', id=matiere.id) }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit subject{% else %}Modifier la matière{% endif %}">
+                                <a href="{{ url_for('modifier_matiere', id=matiere.id) if 'modifier_matiere' in url_functions else '/admin/modifier-matiere/' + matiere.id|string }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit subject{% else %}Modifier la matière{% endif %}">
                                   <i class="fas fa-edit"></i>
                                 </a>
-                                <form method="POST" action="{{ url_for('supprimer_matiere', id=matiere.id) }}" class="d-inline">
+                                <form method="POST" action="{{ url_for('supprimer_matiere', id=matiere.id) if 'supprimer_matiere' in url_functions else '/admin/supprimer-matiere/' + matiere.id|string }}" class="d-inline">
                                   <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Are you sure you want to delete this subject? This will also delete all associated units, lessons, and exercises.{% else %}Êtes-vous sûr de vouloir supprimer cette matière ? Toutes les unités, leçons et exercices associés seront également supprimés.{% endif %}')">
                                     <i class="fas fa-trash"></i>
                                   </button>
@@ -767,7 +847,7 @@
                                       <i class="fas fa-cube me-2 text-info"></i>
                                       {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
                                       <span class="badge bg-info badge-pill ms-2">
-                                        {{ unite.lecons|length + unite.tests|length }} {% if lang == 'en' %}items{% else %}éléments{% endif %}
+                                        {{ (unite.lecons|length if unite.lecons else 0) + (unite.tests|length if unite.tests else 0) }} {% if lang == 'en' %}items{% else %}éléments{% endif %}
                                       </span>
                                     </button>
                                   </h2>
@@ -776,8 +856,8 @@
                                       <!-- Boutons d'action pour l'unité -->
                                       <div class="d-flex justify-content-end mb-3">
                                         <div class="action-buttons">
-                                          <!-- LIEN POUR IMPORTER DES LECONS SUR CETTE UNITE (NOUVEAU) -->
-                                          <a href="{{ url_for('admin_import_lessons') }}?unite_id={{ unite.id }}" 
+                                          <!-- LIEN POUR IMPORTER DES LECONS SUR CETTE UNITE -->
+                                          <a href="/admin/import-lessons?unite_id={{ unite.id }}" 
                                              class="btn-action" 
                                              style="background: #9b59b6;" 
                                              title="{% if lang == 'en' %}Import lessons to this unit{% else %}Importer des leçons dans cette unité{% endif %}">
@@ -794,7 +874,7 @@
                                       <!-- Liste des leçons et tests -->
                                       <div class="nested-content">
                                         <!-- Tests -->
-                                        {% if unite.tests %}
+                                        {% if unite.tests and unite.tests|length > 0 %}
                                           <h6 class="text-warning mb-2">{% if lang == 'en' %}Summative Tests{% else %}Tests Sommatifs{% endif %}</h6>
                                           {% for test in unite.tests %}
                                             <div class="content-item lecon-item mb-2">
@@ -816,67 +896,71 @@
 
                                         <!-- Leçons -->
                                         <h6 class="text-secondary mb-2 mt-3">{% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}</h6>
-                                        {% for lecon in unite.lecons %}
-                                          <div class="accordion" id="leconAccordion{{ lecon.id }}">
-                                            <div class="accordion-item">
-                                              <h2 class="accordion-header" id="headingLecon{{ lecon.id }}">
-                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLecon{{ lecon.id }}" aria-expanded="false" aria-controls="collapseLecon{{ lecon.id }}">
-                                                  <i class="fas fa-file-alt me-2 text-secondary"></i>
-                                                  {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
-                                                  <span class="badge bg-secondary badge-pill ms-2">{{ lecon.exercices|length }} {% if lang == 'en' %}exercises{% else %}exercices{% endif %}</span>
-                                                </button>
-                                              </h2>
-                                              <div id="collapseLecon{{ lecon.id }}" class="accordion-collapse collapse" aria-labelledby="headingLecon{{ lecon.id }}" data-bs-parent="#leconAccordion{{ lecon.id }}">
-                                                <div class="accordion-body">
-                                                  <!-- Boutons d'action pour la leçon -->
-                                                  <div class="d-flex justify-content-end mb-3">
-                                                    <div class="action-buttons">
-                                                      <a href="/admin/modifier-lecon/{{ lecon.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit lesson{% else %}Modifier la leçon{% endif %}">
-                                                        <i class="fas fa-edit"></i>
-                                                      </a>
-                                                      <!-- CORRECTION ICI : Utilisez la route supprimer_lecon qui manque -->
-                                                      <form method="POST" action="{{ url_for('supprimer_lecon', id=lecon.id) }}" class="d-inline">
-                                                        <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Delete this lesson? All associated exercises will also be deleted.{% else %}Supprimer cette leçon ? Tous les exercices associés seront également supprimés.{% endif %}')">
-                                                          <i class="fas fa-trash"></i>
-                                                        </button>
-                                                      </form>
+                                        {% if unite.lecons and unite.lecons|length > 0 %}
+                                          {% for lecon in unite.lecons %}
+                                            <div class="accordion" id="leconAccordion{{ lecon.id }}">
+                                              <div class="accordion-item">
+                                                <h2 class="accordion-header" id="headingLecon{{ lecon.id }}">
+                                                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLecon{{ lecon.id }}" aria-expanded="false" aria-controls="collapseLecon{{ lecon.id }}">
+                                                    <i class="fas fa-file-alt me-2 text-secondary"></i>
+                                                    {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                                                    <span class="badge bg-secondary badge-pill ms-2">{{ lecon.exercices|length if lecon.exercices else 0 }} {% if lang == 'en' %}exercises{% else %}exercices{% endif %}</span>
+                                                  </button>
+                                                </h2>
+                                                <div id="collapseLecon{{ lecon.id }}" class="accordion-collapse collapse" aria-labelledby="headingLecon{{ lecon.id }}" data-bs-parent="#leconAccordion{{ lecon.id }}">
+                                                  <div class="accordion-body">
+                                                    <!-- Boutons d'action pour la leçon -->
+                                                    <div class="d-flex justify-content-end mb-3">
+                                                      <div class="action-buttons">
+                                                        <a href="/admin/modifier-lecon/{{ lecon.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit lesson{% else %}Modifier la leçon{% endif %}">
+                                                          <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <!-- Alternative ✅ -->
+                                                        <form method="POST" action="/admin/lecon/supprimer/{{ lecon.id }}" class="d-inline">
+                                                          <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Delete this lesson? All associated exercises will also be deleted.{% else %}Supprimer cette leçon ? Tous les exercices associés seront également supprimés.{% endif %}')">
+                                                            <i class="fas fa-trash"></i>
+                                                          </button>
+                                                        </form>
+                                                      </div>
                                                     </div>
-                                                  </div>
 
-                                                  <!-- Exercices -->
-                                                  {% if lecon.exercices %}
-                                                    <div class="nested-content">
-                                                      {% for exercice in lecon.exercices %}
-                                                        <div class="content-item exercice-item mb-2">
-                                                          <div class="content-info">
-                                                            <i class="fas fa-edit me-2 text-muted"></i>
-                                                            <small>
-                                                              {% if lang == 'en' %}
-                                                                {{ exercice.question_en[:50] if exercice.question_en else exercice.question_fr[:50] }}...
-                                                              {% else %}
-                                                                {{ exercice.question_fr[:50] if exercice.question_fr else exercice.question_en[:50] }}...
-                                                              {% endif %}
-                                                            </small>
+                                                    <!-- Exercices -->
+                                                    {% if lecon.exercices and lecon.exercices|length > 0 %}
+                                                      <div class="nested-content">
+                                                        {% for exercice in lecon.exercices %}
+                                                          <div class="content-item exercice-item mb-2">
+                                                            <div class="content-info">
+                                                              <i class="fas fa-edit me-2 text-muted"></i>
+                                                              <small>
+                                                                {% if lang == 'en' %}
+                                                                  {{ exercice.question_en[:50] if exercice.question_en else exercice.question_fr[:50] }}...
+                                                                {% else %}
+                                                                  {{ exercice.question_fr[:50] if exercice.question_fr else exercice.question_en[:50] }}...
+                                                                {% endif %}
+                                                              </small>
+                                                            </div>
+                                                            <div class="action-buttons">
+                                                              <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit exercise{% else %}Modifier l'exercice{% endif %}">
+                                                                <i class="fas fa-edit"></i>
+                                                              </a>
+                                                              <button type="button" class="btn-action btn-delete" onclick="confirmDelete('{{ exercice.id }}')" title="{% if lang == 'en' %}Delete exercise{% else %}Supprimer l'exercice{% endif %}">
+                                                                <i class="fas fa-trash"></i>
+                                                              </button>
+                                                            </div>
                                                           </div>
-                                                          <div class="action-buttons">
-                                                            <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit exercise{% else %}Modifier l'exercice{% endif %}">
-                                                              <i class="fas fa-edit"></i>
-                                                            </a>
-                                                            <button type="button" class="btn-action btn-delete" onclick="confirmDelete('{{ exercice.id }}')" title="{% if lang == 'en' %}Delete exercise{% else %}Supprimer l'exercice{% endif %}">
-                                                              <i class="fas fa-trash"></i>
-                                                            </button>
-                                                          </div>
-                                                        </div>
-                                                      {% endfor %}
-                                                    </div>
-                                                  {% else %}
-                                                    <p class="text-muted mb-0">{% if lang == 'en' %}No exercises for this lesson.{% else %}Aucun exercice pour cette leçon.{% endif %}</p>
-                                                  {% endif %}
+                                                        {% endfor %}
+                                                      </div>
+                                                    {% else %}
+                                                      <p class="text-muted mb-0">{% if lang == 'en' %}No exercises for this lesson.{% else %}Aucun exercice pour cette leçon.{% endif %}</p>
+                                                    {% endif %}
+                                                  </div>
                                                 </div>
                                               </div>
                                             </div>
-                                          </div>
-                                        {% endfor %}
+                                          {% endfor %}
+                                        {% else %}
+                                          <p class="text-muted mb-0">{% if lang == 'en' %}No lessons for this unit.{% else %}Aucune leçon pour cette unité.{% endif %}</p>
+                                        {% endif %}
                                       </div>
                                     </div>
                                   </div>
@@ -891,7 +975,238 @@
                 </div>
               </div>
             </div>
+          {% else %}
+            <div class="text-center py-4">
+              <i class="fas fa-layer-group fa-3x text-muted mb-3"></i>
+              <p class="text-muted">{% if lang == 'en' %}No content levels defined yet.{% else %}Aucun niveau de contenu défini pour le moment.{% endif %}</p>
+              <a href="/admin/ajouter-niveau" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>
+                {% if lang == 'en' %}Add First Level{% else %}Ajouter un Premier Niveau{% endif %}
+              </a>
+            </div>
           {% endfor %}
+        </div>
+      </div>
+    </div>
+    <!-- Onglet Monétisation -->
+    <div class="tab-pane fade" id="monetization" role="tabpanel">
+      <div class="content-section mt-4">
+        <h4 class="mb-3">
+          <i class="fas fa-money-bill-wave me-2 text-success"></i>
+          {% if lang == 'en' %}Teacher Commissions & Payments{% else %}Commissions & Paiements Enseignants{% endif %}
+        </h4>
+        
+        <!-- Cartes de statistiques monétaires -->
+        <div class="row mb-4">
+          <div class="col-md-3">
+            <div class="stats-card" style="border-left: 4px solid #10b981;">
+              <div class="stats-number text-success">${{ "%.2f"|format(monetization_stats.total_commissions if monetization_stats and monetization_stats.total_commissions else 0) }}</div>
+              <div class="stats-label">{% if lang == 'en' %}Total Commissions{% else %}Commissions Totales{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stats-card" style="border-left: 4px solid #f59e0b;">
+              <div class="stats-number text-warning">${{ "%.2f"|format(monetization_stats.pending_payments if monetization_stats and monetization_stats.pending_payments else 0) }}</div>
+              <div class="stats-label">{% if lang == 'en' %}Pending Payments{% else %}Paiements en Attente{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stats-card" style="border-left: 4px solid #3b82f6;">
+              <div class="stats-number text-info">{{ monetization_stats.payments_count if monetization_stats and monetization_stats.payments_count else 0 }}</div>
+              <div class="stats-label">{% if lang == 'en' %}Payments Made{% else %}Paiements Effectués{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stats-card" style="border-left: 4px solid #8b5cf6;">
+              <div class="stats-number text-purple">{{ monetization_stats.active_teachers if monetization_stats and monetization_stats.active_teachers else 0 }}</div>
+              <div class="stats-label">{% if lang == 'en' %}Active Teachers{% else %}Enseignants Actifs{% endif %}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Cartes d'action rapide -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <div class="dashboard-card monetization">
+              <div class="card-header">
+                <i class="fas fa-money-check-alt card-icon"></i>
+                {% if lang == 'en' %}Payment Management{% else %}Gestion des Paiements{% endif %}
+              </div>
+              <div class="card-body">
+                <a href="/admin/versements-manuels" target="_blank" class="btn action-btn">
+                  <i class="fas fa-hand-holding-usd"></i>
+                  {% if lang == 'en' %}Manual Payments{% else %}Paiements Manuels{% endif %}
+                </a>
+                <a href="/admin/commissions" class="btn action-btn">
+                  <i class="fas fa-percentage"></i>
+                  {% if lang == 'en' %}View Commissions{% else %}Voir les Commissions{% endif %}
+                </a>
+                <a href="/admin/interac-payments" class="btn action-btn">
+                  <i class="fas fa-exchange-alt"></i>
+                  {% if lang == 'en' %}Interac Transfers{% else %}Transferts Interac{% endif %}
+                </a>
+                <a href="/admin/generate-payment-report" class="btn action-btn">
+                  <i class="fas fa-file-export"></i>
+                  {% if lang == 'en' %}Generate Report{% else %}Générer Rapport{% endif %}
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tableau des paiements récents -->
+          <div class="col-md-8">
+            <div class="dashboard-card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="fas fa-history me-2"></i>
+                  {% if lang == 'en' %}Recent Payments{% else %}Paiements Récents{% endif %}
+                </div>
+                <a href="/admin/versements-manuels" target="_blank" class="btn action-btn">
+                  {% if lang == 'en' %}View All{% else %}Voir Tout{% endif %}
+                </a>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-monetization table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>{% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}</th>
+                        <th>{% if lang == 'en' %}Amount{% else %}Montant{% endif %}</th>
+                        <th>{% if lang == 'en' %}Status{% else %}Statut{% endif %}</th>
+                        <th>{% if lang == 'en' %}Date{% else %}Date{% endif %}</th>
+                        <th>{% if lang == 'en' %}Actions{% else %}Actions{% endif %}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% if recent_payments and recent_payments|length > 0 %}
+                        {% for payment in recent_payments %}
+                        <tr>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                {{ payment.enseignant_nom[:1] if payment.enseignant_nom and payment.enseignant_nom|length > 0 else 'T' }}
+                              </div>
+                              <div>
+                                <div class="fw-bold">{{ payment.enseignant_nom or 'N/A' }}</div>
+                                <small class="text-muted">{{ payment.email_interac or payment.email or '' }}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="fw-bold">${{ "%.2f"|format(payment.montant_total if payment.montant_total else payment.montant_net if payment.montant_net else 0) }}</td>
+                          <td>
+                            {% if payment.statut == 'complete' %}
+                              <span class="badge badge-paid">{% if lang == 'en' %}Paid{% else %}Payé{% endif %}</span>
+                            {% elif payment.statut == 'en_cours' %}
+                              <span class="badge badge-processing">{% if lang == 'en' %}Processing{% else %}En traitement{% endif %}</span>
+                            {% elif payment.statut == 'demande' %}
+                              <span class="badge badge-demande">{% if lang == 'en' %}Request{% else %}Demande{% endif %}</span>
+                            {% else %}
+                              <span class="badge badge-pending">{% if lang == 'en' %}Pending{% else %}En attente{% endif %}</span>
+                            {% endif %}
+                          </td>
+                          <td>{{ payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else (payment.date[:10] if payment.date else 'N/A') }}</td>
+                          <td>
+                            <div class="action-buttons">
+                              <button class="btn-action btn-view" onclick="viewPaymentDetails({{ payment.id }})" title="{% if lang == 'en' %}View details{% else %}Voir détails{% endif %}">
+                                <i class="fas fa-eye"></i>
+                              </button>
+                              {% if payment.statut != 'complete' %}
+                              <button class="btn-action btn-edit" onclick="markAsPaid({{ payment.id }})" title="{% if lang == 'en' %}Mark as paid{% else %}Marquer comme payé{% endif %}">
+                                <i class="fas fa-check"></i>
+                              </button>
+                              {% endif %}
+                            </div>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      {% else %}
+                      <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                          <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
+                          <p>{% if lang == 'en' %}No recent payments{% else %}Aucun paiement récent{% endif %}</p>
+                          <a href="/admin/versements-manuels" target="_blank" class="btn action-btn">
+                            <i class="fas fa-plus me-2"></i>
+                            {% if lang == 'en' %}Add Payment{% else %}Ajouter un Paiement{% endif %}
+                          </a>
+                        </td>
+                      </tr>
+                      {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Section des enseignants avec commissions -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <i class="fas fa-chart-line card-icon"></i>
+            {% if lang == 'en' %}Teacher Commission Overview{% else %}Aperçu des Commissions Enseignants{% endif %}
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>{% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}</th>
+                    <th>{% if lang == 'en' %}Total Commissions{% else %}Commissions Totales{% endif %}</th>
+                    <th>{% if lang == 'en' %}Pending{% else %}En Attente{% endif %}</th>
+                    <th>{% if lang == 'en' %}Paid{% else %}Payé{% endif %}</th>
+                    <th>{% if lang == 'en' %}Students{% else %}Élèves{% endif %}</th>
+                    <th>{% if lang == 'en' %}Last Payment{% else %}Dernier Paiement{% endif %}</th>
+                    <th>{% if lang == 'en' %}Actions{% else %}Actions{% endif %}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if teacher_commissions and teacher_commissions|length > 0 %}
+                    {% for teacher in teacher_commissions %}
+                    <tr>
+                      <td>
+                        <div class="d-flex align-items-center">
+                          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px;">
+                            {{ teacher.nom_complet[:1] if teacher.nom_complet and teacher.nom_complet|length > 0 else 'T' }}
+                          </div>
+                          <div>
+                            <div class="fw-bold">{{ teacher.nom_complet or 'N/A' }}</div>
+                            <small class="text-muted">{{ teacher.email or '' }}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="fw-bold">${{ "%.2f"|format(teacher.total_commissions or 0) }}</td>
+                      <td class="text-warning">${{ "%.2f"|format(teacher.pending or 0) }}</td>
+                      <td class="text-success">${{ "%.2f"|format(teacher.paid or 0) }}</td>
+                      <td>{{ teacher.students_count or 0 }}</td>
+                      <td>{{ teacher.last_payment[:10] if teacher.last_payment else 'Never' }}</td>
+                      <td>
+                        <div class="action-buttons">
+                          <a href="/admin/teacher/{{ teacher.id }}/commissions" class="btn-action btn-view" title="{% if lang == 'en' %}View commissions{% else %}Voir commissions{% endif %}">
+                            <i class="fas fa-eye"></i>
+                          </a>
+                          <button class="btn-action btn-edit" onclick="sendPaymentReminder({{ teacher.id }})" title="{% if lang == 'en' %}Send reminder{% else %}Envoyer rappel{% endif %}">
+                            <i class="fas fa-bell"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  {% else %}
+                  <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                      <i class="fas fa-user-tie fa-2x mb-2"></i>
+                      <p>{% if lang == 'en' %}No teacher commission data{% else %}Aucune donnée de commission{% endif %}</p>
+                      <a href="/admin/commissions" class="btn btn-sm btn-success">
+                        <i class="fas fa-sync me-2"></i>
+                        {% if lang == 'en' %}Check Commissions{% else %}Vérifier Commissions{% endif %}
+                      </a>
+                    </td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -913,36 +1228,38 @@
                 <script>
                   const ctx = document.getElementById('chartElevesParNiveau');
                   const data = {
-                    labels: {{ eleves_par_niveau|map(attribute=0)|list|tojson }},
+                    labels: {{ eleves_par_niveau|map(attribute=0)|list|tojson if eleves_par_niveau else [] }},
                     datasets: [{
                       label: '{{ "Nombre d\'élèves par niveau" if lang == "fr" else "Students per level" }}',
-                      data: {{ eleves_par_niveau|map(attribute=1)|list|tojson }},
+                      data: {{ eleves_par_niveau|map(attribute=1)|list|tojson if eleves_par_niveau else [] }},
                       backgroundColor: [
                         '#4361ee', '#3fba83', '#fcc419', '#e85959', '#17a2b8', '#9b59b6', '#ff6b6b'
                       ],
                       borderWidth: 1
                     }]
                   };
-                  new Chart(ctx, {
-                    type: 'bar',
-                    data: data,
-                    options: {
-                      responsive: true,
-                      plugins: {
-                        legend: {
-                          display: false
+                  if (ctx) {
+                    new Chart(ctx, {
+                      type: 'bar',
+                      data: data,
+                      options: {
+                        responsive: true,
+                        plugins: {
+                          legend: {
+                            display: false
+                          },
+                          title: {
+                            display: true,
+                            text: '{{ "Répartition des élèves par niveau" if lang == "fr" else "Students per level" }}',
+                            font: { size: 18 }
+                          }
                         },
-                        title: {
-                          display: true,
-                          text: '{{ "Répartition des élèves par niveau" if lang == "fr" else "Students per level" }}',
-                          font: { size: 18 }
+                        scales: {
+                          y: { beginAtZero: true, ticks: { precision: 0 } }
                         }
-                      },
-                      scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } }
                       }
-                    }
-                  });
+                    });
+                  }
                 </script>
               </div>
             </div>
@@ -990,29 +1307,181 @@
       </div>
     </div>
   </div>
+
   <script>
     function confirmDelete(exerciceId) {
       Swal.fire({
-        title: '{{ "Supprimer ?" if lang != "en" else "Delete?" }}',
-        text: '{{ "Cette action est irréversible." if lang != "en" else "This action cannot be undone." }}',
+        title: '{{ "Supprimer ?" if lang == "fr" else "Delete?" }}',
+        text: '{{ "Cette action est irréversible." if lang == "fr" else "This action cannot be undone." }}',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#e74c3c',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: '{{ "Oui, supprimer" if lang != "en" else "Yes, delete" }}',
-        cancelButtonText: '{{ "Annuler" if lang != "en" else "Cancel" }}'
+        confirmButtonText: '{{ "Oui, supprimer" if lang == "fr" else "Yes, delete" }}',
+        cancelButtonText: '{{ "Annuler" if lang == "fr" else "Cancel" }}'
       }).then((result) => {
         if (result.isConfirmed) {
-          fetch('/admin/supprimer-exercice/' + exerciceId, { method: 'POST' })
+          fetch('/admin/supprimer-exercice/' + exerciceId, { 
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          })
             .then(response => {
               if (response.redirected) {
                 window.location.href = response.url;
               } else {
-                Swal.fire('Erreur', 'Une erreur est survenue.', 'error');
+                Swal.fire('{{ "Erreur" if lang == "fr" else "Error" }}', '{{ "Une erreur est survenue." if lang == "fr" else "An error occurred." }}', 'error');
               }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              Swal.fire('{{ "Erreur" if lang == "fr" else "Error" }}', '{{ "Impossible de supprimer." if lang == "fr" else "Unable to delete." }}', 'error');
             });
         }
       });
+    }
+
+    // Fonctions pour la section monétisation
+    function viewPaymentDetails(paymentId) {
+        fetch(`/admin/versements-manuels/${paymentId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                const lang = "{{ lang }}";
+                const statusMap = {
+                    'complete': lang === 'en' ? 'Paid' : 'Payé',
+                    'en_cours': lang === 'en' ? 'Processing' : 'En traitement',
+                    'demande': lang === 'en' ? 'Request' : 'Demande'
+                };
+                
+                Swal.fire({
+                    title: lang === 'en' ? 'Payment Details' : 'Détails du paiement',
+                    html: `
+                        <div class="payment-details" style="text-align: left;">
+                            <div class="payment-row mb-2">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Teacher:' : 'Enseignant:'}</span>
+                                <span class="payment-value ms-2">${data.payment?.enseignant_nom || 'N/A'}</span>
+                            </div>
+                            <div class="payment-row mb-2">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Amount:' : 'Montant:'}</span>
+                                <span class="payment-value ms-2">$${(data.payment?.montant_total || 0).toFixed(2)}</span>
+                            </div>
+                            <div class="payment-row mb-2">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Status:' : 'Statut:'}</span>
+                                <span class="payment-value ms-2">${statusMap[data.payment?.statut] || data.payment?.statut || 'N/A'}</span>
+                            </div>
+                            <div class="payment-row mb-2">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Date:' : 'Date:'}</span>
+                                <span class="payment-value ms-2">${data.payment?.date_demande || 'N/A'}</span>
+                            </div>
+                            ${data.payment?.reference_interac ? `<div class="payment-row">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Reference:' : 'Référence:'}</span>
+                                <span class="payment-value ms-2">${data.payment.reference_interac}</span>
+                            </div>` : ''}
+                        </div>
+                    `,
+                    icon: 'info',
+                    confirmButtonText: lang === 'en' ? 'OK' : 'OK'
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire(
+                    '{{ "Erreur" if lang == "fr" else "Error" }}',
+                    '{{ "Impossible de charger les détails" if lang == "fr" else "Unable to load details" }}',
+                    'error'
+                );
+            });
+    }
+
+    function markAsPaid(paymentId) {
+        const lang = "{{ lang }}";
+        Swal.fire({
+            title: lang === 'en' ? 'Confirm Payment' : 'Confirmer le paiement',
+            text: lang === 'en' ? 'Mark this payment as completed?' : 'Marquer ce paiement comme effectué ?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: lang === 'en' ? 'Yes, mark as paid' : 'Oui, marquer comme payé',
+            cancelButtonText: lang === 'en' ? 'Cancel' : 'Annuler',
+            input: 'text',
+            inputLabel: lang === 'en' ? 'Interac Reference (optional)' : 'Référence Interac (optionnel)',
+            inputPlaceholder: lang === 'en' ? 'Enter reference...' : 'Entrez la référence...'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const reference = result.value || '';
+                fetch(`/api/admin/versement/${paymentId}/traiter`, { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        reference_interac: reference,
+                        preuve_versement: null
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire(
+                                lang === 'en' ? 'Success' : 'Succès',
+                                data.message || (lang === 'en' ? 'Payment marked as completed' : 'Paiement marqué comme complété'),
+                                'success'
+                            );
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            Swal.fire(
+                                lang === 'en' ? 'Error' : 'Erreur',
+                                data.error || data.message || (lang === 'en' ? 'An error occurred' : 'Une erreur est survenue'),
+                                'error'
+                            );
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire(
+                            lang === 'en' ? 'Error' : 'Erreur',
+                            lang === 'en' ? 'An error occurred' : 'Une erreur est survenue',
+                            'error'
+                        );
+                    });
+            }
+        });
+    }
+
+    function sendPaymentReminder(teacherId) {
+        const lang = "{{ lang }}";
+        fetch(`/admin/teacher/${teacherId}/send-reminder`, { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        lang === 'en' ? 'Reminder Sent' : 'Rappel envoyé',
+                        data.message || (lang === 'en' ? 'Payment reminder sent successfully' : 'Rappel de paiement envoyé avec succès'),
+                        'success'
+                    );
+                } else {
+                    Swal.fire(
+                        lang === 'en' ? 'Error' : 'Erreur',
+                        data.message || (lang === 'en' ? 'Failed to send reminder' : 'Échec de l\'envoi du rappel'),
+                        'error'
+                    );
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire(
+                    lang === 'en' ? 'Error' : 'Erreur',
+                    lang === 'en' ? 'Failed to send reminder' : 'Échec de l\'envoi du rappel',
+                    'error'
+                );
+            });
     }
 
     // Gestion du thème
@@ -1044,7 +1513,15 @@
     // Animation au chargement
     document.addEventListener('DOMContentLoaded', function() {
       document.body.classList.add('loaded');
+      console.log('Admin dashboard loaded successfully');
+      
+      // Activer le premier onglet si nécessaire
+      const firstTab = document.querySelector('#adminTabs .nav-link');
+      if (firstTab && !firstTab.classList.contains('active')) {
+        firstTab.click();
+      }
     });
   </script>
+
 </body>
 </html>

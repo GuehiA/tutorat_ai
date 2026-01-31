@@ -168,7 +168,7 @@ class InscriptionEleveAdminForm(FlaskForm):
         DataRequired(message="Veuillez sélectionner un niveau")
     ])
     
-    enseignant_id = SelectField('Enseignant', coerce=int, validators=[Optional()])
+    enseignant_id = SelectField('User', coerce=int, validators=[Optional()])
     
     # =====================
     # PARAMÈTRES ADMINISTRATIFS

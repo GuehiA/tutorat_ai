@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if lang=='fr' %}Exercice {{ index+1 }}{% else %}Exercise {{ index+1 }}{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <i class="fas fa-graduation-cap"></i>
+        <span>{% if lang=='fr' %}Plateforme d'Apprentissage{% else %}Learning Platform{% endif %}</span>
+      </div>
+      <div class="user-info">
+        <div class="avatar">{{ eleve.nom_complet[0] }}</div>
+        <div><strong>{{ eleve.nom_complet }}</strong></div>
+      </div>
+    </header>
+
+    <!-- Progression -->
+    <div class="progress-section">
+      <div class="progress-title">{% if lang=='fr' %}Exercice {{ index+1 }} sur {{ total_exercices }}{% else %}Exercise {{ index+1 }} of {{ total_exercices }}{% endif %}</div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: {{ ((index+1)/total_exercices*100)|round }}%"></div>
+      </div>
+    </div>
+
+    <!-- Question -->
+    <div class="question-section">
+      <h2>{% if lang=='fr' %}Énoncé :{% else %}Prompt:{% endif %}</h2>
+      <div class="question-text math-content">
+        {{ (exercice.question_fr if lang=='fr' else exercice.question_en)|safe }}
+      </div>
+      {% if exercice.chemin_image %}
+        <img src="{{ url_for('static', filename=exercice.chemin_image) }}" alt="Illustration">
+      {% endif %}
+    </div>
+
+    <!-- Vérification recommandation -->
+    {% if recommande %}
+      <!-- Formulaire réponse -->
+      <form method="POST" action="/soumettre-sequentiel" id="answerForm">
+        <input type="hidden" name="username" value="{{ eleve.username }}">
+        <input type="hidden" name="lang" value="{{ lang }}">
+        <input type="hidden" name="lecon_id" value="{{ lecon.id }}">
+        <input type="hidden" name="exercice_id" value="{{ exercice.id }}">
+        <input type="hidden" name="index" value="{{ index }}">
+        <input type="hidden" name="reponse_eleve" id="reponse_eleve">
+
+        <div class="answer-section">
+          <label>{% if lang=='fr' %}Votre réponse :{% else %}Your answer:{% endif %}</label>
+          <div contenteditable="true" id="visualMathEditor" class="math-editor" placeholder="{% if lang=='fr' %}Écrivez votre réponse ici...{% else %}Write your answer here...{% endif %}"></div>
+          <button type="submit">{% if lang=='fr' %}Soumettre{% else %}Submit{% endif %}</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="not-recommended">
+        <i class="fas fa-info-circle"></i>
+        {% if lang=='fr' %}
+          Cet exercice n'est pas recommandé pour le moment.
+        {% else %}
+          This exercise is not recommended at the moment.
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <!-- Feedback après soumission -->
+    {% if reponse %}
+      <div class="feedback-section">
+        <h3>{% if lang=='fr' %}Analyse de Naima{% else %}Naima's Feedback{% endif %}</h3>
+        <div class="student-answer math-content">{{ reponse.reponse_eleve }}</div>
+        {% if reponse.analyse_ia %}
+          <div class="ai-analysis math-content">{{ reponse.analyse_ia|safe }}</div>
+        {% endif %}
+        <div class="stars">{% if reponse.etoiles is not none %}<strong>{{ reponse.etoiles }}/5 ⭐</strong>{% endif %}</div>
+      </div>
+    {% endif %}
+
+    <!-- Navigation rapide -->
+    <div class="exercise-navigation">
+      {% if index>0 %}
+        <a href="?index={{ index-1 }}">&larr; {% if lang=='fr' %}Précédent{% else %}Previous{% endif %}</a>
+      {% endif %}
+      {% if index<total_exercices-1 %}
+        <a href="?index={{ index+1 }}">{% if lang=='fr' %}Suivant{% else %}Next{% endif %} &rarr;</a>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <script>
+    // Éditeur mathématique simple
+    const visualEditor = document.getElementById('visualMathEditor');
+    const hiddenInput = document.getElementById('reponse_eleve');
+    if(visualEditor){
+      visualEditor.addEventListener('input', ()=> {
+        hiddenInput.value = visualEditor.innerText.trim();
+      });
+    }
+
+    // MathJax
+    function processMath(){MathJax.typesetPromise();}
+    document.addEventListener('DOMContentLoaded',processMath);
+    new MutationObserver(processMath).observe(document.body,{subtree:true,childList:true});
+  </script>
+</body>
+</html>

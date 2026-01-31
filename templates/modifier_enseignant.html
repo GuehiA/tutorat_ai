@@ -665,7 +665,7 @@
                     <h4><i class="fas fa-info-circle"></i> Enseignant actuel</h4>
                     <div class="teacher-badge">
                         <i class="fas fa-user-tie"></i>
-                        {{ enseignant.nom }}
+                        {{ enseignant.nom_complet }}
                     </div>
                     <div class="teacher-details">
                         <div><strong>Email :</strong> {{ enseignant.email }}</div>
@@ -717,7 +717,7 @@
                         <input 
                             type="text" 
                             name="nom" 
-                            value="{{ enseignant.nom }}" 
+                            value="{{ enseignant.nom_complet }}" 
                             class="form-input" 
                             required
                             placeholder="Ex: Jean Dupont"
