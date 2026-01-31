@@ -5943,7 +5943,7 @@ def admin_inscrire_eleve():
                 username=form.username.data,
                 email=form.email.data,
                 nom_complet=form.nom_complet.data,
-                role='élève',
+                role='eleve',  # ✅ CORRECTION ICI : 'eleve' SANS accent !
                 # Informations personnelles
                 telephone=form.telephone.data,
                 adresse=form.adresse.data,
@@ -12516,13 +12516,17 @@ def ajouter_test():
 @app.route("/admin/eleves")
 @admin_required
 def liste_eleves():
-    """Page d'administration des élèves - Version corrigée"""
+    """Page d'administration des élèves - VERSION CORRIGÉE"""
     try:
         from models import User, ParentEleve, Parent
         
-        # 🔍 CHERCHER LES ÉLÈVES - VERSION SIMPLIFIÉE
-        # Chercher avec role='eleve' (sans accent)
-        eleves = User.query.filter_by(role="eleve").options(
+        # ✅ CORRECTION: Chercher avec les DEUX variantes possibles
+        from sqlalchemy import or_
+        
+        # 🔍 CHERCHER LES ÉLÈVES - VERSION CORRIGÉE
+        eleves = User.query.filter(
+            or_(User.role == "eleve", User.role == "élève")  # ✅ Recherche les deux
+        ).options(
             db.joinedload(User.niveau)
         ).order_by(User.date_inscription.desc()).all()
         
@@ -13188,7 +13192,7 @@ def supprimer_eleve(eleve_id):
 
 @app.route("/login-eleve", methods=["GET", "POST"])
 def login_eleve():
-    """Connexion des élèves - version corrigée"""
+    """Connexion des élèves - VERSION CORRIGÉE"""
     lang = session.get("lang", "fr")
     
     # Si déjà connecté en tant qu'élève
@@ -13207,8 +13211,12 @@ def login_eleve():
             )
             return render_template("login_eleve.html", lang=lang)
 
-        # Chercher l'élève
-        eleve = User.query.filter_by(email=email, role="eleve").first()
+        # ✅ CORRECTION: Chercher avec les DEUX variantes de rôle
+        from sqlalchemy import or_
+        eleve = User.query.filter(
+            User.email == email,
+            or_(User.role == "eleve", User.role == "élève")  # ✅ Recherche les deux
+        ).first()
         
         if not eleve:
             print(f"DEBUG login-eleve: Aucun élève trouvé avec email={email}")
