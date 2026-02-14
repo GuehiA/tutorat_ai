@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang }}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Favicon VirtuEduc -->
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -10,68 +11,840 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
     <meta name="msapplication-TileColor" content="#4361ee">
     <meta name="theme-color" content="#4361ee">
-    <title>Changer le mot de passe</title>
+    <title>{% if lang == 'en' %}Change Password{% else %}Changer le mot de passe{% endif %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 40px; }
-        .form-container {
-            background: #fff; padding: 30px; max-width: 500px; margin: auto;
-            border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --primary-light: #eef2ff;
+            --secondary: #7209b7;
+            --accent: #4cc9f0;
+            --success: #27ae60;
+            --success-dark: #219653;
+            --danger: #e74c3c;
+            --danger-dark: #c0392b;
+            --light: #ffffff;
+            --dark: #1a1a2e;
+            --gray: #6c757d;
+            --light-gray: #f8f9fa;
+            --border-radius: 20px;
+            --border-radius-sm: 12px;
+            --shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 25px 50px rgba(0, 0, 0, 0.12);
+            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        h2 { text-align: center; color: #333; }
-        label { display: block; margin-top: 15px; font-weight: bold; }
-        input[type="password"] {
-            width: 100%; padding: 10px; margin-top: 5px;
-            border: 1px solid #ccc; border-radius: 5px;
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        button {
-            margin-top: 20px; width: 100%; padding: 12px;
-            background: #3498db; color: white; border: none;
-            border-radius: 5px; font-size: 16px; cursor: pointer;
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--dark);
+            line-height: 1.6;
+            position: relative;
+            overflow-x: hidden;
         }
-        button:hover { background: #2980b9; }
-        .back-link {
-            display: block; text-align: center; margin-top: 20px;
+
+        /* Effet de fond animé */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 20%);
+            pointer-events: none;
+            z-index: -1;
+            animation: floatBackground 20s infinite linear;
         }
-        .flash-message {
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 20px;
+
+        @keyframes floatBackground {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-10px, 10px) rotate(90deg); }
+            50% { transform: translate(0, 20px) rotate(180deg); }
+            75% { transform: translate(10px, 10px) rotate(270deg); }
+            100% { transform: translate(0, 0) rotate(360deg); }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+            z-index: 1;
+            animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Carte principale */
+        .card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.92));
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            padding: 50px 40px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+
+        .card::after {
+            content: '';
+            position: absolute;
+            bottom: -50px;
+            right: -50px;
+            width: 150px;
+            height: 150px;
+            background: linear-gradient(135deg, var(--primary), transparent 70%);
+            border-radius: 50%;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        /* En-tête */
+        .header {
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .lock-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
             color: white;
+            font-size: 3rem;
+            box-shadow: 0 15px 35px rgba(67, 97, 238, 0.3);
+            position: relative;
+            animation: float 3s ease-in-out infinite;
         }
-        .succès { background-color: #2ecc71; }
-        .erreur { background-color: #e74c3c; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .lock-icon::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            opacity: 0.3;
+            z-index: -1;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.1); opacity: 0.5; }
+        }
+
+        .title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--gray);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* Messages flash */
+        .flash-messages {
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .flash-message {
+            padding: 15px 20px;
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideInMessage 0.3s ease;
+        }
+
+        @keyframes slideInMessage {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .flash-message.success {
+            background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(39, 174, 96, 0.05));
+            border-left: 4px solid var(--success);
+            color: var(--success-dark);
+        }
+
+        .flash-message.error {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(231, 76, 60, 0.05));
+            border-left: 4px solid var(--danger);
+            color: var(--danger);
+        }
+
+        /* Formulaire */
+        .form {
+            position: relative;
+            z-index: 2;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-label i {
+            color: var(--primary);
+            font-size: 1rem;
+            width: 20px;
+        }
+
+        .input-container {
+            position: relative;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px 50px 16px 20px;
+            border: 2px solid var(--light-gray);
+            border-radius: var(--border-radius-sm);
+            font-size: 16px;
+            transition: var(--transition);
+            background: white;
+            font-family: inherit;
+            color: var(--dark);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+            transition: var(--transition);
+            font-size: 1.2rem;
+        }
+
+        .form-input:focus + .input-icon {
+            color: var(--primary);
+        }
+
+        /* Force du mot de passe */
+        .password-strength {
+            margin-top: 8px;
+            height: 4px;
+            background: var(--light-gray);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0;
+            transition: all 0.3s ease;
+        }
+
+        .strength-text {
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .strength-text.weak { color: var(--danger); }
+        .strength-text.medium { color: #f39c12; }
+        .strength-text.strong { color: var(--success); }
+
+        /* Règles du mot de passe */
+        .password-rules {
+            background: var(--light-gray);
+            border-radius: var(--border-radius-sm);
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .password-rules h4 {
+            color: var(--dark);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .rule-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
+            color: var(--gray);
+        }
+
+        .rule-item.valid {
+            color: var(--success);
+        }
+
+        .rule-item i {
+            font-size: 0.9rem;
+            width: 20px;
+        }
+
+        /* Bouton principal */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: var(--transition);
+            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(67, 97, 238, 0.4);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Lien de retour */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 25px;
+            color: var(--gray);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 12px 24px;
+            border-radius: 50px;
+            transition: var(--transition);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        /* Sélecteur de langue */
+        .lang-switch {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .lang-switch form {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 12px;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .lang-switch select {
+            padding: 5px 10px;
+            border-radius: var(--border-radius-sm);
+            font-size: 14px;
+            border: 1px solid var(--light-gray);
+            background: white;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .lang-switch select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                max-width: 95%;
+            }
+            
+            .card {
+                padding: 40px 30px;
+            }
+            
+            .title {
+                font-size: 1.8rem;
+            }
+            
+            .lock-icon {
+                width: 80px;
+                height: 80px;
+                font-size: 2.5rem;
+            }
+            
+            .btn {
+                padding: 16px 32px;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                padding: 30px 20px;
+            }
+            
+            .title {
+                font-size: 1.6rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .lock-icon {
+                width: 70px;
+                height: 70px;
+                font-size: 2rem;
+            }
+            
+            .form-input {
+                padding: 14px 45px 14px 15px;
+            }
+            
+            .password-rules {
+                padding: 12px;
+            }
+        }
     </style>
 </head>
 <body>
 
-<div class="form-container">
-    <h2>🔒 Changer votre mot de passe</h2>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="flash-message {{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <form method="POST">
-        <label for="ancien_mdp">Mot de passe actuel</label>
-        <input type="password" id="ancien_mdp" name="ancien_mdp" required>
-
-        <label for="nouveau_mdp">Nouveau mot de passe</label>
-        <input type="password" id="nouveau_mdp" name="nouveau_mdp" required>
-
-        <label for="confirmation_mdp">Confirmez le nouveau mot de passe</label>
-        <input type="password" id="confirmation_mdp" name="confirmation_mdp" required>
-
-        <button type="submit">Mettre à jour</button>
-    </form>
-
-    <div class="back-link">
-        <a href="/dashboard-enseignant">← Retour au tableau de bord</a>
+    <!-- Sélecteur de langue -->
+    <div class="lang-switch">
+        <form method="POST" action="/changer-langue">
+            <input type="hidden" name="redirect_page" value="changer_mot_de_passe">
+            <select name="lang" onchange="this.form.submit()">
+                <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+                <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+            </select>
+        </form>
     </div>
-</div>
+
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="lock-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h1 class="title">
+                    {% if lang == 'en' %}Change Password{% else %}Changer votre mot de passe{% endif %}
+                </h1>
+                <p class="subtitle">
+                    {% if lang == 'en' %}
+                        Choose a strong password to secure your account
+                    {% else %}
+                        Choisissez un mot de passe fort pour sécuriser votre compte
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Messages flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">
+                                <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="form" id="passwordForm">
+                <!-- Mot de passe actuel -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-key"></i>
+                        {% if lang == 'en' %}Current Password{% else %}Mot de passe actuel{% endif %}
+                    </label>
+                    <div class="input-container">
+                        <input type="password" 
+                               class="form-input" 
+                               id="ancien_mdp" 
+                               name="ancien_mdp" 
+                               required
+                               placeholder="••••••••">
+                        <div class="input-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nouveau mot de passe -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-shield-alt"></i>
+                        {% if lang == 'en' %}New Password{% else %}Nouveau mot de passe{% endif %}
+                    </label>
+                    <div class="input-container">
+                        <input type="password" 
+                               class="form-input" 
+                               id="nouveau_mdp" 
+                               name="nouveau_mdp" 
+                               required
+                               placeholder="{% if lang == 'en' %}Enter new password{% else %}Saisissez votre nouveau mot de passe{% endif %}"
+                               minlength="6">
+                        <div class="input-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Barre de force du mot de passe -->
+                    <div class="password-strength">
+                        <div class="strength-bar" id="strengthBar"></div>
+                    </div>
+                    <div class="strength-text" id="strengthText">
+                        <i class="fas fa-info-circle"></i>
+                        {% if lang == 'en' %}Enter a password{% else %}Entrez un mot de passe{% endif %}
+                    </div>
+                </div>
+
+                <!-- Confirmation -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-check-circle"></i>
+                        {% if lang == 'en' %}Confirm New Password{% else %}Confirmez le mot de passe{% endif %}
+                    </label>
+                    <div class="input-container">
+                        <input type="password" 
+                               class="form-input" 
+                               id="confirmation_mdp" 
+                               name="confirmation_mdp" 
+                               required
+                               placeholder="{% if lang == 'en' %}Re-enter new password{% else %}Confirmez votre mot de passe{% endif %}">
+                        <div class="input-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                    <div id="passwordMatch" style="font-size: 0.85rem; margin-top: 5px;"></div>
+                </div>
+
+                <!-- Règles du mot de passe -->
+                <div class="password-rules">
+                    <h4>
+                        <i class="fas fa-list"></i>
+                        {% if lang == 'en' %}Password requirements{% else %}Exigences du mot de passe{% endif %}
+                    </h4>
+                    <div class="rule-item" id="ruleLength">
+                        <i class="fas fa-circle"></i>
+                        {% if lang == 'en' %}At least 6 characters{% else %}Au moins 6 caractères{% endif %}
+                    </div>
+                    <div class="rule-item" id="ruleMatch">
+                        <i class="fas fa-circle"></i>
+                        {% if lang == 'en' %}Passwords match{% else %}Les mots de passe correspondent{% endif %}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">
+                    <i class="fas fa-save"></i>
+                    {% if lang == 'en' %}Update Password{% else %}Mettre à jour{% endif %}
+                </button>
+            </form>
+
+            <div class="text-center">
+                <a href="{{ url_for('dashboard_enseignant') }}" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    {% if lang == 'en' %}Back to dashboard{% else %}Retour au tableau de bord{% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Éléments du formulaire
+        const nouveauMdp = document.getElementById('nouveau_mdp');
+        const confirmationMdp = document.getElementById('confirmation_mdp');
+        const strengthBar = document.getElementById('strengthBar');
+        const strengthText = document.getElementById('strengthText');
+        const ruleLength = document.getElementById('ruleLength');
+        const ruleMatch = document.getElementById('ruleMatch');
+        const submitBtn = document.getElementById('submitBtn');
+        const form = document.getElementById('passwordForm');
+
+        // Fonction pour vérifier la force du mot de passe
+        function checkPasswordStrength(password) {
+            let strength = 0;
+            
+            if (password.length >= 6) strength += 1;
+            if (password.length >= 8) strength += 1;
+            if (/[A-Z]/.test(password)) strength += 1;
+            if (/[0-9]/.test(password)) strength += 1;
+            if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+            
+            return Math.min(strength, 4);
+        }
+
+        // Mise à jour de l'indicateur de force
+        function updateStrengthIndicator() {
+            const password = nouveauMdp.value;
+            const strength = checkPasswordStrength(password);
+            
+            // Mettre à jour la barre
+            const width = (strength / 4) * 100;
+            strengthBar.style.width = width + '%';
+            
+            // Couleur et texte selon la force
+            if (password.length === 0) {
+                strengthBar.style.background = '#e9ecef';
+                strengthText.innerHTML = '<i class="fas fa-info-circle"></i> {% if lang == "en" %}Enter a password{% else %}Entrez un mot de passe{% endif %}';
+                strengthText.className = 'strength-text';
+            } else if (strength < 2) {
+                strengthBar.style.background = '#e74c3c';
+                strengthText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> {% if lang == "en" %}Weak password{% else %}Mot de passe faible{% endif %}';
+                strengthText.className = 'strength-text weak';
+            } else if (strength < 3) {
+                strengthBar.style.background = '#f39c12';
+                strengthText.innerHTML = '<i class="fas fa-exclamation-circle"></i> {% if lang == "en" %}Medium password{% else %}Mot de passe moyen{% endif %}';
+                strengthText.className = 'strength-text medium';
+            } else {
+                strengthBar.style.background = '#27ae60';
+                strengthText.innerHTML = '<i class="fas fa-check-circle"></i> {% if lang == "en" %}Strong password{% else %}Mot de passe fort{% endif %}';
+                strengthText.className = 'strength-text strong';
+            }
+            
+            // Mettre à jour la règle de longueur
+            if (password.length >= 6) {
+                ruleLength.innerHTML = '<i class="fas fa-check-circle" style="color: #27ae60;"></i> {% if lang == "en" %}At least 6 characters{% else %}Au moins 6 caractères{% endif %}';
+                ruleLength.classList.add('valid');
+            } else {
+                ruleLength.innerHTML = '<i class="fas fa-circle"></i> {% if lang == "en" %}At least 6 characters{% else %}Au moins 6 caractères{% endif %}';
+                ruleLength.classList.remove('valid');
+            }
+            
+            checkPasswordsMatch();
+        }
+
+        // Vérifier si les mots de passe correspondent
+        function checkPasswordsMatch() {
+            const password = nouveauMdp.value;
+            const confirm = confirmationMdp.value;
+            const matchDiv = document.getElementById('passwordMatch');
+            
+            if (confirm.length > 0) {
+                if (password === confirm) {
+                    matchDiv.innerHTML = '<i class="fas fa-check-circle" style="color: #27ae60;"></i> {% if lang == "en" %}Passwords match{% else %}Les mots de passe correspondent{% endif %}';
+                    matchDiv.style.color = '#27ae60';
+                    ruleMatch.innerHTML = '<i class="fas fa-check-circle" style="color: #27ae60;"></i> {% if lang == "en" %}Passwords match{% else %}Les mots de passe correspondent{% endif %}';
+                    ruleMatch.classList.add('valid');
+                } else {
+                    matchDiv.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #e74c3c;"></i> {% if lang == "en" %}Passwords do not match{% else %}Les mots de passe ne correspondent pas{% endif %}';
+                    matchDiv.style.color = '#e74c3c';
+                    ruleMatch.innerHTML = '<i class="fas fa-circle"></i> {% if lang == "en" %}Passwords match{% else %}Les mots de passe correspondent{% endif %}';
+                    ruleMatch.classList.remove('valid');
+                }
+            } else {
+                matchDiv.innerHTML = '';
+                ruleMatch.innerHTML = '<i class="fas fa-circle"></i> {% if lang == "en" %}Passwords match{% else %}Les mots de passe correspondent{% endif %}';
+                ruleMatch.classList.remove('valid');
+            }
+            
+            validateForm();
+        }
+
+        // Valider le formulaire
+        function validateForm() {
+            const password = nouveauMdp.value;
+            const confirm = confirmationMdp.value;
+            const ancien = document.getElementById('ancien_mdp').value;
+            
+            const isValid = password.length >= 6 && password === confirm && ancien.length > 0;
+            submitBtn.disabled = !isValid;
+            
+            if (!isValid) {
+                submitBtn.style.opacity = '0.7';
+            } else {
+                submitBtn.style.opacity = '1';
+            }
+        }
+
+        // Événements
+        nouveauMdp.addEventListener('input', updateStrengthIndicator);
+        confirmationMdp.addEventListener('input', checkPasswordsMatch);
+        document.getElementById('ancien_mdp').addEventListener('input', validateForm);
+
+        // Animation de soumission
+        form.addEventListener('submit', function(e) {
+            if (!submitBtn.disabled) {
+                const originalHTML = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "en" %}Updating...{% else %}Mise à jour...{% endif %}';
+                submitBtn.disabled = true;
+                return true;
+            }
+            e.preventDefault();
+            return false;
+        });
+
+        // Animation au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animation des éléments
+            const elements = document.querySelectorAll('.form-group, .btn, .back-link');
+            elements.forEach((el, index) => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    el.style.transition = 'all 0.5s ease';
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+
+        // Effet de particules
+        function createParticle() {
+            if (Math.random() > 0.8) return;
+            
+            const particle = document.createElement('div');
+            const size = Math.random() * 4 + 2;
+            const colors = ['rgba(67, 97, 238, 0.3)', 'rgba(114, 9, 183, 0.3)', 'rgba(76, 201, 240, 0.3)'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+
+            particle.style.position = 'fixed';
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            particle.style.background = color;
+            particle.style.borderRadius = '50%';
+            particle.style.pointerEvents = 'none';
+            particle.style.left = Math.random() * 100 + 'vw';
+            particle.style.top = '-10px';
+            particle.style.zIndex = '0';
+            
+            document.body.appendChild(particle);
+            
+            const duration = Math.random() * 3 + 2;
+            particle.animate([
+                { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+                { transform: `translateY(100vh) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+            ], {
+                duration: duration * 1000,
+                easing: 'linear'
+            });
+            
+            setTimeout(() => particle.remove(), duration * 1000);
+        }
+
+        setInterval(createParticle, 500);
+    </script>
 
 </body>
 </html>
