@@ -22,6 +22,7 @@
       --accent: #4cc9f0;
       --success: #27ae60;
       --success-dark: #219653;
+      --danger: #e74c3c;
       --light: #ffffff;
       --dark: #1a1a2e;
       --gray: #6c757d;
@@ -79,7 +80,7 @@
 
     .container {
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       position: relative;
       z-index: 1;
       animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -197,6 +198,46 @@
       font-weight: 400;
     }
 
+    /* Messages flash */
+    .flash-messages {
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .flash-message {
+      padding: 15px 20px;
+      border-radius: var(--border-radius-sm);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideInMessage 0.3s ease;
+    }
+
+    @keyframes slideInMessage {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .flash-message.success {
+      background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(39, 174, 96, 0.05));
+      border-left: 4px solid var(--success);
+      color: var(--success-dark);
+    }
+
+    .flash-message.error {
+      background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(231, 76, 60, 0.05));
+      border-left: 4px solid var(--danger);
+      color: var(--danger);
+    }
+
     /* Formulaire */
     .form {
       position: relative;
@@ -298,6 +339,9 @@
     .info-label {
       color: var(--gray);
       font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .info-value {
@@ -305,7 +349,7 @@
       font-weight: 600;
     }
 
-    /* Bouton */
+    /* Bouton principal */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -352,15 +396,42 @@
       transform: translateY(-1px);
     }
 
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--gray), #5a6268);
+      box-shadow: 0 10px 25px rgba(108, 117, 125, 0.3);
+    }
+
+    /* Lien de changement de mot de passe */
+    .password-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0 15px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 50px;
+      transition: var(--transition);
+      background: rgba(67, 97, 238, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(67, 97, 238, 0.2);
+    }
+
+    .password-link:hover {
+      background: rgba(67, 97, 238, 0.2);
+      transform: translateY(-2px);
+    }
+
     /* Lien de retour */
     .back-link {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      margin-top: 30px;
-      color: var(--primary);
+      margin-top: 25px;
+      color: var(--gray);
       text-decoration: none;
-      font-weight: 600;
+      font-weight: 500;
       padding: 12px 24px;
       border-radius: 50px;
       transition: var(--transition);
@@ -371,6 +442,7 @@
 
     .back-link:hover {
       background: rgba(255, 255, 255, 0.2);
+      color: var(--primary);
       transform: translateY(-2px);
     }
 
@@ -413,7 +485,7 @@
     /* Responsive */
     @media (max-width: 768px) {
       .container {
-        max-width: 90%;
+        max-width: 95%;
       }
       
       .card {
@@ -462,6 +534,12 @@
       .profile-info {
         padding: 15px;
       }
+      
+      .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+      }
     }
   </style>
 </head>
@@ -470,7 +548,7 @@
   <!-- Sélecteur de langue -->
   <div class="lang-switch">
     <form method="POST" action="/changer-langue">
-      <input type="hidden" name="redirect_page" value="modifier_profil_enseignant">
+      <input type="hidden" name="redirect_page" value="enseignant_modifier_profil">
       <select name="lang" onchange="this.form.submit()">
         <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
         <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
@@ -482,7 +560,7 @@
     <div class="card">
       <div class="header">
         <div class="profile-avatar">
-          {{ enseignant.nom_complet[0] if enseignant.nom_complet else '?' }}
+          {{ enseignant.nom_complet[0] if enseignant and enseignant.nom_complet else '?' }}
         </div>
         <h1 class="title">
           {% if lang == 'en' %}Edit My Profile{% else %}Modifier mon profil{% endif %}
@@ -496,6 +574,20 @@
         </p>
       </div>
 
+      <!-- Messages flash -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-messages">
+            {% for category, message in messages %}
+              <div class="flash-message {{ category }}">
+                <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
       <!-- Informations du profil -->
       <div class="profile-info">
         <div class="info-item">
@@ -503,20 +595,29 @@
             <i class="fas fa-id-card"></i>
             {% if lang == 'en' %}Teacher ID{% else %}ID Enseignant{% endif %}
           </span>
-          <span class="info-value">#{{ enseignant.id }}</span>
+          <span class="info-value">#{{ enseignant.id if enseignant else 'N/A' }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">
             <i class="fas fa-calendar-alt"></i>
-            {% if lang == 'en' %}Account created{% else %}Compte créé{% endif %}
+            {% if lang == 'en' %}Member since{% else %}Membre depuis{% endif %}
           </span>
           <span class="info-value">
-            {{ enseignant.date_inscription.strftime('%d/%m/%Y') if enseignant.date_inscription else 'N/A' }}
+            {{ enseignant.date_inscription.strftime('%d/%m/%Y') if enseignant and enseignant.date_inscription else 'N/A' }}
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">
+            <i class="fas fa-tag"></i>
+            {% if lang == 'en' %}Specialty{% else %}Spécialité{% endif %}
+          </span>
+          <span class="info-value">
+            {{ enseignant.specialite if enseignant and enseignant.specialite else ('Not specified' if lang == 'en' else 'Non spécifiée') }}
           </span>
         </div>
       </div>
 
-      <form method="POST" action="/enseignant/modifier-profil" class="form" id="profileForm">
+      <form method="POST" action="{{ url_for('enseignant_modifier_profil') }}" class="form" id="profileForm">
         <div class="form-group">
           <label class="form-label">
             <i class="fas fa-user"></i>
@@ -527,7 +628,7 @@
               type="text" 
               id="nom" 
               name="nom" 
-              value="{{ enseignant.nom_complet }}" 
+              value="{{ enseignant.nom_complet if enseignant else '' }}" 
               class="form-input" 
               required
               placeholder="{% if lang == 'en' %}Enter your full name{% else %}Entrez votre nom complet{% endif %}"
@@ -557,7 +658,7 @@
               type="email" 
               id="email" 
               name="email" 
-              value="{{ enseignant.email }}" 
+              value="{{ enseignant.email if enseignant else '' }}" 
               class="form-input" 
               required
               placeholder="{% if lang == 'en' %}your.email@example.com{% else %}votre.email@exemple.com{% endif %}"
@@ -582,8 +683,17 @@
         </button>
       </form>
 
-      <div style="margin-top: 30px; text-align: center;">
-        <a href="/dashboard-enseignant" class="back-link">
+      <!-- Lien pour changer le mot de passe -->
+      <div class="text-center">
+        <a href="{{ url_for('changer_mot_de_passe_enseignant') }}" class="password-link">
+          <i class="fas fa-key"></i>
+          {% if lang == 'en' %}Change my password{% else %}Changer mon mot de passe{% endif %}
+        </a>
+      </div>
+
+      <!-- Lien de retour -->
+      <div class="text-center">
+        <a href="{{ url_for('enseignant_dashboard') }}" class="back-link">
           <i class="fas fa-arrow-left"></i>
           {% if lang == 'en' %}Back to dashboard{% else %}Retour au tableau de bord{% endif %}
         </a>
@@ -628,8 +738,8 @@
 
     function showError(input, message) {
       // Animation d'erreur
-      input.style.borderColor = 'var(--danger)';
-      input.style.boxShadow = '0 0 0 4px rgba(239, 71, 111, 0.15)';
+      input.style.borderColor = '#e74c3c';
+      input.style.boxShadow = '0 0 0 4px rgba(231, 76, 60, 0.15)';
       
       // Supprimer l'ancien message d'erreur s'il existe
       const existingError = input.parentNode.querySelector('.error-message');
@@ -639,7 +749,7 @@
       const errorDiv = document.createElement('div');
       errorDiv.className = 'error-message';
       errorDiv.textContent = message;
-      errorDiv.style.color = 'var(--danger)';
+      errorDiv.style.color = '#e74c3c';
       errorDiv.style.fontSize = '0.85rem';
       errorDiv.style.marginTop = '5px';
       errorDiv.style.textAlign = 'left';
@@ -747,6 +857,18 @@
         }
       });
     }
+
+    // Auto-dismiss des messages flash après 5 secondes
+    setTimeout(() => {
+      const flashMessages = document.querySelectorAll('.flash-message');
+      flashMessages.forEach(msg => {
+        msg.style.transition = 'opacity 0.5s ease';
+        msg.style.opacity = '0';
+        setTimeout(() => {
+          if (msg.parentNode) msg.remove();
+        }, 500);
+      });
+    }, 5000);
   </script>
 
 </body>
