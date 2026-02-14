@@ -9209,6 +9209,10 @@ def parse_lessons_preview():
         'formatted': formatted
     })
 
+@app.route('/admin/batch-create-exercises')
+def redirect_to_batch_import():
+    return redirect(url_for('batch_create_exercises_admin'))
+
 from flask_wtf.csrf import generate_csrf
 @app.route('/admin/exercises/batch-import', methods=['GET', 'POST'])
 def batch_create_exercises_admin():
