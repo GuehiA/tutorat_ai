@@ -12807,7 +12807,7 @@ def debug_eleves_urgence():
     html += "</body></html>"
     return html
 
-@app.route("/fix-roles-eleves", methods=["POST"])
+@app.route("/fix-roles-eleves", methods=["GET", "POST"])
 def fix_roles_eleves():
     """Corriger automatiquement les rôles des élèves"""
     try:
