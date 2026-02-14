@@ -6048,7 +6048,7 @@ def changer_mot_de_passe():
 
 @app.route("/enseignant/modifier-profil", methods=["GET", "POST"])
 def modifier_profil_enseignant():
-    """Modifier le profil enseignant - Adaptée au nouveau système User"""
+    """Modifier le profil enseignant"""
     # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
         return redirect(url_for("login"))
@@ -6066,11 +6066,8 @@ def modifier_profil_enseignant():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        nom = request.form.get("nom")
-        email = request.form.get("email")
-        telephone = request.form.get("telephone")
-        matieres = request.form.get("matieres")
-        bio = request.form.get("bio")
+        nom = request.form.get("nom")  # ✅ Correspond au template (name="nom")
+        email = request.form.get("email")  # ✅ Correspond au template (name="email")
         
         # Vérification des champs obligatoires
         if not nom or not email:
@@ -6091,16 +6088,13 @@ def modifier_profil_enseignant():
         enseignant.nom_complet = nom
         enseignant.email = email
         
-        # Mettre à jour les champs optionnels
+        # ✅ Optionnel : tu peux ajouter téléphone si besoin
+        telephone = request.form.get("telephone")
         if telephone:
             enseignant.telephone = telephone
-        if matieres:
-            enseignant.matieres = matieres
-        if bio:
-            enseignant.bio = bio
         
         db.session.commit()
-        flash("Profil mis à jour avec succès", "success")
+        flash("✅ Profil mis à jour avec succès", "success")
         return redirect(url_for("dashboard_enseignant"))
 
     return render_template("modifier_profil_enseignant.html", 
