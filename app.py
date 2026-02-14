@@ -4293,67 +4293,59 @@ def creer_enseignant_admin():
     lang = session.get("lang", "fr")
     
     if request.method == "POST":
-        nom = request.form.get("nom_complet")
+        nom = request.form.get("nom")
         email = request.form.get("email")
-        telephone = request.form.get("telephone")
+        mot_de_passe = request.form.get("mot_de_passe")
         specialite = request.form.get("specialite")
+        telephone = request.form.get("telephone")
         
         # Validation
-        if not all([nom, email]):
-            flash("Nom et email sont obligatoires", "error")
-            return redirect(url_for("admin_dashboard"))
+        if not all([nom, email, mot_de_passe]):
+            flash("Nom, email et mot de passe sont obligatoires", "error")
+            return redirect(url_for("creer_enseignant_admin"))
         
         # Vérifier si l'email existe déjà
         existing = User.query.filter_by(email=email).first()
         if existing:
             flash("Un utilisateur avec cet email existe déjà", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("creer_enseignant_admin"))
         
         try:
-            # Générer un mot de passe temporaire
-            temp_password = generate_temp_password()
-            
             # Créer l'enseignant
             enseignant = User(
-                username=email.split('@')[0],
+                username=email.split('@')[0],  # username = partie avant @
                 nom_complet=nom,
                 email=email,
-                telephone=telephone,
-                specialite=specialite,
-                role="enseignant",
+                telephone=telephone or None,
+                specialite=specialite or None,
+                role="enseignant",  # ✅ IMPORTANT : 'enseignant' en minuscules
                 statut="actif",
                 statut_paiement="exempt",
                 inscrit_par_admin=True,
                 langue=lang,
-                mot_de_passe=temp_password,  # Le setter va hacher
-                date_inscription=datetime.utcnow()
+                mot_de_passe=mot_de_passe,  # Le setter va hacher
+                date_inscription=datetime.utcnow(),
+                
+                # Champs spécifiques enseignant
+                taux_commission=20.0,
+                methode_versement="interac",
+                statut_enseignant="actif",
+                experience_annees=0
             )
             
             db.session.add(enseignant)
             db.session.commit()
             
-            # Envoyer email avec identifiants (optionnel)
-            # send_teacher_credentials(email, nom, temp_password)
-            
-            flash(f"Enseignant {nom} créé avec succès !", "success")
-            
-            # REDIRECTION CORRECTE : Revenir au dashboard admin
-            return redirect(url_for("admin_dashboard"))
+            flash(f'✅ Enseignant {nom} créé avec succès !', 'success')
+            return redirect(url_for('admin_dashboard'))
             
         except Exception as e:
             db.session.rollback()
-            flash(f"Erreur: {str(e)}", "error")
-            return redirect(url_for("admin_dashboard"))
+            flash(f'❌ Erreur: {str(e)}', 'error')
+            return redirect(url_for('creer_enseignant_admin'))
     
-    # GET request - montrer le formulaire
+    # GET request - afficher le formulaire
     return render_template("admin_creer_enseignant.html", lang=lang)
-
-def generate_temp_password(length=10):
-    """Génère un mot de passe temporaire"""
-    import secrets
-    import string
-    alphabet = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 @app.route("/changer-langue", methods=["POST"])
 def changer_langue():
