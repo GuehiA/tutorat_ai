@@ -548,7 +548,7 @@
   <!-- Sélecteur de langue -->
   <div class="lang-switch">
     <form method="POST" action="/changer-langue">
-      <input type="hidden" name="redirect_page" value="enseignant_modifier_profil">
+      <input type="hidden" name="redirect_page" value="modifier_profil_enseignant">
       <select name="lang" onchange="this.form.submit()">
         <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
         <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
@@ -617,7 +617,7 @@
         </div>
       </div>
 
-      <form method="POST" action="{{ url_for('enseignant_modifier_profil') }}" class="form" id="profileForm">
+      <form method="POST" action="{{ url_for('modifier_profil_enseignant') }}" class="form" id="profileForm">
         <div class="form-group">
           <label class="form-label">
             <i class="fas fa-user"></i>
@@ -693,7 +693,7 @@
 
       <!-- Lien de retour -->
       <div class="text-center">
-        <a href="{{ url_for('enseignant_dashboard') }}" class="back-link">
+        <a href="{{ url_for('dashboard_enseignant') }}" class="back-link">
           <i class="fas fa-arrow-left"></i>
           {% if lang == 'en' %}Back to dashboard{% else %}Retour au tableau de bord{% endif %}
         </a>
