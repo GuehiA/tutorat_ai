@@ -12825,7 +12825,7 @@ def fix_roles_eleves():
         for role in roles_a_corriger:
             eleves = User.query.filter_by(role=role).all()
             for eleve in eleves:
-                eleve.role = 'élève'
+                eleve.role = 'eleve'
         
         db.session.commit()
         
