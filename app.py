@@ -410,20 +410,72 @@ def login_admin():
     lang = session.get('lang', 'fr')
     return render_template("login_admin.html", lang=lang)
 
-from sqlalchemy import func
+from sqlalchemy import func, case, and_
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 import logging
+from services.cache_service import cache  # À importer
 
 logger = logging.getLogger(__name__)
 
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
+    """Route principale - ultra rapide avec cache et chargement AJAX"""
     lang = request.args.get("lang") or session.get("lang", "fr")
     
+    # Rendre le template immédiatement (sans données lourdes)
+    # Le template sera modifié pour charger les données en AJAX
+    return render_template("admin_dashboard.html", lang=lang)
+
+
+@app.route("/api/admin/dashboard/data")
+@admin_required
+def api_dashboard_data():
+    """API endpoint pour charger les données en AJAX avec cache"""
     try:
-        # Import des modèles nécessaires
+        lang = request.args.get("lang") or session.get("lang", "fr")
+        
+        # Récupérer toutes les données en une seule fois (avec cache)
+        data = get_cached_dashboard_data(lang)
+        
+        return jsonify(data)
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur API dashboard: {e}")
+        import traceback
+        print(traceback.format_exc())
+        
+        # Retourner des données minimales en cas d'erreur
+        return jsonify({
+            'stats': {
+                'enseignants_count': 0,
+                'eleves_count': 0,
+                'lecons_count': 0,
+                'exercices_count': 0,
+                'total_tests': 0
+            },
+            'niveaux': [],
+            'eleves_par_niveau': [],
+            'monetization_stats': {
+                'total_commissions': 0,
+                'pending_payments': 0,
+                'payments_count': 0,
+                'active_teachers': 0
+            },
+            'recent_payments': [],
+            'teacher_commissions': []
+        }), 500
+
+
+@cache.cached(timeout=300, key_prefix='dashboard_data_')  # Cache 5 minutes
+def get_cached_dashboard_data(lang='fr'):
+    """Récupère toutes les données du dashboard avec une seule clé de cache"""
+    logger.info(f"🚀 Chargement des données dashboard (lang={lang})...")
+    start_time = datetime.now()
+    
+    try:
+        # Import des modèles
         UserModel = get_user_model()
         NiveauModel = get_model('Niveau') or Niveau
         MatiereModel = get_model('Matiere')
@@ -434,78 +486,53 @@ def admin_dashboard():
         CommissionModel = get_model('Commission')
         VersementManuelModel = get_model('VersementManuel')
         
-        # ========== CHARGEMENT DES NIVEAUX AVEC SÉCURISATION ==========
+        # ========== STATISTIQUES PRINCIPALES (UNE SEULE REQUÊTE) ==========
+        main_stats = db.session.query(
+            func.count(case((UserModel.role == 'enseignant', 1), else_=None)).label('enseignants'),
+            func.count(case((UserModel.role == 'eleve', 1), else_=None)).label('eleves'),
+            func.count(LeconModel.id).label('lecons'),
+            func.count(ExerciceModel.id).label('exercices'),
+            func.count(TestSommatifModel.id).label('tests')
+        ).select_from(UserModel).outerjoin(LeconModel).outerjoin(ExerciceModel).outerjoin(TestSommatifModel).first()
+        
+        # ========== NIVEAUX AVEC RELATIONS OPTIMISÉES ==========
         niveaux = []
         if NiveauModel:
             try:
-                # Essayer de charger avec toutes les relations
+                # Utiliser selectinload au lieu de joinedload pour éviter les produits cartésiens
                 niveaux = NiveauModel.query.options(
-                    joinedload(NiveauModel.matieres).joinedload(MatiereModel.unites).joinedload(UniteModel.lecons).joinedload(LeconModel.exercices),
-                    joinedload(NiveauModel.matieres).joinedload(MatiereModel.unites).joinedload(UniteModel.tests)
+                    db.selectinload(NiveauModel.matieres)
+                    .selectinload(MatiereModel.unites)
+                    .selectinload(UniteModel.lecons)
+                    .selectinload(LeconModel.exercices),
+                    db.selectinload(NiveauModel.matieres)
+                    .selectinload(MatiereModel.unites)
+                    .selectinload(UniteModel.tests)
                 ).order_by(NiveauModel.id).all()
             except Exception as e:
-                print(f"⚠️ Erreur chargement niveaux avec relations: {e}")
+                logger.warning(f"⚠️ Erreur chargement niveaux avec relations: {e}")
                 try:
-                    # Fallback: charger sans les relations complexes
                     niveaux = NiveauModel.query.order_by(NiveauModel.id).all()
-                    
-                    # Charger manuellement les relations pour éviter les erreurs
-                    for niveau in niveaux:
-                        if hasattr(niveau, 'matieres'):
-                            # Forcer le chargement des matières
-                            _ = niveau.matieres
                 except Exception as e2:
-                    print(f"⚠️ Erreur fallback niveaux: {e2}")
+                    logger.error(f"❌ Erreur fallback niveaux: {e2}")
                     niveaux = []
-        
-        # ========== STATISTIQUES PRINCIPALES AVEC VALEURS PAR DÉFAUT ==========
-        stats = {
-            "enseignants_count": 0,
-            "eleves_count": 0,
-            "lecons_count": 0,
-            "exercices_count": 0,
-            "total_tests": 0,
-        }
-        
-        try:
-            stats["enseignants_count"] = UserModel.query.filter_by(role="enseignant").count() if UserModel else 0
-        except Exception as e:
-            print(f"⚠️ Erreur comptage enseignants: {e}")
-            
-        try:
-            stats["eleves_count"] = UserModel.query.filter_by(role="eleve").count() if UserModel else 0
-        except Exception as e:
-            print(f"⚠️ Erreur comptage élèves: {e}")
-            
-        try:
-            stats["lecons_count"] = LeconModel.query.count() if LeconModel else 0
-        except Exception as e:
-            print(f"⚠️ Erreur comptage leçons: {e}")
-            
-        try:
-            stats["exercices_count"] = ExerciceModel.query.count() if ExerciceModel else 0
-        except Exception as e:
-            print(f"⚠️ Erreur comptage exercices: {e}")
-            
-        try:
-            stats["total_tests"] = TestSommatifModel.query.count() if TestSommatifModel else 0
-        except Exception as e:
-            print(f"⚠️ Erreur comptage tests: {e}")
         
         # ========== RÉPARTITION DES ÉLÈVES PAR NIVEAU ==========
         eleves_par_niveau = []
         if NiveauModel and UserModel:
             try:
                 eleves_par_niveau = db.session.query(
-                    NiveauModel.nom, db.func.count(UserModel.id)
-                ).join(UserModel, NiveauModel.id == UserModel.niveau_id)\
-                 .filter(UserModel.role == "eleve")\
-                 .group_by(NiveauModel.id).all()
+                    NiveauModel.nom, 
+                    func.count(UserModel.id)
+                ).outerjoin(UserModel, and_(
+                    NiveauModel.id == UserModel.niveau_id,
+                    UserModel.role == 'eleve'
+                )).group_by(NiveauModel.id).all()
             except Exception as e:
-                print(f"⚠️ Erreur répartition élèves: {e}")
+                logger.warning(f"⚠️ Erreur répartition élèves: {e}")
                 eleves_par_niveau = []
         
-        # ========== DONNÉES DE MONÉTISATION AVEC VALEURS PAR DÉFAUT ==========
+        # ========== STATISTIQUES DE MONÉTISATION (UNE SEULE REQUÊTE) ==========
         monetization_stats = {
             'total_commissions': 0,
             'pending_payments': 0,
@@ -517,30 +544,26 @@ def admin_dashboard():
         
         if CommissionModel and VersementManuelModel:
             try:
-                # Calcul des statistiques globales
-                total_com = db.session.query(db.func.sum(CommissionModel.montant_commission)).scalar() or 0
-                total_pending = db.session.query(db.func.sum(CommissionModel.montant_commission))\
-                                 .filter(CommissionModel.statut.in_(['pending', 'paiement_manuel'])).scalar() or 0
-                payments_count = VersementManuelModel.query.count() if VersementManuelModel else 0
-                
-                # Compter les enseignants avec commissions actives
-                active_teachers = 0
-                try:
-                    active_teachers = db.session.query(CommissionModel.enseignant_id)\
-                        .filter(CommissionModel.montant_commission > 0)\
-                        .distinct()\
-                        .count()
-                except:
-                    pass
+                # Stats globales en une requête
+                monetization = db.session.query(
+                    func.coalesce(func.sum(CommissionModel.montant_commission), 0).label('total_commissions'),
+                    func.coalesce(func.sum(
+                        case((CommissionModel.statut.in_(['pending', 'paiement_manuel']), CommissionModel.montant_commission), else_=0)
+                    ), 0).label('pending_payments'),
+                    func.count(VersementManuelModel.id).label('payments_count'),
+                    func.count(db.distinct(
+                        case((CommissionModel.montant_commission > 0, CommissionModel.enseignant_id))
+                    )).label('active_teachers')
+                ).select_from(CommissionModel).outerjoin(VersementManuelModel).first()
                 
                 monetization_stats = {
-                    'total_commissions': float(total_com),
-                    'pending_payments': float(total_pending),
-                    'payments_count': payments_count,
-                    'active_teachers': active_teachers
+                    'total_commissions': float(monetization.total_commissions),
+                    'pending_payments': float(monetization.pending_payments),
+                    'payments_count': monetization.payments_count,
+                    'active_teachers': monetization.active_teachers
                 }
                 
-                # Paiements récents (les 10 derniers)
+                # ========== PAIEMENTS RÉCENTS ==========
                 try:
                     recent_payments_data = VersementManuelModel.query\
                         .join(UserModel, VersementManuelModel.enseignant_id == UserModel.id)\
@@ -558,32 +581,30 @@ def admin_dashboard():
                                 'montant_total': float(payment.montant_total or 0),
                                 'montant_net': float(payment.montant_net) if payment.montant_net else float(payment.montant_total or 0),
                                 'statut': payment.statut or 'demande',
-                                'date_demande': payment.date_demande,
+                                'date_demande': payment.date_demande.isoformat() if payment.date_demande else None,
                                 'date': payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else 'N/A',
                                 'email_interac': payment.email_interac or '',
                                 'reference_interac': payment.reference_interac or ''
                             })
                         except Exception as e:
-                            print(f"⚠️ Erreur traitement paiement {payment.id}: {e}")
+                            logger.warning(f"⚠️ Erreur traitement paiement {payment.id}: {e}")
                             continue
                 except Exception as e:
-                    print(f"⚠️ Erreur chargement paiements récents: {e}")
+                    logger.warning(f"⚠️ Erreur chargement paiements récents: {e}")
                 
-                # Enseignants avec commissions
+                # ========== ENSEIGNANTS AVEC COMMISSIONS ==========
                 try:
                     teacher_commissions_data = db.session.query(
                         UserModel.id,
                         UserModel.nom_complet,
                         UserModel.email,
-                        db.func.sum(CommissionModel.montant_commission).label('total_commissions'),
-                        db.func.sum(db.case(
-                            (CommissionModel.statut.in_(['pending', 'paiement_manuel']), CommissionModel.montant_commission),
-                            else_=0
-                        )).label('pending'),
-                        db.func.sum(db.case(
-                            (CommissionModel.statut.in_(['approved', 'paid', 'complete']), CommissionModel.montant_commission),
-                            else_=0
-                        )).label('paid')
+                        func.coalesce(func.sum(CommissionModel.montant_commission), 0).label('total_commissions'),
+                        func.coalesce(func.sum(
+                            case((CommissionModel.statut.in_(['pending', 'paiement_manuel']), CommissionModel.montant_commission), else_=0)
+                        ), 0).label('pending'),
+                        func.coalesce(func.sum(
+                            case((CommissionModel.statut.in_(['approved', 'paid', 'complete']), CommissionModel.montant_commission), else_=0)
+                        ), 0).label('paid')
                     ).outerjoin(CommissionModel, UserModel.id == CommissionModel.enseignant_id)\
                      .filter(UserModel.role == "enseignant")\
                      .group_by(UserModel.id, UserModel.nom_complet, UserModel.email)\
@@ -592,100 +613,142 @@ def admin_dashboard():
                     
                     for teacher in teacher_commissions_data:
                         try:
-                            students_count = 0
-                            try:
-                                students_count = UserModel.query.filter_by(
-                                    enseignant_referent_id=teacher.id, 
-                                    role="eleve"
-                                ).count()
-                            except:
-                                pass
+                            # Compter les élèves
+                            students_count = db.session.query(func.count(UserModel.id))\
+                                .filter_by(enseignant_referent_id=teacher.id, role="eleve")\
+                                .scalar() or 0
                             
-                            last_payment = None
-                            try:
-                                last_payment = VersementManuelModel.query\
-                                    .filter_by(enseignant_id=teacher.id, statut='complete')\
-                                    .order_by(VersementManuelModel.date_versement.desc())\
-                                    .first()
-                            except:
-                                pass
+                            # Dernier paiement
+                            last_payment = db.session.query(VersementManuelModel.date_versement)\
+                                .filter_by(enseignant_id=teacher.id, statut='complete')\
+                                .order_by(VersementManuelModel.date_versement.desc())\
+                                .first()
                             
                             teacher_commissions.append({
                                 'id': teacher.id,
                                 'nom_complet': teacher.nom_complet or 'N/A',
                                 'email': teacher.email or '',
-                                'total_commissions': float(teacher.total_commissions or 0),
-                                'pending': float(teacher.pending or 0),
-                                'paid': float(teacher.paid or 0),
+                                'total_commissions': float(teacher.total_commissions),
+                                'pending': float(teacher.pending),
+                                'paid': float(teacher.paid),
                                 'students_count': students_count,
-                                'last_payment': last_payment.date_versement.strftime('%Y-%m-%d') 
-                                               if last_payment and last_payment.date_versement 
-                                               else ('Never' if lang == 'en' else 'Jamais')
+                                'last_payment': last_payment[0].strftime('%Y-%m-%d') if last_payment else ('Never' if lang == 'en' else 'Jamais')
                             })
                         except Exception as e:
-                            print(f"⚠️ Erreur traitement enseignant {teacher.id}: {e}")
+                            logger.warning(f"⚠️ Erreur traitement enseignant {teacher.id}: {e}")
                             continue
                 except Exception as e:
-                    print(f"⚠️ Erreur chargement commissions enseignants: {e}")
+                    logger.warning(f"⚠️ Erreur chargement commissions enseignants: {e}")
                     
             except Exception as e:
-                print(f"⚠️ Erreur chargement monétisation: {e}")
-                # Données par défaut en cas d'erreur
-                monetization_stats = {
-                    'total_commissions': 0,
-                    'pending_payments': 0,
-                    'payments_count': 0,
-                    'active_teachers': 0
-                }
+                logger.error(f"⚠️ Erreur chargement monétisation: {e}")
         
-        # ========== LOGS DE DÉBOGAGE ==========
-        print(f"✅ Dashboard chargé - Stats: {stats}")
-        print(f"✅ Niveaux: {len(niveaux)}")
-        print(f"✅ Paiements récents: {len(recent_payments)}")
-        print(f"✅ Commissions enseignants: {len(teacher_commissions)}")
+        # ========== FORMATTER LES NIVEAUX POUR JSON ==========
+        niveaux_json = []
+        for niveau in niveaux:
+            niveau_data = {
+                'id': niveau.id,
+                'nom': niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom,
+                'matieres': []
+            }
+            
+            if hasattr(niveau, 'matieres'):
+                for matiere in niveau.matieres:
+                    matiere_data = {
+                        'id': matiere.id,
+                        'nom': matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom,
+                        'unites': []
+                    }
+                    
+                    if hasattr(matiere, 'unites'):
+                        for unite in matiere.unites:
+                            unite_data = {
+                                'id': unite.id,
+                                'nom': unite.nom_en if lang == 'en' and unite.nom_en else unite.nom,
+                                'lecons': [],
+                                'tests': []
+                            }
+                            
+                            if hasattr(unite, 'lecons'):
+                                for lecon in unite.lecons:
+                                    unite_data['lecons'].append({
+                                        'id': lecon.id,
+                                        'titre': lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr
+                                    })
+                            
+                            if hasattr(unite, 'tests'):
+                                for test in unite.tests:
+                                    unite_data['tests'].append({
+                                        'id': test.id,
+                                        'nom': f"Test #{test.id}"
+                                    })
+                            
+                            matiere_data['unites'].append(unite_data)
+                    
+                    niveau_data['matieres'].append(matiere_data)
+            
+            niveaux_json.append(niveau_data)
         
-        # ========== RENDU DU TEMPLATE ==========
-        return render_template(
-            "admin_dashboard.html",
-            niveaux=niveaux,
-            stats=stats,
-            monetization_stats=monetization_stats,
-            recent_payments=recent_payments,
-            teacher_commissions=teacher_commissions,
-            eleves_par_niveau=eleves_par_niveau,
-            lang=lang
-        )
+        # ========== RÉSULTAT FINAL ==========
+        result = {
+            'stats': {
+                'enseignants_count': main_stats.enseignants or 0,
+                'eleves_count': main_stats.eleves or 0,
+                'lecons_count': main_stats.lecons or 0,
+                'exercices_count': main_stats.exercices or 0,
+                'total_tests': main_stats.tests or 0
+            },
+            'niveaux': niveaux_json,
+            'eleves_par_niveau': [[n[0], n[1]] for n in eleves_par_niveau],
+            'monetization_stats': monetization_stats,
+            'recent_payments': recent_payments,
+            'teacher_commissions': teacher_commissions
+        }
+        
+        elapsed = (datetime.now() - start_time).total_seconds()
+        logger.info(f"✅ Données dashboard chargées en {elapsed:.2f}s (lang={lang})")
+        
+        return result
         
     except Exception as e:
-        logger.error(f"❌ Erreur critique dans admin_dashboard: {e}")
+        logger.error(f"❌ Erreur critique dans get_cached_dashboard_data: {e}")
         import traceback
-        print(traceback.format_exc())
+        logger.error(traceback.format_exc())
         
-        # En cas d'erreur, retourner un dashboard minimal
-        flash("Erreur lors du chargement complet du tableau de bord. Affichage des données essentielles.", "warning")
-        
-        # Données minimales pour éviter la page blanche
-        return render_template(
-            "admin_dashboard.html",
-            niveaux=[],
-            stats={
-                "enseignants_count": 0,
-                "eleves_count": 0,
-                "lecons_count": 0,
-                "exercices_count": 0,
-                "total_tests": 0
+        # Retourner des données par défaut
+        return {
+            'stats': {
+                'enseignants_count': 0,
+                'eleves_count': 0,
+                'lecons_count': 0,
+                'exercices_count': 0,
+                'total_tests': 0
             },
-            monetization_stats={
+            'niveaux': [],
+            'eleves_par_niveau': [],
+            'monetization_stats': {
                 'total_commissions': 0,
                 'pending_payments': 0,
                 'payments_count': 0,
                 'active_teachers': 0
             },
-            recent_payments=[],
-            teacher_commissions=[],
-            eleves_par_niveau=[],
-            lang=lang
-        )
+            'recent_payments': [],
+            'teacher_commissions': []
+        }
+
+# AJOUTER cette nouvelle route API
+@app.route("/api/admin/dashboard/data")
+@admin_required
+def api_dashboard_data():
+    """API endpoint pour charger les données en AJAX"""
+    try:
+        lang = request.args.get("lang") or session.get("lang", "fr")
+        service = DashboardService(lang)
+        data = service.get_all_stats()
+        return jsonify(data)
+    except Exception as e:
+        logger.error(f"❌ Erreur API dashboard: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route("/test-nom-complet")
 def test_nom_complet():
