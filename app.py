@@ -425,7 +425,6 @@ def admin_dashboard():
     lang = request.args.get("lang") or session.get("lang", "fr")
     
     # Rendre le template immédiatement (sans données lourdes)
-    # Le template sera modifié pour charger les données en AJAX
     return render_template("admin_dashboard.html", lang=lang)
 
 
@@ -735,20 +734,6 @@ def get_cached_dashboard_data(lang='fr'):
             'recent_payments': [],
             'teacher_commissions': []
         }
-
-# AJOUTER cette nouvelle route API
-@app.route("/api/admin/dashboard/data")
-@admin_required
-def api_dashboard_data():
-    """API endpoint pour charger les données en AJAX"""
-    try:
-        lang = request.args.get("lang") or session.get("lang", "fr")
-        service = DashboardService(lang)
-        data = service.get_all_stats()
-        return jsonify(data)
-    except Exception as e:
-        logger.error(f"❌ Erreur API dashboard: {e}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route("/test-nom-complet")
 def test_nom_complet():
