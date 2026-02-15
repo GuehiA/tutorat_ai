@@ -1541,284 +1541,92 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
-    // Configuration du graphique
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 Initialisation du dashboard...');
-      
-      // Vérifier que Bootstrap est chargé
-      if (typeof bootstrap === 'undefined') {
-        console.error('❌ Bootstrap non chargé !');
-      } else {
-        console.log('✅ Bootstrap chargé');
-        
-        // Activer le premier onglet
-        const firstTab = document.querySelector('#adminTabs .nav-link');
-        if (firstTab) {
-          try {
-            const tab = new bootstrap.Tab(firstTab);
-            tab.show();
-            console.log('✅ Premier onglet activé');
-          } catch(e) {
-            console.error('Erreur activation onglet:', e);
-            // Fallback
-            firstTab.click();
-          }
-        }
-        
-        // Compter les onglets
-        const tabs = document.querySelectorAll('.nav-link');
+// Attendre que tout soit chargé
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initialisation du dashboard...');
+    
+    // Initialiser les onglets manuellement
+    function initTabs() {
+        const tabs = document.querySelectorAll('#adminTabs .nav-link');
         console.log(`📊 ${tabs.length} onglets trouvés`);
         
-        // Vérifier le contenu des onglets
-        tabs.forEach((tab, index) => {
-          const targetId = tab.getAttribute('data-bs-target');
-          const target = document.querySelector(targetId);
-          console.log(`Onglet ${index}: ${targetId} - ${target ? '✅' : '❌'} trouvé`);
-        });
-      }
-      
-      // Initialiser le graphique
-      const ctx = document.getElementById('chartElevesParNiveau');
-      if (ctx && typeof Chart !== 'undefined') {
-        const labels = {{ eleves_par_niveau|map(attribute=0)|list|tojson if eleves_par_niveau else [] }};
-        const data = {{ eleves_par_niveau|map(attribute=1)|list|tojson if eleves_par_niveau else [] }};
-        
-        if (labels.length > 0 && data.length > 0) {
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: labels,
-              datasets: [{
-                label: '{{ "Nombre d\'élèves par niveau" if lang == "fr" else "Students per level" }}',
-                data: data,
-                backgroundColor: ['#4361ee', '#3fba83', '#fcc419', '#e85959', '#17a2b8', '#9b59b6', '#ff6b6b'],
-                borderWidth: 1
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: true,
-              plugins: {
-                legend: { display: false },
-                title: {
-                  display: true,
-                  text: '{{ "Répartition des élèves par niveau" if lang == "fr" else "Students per level" }}',
-                  font: { size: 16 }
-                }
-              },
-              scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 } }
-              }
-            }
-          });
-          console.log('✅ Graphique chargé');
-        } else {
-          console.log('⚠️ Pas de données pour le graphique');
+        if (tabs.length === 0) {
+            console.error('❌ Aucun onglet trouvé !');
+            return;
         }
-      }
-    });
+        
+        // Supprimer tous les événements précédents et réattacher
+        tabs.forEach(tab => {
+            // Remplacer l'élément pour supprimer les anciens événements
+            const newTab = tab.cloneNode(true);
+            tab.parentNode.replaceChild(newTab, tab);
+            
+            // Attacher le nouvel événement
+            newTab.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Désactiver tous les onglets
+                document.querySelectorAll('#adminTabs .nav-link').forEach(t => {
+                    t.classList.remove('active');
+                });
+                
+                // Activer cet onglet
+                this.classList.add('active');
+                
+                // Cacher tous les panneaux
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                });
+                
+                // Afficher le panneau correspondant
+                const targetId = this.getAttribute('data-bs-target');
+                const targetPane = document.querySelector(targetId);
+                if (targetPane) {
+                    targetPane.classList.add('show', 'active');
+                    console.log(`✅ Onglet activé: ${targetId}`);
+                } else {
+                    console.error(`❌ Panneau non trouvé: ${targetId}`);
+                }
+            });
+            
+            console.log(`✅ Événement attaché à l'onglet: ${newTab.textContent.trim()}`);
+        });
+        
+        // Activer le premier onglet par défaut
+        const firstTab = document.querySelector('#adminTabs .nav-link');
+        if (firstTab) {
+            setTimeout(() => {
+                firstTab.click();
+                console.log('✅ Premier onglet activé par défaut');
+            }, 100);
+        }
+    }
+    
+    // Essayer d'initialiser immédiatement
+    initTabs();
+    
+    // Réinitialiser après un délai au cas où
+    setTimeout(initTabs, 500);
+});
 
-    // Fallback au cas où DOMContentLoaded ne fonctionne pas
-    window.onload = function() {
-      console.log('🏁 Window loaded');
-      if (!document.querySelector('#adminTabs .nav-link.active')) {
+// Fallback avec window.onload
+window.onload = function() {
+    console.log('🏁 Window loaded - vérification finale');
+    
+    // Vérifier si le premier onglet est actif
+    const activeTab = document.querySelector('#adminTabs .nav-link.active');
+    if (!activeTab) {
+        console.log('⚠️ Aucun onglet actif, activation manuelle');
         const firstTab = document.querySelector('#adminTabs .nav-link');
         if (firstTab) firstTab.click();
-      }
-    };
-
-    // Fonctions existantes
-    function confirmDelete(exerciceId) {
-      Swal.fire({
-        title: '{{ "Supprimer ?" if lang == "fr" else "Delete?" }}',
-        text: '{{ "Cette action est irréversible." if lang == "fr" else "This action cannot be undone." }}',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#e74c3c',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: '{{ "Oui, supprimer" if lang == "fr" else "Yes, delete" }}',
-        cancelButtonText: '{{ "Annuler" if lang == "fr" else "Cancel" }}'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          fetch('/admin/supprimer-exercice/' + exerciceId, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          .then(response => {
-            if (response.redirected) {
-              window.location.href = response.url;
-            } else {
-              Swal.fire('{{ "Erreur" if lang == "fr" else "Error" }}', '{{ "Une erreur est survenue." if lang == "fr" else "An error occurred." }}', 'error');
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            Swal.fire('{{ "Erreur" if lang == "fr" else "Error" }}', '{{ "Impossible de supprimer." if lang == "fr" else "Unable to delete." }}', 'error');
-          });
-        }
-      });
     }
-
-    function viewPaymentDetails(paymentId) {
-      fetch(`/admin/versements-manuels/${paymentId}/details`)
-        .then(response => response.json())
-        .then(data => {
-          const lang = "{{ lang }}";
-          const statusMap = {
-            'complete': lang === 'en' ? 'Paid' : 'Payé',
-            'en_cours': lang === 'en' ? 'Processing' : 'En traitement',
-            'demande': lang === 'en' ? 'Request' : 'Demande'
-          };
-          
-          Swal.fire({
-            title: lang === 'en' ? 'Payment Details' : 'Détails du paiement',
-            html: `
-              <div class="payment-details" style="text-align: left;">
-                <div class="payment-row mb-2">
-                  <span class="payment-label fw-bold">${lang === 'en' ? 'Teacher:' : 'Enseignant:'}</span>
-                  <span class="payment-value ms-2">${data.payment?.enseignant_nom || 'N/A'}</span>
-                </div>
-                <div class="payment-row mb-2">
-                  <span class="payment-label fw-bold">${lang === 'en' ? 'Amount:' : 'Montant:'}</span>
-                  <span class="payment-value ms-2">$${(data.payment?.montant_total || 0).toFixed(2)}</span>
-                </div>
-                <div class="payment-row mb-2">
-                  <span class="payment-label fw-bold">${lang === 'en' ? 'Status:' : 'Statut:'}</span>
-                  <span class="payment-value ms-2">${statusMap[data.payment?.statut] || data.payment?.statut || 'N/A'}</span>
-                </div>
-                <div class="payment-row mb-2">
-                  <span class="payment-label fw-bold">${lang === 'en' ? 'Date:' : 'Date:'}</span>
-                  <span class="payment-value ms-2">${data.payment?.date_demande || 'N/A'}</span>
-                </div>
-                ${data.payment?.reference_interac ? `<div class="payment-row">
-                  <span class="payment-label fw-bold">${lang === 'en' ? 'Reference:' : 'Référence:'}</span>
-                  <span class="payment-value ms-2">${data.payment.reference_interac}</span>
-                </div>` : ''}
-              </div>
-            `,
-            icon: 'info',
-            confirmButtonText: lang === 'en' ? 'OK' : 'OK'
-          });
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          Swal.fire(
-            '{{ "Erreur" if lang == "fr" else "Error" }}',
-            '{{ "Impossible de charger les détails" if lang == "fr" else "Unable to load details" }}',
-            'error'
-          );
-        });
-    }
-
-    function markAsPaid(paymentId) {
-      const lang = "{{ lang }}";
-      Swal.fire({
-        title: lang === 'en' ? 'Confirm Payment' : 'Confirmer le paiement',
-        text: lang === 'en' ? 'Mark this payment as completed?' : 'Marquer ce paiement comme effectué ?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: lang === 'en' ? 'Yes, mark as paid' : 'Oui, marquer comme payé',
-        cancelButtonText: lang === 'en' ? 'Cancel' : 'Annuler',
-        input: 'text',
-        inputLabel: lang === 'en' ? 'Interac Reference (optional)' : 'Référence Interac (optionnel)',
-        inputPlaceholder: lang === 'en' ? 'Enter reference...' : 'Entrez la référence...'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          const reference = result.value || '';
-          fetch(`/api/admin/versement/${paymentId}/traiter`, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              reference_interac: reference,
-              preuve_versement: null
-            })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success) {
-              Swal.fire(
-                lang === 'en' ? 'Success' : 'Succès',
-                data.message || (lang === 'en' ? 'Payment marked as completed' : 'Paiement marqué comme complété'),
-                'success'
-              );
-              setTimeout(() => location.reload(), 1500);
-            } else {
-              Swal.fire(
-                lang === 'en' ? 'Error' : 'Erreur',
-                data.error || data.message || (lang === 'en' ? 'An error occurred' : 'Une erreur est survenue'),
-                'error'
-              );
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            Swal.fire(
-              lang === 'en' ? 'Error' : 'Erreur',
-              lang === 'en' ? 'An error occurred' : 'Une erreur est survenue',
-              'error'
-            );
-          });
-        }
-      });
-    }
-
-    function sendPaymentReminder(teacherId) {
-      const lang = "{{ lang }}";
-      fetch(`/admin/teacher/${teacherId}/send-reminder`, { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          Swal.fire(
-            lang === 'en' ? 'Reminder Sent' : 'Rappel envoyé',
-            data.message || (lang === 'en' ? 'Payment reminder sent successfully' : 'Rappel de paiement envoyé avec succès'),
-            'success'
-          );
-        } else {
-          Swal.fire(
-            lang === 'en' ? 'Error' : 'Erreur',
-            data.message || (lang === 'en' ? 'Failed to send reminder' : 'Échec de l\'envoi du rappel'),
-            'error'
-          );
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        Swal.fire(
-          lang === 'en' ? 'Error' : 'Erreur',
-          lang === 'en' ? 'Failed to send reminder' : 'Échec de l\'envoi du rappel',
-          'error'
-        );
-      });
-    }
-
-    // Gestion du thème
-    const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = themeToggle.querySelector('i');
-
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-
-    themeToggle.addEventListener('click', () => {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-      updateThemeIcon(newTheme);
+    
+    // Vérifier les panneaux
+    const panes = document.querySelectorAll('.tab-pane');
+    panes.forEach(pane => {
+        console.log(`Panneau: ${pane.id} - ${pane.classList.contains('active') ? '✅ actif' : '❌ inactif'}`);
     });
-
-    function updateThemeIcon(theme) {
-      if (theme === 'dark') {
-        themeIcon.className = 'fas fa-sun';
-      } else {
-        themeIcon.className = 'fas fa-moon';
-      }
-    }
-  </script>
+};
+</script>
 </body>
 </html>
