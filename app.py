@@ -6470,21 +6470,18 @@ def remediations_en_attente():
         return redirect(url_for("login_enseignant"))
     
     try:
-        # ✅ Récupérer l'ID de l'utilisateur connecté (qui est un enseignant)
-        user_id = session["user_id"]  # ← C'EST ÇA LA BONNE VARIABLE !
+        # Récupérer l'ID de l'utilisateur connecté
+        user_id = session["user_id"]
         
-        # ✅ Récupérer toutes les remédiations en attente pour les élèves de cet enseignant
+        # Récupérer toutes les remédiations en attente
         suggestions = RemediationSuggestion.query \
             .join(User, User.id == RemediationSuggestion.user_id) \
             .filter(RemediationSuggestion.statut == "en_attente") \
-            .filter(User.enseignant_referent_id == user_id) \  # ← ICI on utilise user_id
+            .filter(User.enseignant_referent_id == user_id) \
             .order_by(RemediationSuggestion.timestamp.desc()) \
             .all()
         
-        # Compter le nombre total pour afficher dans le badge
         total_en_attente = len(suggestions)
-        
-        # Récupérer la langue
         lang = session.get("lang", "fr")
         
         return render_template(
@@ -6496,7 +6493,7 @@ def remediations_en_attente():
         
     except Exception as e:
         print(f"Erreur dans remediations_en_attente: {e}")
-        flash("Une erreur est survenue lors du chargement des remédiations", "error")
+        flash("Une erreur est survenue", "error")
         return redirect(url_for("dashboard_enseignant"))
 
 
