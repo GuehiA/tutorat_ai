@@ -4392,11 +4392,11 @@ def changer_mot_de_passe_enseignant():
     """Permettre à un enseignant de changer son mot de passe"""
     # Vérifier si l'utilisateur est connecté comme enseignant
     if "user_id" not in session:
-        return redirect("/login")
+        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ
     
     if session.get("role") != "enseignant":
         flash("Accès réservé aux enseignants", "error")
-        return redirect("/login")
+        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ
     
     try:
         UserModel = get_user_model()
@@ -4409,7 +4409,7 @@ def changer_mot_de_passe_enseignant():
         
         if not enseignant:
             flash("Enseignant non trouvé", "error")
-            return redirect("/login")
+            return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ
         
         if request.method == "POST":
             ancien = request.form.get("ancien_mdp", "").strip()
@@ -4463,10 +4463,10 @@ def changer_mot_de_passe_enseignant():
             enseignant.mot_de_passe = nouveau
             db.session.commit()
             
-            flash("Mot de passe mis à jour avec succès !", "success")
+            flash("✅ Mot de passe mis à jour avec succès !", "success")
             
-            # Rediriger vers le tableau de bord enseignant
-            return redirect("/enseignant/dashboard")
+            # ✅ REDIRECTION CORRIGÉE VERS LE BON ENDPOINT
+            return redirect(url_for('dashboard_enseignant'))  # ← C'EST ÇA LA CORRECTION !
 
         # GET: Afficher le formulaire
         return render_template(
@@ -4478,7 +4478,8 @@ def changer_mot_de_passe_enseignant():
     except Exception as e:
         logger.error(f"Erreur changement mot de passe enseignant: {e}")
         flash("Erreur lors du changement de mot de passe", "error")
-        return redirect("/enseignant/dashboard")
+        # ✅ REDIRECTION CORRIGÉE ICI AUSSI
+        return redirect(url_for('dashboard_enseignant'))  # ← CORRIGÉ
     
 
 @app.route("/login-parent", methods=["GET", "POST"])
