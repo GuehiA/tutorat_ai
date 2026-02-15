@@ -49,6 +49,7 @@ app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True  # Signe les cookies
 app.config['SESSION_FILE_DIR'] = './flask_session'  # Dossier pour stocker les sessions
 app.config['SESSION_FILE_THRESHOLD'] = 500  # Nombre max de sessions
+
 # ====================================================================
 # 🔧 CONFIGURATION INTELLIGENTE DE LA BASE DE DONNÉES
 # ====================================================================
@@ -134,9 +135,6 @@ logger = logging.getLogger(__name__)
 # ====================================================================
 # 🔌 CORRECTION CRITIQUE : INITIALISATION SQLALCHEMY
 # ====================================================================
-
-from services.cache_service import cache, init_cache
-init_cache(app)  # <-- AJOUTEZ CETTE LIGNE
 
 # ⚠️ IMPORTANT : Importez db depuis models.py d'abord
 from models import db
@@ -417,7 +415,10 @@ from sqlalchemy import func, case, and_
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 import logging
-from services.cache_service import cache  # Import correct
+from services.cache_service import cache, init_cache  # Import correct
+
+# IMPORTANT: Initialiser le cache APRÈS la création de l'app et AVANT les routes
+init_cache(app)
 
 logger = logging.getLogger(__name__)
 
@@ -438,8 +439,19 @@ def api_dashboard_data():
     try:
         lang = request.args.get("lang") or session.get("lang", "fr")
         
-        # Récupérer toutes les données en une seule fois (avec cache)
-        data = get_cached_dashboard_data(lang)
+        # Générer une clé de cache unique pour cette langue
+        cache_key = f"dashboard_data_{lang}"
+        
+        # Essayer de récupérer du cache
+        data = cache.get(cache_key)
+        
+        if data is None:
+            logger.info(f"🔄 Cache MISS - Chargement des données pour {lang}")
+            data = get_dashboard_data(lang)
+            # Mettre en cache pour 5 minutes (300 secondes)
+            cache.set(cache_key, data, timeout=300)
+        else:
+            logger.info(f"✅ Cache HIT - Données pour {lang}")
         
         return jsonify(data)
         
@@ -470,10 +482,8 @@ def api_dashboard_data():
         }), 500
 
 
-# IMPORTANT: Utiliser cache.cached comme décorateur, PAS comme fonction
-@cache.cached(timeout=300, key_prefix='dashboard_data')
-def get_cached_dashboard_data(lang='fr'):
-    """Récupère toutes les données du dashboard avec cache"""
+def get_dashboard_data(lang='fr'):
+    """Récupère toutes les données du dashboard (sans décorateur de cache)"""
     logger.info(f"🚀 Chargement des données dashboard (lang={lang})...")
     start_time = datetime.now()
     
@@ -498,6 +508,8 @@ def get_cached_dashboard_data(lang='fr'):
             func.count(TestSommatifModel.id).label('tests')
         ).select_from(UserModel).outerjoin(LeconModel).outerjoin(ExerciceModel).outerjoin(TestSommatifModel).first()
         
+        logger.info(f"📊 Stats: enseignants={main_stats.enseignants}, eleves={main_stats.eleves}")
+        
         # ========== NIVEAUX AVEC RELATIONS OPTIMISÉES ==========
         niveaux = []
         if NiveauModel:
@@ -511,6 +523,7 @@ def get_cached_dashboard_data(lang='fr'):
                     .selectinload(MatiereModel.unites)
                     .selectinload(UniteModel.tests)
                 ).order_by(NiveauModel.id).all()
+                logger.info(f"📚 {len(niveaux)} niveaux chargés")
             except Exception as e:
                 logger.warning(f"⚠️ Erreur chargement niveaux: {e}")
                 try:
@@ -530,6 +543,7 @@ def get_cached_dashboard_data(lang='fr'):
                     NiveauModel.id == UserModel.niveau_id,
                     UserModel.role == 'eleve'
                 )).group_by(NiveauModel.id).all()
+                logger.info(f"📊 {len(eleves_par_niveau)} niveaux avec élèves")
             except Exception as e:
                 logger.warning(f"⚠️ Erreur répartition élèves: {e}")
                 eleves_par_niveau = []
@@ -565,6 +579,8 @@ def get_cached_dashboard_data(lang='fr'):
                     'active_teachers': monetization.active_teachers
                 }
                 
+                logger.info(f"💰 Monétisation: total={monetization_stats['total_commissions']}")
+                
                 # ========== PAIEMENTS RÉCENTS ==========
                 try:
                     recent_payments_data = VersementManuelModel.query\
@@ -591,6 +607,7 @@ def get_cached_dashboard_data(lang='fr'):
                         except Exception as e:
                             logger.warning(f"⚠️ Erreur traitement paiement {payment.id}: {e}")
                             continue
+                    logger.info(f"💰 {len(recent_payments)} paiements récents chargés")
                 except Exception as e:
                     logger.warning(f"⚠️ Erreur chargement paiements récents: {e}")
                 
@@ -639,6 +656,7 @@ def get_cached_dashboard_data(lang='fr'):
                         except Exception as e:
                             logger.warning(f"⚠️ Erreur traitement enseignant {teacher.id}: {e}")
                             continue
+                    logger.info(f"👥 {len(teacher_commissions)} enseignants avec commissions chargés")
                 except Exception as e:
                     logger.warning(f"⚠️ Erreur chargement commissions enseignants: {e}")
                     
@@ -709,11 +727,12 @@ def get_cached_dashboard_data(lang='fr'):
         
         elapsed = (datetime.now() - start_time).total_seconds()
         logger.info(f"✅ Données dashboard chargées en {elapsed:.2f}s (lang={lang})")
+        logger.info(f"📊 Résumé: {result['stats']}")
         
         return result
         
     except Exception as e:
-        logger.error(f"❌ Erreur critique dans get_cached_dashboard_data: {e}")
+        logger.error(f"❌ Erreur critique dans get_dashboard_data: {e}")
         import traceback
         logger.error(traceback.format_exc())
         
