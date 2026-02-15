@@ -10019,15 +10019,38 @@ def export_remediations_pdf():
 
 @app.route("/enseignant/supprimer-remediation/<int:id>", methods=["POST"])
 def supprimer_remediation(id):
-    if "enseignant_id" not in session:
+    """Supprimer une remédiation (soft delete ou hard delete)"""
+    # ✅ CORRECTION : utiliser "user_id" au lieu de "enseignant_id"
+    if "user_id" not in session:
+        flash("Veuillez vous connecter", "error")
+        return redirect(url_for("login_enseignant"))
+    
+    if session.get("role") != "enseignant":
+        flash("Accès non autorisé", "error")
         return redirect(url_for("login_enseignant"))
 
-    suggestion = RemediationSuggestion.query.get_or_404(id)
-    db.session.delete(suggestion)
-    db.session.commit()
-    flash("Remédiation supprimée avec succès.", "success")
+    try:
+        suggestion = RemediationSuggestion.query.get_or_404(id)
+        
+        # ✅ Vérifier que cette remédiation appartient bien à un élève de cet enseignant
+        if suggestion.user.enseignant_referent_id != session["user_id"]:
+            flash("Vous n'êtes pas autorisé à supprimer cette remédiation", "error")
+            return redirect(url_for("remediations_a_valider"))
+        
+        # Option 1: Suppression physique (hard delete)
+        db.session.delete(suggestion)
+        
+        # Option 2: Suppression logique (soft delete) - si tu préfères
+        # suggestion.statut = "supprime"
+        
+        db.session.commit()
+        flash("✅ Remédiation supprimée avec succès", "success")
 
-    lang = request.args.get("lang", session.get("lang", "fr"))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erreur lors de la suppression: {str(e)}", "error")
+    
+    lang = session.get("lang", "fr")
     return redirect(url_for("remediations_a_valider", lang=lang))
 
 
