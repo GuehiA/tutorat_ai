@@ -971,17 +971,6 @@
         console.log(`✅ Données chargées en ${((endTime - startTime) / 1000).toFixed(2)} secondes`);
         console.log('📊 Données reçues:', app.data);
         
-        // Afficher la structure pour debug
-        if (app.data.stats) {
-          console.log('🔍 STATS disponibles:', Object.keys(app.data.stats));
-        }
-        if (app.data.monetization_stats) {
-          console.log('🔍 MONETIZATION disponibles:', Object.keys(app.data.monetization_stats));
-        }
-        if (app.data.niveaux) {
-          console.log('🔍 NIVEAUX:', app.data.niveaux.length);
-        }
-        
         app.isLoading = false;
         
         // Mettre à jour l'interface
@@ -1014,16 +1003,16 @@
     }
 
     function updateStatsCards() {
-      // Utiliser les noms exacts de votre API
       const stats = app.data.stats || {};
       
-      // D'après votre code, les noms sont: enseignants_count, eleves_count, lecons_count, exercices_count
+      // Utiliser les noms exacts de votre API
       const enseignants = stats.enseignants_count || 0;
       const eleves = stats.eleves_count || 0;
       const lecons = stats.lecons_count || 0;
       const exercices = stats.exercices_count || 0;
+      const tests = stats.total_tests || 0;
       
-      console.log('📊 Stats values:', { enseignants, eleves, lecons, exercices });
+      console.log('📊 Stats values:', { enseignants, eleves, lecons, exercices, tests });
       
       const html = `
         <div class="col-12 col-sm-6 col-md-3">
@@ -1055,8 +1044,6 @@
       const statsContainer = document.getElementById('stats-cards');
       if (statsContainer) {
         statsContainer.innerHTML = html;
-      } else {
-        console.error('❌ Conteneur stats-cards non trouvé');
       }
     }
 
@@ -1065,13 +1052,13 @@
       
       const html = `
         <div class="tab-container">
-          <!-- Radio buttons pour contrôler les onglets -->
+          <!-- Radio buttons -->
           <input type="radio" name="tab" id="tab-actions" class="tab-radio" checked>
           <input type="radio" name="tab" id="tab-content" class="tab-radio">
           <input type="radio" name="tab" id="tab-monetization" class="tab-radio">
           <input type="radio" name="tab" id="tab-analytics" class="tab-radio">
           
-          <!-- Labels = onglets -->
+          <!-- Onglets -->
           <div class="tab-list">
             <label for="tab-actions" class="tab-item">
               <span class="tab-button active" onclick="switchTab('actions')">
@@ -1095,40 +1082,34 @@
             </label>
           </div>
           
-          <!-- Panneau Actions Rapides -->
+          <!-- Panneaux -->
           <div class="tab-pane-css active" id="pane-actions">
             ${generateActionsTab()}
           </div>
-          
-          <!-- Panneau Structure du Contenu -->
           <div class="tab-pane-css" id="pane-content">
             ${generateContentTab()}
           </div>
-          
-          <!-- Panneau Monétisation -->
           <div class="tab-pane-css" id="pane-monetization">
             ${generateMonetizationTab()}
           </div>
-          
-          <!-- Panneau Analytics -->
           <div class="tab-pane-css" id="pane-analytics">
             <div class="content-section mt-4">
               <h4 class="mb-3">${app.lang === 'en' ? 'Platform Analytics' : 'Analytiques de la Plateforme'}</h4>
               <div class="row g-3 g-md-4">
                 <div class="col-12 col-md-8">
                   <div class="dashboard-card">
-                    <div class="card-header d-flex align-items-center">
+                    <div class="card-header">
                       <i class="fas fa-chart-line me-2"></i>
                       ${app.lang === 'en' ? 'Students per Level' : 'Élèves par Niveau'}
                     </div>
                     <div class="card-body">
-                      <canvas id="chartElevesParNiveau" style="width: 100%; height: auto; min-height: 200px;"></canvas>
+                      <canvas id="chartElevesParNiveau" style="width: 100%; min-height: 200px;"></canvas>
                     </div>
                   </div>
                 </div>
                 <div class="col-12 col-md-4">
                   <div class="dashboard-card">
-                    <div class="card-header d-flex align-items-center">
+                    <div class="card-header">
                       <i class="fas fa-bell me-2"></i>
                       ${app.lang === 'en' ? 'Recent Activity' : 'Activité Récente'}
                     </div>
@@ -1148,8 +1129,6 @@
       const contentContainer = document.getElementById('dashboard-content');
       if (contentContainer) {
         contentContainer.innerHTML = html;
-      } else {
-        console.error('❌ Conteneur dashboard-content non trouvé');
       }
     }
 
@@ -1285,13 +1264,13 @@
         html += `
           <div class="accordion-item">
             <h2 class="accordion-header" id="headingNiveau${niveau.id}">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau${niveau.id}" aria-expanded="false" aria-controls="collapseNiveau${niveau.id}">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau${niveau.id}">
                 <i class="fas fa-layer-group me-2 text-primary"></i>
                 ${niveau.nom}
                 <span class="badge bg-primary badge-pill ms-2">${matieresCount} ${app.lang === 'en' ? 'subjects' : 'matières'}</span>
               </button>
             </h2>
-            <div id="collapseNiveau${niveau.id}" class="accordion-collapse collapse" aria-labelledby="headingNiveau${niveau.id}" data-bs-parent="#contentAccordion">
+            <div id="collapseNiveau${niveau.id}" class="accordion-collapse collapse">
               <div class="accordion-body">
                 <div class="accordion" id="matiereAccordion${niveau.id}">
                   ${generateMatieresHTML(niveau.matieres, niveau.id)}
@@ -1317,13 +1296,13 @@
         html += `
           <div class="accordion-item">
             <h2 class="accordion-header" id="headingMatiere${matiere.id}">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMatiere${matiere.id}" aria-expanded="false" aria-controls="collapseMatiere${matiere.id}">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMatiere${matiere.id}">
                 <i class="fas fa-book me-2 text-success"></i>
                 ${matiere.nom}
                 <span class="badge bg-success badge-pill ms-2">${unitesCount} ${app.lang === 'en' ? 'units' : 'unités'}</span>
               </button>
             </h2>
-            <div id="collapseMatiere${matiere.id}" class="accordion-collapse collapse" aria-labelledby="headingMatiere${matiere.id}" data-bs-parent="#matiereAccordion${niveauId}">
+            <div id="collapseMatiere${matiere.id}" class="accordion-collapse collapse">
               <div class="accordion-body">
                 ${generateUnitesHTML(matiere.unites, matiere.id)}
               </div>
