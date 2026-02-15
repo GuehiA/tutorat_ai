@@ -135,6 +135,9 @@ logger = logging.getLogger(__name__)
 # 🔌 CORRECTION CRITIQUE : INITIALISATION SQLALCHEMY
 # ====================================================================
 
+from services.cache_service import cache, init_cache
+init_cache(app)  # <-- AJOUTEZ CETTE LIGNE
+
 # ⚠️ IMPORTANT : Importez db depuis models.py d'abord
 from models import db
 
@@ -414,7 +417,7 @@ from sqlalchemy import func, case, and_
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 import logging
-from services.cache_service import cache  # À importer
+from services.cache_service import cache  # Import correct
 
 logger = logging.getLogger(__name__)
 
@@ -467,9 +470,10 @@ def api_dashboard_data():
         }), 500
 
 
-@cache.cached(timeout=300, key_prefix='dashboard_data_')  # Cache 5 minutes
+# IMPORTANT: Utiliser cache.cached comme décorateur, PAS comme fonction
+@cache.cached(timeout=300, key_prefix='dashboard_data')
 def get_cached_dashboard_data(lang='fr'):
-    """Récupère toutes les données du dashboard avec une seule clé de cache"""
+    """Récupère toutes les données du dashboard avec cache"""
     logger.info(f"🚀 Chargement des données dashboard (lang={lang})...")
     start_time = datetime.now()
     
@@ -485,7 +489,7 @@ def get_cached_dashboard_data(lang='fr'):
         CommissionModel = get_model('Commission')
         VersementManuelModel = get_model('VersementManuel')
         
-        # ========== STATISTIQUES PRINCIPALES (UNE SEULE REQUÊTE) ==========
+        # ========== STATISTIQUES PRINCIPALES ==========
         main_stats = db.session.query(
             func.count(case((UserModel.role == 'enseignant', 1), else_=None)).label('enseignants'),
             func.count(case((UserModel.role == 'eleve', 1), else_=None)).label('eleves'),
@@ -498,7 +502,6 @@ def get_cached_dashboard_data(lang='fr'):
         niveaux = []
         if NiveauModel:
             try:
-                # Utiliser selectinload au lieu de joinedload pour éviter les produits cartésiens
                 niveaux = NiveauModel.query.options(
                     db.selectinload(NiveauModel.matieres)
                     .selectinload(MatiereModel.unites)
@@ -509,7 +512,7 @@ def get_cached_dashboard_data(lang='fr'):
                     .selectinload(UniteModel.tests)
                 ).order_by(NiveauModel.id).all()
             except Exception as e:
-                logger.warning(f"⚠️ Erreur chargement niveaux avec relations: {e}")
+                logger.warning(f"⚠️ Erreur chargement niveaux: {e}")
                 try:
                     niveaux = NiveauModel.query.order_by(NiveauModel.id).all()
                 except Exception as e2:
@@ -531,7 +534,7 @@ def get_cached_dashboard_data(lang='fr'):
                 logger.warning(f"⚠️ Erreur répartition élèves: {e}")
                 eleves_par_niveau = []
         
-        # ========== STATISTIQUES DE MONÉTISATION (UNE SEULE REQUÊTE) ==========
+        # ========== STATISTIQUES DE MONÉTISATION ==========
         monetization_stats = {
             'total_commissions': 0,
             'pending_payments': 0,
@@ -543,7 +546,7 @@ def get_cached_dashboard_data(lang='fr'):
         
         if CommissionModel and VersementManuelModel:
             try:
-                # Stats globales en une requête
+                # Stats globales
                 monetization = db.session.query(
                     func.coalesce(func.sum(CommissionModel.montant_commission), 0).label('total_commissions'),
                     func.coalesce(func.sum(
