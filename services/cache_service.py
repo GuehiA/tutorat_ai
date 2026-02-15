@@ -2,18 +2,22 @@
 from flask_caching import Cache
 from functools import wraps
 import hashlib
-import time
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Configuration du cache pour Render
-cache = Cache(config={
-    'CACHE_TYPE': 'SimpleCache',  # SimpleCache fonctionne partout
-    'CACHE_DEFAULT_TIMEOUT': 300,  # 5 minutes
-    'CACHE_THRESHOLD': 100,  # Nombre max d'éléments en cache
-    'CACHE_IGNORE_ERRORS': True  # Ignorer les erreurs de cache
-})
+# Créer l'instance de cache SANS l'initialiser tout de suite
+cache = Cache()
+
+def init_cache(app):
+    """Initialise le cache avec l'application Flask"""
+    cache.init_app(app, config={
+        'CACHE_TYPE': 'SimpleCache',  # Pour Render
+        'CACHE_DEFAULT_TIMEOUT': 300,  # 5 minutes
+        'CACHE_THRESHOLD': 100,  # Nombre max d'éléments en cache
+        'CACHE_IGNORE_ERRORS': True  # Ignorer les erreurs de cache
+    })
+    logger.info("✅ Cache initialisé avec succès")
 
 def cache_key(*args, **kwargs):
     """Génère une clé de cache unique"""
