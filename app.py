@@ -6459,20 +6459,45 @@ def restore_teacher_student_relations():
 
 @app.route("/enseignant/remediations-en-attente")
 def remediations_en_attente():
-    # ✅ CORRECTION : utiliser "user_id" au lieu de "enseignant_id"
+    """Afficher les remédiations en attente pour l'enseignant connecté"""
+    # Vérifier que l'enseignant est connecté
     if "user_id" not in session:
+        flash("Veuillez vous connecter", "error")
         return redirect(url_for("login_enseignant"))
     
     if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
         return redirect(url_for("login_enseignant"))
-
-    suggestions = RemediationSuggestion.query \
-        .join(User, User.id == RemediationSuggestion.user_id) \
-        .filter(RemediationSuggestion.statut == "en_attente") \
-        .filter(User.enseignant_referent_id == session["user_id"]) \  # ✅ CORRIGÉ
-        .all()
-
-    return render_template("remediations_en_attente.html", suggestions=suggestions)
+    
+    try:
+        # Récupérer l'ID de l'enseignant connecté
+        enseignant_id = session["user_id"]
+        
+        # Récupérer toutes les remédiations en attente pour les élèves de cet enseignant
+        suggestions = RemediationSuggestion.query \
+            .join(User, User.id == RemediationSuggestion.user_id) \
+            .filter(RemediationSuggestion.statut == "en_attente") \
+            .filter(User.enseignant_referent_id == enseignant_id) \
+            .order_by(RemediationSuggestion.timestamp.desc()) \
+            .all()
+        
+        # Compter le nombre total pour afficher dans le badge
+        total_en_attente = len(suggestions)
+        
+        # Récupérer la langue
+        lang = session.get("lang", "fr")
+        
+        return render_template(
+            "remediations_en_attente.html",
+            suggestions=suggestions,
+            total_en_attente=total_en_attente,
+            lang=lang
+        )
+        
+    except Exception as e:
+        print(f"Erreur dans remediations_en_attente: {e}")
+        flash("Une erreur est survenue lors du chargement des remédiations", "error")
+        return redirect(url_for("dashboard_enseignant"))
 
 
 @app.route("/enseignant/valider-remediation/<int:remediation_id>", methods=["GET", "POST"])
