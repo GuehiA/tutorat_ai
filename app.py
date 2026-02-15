@@ -6470,14 +6470,14 @@ def remediations_en_attente():
         return redirect(url_for("login_enseignant"))
     
     try:
-        # Récupérer l'ID de l'enseignant connecté
-        enseignant_id = session["user_id"]
+        # ✅ Récupérer l'ID de l'utilisateur connecté (qui est un enseignant)
+        user_id = session["user_id"]  # ← C'EST ÇA LA BONNE VARIABLE !
         
-        # Récupérer toutes les remédiations en attente pour les élèves de cet enseignant
+        # ✅ Récupérer toutes les remédiations en attente pour les élèves de cet enseignant
         suggestions = RemediationSuggestion.query \
             .join(User, User.id == RemediationSuggestion.user_id) \
             .filter(RemediationSuggestion.statut == "en_attente") \
-            .filter(User.enseignant_referent_id == enseignant_id) \
+            .filter(User.enseignant_referent_id == user_id) \  # ← ICI on utilise user_id
             .order_by(RemediationSuggestion.timestamp.desc()) \
             .all()
         
