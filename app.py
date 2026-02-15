@@ -412,9 +412,10 @@ def login_admin():
 
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
+from datetime import datetime
+import logging
 
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload
+logger = logging.getLogger(__name__)
 
 @app.route("/admin/dashboard")
 @admin_required
