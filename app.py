@@ -11349,39 +11349,50 @@ def historique_eleve():
             flash(f"Student {username} not found", "danger")
         return redirect(url_for("dashboard_parent" if session.get("parent_email") else "dashboard_eleve"))
 
-    # ✅ DÉTECTION DU CONTEXTE : Priorité à l'enseignant s'il y a conflit
+    # ✅ DÉTECTION DU CONTEXTE - CORRIGÉE
+    user_id = session.get("user_id")
     parent_email = session.get("parent_email")
     enseignant_id = session.get("enseignant_id")
     
     # DEBUG
+    print(f"SESSION - user_id: {user_id}")
     print(f"SESSION - parent_email: {parent_email}")
     print(f"SESSION - enseignant_id: {enseignant_id}")
     print(f"ÉLÈVE TROUVÉ - {eleve.nom_complet} (username: {username})")
     
-    # ✅ LOGIQUE DE PRIORITÉ : 
-    # 1. Si enseignant_id existe → c'est un enseignant (priorité haute)
-    # 2. Si parent_email existe ET pas d'enseignant_id → c'est un parent
-    # 3. Sinon → c'est l'élève
-    
-    if enseignant_id:
-        # L'utilisateur est connecté comme enseignant (même s'il a aussi parent_email)
-        is_enseignant_access = True
-        is_parent_access = False
-        is_eleve_direct_access = False
-        print(f"ACCÈS - ENSEIGNANT prioritaire (ID: {enseignant_id})")
-    elif parent_email:
-        # L'utilisateur est connecté comme parent (sans enseignant_id)
-        is_parent_access = True
-        is_enseignant_access = False
-        is_eleve_direct_access = False
-        print(f"ACCÈS - PARENT (email: {parent_email})")
+    # ✅ VÉRIFIER SI L'UTILISATEUR CONNECTÉ EST UN ENSEIGNANT
+    if user_id:
+        # Récupérer l'utilisateur connecté
+        utilisateur = User.query.get(user_id)
+        if utilisateur and utilisateur.role == "enseignant":
+            # C'est un enseignant connecté (même s'il a aussi un email parent)
+            is_enseignant_access = True
+            is_parent_access = False
+            is_eleve_direct_access = False
+            print(f"ACCÈS - ENSEIGNANT (ID: {user_id}, rôle: {utilisateur.role})")
+        elif parent_email:
+            # C'est un parent connecté
+            is_parent_access = True
+            is_enseignant_access = False
+            is_eleve_direct_access = False
+            print(f"ACCÈS - PARENT (email: {parent_email})")
+        else:
+            # Vérifier si l'élève accède à son propre historique
+            eleve_session_username = session.get("username")
+            is_eleve_direct_access = eleve_session_username == username
+            is_parent_access = False
+            is_enseignant_access = False
+            print(f"ACCÈS - ÉLÈVE (session: {eleve_session_username}, requested: {username})")
     else:
-        # Vérifier si l'élève accède à son propre historique
-        eleve_session_username = session.get("username")
-        is_eleve_direct_access = eleve_session_username == username
-        is_parent_access = False
-        is_enseignant_access = False
-        print(f"ACCÈS - ÉLÈVE (session: {eleve_session_username}, requested: {username})")
+        # Pas de user_id, vérifier parent
+        if parent_email:
+            is_parent_access = True
+            is_enseignant_access = False
+            is_eleve_direct_access = False
+        else:
+            is_eleve_direct_access = False
+            is_parent_access = False
+            is_enseignant_access = False
 
     # Récupérer l'ID de l'élève et son niveau
     eleve_id = eleve.id
