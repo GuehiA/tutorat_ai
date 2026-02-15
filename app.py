@@ -415,9 +415,9 @@ from sqlalchemy import func, case, and_
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 import logging
-from services.cache_service import cache, init_cache  # Import correct
+from services.cache_service import cache, init_cache
 
-# IMPORTANT: Initialiser le cache APRÈS la création de l'app et AVANT les routes
+# IMPORTANT: Initialiser le cache APRÈS la création de l'app
 init_cache(app)
 
 logger = logging.getLogger(__name__)
@@ -460,7 +460,6 @@ def api_dashboard_data():
         import traceback
         print(traceback.format_exc())
         
-        # Retourner des données minimales en cas d'erreur
         return jsonify({
             'stats': {
                 'enseignants_count': 0,
@@ -483,7 +482,7 @@ def api_dashboard_data():
 
 
 def get_dashboard_data(lang='fr'):
-    """Récupère toutes les données du dashboard (sans décorateur de cache)"""
+    """Récupère toutes les données du dashboard"""
     logger.info(f"🚀 Chargement des données dashboard (lang={lang})...")
     start_time = datetime.now()
     
@@ -727,7 +726,6 @@ def get_dashboard_data(lang='fr'):
         
         elapsed = (datetime.now() - start_time).total_seconds()
         logger.info(f"✅ Données dashboard chargées en {elapsed:.2f}s (lang={lang})")
-        logger.info(f"📊 Résumé: {result['stats']}")
         
         return result
         
@@ -736,7 +734,6 @@ def get_dashboard_data(lang='fr'):
         import traceback
         logger.error(traceback.format_exc())
         
-        # Retourner des données par défaut
         return {
             'stats': {
                 'enseignants_count': 0,
