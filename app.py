@@ -6459,49 +6459,57 @@ def restore_teacher_student_relations():
 
 @app.route("/enseignant/remediations-en-attente")
 def remediations_en_attente():
-    if "enseignant_id" not in session:
-        return redirect("/login-enseignant")
+    # ✅ CORRECTION : utiliser "user_id" au lieu de "enseignant_id"
+    if "user_id" not in session:
+        return redirect(url_for("login_enseignant"))
+    
+    if session.get("role") != "enseignant":
+        return redirect(url_for("login_enseignant"))
 
     suggestions = RemediationSuggestion.query \
         .join(User, User.id == RemediationSuggestion.user_id) \
         .filter(RemediationSuggestion.statut == "en_attente") \
-        .filter(User.enseignant_id == session["enseignant_id"]) \
+        .filter(User.enseignant_referent_id == session["user_id"]) \  # ✅ CORRIGÉ
         .all()
 
     return render_template("remediations_en_attente.html", suggestions=suggestions)
 
+
 @app.route("/enseignant/valider-remediation/<int:remediation_id>", methods=["GET", "POST"])
 def valider_remediation(remediation_id):
-    if "enseignant_id" not in session:
+    # ✅ CORRECTION : utiliser "user_id"
+    if "user_id" not in session or session.get("role") != "enseignant":
         return redirect(url_for("login_enseignant"))
 
-    lang = request.args.get("lang", "fr")
+    lang = session.get("lang", "fr")
     suggestion = RemediationSuggestion.query.get_or_404(remediation_id)
+    
+    # ✅ Vérifier que l'élève appartient bien à cet enseignant
+    if suggestion.user.enseignant_referent_id != session["user_id"]:
+        flash("Accès non autorisé", "error")
+        return redirect(url_for("remediations_a_valider"))
 
     if request.method == "POST":
-        # Récupérer les données du formulaire
         message = request.form.get("message")
         question = request.form.get("question")
         reponse = request.form.get("reponse")
         explication = request.form.get("explication")
 
-        # Reconstruire le bloc texte de l'exercice suggéré
         if lang == "en":
             bloc = f"""Remediation:\n- Question: {question}\n- Expected answer: {reponse}\n- Explanation: {explication}"""
         else:
             bloc = f"""Remédiation :\n- Question : {question}\n- Réponse attendue : {reponse}\n- Explication : {explication}"""
 
-        # Mettre à jour la suggestion
         suggestion.message = message
         suggestion.exercice_suggere = bloc
         suggestion.statut = "valide"
         db.session.commit()
 
-        return redirect(url_for("remediations_a_valider", lang=lang))
+        flash("✅ Remédiation validée avec succès", "success")
+        return redirect(url_for("remediations_a_valider"))
 
-    # 🧠 Pré-remplir les champs si possible
+    # Parser l'existant
     import re
-
     exercice_suggere = suggestion.exercice_suggere or ""
 
     if lang == "en":
@@ -6527,21 +6535,20 @@ def valider_remediation(remediation_id):
     )
 
 
-
-
 @app.route("/enseignant/remediations-a-valider", methods=["GET"])
 def remediations_a_valider():
-    if "enseignant_id" not in session:
-        return redirect("/login-enseignant")
+    # ✅ CORRECTION : utiliser "user_id"
+    if "user_id" not in session or session.get("role") != "enseignant":
+        return redirect(url_for("login_enseignant"))
 
-    enseignant_id = session["enseignant_id"]
+    enseignant_id = session["user_id"]  # ✅ CORRIGÉ
     niveau_filtre = request.args.get("niveau")
-    statut_filtre = request.args.get("statut", "en_attente")  # Nouveau filtre par statut
+    statut_filtre = request.args.get("statut", "en_attente")
 
     query = RemediationSuggestion.query \
         .join(User, RemediationSuggestion.user_id == User.id) \
         .options(joinedload(RemediationSuggestion.user).joinedload(User.niveau)) \
-        .filter(User.enseignant_id == enseignant_id)
+        .filter(User.enseignant_referent_id == enseignant_id)  # ✅ CORRIGÉ
 
     if niveau_filtre:
         query = query.filter(User.niveau.has(nom=niveau_filtre))
@@ -6549,15 +6556,11 @@ def remediations_a_valider():
     if statut_filtre != "tous":
         query = query.filter(RemediationSuggestion.statut == statut_filtre)
     else:
-        # Si "tous", on montre tous les statuts sauf supprimés
         query = query.filter(RemediationSuggestion.statut != "supprime")
 
     suggestions = query.order_by(RemediationSuggestion.timestamp.desc()).all()
 
-    # Pour la liste déroulante des niveaux disponibles
     niveaux = db.session.query(Niveau.nom).distinct().all()
-    
-    # Liste des statuts possibles
     statuts = ["en_attente", "valide", "tous"]
 
     return render_template(
@@ -6566,25 +6569,28 @@ def remediations_a_valider():
         niveaux=[n[0] for n in niveaux],
         niveau_filtre=niveau_filtre,
         statut_filtre=statut_filtre,
-        statuts=statuts
+        statuts=statuts,
+        lang=session.get("lang", "fr")
     )
+
 
 @app.route("/enseignant/remediation/<int:remediation_id>")
 def view_remediation(remediation_id):
-    if "enseignant_id" not in session:
+    # ✅ CORRECTION : utiliser "user_id"
+    if "user_id" not in session or session.get("role") != "enseignant":
         return redirect(url_for("login_enseignant"))
 
-    lang = request.args.get("lang", "fr")
+    lang = session.get("lang", "fr")
     suggestion = RemediationSuggestion.query.get_or_404(remediation_id)
     
-    # Vérifier que cette remédiation appartient bien à un élève de cet enseignant
-    if suggestion.user.enseignant_id != session["enseignant_id"]:
-        return redirect(url_for("remediations_a_valider", lang=lang))
+    # ✅ Vérifier que cette remédiation appartient bien à un élève de cet enseignant
+    if suggestion.user.enseignant_referent_id != session["user_id"]:
+        flash("Accès non autorisé", "error")
+        return redirect(url_for("remediations_a_valider"))
     
-    # Parser le contenu de l'exercice suggéré
     import re
-    
     exercice_suggere = suggestion.exercice_suggere or ""
+    
     if lang == "en":
         question_match = re.search(r"Question\s*[:：]\s*(.*)", exercice_suggere)
         reponse_match = re.search(r"Expected answer\s*[:：]\s*(.*)", exercice_suggere)
