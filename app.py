@@ -637,11 +637,11 @@ def admin_dashboard():
                     'active_teachers': 0
                 }
         
-        # ========== LOGS DE DÉBOGAGE (à commenter en production) ==========
-        # print(f"✅ Dashboard chargé - Stats: {stats}")
-        # print(f"✅ Niveaux: {len(niveaux)}")
-        # print(f"✅ Paiements récents: {len(recent_payments)}")
-        # print(f"✅ Commissions enseignants: {len(teacher_commissions)}")
+        # ========== LOGS DE DÉBOGAGE ==========
+        print(f"✅ Dashboard chargé - Stats: {stats}")
+        print(f"✅ Niveaux: {len(niveaux)}")
+        print(f"✅ Paiements récents: {len(recent_payments)}")
+        print(f"✅ Commissions enseignants: {len(teacher_commissions)}")
         
         # ========== RENDU DU TEMPLATE ==========
         return render_template(
