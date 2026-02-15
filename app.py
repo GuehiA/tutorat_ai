@@ -6052,23 +6052,23 @@ def modifier_profil_enseignant():
     """Modifier le profil enseignant"""
     # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ (au lieu de "login")
     
     # Vérifier si c'est un enseignant
     if session.get("role") != "enseignant":
         flash("Accès réservé aux enseignants", "error")
-        return redirect("/")
+        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ (au lieu de "/")
     
     UserModel = get_user_model()
     enseignant = UserModel.query.get(session["user_id"])
     
     if not enseignant or enseignant.role != "enseignant":
         flash("Enseignant non trouvé", "error")
-        return redirect(url_for("login"))
+        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ (au lieu de "login")
 
     if request.method == "POST":
-        nom = request.form.get("nom")  # ✅ Correspond au template (name="nom")
-        email = request.form.get("email")  # ✅ Correspond au template (name="email")
+        nom = request.form.get("nom")
+        email = request.form.get("email")
         
         # Vérification des champs obligatoires
         if not nom or not email:
@@ -6089,14 +6089,14 @@ def modifier_profil_enseignant():
         enseignant.nom_complet = nom
         enseignant.email = email
         
-        # ✅ Optionnel : tu peux ajouter téléphone si besoin
+        # Téléphone optionnel
         telephone = request.form.get("telephone")
         if telephone:
             enseignant.telephone = telephone
         
         db.session.commit()
         flash("✅ Profil mis à jour avec succès", "success")
-        return redirect(url_for("dashboard_enseignant"))
+        return redirect(url_for("dashboard_enseignant"))  # ✅ DÉJÀ BON !
 
     return render_template("modifier_profil_enseignant.html", 
                          enseignant=enseignant, 
