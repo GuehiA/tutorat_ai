@@ -662,26 +662,15 @@ def admin_dashboard():
         
         # Données minimales pour éviter la page blanche
         return render_template(
-            "admin_dashboard.html",
-            niveaux=[],
-            stats={
-                "enseignants_count": 0,
-                "eleves_count": 0,
-                "lecons_count": 0,
-                "exercices_count": 0,
-                "total_tests": 0
-            },
-            monetization_stats={
-                'total_commissions': 0,
-                'pending_payments': 0,
-                'payments_count': 0,
-                'active_teachers': 0
-            },
-            recent_payments=[],
-            teacher_commissions=[],
-            eleves_par_niveau=[],
-            lang=lang
-        )
+    "admin_dashboard_test.html",  # ← CHANGER ICI
+    niveaux=niveaux,
+    stats=stats,
+    monetization_stats=monetization_stats,
+    recent_payments=recent_payments,
+    teacher_commissions=teacher_commissions,
+    eleves_par_niveau=eleves_par_niveau,
+    lang=lang
+)
 
 @app.route("/test-nom-complet")
 def test_nom_complet():
