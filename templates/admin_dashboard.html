@@ -1,9 +1,67 @@
 <!DOCTYPE html>
 <html>
-<head><title>Test</title></head>
+<head>
+    <title>Test Dashboard</title>
+</head>
 <body>
-  <h1>Dashboard fonctionne !</h1>
-  <p>Stats: {{ stats }}</p>
-  <p><a href="/logout">Logout</a></p>
+    <h1>🔍 TEST SECTION PAR SECTION</h1>
+    
+    <!-- SECTION 1: Header -->
+    <div style="border:2px solid blue; margin:10px; padding:10px;">
+        <h2>Section 1: Header</h2>
+        {% include 'admin_dashboard_section_header.html' ignore missing %}
+        <p>✅ Header inclus</p>
+    </div>
+    
+    <!-- SECTION 2: Stats Cards -->
+    <div style="border:2px solid green; margin:10px; padding:10px;">
+        <h2>Section 2: Stats Cards</h2>
+        {% include 'admin_dashboard_section_stats.html' ignore missing %}
+        <p>✅ Stats incluses</p>
+    </div>
+    
+    <!-- SECTION 3: Navigation Tabs -->
+    <div style="border:2px solid orange; margin:10px; padding:10px;">
+        <h2>Section 3: Navigation Tabs</h2>
+        {% include 'admin_dashboard_section_tabs.html' ignore missing %}
+        <p>✅ Tabs inclus</p>
+    </div>
+    
+    <!-- SECTION 4: Quick Actions -->
+    <div style="border:2px solid red; margin:10px; padding:10px;">
+        <h2>Section 4: Quick Actions</h2>
+        {% include 'admin_dashboard_section_actions.html' ignore missing %}
+        <p>✅ Actions incluses</p>
+    </div>
+    
+    <!-- SECTION 5: Content Structure -->
+    <div style="border:2px solid purple; margin:10px; padding:10px;">
+        <h2>Section 5: Content Structure</h2>
+        {% include 'admin_dashboard_section_content.html' ignore missing %}
+        <p>✅ Content inclus</p>
+    </div>
+    
+    <!-- SECTION 6: Monetization -->
+    <div style="border:2px solid brown; margin:10px; padding:10px;">
+        <h2>Section 6: Monetization</h2>
+        {% include 'admin_dashboard_section_monetization.html' ignore missing %}
+        <p>✅ Monetization inclus</p>
+    </div>
+    
+    <!-- SECTION 7: Analytics -->
+    <div style="border:2px solid pink; margin:10px; padding:10px;">
+        <h2>Section 7: Analytics</h2>
+        {% include 'admin_dashboard_section_analytics.html' ignore missing %}
+        <p>✅ Analytics inclus</p>
+    </div>
+    
+    <!-- SECTION 8: Scripts -->
+    <div style="border:2px solid gray; margin:10px; padding:10px;">
+        <h2>Section 8: Scripts</h2>
+        {% include 'admin_dashboard_section_scripts.html' ignore missing %}
+        <p>✅ Scripts inclus</p>
+    </div>
+    
+    <p style="margin-top:30px; font-weight:bold; color:green;">✅ TEST COMPLET - Si vous voyez ce message, le template de test fonctionne !</p>
 </body>
 </html>
