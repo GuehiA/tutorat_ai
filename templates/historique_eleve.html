@@ -1270,7 +1270,7 @@
       <div class="accordion">
         {% for niveau_nom, niveau_data in data_structure.niveaux.items() %}
         <div class="accordion-item niveau">
-          <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="accordion-header" onclick="toggleAccordion(this, event)">
             <h3><i class="fas fa-layer-group"></i> 
               {% if lang == 'fr' %}Niveau:{% else %}Level:{% endif %} {{ niveau_nom }}
             </h3>
@@ -1290,7 +1290,7 @@
             {% if niveau_data.matieres %}
               {% for matiere_nom, matiere_data in niveau_data.matieres.items() %}
               <div class="accordion-item matiere">
-                <div class="accordion-header" onclick="toggleAccordion(this)">
+                <div class="accordion-header" onclick="toggleAccordion(this, event)">
                   <h3><i class="fas fa-book"></i> 
                     {% if lang == 'fr' %}Matière:{% else %}Subject:{% endif %} {{ matiere_nom }}
                   </h3>
@@ -1310,7 +1310,7 @@
                   {% if matiere_data.unites %}
                     {% for unite_nom, unite_data in matiere_data.unites.items() %}
                     <div class="accordion-item unite">
-                      <div class="accordion-header" onclick="toggleAccordion(this)">
+                      <div class="accordion-header" onclick="toggleAccordion(this, event)">
                         <h3><i class="fas fa-cube"></i> 
                           {% if lang == 'fr' %}Unité:{% else %}Unit:{% endif %} {{ unite_nom }}
                         </h3>
@@ -1330,7 +1330,7 @@
                         {% if unite_data.lecons %}
                           {% for lecon_nom, lecon_data in unite_data.lecons.items() %}
                           <div class="accordion-item lecon">
-                            <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <div class="accordion-header" onclick="toggleAccordion(this, event)">
                               <h3><i class="fas fa-file-alt"></i> 
                                 {% if lang == 'fr' %}Leçon:{% else %}Lesson:{% endif %} {{ lecon_nom }}
                               </h3>
@@ -1520,7 +1520,7 @@
     <div class="accordion">
       {% for t in tests %}
       <div class="accordion-item unite">
-        <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-header" onclick="toggleAccordion(this, event)">
           <h3><i class="fas fa-file-signature"></i> 
             {% if lang == 'fr' %}Test:{% else %}Test:{% endif %} {{ t.unite or "Test Sommatif" }}
           </h3>
@@ -1684,7 +1684,7 @@
             .replace(/\\\)/g, '$');               // ) en LaTeX
           
           // Gérer les alertes et messages d'erreur
-          if (data.symbolic_verification?.result?.error) {
+          if (data.symbolic_verification && data.symbolic_verification.result && data.symbolic_verification.result.error) {
             cleanText = `<span class="error-message">⚠️ ${data.symbolic_verification.result.error}</span><br>` + cleanText;
           }
           
@@ -1710,42 +1710,47 @@
       }
     }
 
-    // Gestion des accordéons améliorée
-    function toggleAccordion(element) {
-      const content = element.nextElementSibling;
-      const isExpanded = content.classList.contains('expanded');
-      
-      // Fermer tous les accordéons du même niveau
-      const parentItem = element.closest('.accordion-item');
-      const siblings = parentItem ? parentItem.querySelectorAll('.accordion-content.expanded') : [];
-      
-      siblings.forEach(sibling => {
-        if (sibling !== content) {
-          sibling.classList.remove('expanded');
-          const header = sibling.previousElementSibling;
-          if (header) {
-            header.classList.remove('active');
-            header.style.borderBottomRightRadius = 'var(--radius)';
-            header.style.borderBottomLeftRadius = 'var(--radius)';
-          }
-        }
-      });
-      
-      // Basculer l'état actuel
-      content.classList.toggle('expanded');
-      element.classList.toggle('active');
-      
-      // Ajuster le border-radius de l'en-tête
-      if (content.classList.contains('expanded')) {
-        element.style.borderBottomRightRadius = '0';
-        element.style.borderBottomLeftRadius = '0';
-      } else {
-        element.style.borderBottomRightRadius = 'var(--radius)';
-        element.style.borderBottomLeftRadius = 'var(--radius)';
+    // Gestion des accordéons améliorée avec propagation stoppée
+    function toggleAccordion(element, event) {
+      // Empêcher la propagation de l'événement
+      if (event) {
+        event.stopPropagation();
       }
       
-      // Forcer le re-rendu MathJax après ouverture
-      if (content.classList.contains('expanded')) {
+      const content = element.nextElementSibling;
+      
+      // Vérifier si l'élément a déjà la classe active
+      const isActive = element.classList.contains('active');
+      
+      // Fermer tous les accordéons du même niveau (optionnel - à décommenter si besoin)
+      // const parentItem = element.closest('.accordion-item');
+      // if (parentItem) {
+      //   parentItem.querySelectorAll('.accordion-content.expanded').forEach(sibling => {
+      //     if (sibling !== content) {
+      //       sibling.classList.remove('expanded');
+      //       const header = sibling.previousElementSibling;
+      //       if (header) {
+      //         header.classList.remove('active');
+      //         header.style.borderBottomRightRadius = 'var(--radius)';
+      //         header.style.borderBottomLeftRadius = 'var(--radius)';
+      //       }
+      //     }
+      //   });
+      // }
+      
+      // Basculer l'état actuel
+      if (isActive) {
+        content.classList.remove('expanded');
+        element.classList.remove('active');
+        element.style.borderBottomRightRadius = 'var(--radius)';
+        element.style.borderBottomLeftRadius = 'var(--radius)';
+      } else {
+        content.classList.add('expanded');
+        element.classList.add('active');
+        element.style.borderBottomRightRadius = '0';
+        element.style.borderBottomLeftRadius = '0';
+        
+        // Forcer le re-rendu MathJax après ouverture
         setTimeout(() => {
           if (window.MathJax && window.MathJax.typesetPromise) {
             MathJax.typesetPromise([content]).catch(err => console.warn('MathJax error:', err));
@@ -1765,6 +1770,8 @@
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM chargé, initialisation des accordéons...');
+      
       // Marquer tous les blocs de contenu pour MathJax
       document.querySelectorAll('.content-block').forEach(block => {
         if (!block.classList.contains('math-content')) {
@@ -1825,8 +1832,9 @@
       const firstNiveau = document.querySelector('.niveau .accordion-header');
       if (firstNiveau) {
         setTimeout(() => {
-          firstNiveau.click();
-        }, 800);
+          console.log('Ouverture automatique du premier niveau');
+          toggleAccordion(firstNiveau, { stopPropagation: () => {} });
+        }, 500);
       }
     });
     
@@ -1835,12 +1843,23 @@
       mutations.forEach(function(mutation) {
         if (mutation.addedNodes.length) {
           mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1 && node.classList && node.classList.contains('accordion-content')) {
-              setTimeout(() => {
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
-                }
-              }, 100);
+            if (node.nodeType === 1) {
+              if (node.classList && node.classList.contains('accordion-content')) {
+                setTimeout(() => {
+                  if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
+                  }
+                }, 100);
+              }
+              
+              // Traiter les nouveaux blocs de contenu
+              if (node.querySelectorAll) {
+                node.querySelectorAll('.content-block').forEach(block => {
+                  if (block.innerHTML.includes('\\n')) {
+                    block.innerHTML = block.innerHTML.replace(/\\n/g, '<br>');
+                  }
+                });
+              }
             }
           });
         }
@@ -1859,7 +1878,7 @@
       header.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          toggleAccordion(header);
+          toggleAccordion(header, e);
         }
       });
     });
