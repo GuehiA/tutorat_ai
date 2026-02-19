@@ -2,7 +2,6 @@
 <html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
-  
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -11,13 +10,7 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#ffffff">
-  
   <title>{% if lang == 'fr' %}Historique des réponses{% else %}Answer History{% endif %}</title>
-  
-  <!-- Support des emojis et caractères spéciaux -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
   
   <style>
     :root {
@@ -50,7 +43,6 @@
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
       --font-heading: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-emoji: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
     }
     
     * {
@@ -60,7 +52,7 @@
     }
     
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
+      font-family: var(--font-body);
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       padding: 20px;
       min-height: 100vh;
@@ -68,11 +60,6 @@
       line-height: 1.7;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-    }
-    
-    /* Support spécifique pour les emojis */
-    .content-block, .reponse-content, .student-info, .stat-card {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
     }
     
     .container {
@@ -647,53 +634,6 @@
       font-size: 1.5rem;
     }
     
-    /* Styles pour les messages d'erreur et scores */
-    .error-message {
-      display: inline-block;
-      background: linear-gradient(135deg, #fee, #fdd);
-      color: #c00;
-      padding: 12px 20px;
-      border-radius: var(--radius-sm);
-      border-left: 6px solid var(--accent);
-      margin-bottom: 20px;
-      font-weight: 700;
-      font-size: 1.1rem;
-      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);
-      width: 100%;
-    }
-    
-    .score-badge {
-      display: inline-block;
-      background: linear-gradient(135deg, var(--success-light), var(--success));
-      color: white;
-      padding: 10px 25px;
-      border-radius: 30px;
-      font-weight: 800;
-      font-size: 1.2rem;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-      border: 2px solid white;
-    }
-    
-    /* Style pour le contenu traité */
-    .processed-json {
-      background: linear-gradient(135deg, #fafafa, var(--white));
-      border-left: 6px solid var(--info);
-    }
-    
-    /* Amélioration du rendu LaTeX */
-    .mjx-chtml {
-      font-size: 1.1em !important;
-    }
-    
-    .math-content {
-      line-height: 1.8;
-    }
-    
-    .math-content p {
-      margin: 1em 0;
-    }
-    
     /* Titres de section élégants */
     .section-title {
       display: flex;
@@ -1060,7 +1000,6 @@
   
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
   <!-- MathJax pour les formules -->
   <script>
     window.MathJax = {
@@ -1270,7 +1209,7 @@
       <div class="accordion">
         {% for niveau_nom, niveau_data in data_structure.niveaux.items() %}
         <div class="accordion-item niveau">
-          <div class="accordion-header" onclick="toggleAccordion(this, event)">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
             <h3><i class="fas fa-layer-group"></i> 
               {% if lang == 'fr' %}Niveau:{% else %}Level:{% endif %} {{ niveau_nom }}
             </h3>
@@ -1290,7 +1229,7 @@
             {% if niveau_data.matieres %}
               {% for matiere_nom, matiere_data in niveau_data.matieres.items() %}
               <div class="accordion-item matiere">
-                <div class="accordion-header" onclick="toggleAccordion(this, event)">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
                   <h3><i class="fas fa-book"></i> 
                     {% if lang == 'fr' %}Matière:{% else %}Subject:{% endif %} {{ matiere_nom }}
                   </h3>
@@ -1310,7 +1249,7 @@
                   {% if matiere_data.unites %}
                     {% for unite_nom, unite_data in matiere_data.unites.items() %}
                     <div class="accordion-item unite">
-                      <div class="accordion-header" onclick="toggleAccordion(this, event)">
+                      <div class="accordion-header" onclick="toggleAccordion(this)">
                         <h3><i class="fas fa-cube"></i> 
                           {% if lang == 'fr' %}Unité:{% else %}Unit:{% endif %} {{ unite_nom }}
                         </h3>
@@ -1330,7 +1269,7 @@
                         {% if unite_data.lecons %}
                           {% for lecon_nom, lecon_data in unite_data.lecons.items() %}
                           <div class="accordion-item lecon">
-                            <div class="accordion-header" onclick="toggleAccordion(this, event)">
+                            <div class="accordion-header" onclick="toggleAccordion(this)">
                               <h3><i class="fas fa-file-alt"></i> 
                                 {% if lang == 'fr' %}Leçon:{% else %}Lesson:{% endif %} {{ lecon_nom }}
                               </h3>
@@ -1520,7 +1459,7 @@
     <div class="accordion">
       {% for t in tests %}
       <div class="accordion-item unite">
-        <div class="accordion-header" onclick="toggleAccordion(this, event)">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
           <h3><i class="fas fa-file-signature"></i> 
             {% if lang == 'fr' %}Test:{% else %}Test:{% endif %} {{ t.unite or "Test Sommatif" }}
           </h3>
@@ -1607,150 +1546,42 @@
   </div>
   
   <script>
-    // Fonction améliorée de traitement des réponses JSON
-    function processContentBlock(block) {
-      try {
-        let content = block.innerHTML.trim();
-        
-        // Vérifier si c'est du JSON valide
-        if ((content.startsWith('{') && content.endsWith('}')) || 
-            (content.startsWith('[') && content.endsWith(']'))) {
-          
-          let data;
-          try {
-            data = JSON.parse(content);
-          } catch(e) {
-            // Essayer de nettoyer le JSON avant parsing
-            const cleaned = content
-              .replace(/\\n/g, '\\\\n')
-              .replace(/\\r/g, '\\\\r')
-              .replace(/\\t/g, '\\\\t');
-            data = JSON.parse(cleaned);
-          }
-          
-          // Fonction récursive pour extraire le texte pertinent
-          function extractRelevantText(obj, depth = 0, maxDepth = 3) {
-            if (depth > maxDepth) return '';
-            if (!obj) return '';
-            
-            // Priorités de clés à chercher
-            const priorityKeys = [
-              'current_feedback', 'feedback', 'analyse_ia', 'analysis',
-              'reponse_eleve', 'student_answer', 'answer',
-              'enonce', 'question', 'prompt',
-              'error', 'result', 'message'
-            ];
-            
-            // Chercher d'abord les clés prioritaires
-            for (const key of priorityKeys) {
-              if (obj[key] && typeof obj[key] === 'string') {
-                return obj[key];
-              }
-            }
-            
-            // Si c'est une chaîne directe
-            if (typeof obj === 'string') return obj;
-            
-            // Si c'est un objet, chercher récursivement
-            if (typeof obj === 'object') {
-              for (const key in obj) {
-                if (typeof obj[key] === 'string' && obj[key].length > 10) {
-                  return obj[key];
-                }
-                const result = extractRelevantText(obj[key], depth + 1, maxDepth);
-                if (result) return result;
-              }
-            }
-            
-            return JSON.stringify(obj, null, 2);
-          }
-          
-          // Extraire le texte pertinent
-          let extractedText = extractRelevantText(data);
-          
-          // Nettoyer le texte extrait
-          let cleanText = String(extractedText)
-            .replace(/\\n/g, '<br>')           // Convertir \n en <br>
-            .replace(/\\r\\n/g, '<br>')        // Windows line endings
-            .replace(/\\r/g, '<br>')            // Mac line endings
-            .replace(/\\t/g, '&nbsp;&nbsp;')    // Convertir \t en espaces
-            .replace(/\\\\\\[/g, '$$')          // Échappement LaTeX
-            .replace(/\\\\\\]/g, '$$')
-            .replace(/\\\\\\\(/g, '$')
-            .replace(/\\\\\\\)/g, '$')
-            .replace(/\\\[/g, '$$')              // [ en LaTeX
-            .replace(/\\\]/g, '$$')              // ] en LaTeX
-            .replace(/\\\(/g, '$')               // ( en LaTeX
-            .replace(/\\\)/g, '$');               // ) en LaTeX
-          
-          // Gérer les alertes et messages d'erreur
-          if (data.symbolic_verification && data.symbolic_verification.result && data.symbolic_verification.result.error) {
-            cleanText = `<span class="error-message">⚠️ ${data.symbolic_verification.result.error}</span><br>` + cleanText;
-          }
-          
-          // Ajouter la note si disponible
-          if (data.note || data.score) {
-            const note = data.note || data.score;
-            cleanText = `<div class="score-badge">📊 Note: ${note}/5</div>` + cleanText;
-          }
-          
-          block.innerHTML = cleanText;
-          block.classList.add('processed-json');
-        }
-      } catch(e) {
-        // Pas du JSON valide, garder le contenu original mais nettoyer les \n
-        if (block.innerHTML.includes('\\n')) {
-          block.innerHTML = block.innerHTML.replace(/\\n/g, '<br>');
-        }
-      }
-      
-      // Toujours nettoyer les \n résiduels
-      if (block.innerHTML.includes('\\n')) {
-        block.innerHTML = block.innerHTML.replace(/\\n/g, '<br>');
-      }
-    }
-
-    // Gestion des accordéons améliorée avec propagation stoppée
-    function toggleAccordion(element, event) {
-      // Empêcher la propagation de l'événement
-      if (event) {
-        event.stopPropagation();
-      }
-      
+    // Gestion des accordéons améliorée
+    function toggleAccordion(element) {
       const content = element.nextElementSibling;
+      const isExpanded = content.classList.contains('expanded');
       
-      // Vérifier si l'élément a déjà la classe active
-      const isActive = element.classList.contains('active');
+      // Fermer tous les accordéons du même niveau
+      const parentItem = element.closest('.accordion-item');
+      const siblings = parentItem ? parentItem.querySelectorAll('.accordion-content.expanded') : [];
       
-      // Fermer tous les accordéons du même niveau (optionnel - à décommenter si besoin)
-      // const parentItem = element.closest('.accordion-item');
-      // if (parentItem) {
-      //   parentItem.querySelectorAll('.accordion-content.expanded').forEach(sibling => {
-      //     if (sibling !== content) {
-      //       sibling.classList.remove('expanded');
-      //       const header = sibling.previousElementSibling;
-      //       if (header) {
-      //         header.classList.remove('active');
-      //         header.style.borderBottomRightRadius = 'var(--radius)';
-      //         header.style.borderBottomLeftRadius = 'var(--radius)';
-      //       }
-      //     }
-      //   });
-      // }
+      siblings.forEach(sibling => {
+        if (sibling !== content) {
+          sibling.classList.remove('expanded');
+          const header = sibling.previousElementSibling;
+          if (header) {
+            header.classList.remove('active');
+            header.style.borderBottomRightRadius = 'var(--radius)';
+            header.style.borderBottomLeftRadius = 'var(--radius)';
+          }
+        }
+      });
       
       // Basculer l'état actuel
-      if (isActive) {
-        content.classList.remove('expanded');
-        element.classList.remove('active');
-        element.style.borderBottomRightRadius = 'var(--radius)';
-        element.style.borderBottomLeftRadius = 'var(--radius)';
-      } else {
-        content.classList.add('expanded');
-        element.classList.add('active');
+      content.classList.toggle('expanded');
+      element.classList.toggle('active');
+      
+      // Ajuster le border-radius de l'en-tête
+      if (content.classList.contains('expanded')) {
         element.style.borderBottomRightRadius = '0';
         element.style.borderBottomLeftRadius = '0';
-        
-        // Forcer le re-rendu MathJax après ouverture
+      } else {
+        element.style.borderBottomRightRadius = 'var(--radius)';
+        element.style.borderBottomLeftRadius = 'var(--radius)';
+      }
+      
+      // Forcer le re-rendu MathJax après ouverture
+      if (content.classList.contains('expanded')) {
         setTimeout(() => {
           if (window.MathJax && window.MathJax.typesetPromise) {
             MathJax.typesetPromise([content]).catch(err => console.warn('MathJax error:', err));
@@ -1770,29 +1601,9 @@
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM chargé, initialisation des accordéons...');
-      
       // Marquer tous les blocs de contenu pour MathJax
       document.querySelectorAll('.content-block').forEach(block => {
         if (!block.classList.contains('math-content')) {
-          block.classList.add('math-content');
-        }
-      });
-      
-      // Traitement amélioré des réponses JSON
-      document.querySelectorAll('.content-block').forEach(block => {
-        // Vérifier si c'est une chaîne avec beaucoup de \n
-        if (block.innerHTML.includes('\\n')) {
-          block.innerHTML = block.innerHTML.replace(/\\n/g, '<br>');
-        }
-        
-        // Essayer de parser si c'est du JSON
-        if (block.innerHTML.trim().startsWith('{') || block.innerHTML.trim().startsWith('[')) {
-          processContentBlock(block);
-        }
-        
-        // Ajouter la classe pour MathJax si nécessaire
-        if (block.innerHTML.includes('$') || block.innerHTML.includes('\\(') || block.innerHTML.includes('\\[')) {
           block.classList.add('math-content');
         }
       });
@@ -1803,6 +1614,31 @@
           MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
         }, 500);
       }
+      
+      // Traitement des réponses JSON
+      document.querySelectorAll('.content-block').forEach(block => {
+        try {
+          const content = block.innerHTML.trim();
+          if (content.startsWith('{') && content.endsWith('}')) {
+            const data = JSON.parse(content);
+            const feedback = data.current_feedback || data.feedback || data.original || 
+                            data.analyse || data.analysis || data.reponse || content;
+            
+            let cleanFeedback = String(feedback)
+              .replace(/\\n/g, '<br>')
+              .replace(/\\r/g, '')
+              .replace(/\\t/g, ' ')
+              .replace(/\\\\\[/g, '$$')
+              .replace(/\\\\\]/g, '$$')
+              .replace(/\\\\\(/g, '$')
+              .replace(/\\\\\)/g, '$');
+            
+            block.innerHTML = cleanFeedback;
+          }
+        } catch(e) {
+          // Pas du JSON
+        }
+      });
       
       // Animer les barres de progression
       document.querySelectorAll('.progress-bar').forEach(bar => {
@@ -1832,9 +1668,8 @@
       const firstNiveau = document.querySelector('.niveau .accordion-header');
       if (firstNiveau) {
         setTimeout(() => {
-          console.log('Ouverture automatique du premier niveau');
-          toggleAccordion(firstNiveau, { stopPropagation: () => {} });
-        }, 500);
+          firstNiveau.click();
+        }, 800);
       }
     });
     
@@ -1843,23 +1678,12 @@
       mutations.forEach(function(mutation) {
         if (mutation.addedNodes.length) {
           mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1) {
-              if (node.classList && node.classList.contains('accordion-content')) {
-                setTimeout(() => {
-                  if (window.MathJax && window.MathJax.typesetPromise) {
-                    MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
-                  }
-                }, 100);
-              }
-              
-              // Traiter les nouveaux blocs de contenu
-              if (node.querySelectorAll) {
-                node.querySelectorAll('.content-block').forEach(block => {
-                  if (block.innerHTML.includes('\\n')) {
-                    block.innerHTML = block.innerHTML.replace(/\\n/g, '<br>');
-                  }
-                });
-              }
+            if (node.nodeType === 1 && node.classList && node.classList.contains('accordion-content')) {
+              setTimeout(() => {
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
+                }
+              }, 100);
             }
           });
         }
@@ -1878,7 +1702,7 @@
       header.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          toggleAccordion(header, e);
+          toggleAccordion(header);
         }
       });
     });
