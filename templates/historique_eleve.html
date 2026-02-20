@@ -619,7 +619,7 @@
       border: 2px solid var(--light);
       line-height: 1.8;
       font-size: 1.05rem;
-      white-space: pre-wrap; /* Conserve les sauts de ligne */
+      white-space: pre-wrap;
     }
     
     .content-block p {
@@ -648,17 +648,29 @@
     
     /* Styles pour les messages d'erreur et scores */
     .error-message {
-      display: inline-block;
+      display: block;
       background: linear-gradient(135deg, #fee, #fdd);
       color: #c00;
-      padding: 12px 20px;
+      padding: 15px 20px;
       border-radius: var(--radius-sm);
       border-left: 6px solid var(--accent);
       margin-bottom: 20px;
-      font-weight: 700;
+      font-weight: 600;
       font-size: 1.1rem;
-      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);
-      width: 100%;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.15);
+    }
+    
+    .warning-message {
+      display: block;
+      background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+      color: #e67e22;
+      padding: 15px 20px;
+      border-radius: var(--radius-sm);
+      border-left: 6px solid var(--warning);
+      margin-bottom: 20px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 15px rgba(243, 156, 18, 0.15);
     }
     
     .score-badge {
@@ -1658,76 +1670,53 @@
       }
     }
 
-    // Fonction améliorée de traitement des réponses JSON
-    function processJSONContent(content) {
+    // Fonction améliorée pour parser le JSON avec la structure spécifique que tu as montrée
+    function parseFeedbackJSON(jsonString) {
       try {
-        // Nettoyer d'abord les caractères d'échappement
-        let cleanContent = content
+        // Nettoyer la chaîne JSON
+        let cleanString = jsonString
           .replace(/\\n/g, '\n')
           .replace(/\\r/g, '')
           .replace(/\\t/g, '  ');
         
-        const data = JSON.parse(cleanContent);
+        const data = JSON.parse(cleanString);
         
-        // Chercher récursivement le texte pertinent
-        function findRelevantText(obj) {
-          if (!obj) return '';
-          
-          // Priorité des clés à chercher
-          const priorityKeys = [
-            'current_feedback', 'feedback', 'analyse_ia', 'analysis',
-            'reponse_eleve', 'student_answer', 'answer',
-            'enonce', 'question', 'prompt', 'message', 'error'
-          ];
-          
-          // Chercher les clés prioritaires
-          for (const key of priorityKeys) {
-            if (obj[key] && typeof obj[key] === 'string') {
-              return obj[key];
-            }
+        // Construire un message formaté
+        let formattedMessage = '';
+        
+        // 1. Vérifier s'il y a un message d'erreur dans symbolic_verification
+        if (data.symbolic_verification) {
+          if (data.symbolic_verification.feedback) {
+            formattedMessage += `<div class="warning-message">${data.symbolic_verification.feedback}</div>\n\n`;
           }
-          
-          // Si c'est une chaîne
-          if (typeof obj === 'string') return obj;
-          
-          // Si c'est un objet, parcourir ses propriétés
-          if (typeof obj === 'object') {
-            // Chercher une propriété 'result' ou 'data'
-            if (obj.result && typeof obj.result === 'object') {
-              const result = findRelevantText(obj.result);
-              if (result) return result;
-            }
-            
-            // Parcourir toutes les propriétés
-            for (const key in obj) {
-              if (typeof obj[key] === 'string' && obj[key].length > 10) {
-                return obj[key];
-              }
-              const result = findRelevantText(obj[key]);
-              if (result) return result;
-            }
+          if (data.symbolic_verification.result && data.symbolic_verification.result.error) {
+            formattedMessage += `<div class="error-message">Erreur: ${data.symbolic_verification.result.error}</div>\n\n`;
           }
-          
-          return JSON.stringify(obj, null, 2);
         }
         
-        let extractedText = findRelevantText(data);
-        
-        // Gérer les erreurs spécifiques
-        if (data.symbolic_verification && data.symbolic_verification.result && data.symbolic_verification.result.error) {
-          extractedText = `⚠️ ${data.symbolic_verification.result.error}\n\n` + extractedText;
+        // 2. Ajouter le score si disponible
+        if (data.metadata) {
+          if (data.metadata.final_score !== undefined) {
+            formattedMessage += `<div class="score-badge">Note finale: ${data.metadata.final_score}/5</div>\n\n`;
+          } else if (data.metadata.gpt_score !== undefined) {
+            formattedMessage += `<div class="score-badge">Score GPT: ${data.metadata.gpt_score}/5</div>\n\n`;
+          }
         }
         
-        // Ajouter la note si disponible
-        if (data.note || data.score) {
-          const note = data.note || data.score;
-          extractedText = `Note: ${note}/5\n\n` + extractedText;
+        // 3. Ajouter d'autres informations pertinentes
+        if (data.current_feedback) {
+          formattedMessage += `<strong>Feedback:</strong><br>${data.current_feedback}\n\n`;
         }
         
-        return extractedText;
-      } catch(e) {
-        // Si ce n'est pas du JSON valide, retourner le contenu original nettoyé
-        return content.replace(/\\n/g, '\n').replace(/\\r/g, '').replace(/\\t/g, '  ');
+        // 4. Si rien d'autre n'a été trouvé, afficher la structure complète de façon lisible
+        if (!formattedMessage) {
+          formattedMessage = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+        
+        return formattedMessage;
+      } catch (e) {
+        // Si ce n'est pas du JSON valide, retourner le texte brut avec les sauts de ligne
+        return jsonString.replace(/\\n/g, '<br>');
       }
     }
     
@@ -1740,27 +1729,22 @@
         }
       });
       
-      // Traitement amélioré des réponses JSON et des sauts de ligne
+      // Traitement spécifique pour les blocs d'analyse IA (qui contiennent probablement le JSON)
       document.querySelectorAll('.content-block').forEach(block => {
         let content = block.innerHTML.trim();
         
-        // Vérifier si c'est du JSON
+        // Vérifier si le contenu ressemble à du JSON
         if ((content.startsWith('{') && content.endsWith('}')) || 
-            (content.startsWith('[') && content.endsWith(']'))) {
+            (content.startsWith('[') && content.endsWith(']')) ||
+            content.includes('"symbolic_verification"')) {
           
-          const processed = processJSONContent(content);
-          
-          // Convertir les sauts de ligne en <br> pour l'affichage HTML
-          block.innerHTML = processed
-            .replace(/\n/g, '<br>')
-            .replace(/\\n/g, '<br>');
-            
+          const parsed = parseFeedbackJSON(content);
+          block.innerHTML = parsed;
           block.classList.add('processed-json');
-        } else {
-          // Pour le texte normal, juste remplacer \n par <br>
-          if (content.includes('\\n')) {
-            block.innerHTML = content.replace(/\\n/g, '<br>');
-          }
+        } 
+        // Sinon, juste remplacer les \n par <br>
+        else if (content.includes('\\n')) {
+          block.innerHTML = content.replace(/\\n/g, '<br>');
         }
       });
       
