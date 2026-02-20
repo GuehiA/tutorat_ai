@@ -11,7 +11,7 @@
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#ffffff">
   <title>{% if lang == 'fr' %}Historique des réponses{% else %}Answer History{% endif %}</title>
-  
+
   <style>
     :root {
       --primary: #2c3e50;
@@ -44,13 +44,13 @@
       --font-heading: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
-    
+
     body {
       font-family: var(--font-body);
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -61,7 +61,7 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
-    
+
     .container {
       max-width: 1400px;
       margin: 20px auto;
@@ -73,7 +73,7 @@
       overflow: hidden;
       border: 1px solid rgba(0, 0, 0, 0.05);
     }
-    
+
     .container::before {
       content: '';
       position: absolute;
@@ -83,14 +83,14 @@
       height: 8px;
       background: linear-gradient(90deg, var(--secondary), var(--success), var(--warning));
     }
-    
+
     h1, h2, h3, h4, h5, h6 {
       font-family: var(--font-heading);
       font-weight: 700;
       color: var(--primary-dark);
       line-height: 1.3;
     }
-    
+
     h2 {
       text-align: center;
       color: var(--primary-dark);
@@ -101,7 +101,7 @@
       font-weight: 800;
       letter-spacing: -0.5px;
     }
-    
+
     h2::after {
       content: '';
       position: absolute;
@@ -113,7 +113,7 @@
       background: linear-gradient(90deg, var(--secondary), var(--success));
       border-radius: 3px;
     }
-    
+
     /* Bandeau niveau de l'élève */
     .niveau-badge {
       display: inline-block;
@@ -129,11 +129,11 @@
       letter-spacing: 0.5px;
       text-transform: uppercase;
     }
-    
+
     .niveau-badge i {
       margin-right: 12px;
     }
-    
+
     /* Carte élève premium */
     .student-info {
       background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
@@ -150,7 +150,7 @@
       transform-style: preserve-3d;
       perspective: 1000px;
     }
-    
+
     .student-info::before {
       content: '';
       position: absolute;
@@ -161,12 +161,12 @@
       background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);
       animation: rotate 20s linear infinite;
     }
-    
+
     @keyframes rotate {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    
+
     .student-info .avatar {
       width: 100px;
       height: 100px;
@@ -184,11 +184,11 @@
       z-index: 2;
       transition: var(--transition);
     }
-    
+
     .student-info:hover .avatar {
       transform: scale(1.05) rotate(5deg);
     }
-    
+
     .student-info h3 {
       font-size: 2.2rem;
       margin-bottom: 10px;
@@ -197,7 +197,7 @@
       z-index: 2;
       text-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    
+
     .student-info p {
       opacity: 0.95;
       font-size: 1.1rem;
@@ -205,7 +205,7 @@
       z-index: 2;
       font-weight: 500;
     }
-    
+
     .student-stats {
       display: flex;
       gap: 20px;
@@ -213,7 +213,7 @@
       position: relative;
       z-index: 2;
     }
-    
+
     .stat-mini {
       background: rgba(255, 255, 255, 0.15);
       padding: 8px 16px;
@@ -225,7 +225,7 @@
       align-items: center;
       gap: 8px;
     }
-    
+
     /* Statistiques globales améliorées */
     .stats-summary {
       display: grid;
@@ -233,7 +233,7 @@
       gap: 25px;
       margin-bottom: 50px;
     }
-    
+
     .stat-card {
       background: var(--white);
       padding: 30px;
@@ -245,7 +245,7 @@
       overflow: hidden;
       border: 1px solid rgba(0,0,0,0.05);
     }
-    
+
     .stat-card::before {
       content: '';
       position: absolute;
@@ -255,13 +255,13 @@
       height: 4px;
       background: linear-gradient(90deg, var(--secondary), transparent);
     }
-    
+
     .stat-card:hover {
       transform: translateY(-8px);
       box-shadow: var(--shadow-hover);
       border-color: var(--secondary-light);
     }
-    
+
     .stat-card h3 {
       color: var(--primary-dark);
       font-size: 1.4rem;
@@ -271,26 +271,26 @@
       gap: 15px;
       font-weight: 700;
     }
-    
+
     .stat-card h3 i {
       color: var(--secondary);
       font-size: 1.8rem;
     }
-    
+
     .stat-numbers {
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
       margin-top: 20px;
     }
-    
+
     .stat-number {
       font-size: 3.5rem;
       font-weight: 900;
       color: var(--primary-dark);
       line-height: 1;
     }
-    
+
     .stat-label {
       color: var(--gray);
       font-size: 1rem;
@@ -298,7 +298,7 @@
       text-transform: uppercase;
       letter-spacing: 1px;
     }
-    
+
     /* Barre de progression élégante */
     .progress-container {
       margin-top: 20px;
@@ -308,7 +308,7 @@
       height: 16px;
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
     }
-    
+
     .progress-bar {
       height: 100%;
       background: linear-gradient(90deg, var(--secondary), var(--success));
@@ -317,7 +317,7 @@
       position: relative;
       overflow: hidden;
     }
-    
+
     .progress-bar::after {
       content: '';
       position: absolute;
@@ -328,12 +328,12 @@
       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
       animation: shimmer 2s infinite;
     }
-    
+
     @keyframes shimmer {
       0% { transform: translateX(-100%); }
       100% { transform: translateX(100%); }
     }
-    
+
     .progress-text {
       display: flex;
       justify-content: space-between;
@@ -342,16 +342,16 @@
       color: var(--gray);
       font-weight: 600;
     }
-    
+
     /* Structure en accordéon avec meilleur contraste */
     .accordion {
       margin-bottom: 40px;
     }
-    
+
     .accordion-item {
       margin-bottom: 15px;
     }
-    
+
     .accordion-header {
       background: var(--white);
       color: var(--primary-dark);
@@ -369,14 +369,14 @@
       overflow: hidden;
       font-weight: 700;
     }
-    
+
     .accordion-header:hover {
       transform: translateY(-3px);
       box-shadow: var(--shadow-hover);
       border-color: var(--secondary-light);
       background: var(--lighter);
     }
-    
+
     .accordion-header::after {
       content: '⌄';
       font-size: 1.5rem;
@@ -384,17 +384,17 @@
       color: var(--secondary);
       font-weight: bold;
     }
-    
+
     .accordion-header.active::after {
       transform: rotate(180deg);
       color: var(--accent);
     }
-    
+
     .accordion-header.active {
       background: linear-gradient(135deg, var(--lighter), var(--white));
       border-color: var(--secondary);
     }
-    
+
     .accordion-header h3 {
       margin: 0;
       font-size: 1.5rem;
@@ -403,13 +403,13 @@
       gap: 20px;
       color: var(--primary-dark);
     }
-    
+
     .accordion-header .badge {
       display: flex;
       gap: 15px;
       align-items: center;
     }
-    
+
     .badge-item {
       padding: 10px 20px;
       border-radius: 25px;
@@ -421,69 +421,69 @@
       box-shadow: 0 3px 10px rgba(0,0,0,0.1);
       border: 2px solid transparent;
     }
-    
+
     /* Couleurs des badges avec bon contraste */
     .badge-item.completed {
       background: linear-gradient(135deg, var(--success-light), var(--success));
       color: white;
       border-color: var(--success);
     }
-    
+
     .badge-item.remaining {
       background: linear-gradient(135deg, var(--warning-light), var(--warning));
       color: white;
       border-color: var(--warning);
     }
-    
+
     .badge-item.total {
       background: linear-gradient(135deg, var(--info-light), var(--info));
       color: white;
       border-color: var(--info);
     }
-    
+
     /* Niveaux - Couleur foncée pour bon contraste */
     .niveau .accordion-header {
       border-left: 8px solid var(--primary);
       background: linear-gradient(135deg, var(--lighter), var(--white));
     }
-    
+
     .niveau .accordion-header:hover {
       border-left-color: var(--primary-dark);
     }
-    
+
     /* Matières - Bleu clair mais bon contraste */
     .matiere .accordion-header {
       border-left: 8px solid var(--secondary);
       background: linear-gradient(135deg, #f0f8ff, var(--white));
       margin-left: 25px;
     }
-    
+
     .matiere .accordion-header:hover {
       border-left-color: var(--secondary-light);
     }
-    
+
     /* Unités - Violet avec bon contraste */
     .unite .accordion-header {
       border-left: 8px solid var(--info);
       background: linear-gradient(135deg, #f8f0ff, var(--white));
       margin-left: 50px;
     }
-    
+
     .unite .accordion-header:hover {
       border-left-color: var(--info-light);
     }
-    
+
     /* Leçons - Vert avec bon contraste */
     .lecon .accordion-header {
       border-left: 8px solid var(--success);
       background: linear-gradient(135deg, #f0fff4, var(--white));
       margin-left: 75px;
     }
-    
+
     .lecon .accordion-header:hover {
       border-left-color: var(--success-light);
     }
-    
+
     .accordion-content {
       padding: 0;
       max-height: 0;
@@ -493,7 +493,7 @@
       border-radius: 0 0 var(--radius) var(--radius);
       margin-top: -10px;
     }
-    
+
     .accordion-content.expanded {
       padding: 30px;
       max-height: 5000px;
@@ -501,13 +501,13 @@
       border: 2px solid var(--light);
       border-top: none;
     }
-    
+
     /* Exercices avec bon espacement */
     .exercice-item {
       margin-left: 100px;
       margin-bottom: 20px;
     }
-    
+
     /* Cartes de réponse élégantes */
     .reponse {
       background: var(--white);
@@ -518,13 +518,13 @@
       border: 2px solid var(--light);
       overflow: hidden;
     }
-    
+
     .reponse:hover {
       box-shadow: var(--shadow-hover);
       border-color: var(--secondary-light);
       transform: translateY(-2px);
     }
-    
+
     .reponse summary {
       cursor: pointer;
       padding: 25px 30px;
@@ -540,11 +540,11 @@
       position: relative;
       font-size: 1.1rem;
     }
-    
+
     .reponse summary:hover {
       background: linear-gradient(135deg, var(--lighter), var(--white));
     }
-    
+
     .reponse summary::after {
       content: '⌄';
       font-size: 1.8rem;
@@ -553,17 +553,17 @@
       font-weight: bold;
       margin-left: 15px;
     }
-    
+
     .reponse details[open] summary::after {
       transform: rotate(180deg);
       color: var(--accent);
     }
-    
+
     .reponse details[open] summary {
       background: linear-gradient(135deg, var(--lighter), var(--white));
       border-left-color: var(--success);
     }
-    
+
     .theme {
       font-weight: 800;
       color: var(--white);
@@ -576,7 +576,7 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    
+
     .etoiles {
       color: var(--warning);
       font-weight: 800;
@@ -589,13 +589,13 @@
       border-radius: 25px;
       border: 2px solid rgba(243, 156, 18, 0.2);
     }
-    
+
     .reponse-content {
       padding: 30px;
       border-top: 2px solid var(--light);
       background: linear-gradient(135deg, #fafafa, var(--white));
     }
-    
+
     .content-block {
       background: var(--white);
       padding: 25px;
@@ -609,16 +609,16 @@
       line-height: 1.8;
       font-size: 1.05rem;
     }
-    
+
     .content-block p {
       margin: 0 0 15px 0;
       color: var(--primary);
     }
-    
+
     .content-block p:last-child {
       margin-bottom: 0;
     }
-    
+
     .content-title {
       display: flex;
       align-items: center;
@@ -628,12 +628,12 @@
       font-size: 1.3rem;
       font-weight: 700;
     }
-    
+
     .content-title i {
       color: var(--secondary);
       font-size: 1.5rem;
     }
-    
+
     /* Titres de section élégants */
     .section-title {
       display: flex;
@@ -646,7 +646,7 @@
       border-bottom: 3px solid var(--secondary);
       position: relative;
     }
-    
+
     .section-title i {
       margin-right: 20px;
       font-size: 2.2rem;
@@ -655,7 +655,7 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    
+
     .section-title::after {
       content: '';
       position: absolute;
@@ -665,7 +665,7 @@
       height: 3px;
       background: linear-gradient(90deg, var(--secondary), transparent);
     }
-    
+
     /* Bouton retour premium */
     .smart-back-link {
       display: inline-flex;
@@ -686,7 +686,7 @@
       overflow: hidden;
       text-transform: uppercase;
     }
-    
+
     .smart-back-link::before {
       content: '';
       position: absolute;
@@ -697,28 +697,28 @@
       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
       transition: left 0.7s;
     }
-    
+
     .smart-back-link:hover {
       transform: translateY(-5px) scale(1.05);
       box-shadow: 0 20px 40px rgba(44, 62, 80, 0.4);
       background: linear-gradient(135deg, var(--primary-dark), var(--primary));
       border-color: var(--secondary-light);
     }
-    
+
     .smart-back-link:hover::before {
       left: 100%;
     }
-    
+
     .smart-back-link i {
       margin-right: 15px;
       font-size: 1.3rem;
       transition: transform 0.3s;
     }
-    
+
     .smart-back-link:hover i {
       transform: translateX(-5px);
     }
-    
+
     /* Séparateurs élégants */
     hr {
       margin: 60px 0;
@@ -726,7 +726,7 @@
       border-top: 3px dashed var(--light);
       position: relative;
     }
-    
+
     hr::after {
       content: '✦ ✦ ✦';
       position: absolute;
@@ -739,7 +739,7 @@
       font-size: 1.5rem;
       letter-spacing: 10px;
     }
-    
+
     /* État vide élégant */
     .empty-state {
       text-align: center;
@@ -750,21 +750,21 @@
       border: 3px dashed var(--light);
       margin: 30px 0;
     }
-    
+
     .empty-state i {
       font-size: 5rem;
       margin-bottom: 30px;
       color: var(--gray-light);
       opacity: 0.7;
     }
-    
+
     .empty-state p {
       font-size: 1.4rem;
       margin-top: 20px;
       color: var(--gray);
       font-weight: 600;
     }
-    
+
     /* Indicateur de progression */
     .progress-indicator {
       display: inline-flex;
@@ -776,14 +776,14 @@
       font-weight: 700;
       box-shadow: 0 3px 10px rgba(0,0,0,0.1);
     }
-    
+
     /* Style pour les formules LaTeX */
     mjx-container {
       display: inline-block;
       vertical-align: middle;
       font-size: 1.1em;
     }
-    
+
     .math-display {
       background: rgba(52, 152, 219, 0.05);
       padding: 20px;
@@ -792,7 +792,7 @@
       overflow-x: auto;
       border-left: 4px solid var(--secondary);
     }
-    
+
     /* Navigation rapide pour parents */
     .quick-nav {
       position: fixed;
@@ -806,7 +806,7 @@
       border: 2px solid var(--light);
       min-width: 250px;
     }
-    
+
     .quick-nav h4 {
       color: var(--primary-dark);
       margin-bottom: 15px;
@@ -815,13 +815,13 @@
       align-items: center;
       gap: 10px;
     }
-    
+
     .nav-links {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    
+
     .nav-link {
       padding: 12px 20px;
       background: var(--lighter);
@@ -835,169 +835,169 @@
       gap: 10px;
       border: 2px solid transparent;
     }
-    
+
     .nav-link:hover {
       background: var(--secondary);
       color: white;
       transform: translateX(5px);
       border-color: var(--secondary-light);
     }
-    
+
     /* Responsive */
     @media (max-width: 1200px) {
       .container {
         padding: 30px;
       }
-      
+
       .quick-nav {
         display: none;
       }
     }
-    
+
     @media (max-width: 768px) {
       body {
         padding: 10px;
       }
-      
+
       .container {
         padding: 25px;
         border-radius: 20px;
       }
-      
+
       h2 {
         font-size: 2.2rem;
         padding: 0 10px 15px;
       }
-      
+
       .student-info {
         flex-direction: column;
         text-align: center;
         padding: 30px 20px;
       }
-      
+
       .student-info .avatar {
         margin-right: 0;
         margin-bottom: 20px;
         width: 90px;
         height: 90px;
       }
-      
+
       .student-info h3 {
         font-size: 1.8rem;
       }
-      
+
       .student-stats {
         flex-direction: column;
         align-items: center;
         gap: 10px;
       }
-      
+
       .stats-summary {
         grid-template-columns: 1fr;
         gap: 20px;
       }
-      
+
       .accordion-header {
         padding: 20px;
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
       }
-      
+
       .accordion-header h3 {
         font-size: 1.3rem;
       }
-      
+
       .accordion-header .badge {
         width: 100%;
         justify-content: space-between;
       }
-      
+
       .badge-item {
         padding: 8px 15px;
         font-size: 0.9rem;
       }
-      
+
       .matiere .accordion-header {
         margin-left: 15px;
       }
-      
+
       .unite .accordion-header {
         margin-left: 30px;
       }
-      
+
       .lecon .accordion-header {
         margin-left: 45px;
       }
-      
+
       .exercice-item {
         margin-left: 60px;
       }
-      
+
       .reponse summary {
         padding: 20px;
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
       }
-      
+
       .reponse-content {
         padding: 20px;
       }
-      
+
       .smart-back-link {
         width: 100%;
         justify-content: center;
         padding: 18px 30px;
         text-align: center;
       }
-      
+
       .content-block {
         padding: 20px;
         font-size: 1rem;
       }
-      
+
       .section-title {
         font-size: 1.8rem;
         margin: 40px 0 25px;
       }
     }
-    
+
     @media (max-width: 480px) {
       h2 {
         font-size: 1.8rem;
       }
-      
+
       .accordion-header {
         padding: 15px;
       }
-      
+
       .badge {
         flex-direction: column;
         gap: 10px;
       }
-      
+
       .badge-item {
         width: 100%;
         justify-content: center;
       }
-      
+
       .matiere .accordion-header,
       .unite .accordion-header,
       .lecon .accordion-header {
         margin-left: 10px;
       }
-      
+
       .exercice-item {
         margin-left: 20px;
       }
-      
+
       .content-block {
         padding: 15px;
       }
     }
   </style>
-  
+
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- MathJax pour les formules -->
@@ -1027,24 +1027,24 @@
   <!-- Navigation rapide pour les parents -->
   {% if is_parent_access %}
   <div class="quick-nav">
-    <h4><i class="fas fa-compass"></i> 
+    <h4><i class="fas fa-compass"></i>
       {% if lang == 'fr' %}Navigation Rapide{% else %}Quick Navigation{% endif %}
     </h4>
     <div class="nav-links">
       <a href="/parent-dashboard" class="nav-link">
-        <i class="fas fa-home"></i> 
+        <i class="fas fa-home"></i>
         {% if lang == 'fr' %}Tableau de bord{% else %}Dashboard{% endif %}
       </a>
       <a href="#stats" class="nav-link">
-        <i class="fas fa-chart-bar"></i> 
+        <i class="fas fa-chart-bar"></i>
         {% if lang == 'fr' %}Statistiques{% else %}Statistics{% endif %}
       </a>
       <a href="#structure" class="nav-link">
-        <i class="fas fa-sitemap"></i> 
+        <i class="fas fa-sitemap"></i>
         {% if lang == 'fr' %}Structure{% else %}Structure{% endif %}
       </a>
       <a href="#tests" class="nav-link">
-        <i class="fas fa-file-alt"></i> 
+        <i class="fas fa-file-alt"></i>
         {% if lang == 'fr' %}Tests{% else %}Tests{% endif %}
       </a>
     </div>
@@ -1059,7 +1059,7 @@
         <i class="fas fa-history"></i> Exercise History
       {% endif %}
     </h2>
-    
+
     <!-- Bandeau niveau de l'élève -->
     <div style="text-align: center; margin-bottom: 30px;">
       <div class="niveau-badge">
@@ -1071,7 +1071,7 @@
         {% endif %}
       </div>
     </div>
-    
+
     <!-- Carte élève premium -->
     <div class="student-info">
       <div class="avatar">
@@ -1089,33 +1089,33 @@
         <div class="student-stats">
           <div class="stat-mini">
             <i class="fas fa-check-circle"></i>
-            {{ total_exercices_effectues }} 
+            {{ total_exercices_effectues }}
             {% if lang == 'fr' %}complétés{% else %}completed{% endif %}
           </div>
           <div class="stat-mini">
             <i class="fas fa-clock"></i>
-            {{ total_exercices_restants }} 
+            {{ total_exercices_restants }}
             {% if lang == 'fr' %}restants{% else %}remaining{% endif %}
           </div>
           <div class="stat-mini">
             <i class="fas fa-trophy"></i>
             {% set total = total_exercices_effectues + total_exercices_restants %}
             {% if total > 0 %}
-              {{ ((total_exercices_effectues / total) * 100)|round|int }}% 
+              {{ ((total_exercices_effectues / total) * 100)|round|int }}%
               {% if lang == 'fr' %}complété{% else %}completed{% endif %}
             {% else %}
-              0% 
+              0%
               {% if lang == 'fr' %}complété{% else %}completed{% endif %}
             {% endif %}
           </div>
         </div>
       </div>
     </div>
-    
+
     <!-- Statistiques globales -->
     <div id="stats" class="stats-summary">
       <div class="stat-card">
-        <h3><i class="fas fa-check-circle"></i> 
+        <h3><i class="fas fa-check-circle"></i>
           {% if lang == 'fr' %}Exercices Effectués{% else %}Exercises Completed{% endif %}
         </h3>
         <div class="stat-numbers">
@@ -1130,16 +1130,16 @@
           <div class="progress-bar" style="width: {{ (total_exercices_effectues / total * 100)|round }}%"></div>
         </div>
         <div class="progress-text">
-          <span>{{ (total_exercices_effectues / total * 100)|round }}% 
+          <span>{{ (total_exercices_effectues / total * 100)|round }}%
             {% if lang == 'fr' %}complété{% else %}completed{% endif %}
           </span>
           <span>{{ total_exercices_effectues }}/{{ total }}</span>
         </div>
         {% endif %}
       </div>
-      
+
       <div class="stat-card">
-        <h3><i class="fas fa-clock"></i> 
+        <h3><i class="fas fa-clock"></i>
           {% if lang == 'fr' %}Exercices Restants{% else %}Exercises Remaining{% endif %}
         </h3>
         <div class="stat-numbers">
@@ -1154,16 +1154,16 @@
           <div class="progress-bar" style="width: {{ (total_exercices_restants / total * 100)|round }}%"></div>
         </div>
         <div class="progress-text">
-          <span>{{ (total_exercices_restants / total * 100)|round }}% 
+          <span>{{ (total_exercices_restants / total * 100)|round }}%
             {% if lang == 'fr' %}restant{% else %}remaining{% endif %}
           </span>
           <span>{{ total_exercices_restants }}/{{ total }}</span>
         </div>
         {% endif %}
       </div>
-      
+
       <div class="stat-card">
-        <h3><i class="fas fa-trophy"></i> 
+        <h3><i class="fas fa-trophy"></i>
           {% if lang == 'fr' %}Progression Globale{% else %}Global Progress{% endif %}
         </h3>
         <div class="stat-numbers">
@@ -1185,14 +1185,14 @@
           <div class="progress-bar" style="width: {{ (total_exercices_effectues / total * 100)|round }}%"></div>
         </div>
         <div class="progress-text">
-          <span>{{ total_exercices_effectues }}/{{ total }} 
+          <span>{{ total_exercices_effectues }}/{{ total }}
             {% if lang == 'fr' %}exercices{% else %}exercises{% endif %}
           </span>
         </div>
         {% endif %}
       </div>
     </div>
-    
+
     <!-- Structure hiérarchique des exercices -->
     <div id="structure" class="section-title">
       <i class="fas fa-sitemap"></i>
@@ -1204,13 +1204,13 @@
         {% endif %}
       </span>
     </div>
-    
+
     {% if data_structure.niveaux %}
       <div class="accordion">
         {% for niveau_nom, niveau_data in data_structure.niveaux.items() %}
         <div class="accordion-item niveau">
           <div class="accordion-header" onclick="toggleAccordion(this)">
-            <h3><i class="fas fa-layer-group"></i> 
+            <h3><i class="fas fa-layer-group"></i>
               {% if lang == 'fr' %}Niveau:{% else %}Level:{% endif %} {{ niveau_nom }}
             </h3>
             <div class="badge">
@@ -1230,7 +1230,7 @@
               {% for matiere_nom, matiere_data in niveau_data.matieres.items() %}
               <div class="accordion-item matiere">
                 <div class="accordion-header" onclick="toggleAccordion(this)">
-                  <h3><i class="fas fa-book"></i> 
+                  <h3><i class="fas fa-book"></i>
                     {% if lang == 'fr' %}Matière:{% else %}Subject:{% endif %} {{ matiere_nom }}
                   </h3>
                   <div class="badge">
@@ -1250,7 +1250,7 @@
                     {% for unite_nom, unite_data in matiere_data.unites.items() %}
                     <div class="accordion-item unite">
                       <div class="accordion-header" onclick="toggleAccordion(this)">
-                        <h3><i class="fas fa-cube"></i> 
+                        <h3><i class="fas fa-cube"></i>
                           {% if lang == 'fr' %}Unité:{% else %}Unit:{% endif %} {{ unite_nom }}
                         </h3>
                         <div class="badge">
@@ -1270,7 +1270,7 @@
                           {% for lecon_nom, lecon_data in unite_data.lecons.items() %}
                           <div class="accordion-item lecon">
                             <div class="accordion-header" onclick="toggleAccordion(this)">
-                              <h3><i class="fas fa-file-alt"></i> 
+                              <h3><i class="fas fa-file-alt"></i>
                                 {% if lang == 'fr' %}Leçon:{% else %}Lesson:{% endif %} {{ lecon_nom }}
                               </h3>
                               <div class="badge">
@@ -1289,7 +1289,7 @@
                               {% if lecon_data.exercices %}
                                 <div style="margin: 20px 0 30px 0; padding: 20px; background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(52, 152, 219, 0.05)); border-radius: var(--radius-sm); border-left: 6px solid var(--secondary);">
                                   <strong style="color: var(--primary-dark); font-size: 1.1rem; display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-list-check"></i> 
+                                    <i class="fas fa-list-check"></i>
                                     {% if lang == 'fr' %}
                                       Exercices de cette leçon ({{ lecon_data.exercices_effectues }}/{{ lecon_data.exercices_totaux }} effectués)
                                     {% else %}
@@ -1300,7 +1300,7 @@
                                     <div class="progress-bar" style="width: {% if lecon_data.exercices_totaux > 0 %}{{ (lecon_data.exercices_effectues / lecon_data.exercices_totaux * 100)|round }}%{% else %}0%{% endif %}"></div>
                                   </div>
                                 </div>
-                                
+
                                 {% for exercice in lecon_data.exercices %}
                                 <div class="exercice-item">
                                   <details class="reponse">
@@ -1334,7 +1334,55 @@
                                         <i class="fas fa-robot"></i>
                                         <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
                                       </div>
-                                      <div class="content-block math-content">{{ exercice.analyse_ia|default('', true)|safe }}</div>
+                                      <!-- NOUVELLE SECTION ANALYSE IA -->
+                                      <div class="content-block math-content">
+                                          {% if exercice.analyse_ia.original %}
+                                              <div style="margin-bottom: 20px;">
+                                                  <strong style="color: var(--primary-dark); font-size: 1.1rem; display: block; margin-bottom: 10px;">
+                                                      {{ 'Analyse initiale' if lang == 'fr' else 'Initial Analysis' }}:
+                                                  </strong>
+                                                  <p style="white-space: pre-line;">{{ exercice.analyse_ia.original }}</p>
+                                              </div>
+                                          {% endif %}
+
+                                          {% if exercice.analyse_ia.contestation %}
+                                              <div style="margin-bottom: 20px; background: rgba(243, 156, 18, 0.05); padding: 15px; border-radius: var(--radius-sm); border-left: 4px solid var(--warning);">
+                                                  <strong style="color: var(--warning); font-size: 1.1rem; display: block; margin-bottom: 10px;">
+                                                      {{ 'Contestation de l\'élève' if lang == 'fr' else 'Student Contestation' }}:
+                                                  </strong>
+                                                  <p style="white-space: pre-line; margin-bottom: 10px;">
+                                                      <strong>{{ 'Justification' if lang == 'fr' else 'Justification' }}:</strong> {{ exercice.analyse_ia.contestation.justification }}
+                                                  </p>
+                                                  <p style="white-space: pre-line; margin-bottom: 10px;">
+                                                      <strong>{{ 'Note proposée' if lang == 'fr' else 'Proposed Score' }}:</strong> {{ exercice.analyse_ia.contestation.proposed_stars }}/5
+                                                  </p>
+                                                  <p style="white-space: pre-line; font-size: 0.9rem; color: var(--gray);">
+                                                      <i class="far fa-calendar"></i> {{ exercice.analyse_ia.contestation.date[:10] }} à {{ exercice.analyse_ia.contestation.date[11:16] }}
+                                                  </p>
+                                              </div>
+                                          {% endif %}
+
+                                          {% if exercice.analyse_ia.current_feedback %}
+                                              <div style="margin-bottom: 20px; background: rgba(39, 174, 96, 0.05); padding: 15px; border-radius: var(--radius-sm); border-left: 4px solid var(--success);">
+                                                  <strong style="color: var(--success); font-size: 1.1rem; display: block; margin-bottom: 10px;">
+                                                      {{ 'Feedback final' if lang == 'fr' else 'Final Feedback' }}:
+                                                  </strong>
+                                                  <p style="white-space: pre-line;">{{ exercice.analyse_ia.current_feedback }}</p>
+                                              </div>
+                                          {% endif %}
+
+                                          <div style="display: flex; align-items: center; gap: 20px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--light);">
+                                              <div>
+                                                  <strong style="color: var(--primary-dark); font-size: 1.1rem;">
+                                                      {{ 'Note actuelle' if lang == 'fr' else 'Current Score' }}:
+                                                  </strong>
+                                                  <span class="etoiles" style="font-size: 1.6rem; margin-left: 10px;">
+                                                      {{ exercice.analyse_ia.current_stars }} <i class="fas fa-star"></i>
+                                                  </span>
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <!-- FIN NOUVELLE SECTION -->
 
                                       <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                                         <div>
@@ -1350,11 +1398,11 @@
                                   </details>
                                 </div>
                                 {% endfor %}
-                                
+
                                 {% if lecon_data.exercices_restants > 0 %}
                                 <div style="margin: 25px 0 15px 0; padding: 20px; background: linear-gradient(135deg, rgba(243, 156, 18, 0.1), rgba(243, 156, 18, 0.05)); border-radius: var(--radius-sm); border-left: 6px solid var(--warning);">
                                   <strong style="color: var(--warning); font-size: 1.1rem; display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-clock"></i> 
+                                    <i class="fas fa-clock"></i>
                                     {% if lang == 'fr' %}
                                       {{ lecon_data.exercices_restants }} exercice(s) restant(s) dans cette leçon
                                     {% else %}
@@ -1446,21 +1494,21 @@
         </p>
       </div>
     {% endif %}
-    
+
     <!-- Section des tests sommatifs -->
     {% if tests %}
     <hr>
-    
+
     <div id="tests" class="section-title">
       <i class="fas fa-file-signature"></i>
       <span>{% if lang == 'fr' %}Tests Sommatifs{% else %}Final Tests{% endif %}</span>
     </div>
-    
+
     <div class="accordion">
       {% for t in tests %}
       <div class="accordion-item unite">
         <div class="accordion-header" onclick="toggleAccordion(this)">
-          <h3><i class="fas fa-file-signature"></i> 
+          <h3><i class="fas fa-file-signature"></i>
             {% if lang == 'fr' %}Test:{% else %}Test:{% endif %} {{ t.unite or "Test Sommatif" }}
           </h3>
           <div class="badge">
@@ -1523,38 +1571,38 @@
       {% endfor %}
     </div>
     {% endif %}
-    
+
     <!-- Bouton retour intelligent -->
     <div style="text-align: center; margin-top: 60px;">
       {% if is_parent_access %}
         <a class="smart-back-link" href="{{ url_for('parent_dashboard') }}">
-          <i class="fas fa-arrow-left"></i> 
+          <i class="fas fa-arrow-left"></i>
           {% if lang == 'fr' %}Retour au Tableau de Bord Parent{% else %}Back to Parent Dashboard{% endif %}
         </a>
       {% elif is_enseignant_access %}
         <a class="smart-back-link" href="{{ url_for('dashboard_enseignant') }}">
-          <i class="fas fa-arrow-left"></i> 
+          <i class="fas fa-arrow-left"></i>
           {% if lang == 'fr' %}Retour au Tableau de Bord Enseignant{% else %}Back to Teacher Dashboard{% endif %}
         </a>
       {% else %}
         <a class="smart-back-link" href="{{ url_for('dashboard_eleve', username=eleve.username) }}">
-          <i class="fas fa-arrow-left"></i> 
+          <i class="fas fa-arrow-left"></i>
           {% if lang == 'fr' %}Retour au Tableau de Bord{% else %}Back to Dashboard{% endif %}
         </a>
       {% endif %}
     </div>
   </div>
-  
+
   <script>
     // Gestion des accordéons améliorée
     function toggleAccordion(element) {
       const content = element.nextElementSibling;
       const isExpanded = content.classList.contains('expanded');
-      
+
       // Fermer tous les accordéons du même niveau
       const parentItem = element.closest('.accordion-item');
       const siblings = parentItem ? parentItem.querySelectorAll('.accordion-content.expanded') : [];
-      
+
       siblings.forEach(sibling => {
         if (sibling !== content) {
           sibling.classList.remove('expanded');
@@ -1566,11 +1614,11 @@
           }
         }
       });
-      
+
       // Basculer l'état actuel
       content.classList.toggle('expanded');
       element.classList.toggle('active');
-      
+
       // Ajuster le border-radius de l'en-tête
       if (content.classList.contains('expanded')) {
         element.style.borderBottomRightRadius = '0';
@@ -1579,7 +1627,7 @@
         element.style.borderBottomRightRadius = 'var(--radius)';
         element.style.borderBottomLeftRadius = 'var(--radius)';
       }
-      
+
       // Forcer le re-rendu MathJax après ouverture
       if (content.classList.contains('expanded')) {
         setTimeout(() => {
@@ -1587,7 +1635,7 @@
             MathJax.typesetPromise([content]).catch(err => console.warn('MathJax error:', err));
           }
         }, 300);
-        
+
         // Animer la barre de progression
         content.querySelectorAll('.progress-bar').forEach(bar => {
           const width = bar.style.width;
@@ -1598,7 +1646,7 @@
         });
       }
     }
-    
+
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
       // Marquer tous les blocs de contenu pour MathJax
@@ -1607,23 +1655,23 @@
           block.classList.add('math-content');
         }
       });
-      
+
       // Traitement initial MathJax
       if (window.MathJax && window.MathJax.typesetPromise) {
         setTimeout(() => {
           MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
         }, 500);
       }
-      
+
       // Traitement des réponses JSON
       document.querySelectorAll('.content-block').forEach(block => {
         try {
           const content = block.innerHTML.trim();
           if (content.startsWith('{') && content.endsWith('}')) {
             const data = JSON.parse(content);
-            const feedback = data.current_feedback || data.feedback || data.original || 
+            const feedback = data.current_feedback || data.feedback || data.original ||
                             data.analyse || data.analysis || data.reponse || content;
-            
+
             let cleanFeedback = String(feedback)
               .replace(/\\n/g, '<br>')
               .replace(/\\r/g, '')
@@ -1632,14 +1680,14 @@
               .replace(/\\\\\]/g, '$$')
               .replace(/\\\\\(/g, '$')
               .replace(/\\\\\)/g, '$');
-            
+
             block.innerHTML = cleanFeedback;
           }
         } catch(e) {
           // Pas du JSON
         }
       });
-      
+
       // Animer les barres de progression
       document.querySelectorAll('.progress-bar').forEach(bar => {
         const width = bar.style.width;
@@ -1648,7 +1696,7 @@
           bar.style.width = width;
         }, 300);
       });
-      
+
       // Navigation rapide pour les ancres
       document.querySelectorAll('.nav-link[href^="#"]').forEach(link => {
         link.addEventListener('click', function(e) {
@@ -1663,7 +1711,7 @@
           }
         });
       });
-      
+
       // Ouvrir automatiquement le premier niveau
       const firstNiveau = document.querySelector('.niveau .accordion-header');
       if (firstNiveau) {
@@ -1672,7 +1720,7 @@
         }, 800);
       }
     });
-    
+
     // Observer pour traiter le contenu dynamique
     const observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
@@ -1689,12 +1737,12 @@
         }
       });
     });
-    
+
     observer.observe(document.body, {
       childList: true,
       subtree: true
     });
-    
+
     // Améliorer l'accessibilité des accordéons
     document.querySelectorAll('.accordion-header').forEach(header => {
       header.setAttribute('role', 'button');
