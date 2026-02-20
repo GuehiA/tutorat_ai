@@ -12,11 +12,6 @@
   <meta name="theme-color" content="#ffffff">
   <title>{% if lang == 'fr' %}Historique des réponses{% else %}Answer History{% endif %}</title>
   
-  <!-- Support des emojis et caractères spéciaux -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
-  
   <style>
     :root {
       --primary: #2c3e50;
@@ -48,7 +43,6 @@
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
       --font-heading: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-emoji: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
     }
     
     * {
@@ -58,7 +52,7 @@
     }
     
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
+      font-family: var(--font-body);
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       padding: 20px;
       min-height: 100vh;
@@ -66,11 +60,6 @@
       line-height: 1.7;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-    }
-    
-    /* Support spécifique pour les emojis */
-    .content-block, .reponse-content, .student-info, .stat-card {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
     }
     
     .container {
@@ -619,7 +608,6 @@
       border: 2px solid var(--light);
       line-height: 1.8;
       font-size: 1.05rem;
-      white-space: pre-wrap;
     }
     
     .content-block p {
@@ -644,65 +632,6 @@
     .content-title i {
       color: var(--secondary);
       font-size: 1.5rem;
-    }
-    
-    /* Styles pour les messages d'erreur et scores */
-    .error-message {
-      display: block;
-      background: linear-gradient(135deg, #fee, #fdd);
-      color: #c00;
-      padding: 15px 20px;
-      border-radius: var(--radius-sm);
-      border-left: 6px solid var(--accent);
-      margin-bottom: 20px;
-      font-weight: 600;
-      font-size: 1.1rem;
-      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.15);
-    }
-    
-    .warning-message {
-      display: block;
-      background: linear-gradient(135deg, #fff3e0, #ffe0b2);
-      color: #e67e22;
-      padding: 15px 20px;
-      border-radius: var(--radius-sm);
-      border-left: 6px solid var(--warning);
-      margin-bottom: 20px;
-      font-weight: 600;
-      font-size: 1.1rem;
-      box-shadow: 0 4px 15px rgba(243, 156, 18, 0.15);
-    }
-    
-    .score-badge {
-      display: inline-block;
-      background: linear-gradient(135deg, var(--success-light), var(--success));
-      color: white;
-      padding: 10px 25px;
-      border-radius: 30px;
-      font-weight: 800;
-      font-size: 1.2rem;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-      border: 2px solid white;
-    }
-    
-    /* Style pour le contenu traité */
-    .processed-json {
-      background: linear-gradient(135deg, #fafafa, var(--white));
-      border-left: 6px solid var(--info);
-    }
-    
-    /* Amélioration du rendu LaTeX */
-    .mjx-chtml {
-      font-size: 1.1em !important;
-    }
-    
-    .math-content {
-      line-height: 1.8;
-    }
-    
-    .math-content p {
-      margin: 1em 0;
     }
     
     /* Titres de section élégants */
@@ -1405,7 +1334,7 @@
                                         <i class="fas fa-robot"></i>
                                         <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
                                       </div>
-                                      <div class="content-block math-content" id="analyse-ia-{{ loop.index }}">{{ exercice.analyse_ia|default('', true)|safe }}</div>
+                                      <div class="content-block math-content">{{ exercice.analyse_ia|default('', true)|safe }}</div>
 
                                       <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                                         <div>
@@ -1617,7 +1546,7 @@
   </div>
   
   <script>
-    // Gestion des accordéons améliorée (ta fonction originale qui fonctionne)
+    // Gestion des accordéons améliorée
     function toggleAccordion(element) {
       const content = element.nextElementSibling;
       const isExpanded = content.classList.contains('expanded');
@@ -1669,62 +1598,6 @@
         });
       }
     }
-
-    // Fonction intelligente pour parser tous les types de JSON
-    function parseJSONContent(jsonString) {
-      try {
-        // Nettoyer la chaîne JSON
-        let cleanString = jsonString
-          .replace(/\\n/g, '\n')
-          .replace(/\\r/g, '')
-          .replace(/\\t/g, '  ');
-        
-        const data = JSON.parse(cleanString);
-        let result = [];
-        
-        // 1. Vérifier s'il y a un feedback dans symbolic_verification
-        if (data.symbolic_verification) {
-          if (data.symbolic_verification.feedback) {
-            result.push(`<div class="warning-message">${data.symbolic_verification.feedback}</div>`);
-          }
-          if (data.symbolic_verification.result && data.symbolic_verification.result.error) {
-            result.push(`<div class="error-message">Erreur: ${data.symbolic_verification.result.error}</div>`);
-          }
-        }
-        
-        // 2. Afficher le score depuis metadata
-        if (data.metadata) {
-          if (data.metadata.final_score !== undefined) {
-            result.push(`<div class="score-badge">Note finale: ${data.metadata.final_score}/5</div>`);
-          } else if (data.metadata.gpt_score !== undefined) {
-            result.push(`<div class="score-badge">Score GPT: ${data.metadata.gpt_score}/5</div>`);
-          }
-        }
-        
-        // 3. Chercher du texte dans d'autres champs
-        const textFields = ['current_feedback', 'feedback', 'analysis', 'result'];
-        for (const field of textFields) {
-          if (data[field] && typeof data[field] === 'string' && data[field].length > 0) {
-            // Ne pas ajouter si c'est le même que ce qu'on a déjà
-            if (!result.some(r => r.includes(data[field]))) {
-              result.push(`<div>${data[field].replace(/\n/g, '<br>')}</div>`);
-            }
-          }
-        }
-        
-        // 4. Si on a des résultats, les retourner
-        if (result.length > 0) {
-          return result.join('\n');
-        }
-        
-        // 5. Sinon, afficher l'objet complet formaté
-        return '<pre>' + JSON.stringify(data, null, 2).replace(/\n/g, '<br>') + '</pre>';
-        
-      } catch (e) {
-        // Si ce n'est pas du JSON, retourner le texte brut avec les sauts de ligne
-        return jsonString.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
-      }
-    }
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
@@ -1735,33 +1608,37 @@
         }
       });
       
-      // Traitement de TOUS les blocs de contenu qui pourraient contenir du JSON
-      document.querySelectorAll('.content-block').forEach(block => {
-        let content = block.innerHTML.trim();
-        
-        // Vérifier si le contenu ressemble à du JSON
-        if ((content.startsWith('{') && content.endsWith('}')) || 
-            (content.startsWith('[') && content.endsWith(']')) ||
-            content.includes('"symbolic_verification"') ||
-            content.includes('"current_feedback"') ||
-            content.includes('"metadata"')) {
-          
-          const parsed = parseJSONContent(content);
-          block.innerHTML = parsed;
-          block.classList.add('processed-json');
-        } 
-        // Sinon, juste remplacer les \n par <br>
-        else if (content.includes('\\n')) {
-          block.innerHTML = content.replace(/\\n/g, '<br>');
-        }
-      });
-      
       // Traitement initial MathJax
       if (window.MathJax && window.MathJax.typesetPromise) {
         setTimeout(() => {
           MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
         }, 500);
       }
+      
+      // Traitement des réponses JSON
+      document.querySelectorAll('.content-block').forEach(block => {
+        try {
+          const content = block.innerHTML.trim();
+          if (content.startsWith('{') && content.endsWith('}')) {
+            const data = JSON.parse(content);
+            const feedback = data.current_feedback || data.feedback || data.original || 
+                            data.analyse || data.analysis || data.reponse || content;
+            
+            let cleanFeedback = String(feedback)
+              .replace(/\\n/g, '<br>')
+              .replace(/\\r/g, '')
+              .replace(/\\t/g, ' ')
+              .replace(/\\\\\[/g, '$$')
+              .replace(/\\\\\]/g, '$$')
+              .replace(/\\\\\(/g, '$')
+              .replace(/\\\\\)/g, '$');
+            
+            block.innerHTML = cleanFeedback;
+          }
+        } catch(e) {
+          // Pas du JSON
+        }
+      });
       
       // Animer les barres de progression
       document.querySelectorAll('.progress-bar').forEach(bar => {
@@ -1801,23 +1678,12 @@
       mutations.forEach(function(mutation) {
         if (mutation.addedNodes.length) {
           mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1 && node.classList) {
-              if (node.classList.contains('accordion-content')) {
-                setTimeout(() => {
-                  if (window.MathJax && window.MathJax.typesetPromise) {
-                    MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
-                  }
-                }, 100);
-              }
-              
-              // Traiter les nouveaux blocs de contenu
-              if (node.querySelectorAll) {
-                node.querySelectorAll('.content-block').forEach(block => {
-                  if (block.innerHTML.includes('\\n')) {
-                    block.innerHTML = block.innerHTML.replace(/\\n/g, '<br>');
-                  }
-                });
-              }
+            if (node.nodeType === 1 && node.classList && node.classList.contains('accordion-content')) {
+              setTimeout(() => {
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
+                }
+              }, 100);
             }
           });
         }
