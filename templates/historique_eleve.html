@@ -12,6 +12,11 @@
   <meta name="theme-color" content="#ffffff">
   <title>{% if lang == 'fr' %}Historique des réponses{% else %}Answer History{% endif %}</title>
   
+  <!-- Support des emojis et caractères spéciaux -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+  
   <style>
     :root {
       --primary: #2c3e50;
@@ -43,6 +48,7 @@
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
       --font-heading: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-emoji: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
     }
     
     * {
@@ -52,7 +58,7 @@
     }
     
     body {
-      font-family: var(--font-body);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       padding: 20px;
       min-height: 100vh;
@@ -60,6 +66,11 @@
       line-height: 1.7;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Support spécifique pour les emojis */
+    .content-block, .reponse-content, .student-info, .stat-card {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
     }
     
     .container {
@@ -608,6 +619,7 @@
       border: 2px solid var(--light);
       line-height: 1.8;
       font-size: 1.05rem;
+      white-space: pre-wrap; /* Conserve les sauts de ligne */
     }
     
     .content-block p {
@@ -632,6 +644,53 @@
     .content-title i {
       color: var(--secondary);
       font-size: 1.5rem;
+    }
+    
+    /* Styles pour les messages d'erreur et scores */
+    .error-message {
+      display: inline-block;
+      background: linear-gradient(135deg, #fee, #fdd);
+      color: #c00;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      border-left: 6px solid var(--accent);
+      margin-bottom: 20px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);
+      width: 100%;
+    }
+    
+    .score-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--success-light), var(--success));
+      color: white;
+      padding: 10px 25px;
+      border-radius: 30px;
+      font-weight: 800;
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+      border: 2px solid white;
+    }
+    
+    /* Style pour le contenu traité */
+    .processed-json {
+      background: linear-gradient(135deg, #fafafa, var(--white));
+      border-left: 6px solid var(--info);
+    }
+    
+    /* Amélioration du rendu LaTeX */
+    .mjx-chtml {
+      font-size: 1.1em !important;
+    }
+    
+    .math-content {
+      line-height: 1.8;
+    }
+    
+    .math-content p {
+      margin: 1em 0;
     }
     
     /* Titres de section élégants */
@@ -1546,7 +1605,7 @@
   </div>
   
   <script>
-    // Gestion des accordéons améliorée
+    // Gestion des accordéons améliorée (ta fonction originale qui fonctionne)
     function toggleAccordion(element) {
       const content = element.nextElementSibling;
       const isExpanded = content.classList.contains('expanded');
@@ -1598,6 +1657,79 @@
         });
       }
     }
+
+    // Fonction améliorée de traitement des réponses JSON
+    function processJSONContent(content) {
+      try {
+        // Nettoyer d'abord les caractères d'échappement
+        let cleanContent = content
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '')
+          .replace(/\\t/g, '  ');
+        
+        const data = JSON.parse(cleanContent);
+        
+        // Chercher récursivement le texte pertinent
+        function findRelevantText(obj) {
+          if (!obj) return '';
+          
+          // Priorité des clés à chercher
+          const priorityKeys = [
+            'current_feedback', 'feedback', 'analyse_ia', 'analysis',
+            'reponse_eleve', 'student_answer', 'answer',
+            'enonce', 'question', 'prompt', 'message', 'error'
+          ];
+          
+          // Chercher les clés prioritaires
+          for (const key of priorityKeys) {
+            if (obj[key] && typeof obj[key] === 'string') {
+              return obj[key];
+            }
+          }
+          
+          // Si c'est une chaîne
+          if (typeof obj === 'string') return obj;
+          
+          // Si c'est un objet, parcourir ses propriétés
+          if (typeof obj === 'object') {
+            // Chercher une propriété 'result' ou 'data'
+            if (obj.result && typeof obj.result === 'object') {
+              const result = findRelevantText(obj.result);
+              if (result) return result;
+            }
+            
+            // Parcourir toutes les propriétés
+            for (const key in obj) {
+              if (typeof obj[key] === 'string' && obj[key].length > 10) {
+                return obj[key];
+              }
+              const result = findRelevantText(obj[key]);
+              if (result) return result;
+            }
+          }
+          
+          return JSON.stringify(obj, null, 2);
+        }
+        
+        let extractedText = findRelevantText(data);
+        
+        // Gérer les erreurs spécifiques
+        if (data.symbolic_verification && data.symbolic_verification.result && data.symbolic_verification.result.error) {
+          extractedText = `⚠️ ${data.symbolic_verification.result.error}\n\n` + extractedText;
+        }
+        
+        // Ajouter la note si disponible
+        if (data.note || data.score) {
+          const note = data.note || data.score;
+          extractedText = `Note: ${note}/5\n\n` + extractedText;
+        }
+        
+        return extractedText;
+      } catch(e) {
+        // Si ce n'est pas du JSON valide, retourner le contenu original nettoyé
+        return content.replace(/\\n/g, '\n').replace(/\\r/g, '').replace(/\\t/g, '  ');
+      }
+    }
     
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
@@ -1608,37 +1740,36 @@
         }
       });
       
+      // Traitement amélioré des réponses JSON et des sauts de ligne
+      document.querySelectorAll('.content-block').forEach(block => {
+        let content = block.innerHTML.trim();
+        
+        // Vérifier si c'est du JSON
+        if ((content.startsWith('{') && content.endsWith('}')) || 
+            (content.startsWith('[') && content.endsWith(']'))) {
+          
+          const processed = processJSONContent(content);
+          
+          // Convertir les sauts de ligne en <br> pour l'affichage HTML
+          block.innerHTML = processed
+            .replace(/\n/g, '<br>')
+            .replace(/\\n/g, '<br>');
+            
+          block.classList.add('processed-json');
+        } else {
+          // Pour le texte normal, juste remplacer \n par <br>
+          if (content.includes('\\n')) {
+            block.innerHTML = content.replace(/\\n/g, '<br>');
+          }
+        }
+      });
+      
       // Traitement initial MathJax
       if (window.MathJax && window.MathJax.typesetPromise) {
         setTimeout(() => {
           MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
         }, 500);
       }
-      
-      // Traitement des réponses JSON
-      document.querySelectorAll('.content-block').forEach(block => {
-        try {
-          const content = block.innerHTML.trim();
-          if (content.startsWith('{') && content.endsWith('}')) {
-            const data = JSON.parse(content);
-            const feedback = data.current_feedback || data.feedback || data.original || 
-                            data.analyse || data.analysis || data.reponse || content;
-            
-            let cleanFeedback = String(feedback)
-              .replace(/\\n/g, '<br>')
-              .replace(/\\r/g, '')
-              .replace(/\\t/g, ' ')
-              .replace(/\\\\\[/g, '$$')
-              .replace(/\\\\\]/g, '$$')
-              .replace(/\\\\\(/g, '$')
-              .replace(/\\\\\)/g, '$');
-            
-            block.innerHTML = cleanFeedback;
-          }
-        } catch(e) {
-          // Pas du JSON
-        }
-      });
       
       // Animer les barres de progression
       document.querySelectorAll('.progress-bar').forEach(bar => {
@@ -1678,12 +1809,23 @@
       mutations.forEach(function(mutation) {
         if (mutation.addedNodes.length) {
           mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1 && node.classList && node.classList.contains('accordion-content')) {
-              setTimeout(() => {
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
-                }
-              }, 100);
+            if (node.nodeType === 1 && node.classList) {
+              if (node.classList.contains('accordion-content')) {
+                setTimeout(() => {
+                  if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([node]).catch(err => console.warn('MathJax dynamic error:', err));
+                  }
+                }, 100);
+              }
+              
+              // Traiter les nouveaux blocs de contenu
+              if (node.querySelectorAll) {
+                node.querySelectorAll('.content-block').forEach(block => {
+                  if (block.innerHTML.includes('\\n')) {
+                    block.innerHTML = block.innerHTML.replace(/\\n/g, '<br>');
+                  }
+                });
+              }
             }
           });
         }
