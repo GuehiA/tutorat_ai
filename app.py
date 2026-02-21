@@ -2562,24 +2562,35 @@ def chat():
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
     """Nouvel exercice avec Naima - réinitialise COMPLÈTEMENT"""
-    print(f"[DEBUG] Nouvel exercice - Session keys: {list(session.keys())}")
-    print(f"[DEBUG] Eleve ID: {session.get('eleve_id')}")
+    from datetime import datetime
+    import time
     
-    if "eleve_id" not in session:
-        print("[DEBUG] REDIRECT: Pas d'eleve_id dans la session")
+    print(f"[DEBUG] Nouvel exercice - Session keys: {list(session.keys())}")
+    print(f"[DEBUG] User ID: {session.get('user_id')}")
+    
+    # ✅ Vérifier l'authentification (comme dans enseignant_virtuel)
+    if "user_id" not in session:
+        print("[DEBUG] REDIRECT: Pas de user_id dans la session")
+        return redirect(url_for("login_eleve"))
+
+    # ✅ Récupérer l'utilisateur par son ID
+    utilisateur = User.query.get(session["user_id"])
+    
+    # ✅ Vérifier que c'est bien un élève
+    if not utilisateur or utilisateur.role != "eleve":
+        print(f"[DEBUG] REDIRECT: Utilisateur non trouvé ou pas élève")
         return redirect(url_for("login_eleve"))
     
-    # IMPORTANT: Sauvegarder les données essentielles de session
-    eleve_id = session.get('eleve_id')
+    # ✅ Maintenant on sait que c'est un élève
+    eleve = utilisateur
+    
     lang = session.get('lang', 'fr')
     matiere = request.form.get('matiere', 'mathématiques')
     difficulte = request.form.get('difficulte', 'moyen')
     
-    # 🔥 IMPORTANT: Récupérer l'élève pour générer l'exercice
-    from models import User  # Import si nécessaire
-    eleve = User.query.get(eleve_id)
+    print(f"[DEBUG] Nouvel exercice pour: {eleve.nom_complet} - Matière: {matiere}, Difficulté: {difficulte}")
     
-    # Vider TOUTE la session liée à la conversation SEULEMENT
+    # Vider TOUTE la session liée à la conversation
     session_keys_to_remove = [
         "conversation", 
         "derniere_q_ia", 
@@ -2588,42 +2599,54 @@ def nouvel_exercice():
     ]
     
     for key in session_keys_to_remove:
-        value = session.pop(key, None)
-        print(f"[DEBUG] Supprimé de session: {key} = {value}")
+        if key in session:
+            value = session.pop(key)
+            print(f"[DEBUG] Supprimé de session: {key} = {value}")
     
-    # 🔥 GÉNÉRER UN EXERCICE AVEC NAIMA
+    # ✅ GÉNÉRER UN EXERCICE AVEC TA FONCTION EXISTANTE
     try:
-        # Utiliser TA fonction existante qui fonctionne
+        # Récupérer le niveau de l'élève
+        niveau_eleve = eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème")
+        
+        print(f"[DEBUG] Génération exercice - Niveau: {niveau_eleve}, Langue: {lang}")
+        
+        # Demander à Naima de générer un exercice
         question_initiale = generer_debut_conversation(
             question=f"Génère un exercice de {matiere} de difficulté {difficulte}",
-            niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
+            niveau=niveau_eleve,
             langue=lang,
             mode_examen=False,
             matiere=matiere
         )
         
-        # Formater comme Naima
+        # Formater comme Naima (même format que ta route)
         enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
         session["conversation"] = [f"{enseignant_label} {question_initiale}"]
         
-        # Extraire la question pour la suite
+        # ✅ Extraire la question pour la suite (ta fonction existe)
         nouvelle_q = extraire_question(question_initiale, lang)
         if nouvelle_q:
             session['derniere_q_ia'] = nouvelle_q
+            print(f"[DEBUG] Question extraite: {nouvelle_q[:100]}...")
+        else:
+            print(f"[DEBUG] Aucune question extraite")
             
         print(f"[DEBUG] ✅ Exercice généré avec succès")
         
     except Exception as e:
         print(f"[DEBUG] ❌ Erreur génération exercice: {e}")
-        # Fallback simple
+        import traceback
+        traceback.print_exc()
+        
+        # Fallback simple (comme dans ta route)
         if lang == "fr":
-            msg = f"🤖 Naima: Voici un exercice de {matiere}. Quelle est ta question ?"
+            msg = f"🤖 Naima: Voici un exercice de {matiere} de difficulté {difficulte}. Quelle est ta question ?"
         else:
-            msg = f"🤖 Naima: Here's a {matiere} exercise. What's your question?"
+            msg = f"🤖 Naima: Here's a {matiere} exercise at {difficulte} difficulty. What's your question?"
         session["conversation"] = [msg]
     
-    # Re-sauvegarder les données essentielles
-    session['eleve_id'] = eleve_id
+    # Sauvegarder les données essentielles
+    session['user_id'] = eleve.id
     session['lang'] = lang
     session.modified = True
     
@@ -2633,8 +2656,7 @@ def nouvel_exercice():
     else:
         flash("✨ New exercise generated! Naima will guide you.", "success")
     
-    # ✅ REDIRECTION CORRECTE - VERS L'ENSEIGNANT VIRTUEL
-    import time
+    # ✅ REDIRECTION VERS L'ENSEIGNANT VIRTUEL (PAS DASHBOARD)
     redirect_url = url_for("enseignant_virtuel") + f"?t={int(time.time())}"
     print(f"[DEBUG] Redirection vers: {redirect_url}")
     
