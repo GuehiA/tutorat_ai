@@ -211,13 +211,6 @@ def _enable_foreign_keys():
 def log_start_time():
     request.start_time = time.time()
 
-@app.after_request
-def log_end_time(response):
-    if hasattr(request, 'start_time'):
-        duration = time.time() - request.start_time
-        if duration > 0.5:  # Seuil d'alerte à 500ms
-            logger.warning(f"Requête longue: {request.path} a pris {duration:.2f}s")
-    return response
 
 def execute_with_retry(func, max_retries=3):
     """Exécute une fonction avec des retries en cas d'erreur de concurrence SQLite."""
@@ -1070,227 +1063,344 @@ def obtenir_nom_matiere_objet(matiere_obj, lang="fr"):
         }
         return mapping.get(nom, nom)
 
-
-# ============ ROUTE ADAPTÉE ============
-@app.route("/enseignant-virtuel", methods=['GET', 'POST'])
-def enseignant_virtuel():
-    """Route pour l'enseignant virtuel Naima - Support AJAX pour les exercices"""
-    from datetime import datetime
-    import time
-    
-    print(f"[DEBUG] Accès enseignant virtuel")
-    
-    # Vérifier l'authentification
-    if "user_id" not in session:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'error': 'Non authentifié'}), 401
-        return redirect(url_for("login_eleve"))
-
-    utilisateur = User.query.get(session["user_id"])
-    if not utilisateur or utilisateur.role != "eleve":
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'error': 'Accès non autorisé'}), 403
-        return redirect(url_for("login_eleve"))
-    
-    eleve = utilisateur
-    lang = session.get("lang", "fr")
-    
-    # ✅ Récupérer la conversation existante
-    conversation = session.get("conversation", [])
-    
-    # TRAITEMENT POST
-    if request.method == 'POST':
-        question = request.form.get("question", "").strip()
-        matiere = request.form.get("matiere", "mathématiques")
-        
-        print(f"[DEBUG] POST - Question: {question[:50]}... - Matière: {matiere}")
-        
-        if question and len(question) >= 3:
-            # Ajouter la question de l'élève
-            eleve_label = "👤 Élève:" if lang == "fr" else "👤 Student:"
-            conversation.append(f"{eleve_label} {question}")
-            
-            try:
-                # Vérifier si c'est une réponse à une question précédente
-                derniere_q_ia = session.get('derniere_q_ia')
-                
-                if derniere_q_ia:
-                    # C'est une réponse à une question de Naima
-                    reponse = generer_suite_conversation(
-                        derniere_q=derniere_q_ia,
-                        reponse=question,
-                        historique=conversation,
-                        niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
-                        langue=lang,
-                        mode_examen=session.get("mode_examen", False),
-                        exercice_context="",
-                        matiere=matiere
-                    )
-                    # Effacer la dernière question car on y a répondu
-                    session.pop('derniere_q_ia', None)
-                else:
-                    # Nouvelle question
-                    reponse = generer_debut_conversation(
-                        question=question,
-                        niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
-                        langue=lang,
-                        mode_examen=session.get("mode_examen", False),
-                        matiere=matiere
-                    )
-                
-                # Ajouter la réponse de Naima
-                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
-                conversation.append(f"{enseignant_label} {reponse}")
-                
-                # ✅ Extraire la nouvelle question de Naima pour la suite
-                nouvelle_q = extraire_question(reponse, lang)
-                if nouvelle_q:
-                    session['derniere_q_ia'] = nouvelle_q
-                
-                # Limiter la taille de la conversation
-                if len(conversation) > 20:
-                    conversation = conversation[-20:]
-                
-                # Sauvegarder
-                session["conversation"] = conversation
-                
-            except Exception as e:
-                print(f"Erreur: {e}")
-                import traceback
-                traceback.print_exc()
-                
-                # Message d'erreur
-                if lang == "fr":
-                    msg_erreur = "Désolée, j'ai eu un petit problème technique. Peux-tu reformuler ?"
-                else:
-                    msg_erreur = "Sorry, I had a technical issue. Can you rephrase?"
-                
-                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
-                conversation.append(f"{enseignant_label} {msg_erreur}")
-                session["conversation"] = conversation
-    
-    # ✅ Calculer les statistiques de l'élève
-    from models import StudentResponse
-    from sqlalchemy import func
-    
-    total_exercices = StudentResponse.query.filter_by(user_id=eleve.id).count()
-    exercices_reussis = StudentResponse.query.filter(
-        StudentResponse.user_id == eleve.id,
-        StudentResponse.etoiles >= 3
-    ).count() if hasattr(StudentResponse, 'etoiles') else 0
-    
-    # Calculer la série (streak)
-    serie = 0
-    try:
-        dates_exercices = db.session.query(
-            func.date(StudentResponse.timestamp)
-        ).filter(
-            StudentResponse.user_id == eleve.id
-        ).distinct().order_by(
-            func.date(StudentResponse.timestamp).desc()
-        ).all()
-        
-        if dates_exercices:
-            dates = [d[0] for d in dates_exercices]
-            today = datetime.utcnow().date()
-            
-            if dates and dates[0] == today:
-                serie = 1
-                for i in range(len(dates) - 1):
-                    if (dates[i] - dates[i+1]).days == 1:
-                        serie += 1
-                    else:
-                        break
-    except Exception as e:
-        print(f"[DEBUG] Erreur calcul série: {e}")
-    
-    # Calculer le temps total d'apprentissage
-    temps_apprentissage = 0
-    if hasattr(StudentResponse, 'temps_passe'):
-        temps_total = db.session.query(
-            func.sum(StudentResponse.temps_passe)
-        ).filter(
-            StudentResponse.user_id == eleve.id
-        ).scalar() or 0
-        temps_apprentissage = round(temps_total / 60)
-    
-    stats = {
-        'total_exercices': total_exercices,
-        'exercices_reussis': exercices_reussis,
-        'taux_reussite': round((exercices_reussis / total_exercices * 100) if total_exercices > 0 else 0),
-        'serie': serie,
-        'temps_apprentissage': temps_apprentissage,
-        'date_inscription': eleve.date_inscription.strftime('%d/%m/%Y') if eleve.date_inscription else 'N/A'
-    }
-    
-    # Pour les requêtes AJAX
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        messages_html = []
-        for msg in conversation[-10:]:
-            if "👤" in msg:
-                messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
-            elif "🤖" in msg:
-                messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{msg.replace("🤖 Naima:", "").strip()}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
-        
-        return jsonify({
-            'success': True,
-            'messages': messages_html,
-            'last_message': messages_html[-1] if messages_html else '',
-            'stats': stats
-        })
-    
-    # Pour les requêtes normales
-    return render_template(
-        "enseignant_virtuel.html",
-        lang=lang,
-        eleve=eleve,
-        stats=stats,
-        conversation=conversation,
-        exercice_remediation=None,
-        access_count=0,
-        date_du_jour=datetime.utcnow(),
-        matiere=request.form.get("matiere", "mathématiques") if request.method == 'POST' else session.get("matiere", "mathématiques"),
-        theme="général",
-        datetime=datetime
-    )
-
-def extraire_question(reponse, lang):
-    """Extrait une question de la réponse de l'IA"""
+def extraire_question(reponse, lang="fr"):
+    """Extrait la question posée par Naima - version bilingue"""
     import re
     
-    # Rechercher les phrases qui se terminent par un point d'interrogation
-    phrases = re.split(r'[.!?]', reponse)
+    # Patterns FRANÇAIS (Naima tutoie)
+    patterns_fr = [
+        r'[Pp]eux-tu\s+(.*?)\?',
+        r'[Qq]u\'est-ce que\s+(.*?)\?',
+        r'[Cc]alcule\s+(.*?)\?',
+        r'[Tt]rouve\s+(.*?)\?',
+        r'[Dd]is-moi\s+(.*?)\?',
+        r'[Qq]uelle\s+(.*?)\?',
+        r'[Cc]ombien\s+(.*?)\?',
+        r'[Cc]omment\s+(.*?)\?',
+        r'[Pp]ourquoi\s+(.*?)\?',
+        r'[Éé]cris\s+(.*?)\?',
+        r'[Aa]nalyse\s+(.*?)\?',
+        r'[Ee]xplique\s+(.*?)\?',
+        r'[Rr]eformule\s+(.*?)\?',
+        r'[Aa]s-tu\s+(.*?)\?',
+        r'[Ss]ais-tu\s+(.*?)\?',
+        r'[Cc]onnais-tu\s+(.*?)\?',
+        r'[Pp]ourrais-tu\s+(.*?)\?',
+        r'[Mm]ontre-moi\s+(.*?)\?'
+    ]
     
-    for phrase in phrases:
-        phrase = phrase.strip()
-        if phrase and phrase.endswith('?'):
-            return phrase
+    # Patterns ANGLAIS (Naima tutoie aussi en anglais avec "you")
+    patterns_en = [
+        r'[Cc]an you\s+(.*?)\?',
+        r'[Ww]hat is\s+(.*?)\?',
+        r'[Cc]alculate\s+(.*?)\?',
+        r'[Ff]ind\s+(.*?)\?',
+        r'[Tt]ell me\s+(.*?)\?',
+        r'[Ww]hich\s+(.*?)\?',
+        r'[Hh]ow many\s+(.*?)\?',
+        r'[Hh]ow\s+(.*?)\?',
+        r'[Ww]hy\s+(.*?)\?',
+        r'[Ww]rite\s+(.*?)\?',
+        r'[Aa]nalyze\s+(.*?)\?',
+        r'[Ee]xplain\s+(.*?)\?',
+        r'[Dd]escribe\s+(.*?)\?',
+        r'[Rr]ephrase\s+(.*?)\?',
+        r'[Dd]o you know\s+(.*?)\?',
+        r'[Hh]ave you\s+(.*?)\?',
+        r'[Cc]ould you\s+(.*?)\?',
+        r'[Ww]ould you\s+(.*?)\?'
+    ]
     
-    # Si pas de question explicite, chercher des indices
-    question_keywords = {
-        "fr": ["pensez-vous", "savez-vous", "comprenez-vous", "pouvez-vous", "pourriez-vous"],
-        "en": ["do you think", "do you know", "do you understand", "can you", "could you"]
-    }
+    patterns = patterns_fr if lang == "fr" else patterns_en
     
-    keywords = question_keywords.get(lang, question_keywords["en"])
-    for line in reponse.split('\n'):
-        for keyword in keywords:
-            if keyword in line.lower():
-                return line.strip()
+    for pattern in patterns:
+        match = re.search(pattern, reponse)
+        if match:
+            question = match.group(1).strip()
+            if len(question) > 5:  # Minimum 5 caractères
+                return question
+    
+    # Fallback : chercher la dernière phrase qui contient "?" 
+    # (mais exclure les signatures de Naima)
+    lines = reponse.split('\n')
+    for line in reversed(lines):
+        if '?' in line and 'Naima' not in line:
+            # Trouver le dernier "?" dans la ligne
+            parts = line.split('?')
+            if parts and len(parts) > 1:
+                question = parts[-2] + '?'
+                question = question.strip()
+                if len(question) > 5:
+                    return question
     
     return None
 
-def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False, matiere="mathématiques"):
-    """Génère le début d'une conversation avec l'enseignant virtuel Naima"""
-    # Implémentez votre logique d'IA ici
-    # Cette fonction devrait appeler votre API IA
-    return "Je suis Naima, ton enseignante virtuelle. Je vais t'aider avec ta question."
-
 def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", mode_examen=False, exercice_context="", matiere="mathématiques"):
-    """Génère la suite d'une conversation avec l'enseignant virtuel Naima"""
-    # Implémentez votre logique d'IA ici
-    # Cette fonction devrait appeler votre API IA
-    return "Merci pour ta réponse. Maintenant, que penses-tu de l'étape suivante ?"
+    """Continue la conversation avec Naima qui guide l'élève en le tutoyant"""
+    from openai import OpenAI
+    import os
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    # Préparer l'historique contextuel (les 10 derniers messages)
+    historique_contextuel = []
+    for msg in historique[-10:]:
+        historique_contextuel.append(msg)
+    
+    historique_text = "\n".join(historique_contextuel)
+    
+    if langue == "fr":
+        system_prompt = f"""Tu es Naima, une enseignante virtuelle bienveillante et patiente. Tu aides des élèves de niveau {niveau} en {matiere}.
+
+**TON STYLE :**
+- Tu tutoies toujours l'élève (utilise "tu", "ta", "ton", "tes")
+- Tu es chaleureuse, encourageante et pédagogue
+- Tu signes tes messages avec "— Naima" ou "Naima ✨"
+- Tu poses toujours des questions guidantes une par une
+- Tu ne donnes JAMAIS la réponse directement
+- Tu corriges avec bienveillance et sans critique
+
+**TA MISSION POUR CETTE RÉPONSE :**
+La dernière question que tu as posée : "{derniere_q}"
+La réponse de l'élève : "{reponse}"
+
+1. Analyse la réponse de l'élève
+2. Si c'est correct : félicite-le et pose la prochaine étape
+3. Si c'est partiellement correct : reconnais ce qui est bon, guide pour corriger
+4. Si c'est incorrect : ne dis pas "c'est faux", guide avec un indice
+5. Pose UNE SEULE nouvelle question pour faire avancer la réflexion
+
+**FORMAT DE TA RÉPONSE :**
+- Réaction à la réponse de l'élève (félicitations/guidage)
+- Explication très brève si nécessaire
+- Nouvelle question précise
+- Signature : — Naima ✨
+
+**EXEMPLE :**
+"Super, tu as bien identifié le premier terme ! Maintenant, regarde le deuxième : quelle opération vois-tu ?
+
+— Naima ✨"""
+    else:
+        system_prompt = f"""You are Naima, a kind and patient virtual teacher. You help {niveau} students with {matiere}.
+
+**YOUR STYLE:**
+- You always use "you", "your" (friendly but professional)
+- You are warm, encouraging, and pedagogical
+- You sign your messages with "— Naima" or "Naima ✨"
+- You always ask guiding questions one at a time
+- You NEVER give the answer directly
+- You correct gently without criticism
+
+**YOUR MISSION FOR THIS RESPONSE:**
+Last question you asked: "{derniere_q}"
+Student's answer: "{reponse}"
+
+1. Analyze the student's response
+2. If correct: praise them and ask the next step
+3. If partially correct: acknowledge what's good, guide to correct
+4. If incorrect: don't say "that's wrong", guide with a hint
+5. Ask ONLY ONE new question to advance their thinking
+
+**YOUR RESPONSE FORMAT:**
+- Reaction to student's answer (praise/guidance)
+- Very brief explanation if needed
+- New precise question
+- Signature: — Naima ✨
+
+**EXAMPLE:**
+"Great, you correctly identified the first term! Now, look at the second one: what operation do you see?
+
+— Naima ✨"""
+    
+    prompt = f"""**Historique de conversation ({matiere}) :**
+{historique_text}
+
+**Contexte :** Élève de {niveau} en {matiere}
+{"**Mode examen :** guide avec des indices, ne révèle pas les étapes complètes." if mode_examen else ""}"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        
+        reponse_naima = response.choices[0].message.content.strip()
+        
+        # S'assurer que Naima signe sa réponse
+        if langue == "fr":
+            if "— Naima" not in reponse_naima and "Naima" not in reponse_naima[-10:]:
+                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+        else:
+            if "— Naima" not in reponse_naima and "Naima" not in reponse_naima[-10:]:
+                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+        
+        return reponse_naima
+        
+    except Exception as e:
+        print(f"Erreur génération suite conversation Naima: {e}")
+        # Fallback bilingue avec Naima qui tutoie
+        if langue == "fr":
+            return f"""Merci pour ta réponse ! C'est intéressant de voir comment tu as abordé cette question de {matiere}.
+
+Je vois que tu as fait un premier pas, et c'est déjà très bien. Maintenant, pour t'aider à avancer :
+
+**Ma nouvelle question :** As-tu considéré toutes les informations données dans l'énoncé ? Y a-t-il un élément que tu n'as pas encore utilisé ?
+
+Prends ton temps, je suis là pour t'accompagner.
+
+— Naima ✨"""
+        else:
+            return f"""Thank you for your answer! It's interesting to see how you approached this {matiere} question.
+
+I see you've taken a first step, and that's already great. Now, to help you move forward:
+
+**My new question:** Have you considered all the information given in the statement? Is there an element you haven't used yet?
+
+Take your time, I'm here to support you.
+
+— Naima ✨"""
+
+def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False, matiere="mathématiques"):
+    """Début de conversation avec Naima - l'enseignante virtuelle qui tutoie"""
+    from openai import OpenAI
+    import os
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    if langue == "fr":
+        system_prompt = f"""Tu es Naima, une enseignante virtuelle bienveillante et passionnée par {matiere}. Tu aides des élèves de niveau {niveau}.
+
+**TON IDENTITÉ :**
+- Tu es Naima, l'enseignante virtuelle
+- Tu tutoies toujours l'élève (utilise "tu", "ta", "ton")
+- Tu es chaleureuse, encourageante et pédagogue
+- Tu signes tes messages avec "— Naima" ou "Naima ✨"
+- Tu poses des questions guidantes une par une
+- Tu ne donnes JAMAIS la réponse directement
+
+**TA MISSION :**
+Un élève de {niveau} te pose cette question en {matiere} : "{question}"
+
+1. Accueille-le chaleureusement en te présentant comme Naima
+2. Reformule sa question pour montrer que tu as compris
+3. Donne une orientation générale adaptée à {matiere}
+4. Pose la PREMIÈRE QUESTION qui le guide vers la première étape
+5. Termine par ton nom pour créer un lien personnel
+
+**FORMAT DE TA RÉPONSE :**
+- Salutation avec présentation de Naima
+- Reformulation de la question
+- Orientation pédagogique
+- Première question précise
+- Signature : — Naima ✨
+
+**EXEMPLE :**
+"Bonjour ! Je suis Naima, ton enseignante virtuelle. Je vois que tu te poses une question intéressante sur [sujet]. Commençons par bien comprendre ce qu'on te demande...
+
+**Ma première question pour toi :** Peux-tu me dire ce que tu as déjà essayé ou ce que tu comprends de cette situation ?
+
+— Naima ✨"""
+    else:
+        system_prompt = f"""You are Naima, a kind virtual teacher passionate about {matiere}. You help {niveau} students.
+
+**YOUR IDENTITY:**
+- You are Naima, the virtual teacher
+- You use "you", "your" (friendly but professional)
+- You are warm, encouraging, and pedagogical
+- You sign your messages with "— Naima" or "Naima ✨"
+- You ask guiding questions one at a time
+- You NEVER give the answer directly
+
+**YOUR MISSION:**
+A {niveau} student asks you this {matiere} question: "{question}"
+
+1. Welcome them warmly, introducing yourself as Naima
+2. Rephrase their question to show understanding
+3. Give general guidance adapted to {matiere}
+4. Ask the FIRST QUESTION that guides them to the first step
+5. End with your name to create personal connection
+
+**YOUR RESPONSE FORMAT:**
+- Greeting with Naima introduction
+- Question rephrasing
+- Pedagogical orientation
+- First precise question
+- Signature: — Naima ✨
+
+**EXAMPLE:**
+"Hello! I'm Naima, your virtual teacher. I see you're asking an interesting question about [topic]. Let's start by understanding exactly what's being asked...
+
+**My first question for you:** Can you tell me what you've already tried or what you understand about this situation?
+
+— Naima ✨"""
+    
+    prompt = f"""**Contexte pédagogique :**
+- Niveau : {niveau}
+- Matière : {matiere}
+- Mode : {"examen (guide avec indices)" if mode_examen else "apprentissage normal"}
+- Style : Tutoiement chaleureux et encourageant"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=450
+        )
+        
+        reponse_naima = response.choices[0].message.content.strip()
+        
+        # S'assurer que Naima se présente et signe
+        if langue == "fr":
+            if "Naima" not in reponse_naima[:50]:  # Vérifie dans les premiers caractères
+                reponse_naima = f"Bonjour ! Je suis Naima, ton enseignante virtuelle. {reponse_naima}"
+            
+            if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
+                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+        else:
+            if "Naima" not in reponse_naima[:50]:
+                reponse_naima = f"Hello! I'm Naima, your virtual teacher. {reponse_naima}"
+            
+            if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
+                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+        
+        return reponse_naima
+        
+    except Exception as e:
+        print(f"Erreur génération début conversation Naima: {e}")
+        # Fallback bilingue avec présentation de Naima
+        if langue == "fr":
+            return f"""Bonjour ! Je suis Naima, ton enseignante virtuelle. 
+
+Je vois que tu as une question intéressante sur {matiere} : "{question[:100]}..."
+
+Super de vouloir comprendre ! Je vais t'aider à trouver la réponse toi-même en te guidant étape par étape.
+
+**Ma première question pour démarrer :** Peux-tu me dire ce que tu as déjà essayé ou ce que tu comprends de cette situation ?
+
+Écris-moi ta réponse, et on avancera ensemble !
+
+— Naima ✨"""
+        else:
+            return f"""Hello! I'm Naima, your virtual teacher.
+
+I see you have an interesting question about {matiere}: "{question[:100]}..."
+
+Great that you want to understand! I'll help you find the answer yourself by guiding you step by step.
+
+**My first question to start:** Can you tell me what you've already tried or what you understand about this situation?
+
+Write me your answer, and we'll move forward together!
+
+— Naima ✨"""
 
 
 def get_message(key, lang="fr"):
@@ -1484,77 +1594,7 @@ def get_message(key, lang="fr"):
         return f"[{key}]"
 
 
-def extraire_question(reponse, lang="fr"):
-    """Extrait la question posée par Naima - version bilingue"""
-    import re
-    
-    # Patterns FRANÇAIS (Naima tutoie)
-    patterns_fr = [
-        r'[Pp]eux-tu\s+(.*?)\?',
-        r'[Qq]u\'est-ce que\s+(.*?)\?',
-        r'[Cc]alcule\s+(.*?)\?',
-        r'[Tt]rouve\s+(.*?)\?',
-        r'[Dd]is-moi\s+(.*?)\?',
-        r'[Qq]uelle\s+(.*?)\?',
-        r'[Cc]ombien\s+(.*?)\?',
-        r'[Cc]omment\s+(.*?)\?',
-        r'[Pp]ourquoi\s+(.*?)\?',
-        r'[Éé]cris\s+(.*?)\?',
-        r'[Aa]nalyse\s+(.*?)\?',
-        r'[Ee]xplique\s+(.*?)\?',
-        r'[Rr]eformule\s+(.*?)\?',
-        r'[Aa]s-tu\s+(.*?)\?',
-        r'[Ss]ais-tu\s+(.*?)\?',
-        r'[Cc]onnais-tu\s+(.*?)\?',
-        r'[Pp]ourrais-tu\s+(.*?)\?',
-        r'[Mm]ontre-moi\s+(.*?)\?'
-    ]
-    
-    # Patterns ANGLAIS (Naima tutoie aussi en anglais avec "you")
-    patterns_en = [
-        r'[Cc]an you\s+(.*?)\?',
-        r'[Ww]hat is\s+(.*?)\?',
-        r'[Cc]alculate\s+(.*?)\?',
-        r'[Ff]ind\s+(.*?)\?',
-        r'[Tt]ell me\s+(.*?)\?',
-        r'[Ww]hich\s+(.*?)\?',
-        r'[Hh]ow many\s+(.*?)\?',
-        r'[Hh]ow\s+(.*?)\?',
-        r'[Ww]hy\s+(.*?)\?',
-        r'[Ww]rite\s+(.*?)\?',
-        r'[Aa]nalyze\s+(.*?)\?',
-        r'[Ee]xplain\s+(.*?)\?',
-        r'[Dd]escribe\s+(.*?)\?',
-        r'[Rr]ephrase\s+(.*?)\?',
-        r'[Dd]o you know\s+(.*?)\?',
-        r'[Hh]ave you\s+(.*?)\?',
-        r'[Cc]ould you\s+(.*?)\?',
-        r'[Ww]ould you\s+(.*?)\?'
-    ]
-    
-    patterns = patterns_fr if lang == "fr" else patterns_en
-    
-    for pattern in patterns:
-        match = re.search(pattern, reponse)
-        if match:
-            question = match.group(1).strip()
-            if len(question) > 5:  # Minimum 5 caractères
-                return question
-    
-    # Fallback : chercher la dernière phrase qui contient "?" 
-    # (mais exclure les signatures de Naima)
-    lines = reponse.split('\n')
-    for line in reversed(lines):
-        if '?' in line and 'Naima' not in line:
-            # Trouver le dernier "?" dans la ligne
-            parts = line.split('?')
-            if parts and len(parts) > 1:
-                question = parts[-2] + '?'
-                question = question.strip()
-                if len(question) > 5:
-                    return question
-    
-    return None
+
 
 
 def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
@@ -1981,277 +2021,191 @@ Commence toujours par un accueil chaleureux avec ton nom : "Je suis Naima, ton e
     return prompt_final
 
 
-def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False, matiere="mathématiques"):
-    """Début de conversation avec Naima - l'enseignante virtuelle qui tutoie"""
-    from openai import OpenAI
-    import os
+
+
+# ============ ROUTE ADAPTÉE ============
+@app.route("/enseignant-virtuel", methods=['GET', 'POST'])
+def enseignant_virtuel():
+    """Route pour l'enseignant virtuel Naima - Support AJAX pour les exercices"""
+    from datetime import datetime
+    import time
     
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    print(f"[DEBUG] Accès enseignant virtuel")
     
-    if langue == "fr":
-        system_prompt = f"""Tu es Naima, une enseignante virtuelle bienveillante et passionnée par {matiere}. Tu aides des élèves de niveau {niveau}.
+    # Vérifier l'authentification
+    if "user_id" not in session:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Non authentifié'}), 401
+        return redirect(url_for("login_eleve"))
 
-**TON IDENTITÉ :**
-- Tu es Naima, l'enseignante virtuelle
-- Tu tutoies toujours l'élève (utilise "tu", "ta", "ton")
-- Tu es chaleureuse, encourageante et pédagogue
-- Tu signes tes messages avec "— Naima" ou "Naima ✨"
-- Tu poses des questions guidantes une par une
-- Tu ne donnes JAMAIS la réponse directement
-
-**TA MISSION :**
-Un élève de {niveau} te pose cette question en {matiere} : "{question}"
-
-1. Accueille-le chaleureusement en te présentant comme Naima
-2. Reformule sa question pour montrer que tu as compris
-3. Donne une orientation générale adaptée à {matiere}
-4. Pose la PREMIÈRE QUESTION qui le guide vers la première étape
-5. Termine par ton nom pour créer un lien personnel
-
-**FORMAT DE TA RÉPONSE :**
-- Salutation avec présentation de Naima
-- Reformulation de la question
-- Orientation pédagogique
-- Première question précise
-- Signature : — Naima ✨
-
-**EXEMPLE :**
-"Bonjour ! Je suis Naima, ton enseignante virtuelle. Je vois que tu te poses une question intéressante sur [sujet]. Commençons par bien comprendre ce qu'on te demande...
-
-**Ma première question pour toi :** Peux-tu me dire ce que tu as déjà essayé ou ce que tu comprends de cette situation ?
-
-— Naima ✨"""
-    else:
-        system_prompt = f"""You are Naima, a kind virtual teacher passionate about {matiere}. You help {niveau} students.
-
-**YOUR IDENTITY:**
-- You are Naima, the virtual teacher
-- You use "you", "your" (friendly but professional)
-- You are warm, encouraging, and pedagogical
-- You sign your messages with "— Naima" or "Naima ✨"
-- You ask guiding questions one at a time
-- You NEVER give the answer directly
-
-**YOUR MISSION:**
-A {niveau} student asks you this {matiere} question: "{question}"
-
-1. Welcome them warmly, introducing yourself as Naima
-2. Rephrase their question to show understanding
-3. Give general guidance adapted to {matiere}
-4. Ask the FIRST QUESTION that guides them to the first step
-5. End with your name to create personal connection
-
-**YOUR RESPONSE FORMAT:**
-- Greeting with Naima introduction
-- Question rephrasing
-- Pedagogical orientation
-- First precise question
-- Signature: — Naima ✨
-
-**EXAMPLE:**
-"Hello! I'm Naima, your virtual teacher. I see you're asking an interesting question about [topic]. Let's start by understanding exactly what's being asked...
-
-**My first question for you:** Can you tell me what you've already tried or what you understand about this situation?
-
-— Naima ✨"""
+    utilisateur = User.query.get(session["user_id"])
+    if not utilisateur or utilisateur.role != "eleve":
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Accès non autorisé'}), 403
+        return redirect(url_for("login_eleve"))
     
-    prompt = f"""**Contexte pédagogique :**
-- Niveau : {niveau}
-- Matière : {matiere}
-- Mode : {"examen (guide avec indices)" if mode_examen else "apprentissage normal"}
-- Style : Tutoiement chaleureux et encourageant"""
+    eleve = utilisateur
+    lang = session.get("lang", "fr")
     
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=450
-        )
+    # ✅ Récupérer la conversation existante
+    conversation = session.get("conversation", [])
+    
+    # TRAITEMENT POST
+    if request.method == 'POST':
+        question = request.form.get("question", "").strip()
+        matiere = request.form.get("matiere", "mathématiques")
         
-        reponse_naima = response.choices[0].message.content.strip()
+        print(f"[DEBUG] POST - Question: {question[:50]}... - Matière: {matiere}")
         
-        # S'assurer que Naima se présente et signe
-        if langue == "fr":
-            if "Naima" not in reponse_naima[:50]:  # Vérifie dans les premiers caractères
-                reponse_naima = f"Bonjour ! Je suis Naima, ton enseignante virtuelle. {reponse_naima}"
+        if question and len(question) >= 3:
+            # Ajouter la question de l'élève
+            eleve_label = "👤 Élève:" if lang == "fr" else "👤 Student:"
+            conversation.append(f"{eleve_label} {question}")
             
-            if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
-                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
-        else:
-            if "Naima" not in reponse_naima[:50]:
-                reponse_naima = f"Hello! I'm Naima, your virtual teacher. {reponse_naima}"
-            
-            if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
-                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
-        
-        return reponse_naima
-        
-    except Exception as e:
-        print(f"Erreur génération début conversation Naima: {e}")
-        # Fallback bilingue avec présentation de Naima
-        if langue == "fr":
-            return f"""Bonjour ! Je suis Naima, ton enseignante virtuelle. 
-
-Je vois que tu as une question intéressante sur {matiere} : "{question[:100]}..."
-
-Super de vouloir comprendre ! Je vais t'aider à trouver la réponse toi-même en te guidant étape par étape.
-
-**Ma première question pour démarrer :** Peux-tu me dire ce que tu as déjà essayé ou ce que tu comprends de cette situation ?
-
-Écris-moi ta réponse, et on avancera ensemble !
-
-— Naima ✨"""
-        else:
-            return f"""Hello! I'm Naima, your virtual teacher.
-
-I see you have an interesting question about {matiere}: "{question[:100]}..."
-
-Great that you want to understand! I'll help you find the answer yourself by guiding you step by step.
-
-**My first question to start:** Can you tell me what you've already tried or what you understand about this situation?
-
-Write me your answer, and we'll move forward together!
-
-— Naima ✨"""
-
-
-def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", mode_examen=False, exercice_context="", matiere="mathématiques"):
-    """Continue la conversation avec Naima qui guide l'élève en le tutoyant"""
-    from openai import OpenAI
-    import os
+            try:
+                # Vérifier si c'est une réponse à une question précédente
+                derniere_q_ia = session.get('derniere_q_ia')
+                
+                if derniere_q_ia:
+                    # C'est une réponse à une question de Naima
+                    reponse = generer_suite_conversation(
+                        derniere_q=derniere_q_ia,
+                        reponse=question,
+                        historique=conversation,
+                        niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
+                        langue=lang,
+                        mode_examen=session.get("mode_examen", False),
+                        exercice_context="",
+                        matiere=matiere
+                    )
+                    # Effacer la dernière question car on y a répondu
+                    session.pop('derniere_q_ia', None)
+                else:
+                    # Nouvelle question
+                    reponse = generer_debut_conversation(
+                        question=question,
+                        niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
+                        langue=lang,
+                        mode_examen=session.get("mode_examen", False),
+                        matiere=matiere
+                    )
+                
+                # Ajouter la réponse de Naima
+                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
+                conversation.append(f"{enseignant_label} {reponse}")
+                
+                # ✅ Extraire la nouvelle question de Naima pour la suite
+                nouvelle_q = extraire_question(reponse, lang)
+                if nouvelle_q:
+                    session['derniere_q_ia'] = nouvelle_q
+                
+                # Limiter la taille de la conversation
+                if len(conversation) > 20:
+                    conversation = conversation[-20:]
+                
+                # Sauvegarder
+                session["conversation"] = conversation
+                
+            except Exception as e:
+                print(f"Erreur: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                # Message d'erreur
+                if lang == "fr":
+                    msg_erreur = "Désolée, j'ai eu un petit problème technique. Peux-tu reformuler ?"
+                else:
+                    msg_erreur = "Sorry, I had a technical issue. Can you rephrase?"
+                
+                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
+                conversation.append(f"{enseignant_label} {msg_erreur}")
+                session["conversation"] = conversation
     
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    # ✅ Calculer les statistiques de l'élève
+    from models import StudentResponse
+    from sqlalchemy import func
     
-    # Préparer l'historique contextuel (les 10 derniers messages)
-    historique_contextuel = []
-    for msg in historique[-10:]:
-        historique_contextuel.append(msg)
+    total_exercices = StudentResponse.query.filter_by(user_id=eleve.id).count()
+    exercices_reussis = StudentResponse.query.filter(
+        StudentResponse.user_id == eleve.id,
+        StudentResponse.etoiles >= 3
+    ).count() if hasattr(StudentResponse, 'etoiles') else 0
     
-    historique_text = "\n".join(historique_contextuel)
-    
-    if langue == "fr":
-        system_prompt = f"""Tu es Naima, une enseignante virtuelle bienveillante et patiente. Tu aides des élèves de niveau {niveau} en {matiere}.
-
-**TON STYLE :**
-- Tu tutoies toujours l'élève (utilise "tu", "ta", "ton", "tes")
-- Tu es chaleureuse, encourageante et pédagogue
-- Tu signes tes messages avec "— Naima" ou "Naima ✨"
-- Tu poses toujours des questions guidantes une par une
-- Tu ne donnes JAMAIS la réponse directement
-- Tu corriges avec bienveillance et sans critique
-
-**TA MISSION POUR CETTE RÉPONSE :**
-La dernière question que tu as posée : "{derniere_q}"
-La réponse de l'élève : "{reponse}"
-
-1. Analyse la réponse de l'élève
-2. Si c'est correct : félicite-le et pose la prochaine étape
-3. Si c'est partiellement correct : reconnais ce qui est bon, guide pour corriger
-4. Si c'est incorrect : ne dis pas "c'est faux", guide avec un indice
-5. Pose UNE SEULE nouvelle question pour faire avancer la réflexion
-
-**FORMAT DE TA RÉPONSE :**
-- Réaction à la réponse de l'élève (félicitations/guidage)
-- Explication très brève si nécessaire
-- Nouvelle question précise
-- Signature : — Naima ✨
-
-**EXEMPLE :**
-"Super, tu as bien identifié le premier terme ! Maintenant, regarde le deuxième : quelle opération vois-tu ?
-
-— Naima ✨"""
-    else:
-        system_prompt = f"""You are Naima, a kind and patient virtual teacher. You help {niveau} students with {matiere}.
-
-**YOUR STYLE:**
-- You always use "you", "your" (friendly but professional)
-- You are warm, encouraging, and pedagogical
-- You sign your messages with "— Naima" or "Naima ✨"
-- You always ask guiding questions one at a time
-- You NEVER give the answer directly
-- You correct gently without criticism
-
-**YOUR MISSION FOR THIS RESPONSE:**
-Last question you asked: "{derniere_q}"
-Student's answer: "{reponse}"
-
-1. Analyze the student's response
-2. If correct: praise them and ask the next step
-3. If partially correct: acknowledge what's good, guide to correct
-4. If incorrect: don't say "that's wrong", guide with a hint
-5. Ask ONLY ONE new question to advance their thinking
-
-**YOUR RESPONSE FORMAT:**
-- Reaction to student's answer (praise/guidance)
-- Very brief explanation if needed
-- New precise question
-- Signature: — Naima ✨
-
-**EXAMPLE:**
-"Great, you correctly identified the first term! Now, look at the second one: what operation do you see?
-
-— Naima ✨"""
-    
-    prompt = f"""**Historique de conversation ({matiere}) :**
-{historique_text}
-
-**Contexte :** Élève de {niveau} en {matiere}
-{"**Mode examen :** guide avec des indices, ne révèle pas les étapes complètes." if mode_examen else ""}"""
-    
+    # Calculer la série (streak)
+    serie = 0
     try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=500
-        )
+        dates_exercices = db.session.query(
+            func.date(StudentResponse.timestamp)
+        ).filter(
+            StudentResponse.user_id == eleve.id
+        ).distinct().order_by(
+            func.date(StudentResponse.timestamp).desc()
+        ).all()
         
-        reponse_naima = response.choices[0].message.content.strip()
-        
-        # S'assurer que Naima signe sa réponse
-        if langue == "fr":
-            if "— Naima" not in reponse_naima and "Naima" not in reponse_naima[-10:]:
-                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
-        else:
-            if "— Naima" not in reponse_naima and "Naima" not in reponse_naima[-10:]:
-                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
-        
-        return reponse_naima
-        
+        if dates_exercices:
+            dates = [d[0] for d in dates_exercices]
+            today = datetime.utcnow().date()
+            
+            if dates and dates[0] == today:
+                serie = 1
+                for i in range(len(dates) - 1):
+                    if (dates[i] - dates[i+1]).days == 1:
+                        serie += 1
+                    else:
+                        break
     except Exception as e:
-        print(f"Erreur génération suite conversation Naima: {e}")
-        # Fallback bilingue avec Naima qui tutoie
-        if langue == "fr":
-            return f"""Merci pour ta réponse ! C'est intéressant de voir comment tu as abordé cette question de {matiere}.
+        print(f"[DEBUG] Erreur calcul série: {e}")
+    
+    # Calculer le temps total d'apprentissage
+    temps_apprentissage = 0
+    if hasattr(StudentResponse, 'temps_passe'):
+        temps_total = db.session.query(
+            func.sum(StudentResponse.temps_passe)
+        ).filter(
+            StudentResponse.user_id == eleve.id
+        ).scalar() or 0
+        temps_apprentissage = round(temps_total / 60)
+    
+    stats = {
+        'total_exercices': total_exercices,
+        'exercices_reussis': exercices_reussis,
+        'taux_reussite': round((exercices_reussis / total_exercices * 100) if total_exercices > 0 else 0),
+        'serie': serie,
+        'temps_apprentissage': temps_apprentissage,
+        'date_inscription': eleve.date_inscription.strftime('%d/%m/%Y') if eleve.date_inscription else 'N/A'
+    }
+    
+    # Pour les requêtes AJAX
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        messages_html = []
+        for msg in conversation[-10:]:
+            if "👤" in msg:
+                messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
+            elif "🤖" in msg:
+                messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{msg.replace("🤖 Naima:", "").strip()}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
+        
+        return jsonify({
+            'success': True,
+            'messages': messages_html,
+            'last_message': messages_html[-1] if messages_html else '',
+            'stats': stats
+        })
+    
+    # Pour les requêtes normales
+    return render_template(
+        "enseignant_virtuel.html",
+        lang=lang,
+        eleve=eleve,
+        stats=stats,
+        conversation=conversation,
+        exercice_remediation=None,
+        access_count=0,
+        date_du_jour=datetime.utcnow(),
+        matiere=request.form.get("matiere", "mathématiques") if request.method == 'POST' else session.get("matiere", "mathématiques"),
+        theme="général",
+        datetime=datetime
+    )
 
-Je vois que tu as fait un premier pas, et c'est déjà très bien. Maintenant, pour t'aider à avancer :
-
-**Ma nouvelle question :** As-tu considéré toutes les informations données dans l'énoncé ? Y a-t-il un élément que tu n'as pas encore utilisé ?
-
-Prends ton temps, je suis là pour t'accompagner.
-
-— Naima ✨"""
-        else:
-            return f"""Thank you for your answer! It's interesting to see how you approached this {matiere} question.
-
-I see you've taken a first step, and that's already great. Now, to help you move forward:
-
-**My new question:** Have you considered all the information given in the statement? Is there an element you haven't used yet?
-
-Take your time, I'm here to support you.
-
-— Naima ✨"""
-
-
-@app.route("/demander-exercice", methods=["POST"])
-@app.route("/demander-exercice", methods=["POST"])
 @app.route("/demander-exercice", methods=["POST"])
 def demander_exercice():
     """Génère un exercice avec l'IA"""
@@ -2557,13 +2511,6 @@ def terminer_conversation():
     
     return jsonify({"success": True})
     
-@app.after_request
-def add_header(response):
-    """Ajouter des headers pour empêcher la mise en cache et les rechargements"""
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '-1'
-    return response
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -2798,20 +2745,6 @@ def generer_exercice_fallback(matiere, type_exercice, mots_cles, difficulte, lan
     return random.choice(exercices)
 
 
-@app.after_request
-def add_headers(response):
-    """Headers anti-cache"""
-    response.headers['Cache-Control'] = 'no-store, no-cache'
-    response.headers['Pragma'] = 'no-cache'
-    return response
-
-@app.after_request
-def after_request(response):
-    """Ajouter des headers pour empêcher la mise en cache"""
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
 
 @app.route("/matiere-par-niveau/<int:niveau_id>")
 def matiere_par_niveau(niveau_id):
@@ -13745,12 +13678,7 @@ def log_requests():
     print(f"\n=== REQUEST: {request.method} {request.path} ===")
     if request.endpoint:
         print(f"Endpoint: {request.endpoint}")
-    
-@app.after_request
-def log_responses(response):
-    """Log les réponses"""
-    print(f"Response: {response.status_code}")
-    return response
+
 
 @app.errorhandler(Exception)
 def handle_error(e):
@@ -14649,6 +14577,31 @@ def liste_exercices():
         has_next=has_next,
         lang=session.get("lang", "fr")
     )
+
+@app.after_request
+def after_request(response):
+    """Fonction unifiée après requête"""
+    
+    # === 1. TIMING DES REQUÊTES ===
+    # Logger les requêtes lentes (> 500ms)
+    if hasattr(request, 'start_time'):
+        duration = time.time() - request.start_time
+        if duration > 0.5:
+            logger.warning(f"⚠️ Requête lente: {request.path} - {duration:.2f}s")
+    
+    # === 2. HEADERS ANTI-CACHE (indispensable pour AJAX) ===
+    # Empêche le navigateur de mettre en cache les pages
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    
+    # === 3. LOGGING DÉVELOPPEMENT (optionnel) ===
+    # Utile en développement, peut être commenté en production
+    if app.debug:  # Seulement en mode debug
+        print(f"📡 {request.method} {request.path} → {response.status_code}")
+    
+    return response
+
 
 # ====================================================================
 # 🚀 LANCEMENT DE L'APPLICATION
