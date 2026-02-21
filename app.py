@@ -1150,6 +1150,11 @@ def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="
     from openai import OpenAI
     import os
     
+    print(f"🔵🔵🔵 generer_suite_conversation APPELÉE 🔵🔵🔵")
+    print(f"📝 Dernière question: {derniere_q[:100]}...")
+    print(f"💬 Réponse élève: {reponse[:100]}...")
+    print(f"📚 Matière: {matiere}, Niveau: {niveau}")
+    
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
     # Préparer l'historique contextuel (les 10 derniers messages)
@@ -1230,7 +1235,7 @@ Student's answer: "{reponse}"
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",  # ✅ Changé de gpt-4 à gpt-3.5-turbo
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
@@ -1240,6 +1245,7 @@ Student's answer: "{reponse}"
         )
         
         reponse_naima = response.choices[0].message.content.strip()
+        print(f"✅✅✅ Réponse générée: {reponse_naima[:100]}...")
         
         # S'assurer que Naima signe sa réponse
         if langue == "fr":
@@ -1252,8 +1258,11 @@ Student's answer: "{reponse}"
         return reponse_naima
         
     except Exception as e:
-        print(f"Erreur génération suite conversation Naima: {e}")
-        # Fallback bilingue avec Naima qui tutoie
+        print(f"❌❌❌ Erreur génération suite conversation Naima: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Fallback bilingue
         if langue == "fr":
             return f"""Merci pour ta réponse ! C'est intéressant de voir comment tu as abordé cette question de {matiere}.
 
@@ -1357,7 +1366,7 @@ A {niveau} student asks you this {matiere} question: "{question}"
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",  # ✅ Changé de gpt-4 à gpt-3.5-turbo
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
