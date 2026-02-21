@@ -1945,18 +1945,18 @@
                           <button type="button" class="calc-btn calc-special" onclick="calculatorInput('√(')">√</button>
                           <button type="button" class="calc-btn calc-special" onclick="calculatorInsertResult()">→</button>
                           
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.sin(')">sin</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.cos(')">cos</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.tan(')">tan</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.PI')">π</button>
+                          <button type="button" class="calc-btn calc-special" onclick="insertTrigFunction('sin')">sin</button>
+                          <button type="button" class="calc-btn calc-special" onclick="insertTrigFunction('cos')">cos</button>
+                          <button type="button" class="calc-btn calc-special" onclick="insertTrigFunction('tan')">tan</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('π')">π</button>
                           
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.log10(')">log₁₀</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.log(')">ln</button>
+                          <button type="button" class="calc-btn calc-special" onclick="insertLogFunction('10')">log₁₀</button>
+                          <button type="button" class="calc-btn calc-special" onclick="insertLogFunction('e')">ln</button>
                           <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.exp(')">eˣ</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.E')">e</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('e')">e</button>
                           
                           <!-- Bouton pour basculer entre degrés et radians -->
-                          <button type="button" class="calc-btn calc-special" id="angleModeBtn" onclick="toggleAngleMode()" style="background: #9b59b6; grid-column: span 2;">DEG</button>
+                          <button type="button" class="calc-btn" id="angleModeBtn" onclick="toggleAngleMode()" style="background: #9b59b6; color: white; grid-column: span 2;">DEG</button>
                       </div>
                   </div>
               </div>
