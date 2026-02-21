@@ -316,6 +316,39 @@
       gap: 8px;
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .subject-selector {
+      position: relative;
+    }
+
+    .subject-dropdown {
+      padding: 10px 16px;
+      border: 2px solid var(--light);
+      border-radius: 30px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--dark);
+      background: white;
+      cursor: pointer;
+      transition: var(--transition);
+      min-width: 160px;
+    }
+
+    .subject-dropdown:hover {
+      border-color: var(--primary);
+    }
+
+    .subject-dropdown:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
     .generate-exercise-btn {
       background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
       color: white;
@@ -625,6 +658,129 @@
       color: var(--primary);
     }
 
+    .generation-options {
+      background: var(--light);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .options-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .options-title i {
+      color: var(--primary);
+    }
+
+    .option-group {
+      margin-bottom: 16px;
+    }
+
+    .option-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gray);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .option-label i {
+      margin-right: 6px;
+      color: var(--primary);
+    }
+
+    .difficulty-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .difficulty-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid transparent;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      background: white;
+      color: var(--gray);
+    }
+
+    .difficulty-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary-dark);
+    }
+
+    .difficulty-btn:hover:not(.active) {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .type-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--light);
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: var(--dark);
+      background: white;
+      cursor: pointer;
+    }
+
+    .type-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .keywords-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--light);
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: var(--dark);
+      background: white;
+    }
+
+    .keywords-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .apply-options-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      border: none;
+      border-radius: 25px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .apply-options-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
     .current-exercise {
       background: var(--light);
       border-radius: var(--radius);
@@ -809,6 +965,19 @@
       .chat-main {
         height: calc(100vh - 40px);
       }
+
+      .header-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+      
+      .subject-selector {
+        width: 100%;
+      }
+      
+      .subject-dropdown {
+        width: 100%;
+      }
     }
 
     @media (max-width: 640px) {
@@ -939,10 +1108,22 @@
             </p>
           </div>
         </div>
-        <button class="generate-exercise-btn" onclick="generateNewExercise()" id="generateBtn">
-          <i class="fas fa-plus-circle"></i>
-          {% if lang == 'fr' %}Nouvel exercice{% else %}New exercise{% endif %}
-        </button>
+        <div class="header-actions">
+          <div class="subject-selector">
+            <select id="matiereSelect" class="subject-dropdown">
+              <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>📐 Mathématiques</option>
+              <option value="français" {% if matiere == 'français' %}selected{% endif %}>📖 Français</option>
+              <option value="anglais" {% if matiere == 'anglais' %}selected{% endif %}>🇬🇧 Anglais</option>
+              <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>🏛️ Histoire</option>
+              <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>🔬 Sciences</option>
+              <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>🌍 Géographie</option>
+            </select>
+          </div>
+          <button class="generate-exercise-btn" onclick="generateNewExercise()" id="generateBtn">
+            <i class="fas fa-plus-circle"></i>
+            {% if lang == 'fr' %}Nouvel exercice{% else %}New exercise{% endif %}
+          </button>
+        </div>
       </div>
 
       <div class="chat-messages" id="chatMessages">
@@ -989,7 +1170,7 @@
                 <ul style="margin-top: 8px; margin-left: 20px;">
                   <li>Me poser une question sur un exercice</li>
                   <li>Me demander de t'expliquer une notion</li>
-                  <li>Cliquer sur "Nouvel exercice" pour t'entraîner</li>
+                  <li>Choisir une matière et cliquer sur "Nouvel exercice" pour t'entraîner</li>
                 </ul>
               {% else %}
                 👋 Hello! I'm Naima, your virtual teacher.
@@ -1001,7 +1182,7 @@
                 <ul style="margin-top: 8px; margin-left: 20px;">
                   <li>Ask me a question about an exercise</li>
                   <li>Ask me to explain a concept</li>
-                  <li>Click "New exercise" to practice</li>
+                  <li>Choose a subject and click "New exercise" to practice</li>
                 </ul>
               {% endif %}
               <div class="message-time">{{ datetime.now().strftime('%H:%M') }}</div>
@@ -1039,6 +1220,60 @@
         {% if lang == 'fr' %}Exercice en cours{% else %}Current Exercise{% endif %}
       </div>
 
+      <!-- Options de génération -->
+      <div class="generation-options">
+        <h4 class="options-title">
+          <i class="fas fa-sliders-h"></i>
+          {% if lang == 'fr' %}Options de génération{% else %}Generation options{% endif %}
+        </h4>
+        
+        <div class="option-group">
+          <label class="option-label">
+            <i class="fas fa-tachometer-alt"></i>
+            {% if lang == 'fr' %}Difficulté :{% else %}Difficulty:{% endif %}
+          </label>
+          <div class="difficulty-buttons">
+            <button class="difficulty-btn" onclick="setDifficulty('facile')" id="difficileFacile">
+              🌱 {% if lang == 'fr' %}Facile{% else %}Easy{% endif %}
+            </button>
+            <button class="difficulty-btn active" onclick="setDifficulty('moyen')" id="difficileMoyen">
+              ⚡ {% if lang == 'fr' %}Moyen{% else %}Medium{% endif %}
+            </button>
+            <button class="difficulty-btn" onclick="setDifficulty('difficile')" id="difficileDifficile">
+              🚀 {% if lang == 'fr' %}Difficile{% else %}Hard{% endif %}
+            </button>
+          </div>
+        </div>
+
+        <div class="option-group">
+          <label class="option-label">
+            <i class="fas fa-tag"></i>
+            {% if lang == 'fr' %}Type d'exercice :{% else %}Exercise type:{% endif %}
+          </label>
+          <select id="typeExercice" class="type-select">
+            <option value="exercice">📝 {% if lang == 'fr' %}Exercice standard{% else %}Standard exercise{% endif %}</option>
+            <option value="probleme">🧮 {% if lang == 'fr' %}Problème{% else %}Problem{% endif %}</option>
+            <option value="qcm">✅ {% if lang == 'fr' %}QCM{% else %}Multiple choice{% endif %}</option>
+            <option value="logique">🧠 {% if lang == 'fr' %}Exercice de logique{% else %}Logic exercise{% endif %}</option>
+          </select>
+        </div>
+
+        <div class="option-group">
+          <label class="option-label">
+            <i class="fas fa-key"></i>
+            {% if lang == 'fr' %}Mots-clés (optionnel) :{% else %}Keywords (optional):{% endif %}
+          </label>
+          <input type="text" id="motsCles" class="keywords-input" 
+                 placeholder="{% if lang == 'fr' %}ex: fractions, équations...{% else %}ex: fractions, equations...{% endif %}">
+        </div>
+
+        <button class="apply-options-btn" onclick="generateNewExercise()">
+          <i class="fas fa-magic"></i>
+          {% if lang == 'fr' %}Générer avec ces options{% else %}Generate with these options{% endif %}
+        </button>
+      </div>
+
+      <!-- Exercice en cours -->
       <div class="current-exercise" id="currentExerciseSidebar" style="display: none;">
         <h4 id="sidebarExerciseTitle">Exercice</h4>
         <p id="sidebarExerciseQuestion"></p>
@@ -1059,10 +1294,10 @@
         <p style="color: var(--gray);">
           {% if lang == 'fr' %}
             Aucun exercice en cours.<br>
-            Clique sur "Nouvel exercice" pour commencer !
+            Choisis une matière et clique sur "Nouvel exercice" !
           {% else %}
             No exercise in progress.<br>
-            Click "New exercise" to start!
+            Choose a subject and click "New exercise"!
           {% endif %}
         </p>
       </div>
@@ -1074,6 +1309,7 @@
     let isSubmitting = false;
     let currentExerciseId = null;
     let currentHintLevel = 0;
+    let selectedDifficulty = 'moyen';
 
     // Auto-resize textarea
     const questionInput = document.getElementById('questionInput');
@@ -1094,6 +1330,16 @@
       questionInput.dispatchEvent(new Event('input'));
     }
 
+    // Changer la difficulté
+    function setDifficulty(difficulty) {
+      selectedDifficulty = difficulty;
+      
+      document.querySelectorAll('.difficulty-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.getElementById(`difficile${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`).classList.add('active');
+    }
+
     // Générer nouvel exercice
     async function generateNewExercise() {
       const generateBtn = document.getElementById('generateBtn');
@@ -1103,7 +1349,10 @@
       generateBtn.disabled = true;
       
       try {
-        const matiere = '{{ matiere }}';
+        const matiere = document.getElementById('matiereSelect').value;
+        const difficulte = selectedDifficulty;
+        const typeExercice = document.getElementById('typeExercice').value;
+        const motsCles = document.getElementById('motsCles').value;
         
         const response = await fetch('/demander-exercice', {
           method: 'POST',
@@ -1112,8 +1361,9 @@
           },
           body: JSON.stringify({
             matiere: matiere,
-            difficulte: 'moyen',
-            type: 'exercice'
+            difficulte: difficulte,
+            type: typeExercice,
+            mots_cles: motsCles || undefined
           })
         });
         
@@ -1121,7 +1371,12 @@
         
         if (data.success) {
           addExerciseMessage(data.enonce, data.indice_initial);
-          updateSidebarExercise(data.enonce, 'Moyen');
+          updateSidebarExercise(data.enonce, difficulte);
+          
+          const difficultyDisplay = 
+            difficulte === 'facile' ? 'Facile' : 
+            difficulte === 'moyen' ? 'Moyen' : 'Difficile';
+          document.getElementById('sidebarExerciseDifficulty').textContent = difficultyDisplay;
         } else {
           addNaimaMessage('{% if lang == "fr" %}Désolée, je n\'ai pas pu générer un exercice. Réessaie !{% else %}Sorry, I couldn\'t generate an exercise. Try again!{% endif %}');
         }
@@ -1265,7 +1520,6 @@
       const sidebar = document.getElementById('currentExerciseSidebar');
       sidebar.style.display = 'block';
       document.getElementById('sidebarExerciseQuestion').textContent = question.substring(0, 100) + '...';
-      document.getElementById('sidebarExerciseDifficulty').textContent = difficulty;
     }
 
     function updateSidebarProgress(progression) {
@@ -1280,7 +1534,6 @@
       document.getElementById('noExerciseMessage').style.display = 'block';
     }
 
-    // Ajouter un message de Naima
     function addNaimaMessage(content) {
       const messagesDiv = document.getElementById('chatMessages');
       const messageDiv = document.createElement('div');
@@ -1298,7 +1551,6 @@
       scrollToBottom();
     }
 
-    // Ajouter un message utilisateur
     function addUserMessage(text) {
       const messagesDiv = document.getElementById('chatMessages');
       const messageDiv = document.createElement('div');
@@ -1316,7 +1568,6 @@
       scrollToBottom();
     }
 
-    // Afficher l'indicateur de frappe
     function showTypingIndicator() {
       const id = 'typing-' + Date.now();
       const messagesDiv = document.getElementById('chatMessages');
@@ -1338,19 +1589,16 @@
       return id;
     }
 
-    // Supprimer l'indicateur de frappe
     function removeTypingIndicator(id) {
       const indicator = document.getElementById(id);
       if (indicator) indicator.remove();
     }
 
-    // Scroll en bas
     function scrollToBottom() {
       const messagesDiv = document.getElementById('chatMessages');
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // Échapper HTML
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
@@ -1374,7 +1622,7 @@
       try {
         const formData = new FormData();
         formData.append('question', question);
-        formData.append('matiere', '{{ matiere }}');
+        formData.append('matiere', document.getElementById('matiereSelect').value);
         
         const response = await fetch('{{ url_for("enseignant_virtuel") }}', {
           method: 'POST',
@@ -1403,10 +1651,11 @@
       }
     });
 
-    // Scroll en bas au chargement
+    // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
       scrollToBottom();
       questionInput.focus();
+      setDifficulty('moyen');
     });
 
     // Gestion de la touche Entrée
