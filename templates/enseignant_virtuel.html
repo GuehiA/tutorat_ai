@@ -1119,10 +1119,12 @@
               <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>🌍 Géographie</option>
             </select>
           </div>
-          <!-- Formulaire pour nouvel exercice - Utilise la route existante -->
-          <form method="POST" action="{{ url_for('nouvel_exercice') }}" style="display: inline;">
+          <!-- Formulaire pour nouvel exercice - prend en compte toutes les options -->
+          <form method="POST" action="{{ url_for('nouvel_exercice') }}" style="display: inline;" id="exerciseForm">
             <input type="hidden" name="matiere" id="matiereHidden" value="{{ matiere }}">
             <input type="hidden" name="difficulte" id="difficulteHidden" value="moyen">
+            <input type="hidden" name="type_exercice" id="typeHidden" value="exercice">
+            <input type="hidden" name="mots_cles" id="motsClesHidden" value="">
             <button type="submit" class="generate-exercise-btn" id="generateBtn">
               <i class="fas fa-plus-circle"></i>
               {% if lang == 'fr' %}Nouvel exercice{% else %}New exercise{% endif %}
@@ -1270,7 +1272,8 @@
             {% if lang == 'fr' %}Mots-clés (optionnel) :{% else %}Keywords (optional):{% endif %}
           </label>
           <input type="text" id="motsCles" class="keywords-input" 
-                 placeholder="{% if lang == 'fr' %}ex: fractions, équations...{% else %}ex: fractions, equations...{% endif %}">
+                 placeholder="{% if lang == 'fr' %}ex: fractions, équations...{% else %}ex: fractions, equations...{% endif %}"
+                 value="{% if mots_cles_defaut %}{{ mots_cles_defaut }}{% endif %}">
         </div>
 
         <!-- Bouton qui soumet le formulaire avec les options -->
@@ -1359,29 +1362,45 @@
     function submitWithOptions() {
       const matiere = document.getElementById('matiereSelect').value;
       const difficulte = selectedDifficulty;
+      const typeExercice = document.getElementById('typeExercice').value;
       const motsCles = document.getElementById('motsCles').value;
       
       // Mettre à jour les champs cachés
       document.getElementById('matiereHidden').value = matiere;
       document.getElementById('difficulteHidden').value = difficulte;
+      document.getElementById('typeHidden').value = typeExercice;
+      document.getElementById('motsClesHidden').value = motsCles;
       
       // Optionnel : stocker les mots-clés en session via un appel AJAX
       if (motsCles && motsCles.trim()) {
         fetch('/sauvegarder-mots-cles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mots_cles: motsCles })
-        }).catch(err => console.error('Erreur sauvegarde mots-clés:', err));
+          body: JSON.stringify({ 
+            mots_cles: motsCles,
+            type_exercice: typeExercice 
+          })
+        }).catch(err => console.error('Erreur sauvegarde options:', err));
       }
       
       // Soumettre le formulaire
-      document.querySelector('form[action="{{ url_for("nouvel_exercice") }}"]').submit();
+      document.getElementById('exerciseForm').submit();
     }
 
     // Mettre à jour la matière sélectionnée
     document.getElementById('matiereSelect').addEventListener('change', function() {
       document.getElementById('matiereHidden').value = this.value;
       document.getElementById('matiereInput').value = this.value;
+    });
+
+    // Mettre à jour le type d'exercice quand il change
+    document.getElementById('typeExercice').addEventListener('change', function() {
+      document.getElementById('typeHidden').value = this.value;
+    });
+
+    // Mettre à jour les mots-clés quand ils changent
+    document.getElementById('motsCles').addEventListener('input', function() {
+      document.getElementById('motsClesHidden').value = this.value;
     });
 
     // Fonctions pour les exercices (si besoin en AJAX)
@@ -1635,6 +1654,9 @@
         questionInput.focus();
       }
       setDifficulty('moyen');
+      
+      // Initialiser les champs cachés avec les valeurs par défaut
+      document.getElementById('typeHidden').value = document.getElementById('typeExercice').value;
     });
 
     // Gestion de la touche Entrée
