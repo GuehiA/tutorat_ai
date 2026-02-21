@@ -1119,10 +1119,15 @@
               <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>🌍 Géographie</option>
             </select>
           </div>
-          <button class="generate-exercise-btn" onclick="generateNewExercise()" id="generateBtn">
-            <i class="fas fa-plus-circle"></i>
-            {% if lang == 'fr' %}Nouvel exercice{% else %}New exercise{% endif %}
-          </button>
+          <!-- Formulaire pour nouvel exercice - Utilise la route existante -->
+          <form method="POST" action="{{ url_for('nouvel_exercice') }}" style="display: inline;">
+            <input type="hidden" name="matiere" id="matiereHidden" value="{{ matiere }}">
+            <input type="hidden" name="difficulte" id="difficulteHidden" value="moyen">
+            <button type="submit" class="generate-exercise-btn" id="generateBtn">
+              <i class="fas fa-plus-circle"></i>
+              {% if lang == 'fr' %}Nouvel exercice{% else %}New exercise{% endif %}
+            </button>
+          </form>
         </div>
       </div>
 
@@ -1192,7 +1197,8 @@
       </div>
 
       <div class="chat-input-area">
-        <form id="chatForm" style="width: 100%;">
+        <form id="chatForm" style="width: 100%;" method="POST" action="{{ url_for('enseignant_virtuel') }}">
+          <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere }}">
           <div class="input-container">
             <textarea 
               name="question" 
@@ -1233,13 +1239,13 @@
             {% if lang == 'fr' %}Difficulté :{% else %}Difficulty:{% endif %}
           </label>
           <div class="difficulty-buttons">
-            <button class="difficulty-btn" onclick="setDifficulty('facile')" id="difficileFacile">
+            <button type="button" class="difficulty-btn" onclick="setDifficulty('facile')" id="difficileFacile">
               🌱 {% if lang == 'fr' %}Facile{% else %}Easy{% endif %}
             </button>
-            <button class="difficulty-btn active" onclick="setDifficulty('moyen')" id="difficileMoyen">
+            <button type="button" class="difficulty-btn active" onclick="setDifficulty('moyen')" id="difficileMoyen">
               ⚡ {% if lang == 'fr' %}Moyen{% else %}Medium{% endif %}
             </button>
-            <button class="difficulty-btn" onclick="setDifficulty('difficile')" id="difficileDifficile">
+            <button type="button" class="difficulty-btn" onclick="setDifficulty('difficile')" id="difficileDifficile">
               🚀 {% if lang == 'fr' %}Difficile{% else %}Hard{% endif %}
             </button>
           </div>
@@ -1267,7 +1273,8 @@
                  placeholder="{% if lang == 'fr' %}ex: fractions, équations...{% else %}ex: fractions, equations...{% endif %}">
         </div>
 
-        <button class="apply-options-btn" onclick="generateNewExercise()">
+        <!-- Bouton qui soumet le formulaire avec les options -->
+        <button type="button" class="apply-options-btn" onclick="submitWithOptions()">
           <i class="fas fa-magic"></i>
           {% if lang == 'fr' %}Générer avec ces options{% else %}Generate with these options{% endif %}
         </button>
@@ -1313,10 +1320,12 @@
 
     // Auto-resize textarea
     const questionInput = document.getElementById('questionInput');
-    questionInput.addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-    });
+    if (questionInput) {
+      questionInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+      });
+    }
 
     // Insérer symbole mathématique
     function insertMathSymbol(symbol) {
@@ -1338,79 +1347,44 @@
         btn.classList.remove('active');
       });
       document.getElementById(`difficile${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`).classList.add('active');
-    }
-
-    // Générer nouvel exercice
-    async function generateNewExercise() {
-      const generateBtn = document.getElementById('generateBtn');
-      const originalText = generateBtn.innerHTML;
       
-      generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération...';
-      generateBtn.disabled = true;
-      
-      try {
-        const matiere = document.getElementById('matiereSelect').value;
-        const difficulte = selectedDifficulty;
-        const typeExercice = document.getElementById('typeExercice').value;
-        const motsCles = document.getElementById('motsCles').value;
-        
-        const response = await fetch('/demander-exercice', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            matiere: matiere,
-            difficulte: difficulte,
-            type: typeExercice,
-            mots_cles: motsCles || undefined
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          addExerciseMessage(data.enonce, data.indice_initial);
-          updateSidebarExercise(data.enonce, difficulte);
-          
-          const difficultyDisplay = 
-            difficulte === 'facile' ? 'Facile' : 
-            difficulte === 'moyen' ? 'Moyen' : 'Difficile';
-          document.getElementById('sidebarExerciseDifficulty').textContent = difficultyDisplay;
-        } else {
-          addNaimaMessage('{% if lang == "fr" %}Désolée, je n\'ai pas pu générer un exercice. Réessaie !{% else %}Sorry, I couldn\'t generate an exercise. Try again!{% endif %}');
-        }
-      } catch (error) {
-        console.error('Erreur:', error);
-        addNaimaMessage('{% if lang == "fr" %}Erreur de connexion.{% else %}Connection error.{% endif %}');
-      } finally {
-        generateBtn.innerHTML = originalText;
-        generateBtn.disabled = false;
+      // Mettre à jour le champ caché du formulaire
+      const difficulteHidden = document.getElementById('difficulteHidden');
+      if (difficulteHidden) {
+        difficulteHidden.value = difficulty;
       }
     }
 
-    function addExerciseMessage(question, premierIndice) {
-      const exerciseHtml = `
-        <div class="exercise-message" id="current-exercise">
-          <div class="exercise-question">${escapeHtml(question)}</div>
-          <div class="exercise-answer-area">
-            <textarea id="exerciseAnswer" placeholder="${escapeHtml('{% if lang == "fr" %}Écris ta réponse ici...{% else %}Write your answer here...{% endif %}')}" rows="3"></textarea>
-          </div>
-          <div class="exercise-actions">
-            <button class="exercise-btn submit" onclick="submitExerciseAnswer()">
-              <i class="fas fa-paper-plane"></i> {% if lang == 'fr' %}Vérifier{% else %}Check{% endif %}
-            </button>
-            <button class="exercise-btn hint" onclick="getExerciseHint()">
-              <i class="fas fa-lightbulb"></i> {% if lang == 'fr' %}Indice{% else %}Hint{% endif %}
-            </button>
-          </div>
-          ${premierIndice ? `<div class="hint-box" id="hint-box" style="display: none;">${escapeHtml(premierIndice)}</div>` : ''}
-        </div>
-      `;
+    // Soumettre le formulaire avec les options
+    function submitWithOptions() {
+      const matiere = document.getElementById('matiereSelect').value;
+      const difficulte = selectedDifficulty;
+      const motsCles = document.getElementById('motsCles').value;
       
-      addNaimaMessage(exerciseHtml);
+      // Mettre à jour les champs cachés
+      document.getElementById('matiereHidden').value = matiere;
+      document.getElementById('difficulteHidden').value = difficulte;
+      
+      // Optionnel : stocker les mots-clés en session via un appel AJAX
+      if (motsCles && motsCles.trim()) {
+        fetch('/sauvegarder-mots-cles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mots_cles: motsCles })
+        }).catch(err => console.error('Erreur sauvegarde mots-clés:', err));
+      }
+      
+      // Soumettre le formulaire
+      document.querySelector('form[action="{{ url_for("nouvel_exercice") }}"]').submit();
     }
 
+    // Mettre à jour la matière sélectionnée
+    document.getElementById('matiereSelect').addEventListener('change', function() {
+      document.getElementById('matiereHidden').value = this.value;
+      document.getElementById('matiereInput').value = this.value;
+    });
+
+    // Fonctions pour les exercices (si besoin en AJAX)
     async function submitExerciseAnswer() {
       const answer = document.getElementById('exerciseAnswer')?.value;
       if (!answer || !answer.trim()) {
@@ -1607,64 +1581,71 @@
 
     // Gestion de l'envoi du formulaire
     const chatForm = document.getElementById('chatForm');
-    chatForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const question = questionInput.value.trim();
-      if (!question) return;
-      
-      addUserMessage(question);
-      questionInput.value = '';
-      questionInput.style.height = 'auto';
-      
-      const typingId = showTypingIndicator();
-      
-      try {
-        const formData = new FormData();
-        formData.append('question', question);
-        formData.append('matiere', document.getElementById('matiereSelect').value);
+    if (chatForm) {
+      chatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
         
-        const response = await fetch('{{ url_for("enseignant_virtuel") }}', {
-          method: 'POST',
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: formData
-        });
+        const question = questionInput.value.trim();
+        if (!question) return;
         
-        removeTypingIndicator(typingId);
+        addUserMessage(question);
+        questionInput.value = '';
+        questionInput.style.height = 'auto';
         
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.messages && data.messages.length > 0) {
-            const lastMessage = data.messages[data.messages.length - 1];
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = lastMessage;
-            const content = tempDiv.querySelector('.message-content')?.innerHTML || lastMessage;
-            addNaimaMessage(content);
+        const typingId = showTypingIndicator();
+        
+        try {
+          const formData = new FormData(chatForm);
+          
+          const response = await fetch('{{ url_for("enseignant_virtuel") }}', {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+          });
+          
+          removeTypingIndicator(typingId);
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.messages && data.messages.length > 0) {
+              const lastMessage = data.messages[data.messages.length - 1];
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = lastMessage;
+              const content = tempDiv.querySelector('.message-content')?.innerHTML || lastMessage;
+              addNaimaMessage(content);
+            } else {
+              // Fallback: recharger la page si pas de réponse JSON
+              window.location.reload();
+            }
           }
+        } catch (error) {
+          console.error('Erreur:', error);
+          removeTypingIndicator(typingId);
+          addNaimaMessage('{% if lang == "fr" %}Désolée, j\'ai eu un problème technique. Peux-tu réessayer ?{% else %}Sorry, I had a technical issue. Can you try again?{% endif %}');
         }
-      } catch (error) {
-        console.error('Erreur:', error);
-        removeTypingIndicator(typingId);
-        addNaimaMessage('{% if lang == "fr" %}Désolée, j\'ai eu un problème technique. Peux-tu réessayer ?{% else %}Sorry, I had a technical issue. Can you try again?{% endif %}');
-      }
-    });
+      });
+    }
 
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
       scrollToBottom();
-      questionInput.focus();
+      if (questionInput) {
+        questionInput.focus();
+      }
       setDifficulty('moyen');
     });
 
     // Gestion de la touche Entrée
-    questionInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        chatForm.dispatchEvent(new Event('submit'));
-      }
-    });
+    if (questionInput) {
+      questionInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          chatForm.dispatchEvent(new Event('submit'));
+        }
+      });
+    }
   </script>
 </body>
 </html>
