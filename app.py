@@ -1222,29 +1222,6 @@ def enseignant_virtuel():
         matiere=matiere
     )
 
-def get_message(key, lang="fr"):
-    """Fonction utilitaire pour les messages bilingues"""
-    messages = {
-        "essai_termine": {
-            "fr": "Votre essai gratuit est terminé. Veuillez souscrire à un abonnement pour continuer.",
-            "en": "Your free trial has ended. Please subscribe to continue."
-        },
-        "bienvenue_enseignant": {
-            "fr": "Bonjour ! Je suis Naima, ton enseignante virtuelle. Je suis là pour t'aider à comprendre tes leçons et résoudre tes exercices. Quelle est ta question ?",
-            "en": "Hello! I'm Naima, your virtual teacher. I'm here to help you understand your lessons and solve your exercises. What's your question?"
-        },
-        "je_te_guide": {
-            "fr": "Je te guide pas à pas...",
-            "en": "I'm guiding you step by step..."
-        },
-        "erreur_traitement": {
-            "fr": "Une erreur s'est produite. Veuillez réessayer.",
-            "en": "An error occurred. Please try again."
-        }
-    }
-    
-    return messages.get(key, {}).get(lang, messages.get(key, {}).get("fr", "Message non trouvé"))
-
 def extraire_question(reponse, lang):
     """Extrait une question de la réponse de l'IA"""
     import re
@@ -1285,26 +1262,194 @@ def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="
 
 
 def get_message(key, lang="fr"):
-    """Système de messages bilingues"""
+    """Système de messages bilingues unifié pour Naima"""
+    
+    # Structure UNIFIÉE : d'abord par clé, puis par langue
     messages = {
-        "fr": {
-            "essai_termine": "Essai gratuit terminé. Abonne-toi pour continuer.",
-            "je_te_guide": "Je te guide étape par étape !",
-            "erreur_traitement": "Erreur lors du traitement de la question",
-            "bienvenue_enseignant": "👋 Bonjour ! Je suis ton enseignant virtuel. Pose-moi n'importe quelle question sur n'importe quelle matière !",
-            "nouveau_dialogue": "Nouvelle conversation commencée. Pose ta question !",
-            "acces_enseignant": "Accès à l'enseignant virtuel activé !"
+        # Messages d'authentification et essai
+        "essai_termine": {
+            "fr": "Votre essai gratuit est terminé. Veuillez souscrire à un abonnement pour continuer.",
+            "en": "Your free trial has ended. Please subscribe to continue."
         },
-        "en": {
-            "essai_termine": "Free trial ended. Subscribe to continue.",
-            "je_te_guide": "I'll guide you step by step!",
-            "erreur_traitement": "Error processing the question",
-            "bienvenue_enseignant": "👋 Hello! I'm your virtual teacher. Ask me any question about any subject!",
-            "nouveau_dialogue": "New conversation started. Ask your question!",
-            "acces_enseignant": "Virtual teacher access activated!"
+        
+        # Messages de bienvenue et accueil
+        "bienvenue_enseignant": {
+            "fr": "Bonjour ! Je suis Naima, ton enseignante virtuelle. Je suis là pour t'aider à comprendre tes leçons et résoudre tes exercices. Quelle est ta question ?",
+            "en": "Hello! I'm Naima, your virtual teacher. I'm here to help you understand your lessons and solve your exercises. What's your question?"
+        },
+        
+        # Messages de guidage
+        "je_te_guide": {
+            "fr": "Je te guide pas à pas...",
+            "en": "I'm guiding you step by step..."
+        },
+        "je_te_guide_court": {
+            "fr": "Je te guide...",
+            "en": "Guiding you..."
+        },
+        
+        # Messages d'erreur
+        "erreur_traitement": {
+            "fr": "Une erreur s'est produite. Veuillez réessayer.",
+            "en": "An error occurred. Please try again."
+        },
+        "erreur_ia": {
+            "fr": "Désolé, je n'ai pas pu traiter ta demande. Reformule peut-être ?",
+            "en": "Sorry, I couldn't process your request. Maybe rephrase it?"
+        },
+        
+        # Messages de dialogue
+        "nouveau_dialogue": {
+            "fr": "Nouvelle conversation commencée. Pose ta question !",
+            "en": "New conversation started. Ask your question!"
+        },
+        "acces_enseignant": {
+            "fr": "Accès à l'enseignant virtuel activé !",
+            "en": "Virtual teacher access activated!"
+        },
+        "conversation_terminee": {
+            "fr": "✨ Super ! Tu as compris. N'hésite pas à revenir si tu as d'autres questions !",
+            "en": "✨ Great! You understood. Feel free to come back if you have more questions!"
+        },
+        
+        # Messages pour les exercices
+        "bravo_exercice_termine": {
+            "fr": "🎉 BRAVO ! Tu as terminé l'exercice avec succès ! Veux-tu essayer un autre ?",
+            "en": "🎉 WELL DONE! You've successfully completed the exercise! Want to try another?"
+        },
+        "plus_d_indices": {
+            "fr": "Je n'ai plus d'indices, mais je crois en toi ! Essaie de relire l'énoncé.",
+            "en": "I have no more hints, but I believe in you! Try re-reading the problem."
+        },
+        "demande_indice": {
+            "fr": "Veux-tu un indice pour t'aider ?",
+            "en": "Would you like a hint to help you?"
+        },
+        "exercice_genere": {
+            "fr": "📝 Voici un exercice pour toi ! Prends ton temps pour le résoudre.",
+            "en": "📝 Here's an exercise for you! Take your time to solve it."
+        },
+        "reponse_correcte": {
+            "fr": "✅ Exact ! Très bonne réponse !",
+            "en": "✅ Exactly! Very good answer!"
+        },
+        "reponse_incorrecte": {
+            "fr": "❌ Presque ! Regarde l'indice et réessaie.",
+            "en": "❌ Almost! Look at the hint and try again."
+        },
+        "indice_suivant": {
+            "fr": "💡 Voici un indice supplémentaire :",
+            "en": "💡 Here's an additional hint:"
+        },
+        "exercice_niveau": {
+            "fr": "Niveau de difficulté :",
+            "en": "Difficulty level:"
+        },
+        "choisir_difficulte": {
+            "fr": "Choisis la difficulté :",
+            "en": "Choose difficulty:"
+        },
+        "generation_exercice": {
+            "fr": "Génération de l'exercice en cours...",
+            "en": "Generating exercise..."
+        },
+        "fais_ton_choix": {
+            "fr": "Quel exercice veux-tu faire ?",
+            "en": "Which exercise would you like to do?"
+        },
+        "progression_exercice": {
+            "fr": "Progression :",
+            "en": "Progress:"
+        },
+        "etape_suivante": {
+            "fr": "Passons à l'étape suivante !",
+            "en": "Let's move to the next step!"
+        },
+        "felicitations_fin": {
+            "fr": "🎊 FÉLICITATIONS ! Tu as maîtrisé cet exercice !",
+            "en": "🎊 CONGRATULATIONS! You've mastered this exercise!"
+        },
+        
+        # Messages pour les matières
+        "matiere_maths": {
+            "fr": "Mathématiques",
+            "en": "Mathematics"
+        },
+        "matiere_francais": {
+            "fr": "Français",
+            "en": "French"
+        },
+        "matiere_histoire": {
+            "fr": "Histoire",
+            "en": "History"
+        },
+        "matiere_sciences": {
+            "fr": "Sciences",
+            "en": "Science"
+        },
+        "matiere_geo": {
+            "fr": "Géographie",
+            "en": "Geography"
+        },
+        
+        # Messages d'encouragement
+        "encouragement_1": {
+            "fr": "Continue comme ça !",
+            "en": "Keep it up!"
+        },
+        "encouragement_2": {
+            "fr": "Tu y es presque !",
+            "en": "You're almost there!"
+        },
+        "encouragement_3": {
+            "fr": "Excellent raisonnement !",
+            "en": "Excellent reasoning!"
+        },
+        "encouragement_4": {
+            "fr": "Je suis fière de toi !",
+            "en": "I'm proud of you!"
+        },
+        
+        # Messages d'interface
+        "placeholder_question": {
+            "fr": "Pose ta question à Naima...",
+            "en": "Ask your question to Naima..."
+        },
+        "placeholder_reponse": {
+            "fr": "Réponds à Naima...",
+            "en": "Answer Naima..."
+        },
+        "bouton_envoyer": {
+            "fr": "Envoyer",
+            "en": "Send"
+        },
+        "bouton_nouveau": {
+            "fr": "Nouvelle conversation",
+            "en": "New conversation"
+        },
+        "bouton_compris": {
+            "fr": "J'ai compris ✓",
+            "en": "I understand ✓"
+        },
+        "bouton_exercice": {
+            "fr": "Exercice",
+            "en": "Exercise"
         }
     }
-    return messages.get(lang, messages["fr"]).get(key, key)
+    
+    # Récupération avec gestion d'erreur avancée
+    if key in messages:
+        # La clé existe
+        if lang in messages[key]:
+            # La langue existe pour cette clé
+            return messages[key][lang]
+        else:
+            # Langue non trouvée, retour français par défaut
+            return messages[key].get("fr", f"[{key}]")
+    else:
+        # Clé non trouvée, retourner la clé pour debug
+        print(f"⚠️ Message key not found: {key}")
+        return f"[{key}]"
 
 
 def extraire_question(reponse, lang="fr"):
@@ -1902,6 +2047,239 @@ Take your time, I'm here to support you.
 — Naima ✨"""
 
 
+@app.route("/demander-exercice", methods=["POST"])
+def demander_exercice():
+    """Génère un exercice personnalisé pour l'élève"""
+    if "user_id" not in session:
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    utilisateur = User.query.get(session["user_id"])
+    if not utilisateur or utilisateur.role != "eleve":
+        return jsonify({"error": "Accès réservé aux élèves"}), 403
+    
+    data = request.get_json()
+    matiere = data.get("matiere", "mathématiques")
+    difficulte = data.get("difficulte", "moyen")
+    type_exercice = data.get("type", "exercice")  # exercice, qcm, probleme
+    
+    lang = session.get("lang", "fr")
+    
+    try:
+        # Générer l'exercice avec OpenAI
+        exercice = generer_exercice(
+            matiere=matiere,
+            niveau=utilisateur.niveau.nom if utilisateur.niveau else "6ème",
+            difficulte=difficulte,
+            type_exercice=type_exercice,
+            langue=lang
+        )
+        
+        # Stocker l'exercice en session
+        session["exercice_actuel"] = {
+            "matiere": matiere,
+            "enonce": exercice["enonce"],
+            "correction": exercice["correction"],  # cachée à l'élève
+            "indices": exercice["indices"],
+            "etape": 1
+        }
+        
+        return jsonify({
+            "success": True,
+            "enonce": exercice["enonce"],
+            "indice_initial": exercice["indices"][0] if exercice["indices"] else None
+        })
+        
+    except Exception as e:
+        print(f"Erreur génération exercice: {e}")
+        return jsonify({"error": "Erreur lors de la génération"}), 500
+
+
+@app.route("/verifier-reponse-exercice", methods=["POST"])
+def verifier_reponse_exercice():
+    """Vérifie la réponse de l'élève et donne du feedback"""
+    if "user_id" not in session:
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    data = request.get_json()
+    reponse_eleve = data.get("reponse", "")
+    exercice_actuel = session.get("exercice_actuel")
+    
+    if not exercice_actuel:
+        return jsonify({"error": "Aucun exercice en cours"}), 400
+    
+    lang = session.get("lang", "fr")
+    
+    # Analyser la réponse
+    analyse = analyser_reponse(
+        enonce=exercice_actuel["enonce"],
+        reponse_eleve=reponse_eleve,
+        correction=exercice_actuel["correction"],
+        etape=exercice_actuel.get("etape", 1),
+        langue=lang
+    )
+    
+    if analyse["correct"]:
+        # Passer à l'étape suivante ou féliciter
+        exercice_actuel["etape"] += 1
+        session["exercice_actuel"] = exercice_actuel
+        
+        if exercice_actuel["etape"] > len(exercice_actuel["correction"].get("etapes", [])):
+            # Exercice terminé !
+            return jsonify({
+                "termine": True,
+                "message": get_message("bravo_exercice_termine", lang)
+            })
+    
+    return jsonify({
+        "correct": analyse["correct"],
+        "feedback": analyse["feedback"],
+        "indice_suivant": analyse.get("indice"),
+        "progression": f"{exercice_actuel['etape']-1}/{len(exercice_actuel['correction'].get('etapes', []))}"
+    })
+
+
+@app.route("/indice-supplementaire", methods=["POST"])
+def indice_supplementaire():
+    """Donne un indice supplémentaire à l'élève"""
+    exercice_actuel = session.get("exercice_actuel")
+    if not exercice_actuel:
+        return jsonify({"error": "Aucun exercice"}), 400
+    
+    etape = exercice_actuel.get("etape", 1)
+    indices = exercice_actuel.get("indices", [])
+    
+    if etape <= len(indices):
+        return jsonify({
+            "indice": indices[etape - 1]
+        })
+    else:
+        lang = session.get("lang", "fr")
+        return jsonify({
+            "indice": get_message("plus_d_indices", lang)
+        })
+
+
+def generer_exercice(matiere, niveau, difficulte="moyen", type_exercice="exercice", langue="fr"):
+    """Génère un exercice personnalisé avec OpenAI"""
+    from openai import OpenAI
+    import os
+    import json
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    # Construction du prompt selon la matière
+    prompts = {
+        "mathématiques": f"Génère un exercice de {matiere} niveau {niveau} ({difficulte})",
+        "français": f"Génère un exercice de {matiere} niveau {niveau} ({difficulte})",
+        # ... etc
+    }
+    
+    prompt_base = prompts.get(matiere, prompts["mathématiques"])
+    
+    system_prompt = f"""Tu es Naima, enseignante virtuelle. Génère un {type_exercice} en {matiere} pour un élève de {niveau}.
+
+    IMPORTANT: Réponds STRICTEMENT au format JSON suivant :
+    {{
+        "enonce": "L'énoncé complet de l'exercice",
+        "correction": {{
+            "reponse_finale": "La réponse correcte",
+            "etapes": ["étape 1", "étape 2", "étape 3"]
+        }},
+        "indices": ["indice 1 (aide pour démarrer)", "indice 2", "indice 3"]
+    }}
+
+    L'exercice doit être adapté au niveau {niveau} avec une difficulté {difficulte}.
+    Les indices doivent guider sans donner la réponse.
+    """
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt_base}
+            ],
+            temperature=0.7,
+            response_format={"type": "json_object"}
+        )
+        
+        exercice = json.loads(response.choices[0].message.content)
+        return exercice
+        
+    except Exception as e:
+        print(f"Erreur génération: {e}")
+        # Fallback
+        return {
+            "enonce": "Calcule : 15 + 27 = ?",
+            "correction": {
+                "reponse_finale": "42",
+                "etapes": ["Additionner les unités", "Additionner les dizaines"]
+            },
+            "indices": ["Commence par additionner les unités"]
+        }
+
+
+def analyser_reponse(enonce, reponse_eleve, correction, etape=1, langue="fr"):
+    """Analyse la réponse de l'élève"""
+    from openai import OpenAI
+    import os
+    import json
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    prompt = f"""
+    Énoncé: {enonce}
+    Réponse élève: {reponse_eleve}
+    Correction attendue: {correction}
+    Étape actuelle: {etape}
+    
+    Analyse si la réponse est correcte et donne un feedback constructif.
+    
+    Réponds en JSON:
+    {{
+        "correct": true/false,
+        "feedback": "Message d'encouragement/guidage",
+        "indice": "Indice si nécessaire (optionnel)"
+    }}
+    """
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Tu es Naima, enseignante bienveillante qui encourage la réflexion."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+            response_format={"type": "json_object"}
+        )
+        
+        return json.loads(response.choices[0].message.content)
+        
+    except:
+        # Fallback
+        return {
+            "correct": False,
+            "feedback": "Continue à chercher, tu es sur la bonne voie !",
+            "indice": "Relis bien l'énoncé"
+        }
+
+
+@app.route("/terminer-conversation", methods=["POST"])
+def terminer_conversation():
+    """Termine proprement la conversation en cours"""
+    if "user_id" not in session:
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    # Sauvegarder que l'élève a compris
+    session["conversation_terminee"] = True
+    
+    # Nettoyer mais garder l'élève connecté
+    session.pop("derniere_q_ia", None)
+    session.modified = True
+    
+    return jsonify({"success": True})
+    
 @app.after_request
 def add_header(response):
     """Ajouter des headers pour empêcher la mise en cache et les rechargements"""
