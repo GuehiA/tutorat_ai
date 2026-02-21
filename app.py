@@ -363,7 +363,17 @@ def health_check():
             'timestamp': datetime.utcnow().isoformat()
         }), 500
 
+# ====================================================================
+# 🎯 Bloquer les bots
+# ====================================================================
 
+@app.before_request
+def block_wordpress_bots():
+    """Bloque les requêtes de bots WordPress"""
+    blocked_paths = ['/wp', '/wordpress', '/blog', '/wp-includes']
+    for path in blocked_paths:
+        if request.path.startswith(path):
+            return "Not found", 404
 # ====================================================================
 # 🎯 ROUTES D'AUTHENTIFICATION (exemple)
 # ====================================================================
@@ -2024,6 +2034,61 @@ Commence toujours par un accueil chaleureux avec ton nom : "Je suis Naima, ton e
 
 
 # ============ ROUTE ADAPTÉE ============
+@app.route("/api/eleve/stats", methods=["GET"])
+def api_eleve_stats():
+    """API pour récupérer les statistiques de l'élève"""
+    if "user_id" not in session:
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    eleve = User.query.get(session["user_id"])
+    if not eleve or eleve.role != "eleve":
+        return jsonify({"error": "Accès non autorisé"}), 403
+    
+    from models import StudentResponse
+    from sqlalchemy import func
+    from datetime import datetime
+    
+    total = StudentResponse.query.filter_by(user_id=eleve.id).count()
+    reussis = StudentResponse.query.filter(
+        StudentResponse.user_id == eleve.id,
+        StudentResponse.etoiles >= 3
+    ).count() if hasattr(StudentResponse, 'etoiles') else 0
+    
+    # Calcul de la série
+    serie = 0
+    try:
+        dates = db.session.query(
+            func.date(StudentResponse.timestamp)
+        ).filter(
+            StudentResponse.user_id == eleve.id
+        ).distinct().order_by(
+            func.date(StudentResponse.timestamp).desc()
+        ).all()
+        
+        if dates:
+            dates_list = [d[0] for d in dates]
+            today = datetime.utcnow().date()
+            
+            if dates_list and dates_list[0] == today:
+                serie = 1
+                for i in range(len(dates_list) - 1):
+                    if (dates_list[i] - dates_list[i+1]).days == 1:
+                        serie += 1
+                    else:
+                        break
+    except Exception as e:
+        print(f"Erreur calcul série: {e}")
+    
+    return jsonify({
+        "success": True,
+        "total_exercices": total,
+        "exercices_reussis": reussis,
+        "taux_reussite": round((reussis / total * 100) if total > 0 else 0),
+        "serie": serie,
+        "temps_apprentissage": 0  # À implémenter si besoin
+    })
+
+
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
     """Route pour l'enseignant virtuel Naima - Support AJAX pour les exercices"""
@@ -2031,6 +2096,7 @@ def enseignant_virtuel():
     import time
     
     print(f"[DEBUG] Accès enseignant virtuel")
+    print(f"[DEBUG] Session keys: {list(session.keys())}")
     
     # Vérifier l'authentification
     if "user_id" not in session:
@@ -2050,12 +2116,21 @@ def enseignant_virtuel():
     # ✅ Récupérer la conversation existante
     conversation = session.get("conversation", [])
     
+    # ✅ Récupérer la matière depuis la session si disponible
+    matiere = session.get("matiere", "mathématiques")
+    
     # TRAITEMENT POST
     if request.method == 'POST':
         question = request.form.get("question", "").strip()
-        matiere = request.form.get("matiere", "mathématiques")
+        matiere_form = request.form.get("matiere", "")
         
-        print(f"[DEBUG] POST - Question: {question[:50]}... - Matière: {matiere}")
+        if matiere_form:
+            matiere = matiere_form
+            session["matiere"] = matiere
+        
+        print(f"[DEBUG] POST - Question: {question[:100]}...")
+        print(f"[DEBUG] Matière: {matiere}")
+        print(f"[DEBUG] Longueur question: {len(question)}")
         
         if question and len(question) >= 3:
             # Ajouter la question de l'élève
@@ -2063,11 +2138,13 @@ def enseignant_virtuel():
             conversation.append(f"{eleve_label} {question}")
             
             try:
-                # Vérifier si c'est une réponse à une question précédente
+                # ✅ Vérifier si c'est une réponse à une question précédente
                 derniere_q_ia = session.get('derniere_q_ia')
+                print(f"[DEBUG] Dernière question IA trouvée: {derniere_q_ia if derniere_q_ia else 'AUCUNE'}")
                 
                 if derniere_q_ia:
-                    # C'est une réponse à une question de Naima
+                    # ✅ C'est une réponse à une question de Naima
+                    print(f"[DEBUG] Utilisation de generer_suite_conversation")
                     reponse = generer_suite_conversation(
                         derniere_q=derniere_q_ia,
                         reponse=question,
@@ -2078,10 +2155,12 @@ def enseignant_virtuel():
                         exercice_context="",
                         matiere=matiere
                     )
-                    # Effacer la dernière question car on y a répondu
+                    # ✅ Effacer l'ancienne question APRÈS l'avoir utilisée
                     session.pop('derniere_q_ia', None)
+                    print(f"[DEBUG] Ancienne question effacée")
                 else:
-                    # Nouvelle question
+                    # ✅ Nouvelle question
+                    print(f"[DEBUG] Utilisation de generer_debut_conversation")
                     reponse = generer_debut_conversation(
                         question=question,
                         niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
@@ -2090,14 +2169,26 @@ def enseignant_virtuel():
                         matiere=matiere
                     )
                 
+                # ✅ Vérifier que la réponse n'est pas vide
+                if not reponse or len(reponse.strip()) < 10:
+                    print(f"[DEBUG] ⚠️ Réponse trop courte ou vide!")
+                    if lang == "fr":
+                        reponse = "Je réfléchis... Peux-tu reformuler ta question ?"
+                    else:
+                        reponse = "I'm thinking... Can you rephrase your question?"
+                
                 # Ajouter la réponse de Naima
                 enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
                 conversation.append(f"{enseignant_label} {reponse}")
+                print(f"[DEBUG] Réponse ajoutée: {reponse[:100]}...")
                 
-                # ✅ Extraire la nouvelle question de Naima pour la suite
+                # ✅ Extraire la NOUVELLE question de Naima pour la suite
                 nouvelle_q = extraire_question(reponse, lang)
                 if nouvelle_q:
                     session['derniere_q_ia'] = nouvelle_q
+                    print(f"[DEBUG] ✅ Nouvelle question extraite: {nouvelle_q[:100]}...")
+                else:
+                    print(f"[DEBUG] ⚠️ Aucune question extraite de la réponse")
                 
                 # Limiter la taille de la conversation
                 if len(conversation) > 20:
@@ -2105,9 +2196,11 @@ def enseignant_virtuel():
                 
                 # Sauvegarder
                 session["conversation"] = conversation
+                session.modified = True
+                print(f"[DEBUG] Conversation sauvegardée: {len(conversation)} messages")
                 
             except Exception as e:
-                print(f"Erreur: {e}")
+                print(f"❌ Erreur lors de la génération: {e}")
                 import traceback
                 traceback.print_exc()
                 
@@ -2125,11 +2218,16 @@ def enseignant_virtuel():
     from models import StudentResponse
     from sqlalchemy import func
     
-    total_exercices = StudentResponse.query.filter_by(user_id=eleve.id).count()
-    exercices_reussis = StudentResponse.query.filter(
-        StudentResponse.user_id == eleve.id,
-        StudentResponse.etoiles >= 3
-    ).count() if hasattr(StudentResponse, 'etoiles') else 0
+    try:
+        total_exercices = StudentResponse.query.filter_by(user_id=eleve.id).count()
+        exercices_reussis = StudentResponse.query.filter(
+            StudentResponse.user_id == eleve.id,
+            StudentResponse.etoiles >= 3
+        ).count() if hasattr(StudentResponse, 'etoiles') else 0
+    except Exception as e:
+        print(f"[DEBUG] Erreur calcul stats: {e}")
+        total_exercices = 0
+        exercices_reussis = 0
     
     # Calculer la série (streak)
     serie = 0
@@ -2159,12 +2257,15 @@ def enseignant_virtuel():
     # Calculer le temps total d'apprentissage
     temps_apprentissage = 0
     if hasattr(StudentResponse, 'temps_passe'):
-        temps_total = db.session.query(
-            func.sum(StudentResponse.temps_passe)
-        ).filter(
-            StudentResponse.user_id == eleve.id
-        ).scalar() or 0
-        temps_apprentissage = round(temps_total / 60)
+        try:
+            temps_total = db.session.query(
+                func.sum(StudentResponse.temps_passe)
+            ).filter(
+                StudentResponse.user_id == eleve.id
+            ).scalar() or 0
+            temps_apprentissage = round(temps_total / 60)
+        except Exception as e:
+            print(f"[DEBUG] Erreur calcul temps: {e}")
     
     stats = {
         'total_exercices': total_exercices,
@@ -2175,14 +2276,18 @@ def enseignant_virtuel():
         'date_inscription': eleve.date_inscription.strftime('%d/%m/%Y') if eleve.date_inscription else 'N/A'
     }
     
+    print(f"[DEBUG] Stats élève: {stats}")
+    
     # Pour les requêtes AJAX
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         messages_html = []
         for msg in conversation[-10:]:
             if "👤" in msg:
-                messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
+                content = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
+                messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
             elif "🤖" in msg:
-                messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{msg.replace("🤖 Naima:", "").strip()}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
+                content = msg.replace("🤖 Naima:", "").strip()
+                messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
         
         return jsonify({
             'success': True,
@@ -2201,7 +2306,7 @@ def enseignant_virtuel():
         exercice_remediation=None,
         access_count=0,
         date_du_jour=datetime.utcnow(),
-        matiere=request.form.get("matiere", "mathématiques") if request.method == 'POST' else session.get("matiere", "mathématiques"),
+        matiere=matiere,
         theme="général",
         datetime=datetime
     )
