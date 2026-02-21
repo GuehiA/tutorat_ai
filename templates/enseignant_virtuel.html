@@ -873,7 +873,7 @@
 
       <div class="subject-card">
         <div class="subject-icon">
-          <i class="fas fa-{% if matiere == 'mathématiques' %}calculator{% elif matiere == 'français' %}language{% elif matiere == 'anglais' %}globe{% elif matiere == 'histoire' %}landmark{% elif matiere == 'sciences' %}flask{% else %}book{% endif %}"></i>
+          <i class="fas {% if matiere == 'mathématiques' %}fa-calculator{% elif matiere == 'français' %}fa-language{% elif matiere == 'anglais' %}fa-globe{% elif matiere == 'histoire' %}fa-landmark{% elif matiere == 'sciences' %}fa-flask{% else %}fa-book{% endif %}"></i>
         </div>
         <div class="subject-name">{{ matiere|capitalize }}</div>
         <div class="subject-topic">
@@ -1123,11 +1123,11 @@
           addExerciseMessage(data.enonce, data.indice_initial);
           updateSidebarExercise(data.enonce, 'Moyen');
         } else {
-          addNaimaMessage('{{ lang == "fr" ? "Désolée, je n\'ai pas pu générer un exercice. Réessaie !" : "Sorry, I couldn\'t generate an exercise. Try again!" }}');
+          addNaimaMessage('{% if lang == "fr" %}Désolée, je n\'ai pas pu générer un exercice. Réessaie !{% else %}Sorry, I couldn\'t generate an exercise. Try again!{% endif %}');
         }
       } catch (error) {
         console.error('Erreur:', error);
-        addNaimaMessage('{{ lang == "fr" ? "Erreur de connexion." : "Connection error." }}');
+        addNaimaMessage('{% if lang == "fr" %}Erreur de connexion.{% else %}Connection error.{% endif %}');
       } finally {
         generateBtn.innerHTML = originalText;
         generateBtn.disabled = false;
@@ -1139,14 +1139,14 @@
         <div class="exercise-message" id="current-exercise">
           <div class="exercise-question">${escapeHtml(question)}</div>
           <div class="exercise-answer-area">
-            <textarea id="exerciseAnswer" placeholder="${escapeHtml('{{ lang == "fr" ? "Écris ta réponse ici..." : "Write your answer here..." }}')}" rows="3"></textarea>
+            <textarea id="exerciseAnswer" placeholder="${escapeHtml('{% if lang == "fr" %}Écris ta réponse ici...{% else %}Write your answer here...{% endif %}')}" rows="3"></textarea>
           </div>
           <div class="exercise-actions">
             <button class="exercise-btn submit" onclick="submitExerciseAnswer()">
-              <i class="fas fa-paper-plane"></i> {{ lang == 'fr' ? 'Vérifier' : 'Check' }}
+              <i class="fas fa-paper-plane"></i> {% if lang == 'fr' %}Vérifier{% else %}Check{% endif %}
             </button>
             <button class="exercise-btn hint" onclick="getExerciseHint()">
-              <i class="fas fa-lightbulb"></i> {{ lang == 'fr' ? 'Indice' : 'Hint' }}
+              <i class="fas fa-lightbulb"></i> {% if lang == 'fr' %}Indice{% else %}Hint{% endif %}
             </button>
           </div>
           ${premierIndice ? `<div class="hint-box" id="hint-box" style="display: none;">${escapeHtml(premierIndice)}</div>` : ''}
@@ -1159,13 +1159,13 @@
     async function submitExerciseAnswer() {
       const answer = document.getElementById('exerciseAnswer')?.value;
       if (!answer || !answer.trim()) {
-        alert('{{ lang == "fr" ? "Veuillez écrire une réponse" : "Please write an answer" }}');
+        alert('{% if lang == "fr" %}Veuillez écrire une réponse{% else %}Please write an answer{% endif %}');
         return;
       }
       
       const submitBtn = event.target;
       const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ lang == "fr" ? "Vérification..." : "Checking..." }}';
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "fr" %}Vérification...{% else %}Checking...{% endif %}';
       submitBtn.disabled = true;
       
       try {
@@ -1217,7 +1217,7 @@
         }
       } catch (error) {
         console.error('Erreur:', error);
-        addNaimaMessage('{{ lang == "fr" ? "Erreur lors de la vérification." : "Error during verification." }}');
+        addNaimaMessage('{% if lang == "fr" %}Erreur lors de la vérification.{% else %}Error during verification.{% endif %}');
       } finally {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
@@ -1399,7 +1399,7 @@
       } catch (error) {
         console.error('Erreur:', error);
         removeTypingIndicator(typingId);
-        addNaimaMessage('{{ lang == "fr" ? "Désolée, j\'ai eu un problème technique. Peux-tu réessayer ?" : "Sorry, I had a technical issue. Can you try again?" }}');
+        addNaimaMessage('{% if lang == "fr" %}Désolée, j\'ai eu un problème technique. Peux-tu réessayer ?{% else %}Sorry, I had a technical issue. Can you try again?{% endif %}');
       }
     });
 
