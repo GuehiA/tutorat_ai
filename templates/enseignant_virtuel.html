@@ -40,6 +40,8 @@
       --light: #f8f9ff;
       --dark: #121826;
       --accent: #9b59b6;
+      --orange: #ff9f43;
+      --purple: #9b59b6;
     }
 
     * {
@@ -60,7 +62,7 @@
       height: 100%;
     }
 
-    /* Header - ABSOLUMENT TOUT EN HAUT */
+    /* Header */
     .header {
       background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
       color: white;
@@ -71,8 +73,6 @@
       justify-content: space-between;
       align-items: center;
       box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-      /* FORCER EN HAUT */
-      order: 1;
     }
 
     .header-left {
@@ -109,7 +109,7 @@
       gap: 5px;
     }
 
-    /* Information de session */
+    /* Session info */
     .session-info {
       background: rgba(67, 97, 238, 0.1);
       border-radius: 8px;
@@ -119,8 +119,6 @@
       justify-content: space-between;
       align-items: center;
       font-size: 0.9rem;
-      /* FORCER 2ÈME */
-      order: 2;
     }
 
     .session-matiere {
@@ -131,18 +129,6 @@
       font-size: 0.8rem;
     }
 
-    /* Bannière de rémédiation */
-    .remediation-context-banner {
-      background: linear-gradient(135deg, #e8f4ff 0%, #d1e7ff 100%);
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      border-left: 5px solid #4361ee;
-      display: none;
-      /* FORCER 3ÈME */
-      order: 3;
-    }
-
     /* Sélecteur de matière */
     .matiere-selector {
       margin-bottom: 15px;
@@ -150,8 +136,6 @@
       padding: 15px;
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      /* FORCER 4ÈME */
-      order: 4;
     }
 
     .matiere-selector label {
@@ -199,13 +183,12 @@
       transform: translateX(-3px);
     }
 
-    /* Controls */
+    /* Controls principaux */
     .controls {
       display: flex;
       gap: 10px;
       margin-bottom: 15px;
-      /* FORCER 5ÈME */
-      order: 5;
+      flex-wrap: wrap;
     }
 
     .controls form {
@@ -242,18 +225,82 @@
       background: #38a873;
     }
 
+    .btn-understood {
+      background: var(--orange);
+      color: white;
+    }
+
+    .btn-understood:hover {
+      background: #ff8c2e;
+    }
+
+    .btn-exercice {
+      background: var(--purple);
+      color: white;
+    }
+
+    .btn-exercice:hover {
+      background: #8e44ad;
+    }
+
+    /* Contrôles exercice */
+    .exercice-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .difficulte-selector {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      background: white;
+      min-width: 120px;
+    }
+
+    /* Barre de progression */
+    .progress-container {
+      margin: 10px 0 15px 0;
+      padding: 10px 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: none;
+    }
+
+    .progress-bar {
+      background: #f0f0f0;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, var(--success), #38a873);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      font-size: 0.85rem;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+    }
+
     /* Chat Container */
     .chat-container {
       background: white;
       border-radius: 12px;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      height: calc(100vh - 250px);
-      min-height: 500px;
+      height: calc(100vh - 350px);
+      min-height: 400px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      /* FORCER 6ÈME (DERNIER) */
-      order: 6;
     }
 
     /* Messages Area */
@@ -325,11 +372,42 @@
       opacity: 0.8;
     }
 
-    /* Welcome message */
-    .welcome-message {
-      position: relative;
+    /* Exercice dans le message */
+    .exercice-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 10px 0;
     }
 
+    .hint-card {
+      background: #fff9e6;
+      border-left: 4px solid var(--warning);
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .feedback-correct {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid #28a745;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .feedback-incorrect {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 4px solid #dc3545;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    /* Welcome message */
     .welcome-message .message-bubble {
       background: linear-gradient(135deg, #f0f2f5 0%, #e8eaff 100%);
       border-left: 4px solid var(--primary);
@@ -414,35 +492,33 @@
       transform: scale(0.98);
     }
 
-    /* Teacher's Last Question */
-    .teacher-question {
-      background: #fff9e6;
-      border-left: 4px solid var(--warning);
-      padding: 15px;
-      margin: 15px 20px;
-      border-radius: 8px;
-      display: none;
+    /* Bouton j'ai compris */
+    .understood-btn-container {
+      display: flex;
+      justify-content: flex-end;
+      margin: 10px 0;
     }
 
-    .teacher-question h5 {
-      margin: 0 0 8px 0;
-      color: #e67e22;
-      display: flex;
+    .btn-understood-small {
+      background: var(--orange);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
       align-items: center;
       gap: 8px;
+      transition: all 0.3s ease;
     }
 
-    /* Spinner */
-    .spinner {
-      animation: spin 1s linear infinite;
+    .btn-understood-small:hover {
+      background: #ff8c2e;
+      transform: scale(1.05);
     }
 
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    /* Badge enseignant virtuel */
+    /* Badges */
     .badge-enseignant {
       background: linear-gradient(135deg, #9b59b6, #8e44ad);
       color: white;
@@ -455,10 +531,22 @@
       gap: 5px;
     }
 
-    /* CONTENEUR PRINCIPAL POUR ORDRE ABSOLU */
-    .main-content {
-      display: flex;
-      flex-direction: column;
+    .badge-exercice {
+      background: var(--purple);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      margin-left: 8px;
+    }
+
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* Responsive */
@@ -496,8 +584,12 @@
         flex-direction: column;
       }
 
+      .exercice-controls {
+        flex-direction: column;
+      }
+
       .chat-container {
-        height: calc(100vh - 270px);
+        height: calc(100vh - 400px);
       }
 
       .message {
@@ -513,259 +605,254 @@
 
 <body>
   <div class="container">
-    <!-- CONTENEUR PRINCIPAL POUR CONTRÔLER L'ORDRE -->
-    <div class="main-content">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="student-info">
+          <div class="avatar">
+            {{ eleve.nom_complet.split(' ')[0][0] }}
+            {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <i class="fas fa-robot"></i>
+              {% if lang == 'en' %}Virtual Teacher Naima{% else %}Enseignant Virtuel Naima{% endif %}
+              <span class="badge-enseignant">
+                <i class="fas fa-bolt"></i>
+                {% if lang == 'en' %}24/7{% else %}24h/24{% endif %}
+              </span>
+            </h3>
+            <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
+              {{ eleve.nom_complet.split(' ')[0] }}
+            </p>
+          </div>
+        </div>
+
+        <a href="{{ url_for('dashboard_eleve') }}" class="btn-back">
+          <i class="fas fa-arrow-left"></i>
+          <span>{% if lang == 'en' %}Dashboard{% else %}Retour{% endif %}</span>
+        </a>
+      </div>
+
+      <div class="niveau-badge">
+        <i class="fas fa-graduation-cap"></i>
+        {{ eleve.niveau.nom if eleve.niveau else ('6th grade' if lang == 'en' else '6ème') }}
+      </div>
+    </header>
+
+    <!-- Session info -->
+    <div class="session-info">
+      <div>
+        <i class="fas fa-clock" style="margin-right: 5px; color: var(--primary);"></i>
+        <span id="currentTime">{{ date_du_jour.strftime('%H:%M') if date_du_jour else '' }}</span>
+      </div>
+      <div class="session-matiere" id="currentSubject">
+        <i class="fas fa-book"></i>
+        {{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics')|title }}
+      </div>
+    </div>
+
+    <!-- Sélecteur de matière -->
+    <div class="matiere-selector">
+      <label for="matiere">
+        <i class="fas fa-book-open"></i>
+        {% if lang == 'en' %}Select Subject:{% else %}Choisir la matière :{% endif %}
+      </label>
+      <select name="matiere" id="matiereSelect">
+        {% if lang == 'fr' %}
+          <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>Mathématiques</option>
+          <option value="français" {% if matiere == 'français' %}selected{% endif %}>Français</option>
+          <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>Histoire</option>
+          <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>Sciences</option>
+          <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>Géographie</option>
+        {% else %}
+          <option value="mathematics" {% if matiere == 'mathematics' %}selected{% endif %}>Mathematics</option>
+          <option value="french" {% if matiere == 'french' %}selected{% endif %}>French</option>
+          <option value="history" {% if matiere == 'history' %}selected{% endif %}>History</option>
+          <option value="science" {% if matiere == 'science' %}selected{% endif %}>Science</option>
+          <option value="geography" {% if matiere == 'geography' %}selected{% endif %}>Geography</option>
+        {% endif %}
+      </select>
+    </div>
+
+    <!-- Barre de progression exercice -->
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-text">
+        <span id="progressStatus"></span>
+        <span id="progressCount"></span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <form method="POST" action="/nouvel-exercice" id="newExerciseForm" style="flex: 1;">
+        <button type="submit" class="btn btn-new" id="newExerciseBtn">
+          <i class="fas fa-plus-circle"></i>
+          {% if lang == 'en' %}New Conversation{% else %}Nouvelle Conversation{% endif %}
+        </button>
+      </form>
       
-      <!-- Header - ABSOLUMENT TOUT EN HAUT -->
-      <header class="header">
-        <div class="header-left">
-          <div class="student-info">
-            <div class="avatar">
-              {{ eleve.nom_complet.split(' ')[0][0] }}
-              {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
-            </div>
-            <div>
-              <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-robot"></i>
-                {% if lang == 'en' %}Virtual Teacher Naima{% else %}Enseignant Virtuel Naima{% endif %}
-                <span class="badge-enseignant">
-                  <i class="fas fa-bolt"></i>
-                  {% if lang == 'en' %}24/7{% else %}24h/24{% endif %}
-                </span>
-              </h3>
-              <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
-                {{ eleve.nom_complet.split(' ')[0] }}
+      <!-- Bouton J'ai compris (visible seulement pendant une conversation) -->
+      {% set conversation = session.get('conversation', []) %}
+      {% if conversation and conversation|length > 0 %}
+      <form method="POST" action="/terminer-conversation" id="endConversationForm" style="flex: 1;">
+        <button type="submit" class="btn btn-understood" id="understoodBtn">
+          <i class="fas fa-check-circle"></i>
+          {% if lang == 'en' %}I Understand ✓{% else %}J'ai Compris ✓{% endif %}
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <!-- Exercice controls (toujours visibles) -->
+    <div class="exercice-controls">
+      <button type="button" class="btn btn-exercice" id="exerciceBtn" onclick="demanderExercice()" style="flex: 2;">
+        <i class="fas fa-pencil-alt"></i>
+        {% if lang == 'en' %}Practice Exercise{% else %}Exercice d'entraînement{% endif %}
+      </button>
+      
+      <select id="difficulteSelect" class="difficulte-selector">
+        <option value="facile">🌟 {% if lang == 'en' %}Easy{% else %}Facile{% endif %}</option>
+        <option value="moyen" selected>⭐⭐ {% if lang == 'en' %}Medium{% else %}Moyen{% endif %}</option>
+        <option value="difficile">⭐⭐⭐ {% if lang == 'en' %}Hard{% else %}Difficile{% endif %}</option>
+      </select>
+    </div>
+
+    <!-- Chat Container -->
+    <div class="chat-container">
+      <!-- Messages Area -->
+      <div class="messages-area" id="messagesArea">
+        {% set conversation = session.get('conversation', []) %}
+        {% set has_conversation = conversation and conversation|length > 0 %}
+
+        {% if has_conversation %}
+          {% for message in conversation %}
+            {% if '👤 Student:' in message or '👤 Élève:' in message %}
+              <div class="message user-message">
+                <div class="message-header">
+                  <i class="fas fa-user"></i>
+                  <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
+                </div>
+                <div class="message-bubble">
+                  {{ message.replace('👤 Student: ', '').replace('👤 Élève: ', '')|safe }}
+                </div>
+              </div>
+            {% elif '🤖 Teacher:' in message or '🤖 Enseignant:' in message or '🤖 Naima:' in message %}
+              <div class="message bot-message">
+                <div class="message-header">
+                  <i class="fas fa-robot"></i>
+                  <span>Naima</span>
+                </div>
+                <div class="message-bubble">
+                  {{ message.replace('🤖 Teacher: ', '').replace('🤖 Enseignant: ', '').replace('🤖 Naima: ', '')|safe }}
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+
+          <!-- Afficher la dernière question de Naima si elle existe -->
+          {% set derniere_q_ia = session.get('derniere_q_ia') %}
+          {% if derniere_q_ia and not session.get('conversation_terminee') %}
+          <div class="understood-btn-container">
+            <button class="btn-understood-small" onclick="marquerCompris()">
+              <i class="fas fa-check-circle"></i>
+              {% if lang == 'en' %}✓ I've understood, stop here{% else %}✓ J'ai compris, arrêter ici{% endif %}
+            </button>
+          </div>
+          {% endif %}
+
+        {% else %}
+          <!-- Welcome Message -->
+          <div class="message bot-message welcome-message" id="welcomeMessage">
+            <div class="message-bubble">
+              <h4><i class="fas fa-graduation-cap"></i>
+                {% if lang == 'en' %}Hello {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Bonjour {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}
+              </h4>
+
+              <p><strong>{% if lang == 'en' %}I'm Naima, your Virtual Teacher{% else %}Je suis Naima, ton Enseignante Virtuelle{% endif %}</strong> 👩‍🏫</p>
+
+              <p>{% if lang == 'en' %}
+                I'm here to help you understand concepts and solve problems in any subject!
+                <strong>I won't give direct answers</strong>, but I'll guide you step by step.
+              {% else %}
+                Je suis là pour t'aider à comprendre les concepts et résoudre des problèmes dans toutes les matières !
+                <strong>Je ne donnerai pas les réponses directement</strong>, mais je te guiderai pas à pas.
+              {% endif %}</p>
+
+              <p><strong>{% if lang == 'en' %}How to use:{% else %}Comment utiliser :{% endif %}</strong></p>
+              <ol>
+                <li>{% if lang == 'en' %}Select your subject above{% else %}Choisis ta matière ci-dessus{% endif %}</li>
+                <li>{% if lang == 'en' %}Ask your question{% else %}Pose ta question{% endif %}</li>
+                <li>{% if lang == 'en' %}I'll guide you with questions{% else %}Je te guiderai avec des questions{% endif %}</li>
+                <li>{% if lang == 'en' %}Click "I Understand" when you're done{% else %}Clique sur "J'ai Compris" quand tu as terminé{% endif %}</li>
+              </ol>
+
+              <p style="margin-top: 15px; padding: 10px; background: rgba(67, 97, 238, 0.1); border-radius: 8px;">
+                <i class="fas fa-lightbulb" style="color: #fcc419;"></i>
+                <strong>{% if lang == 'en' %}New:{% else %}Nouveau :{% endif %}</strong>
+                {% if lang == 'en' %}
+                  You can also click "Practice Exercise" for automatic exercises!
+                {% else %}
+                  Tu peux aussi cliquer sur "Exercice d'entraînement" pour des exercices automatiques !
+                {% endif %}
+              </p>
+
+              <p style="text-align: center; margin-top: 20px;">
+                <em>✨ {% if lang == 'en' %}Ready to learn? Write your question below!{% else %}Prêt à apprendre ? Écris ta question ci-dessous !{% endif %}</em>
               </p>
             </div>
           </div>
-
-          <!-- Bouton de retour au dashboard -->
-          <a href="{{ url_for('dashboard_eleve') }}" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-            <span>{% if lang == 'en' %}Dashboard{% else %}Retour{% endif %}</span>
-          </a>
-        </div>
-
-        <div class="niveau-badge">
-          <i class="fas fa-graduation-cap"></i>
-          {{ eleve.niveau.nom if eleve.niveau else ('6th grade' if lang == 'en' else '6ème') }}
-        </div>
-      </header>
-
-      <!-- Information de session -->
-      <div class="session-info">
-        <div>
-          <i class="fas fa-clock" style="margin-right: 5px; color: var(--primary);"></i>
-          <span id="currentTime">{{ date_du_jour.strftime('%H:%M') if date_du_jour else '' }}</span>
-        </div>
-        <div class="session-matiere" id="currentSubject">
-          <i class="fas fa-book"></i>
-          {{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics')|title }}
-        </div>
+        {% endif %}
       </div>
 
-      <!-- Sélecteur de matière -->
-      <div class="matiere-selector">
-        <label for="matiere">
-          <i class="fas fa-book-open"></i>
-          {% if lang == 'en' %}Select Subject:{% else %}Choisir la matière :{% endif %}
-        </label>
-        <select name="matiere" id="matiereSelect">
-          {% if lang == 'fr' %}
-            <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>Mathématiques</option>
-            <option value="français" {% if matiere == 'français' %}selected{% endif %}>Français</option>
-            <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>Histoire</option>
-            <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>Sciences</option>
-            <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>Géographie</option>
-          {% else %}
-            <option value="mathematics" {% if matiere == 'mathematics' %}selected{% endif %}>Mathematics</option>
-            <option value="french" {% if matiere == 'french' %}selected{% endif %}>French</option>
-            <option value="history" {% if matiere == 'history' %}selected{% endif %}>History</option>
-            <option value="science" {% if matiere == 'science' %}selected{% endif %}>Science</option>
-            <option value="geography" {% if matiere == 'geography' %}selected{% endif %}>Geography</option>
-          {% endif %}
-        </select>
-      </div>
+      <!-- Input Area -->
+      <div class="input-area">
+        <form method="POST" action="{{ url_for('enseignant_virtuel') }}" id="mainForm">
+          <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics') }}">
+          
+          <!-- Indicateur de mode -->
+          <input type="hidden" id="modeConversation" value="{% if session.get('mode_exercice') %}exercice{% else %}normale{% endif %}">
 
-      <!-- Bannière de contexte de rémédiation - AFFICHÉE SEULEMENT SI exercice_remediation existe -->
-      {% if exercice_remediation %}
-      <div class="remediation-context-banner" id="remediationBanner" style="display: block;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1rem;">
-              <i class="fas fa-life-ring" style="margin-right: 8px; color: #4361ee;"></i>
-              {% if lang == 'en' %}Remediation Help{% else %}Aide à la rémédiation{% endif %}
-            </h4>
-            <p style="margin: 0; color: #34495e; font-size: 0.9rem;">
-              {% if lang == 'en' %}
-                Exercise: {{ exercice_remediation.question_en[:100] if exercice_remediation.question_en else 'Math exercise' }}...
-              {% else %}
-                Exercice : {{ exercice_remediation.question_fr[:100] if exercice_remediation.question_fr else 'Exercice de maths' }}...
-              {% endif %}
-            </p>
+          <div class="input-group">
+            <textarea
+              name="question"
+              id="questionInput"
+              placeholder="{% if session.get('derniere_q_ia') %}{% if lang == 'en' %}Answer Naima's question...{% else %}Réponds à la question de Naima...{% endif %}{% else %}{% if lang == 'en' %}Ask your question to Naima...{% else %}Pose ta question à Naima...{% endif %}{% endif %}"
+              required
+              autofocus
+              rows="3"></textarea>
+
+            <button type="submit" class="btn-send" id="submitBtn">
+              <i class="fas fa-paper-plane"></i>
+            </button>
           </div>
-          <div style="background: #4361ee; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
-            {% if lang == 'en' %}Session {{ access_count }}/5{% else %}Session {{ access_count }}/5{% endif %}
-          </div>
-        </div>
-        <p style="margin: 10px 0 0 0; font-size: 0.85rem; color: #666;">
-          <i class="fas fa-lightbulb" style="margin-right: 5px;"></i>
-          {% if lang == 'en' %}
-            Naima will guide you to understand this exercise step by step.
-          {% else %}
-            Naima vous guidera pour comprendre cet exercice étape par étape.
-          {% endif %}
-        </p>
-      </div>
-      {% endif %}
 
-      <!-- Controls -->
-      <div class="controls">
-        <form method="POST" action="/nouvel-exercice" id="newExerciseForm">
-          <button type="submit" class="btn btn-new" id="newExerciseBtn">
-            <i class="fas fa-plus-circle"></i>
-            {% if lang == 'en' %}New Conversation{% else %}Nouvelle Conversation{% endif %}
-          </button>
+          <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+            <small style="color: #666; font-size: 0.85rem;">
+              <i class="fas fa-keyboard"></i>
+              {% if lang == 'en' %}Press Enter to send, Shift+Enter for new line{% else %}Entrée pour envoyer, Shift+Entrée pour nouvelle ligne{% endif %}
+            </small>
+            <small id="charCount" style="color: #999; font-size: 0.85rem;">0/500</small>
+          </div>
         </form>
       </div>
-
-      <!-- Chat Container -->
-      <div class="chat-container">
-        <!-- Messages Area -->
-        <div class="messages-area" id="messagesArea">
-          <!-- Conversation - AFFICHÉE SEULEMENT SI EXISTE -->
-          {% set conversation = session.get('conversation', []) %}
-          {% set has_conversation = conversation and conversation|length > 0 %}
-
-          {% if has_conversation %}
-            {% for message in conversation %}
-              {% if '👤 Student:' in message or '👤 Élève:' in message %}
-                <div class="message user-message">
-                  <div class="message-header">
-                    <i class="fas fa-user"></i>
-                    <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
-                  </div>
-                  <div class="message-bubble">
-                    {{ message.replace('👤 Student: ', '').replace('👤 Élève: ', '')|safe }}
-                  </div>
-                </div>
-              {% elif '🤖 Teacher:' in message or '🤖 Enseignant:' in message %}
-                <div class="message bot-message">
-                  <div class="message-header">
-                    <i class="fas fa-robot"></i>
-                    <span>{% if lang == 'en' %}Naima{% else %}Naima{% endif %}</span>
-                  </div>
-                  <div class="message-bubble">
-                    {{ message.replace('🤖 Teacher: ', '').replace('🤖 Enseignant: ', '')|safe }}
-                  </div>
-                </div>
-              {% endif %}
-            {% endfor %}
-
-          {% else %}
-            <!-- Welcome Message - TOUJOURS AFFICHÉ QUAND PAS DE CONVERSATION -->
-            <div class="message bot-message welcome-message" id="welcomeMessage">
-              <div class="message-bubble">
-                <h4><i class="fas fa-graduation-cap"></i>
-                  {% if lang == 'en' %}Hello {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Bonjour {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}
-                </h4>
-
-                <p><strong>{% if lang == 'en' %}I'm Naima, your Virtual Teacher{% else %}Je suis Naima, ton Enseignante Virtuelle{% endif %}</strong>
-                  {% if lang == 'en' %}👩‍🏫{% else %}👩‍🏫{% endif %}
-                </p>
-
-                <p>{% if lang == 'en' %}
-                  I'm here to help you understand concepts and solve problems in any subject!
-                  <strong>I won't give direct answers</strong>, but I'll guide you step by step so you discover the solutions yourself.
-                {% else %}
-                  Je suis là pour t'aider à comprendre les concepts et résoudre des problèmes dans toutes les matières !
-                  <strong>Je ne donnerai pas les réponses directement</strong>, mais je te guiderai pas à pas pour que tu découvres les solutions toi-même.
-                {% endif %}</p>
-
-                <p><strong>{% if lang == 'en' %}How to use:{% else %}Comment utiliser :{% endif %}</strong></p>
-                <ol>
-                  <li>{% if lang == 'en' %}Select your subject above{% else %}Choisis ta matière ci-dessus{% endif %}</li>
-                  <li>{% if lang == 'en' %}Ask your question{% else %}Pose ta question{% endif %}</li>
-                  <li>{% if lang == 'en' %}I'll guide you with questions{% else %}Je te guiderai avec des questions{% endif %}</li>
-                  <li>{% if lang == 'en' %}Answer my questions{% else %}Réponds à mes questions{% endif %}</li>
-                  <li>{% if lang == 'en' %}Together we'll find the solution!{% else %}Ensemble on trouvera la solution !{% endif %}</li>
-                </ol>
-
-                <p style="margin-top: 15px; padding: 10px; background: rgba(67, 97, 238, 0.1); border-radius: 8px;">
-                  <i class="fas fa-lightbulb" style="color: #fcc419;"></i>
-                  <strong>{% if lang == 'en' %}Pro tip:{% else %}Astuce :{% endif %}</strong>
-                  {% if lang == 'en' %}
-                    You can ask about homework, exam preparation, concept explanations, or practice exercises.
-                  {% else %}
-                    Tu peux poser des questions sur tes devoirs, la préparation d'examens, l'explication de concepts ou des exercices d'entraînement.
-                  {% endif %}
-                </p>
-
-                <p style="text-align: center; margin-top: 20px;">
-                  <em>✨ {% if lang == 'en' %}Ready to learn? Write your question below!{% else %}Prêt à apprendre ? Écris ta question ci-dessous !{% endif %}</em>
-                </p>
-              </div>
-            </div>
-          {% endif %}
-        </div>
-
-        <!-- Teacher's Last Question - AFFICHÉ SEULEMENT SI EXISTE -->
-        {% set derniere_q_ia = session.get('derniere_q_ia') %}
-        {% if derniere_q_ia and has_conversation %}
-        <div class="teacher-question" id="teacherQuestion" style="display: block;">
-          <h5><i class="fas fa-question-circle"></i>
-            {% if lang == 'en' %}Naima's question for you:{% else %}Question de Naima pour toi :{% endif %}
-          </h5>
-          <p>{{ derniere_q_ia }}</p>
-          <small style="color: #666; display: block; margin-top: 5px;">
-            <i class="fas fa-hand-point-right"></i>
-            {% if lang == 'en' %}Answer in the box below{% else %}Réponds dans la zone ci-dessous{% endif %}
-          </small>
-        </div>
-        {% endif %}
-
-        <!-- Input Area -->
-        <div class="input-area">
-          <!-- FORMULAIRE AVEC ACTION CORRECTE -->
-          <form method="POST" action="{{ url_for('enseignant_virtuel') }}" id="mainForm">
-            <!-- Champ caché pour la matière -->
-            <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics') }}">
-
-            <div class="input-group">
-              <textarea
-                name="question"
-                id="questionInput"
-                placeholder="{% if derniere_q_ia and has_conversation %}{% if lang == 'en' %}Answer Naima's question...{% else %}Réponds à la question de Naima...{% endif %}{% else %}{% if lang == 'en' %}Ask your question to Naima about {{ matiere|default('mathematics') }}...{% else %}Pose ta question à Naima sur {{ matiere|default('mathématiques') }}...{% endif %}{% endif %}"
-                required
-                autofocus
-                rows="3"></textarea>
-
-              <button type="submit" class="btn-send" id="submitBtn" title="{% if lang == 'en' %}Send message{% else %}Envoyer le message{% endif %}">
-                <i class="fas fa-paper-plane"></i>
-              </button>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-              <small style="color: #666; font-size: 0.85rem;">
-                <i class="fas fa-keyboard"></i>
-                {% if lang == 'en' %}Press Shift+Enter for new line{% else %}Shift+Entrée pour aller à la ligne{% endif %}
-              </small>
-              <small id="charCount" style="color: #999; font-size: 0.85rem;">0/500</small>
-            </div>
-          </form>
-        </div>
-      </div>
-      
-    </div> <!-- Fin du main-content -->
+    </div>
   </div>
 
-  <!-- Bootstrap JS for alerts -->
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- JavaScript CORRIGÉ -->
   <script>
+    // Variables globales
+    const lang = '{{ lang }}';
+    let modeExercice = {{ 'true' if session.get('mode_exercice') else 'false' }};
+    let exerciceEnCours = {{ 'true' if session.get('exercice_actuel') else 'false' }};
+
     document.addEventListener('DOMContentLoaded', function() {
-      console.log("📱 Enseignant Virtuel Naima - Page chargée");
+      console.log("📱 Naima Virtual Teacher - Page chargée");
 
       // Éléments DOM
       const textarea = document.getElementById('questionInput');
@@ -776,25 +863,14 @@
       const charCount = document.getElementById('charCount');
       const form = document.getElementById('mainForm');
       const messagesArea = document.getElementById('messagesArea');
+      const progressContainer = document.getElementById('progressContainer');
 
-      // Vérifier si une conversation existe déjà
-      const hasConversation = {{ has_conversation|tojson|safe if has_conversation is defined else 'false' }};
-
-      // FORCER LE SCROLL AU TOP
-      if (messagesArea && !hasConversation) {
-        const forceScroll = () => {
-          messagesArea.scrollTop = 0;
-          messagesArea.scrollTo({ top: 0, behavior: 'instant' });
-        };
-        
-        // Essayer plusieurs fois
-        forceScroll();
-        setTimeout(forceScroll, 10);
-        setTimeout(forceScroll, 100);
-        setTimeout(forceScroll, 300);
+      // Scroll en bas si conversation active
+      if (messagesArea) {
+        messagesArea.scrollTop = messagesArea.scrollHeight;
       }
 
-      // Auto-focus sur le textarea
+      // Focus sur textarea
       if (textarea) {
         textarea.focus();
         
@@ -807,12 +883,7 @@
           }
         });
 
-        // Initialiser le compteur
-        if (charCount) {
-          charCount.textContent = `${textarea.value.length}/500`;
-        }
-
-        // Gérer Shift+Enter pour nouvelle ligne
+        // Gérer Entrée pour envoyer
         textarea.addEventListener('keydown', function(e) {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -829,7 +900,6 @@
           const selectedMatiere = this.value;
           matiereInput.value = selectedMatiere;
 
-          // Mettre à jour l'affichage
           const subjectNames = {
             'mathématiques': 'Mathématiques', 'français': 'Français', 'histoire': 'Histoire',
             'sciences': 'Sciences', 'géographie': 'Géographie',
@@ -838,46 +908,41 @@
           };
 
           currentSubject.innerHTML = `<i class="fas fa-book"></i> ${subjectNames[selectedMatiere] || selectedMatiere}`;
-
-          // Mettre à jour le placeholder
-          if (textarea) {
-            const placeholderText = "{% if lang == 'en' %}Ask your question to Naima about " + selectedMatiere + "...{% else %}Pose ta question à Naima sur " + (selectedMatiere === 'mathematics' ? 'mathématiques' : selectedMatiere) + "...{% endif %}";
-            textarea.placeholder = placeholderText;
-          }
         });
       }
 
-      // Validation simple du formulaire
+      // Validation formulaire
       if (form) {
         form.addEventListener('submit', function(e) {
           if (!textarea || textarea.value.trim().length < 3) {
             e.preventDefault();
-            alert("{% if lang == 'en' %}Please enter at least 3 characters{% else %}Veuillez entrer au moins 3 caractères{% endif %}");
+            alert(lang === 'en' ? 'Please enter at least 3 characters' : 'Veuillez entrer au moins 3 caractères');
             return false;
           }
 
           if (textarea.value.trim().length > 500) {
             e.preventDefault();
-            alert("{% if lang == 'en' %}Maximum 500 characters{% else %}Maximum 500 caractères{% endif %}");
+            alert(lang === 'en' ? 'Maximum 500 characters' : 'Maximum 500 caractères');
             return false;
           }
 
-          // Désactiver le bouton pendant l'envoi
+          // Désactiver le bouton
           if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i>';
           }
 
-          console.log('📤 Formulaire soumis avec la matière:', matiereInput ? matiereInput.value : 'non définie');
+          console.log('📤 Formulaire soumis');
         });
       }
 
-      // Mettre à jour l'heure
+      // Mise à jour heure
       function updateTime() {
         const now = new Date();
         const timeElement = document.getElementById('currentTime');
         if (timeElement) {
-          timeElement.textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          timeElement.textContent = now.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', 
+            { hour: '2-digit', minute: '2-digit' });
         }
       }
       updateTime();
@@ -887,9 +952,261 @@
       if (window.MathJax) {
         MathJax.typesetPromise();
       }
+
+      // Restaurer la progression si exercice en cours
+      if (exerciceEnCours) {
+        const savedProgress = sessionStorage.getItem('exercice_progress');
+        if (savedProgress) {
+          const progress = JSON.parse(savedProgress);
+          updateProgressBar(progress.current, progress.total);
+        }
+      }
     });
 
-    // Forcer le rechargement si page vient du cache
+    // Fonction pour marquer comme compris
+    function marquerCompris() {
+      fetch('/terminer-conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Ajouter message de félicitations
+          const messagesArea = document.getElementById('messagesArea');
+          const felicitation = document.createElement('div');
+          felicitation.className = 'message bot-message';
+          felicitation.innerHTML = `
+            <div class="message-header">
+              <i class="fas fa-robot"></i>
+              <span>Naima</span>
+            </div>
+            <div class="message-bubble" style="background: #d4edda; border-left-color: #28a745;">
+              <i class="fas fa-check-circle" style="color: #28a745;"></i>
+              ${lang === 'en' ? 
+                '🎉 Excellent! You understood! Feel free to ask another question anytime.' : 
+                '🎉 Excellent ! Tu as compris ! N\'hésite pas à poser une autre question.'}
+              <br><br>
+              <small>✨ ${lang === 'en' ? 'Naima will be here to help you again' : 'Naima sera là pour t\'aider à nouveau'}</small>
+            </div>
+          `;
+          messagesArea.appendChild(felicitation);
+          messagesArea.scrollTop = messagesArea.scrollHeight;
+          
+          // Recharger après 2 secondes
+          setTimeout(() => {
+            window.location.href = '/nouvel-exercice';
+          }, 2000);
+        }
+      });
+    }
+
+    // Fonction pour demander un exercice
+    async function demanderExercice() {
+      const matiere = document.getElementById('matiereSelect').value;
+      const difficulte = document.getElementById('difficulteSelect').value;
+      const btn = document.getElementById('exerciceBtn');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner spinner"></i> ' + 
+        (lang === 'en' ? 'Generating...' : 'Génération...');
+      
+      try {
+        const response = await fetch('/demander-exercice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            matiere: matiere, 
+            difficulte: difficulte,
+            type: 'exercice'
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Ajouter l'exercice à la conversation
+          const messagesArea = document.getElementById('messagesArea');
+          
+          // Supprimer le message de bienvenue si présent
+          const welcomeMsg = document.getElementById('welcomeMessage');
+          if (welcomeMsg) welcomeMsg.remove();
+          
+          // Ajouter l'exercice
+          const exerciceHTML = `
+            <div class="message bot-message">
+              <div class="message-header">
+                <i class="fas fa-robot"></i>
+                <span>Naima <span class="badge-exercice">📝 ${lang === 'en' ? 'Exercise' : 'Exercice'}</span></span>
+              </div>
+              <div class="message-bubble" style="background: #e8f4ff;">
+                <h5 style="margin-top: 0; color: #4361ee;">
+                  <i class="fas fa-pencil-alt"></i> 
+                  ${lang === 'en' ? 'Here\'s an exercise for you:' : 'Voici un exercice pour toi :'}
+                </h5>
+                <div class="exercice-card">
+                  <p style="font-size: 1.1rem; margin: 0;">
+                    ${data.enonce}
+                  </p>
+                </div>
+                ${data.indice_initial ? `
+                  <div class="hint-card">
+                    <i class="fas fa-lightbulb" style="color: #fcc419;"></i>
+                    <strong>${lang === 'en' ? 'Hint:' : 'Indice :'}</strong> ${data.indice_initial}
+                  </div>
+                ` : ''}
+                <p style="margin-top: 10px; font-style: italic;">
+                  ${lang === 'en' ? 'Write your answer below and I\'ll help you!' : 'Écris ta réponse ci-dessous et je t\'aiderai !'}
+                </p>
+              </div>
+            </div>
+          `;
+          
+          messagesArea.insertAdjacentHTML('beforeend', exerciceHTML);
+          messagesArea.scrollTop = messagesArea.scrollHeight;
+          
+          // Activer mode exercice
+          modeExercice = true;
+          sessionStorage.setItem('mode_exercice', 'true');
+          
+          // Afficher progression
+          document.getElementById('progressContainer').style.display = 'block';
+          updateProgressBar(0, data.total_etapes || 3);
+        }
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert(lang === 'en' ? 'Error generating exercise' : 'Erreur lors de la génération');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-pencil-alt"></i> ' + 
+          (lang === 'en' ? 'Practice Exercise' : 'Exercice d\'entraînement');
+      }
+    }
+
+    // Fonction pour mettre à jour la barre de progression
+    function updateProgressBar(current, total) {
+      const progressFill = document.getElementById('progressFill');
+      const progressStatus = document.getElementById('progressStatus');
+      const progressCount = document.getElementById('progressCount');
+      
+      if (progressFill) {
+        const percent = (current / total) * 100;
+        progressFill.style.width = `${percent}%`;
+      }
+      
+      if (progressStatus) {
+        progressStatus.textContent = lang === 'en' ? 'Progress:' : 'Progression :';
+      }
+      
+      if (progressCount) {
+        progressCount.textContent = `${current}/${total}`;
+      }
+      
+      // Sauvegarder
+      sessionStorage.setItem('exercice_progress', JSON.stringify({ current, total }));
+    }
+
+    // Fonction pour vérifier réponse exercice
+    async function verifierReponseExercice(reponse) {
+      try {
+        const response = await fetch('/verifier-reponse-exercice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reponse: reponse })
+        });
+        
+        const data = await response.json();
+        
+        const messagesArea = document.getElementById('messagesArea');
+        
+        if (data.termine) {
+          // Exercice terminé avec succès
+          const successHTML = `
+            <div class="message bot-message">
+              <div class="message-header">
+                <i class="fas fa-robot"></i>
+                <span>Naima</span>
+              </div>
+              <div class="message-bubble feedback-correct">
+                <i class="fas fa-trophy" style="color: #ffd700;"></i>
+                <strong>${lang === 'en' ? 'BRAVO!' : 'BRAVO !'}</strong>
+                <p>${data.message}</p>
+                <button onclick="demanderExercice()" class="btn btn-exercice" style="margin-top: 10px;">
+                  <i class="fas fa-redo"></i>
+                  ${lang === 'en' ? 'Another exercise' : 'Un autre exercice'}
+                </button>
+              </div>
+            </div>
+          `;
+          messagesArea.insertAdjacentHTML('beforeend', successHTML);
+          
+          // Reset mode exercice
+          modeExercice = false;
+          sessionStorage.removeItem('mode_exercice');
+          sessionStorage.removeItem('exercice_progress');
+          document.getElementById('progressContainer').style.display = 'none';
+          
+        } else {
+          // Feedback sur la réponse
+          const feedbackClass = data.correct ? 'feedback-correct' : 'feedback-incorrect';
+          const feedbackHTML = `
+            <div class="message bot-message">
+              <div class="message-header">
+                <i class="fas fa-robot"></i>
+                <span>Naima</span>
+              </div>
+              <div class="message-bubble ${feedbackClass}">
+                ${data.feedback}
+                ${data.indice_suivant ? `
+                  <div class="hint-card" style="margin-top: 10px;">
+                    <i class="fas fa-lightbulb"></i> ${data.indice_suivant}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+          messagesArea.insertAdjacentHTML('beforeend', feedbackHTML);
+          
+          if (data.progression) {
+            const [current, total] = data.progression.split('/').map(Number);
+            updateProgressBar(current, total);
+          }
+        }
+        
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+        
+      } catch (error) {
+        console.error('Erreur vérification:', error);
+      }
+    }
+
+    // Intercepter l'envoi du formulaire principal
+    const originalForm = document.getElementById('mainForm');
+    if (originalForm) {
+      originalForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const textarea = document.getElementById('questionInput');
+        const message = textarea.value.trim();
+        
+        if (message.length < 3) return;
+        
+        // Si en mode exercice
+        if (modeExercice || sessionStorage.getItem('mode_exercice') === 'true') {
+          textarea.value = '';
+          await verifierReponseExercice(message);
+          textarea.focus();
+          return;
+        }
+        
+        // Sinon, comportement normal
+        textarea.value = '';
+        this.submit();
+      });
+    }
+
+    // Forcer rechargement si page vient du cache
     window.addEventListener('pageshow', function(event) {
       if (event.persisted) {
         window.location.reload();
