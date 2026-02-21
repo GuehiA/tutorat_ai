@@ -2576,6 +2576,7 @@ def nouvel_exercice():
     difficulte = request.form.get('difficulte', 'moyen')
     
     # 🔥 IMPORTANT: Récupérer l'élève pour générer l'exercice
+    from models import User  # Import si nécessaire
     eleve = User.query.get(eleve_id)
     
     # Vider TOUTE la session liée à la conversation SEULEMENT
@@ -2590,8 +2591,9 @@ def nouvel_exercice():
         value = session.pop(key, None)
         print(f"[DEBUG] Supprimé de session: {key} = {value}")
     
-    # 🔥 NOUVEAU: Générer un exercice avec Naima
+    # 🔥 GÉNÉRER UN EXERCICE AVEC NAIMA
     try:
+        # Utiliser TA fonction existante qui fonctionne
         question_initiale = generer_debut_conversation(
             question=f"Génère un exercice de {matiere} de difficulté {difficulte}",
             niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
@@ -2609,8 +2611,10 @@ def nouvel_exercice():
         if nouvelle_q:
             session['derniere_q_ia'] = nouvelle_q
             
+        print(f"[DEBUG] ✅ Exercice généré avec succès")
+        
     except Exception as e:
-        print(f"[DEBUG] Erreur génération exercice: {e}")
+        print(f"[DEBUG] ❌ Erreur génération exercice: {e}")
         # Fallback simple
         if lang == "fr":
             msg = f"🤖 Naima: Voici un exercice de {matiere}. Quelle est ta question ?"
@@ -2618,18 +2622,18 @@ def nouvel_exercice():
             msg = f"🤖 Naima: Here's a {matiere} exercise. What's your question?"
         session["conversation"] = [msg]
     
-    # IMPORTANT: Re-sauvegarder les données essentielles
+    # Re-sauvegarder les données essentielles
     session['eleve_id'] = eleve_id
     session['lang'] = lang
-    session.modified = True  # Force la sauvegarde
+    session.modified = True
     
-    # Flash message personnalisé avec Naima
+    # Flash message
     if lang == "fr":
-        flash("✨ Naima est prête pour un nouvel exercice !", "success")
+        flash("✨ Nouvel exercice généré ! Naima va te guider.", "success")
     else:
-        flash("✨ Naima is ready for a new exercise!", "success")
+        flash("✨ New exercise generated! Naima will guide you.", "success")
     
-    # ✅ Rediriger vers l'enseignant virtuel, PAS vers dashboard
+    # ✅ REDIRECTION CORRECTE - VERS L'ENSEIGNANT VIRTUEL
     import time
     redirect_url = url_for("enseignant_virtuel") + f"?t={int(time.time())}"
     print(f"[DEBUG] Redirection vers: {redirect_url}")
