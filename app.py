@@ -1075,7 +1075,7 @@ def obtenir_nom_matiere_objet(matiere_obj, lang="fr"):
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
     """Route pour l'enseignant virtuel Naima - Support AJAX pour les exercices"""
-    from datetime import datetime
+    from datetime import datetime  # ← IMPORT ICI
     
     print(f"[DEBUG] Accès enseignant virtuel")
     
@@ -1235,9 +1235,10 @@ def enseignant_virtuel():
         conversation=conversation,
         exercice_remediation=None,
         access_count=0,
-        date_du_jour=datetime.utcnow(),
+        date_du_jour=datetime.utcnow(),  # ← Passage de datetime
         matiere=matiere,
-        theme=theme
+        theme=theme,
+        datetime=datetime  # ← Passage de la classe datetime
     )
 
 def extraire_question(reponse, lang):
