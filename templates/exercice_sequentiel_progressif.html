@@ -1906,68 +1906,60 @@
                 <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
               </div>
 
-              <!-- Calculatrice intégrée - Version simplifiée -->
+              <!-- Calculatrice intégrée - Version simplifiée bilingue -->
               <div class="calculator-container">
-                <button type="button" class="calculator-toggle" onclick="toggleCalculator()">
-                  <i class="fas fa-calculator"></i> Calculatrice simple
-                </button>
-                
-                <div class="calculator" id="calculator" style="display: none;">
-                  <div class="calculator-display" id="calcDisplay">0</div>
-                  <div class="calculator-buttons">
-                    <button type="button" class="calc-btn" onclick="calculatorInput('(')">(</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput(')')">)</button>
-                    <button type="button" class="calc-btn" onclick="calculatorClear()">C</button>
-                    <button type="button" class="calc-btn" onclick="calculatorDelete()">⌫</button>
-                    
-                    <button type="button" class="calc-btn" onclick="calculatorInput('7')">7</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('8')">8</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('9')">9</button>
-                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('/')">÷</button>
-                    
-                    <button type="button" class="calc-btn" onclick="calculatorInput('4')">4</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('5')">5</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('6')">6</button>
-                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('*')">×</button>
-                    
-                    <button type="button" class="calc-btn" onclick="calculatorInput('1')">1</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('2')">2</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('3')">3</button>
-                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('-')">−</button>
-                    
-                    <button type="button" class="calc-btn" onclick="calculatorInput('0')">0</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('.')">.</button>
-                    <button type="button" class="calc-btn calc-equals" onclick="calculatorCalculate()">=</button>
-                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('+')">+</button>
-                    
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**2')">x²</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**3')">x³</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**(1/2)')">√</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInsertResult()">→</button>
+                  <button type="button" class="calculator-toggle" onclick="toggleCalculator()">
+                      <i class="fas fa-calculator"></i> 
+                      {% if lang == 'fr' %}Calculatrice simple{% else %}Simple calculator{% endif %}
+                  </button>
+                  
+                  <div class="calculator" id="calculator" style="display: none;">
+                      <div class="calculator-display" id="calcDisplay">0</div>
+                      <div class="calculator-buttons">
+                          <button type="button" class="calc-btn" onclick="calculatorInput('(')">(</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput(')')">)</button>
+                          <button type="button" class="calc-btn" onclick="calculatorClear()">C</button>
+                          <button type="button" class="calc-btn" onclick="calculatorDelete()">⌫</button>
+                          
+                          <button type="button" class="calc-btn" onclick="calculatorInput('7')">7</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('8')">8</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('9')">9</button>
+                          <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('/')">÷</button>
+                          
+                          <button type="button" class="calc-btn" onclick="calculatorInput('4')">4</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('5')">5</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('6')">6</button>
+                          <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('*')">×</button>
+                          
+                          <button type="button" class="calc-btn" onclick="calculatorInput('1')">1</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('2')">2</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('3')">3</button>
+                          <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('-')">−</button>
+                          
+                          <button type="button" class="calc-btn" onclick="calculatorInput('0')">0</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('.')">.</button>
+                          <button type="button" class="calc-btn calc-equals" onclick="calculatorCalculate()">=</button>
+                          <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('+')">+</button>
+                          
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**2')">x²</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**3')">x³</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**(1/2)')">
+                              {% if lang == 'fr' %}√{% else %}√{% endif %}
+                          </button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInsertResult()">
+                              {% if lang == 'fr' %}→{% else %}→{% endif %}
+                          </button>
+                      </div>
+                      <div style="color: #ecf0f1; font-size: 0.8rem; text-align: center; margin-top: 10px;">
+                          <i class="fas fa-info-circle"></i> 
+                          {% if lang == 'fr' %}
+                              Utilisez ** pour les puissances (ex: 2**3 = 8)
+                          {% else %}
+                              Use ** for powers (e.g., 2**3 = 8)
+                          {% endif %}
+                      </div>
                   </div>
-                  <div style="color: #ecf0f1; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-                    <i class="fas fa-info-circle"></i> Utilisez ** pour les puissances (ex: 2**3 = 8)
-                  </div>
-                </div>
               </div>
-
-              <div 
-                class="visual-editor" 
-                contenteditable="true"
-                id="visualMathEditor"
-                placeholder="{% if lang == 'fr' %}Écrivez votre réponse complète ici... Utilisez les boutons pour les symboles mathématiques.{% else %}Write your complete answer here... Use the buttons for math symbols.{% endif %}"
-              ></div>
-
-              <div class="help-text">
-                <i class="fas fa-calculator"></i> <strong>{% if lang == 'fr' %}Nouveau :{% else %}New:{% endif %}</strong> 
-                {% if lang == 'fr' %}
-                  Utilisez la calculatrice intégrée pour les opérations. Votre réponse sera vérifiée mathématiquement avec SymPy.
-                {% else %}
-                  Use the built-in calculator for operations. Your answer will be mathematically verified with SymPy.
-                {% endif %}
-              </div>
-            </div>
-          </div>
 
           <!-- Bouton de soumission -->
           <div class="action-buttons">
