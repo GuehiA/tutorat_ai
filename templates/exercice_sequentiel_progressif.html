@@ -1908,54 +1908,57 @@
 
               <!-- Calculatrice intégrée -->
               <div class="calculator-container">
-                <button type="button" class="calculator-toggle" onclick="toggleCalculator()">
-                  <i class="fas fa-calculator"></i> Calculatrice
-                </button>
-                
-                <div class="calculator" id="calculator" style="display: none;">
-                  <div class="calculator-display" id="calcDisplay">0</div>
-                  <div class="calculator-buttons">
-                    <button type="button" class="calc-btn" onclick="calculatorInput('(')">(</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput(')')">)</button>
-                    <button type="button" class="calc-btn" onclick="calculatorClear()">C</button>
-                    <button type="button" class="calc-btn" onclick="calculatorDelete()">⌫</button>
-                    
-                    <button type="button" class="calc-btn" onclick="calculatorInput('7')">7</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('8')">8</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('9')">9</button>
-                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('/')">÷</button>
-                    
-                    <button type="button" class="calc-btn" onclick="calculatorInput('4')">4</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('5')">5</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('6')">6</button>
-                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('*')">×</button>
-                    
-                    <button type="button" class="calc-btn" onclick="calculatorInput('1')">1</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('2')">2</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('3')">3</button>
-                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('-')">−</button>
-                    
-                    <button type="button" class="calc-btn" onclick="calculatorInput('0')">0</button>
-                    <button type="button" class="calc-btn" onclick="calculatorInput('.')">.</button>
-                    <button type="button" class="calc-btn calc-equals" onclick="calculatorCalculate()">=</button>
-                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('+')">+</button>
-                    
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**2')">x²</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**3')">x³</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**0.5')">√</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInsertResult()">→</button>
-                    
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.sin(')">sin</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.cos(')">cos</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.tan(')">tan</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.PI')">π</button>
-                    
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.log(')">ln</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.log10(')">log</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.exp(')">e^x</button>
-                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.E')">e</button>
+                  <button type="button" class="calculator-toggle" onclick="toggleCalculator()">
+                      <i class="fas fa-calculator"></i> Calculatrice
+                  </button>
+                  
+                  <div class="calculator" id="calculator" style="display: none;">
+                      <div class="calculator-display" id="calcDisplay">0</div>
+                      <div class="calculator-buttons">
+                          <button type="button" class="calc-btn" onclick="calculatorInput('(')">(</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput(')')">)</button>
+                          <button type="button" class="calc-btn" onclick="calculatorClear()">C</button>
+                          <button type="button" class="calc-btn" onclick="calculatorDelete()">⌫</button>
+                          
+                          <button type="button" class="calc-btn" onclick="calculatorInput('7')">7</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('8')">8</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('9')">9</button>
+                          <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('/')">÷</button>
+                          
+                          <button type="button" class="calc-btn" onclick="calculatorInput('4')">4</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('5')">5</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('6')">6</button>
+                          <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('*')">×</button>
+                          
+                          <button type="button" class="calc-btn" onclick="calculatorInput('1')">1</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('2')">2</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('3')">3</button>
+                          <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('-')">−</button>
+                          
+                          <button type="button" class="calc-btn" onclick="calculatorInput('0')">0</button>
+                          <button type="button" class="calc-btn" onclick="calculatorInput('.')">.</button>
+                          <button type="button" class="calc-btn calc-equals" onclick="calculatorCalculate()">=</button>
+                          <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('+')">+</button>
+                          
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**2')">x²</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**3')">x³</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('√(')">√</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInsertResult()">→</button>
+                          
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.sin(')">sin</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.cos(')">cos</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.tan(')">tan</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.PI')">π</button>
+                          
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.log10(')">log₁₀</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.log(')">ln</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.exp(')">eˣ</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.E')">e</button>
+                          
+                          <!-- Bouton pour basculer entre degrés et radians -->
+                          <button type="button" class="calc-btn calc-special" id="angleModeBtn" onclick="toggleAngleMode()" style="background: #9b59b6; grid-column: span 2;">DEG</button>
+                      </div>
                   </div>
-                </div>
               </div>
 
               <div 
