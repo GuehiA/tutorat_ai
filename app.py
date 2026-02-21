@@ -1095,66 +1095,13 @@ def enseignant_virtuel():
     eleve = utilisateur
     lang = session.get("lang", "fr")
     
-    # Vérifier le contexte d'exercice
-    contexte_exercice = request.form.get('contexte_exercice') == 'true'
-    exercice_id = request.form.get('exercice_id')
-    exercice_question = request.form.get('exercice_question', '')
-    reponse_eleve = request.form.get('reponse_eleve', '')
-    
-    # Récupérer la matière depuis l'exercice si disponible
-    matiere = "mathématiques"  # Valeur par défaut
-    theme = "général"
-    
-    if exercice_id:
-        try:
-            exercice = Exercice.query.get(exercice_id)
-            if exercice and exercice.theme:
-                # Extraire la matière depuis le thème
-                theme = exercice.theme.lower()
-                
-                # Mapper les thèmes aux matières
-                if any(mot in theme for mot in ['math', 'algèbre', 'géométrie', 'calcul', 'arithmétique', 'équation']):
-                    matiere = "mathématiques"
-                elif any(mot in theme for mot in ['français', 'grammaire', 'orthographe', 'conjugaison', 'littérature']):
-                    matiere = "français"
-                elif any(mot in theme for mot in ['histoire', 'géographie', 'histoire-géo']):
-                    matiere = "histoire"
-                elif any(mot in theme for mot in ['science', 'physique', 'chimie', 'biologie', 'scientifique']):
-                    matiere = "sciences"
-                elif any(mot in theme for mot in ['anglais', 'english', 'langue']):
-                    matiere = "anglais"
-                
-                print(f"[DEBUG] Matière détectée depuis l'exercice: {matiere} (thème: {theme})")
-        except Exception as e:
-            print(f"[DEBUG] Erreur lors de la récupération de la matière: {e}")
-    
-    print(f"[DEBUG] Contexte exercice: {contexte_exercice}, ID: {exercice_id}, Matière: {matiere}")
-    
-    # Initialiser la conversation si nécessaire
-    conversation_key = f"conversation_exercice_{exercice_id}" if contexte_exercice and exercice_id else "conversation"
-    
-    if conversation_key not in session:
-        session[conversation_key] = []
-        conversation = session[conversation_key]
-        
-        # Message de bienvenue contextuel
-        if contexte_exercice and exercice_question:
-            if lang == "fr":
-                bienvenue = f"🤖 Naima: Bonjour ! Je suis Naima, ton enseignante virtuelle de {matiere}. Je vois que tu travailles sur cet exercice : {exercice_question[:150]}... Pose-moi des questions si tu as besoin d'aide !"
-            else:
-                bienvenue = f"🤖 Naima: Hello! I'm Naima, your virtual {matiere} teacher. I see you're working on this exercise: {exercice_question[:150]}... Ask me questions if you need help!"
-            conversation.append(bienvenue)
-    else:
-        conversation = session.get(conversation_key, [])
+    # ✅ Récupérer la conversation existante
+    conversation = session.get("conversation", [])
     
     # TRAITEMENT POST
     if request.method == 'POST':
         question = request.form.get("question", "").strip()
-        matiere_form = request.form.get("matiere", "")
-        
-        # Priorité à la matière du formulaire, sinon celle détectée
-        if matiere_form:
-            matiere = matiere_form
+        matiere = request.form.get("matiere", "mathématiques")
         
         print(f"[DEBUG] POST - Question: {question[:50]}... - Matière: {matiere}")
         
@@ -1164,21 +1111,25 @@ def enseignant_virtuel():
             conversation.append(f"{eleve_label} {question}")
             
             try:
-                # Générer la réponse avec le contexte
-                if contexte_exercice:
-                    # Réponse avec contexte de l'exercice
+                # Vérifier si c'est une réponse à une question précédente
+                derniere_q_ia = session.get('derniere_q_ia')
+                
+                if derniere_q_ia:
+                    # C'est une réponse à une question de Naima
                     reponse = generer_suite_conversation(
-                        derniere_q=question,
-                        reponse=reponse_eleve,
+                        derniere_q=derniere_q_ia,
+                        reponse=question,
                         historique=conversation,
                         niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
                         langue=lang,
                         mode_examen=session.get("mode_examen", False),
-                        exercice_context=exercice_question,
+                        exercice_context="",
                         matiere=matiere
                     )
+                    # Effacer la dernière question car on y a répondu
+                    session.pop('derniere_q_ia', None)
                 else:
-                    # Réponse normale
+                    # Nouvelle question
                     reponse = generer_debut_conversation(
                         question=question,
                         niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
@@ -1187,34 +1138,21 @@ def enseignant_virtuel():
                         matiere=matiere
                     )
                 
+                # Ajouter la réponse de Naima
                 enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
                 conversation.append(f"{enseignant_label} {reponse}")
                 
-                # Limiter la taille
+                # ✅ Extraire la nouvelle question de Naima pour la suite
+                nouvelle_q = extraire_question(reponse, lang)
+                if nouvelle_q:
+                    session['derniere_q_ia'] = nouvelle_q
+                
+                # Limiter la taille de la conversation
                 if len(conversation) > 20:
                     conversation = conversation[-20:]
                 
                 # Sauvegarder
-                session[conversation_key] = conversation
-                
-                # ✅ Enregistrer la réponse dans la base de données si c'est une réponse d'exercice
-                if exercice_id and reponse_eleve:
-                    try:
-                        from models import StudentResponse
-                        nouvelle_reponse = StudentResponse(
-                            user_id=eleve.id,
-                            exercice_id=exercice_id if not contexte_exercice else None,
-                            test_exercice_id=exercice_id if contexte_exercice else None,
-                            reponse_eleve=reponse_eleve,
-                            analyse_ia=reponse,
-                            timestamp=datetime.utcnow()
-                        )
-                        db.session.add(nouvelle_reponse)
-                        db.session.commit()
-                        print(f"[DEBUG] ✅ Réponse enregistrée dans la base")
-                    except Exception as e:
-                        print(f"[DEBUG] ❌ Erreur enregistrement réponse: {e}")
-                        db.session.rollback()
+                session["conversation"] = conversation
                 
             except Exception as e:
                 print(f"Erreur: {e}")
@@ -1229,7 +1167,7 @@ def enseignant_virtuel():
                 
                 enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
                 conversation.append(f"{enseignant_label} {msg_erreur}")
-                session[conversation_key] = conversation
+                session["conversation"] = conversation
     
     # ✅ Calculer les statistiques de l'élève
     from models import StudentResponse
@@ -1244,7 +1182,6 @@ def enseignant_virtuel():
     # Calculer la série (streak)
     serie = 0
     try:
-        # Récupérer les dates des exercices (sans doublons)
         dates_exercices = db.session.query(
             func.date(StudentResponse.timestamp)
         ).filter(
@@ -1257,10 +1194,8 @@ def enseignant_virtuel():
             dates = [d[0] for d in dates_exercices]
             today = datetime.utcnow().date()
             
-            # Vérifier si l'élève a fait un exercice aujourd'hui
             if dates and dates[0] == today:
                 serie = 1
-                # Compter les jours consécutifs
                 for i in range(len(dates) - 1):
                     if (dates[i] - dates[i+1]).days == 1:
                         serie += 1
@@ -1269,7 +1204,7 @@ def enseignant_virtuel():
     except Exception as e:
         print(f"[DEBUG] Erreur calcul série: {e}")
     
-    # Calculer le temps total d'apprentissage (si le champ existe)
+    # Calculer le temps total d'apprentissage
     temps_apprentissage = 0
     if hasattr(StudentResponse, 'temps_passe'):
         temps_total = db.session.query(
@@ -1277,9 +1212,8 @@ def enseignant_virtuel():
         ).filter(
             StudentResponse.user_id == eleve.id
         ).scalar() or 0
-        temps_apprentissage = round(temps_total / 60)  # Convertir en minutes
+        temps_apprentissage = round(temps_total / 60)
     
-    # Statistiques pour l'affichage
     stats = {
         'total_exercices': total_exercices,
         'exercices_reussis': exercices_reussis,
@@ -1289,37 +1223,34 @@ def enseignant_virtuel():
         'date_inscription': eleve.date_inscription.strftime('%d/%m/%Y') if eleve.date_inscription else 'N/A'
     }
     
-    print(f"[DEBUG] Stats élève: {stats}")
-    
-    # Pour les requêtes AJAX, retourner seulement les nouveaux messages
+    # Pour les requêtes AJAX
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        # Récupérer les 10 derniers messages
         messages_html = []
         for msg in conversation[-10:]:
             if "👤" in msg:
-                messages_html.append(f'<div class="chat-message user-message"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()}</div></div>')
+                messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
             elif "🤖" in msg:
-                messages_html.append(f'<div class="chat-message"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{msg.replace("🤖 Naima:", "").strip()}</div></div>')
+                messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{msg.replace("🤖 Naima:", "").strip()}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
         
         return jsonify({
             'success': True,
             'messages': messages_html,
             'last_message': messages_html[-1] if messages_html else '',
-            'stats': stats  # ← Optionnel: renvoyer les stats pour mise à jour AJAX
+            'stats': stats
         })
     
-    # Pour les requêtes normales, retourner la page complète
+    # Pour les requêtes normales
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
         eleve=eleve,
-        stats=stats,  # ← Passage des statistiques
+        stats=stats,
         conversation=conversation,
         exercice_remediation=None,
         access_count=0,
         date_du_jour=datetime.utcnow(),
-        matiere=matiere,
-        theme=theme,
+        matiere=request.form.get("matiere", "mathématiques") if request.method == 'POST' else session.get("matiere", "mathématiques"),
+        theme="général",
         datetime=datetime
     )
 
