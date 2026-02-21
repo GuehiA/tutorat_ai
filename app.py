@@ -10644,15 +10644,14 @@ Feedback détaillé : [...]
 """.strip()
         
         print(f"🤖 Envoi à l'IA pour réévaluation...")
-        print(f"Prompt: {prompt[:500]}...")  # Afficher les premiers 500 caractères
         
         # 4. APPEL À L'IA POUR RÉÉVALUATION
         try:
             from openai import OpenAI
-            client = OpenAI(api_key="votre-clé-api-openai")
+            client = OpenAI(api_key="votre-clé-api-openai")  # Remplacez par votre clé
             
             chat_completion = client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4",  # ou gpt-3.5-turbo pour moins cher
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
             )
@@ -10663,6 +10662,7 @@ Feedback détaillé : [...]
             new_stars = reponse.etoiles  # Par défaut, garder l'ancienne
             
             # Chercher la nouvelle note dans la réponse de l'IA
+            import re
             match = re.search(r"(?:New grade|Nouvelle note|Grade|Note)\s*:\s*(\d)(?:\s*/?\s*5)?", new_analysis, re.IGNORECASE)
             if match:
                 new_stars = int(match.group(1))
@@ -10691,73 +10691,94 @@ Feedback détaillé : [...]
             import traceback
             traceback.print_exc()
             
-            # Fallback aux règles simples
-            new_stars = data.get('proposed_stars', reponse.etoiles)
-            
-            # Générer un message simple
+            # Fallback - Message d'erreur
+            new_stars = reponse.etoiles  # Garder la note actuelle
             if lang == 'en':
                 new_analysis = f"""
-Contestation received and processed.
+⚠️ **AI Service Temporarily Unavailable**
 
-Student's arguments: {data.get('justification', 'No justification provided')}
-Proposed grade: {new_stars}/5
+Your contestation has been received but the AI service is currently unavailable.
+Your original grade of {new_stars}/5 has been maintained.
 
-Based on manual review, the grade has been adjusted to {new_stars}/5.
-Please continue with your learning journey.
+**Your arguments:**
+{data.get('justification', 'No justification provided')}
+
+Please try again later or contact your teacher.
 """
             else:
                 new_analysis = f"""
-Contestation reçue et traitée.
+⚠️ **Service IA Temporairement Indisponible**
 
-Arguments de l'élève : {data.get('justification', 'Aucune justification fournie')}
-Note proposée : {new_stars}/5
+Votre contestation a été reçue mais le service IA est actuellement indisponible.
+Votre note originale de {new_stars}/5 a été maintenue.
 
-Suite à une revue manuelle, la note a été ajustée à {new_stars}/5.
-Continuez votre parcours d'apprentissage.
+**Vos arguments :**
+{data.get('justification', 'Aucune justification fournie')}
+
+Veuillez réessayer plus tard ou contacter votre enseignant.
 """
         
         # 6. METTRE À JOUR LA BASE DE DONNÉES
+        # Récupérer l'analyse existante
+        try:
+            existing_analysis = json.loads(reponse.analyse_ia) if reponse.analyse_ia and reponse.analyse_ia.strip().startswith('{') else {}
+        except:
+            existing_analysis = {}
+        
         # Créer un nouvel objet JSON avec l'historique
-        updated_analysis = {
-            "original": analysis_text,
-            "contestation": {
-                "date": datetime.now().isoformat(),
-                "justification": data.get('justification', ''),
-                "proposed_stars": data.get('proposed_stars', reponse.etoiles),
-                "previous_stars": reponse.etoiles
-            },
-            "current_feedback": new_analysis,
-            "current_stars": new_stars
+        if not existing_analysis:
+            existing_analysis = {
+                "original": analysis_text,
+                "history": [],
+                "current_feedback": analysis_text,
+                "current_stars": reponse.etoiles
+            }
+        
+        # Ajouter la contestation à l'historique
+        contestation_entry = {
+            "type": "contestation",
+            "date": datetime.now().isoformat(),
+            "justification": data.get('justification', ''),
+            "proposed_stars": data.get('proposed_stars', reponse.etoiles),
+            "previous_stars": reponse.etoiles,
+            "new_stars": new_stars,
+            "ai_response": new_analysis
         }
         
-        reponse.analyse_ia = json.dumps(updated_analysis, ensure_ascii=False)
-        reponse.etoiles = new_stars
+        if "history" not in existing_analysis:
+            existing_analysis["history"] = []
         
-        # Ajouter un timestamp de mise à jour
+        existing_analysis["history"].append(contestation_entry)
+        existing_analysis["current_feedback"] = new_analysis
+        existing_analysis["current_stars"] = new_stars
+        
+        # Mettre à jour la base de données
+        reponse.analyse_ia = json.dumps(existing_analysis, ensure_ascii=False, indent=2)
+        reponse.etoiles = new_stars
         reponse.date_modification = datetime.now()
         
         db.session.commit()
         print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5")
         
         # 7. PRÉPARER LA RÉPONSE
-        stars_changed = new_stars != reponse.etoiles
+        stars_changed = new_stars != data.get('current_stars', reponse.etoiles)
         
         if lang == 'en':
             if stars_changed:
-                message = f"Grade changed from {reponse.etoiles} to {new_stars}/5 stars!"
+                message = f"✅ Grade changed from {data.get('current_stars', reponse.etoiles)} to {new_stars}/5 stars!"
             else:
-                message = f"Grade maintained at {new_stars}/5 stars."
+                message = f"ℹ️ Grade maintained at {new_stars}/5 stars."
         else:
             if stars_changed:
-                message = f"Note changée de {reponse.etoiles} à {new_stars}/5 étoiles !"
+                message = f"✅ Note changée de {data.get('current_stars', reponse.etoiles)} à {new_stars}/5 étoiles !"
             else:
-                message = f"Note maintenue à {new_stars}/5 étoiles."
+                message = f"ℹ️ Note maintenue à {new_stars}/5 étoiles."
         
         return jsonify({
             'success': True,
             'new_stars': new_stars,
             'new_feedback': new_analysis,
-            'old_stars': reponse.etoiles,
+            'old_stars': data.get('current_stars', reponse.etoiles),
             'stars_changed': stars_changed,
             'message': message,
             'has_ai_reassessment': True
