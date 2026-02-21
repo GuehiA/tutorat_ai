@@ -2048,27 +2048,31 @@ Take your time, I'm here to support you.
 
 
 @app.route("/demander-exercice", methods=["POST"])
+@app.route("/demander-exercice", methods=["POST"])
 def demander_exercice():
-    """Génère un exercice personnalisé pour l'élève"""
+    """Génère un exercice personnalisé pour l'élève - VERSION CORRIGÉE"""
     if "user_id" not in session:
         return jsonify({"error": "Non authentifié"}), 401
     
-    utilisateur = User.query.get(session["user_id"])
-    if not utilisateur or utilisateur.role != "eleve":
-        return jsonify({"error": "Accès réservé aux élèves"}), 403
-    
-    data = request.get_json()
-    matiere = data.get("matiere", "mathématiques")
-    difficulte = data.get("difficulte", "moyen")
-    type_exercice = data.get("type", "exercice")  # exercice, qcm, probleme
-    
-    lang = session.get("lang", "fr")
-    
     try:
-        # Générer l'exercice avec OpenAI
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Données JSON invalides"}), 400
+        
+        matiere = data.get("matiere", "mathématiques")
+        difficulte = data.get("difficulte", "moyen")
+        type_exercice = data.get("type", "exercice")
+        
+        utilisateur = User.query.get(session["user_id"])
+        if not utilisateur or utilisateur.role != "eleve":
+            return jsonify({"error": "Accès réservé aux élèves"}), 403
+        
+        lang = session.get("lang", "fr")
+        
+        # Générer l'exercice
         exercice = generer_exercice(
             matiere=matiere,
-            niveau=utilisateur.niveau.nom if utilisateur.niveau else "6ème",
+            niveau=utilisateur.niveau.nom if utilisateur.niveau else ("6ème" if lang == "fr" else "6th grade"),
             difficulte=difficulte,
             type_exercice=type_exercice,
             langue=lang
@@ -2078,65 +2082,92 @@ def demander_exercice():
         session["exercice_actuel"] = {
             "matiere": matiere,
             "enonce": exercice["enonce"],
-            "correction": exercice["correction"],  # cachée à l'élève
+            "correction": exercice["correction"],
             "indices": exercice["indices"],
-            "etape": 1
+            "etape": 1,
+            "total_etapes": exercice.get("total_etapes", len(exercice["correction"].get("etapes", [3])))
         }
+        session["mode_exercice"] = True
+        session.modified = True
         
         return jsonify({
             "success": True,
             "enonce": exercice["enonce"],
-            "indice_initial": exercice["indices"][0] if exercice["indices"] else None
+            "indice_initial": exercice["indices"][0] if exercice["indices"] else None,
+            "total_etapes": exercice.get("total_etapes", 3)
         })
         
     except Exception as e:
-        print(f"Erreur génération exercice: {e}")
-        return jsonify({"error": "Erreur lors de la génération"}), 500
+        print(f"❌ Erreur route demander_exercice: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/verifier-reponse-exercice", methods=["POST"])
 def verifier_reponse_exercice():
-    """Vérifie la réponse de l'élève et donne du feedback"""
+    """Vérifie la réponse de l'élève - VERSION CORRIGÉE"""
     if "user_id" not in session:
         return jsonify({"error": "Non authentifié"}), 401
     
-    data = request.get_json()
-    reponse_eleve = data.get("reponse", "")
-    exercice_actuel = session.get("exercice_actuel")
-    
-    if not exercice_actuel:
-        return jsonify({"error": "Aucun exercice en cours"}), 400
-    
-    lang = session.get("lang", "fr")
-    
-    # Analyser la réponse
-    analyse = analyser_reponse(
-        enonce=exercice_actuel["enonce"],
-        reponse_eleve=reponse_eleve,
-        correction=exercice_actuel["correction"],
-        etape=exercice_actuel.get("etape", 1),
-        langue=lang
-    )
-    
-    if analyse["correct"]:
-        # Passer à l'étape suivante ou féliciter
-        exercice_actuel["etape"] += 1
-        session["exercice_actuel"] = exercice_actuel
+    try:
+        data = request.get_json()
+        reponse_eleve = data.get("reponse", "").strip()
         
-        if exercice_actuel["etape"] > len(exercice_actuel["correction"].get("etapes", [])):
-            # Exercice terminé !
-            return jsonify({
-                "termine": True,
-                "message": get_message("bravo_exercice_termine", lang)
-            })
-    
-    return jsonify({
-        "correct": analyse["correct"],
-        "feedback": analyse["feedback"],
-        "indice_suivant": analyse.get("indice"),
-        "progression": f"{exercice_actuel['etape']-1}/{len(exercice_actuel['correction'].get('etapes', []))}"
-    })
-
+        exercice_actuel = session.get("exercice_actuel")
+        if not exercice_actuel:
+            return jsonify({"error": "Aucun exercice en cours"}), 400
+        
+        lang = session.get("lang", "fr")
+        
+        # Analyser la réponse
+        analyse = analyser_reponse(
+            enonce=exercice_actuel["enonce"],
+            reponse_eleve=reponse_eleve,
+            correction=exercice_actuel["correction"],
+            etape=exercice_actuel.get("etape", 1),
+            langue=lang
+        )
+        
+        resultat = {
+            "correct": analyse.get("correct", False),
+            "feedback": analyse.get("feedback", "Analyse en cours..."),
+            "indice_suivant": None
+        }
+        
+        if analyse.get("correct", False):
+            # Réponse correcte, passer à l'étape suivante
+            exercice_actuel["etape"] += 1
+            session["exercice_actuel"] = exercice_actuel
+            
+            # Vérifier si l'exercice est terminé
+            if exercice_actuel["etape"] > exercice_actuel["total_etapes"]:
+                # Exercice terminé !
+                session.pop("exercice_actuel", None)
+                session.pop("mode_exercice", None)
+                session.modified = True
+                
+                resultat["termine"] = True
+                resultat["message"] = get_message("bravo_exercice_termine", lang)
+            else:
+                # Prochaine étape
+                resultat["progression"] = f"{exercice_actuel['etape']-1}/{exercice_actuel['total_etapes']}"
+        else:
+            # Réponse incorrecte, donner un indice si disponible
+            etape_actuelle = exercice_actuel.get("etape", 1)
+            indices = exercice_actuel.get("indices", [])
+            
+            if etape_actuelle <= len(indices):
+                resultat["indice_suivant"] = indices[etape_actuelle - 1]
+            else:
+                resultat["indice_suivant"] = get_message("plus_d_indices", lang)
+            
+            resultat["progression"] = f"{exercice_actuel['etape']-1}/{exercice_actuel['total_etapes']}"
+        
+        session.modified = True
+        return jsonify(resultat)
+        
+    except Exception as e:
+        print(f"❌ Erreur vérification réponse: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/indice-supplementaire", methods=["POST"])
 def indice_supplementaire():
@@ -2160,108 +2191,186 @@ def indice_supplementaire():
 
 
 def generer_exercice(matiere, niveau, difficulte="moyen", type_exercice="exercice", langue="fr"):
-    """Génère un exercice personnalisé avec OpenAI"""
+    """Génère un exercice personnalisé avec OpenAI - VERSION CORRIGÉE"""
     from openai import OpenAI
     import os
     import json
     
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
-    # Construction du prompt selon la matière
-    prompts = {
-        "mathématiques": f"Génère un exercice de {matiere} niveau {niveau} ({difficulte})",
-        "français": f"Génère un exercice de {matiere} niveau {niveau} ({difficulte})",
-        # ... etc
-    }
-    
-    prompt_base = prompts.get(matiere, prompts["mathématiques"])
-    
-    system_prompt = f"""Tu es Naima, enseignante virtuelle. Génère un {type_exercice} en {matiere} pour un élève de {niveau}.
+    # Construction du prompt selon la matière et la langue
+    if langue == "fr":
+        prompt_exercice = f"""Génère un exercice de {matiere} pour un élève de {niveau}.
+        
+Niveau de difficulté : {difficulte}
+Type : {type_exercice}
 
-    IMPORTANT: Réponds STRICTEMENT au format JSON suivant :
-    {{
-        "enonce": "L'énoncé complet de l'exercice",
-        "correction": {{
-            "reponse_finale": "La réponse correcte",
-            "etapes": ["étape 1", "étape 2", "étape 3"]
-        }},
-        "indices": ["indice 1 (aide pour démarrer)", "indice 2", "indice 3"]
-    }}
+L'exercice doit :
+- Être adapté au niveau {niveau}
+- Avoir une difficulté {difficulte}
+- Être progressif (plusieurs étapes)
+- Inclure des indices pour guider l'élève
 
-    L'exercice doit être adapté au niveau {niveau} avec une difficulté {difficulte}.
-    Les indices doivent guider sans donner la réponse.
-    """
+Réponds UNIQUEMENT avec un objet JSON valide au format suivant :
+{{
+    "enonce": "L'énoncé complet de l'exercice",
+    "correction": {{
+        "reponse_finale": "La réponse correcte",
+        "etapes": ["étape 1", "étape 2", "étape 3"]
+    }},
+    "indices": ["indice 1", "indice 2", "indice 3"]
+}}"""
+    else:
+        prompt_exercice = f"""Generate a {matiere} exercise for a {niveau} student.
+        
+Difficulty level: {difficulte}
+Type: {type_exercice}
+
+The exercise should:
+- Be appropriate for {niveau} level
+- Have {difficulte} difficulty
+- Be progressive (multiple steps)
+- Include hints to guide the student
+
+Answer ONLY with a valid JSON object in this format:
+{{
+    "enonce": "The complete exercise statement",
+    "correction": {{
+        "reponse_finale": "The correct answer",
+        "etapes": ["step 1", "step 2", "step 3"]
+    }},
+    "indices": ["hint 1", "hint 2", "hint 3"]
+}}"""
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",  # Utilise gpt-3.5-turbo au lieu de gpt-4 (moins cher et plus fiable)
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt_base}
+                {"role": "system", "content": "Tu es Naima, une enseignante virtuelle qui génère des exercices pédagogiques. Tu réponds TOUJOURS avec un JSON valide."},
+                {"role": "user", "content": prompt_exercice}
             ],
             temperature=0.7,
-            response_format={"type": "json_object"}
+            max_tokens=800
         )
         
-        exercice = json.loads(response.choices[0].message.content)
+        # Extraire et parser le JSON
+        reponse_texte = response.choices[0].message.content
+        
+        # Nettoyer la réponse (parfois l'API ajoute du texte avant/après)
+        import re
+        json_match = re.search(r'\{.*\}', reponse_texte, re.DOTALL)
+        if json_match:
+            reponse_texte = json_match.group()
+        
+        exercice = json.loads(reponse_texte)
+        
+        # Ajouter le nombre total d'étapes
+        exercice['total_etapes'] = len(exercice.get('correction', {}).get('etapes', [3]))
+        
         return exercice
         
     except Exception as e:
-        print(f"Erreur génération: {e}")
+        print(f"❌ Erreur génération exercice: {e}")
+        print(f"Réponse reçue: {reponse_texte if 'reponse_texte' in locals() else 'N/A'}")
+        
         # Fallback
-        return {
-            "enonce": "Calcule : 15 + 27 = ?",
-            "correction": {
-                "reponse_finale": "42",
-                "etapes": ["Additionner les unités", "Additionner les dizaines"]
-            },
-            "indices": ["Commence par additionner les unités"]
-        }
+        if langue == "fr":
+            return {
+                "enonce": f"Calcule : 15 + 27 = ? (Exercice de {matiere} - niveau {niveau})",
+                "correction": {
+                    "reponse_finale": "42",
+                    "etapes": ["Additionne les unités : 5 + 7 = 12", "Additionne les dizaines : 1 + 2 + 1 (retenue) = 4"]
+                },
+                "indices": ["Commence par additionner les unités", "N'oublie pas la retenue"],
+                "total_etapes": 2
+            }
+        else:
+            return {
+                "enonce": f"Calculate: 15 + 27 = ? ({matiere} exercise - {niveau} level)",
+                "correction": {
+                    "reponse_finale": "42",
+                    "etapes": ["Add units: 5 + 7 = 12", "Add tens: 1 + 2 + 1 (carry) = 4"]
+                },
+                "indices": ["Start by adding the units", "Don't forget the carry"],
+                "total_etapes": 2
+            }
 
 
 def analyser_reponse(enonce, reponse_eleve, correction, etape=1, langue="fr"):
-    """Analyse la réponse de l'élève"""
+    """Analyse la réponse de l'élève - VERSION CORRIGÉE"""
     from openai import OpenAI
     import os
     import json
     
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
-    prompt = f"""
-    Énoncé: {enonce}
-    Réponse élève: {reponse_eleve}
-    Correction attendue: {correction}
-    Étape actuelle: {etape}
-    
-    Analyse si la réponse est correcte et donne un feedback constructif.
-    
-    Réponds en JSON:
-    {{
-        "correct": true/false,
-        "feedback": "Message d'encouragement/guidage",
-        "indice": "Indice si nécessaire (optionnel)"
-    }}
-    """
+    if langue == "fr":
+        prompt = f"""En tant que Naima l'enseignante, analyse cette réponse d'élève.
+
+Énoncé: {enonce}
+Réponse de l'élève: {reponse_eleve}
+Correction attendue: {correction}
+Étape actuelle: {etape}
+
+Analyse si la réponse est correcte et donne un feedback constructif.
+
+Réponds UNIQUEMENT avec un objet JSON:
+{{
+    "correct": true/false,
+    "feedback": "Message d'encouragement ou de guidage (1-2 phrases)",
+    "indice": "Un petit indice pour avancer (optionnel)"
+}}"""
+    else:
+        prompt = f"""As teacher Naima, analyze this student's answer.
+
+Problem: {enonce}
+Student's answer: {reponse_eleve}
+Expected answer: {correction}
+Current step: {etape}
+
+Analyze if the answer is correct and give constructive feedback.
+
+Answer ONLY with a JSON object:
+{{
+    "correct": true/false,
+    "feedback": "Encouraging or guiding message (1-2 sentences)",
+    "hint": "A small hint to move forward (optional)"
+}}"""
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Tu es Naima, enseignante bienveillante qui encourage la réflexion."},
+                {"role": "system", "content": "Tu es Naima, enseignante bienveillante. Réponds TOUJOURS avec un JSON valide."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
-            response_format={"type": "json_object"}
+            max_tokens=300
         )
         
-        return json.loads(response.choices[0].message.content)
+        reponse_texte = response.choices[0].message.content
         
-    except:
+        # Nettoyer la réponse
+        import re
+        json_match = re.search(r'\{.*\}', reponse_texte, re.DOTALL)
+        if json_match:
+            reponse_texte = json_match.group()
+        
+        resultat = json.loads(reponse_texte)
+        
+        # Adapter les clés selon la langue
+        if langue == "en" and "hint" in resultat and "indice" not in resultat:
+            resultat["indice"] = resultat["hint"]
+        
+        return resultat
+        
+    except Exception as e:
+        print(f"❌ Erreur analyse réponse: {e}")
         # Fallback
         return {
             "correct": False,
-            "feedback": "Continue à chercher, tu es sur la bonne voie !",
-            "indice": "Relis bien l'énoncé"
+            "feedback": "Continue à chercher, tu es sur la bonne voie !" if langue == "fr" else "Keep searching, you're on the right track!",
+            "indice": "Relis bien l'énoncé" if langue == "fr" else "Read the problem carefully"
         }
 
 
