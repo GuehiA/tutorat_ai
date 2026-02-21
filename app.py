@@ -2561,106 +2561,228 @@ def chat():
 
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
-    """Nouvel exercice avec Naima - réinitialise COMPLÈTEMENT"""
+    """Nouvel exercice avec Naima - prend en compte toutes les options"""
     from datetime import datetime
     import time
+    import json
     
     print(f"[DEBUG] Nouvel exercice - Session keys: {list(session.keys())}")
-    print(f"[DEBUG] User ID: {session.get('user_id')}")
     
-    # ✅ Vérifier l'authentification (comme dans enseignant_virtuel)
     if "user_id" not in session:
-        print("[DEBUG] REDIRECT: Pas de user_id dans la session")
         return redirect(url_for("login_eleve"))
 
-    # ✅ Récupérer l'utilisateur par son ID
     utilisateur = User.query.get(session["user_id"])
-    
-    # ✅ Vérifier que c'est bien un élève
     if not utilisateur or utilisateur.role != "eleve":
-        print(f"[DEBUG] REDIRECT: Utilisateur non trouvé ou pas élève")
         return redirect(url_for("login_eleve"))
     
-    # ✅ Maintenant on sait que c'est un élève
     eleve = utilisateur
-    
     lang = session.get('lang', 'fr')
+    
+    # Récupérer TOUTES les options
     matiere = request.form.get('matiere', 'mathématiques')
     difficulte = request.form.get('difficulte', 'moyen')
+    type_exercice = request.form.get('type_exercice', 'exercice')
+    mots_cles = request.form.get('mots_cles', '')
     
-    print(f"[DEBUG] Nouvel exercice pour: {eleve.nom_complet} - Matière: {matiere}, Difficulté: {difficulte}")
+    print(f"[DEBUG] Options: {matiere}, {difficulte}, {type_exercice}, mots-clés: {mots_cles}")
     
-    # Vider TOUTE la session liée à la conversation
-    session_keys_to_remove = [
-        "conversation", 
-        "derniere_q_ia", 
-        "exercice_en_cours",
-        "mode_examen"
-    ]
-    
+    # Vider la conversation existante
+    session_keys_to_remove = ["conversation", "derniere_q_ia", "exercice_en_cours", "mode_examen"]
     for key in session_keys_to_remove:
         if key in session:
-            value = session.pop(key)
-            print(f"[DEBUG] Supprimé de session: {key} = {value}")
+            session.pop(key)
     
-    # ✅ GÉNÉRER UN EXERCICE AVEC TA FONCTION EXISTANTE
     try:
         # Récupérer le niveau de l'élève
         niveau_eleve = eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème")
         
-        print(f"[DEBUG] Génération exercice - Niveau: {niveau_eleve}, Langue: {lang}")
-        
-        # Demander à Naima de générer un exercice
-        question_initiale = generer_debut_conversation(
-            question=f"Génère un exercice de {matiere} de difficulté {difficulte}",
+        # ✅ Utiliser la nouvelle fonction qui prend en compte les options
+        exercice = generer_exercice_specifique(
+            matiere=matiere,
             niveau=niveau_eleve,
-            langue=lang,
-            mode_examen=False,
-            matiere=matiere
+            difficulte=difficulte,
+            type_exercice=type_exercice,
+            mots_cles=mots_cles,
+            langue=lang
         )
         
-        # Formater comme Naima (même format que ta route)
+        # Formater le message de Naima
         enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
-        session["conversation"] = [f"{enseignant_label} {question_initiale}"]
         
-        # ✅ Extraire la question pour la suite (ta fonction existe)
-        nouvelle_q = extraire_question(question_initiale, lang)
-        if nouvelle_q:
-            session['derniere_q_ia'] = nouvelle_q
-            print(f"[DEBUG] Question extraite: {nouvelle_q[:100]}...")
-        else:
-            print(f"[DEBUG] Aucune question extraite")
-            
-        print(f"[DEBUG] ✅ Exercice généré avec succès")
+        # Message d'accueil + énoncé + première question
+        message_complet = f"{exercice['message_accueil']}\n\n📝 **{exercice['enonce']}**\n\n{exercice['premiere_question']}"
+        
+        session["conversation"] = [f"{enseignant_label} {message_complet}"]
+        session['derniere_q_ia'] = exercice['premiere_question']
+        
+        # Stocker le contexte de l'exercice
+        session['exercice_en_cours'] = {
+            'enonce': exercice['enonce'],
+            'indices': exercice.get('indices', []),
+            'correction': exercice.get('correction', {}),
+            'type': type_exercice,
+            'matiere': matiere
+        }
+        
+        print(f"[DEBUG] ✅ Exercice {type_exercice} généré avec succès")
         
     except Exception as e:
-        print(f"[DEBUG] ❌ Erreur génération exercice: {e}")
+        print(f"[DEBUG] ❌ Erreur: {e}")
         import traceback
         traceback.print_exc()
         
-        # Fallback simple (comme dans ta route)
+        # Fallback simple
         if lang == "fr":
-            msg = f"🤖 Naima: Voici un exercice de {matiere} de difficulté {difficulte}. Quelle est ta question ?"
+            msg = f"🤖 Naima: Voici un {type_exercice} de {matiere} {mots_cles}. Quelle est ta question ?"
         else:
-            msg = f"🤖 Naima: Here's a {matiere} exercise at {difficulte} difficulty. What's your question?"
+            msg = f"🤖 Naima: Here's a {type_exercice} in {matiere} {mots_cles}. What's your question?"
         session["conversation"] = [msg]
     
-    # Sauvegarder les données essentielles
     session['user_id'] = eleve.id
     session['lang'] = lang
     session.modified = True
     
-    # Flash message
     if lang == "fr":
-        flash("✨ Nouvel exercice généré ! Naima va te guider.", "success")
+        flash(f"✨ Exercice de {matiere} ({type_exercice}) généré !", "success")
     else:
-        flash("✨ New exercise generated! Naima will guide you.", "success")
+        flash(f"✨ {matiere} {type_exercice} generated!", "success")
     
-    # ✅ REDIRECTION VERS L'ENSEIGNANT VIRTUEL (PAS DASHBOARD)
     redirect_url = url_for("enseignant_virtuel") + f"?t={int(time.time())}"
-    print(f"[DEBUG] Redirection vers: {redirect_url}")
-    
     return redirect(redirect_url)
+
+def generer_exercice_specifique(matiere, niveau, difficulte="moyen", type_exercice="exercice", mots_cles="", langue="fr"):
+    """Génère un exercice spécifique selon les options choisies"""
+    from openai import OpenAI
+    import os
+    
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    
+    # Construire le contexte des mots-clés
+    contexte_mots_cles = f" sur le thème de {mots_cles}" if mots_cles else ""
+    
+    # Définir les types d'exercices
+    types = {
+        "exercice": "un exercice standard",
+        "probleme": "un problème à résoudre (mise en situation concrète)",
+        "qcm": "un QCM (question à choix multiples) avec 4 options",
+        "logique": "un exercice de logique ou de raisonnement"
+    }
+    
+    type_description = types.get(type_exercice, "un exercice")
+    
+    if langue == "fr":
+        prompt = f"""En tant que Naima, génère {type_description} de {matiere}{contexte_mots_cles} pour un élève de niveau {niveau} (difficulté: {difficulte}).
+
+RÈGLES IMPORTANTES:
+1. L'exercice doit être SPÉCIFIQUEMENT sur le thème demandé: {mots_cles if mots_cles else "pas de thème spécifique"}
+2. C'est un {type_description} - adapte le format en conséquence
+3. Sois créatif/ve mais reste fidèle au thème demandé
+
+Format de réponse (JSON uniquement):
+{{
+    "message_accueil": "Un message d'introduction chaleureux qui présente l'exercice",
+    "enonce": "L'énoncé complet de l'exercice",
+    "premiere_question": "La première question que tu poses à l'élève pour le guider",
+    "indices": ["indice 1 (aide douce)", "indice 2 (plus précis)", "indice 3 (presque la solution)"],
+    "correction": {{
+        "reponse_finale": "La réponse correcte",
+        "explication": "Explication complète"
+    }}
+}}"""
+    else:
+        # Version anglaise
+        prompt = f"""As Naima, generate {type_description} in {matiere}{contexte_mots_cles} for a {niveau} level student (difficulty: {difficulte}).
+
+IMPORTANT RULES:
+1. The exercise must be SPECIFICALLY about: {mots_cles if mots_cles else "no specific theme"}
+2. This is a {type_description} - adapt the format accordingly
+3. Be creative but stay true to the requested theme
+
+Response format (JSON only):
+{{
+    "message_accueil": "A warm introduction message presenting the exercise",
+    "enonce": "The complete exercise statement",
+    "premiere_question": "The first question you ask the student to guide them",
+    "indices": ["hint 1 (gentle help)", "hint 2 (more precise)", "hint 3 (almost the answer)"],
+    "correction": {{
+        "reponse_finale": "The correct answer",
+        "explication": "Full explanation"
+    }}
+}}"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Tu es Naima, une enseignante virtuelle spécialisée dans la création d'exercices pédagogiques variés."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.8,
+            max_tokens=800
+        )
+        
+        reponse_texte = response.choices[0].message.content
+        
+        # Extraire le JSON
+        import re
+        json_match = re.search(r'(\{.*\})', reponse_texte, re.DOTALL)
+        if json_match:
+            reponse_texte = json_match.group(1)
+        
+        exercice = json.loads(reponse_texte)
+        return exercice
+        
+    except Exception as e:
+        print(f"❌ Erreur génération exercice: {e}")
+        # Fallback avec des exercices variés selon le type
+        return generer_exercice_fallback(matiere, type_exercice, mots_cles, difficulte, langue)
+
+
+def generer_exercice_fallback(matiere, type_exercice, mots_cles, difficulte, langue):
+    """Fallback avec des exercices pré-définis mais variés"""
+    import random
+    
+    # Base d'exercices par matière et type
+    exercices_db = {
+        "mathématiques": {
+            "exercice": [
+                {
+                    "message_accueil": "Voici un exercice sur les équations !",
+                    "enonce": "Résous l'équation : 3x + 5 = 20",
+                    "premiere_question": "Par quoi commencer pour isoler x ?",
+                    "indices": ["Enlève d'abord le +5", "Divise par 3 ensuite"]
+                },
+                {
+                    "message_accueil": "Un petit exercice de fractions !",
+                    "enonce": "Calcule : 2/3 + 1/4",
+                    "premiere_question": "Quel est le dénominateur commun ?",
+                    "indices": ["12 est un multiple de 3 et 4", "2/3 = 8/12"]
+                }
+            ],
+            "probleme": [
+                {
+                    "message_accueil": "Voici un problème concret !",
+                    "enonce": "Un train parcourt 280 km à 70 km/h. Combien de temps dure le trajet ?",
+                    "premiere_question": "Quelle formule utiliser pour calculer le temps ?",
+                    "indices": ["Temps = Distance ÷ Vitesse", "280 ÷ 70 = ?"]
+                }
+            ],
+            "qcm": [
+                {
+                    "message_accueil": "Voici un QCM !",
+                    "enonce": "Quelle est la solution de l'équation 2x - 6 = 10 ?\nA) x = 8\nB) x = 6\nC) x = 10\nD) x = 12",
+                    "premiere_question": "Quelle option choisis-tu ?",
+                    "indices": ["Isole x", "2x = 16", "x = 8"]
+                }
+            ]
+        }
+    }
+    
+    matiere_key = matiere.lower() if matiere.lower() in exercices_db else "mathématiques"
+    type_key = type_exercice if type_exercice in exercices_db[matiere_key] else "exercice"
+    
+    exercices = exercices_db[matiere_key][type_key]
+    return random.choice(exercices)
 
 
 @app.after_request
