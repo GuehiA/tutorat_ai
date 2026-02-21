@@ -1906,10 +1906,10 @@
                 <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
               </div>
 
-              <!-- Calculatrice intégrée -->
+              <!-- Calculatrice intégrée - Version simplifiée -->
               <div class="calculator-container">
                   <button type="button" class="calculator-toggle" onclick="toggleCalculator()">
-                      <i class="fas fa-calculator"></i> Calculatrice
+                      <i class="fas fa-calculator"></i> Calculatrice simple
                   </button>
                   
                   <div class="calculator" id="calculator" style="display: none;">
@@ -1942,21 +1942,11 @@
                           
                           <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**2')">x²</button>
                           <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**3')">x³</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('√(')">√</button>
+                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**(1/2)')">√</button>
                           <button type="button" class="calc-btn calc-special" onclick="calculatorInsertResult()">→</button>
-                          
-                          <button type="button" class="calc-btn calc-special" onclick="insertTrigFunction('sin')">sin</button>
-                          <button type="button" class="calc-btn calc-special" onclick="insertTrigFunction('cos')">cos</button>
-                          <button type="button" class="calc-btn calc-special" onclick="insertTrigFunction('tan')">tan</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('π')">π</button>
-                          
-                          <button type="button" class="calc-btn calc-special" onclick="insertLogFunction('10')">log₁₀</button>
-                          <button type="button" class="calc-btn calc-special" onclick="insertLogFunction('e')">ln</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.exp(')">eˣ</button>
-                          <button type="button" class="calc-btn calc-special" onclick="calculatorInput('e')">e</button>
-                          
-                          <!-- Bouton pour basculer entre degrés et radians -->
-                          <button type="button" class="calc-btn" id="angleModeBtn" onclick="toggleAngleMode()" style="background: #9b59b6; color: white; grid-column: span 2;">DEG</button>
+                      </div>
+                      <div style="color: #ecf0f1; font-size: 0.8rem; text-align: center; margin-top: 10px;">
+                          <i class="fas fa-info-circle"></i> Utilisez ** pour les puissances (ex: 2**3 = 8)
                       </div>
                   </div>
               </div>
