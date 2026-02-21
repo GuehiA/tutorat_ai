@@ -1074,102 +1074,110 @@ def obtenir_nom_matiere_objet(matiere_obj, lang="fr"):
 # ============ ROUTE ADAPTÉE ============
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel Naima - Accès libre - BILINGUE"""
+    """Route pour l'enseignant virtuel Naima - Support AJAX pour les exercices"""
     from datetime import datetime
     
-    print(f"[DEBUG] Accès enseignant virtuel - Session keys: {list(session.keys())}")
-    print(f"[DEBUG] User ID in session: {session.get('user_id')}")
-    print(f"[DEBUG] Username in session: {session.get('username')}")
-    print(f"[DEBUG] Role in session: {session.get('role')}")
+    print(f"[DEBUG] Accès enseignant virtuel")
     
-    # ✅ CORRECTION : Utiliser user_id (qui existe dans ta session)
+    # Vérifier l'authentification
     if "user_id" not in session:
-        print("[DEBUG] REDIRECT: Pas de user_id dans la session")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Non authentifié'}), 401
         return redirect(url_for("login_eleve"))
 
-    # ✅ Récupérer l'utilisateur par son ID
-    utilisateur = User.query.options(joinedload(User.niveau)).get(session["user_id"])
-    
-    # ✅ Vérifier que c'est bien un élève
+    utilisateur = User.query.get(session["user_id"])
     if not utilisateur or utilisateur.role != "eleve":
-        print(f"[DEBUG] REDIRECT: Utilisateur non trouvé ou pas élève")
-        print(f"[DEBUG]   - User trouvé: {utilisateur.nom_complet if utilisateur else 'None'}")
-        print(f"[DEBUG]   - Rôle: {utilisateur.role if utilisateur else 'None'}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Accès non autorisé'}), 403
         return redirect(url_for("login_eleve"))
     
-    # ✅ Maintenant on sait que c'est un élève, on peut l'appeler 'eleve'
     eleve = utilisateur
-    
-    print(f"[DEBUG] ✅ Accès autorisé pour: {eleve.nom_complet} (Rôle: {eleve.role})")
-    
-    # Vérifier l'accès (essai gratuit uniquement)
     lang = session.get("lang", "fr")
-    print(f"[DEBUG] Langue: {lang}")
     
-    # Vérifier l'essai gratuit
-    if hasattr(eleve, 'essai_est_expire') and eleve.essai_est_expire() and eleve.statut_paiement != "paye":
-        print("[DEBUG] Essai expiré - déconnexion")
-        session.clear()
-        flash(get_message("essai_termine", lang), "error")
-        return redirect(url_for('login_eleve'))
-
-    # Initialiser la conversation si elle n'existe pas
-    if "conversation" not in session:
-        session["conversation"] = []
-        print("[DEBUG] Conversation initialisée")
+    # Vérifier le contexte d'exercice
+    contexte_exercice = request.form.get('contexte_exercice') == 'true'
+    exercice_id = request.form.get('exercice_id')
+    exercice_question = request.form.get('exercice_question', '')
+    reponse_eleve = request.form.get('reponse_eleve', '')
     
-    # Récupérer la matière sélectionnée ou par défaut
-    matiere = "mathématiques" if lang == "fr" else "mathematics"
+    # Récupérer la matière depuis l'exercice si disponible
+    matiere = "mathématiques"  # Valeur par défaut
+    theme = "général"
     
-    # TRAITEMENT GET - Réinitialiser si paramètre
-    if request.method == 'GET':
-        print(f"[DEBUG] Méthode GET - Args: {request.args}")
-        # Vérifier si on vient de /nouvel-exercice
-        if 't' in request.args:
-            print("[DEBUG] Rechargement avec timestamp - nettoyage conversation")
-            session["conversation"] = []
-            session.pop('derniere_q_ia', None)
+    if exercice_id:
+        try:
+            exercice = Exercice.query.get(exercice_id)
+            if exercice and exercice.theme:
+                # Extraire la matière depuis le thème
+                theme = exercice.theme.lower()
+                
+                # Mapper les thèmes aux matières
+                if any(mot in theme for mot in ['math', 'algèbre', 'géométrie', 'calcul', 'arithmétique', 'équation']):
+                    matiere = "mathématiques"
+                elif any(mot in theme for mot in ['français', 'grammaire', 'orthographe', 'conjugaison', 'littérature']):
+                    matiere = "français"
+                elif any(mot in theme for mot in ['histoire', 'géographie', 'histoire-géo']):
+                    matiere = "histoire"
+                elif any(mot in theme for mot in ['science', 'physique', 'chimie', 'biologie', 'scientifique']):
+                    matiere = "sciences"
+                elif any(mot in theme for mot in ['anglais', 'english', 'langue']):
+                    matiere = "anglais"
+                
+                print(f"[DEBUG] Matière détectée depuis l'exercice: {matiere} (thème: {theme})")
+        except Exception as e:
+            print(f"[DEBUG] Erreur lors de la récupération de la matière: {e}")
+    
+    print(f"[DEBUG] Contexte exercice: {contexte_exercice}, ID: {exercice_id}, Matière: {matiere}")
+    
+    # Initialiser la conversation si nécessaire
+    conversation_key = f"conversation_exercice_{exercice_id}" if contexte_exercice and exercice_id else "conversation"
+    
+    if conversation_key not in session:
+        session[conversation_key] = []
+        conversation = session[conversation_key]
+        
+        # Message de bienvenue contextuel
+        if contexte_exercice and exercice_question:
+            if lang == "fr":
+                bienvenue = f"🤖 Naima: Bonjour ! Je suis Naima, ton enseignante virtuelle de {matiere}. Je vois que tu travailles sur cet exercice : {exercice_question[:150]}... Pose-moi des questions si tu as besoin d'aide !"
+            else:
+                bienvenue = f"🤖 Naima: Hello! I'm Naima, your virtual {matiere} teacher. I see you're working on this exercise: {exercice_question[:150]}... Ask me questions if you need help!"
+            conversation.append(bienvenue)
+    else:
+        conversation = session.get(conversation_key, [])
     
     # TRAITEMENT POST
     if request.method == 'POST':
         question = request.form.get("question", "").strip()
         matiere_form = request.form.get("matiere", "")
         
+        # Priorité à la matière du formulaire, sinon celle détectée
         if matiere_form:
             matiere = matiere_form
         
-        print(f"[DEBUG] POST reçu - Question: {question[:50]}... - Matière: {matiere}")
+        print(f"[DEBUG] POST - Question: {question[:50]}... - Matière: {matiere}")
         
         if question and len(question) >= 3:
-            conversation = session.get("conversation", [])
-            derniere_q_ia = session.get('derniere_q_ia')
-            
-            # Si c'est une nouvelle conversation, ajouter un message de bienvenue
-            if not conversation:
-                bienvenue_msg = get_message("bienvenue_enseignant", lang)
-                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
-                conversation.append(f"{enseignant_label} {bienvenue_msg}")
-            
-            # Format simple pour l'historique
-            eleve_label = "👤 Student:" if lang == "en" else "👤 Élève:"
+            # Ajouter la question de l'élève
+            eleve_label = "👤 Élève:" if lang == "fr" else "👤 Student:"
             conversation.append(f"{eleve_label} {question}")
             
             try:
-                if derniere_q_ia:
-                    # Réponse à une question précédente
+                # Générer la réponse avec le contexte
+                if contexte_exercice:
+                    # Réponse avec contexte de l'exercice
                     reponse = generer_suite_conversation(
-                        derniere_q=derniere_q_ia,
-                        reponse=question,
+                        derniere_q=question,
+                        reponse=reponse_eleve,
                         historique=conversation,
                         niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
                         langue=lang,
                         mode_examen=session.get("mode_examen", False),
-                        exercice_context="",
+                        exercice_context=exercice_question,
                         matiere=matiere
                     )
-                    session.pop('derniere_q_ia', None)
                 else:
-                    # Nouvelle question
+                    # Réponse normale
                     reponse = generer_debut_conversation(
                         question=question,
                         niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
@@ -1181,36 +1189,45 @@ def enseignant_virtuel():
                 enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
                 conversation.append(f"{enseignant_label} {reponse}")
                 
-                # Limiter à 15 messages
-                if len(conversation) > 15:
-                    conversation = conversation[-15:]
+                # Limiter la taille
+                if len(conversation) > 20:
+                    conversation = conversation[-20:]
                 
-                session["conversation"] = conversation
-                
-                # Extraire la nouvelle question
-                nouvelle_q = extraire_question(reponse, lang)
-                if nouvelle_q:
-                    session['derniere_q_ia'] = nouvelle_q
-                
-                flash(get_message("je_te_guide", lang), "success")
+                # Sauvegarder
+                session[conversation_key] = conversation
                 
             except Exception as e:
-                print(f"Erreur lors de la génération de réponse: {e}")
-                # Message d'erreur bilingue
+                print(f"Erreur: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                # Message d'erreur
                 if lang == "fr":
-                    fallback_msg = "Je suis désolé, j'ai rencontré une erreur. Pourrais-tu reformuler ta question ?"
+                    msg_erreur = "Désolée, j'ai eu un petit problème technique. Peux-tu reformuler ?"
                 else:
-                    fallback_msg = "I'm sorry, I encountered an error. Could you rephrase your question?"
+                    msg_erreur = "Sorry, I had a technical issue. Can you rephrase?"
                 
                 enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
-                conversation.append(f"{enseignant_label} {fallback_msg}")
-                session["conversation"] = conversation
-                flash(get_message("erreur_traitement", lang), "warning")
+                conversation.append(f"{enseignant_label} {msg_erreur}")
+                session[conversation_key] = conversation
     
-    # Récupérer la conversation
-    conversation = session.get("conversation", [])
-    print(f"[DEBUG] Conversation actuelle: {len(conversation)} messages")
+    # Pour les requêtes AJAX, retourner seulement les nouveaux messages
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        # Récupérer les 10 derniers messages
+        messages_html = []
+        for msg in conversation[-10:]:
+            if "👤" in msg:
+                messages_html.append(f'<div class="chat-message user-message"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()}</div></div>')
+            elif "🤖" in msg:
+                messages_html.append(f'<div class="chat-message"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{msg.replace("🤖 Naima:", "").strip()}</div></div>')
+        
+        return jsonify({
+            'success': True,
+            'messages': messages_html,
+            'last_message': messages_html[-1] if messages_html else ''
+        })
     
+    # Pour les requêtes normales, retourner la page complète
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
@@ -1219,7 +1236,8 @@ def enseignant_virtuel():
         exercice_remediation=None,
         access_count=0,
         date_du_jour=datetime.utcnow(),
-        matiere=matiere
+        matiere=matiere,
+        theme=theme
     )
 
 def extraire_question(reponse, lang):
@@ -1528,6 +1546,9 @@ def extraire_question(reponse, lang="fr"):
 def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
     """Prompt optimisé par matière et par langue pour NAIMA l'enseignante virtuelle"""
     
+    # Normaliser la matière
+    matiere = matiere.lower().strip()
+    
     # Dictionnaire des prompts FRANÇAIS pour NAIMA
     prompts_fr = {
         "mathématiques": """Tu es Naima, enseignante virtuelle de mathématiques, passionnée par la pédagogie.
@@ -1562,6 +1583,22 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         - "Comment améliorerais-tu cette formulation ?"
         """,
         
+        "anglais": """Tu es Naima, enseignante virtuelle d'anglais, passionnée par les langues.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS la réponse directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Comment traduirais-tu cette phrase ?"
+        - "Quel temps verbal utiliserais-tu ici ?"
+        - "Peux-tu me donner un synonyme ?"
+        - "Comment prononces-tu ce mot ?"
+        - "Quelle est la différence entre ces deux mots ?"
+        """,
+        
         "histoire": """Tu es Naima, enseignante virtuelle d'histoire, passionnée par le passé.
         **TON STYLE :**
         - Tu tutoies toujours l'élève (tu, ton, ta)
@@ -1594,6 +1631,54 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         - "Que déduis-tu de cette observation ?"
         """,
         
+        "physique": """Tu es Naima, enseignante virtuelle de physique, passionnée par les phénomènes naturels.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les réponses directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Quelle loi physique pourrais-tu appliquer ici ?"
+        - "Comment décrirais-tu ce mouvement ?"
+        - "Quelles forces sont en jeu ?"
+        - "Que se passerait-il si... ?"
+        - "Comment calculerais-tu cette énergie ?"
+        """,
+        
+        "chimie": """Tu es Naima, enseignante virtuelle de chimie, passionnée par les transformations de la matière.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les réponses directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Quelle est la formule chimique ?"
+        - "Comment équilibrerais-tu cette équation ?"
+        - "Quel type de réaction observes-tu ?"
+        - "Que deviendraient ces atomes ?"
+        - "Comment nommerais-tu ce composé ?"
+        """,
+        
+        "biologie": """Tu es Naima, enseignante virtuelle de biologie, passionnée par le vivant.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les réponses directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Quelle est la fonction de cet organe ?"
+        - "Comment fonctionne ce système ?"
+        - "Quelles sont les caractéristiques de cette espèce ?"
+        - "Comment expliquerais-tu ce processus biologique ?"
+        - "Quel rôle joue cette cellule ?"
+        """,
+        
         "géographie": """Tu es Naima, enseignante virtuelle de géographie, passionnée par le monde.
         **TON STYLE :**
         - Tu tutoies toujours l'élève (tu, ton, ta)
@@ -1608,10 +1693,58 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         - "Comment expliquerais-tu cette répartition ?"
         - "Quelles caractéristiques observes-tu ?"
         - "Quelle hypothèse fais-tu sur ce paysage ?"
+        """,
+        
+        "musique": """Tu es Naima, enseignante virtuelle de musique, passionnée par l'art sonore.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les réponses directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Quelle note entends-tu ?"
+        - "Comment nommerais-tu ce rythme ?"
+        - "Quels instruments reconnais-tu ?"
+        - "Comment interpréterais-tu cette partition ?"
+        - "Quelle est la structure de ce morceau ?"
+        """,
+        
+        "arts": """Tu es Naima, enseignante virtuelle d'arts plastiques, passionnée par la création.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les réponses directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Quelles couleurs utilises-tu ?"
+        - "Quelle technique as-tu employée ?"
+        - "Que veux-tu exprimer ?"
+        - "Comment organises-tu ta composition ?"
+        - "Quel artiste t'a inspiré ?"
+        """,
+        
+        "éducation physique": """Tu es Naima, enseignante virtuelle d'éducation physique, passionnée par le sport.
+        **TON STYLE :**
+        - Tu tutoies toujours l'élève (tu, ton, ta)
+        - Tu es chaleureuse, encourageante et patiente
+        - Tu signes toujours "— Naima ✨"
+        - Tu poses une seule question à la fois
+        - Tu ne donnes JAMAIS les réponses directement
+        
+        **EXEMPLES DE QUESTIONS DE NAIMA :**
+        - "Quelle est la bonne posture ?"
+        - "Comment pourrais-tu améliorer ton geste ?"
+        - "Quels muscles travaillent ici ?"
+        - "Comment organiserais-tu ton échauffement ?"
+        - "Quelles règles dois-tu respecter ?"
         """
     }
     
-    # Dictionnaire des prompts ANGLAIS pour NAIMA
+    # Version anglaise (similaire mais en anglais)
     prompts_en = {
         "mathematics": """You are Naima, virtual mathematics teacher, passionate about pedagogy.
         **YOUR STYLE:**
@@ -1638,11 +1771,27 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         - You NEVER give the answer directly
         
         **NAIMA'S EXAMPLE QUESTIONS:**
-        - "Can you identify the subject in this sentence?"
-        - "What figure of speech do you recognize here?"
-        - "How would you conjugate this verb?"
-        - "What main idea do you see in this text?"
-        - "How would you improve this formulation?"
+        - "How would you translate this sentence?"
+        - "What tense would you use here?"
+        - "Can you give me a synonym?"
+        - "How do you pronounce this word?"
+        - "What's the difference between these two words?"
+        """,
+        
+        "english": """You are Naima, virtual English teacher, passionate about languages.
+        **YOUR STYLE:**
+        - You always address students warmly
+        - You are warm, encouraging, and patient
+        - You always sign "— Naima ✨"
+        - You ask one question at a time
+        - You NEVER give the answer directly
+        
+        **NAIMA'S EXAMPLE QUESTIONS:**
+        - "How would you say this in English?"
+        - "What verb tense should we use?"
+        - "Can you give me a synonym?"
+        - "How do you pronounce this word?"
+        - "What's the difference between these two words?"
         """,
         
         "history": """You are Naima, virtual history teacher, passionate about the past.
@@ -1694,32 +1843,72 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         """
     }
     
-    # Choisir le bon dictionnaire
-    prompts_dict = prompts_fr if lang == "fr" else prompts_en
+    # Mapper les noms français aux noms anglais
+    fr_to_en = {
+        "mathématiques": "mathematics",
+        "français": "french",
+        "anglais": "english",
+        "histoire": "history",
+        "sciences": "science",
+        "physique": "physics",
+        "chimie": "chemistry",
+        "biologie": "biology",
+        "géographie": "geography",
+        "musique": "music",
+        "arts": "arts",
+        "éducation physique": "physical education"
+    }
     
-    # Normaliser le nom de la matière
-    matiere_normalisee = matiere.lower()
-    if lang == "en":
-        # Mapper les noms français aux noms anglais
-        matieres_map = {
-            "mathématiques": "mathematics",
-            "français": "french", 
-            "histoire": "history",
-            "sciences": "science",
-            "géographie": "geography"
-        }
-        matiere_normalisee = matieres_map.get(matiere_normalisee, matiere_normalisee)
+    # Choisir le bon dictionnaire et la bonne clé
+    if lang == "fr":
+        prompts_dict = prompts_fr
+        matiere_key = matiere
+    else:
+        prompts_dict = prompts_en
+        matiere_key = fr_to_en.get(matiere, matiere)
     
-    # Récupérer le prompt spécifique ou utiliser les mathématiques comme défaut
-    prompt_base = prompts_dict.get(matiere_normalisee, prompts_dict.get("mathematics" if lang == "en" else "mathématiques"))
+    # Récupérer le prompt spécifique ou utiliser un prompt générique
+    prompt_base = prompts_dict.get(matiere_key)
+    if not prompt_base:
+        # Prompt générique si la matière n'est pas trouvée
+        if lang == "fr":
+            prompt_base = f"""Tu es Naima, enseignante virtuelle de {matiere}, passionnée par la pédagogie.
+            **TON STYLE :**
+            - Tu tutoies toujours l'élève (tu, ton, ta)
+            - Tu es chaleureuse, encourageante et patiente
+            - Tu signes toujours "— Naima ✨"
+            - Tu poses une seule question à la fois
+            - Tu ne donnes JAMAIS la réponse directement
+            
+            **CONSEILS PÉDAGOGIQUES :**
+            - Guide l'élève vers la découverte
+            - Encourage chaque petit progrès
+            - Adapte-toi au niveau de l'élève
+            - Utilise des exemples concrets
+            """
+        else:
+            prompt_base = f"""You are Naima, virtual {matiere} teacher, passionate about pedagogy.
+            **YOUR STYLE:**
+            - You always address students warmly
+            - You are warm, encouraging, and patient
+            - You always sign "— Naima ✨"
+            - You ask one question at a time
+            - You NEVER give the answer directly
+            
+            **PEDAGOGICAL ADVICE:**
+            - Guide the student toward discovery
+            - Encourage every small progress
+            - Adapt to the student's level
+            - Use concrete examples
+            """
     
-    # Ajouter les règles pédagogiques de NAIMA dans la bonne langue
+    # Ajouter les règles pédagogiques
     if lang == "fr":
         regles_pedagogiques = f"""
         **MÉTHODOLOGIE PÉDAGOGIQUE DE NAIMA :**
         1. Présente-toi toujours comme Naima, l'enseignante virtuelle
         2. Reformule la question de l'élève pour vérifier ta compréhension
-        3. Identifie la compétence spécifique en {matiere_normalisee}
+        3. Identifie la compétence spécifique en {matiere}
         4. Guide avec une seule question à la fois
         5. Attends toujours la réponse avant de continuer
         6. Félicite chaleureusement chaque progrès, même petit
@@ -1743,7 +1932,7 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         **NAIMA'S PEDAGOGICAL METHODOLOGY:**
         1. Always introduce yourself as Naima, the virtual teacher
         2. Rephrase the student's question to check your understanding
-        3. Identify the specific skill in {matiere_normalisee}
+        3. Identify the specific skill in {matiere}
         4. Guide with one question at a time
         5. Always wait for answer before continuing
         6. Warmly praise every progress, even small
@@ -1764,7 +1953,7 @@ def get_system_prompt(matiere="mathématiques", lang="fr", mode_examen=False):
         """
     
     # Structure finale du prompt
-    prompt_final = f"""# RÔLE : NAIMA, ENSEIGNANTE VIRTUELLE EN {matiere_normalisee.upper()}
+    prompt_final = f"""# RÔLE : NAIMA, ENSEIGNANTE VIRTUELLE EN {matiere.upper()}
 
 {prompt_base}
 
