@@ -10545,7 +10545,7 @@ def contest_evaluation():
         if not exercice or not eleve:
             return jsonify({'success': False, 'message': 'Exercice ou élève non trouvé'})
         
-        # 3. PRÉPARER LE PROMPT POUR L'IA - RÉÉVALUATION COMPLÈTE
+        # 3. PRÉPARER LE PROMPT POUR L'IA
         lang = data.get('lang', 'fr')
         question = exercice.question_fr if lang == 'fr' else exercice.question_en
         
@@ -10558,10 +10558,10 @@ def contest_evaluation():
             if analysis_text.strip().startswith('{'):
                 try:
                     analysis_json = json.loads(analysis_text)
-                    if 'original' in analysis_json:
-                        return analysis_json['original']
-                    elif 'current_feedback' in analysis_json:
+                    if 'current_feedback' in analysis_json:
                         return analysis_json['current_feedback']
+                    elif 'original' in analysis_json:
+                        return analysis_json['original']
                 except json.JSONDecodeError:
                     pass
             
@@ -10570,8 +10570,29 @@ def contest_evaluation():
         
         analysis_text = extract_analysis_text(reponse.analyse_ia)
         
-        if lang == 'en':
-            prompt = f"""
+        print(f"📝 Question: {question[:100]}...")
+        print(f"📝 Réponse élève: {reponse.reponse_eleve[:100]}...")
+        print(f"📝 Justification: {data.get('justification', '')[:100]}...")
+        
+        # 4. TENTATIVE D'APPEL À L'IA
+        try:
+            from openai import OpenAI
+            import os
+            
+            # Récupérer la clé API depuis les variables d'environnement
+            api_key = os.environ.get("OPENAI_API_KEY")
+            
+            if not api_key:
+                print("❌ Clé API OpenAI non trouvée dans les variables d'environnement")
+                # Utiliser le fallback
+                raise Exception("OPENAI_API_KEY not configured")
+            
+            print(f"🔑 Clé API trouvée: {api_key[:5]}...{api_key[-5:]}")
+            
+            client = OpenAI(api_key=api_key)
+            
+            if lang == 'en':
+                prompt = f"""
 RE-EVALUATE a student's answer considering their contestation arguments.
 
 📘 ORIGINAL PROBLEM:
@@ -10606,8 +10627,8 @@ New grade: X/5
 Decision: [Grade increased/maintained/decreased] because [...]
 Detailed feedback: [...]
 """.strip()
-        else:
-            prompt = f"""
+            else:
+                prompt = f"""
 RÉÉVALUEZ la réponse d'un élève en considérant ses arguments de contestation.
 
 📘 PROBLÈME ORIGINAL :
@@ -10642,27 +10663,26 @@ Nouvelle note : X/5
 Décision : [Note augmentée/maintenue/diminuée] car [...]
 Feedback détaillé : [...]
 """.strip()
-        
-        print(f"🤖 Envoi à l'IA pour réévaluation...")
-        
-        # 4. APPEL À L'IA POUR RÉÉVALUATION
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key="votre-clé-api-openai")  # Remplacez par votre clé
+            
+            print(f"🤖 Envoi à l'IA pour réévaluation...")
+            print(f"📤 Longueur du prompt: {len(prompt)} caractères")
             
             chat_completion = client.chat.completions.create(
-                model="gpt-4",  # ou gpt-3.5-turbo pour moins cher
+                model="gpt-3.5-turbo",  # Utilisez gpt-3.5-turbo pour moins cher
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
+                max_tokens=1000
             )
+            
             new_analysis = chat_completion.choices[0].message.content.strip()
-            print("✅ Réévaluation IA reçue avec succès")
+            print(f"✅ Réévaluation IA reçue avec succès")
+            print(f"📥 Réponse IA (premiers 200 chars): {new_analysis[:200]}...")
             
             # 5. EXTRACTION DE LA NOUVELLE NOTE
+            import re
             new_stars = reponse.etoiles  # Par défaut, garder l'ancienne
             
             # Chercher la nouvelle note dans la réponse de l'IA
-            import re
             match = re.search(r"(?:New grade|Nouvelle note|Grade|Note)\s*:\s*(\d)(?:\s*/?\s*5)?", new_analysis, re.IGNORECASE)
             if match:
                 new_stars = int(match.group(1))
@@ -10679,98 +10699,160 @@ Feedback détaillé : [...]
                     if match:
                         new_stars = int(match.group(1))
                     else:
-                        # Si pas trouvé, garder la note proposée par l'élève
-                        new_stars = data.get('proposed_stars', reponse.etoiles)
-                        print(f"⭐ Utilisation de la note proposée par l'élève: {new_stars}/5")
+                        # Si pas trouvé, garder la note actuelle
+                        new_stars = reponse.etoiles
+                        print(f"⭐ Note non trouvée, maintien de la note actuelle: {new_stars}/5")
             
             # S'assurer que la note est entre 1 et 5
             new_stars = max(1, min(5, new_stars))
             
         except Exception as e:
-            print(f"❌ Erreur lors de l'appel IA: {e}")
+            print(f"❌ Erreur lors de l'appel IA: {str(e)}")
             import traceback
             traceback.print_exc()
             
-            # Fallback - Message d'erreur
-            new_stars = reponse.etoiles  # Garder la note actuelle
+            # FALLBACK - Utiliser la logique locale d'évaluation
+            print("⚠️ Utilisation du fallback local pour l'évaluation")
+            
+            # Analyser la justification avec votre fonction existante
+            from your_module import analyze_student_justification, evaluate_contestation
+            
+            analysis = analyze_student_justification(
+                data.get('justification', ''),
+                reponse.reponse_eleve,
+                analysis_text
+            )
+            
+            # Évaluer la contestation
+            adjustment_needed, reason, new_stars = evaluate_contestation(
+                analysis,
+                reponse.etoiles,
+                data.get('proposed_stars', reponse.etoiles)
+            )
+            
+            print(f"📊 Analyse locale: {analysis}")
+            print(f"📊 Ajustement nécessaire: {adjustment_needed}, Raison: {reason}, Nouvelle note: {new_stars}")
+            
+            # Générer une réponse locale
             if lang == 'en':
-                new_analysis = f"""
-⚠️ **AI Service Temporarily Unavailable**
+                if adjustment_needed:
+                    new_analysis = f"""
+✅ **Contestation Re-evaluated (Local System)**
 
-Your contestation has been received but the AI service is currently unavailable.
-Your original grade of {new_stars}/5 has been maintained.
+**Your arguments:** {data.get('justification', '')}
 
-**Your arguments:**
-{data.get('justification', 'No justification provided')}
+**Decision:** Grade adjusted from {reponse.etoiles} to {new_stars}/5 stars
+**Reason:** {reason}
 
-Please try again later or contact your teacher.
+**Detailed feedback:**
+Based on your justification, we have reconsidered your answer. {reason}
+
+Continue your learning journey!
+"""
+                else:
+                    new_analysis = f"""
+ℹ️ **Contestation Re-evaluated (Local System)**
+
+**Your arguments:** {data.get('justification', '')}
+
+**Decision:** Grade maintained at {new_stars}/5 stars
+**Reason:** {reason}
+
+**Detailed feedback:**
+{reason}. To improve your grade, provide more detailed mathematical reasoning.
+
+Keep practicing!
 """
             else:
-                new_analysis = f"""
-⚠️ **Service IA Temporairement Indisponible**
+                if adjustment_needed:
+                    new_analysis = f"""
+✅ **Contestation Réévaluée (Système Local)**
 
-Votre contestation a été reçue mais le service IA est actuellement indisponible.
-Votre note originale de {new_stars}/5 a été maintenue.
+**Vos arguments :** {data.get('justification', '')}
 
-**Vos arguments :**
-{data.get('justification', 'Aucune justification fournie')}
+**Décision :** Note ajustée de {reponse.etoiles} à {new_stars}/5 étoiles
+**Raison :** {reason}
 
-Veuillez réessayer plus tard ou contacter votre enseignant.
+**Feedback détaillé :**
+Suite à votre justification, nous avons réévalué votre réponse. {reason}
+
+Continuez votre apprentissage !
+"""
+                else:
+                    new_analysis = f"""
+ℹ️ **Contestation Réévaluée (Système Local)**
+
+**Vos arguments :** {data.get('justification', '')}
+
+**Décision :** Note maintenue à {new_stars}/5 étoiles
+**Raison :** {reason}
+
+**Feedback détaillé :**
+{reason}. Pour améliorer votre note, fournissez un raisonnement mathématique plus détaillé.
+
+Continuez à vous entraîner !
 """
         
         # 6. METTRE À JOUR LA BASE DE DONNÉES
-        # Récupérer l'analyse existante
         try:
-            existing_analysis = json.loads(reponse.analyse_ia) if reponse.analyse_ia and reponse.analyse_ia.strip().startswith('{') else {}
-        except:
-            existing_analysis = {}
-        
-        # Créer un nouvel objet JSON avec l'historique
-        if not existing_analysis:
-            existing_analysis = {
-                "original": analysis_text,
-                "history": [],
-                "current_feedback": analysis_text,
-                "current_stars": reponse.etoiles
+            # Récupérer l'analyse existante
+            try:
+                existing_analysis = json.loads(reponse.analyse_ia) if reponse.analyse_ia and reponse.analyse_ia.strip().startswith('{') else {}
+            except:
+                existing_analysis = {}
+            
+            # Créer un nouvel objet JSON avec l'historique
+            if not existing_analysis:
+                existing_analysis = {
+                    "original": analysis_text,
+                    "history": [],
+                    "current_feedback": analysis_text,
+                    "current_stars": reponse.etoiles
+                }
+            
+            # Ajouter la contestation à l'historique
+            contestation_entry = {
+                "type": "contestation",
+                "date": datetime.now().isoformat(),
+                "justification": data.get('justification', ''),
+                "proposed_stars": data.get('proposed_stars', reponse.etoiles),
+                "previous_stars": reponse.etoiles,
+                "new_stars": new_stars,
+                "ai_response": new_analysis,
+                "evaluation_method": "ai" if 'chat_completion' in locals() else "local_fallback"
             }
-        
-        # Ajouter la contestation à l'historique
-        contestation_entry = {
-            "type": "contestation",
-            "date": datetime.now().isoformat(),
-            "justification": data.get('justification', ''),
-            "proposed_stars": data.get('proposed_stars', reponse.etoiles),
-            "previous_stars": reponse.etoiles,
-            "new_stars": new_stars,
-            "ai_response": new_analysis
-        }
-        
-        if "history" not in existing_analysis:
-            existing_analysis["history"] = []
-        
-        existing_analysis["history"].append(contestation_entry)
-        existing_analysis["current_feedback"] = new_analysis
-        existing_analysis["current_stars"] = new_stars
-        
-        # Mettre à jour la base de données
-        reponse.analyse_ia = json.dumps(existing_analysis, ensure_ascii=False, indent=2)
-        reponse.etoiles = new_stars
-        reponse.date_modification = datetime.now()
-        
-        db.session.commit()
-        print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5")
+            
+            if "history" not in existing_analysis:
+                existing_analysis["history"] = []
+            
+            existing_analysis["history"].append(contestation_entry)
+            existing_analysis["current_feedback"] = new_analysis
+            existing_analysis["current_stars"] = new_stars
+            
+            # Mettre à jour la base de données
+            reponse.analyse_ia = json.dumps(existing_analysis, ensure_ascii=False, indent=2)
+            reponse.etoiles = new_stars
+            reponse.date_modification = datetime.now()
+            
+            db.session.commit()
+            print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5")
+            
+        except Exception as db_error:
+            db.session.rollback()
+            print(f"❌ Erreur lors de la mise à jour DB: {str(db_error)}")
+            # Continuer malgré l'erreur DB pour retourner une réponse
         
         # 7. PRÉPARER LA RÉPONSE
-        stars_changed = new_stars != data.get('current_stars', reponse.etoiles)
+        stars_changed = new_stars != reponse.etoiles
         
         if lang == 'en':
             if stars_changed:
-                message = f"✅ Grade changed from {data.get('current_stars', reponse.etoiles)} to {new_stars}/5 stars!"
+                message = f"✅ Grade changed from {reponse.etoiles} to {new_stars}/5 stars!"
             else:
                 message = f"ℹ️ Grade maintained at {new_stars}/5 stars."
         else:
             if stars_changed:
-                message = f"✅ Note changée de {data.get('current_stars', reponse.etoiles)} à {new_stars}/5 étoiles !"
+                message = f"✅ Note changée de {reponse.etoiles} à {new_stars}/5 étoiles !"
             else:
                 message = f"ℹ️ Note maintenue à {new_stars}/5 étoiles."
         
@@ -10778,19 +10860,23 @@ Veuillez réessayer plus tard ou contacter votre enseignant.
             'success': True,
             'new_stars': new_stars,
             'new_feedback': new_analysis,
-            'old_stars': data.get('current_stars', reponse.etoiles),
+            'old_stars': reponse.etoiles,
             'stars_changed': stars_changed,
             'message': message,
-            'has_ai_reassessment': True
+            'has_ai_reassessment': 'chat_completion' in locals(),
+            'evaluation_method': 'ai' if 'chat_completion' in locals() else 'local_fallback'
         })
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Erreur dans contest_evaluation: {str(e)}")
+        print(f"❌ Erreur fatale dans contest_evaluation: {str(e)}")
         import traceback
         traceback.print_exc()
         
-        error_message = "Erreur interne du serveur" if lang == 'fr' else "Internal server error"
+        error_message = "Erreur interne du serveur"
+        if 'lang' in locals() and lang == 'en':
+            error_message = "Internal server error"
+            
         return jsonify({
             'success': False, 
             'message': f'{error_message}: {str(e)}'
