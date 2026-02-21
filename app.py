@@ -2097,7 +2097,16 @@ def api_eleve_stats():
         "temps_apprentissage": 0  # À implémenter si besoin
     })
 
+@app.route("/debug-conversation")
+def debug_conversation():
+    """Affiche l'état de la conversation"""
+    return {
+        "conversation": session.get("conversation", []),
+        "derniere_q_ia": session.get("derniere_q_ia"),
+        "session_keys": list(session.keys())
+    }
 
+    
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
     """Route pour l'enseignant virtuel Naima - Support AJAX pour les exercices"""
