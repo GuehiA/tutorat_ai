@@ -92,6 +92,70 @@ class User(db.Model):
         'lundi': [], 'mardi': [], 'mercredi': [], 'jeudi': [],
         'vendredi': [], 'samedi': [], 'dimanche': []
     })
+    @property
+    def total_exercices_realises(self):
+        """Compte le nombre total d'exercices réalisés par l'élève"""
+        from models import StudentResponse
+        return StudentResponse.query.filter_by(user_id=self.id).count()
+    
+    @property
+    def exercices_reussis(self):
+        """Compte le nombre d'exercices réussis (avec étoiles >= 3)"""
+        from models import StudentResponse
+        return StudentResponse.query.filter(
+            StudentResponse.user_id == self.id,
+            StudentResponse.etoiles >= 3
+        ).count()
+    
+    @property
+    def serie_actuelle(self):
+        """Calcule la série actuelle (jours consécutifs avec exercices)"""
+        from models import StudentResponse
+        from datetime import datetime, timedelta
+        
+        # Récupérer les dates des exercices (sans les doublons de jour)
+        dates_exercices = db.session.query(
+            db.func.date(StudentResponse.timestamp)
+        ).filter(
+            StudentResponse.user_id == self.id
+        ).distinct().order_by(
+            db.func.date(StudentResponse.timestamp).desc()
+        ).all()
+        
+        if not dates_exercices:
+            return 0
+        
+        # Convertir en liste de dates
+        dates = [d[0] for d in dates_exercices]
+        
+        # Calculer la série
+        streak = 1
+        today = datetime.now().date()
+        
+        # Vérifier si l'élève a fait un exercice aujourd'hui
+        if dates[0] != today:
+            return 0
+        
+        # Compter les jours consécutifs
+        for i in range(len(dates) - 1):
+            if (dates[i] - dates[i+1]).days == 1:
+                streak += 1
+            else:
+                break
+        
+        return streak
+    
+    @property
+    def temps_total_apprentissage(self):
+        """Calcule le temps total d'apprentissage (en minutes)"""
+        from models import StudentResponse
+        total_secondes = db.session.query(
+            db.func.sum(StudentResponse.temps_passe)
+        ).filter(
+            StudentResponse.user_id == self.id
+        ).scalar() or 0
+        
+        return round(total_secondes / 60)  # Convertir en minutes
 
     # Notes et évaluations
     note_moyenne = db.Column(db.Float, default=0.0)
