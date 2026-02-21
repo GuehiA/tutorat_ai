@@ -694,8 +694,6 @@
       border: 2px solid #e9ecef;
     }
 
-    /* CHAMP D'APERÇU RETIRÉ - Les élèves écrivent directement dans l'éditeur visuel */
-
     .math-toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -722,6 +720,113 @@
       background: var(--primary);
       color: white;
       transform: translateY(-2px);
+    }
+
+    /* Styles pour la calculatrice */
+    .calculator-container {
+      margin-bottom: 20px;
+    }
+
+    .calculator-toggle {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition);
+      margin-bottom: 10px;
+    }
+
+    .calculator-toggle:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .calculator {
+      background: #2c3e50;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 400px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      margin-bottom: 15px;
+      animation: slideDown 0.3s ease;
+    }
+
+    .calculator-display {
+      background: #ecf0f1;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-family: monospace;
+      font-size: 1.5rem;
+      text-align: right;
+      min-height: 60px;
+      word-wrap: break-word;
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .calculator-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .calc-btn {
+      padding: 15px 10px;
+      border: none;
+      border-radius: 6px;
+      background: #34495e;
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .calc-btn:hover {
+      background: #3d566e;
+      transform: translateY(-2px);
+    }
+
+    .calc-operator {
+      background: #f39c12;
+    }
+
+    .calc-operator:hover {
+      background: #e67e22;
+    }
+
+    .calc-equals {
+      background: #27ae60;
+      grid-column: span 2;
+    }
+
+    .calc-equals:hover {
+      background: #229954;
+    }
+
+    .calc-special {
+      background: #7f8c8d;
+      font-size: 0.9rem;
+    }
+
+    .calc-special:hover {
+      background: #95a5a6;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .visual-editor {
@@ -768,7 +873,7 @@
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       border-radius: 15px;
       border-left: 5px solid var(--primary);
-      display: none; /* Par défaut caché */
+      display: none;
       animation: fadeIn 0.5s ease;
     }
 
@@ -1477,6 +1582,19 @@
         width: 100%;
         justify-content: center;
       }
+
+      .calculator {
+        max-width: 100%;
+      }
+      
+      .calculator-buttons {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      
+      .calc-btn {
+        padding: 12px 8px;
+        font-size: 1rem;
+      }
     }
 
     @media (max-width: 480px) {
@@ -1788,6 +1906,58 @@
                 <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
               </div>
 
+              <!-- Calculatrice intégrée -->
+              <div class="calculator-container">
+                <button type="button" class="calculator-toggle" onclick="toggleCalculator()">
+                  <i class="fas fa-calculator"></i> Calculatrice
+                </button>
+                
+                <div class="calculator" id="calculator" style="display: none;">
+                  <div class="calculator-display" id="calcDisplay">0</div>
+                  <div class="calculator-buttons">
+                    <button type="button" class="calc-btn" onclick="calculatorInput('(')">(</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput(')')">)</button>
+                    <button type="button" class="calc-btn" onclick="calculatorClear()">C</button>
+                    <button type="button" class="calc-btn" onclick="calculatorDelete()">⌫</button>
+                    
+                    <button type="button" class="calc-btn" onclick="calculatorInput('7')">7</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('8')">8</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('9')">9</button>
+                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('/')">÷</button>
+                    
+                    <button type="button" class="calc-btn" onclick="calculatorInput('4')">4</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('5')">5</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('6')">6</button>
+                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('*')">×</button>
+                    
+                    <button type="button" class="calc-btn" onclick="calculatorInput('1')">1</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('2')">2</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('3')">3</button>
+                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('-')">−</button>
+                    
+                    <button type="button" class="calc-btn" onclick="calculatorInput('0')">0</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('.')">.</button>
+                    <button type="button" class="calc-btn calc-equals" onclick="calculatorCalculate()">=</button>
+                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('+')">+</button>
+                    
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**2')">x²</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**3')">x³</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**0.5')">√</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInsertResult()">→</button>
+                    
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.sin(')">sin</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.cos(')">cos</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.tan(')">tan</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.PI')">π</button>
+                    
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.log(')">ln</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.log10(')">log</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.exp(')">e^x</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('Math.E')">e</button>
+                  </div>
+                </div>
+              </div>
+
               <div 
                 class="visual-editor" 
                 contenteditable="true"
@@ -1798,9 +1968,9 @@
               <div class="help-text">
                 <i class="fas fa-calculator"></i> <strong>{% if lang == 'fr' %}Nouveau :{% else %}New:{% endif %}</strong> 
                 {% if lang == 'fr' %}
-                  Votre réponse sera vérifiée mathématiquement avec SymPy pour garantir l'exactitude.
+                  Utilisez la calculatrice intégrée pour les opérations complexes. Votre réponse sera vérifiée mathématiquement avec SymPy.
                 {% else %}
-                  Your answer will be mathematically verified with SymPy to ensure accuracy.
+                  Use the built-in calculator for complex operations. Your answer will be mathematically verified with SymPy.
                 {% endif %}
               </div>
             </div>
@@ -2208,6 +2378,91 @@
     let currentAnswer = '';
     let selectedContestStars = {{ reponse.etoiles + 1 if reponse and reponse.etoiles is not none else 3 }};
     let editMode = {% if edit_mode %}true{% else %}false{% endif %};
+
+    // Variables pour la calculatrice
+    let currentCalculation = '0';
+
+    function toggleCalculator() {
+        const calculator = document.getElementById('calculator');
+        if (calculator.style.display === 'none' || !calculator.style.display) {
+            calculator.style.display = 'block';
+            resetCalculator();
+        } else {
+            calculator.style.display = 'none';
+        }
+    }
+
+    function calculatorInput(value) {
+        if (currentCalculation === '0' && !isNaN(value) && value !== '(' && value !== ')') {
+            currentCalculation = value;
+        } else {
+            currentCalculation += value;
+        }
+        updateCalculatorDisplay();
+    }
+
+    function calculatorClear() {
+        currentCalculation = '0';
+        updateCalculatorDisplay();
+    }
+
+    function calculatorDelete() {
+        if (currentCalculation.length > 1) {
+            currentCalculation = currentCalculation.slice(0, -1);
+        } else {
+            currentCalculation = '0';
+        }
+        updateCalculatorDisplay();
+    }
+
+    function calculatorCalculate() {
+        try {
+            // Remplacer les symboles d'affichage par des symboles JavaScript
+            let expression = currentCalculation
+                .replace(/×/g, '*')
+                .replace(/÷/g, '/')
+                .replace(/−/g, '-')
+                .replace(/\*\*0\.5/g, '**(1/2)')
+                .replace(/√/g, 'Math.sqrt');
+            
+            // Évaluer l'expression de façon sécurisée
+            let result = Function('"use strict";return (' + expression + ')')();
+            
+            if (isNaN(result) || !isFinite(result)) {
+                throw new Error('Résultat invalide');
+            }
+            
+            currentCalculation = result.toString();
+        } catch (e) {
+            currentCalculation = 'Erreur';
+        }
+        updateCalculatorDisplay();
+    }
+
+    function calculatorInsertResult() {
+        const visualEditor = document.getElementById('visualMathEditor');
+        if (visualEditor && currentCalculation !== '0' && currentCalculation !== 'Erreur') {
+            // Insérer le résultat dans l'éditeur
+            visualEditor.focus();
+            document.execCommand('insertText', false, currentCalculation);
+            updateHiddenField();
+            
+            // Fermer la calculatrice
+            document.getElementById('calculator').style.display = 'none';
+        }
+    }
+
+    function updateCalculatorDisplay() {
+        const display = document.getElementById('calcDisplay');
+        if (display) {
+            display.textContent = currentCalculation;
+        }
+    }
+
+    function resetCalculator() {
+        currentCalculation = '0';
+        updateCalculatorDisplay();
+    }
 
     // Fonction pour traiter le contenu mathématique avec MathJax
     function processMathContent() {
