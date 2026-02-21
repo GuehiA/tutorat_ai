@@ -694,8 +694,6 @@
       border: 2px solid #e9ecef;
     }
 
-    /* CHAMP D'APERÇU RETIRÉ - Les élèves écrivent directement dans l'éditeur visuel */
-
     .math-toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -724,62 +722,98 @@
       transform: translateY(-2px);
     }
 
-    /* Styles pour la mini calculatrice */
-    .mini-calculator {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      background: #2c3e50;
-      border-radius: 8px;
-      padding: 15px;
-      width: 250px;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-      z-index: 1000;
-      margin-top: 10px;
+    /* Styles pour la calculatrice */
+    .calculator-container {
+      margin: 10px 0 20px 0;
     }
-
-    .mini-calc-input {
-      width: 100%;
-      padding: 10px;
+    
+    .calculator-toggle {
+      background: var(--primary);
+      color: white;
       border: none;
-      border-radius: 4px;
-      margin-bottom: 10px;
-      font-family: monospace;
-      font-size: 1.2rem;
-      text-align: right;
-      background: #ecf0f1;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: var(--transition);
     }
-
-    .mini-calc-buttons {
+    
+    .calculator-toggle:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+    
+    .calculator {
+      background: #2c3e50;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 15px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      max-width: 400px;
+    }
+    
+    .calculator-display {
+      background: #ecf0f1;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: right;
+      font-size: 1.8rem;
+      font-family: monospace;
+      margin-bottom: 15px;
+      min-height: 80px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    
+    .calculator-buttons {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 5px;
+      gap: 10px;
     }
-
-    .mini-calc-buttons button {
-      padding: 10px;
+    
+    .calc-btn {
+      padding: 15px;
       border: none;
-      border-radius: 4px;
-      background: #34495e;
-      color: white;
+      border-radius: 8px;
+      font-size: 1.2rem;
       cursor: pointer;
       transition: all 0.2s;
+      background: #34495e;
+      color: white;
+      font-weight: 600;
     }
-
-    .mini-calc-buttons button:hover {
+    
+    .calc-btn:hover {
       background: #3d566e;
+      transform: scale(0.95);
     }
-
-    .mini-calc-op {
+    
+    .calc-operator {
       background: #f39c12 !important;
     }
-
-    .mini-calc-equals {
-      background: #27ae60 !important;
+    
+    .calc-operator:hover {
+      background: #e67e22 !important;
     }
-
-    .mini-calc-special {
+    
+    .calc-equals {
+      background: #27ae60 !important;
+      grid-column: span 1;
+    }
+    
+    .calc-equals:hover {
+      background: #2ecc71 !important;
+    }
+    
+    .calc-special {
       background: #7f8c8d !important;
+    }
+    
+    .calc-special:hover {
+      background: #95a5a6 !important;
     }
 
     .visual-editor {
@@ -826,7 +860,7 @@
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       border-radius: 15px;
       border-left: 5px solid var(--primary);
-      display: none; /* Par défaut caché */
+      display: none;
       animation: fadeIn 0.5s ease;
     }
 
@@ -1536,13 +1570,18 @@
         justify-content: center;
       }
 
-      .mini-calculator {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 280px;
-        z-index: 2000;
+      .calculator {
+        max-width: 100%;
+      }
+      
+      .calc-btn {
+        padding: 12px;
+        font-size: 1rem;
+      }
+      
+      .calculator-display {
+        font-size: 1.5rem;
+        padding: 15px;
       }
     }
 
@@ -1831,13 +1870,13 @@
               {% if lang == 'fr' %}Votre réponse :{% else %}Your answer:{% endif %}
             </div>
             
-            <!-- Éditeur mathématique simplifié avec mini calculatrice -->
+            <!-- Éditeur mathématique simplifié avec calculatrice -->
             <div class="unified-math-editor">
               <div class="math-toolbar">
                 <!-- Symboles mathématiques de base -->
                 <button type="button" class="math-btn" onclick="insertSymbol('²')">x²</button>
                 <button type="button" class="math-btn" onclick="insertSymbol('³')">x³</button>
-                <button type="button" class="math-btn" onclick="insertSymbol('√')">√</button>
+                <button type="button" class="math-btn" onclick="insertSymbol('√(')">√(</button>
                 <button type="button" class="math-btn" onclick="insertSymbol('π')">π</button>
                 <button type="button" class="math-btn" onclick="insertSymbol('∞')">∞</button>
                 
@@ -1853,40 +1892,6 @@
                 <button type="button" class="math-btn" onclick="insertSymbol('β')">β</button>
                 <button type="button" class="math-btn" onclick="insertSymbol('θ')">θ</button>
                 <button type="button" class="math-btn" onclick="insertSymbol('°')">°</button>
-                
-                <!-- Mini calculatrice -->
-                <div style="position: relative; display: inline-block;">
-                  <button type="button" class="math-btn" onclick="toggleMiniCalculator()" style="background: var(--primary); color: white;">
-                    <i class="fas fa-calculator"></i>
-                  </button>
-                  <div class="mini-calculator" id="miniCalculator" style="display: none;">
-                    <input type="text" id="miniCalcInput" class="mini-calc-input" readonly value="0">
-                    <div class="mini-calc-buttons">
-                      <button type="button" onclick="miniCalcInput('7')">7</button>
-                      <button type="button" onclick="miniCalcInput('8')">8</button>
-                      <button type="button" onclick="miniCalcInput('9')">9</button>
-                      <button type="button" class="mini-calc-op" onclick="miniCalcInput('/')">÷</button>
-                      
-                      <button type="button" onclick="miniCalcInput('4')">4</button>
-                      <button type="button" onclick="miniCalcInput('5')">5</button>
-                      <button type="button" onclick="miniCalcInput('6')">6</button>
-                      <button type="button" class="mini-calc-op" onclick="miniCalcInput('*')">×</button>
-                      
-                      <button type="button" onclick="miniCalcInput('1')">1</button>
-                      <button type="button" onclick="miniCalcInput('2')">2</button>
-                      <button type="button" onclick="miniCalcInput('3')">3</button>
-                      <button type="button" class="mini-calc-op" onclick="miniCalcInput('-')">−</button>
-                      
-                      <button type="button" onclick="miniCalcInput('0')">0</button>
-                      <button type="button" onclick="miniCalcInput('.')">.</button>
-                      <button type="button" class="mini-calc-equals" onclick="miniCalcCalculate()">=</button>
-                      <button type="button" class="mini-calc-op" onclick="miniCalcInput('+')">+</button>
-                      
-                      <button type="button" class="mini-calc-special" onclick="miniCalcClear()">C</button>
-                      <button type="button" class="mini-calc-special" onclick="miniCalcInsert()">→</button>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <div 
@@ -1896,12 +1901,67 @@
                 placeholder="{% if lang == 'fr' %}Écrivez votre réponse complète ici... Utilisez les boutons pour les symboles mathématiques.{% else %}Write your complete answer here... Use the buttons for math symbols.{% endif %}"
               ></div>
 
+              <!-- Calculatrice intégrée -->
+              <div class="calculator-container">
+                <button type="button" class="calculator-toggle" onclick="toggleCalculator()">
+                  <i class="fas fa-calculator"></i> 
+                  {% if lang == 'fr' %}Calculatrice simple{% else %}Simple calculator{% endif %}
+                </button>
+                
+                <div class="calculator" id="calculator" style="display: none;">
+                  <div class="calculator-display" id="calcDisplay">0</div>
+                  <div class="calculator-buttons">
+                    <button type="button" class="calc-btn" onclick="calculatorInput('(')">(</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput(')')">)</button>
+                    <button type="button" class="calc-btn" onclick="calculatorClear()">C</button>
+                    <button type="button" class="calc-btn" onclick="calculatorDelete()">⌫</button>
+                    
+                    <button type="button" class="calc-btn" onclick="calculatorInput('7')">7</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('8')">8</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('9')">9</button>
+                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('/')">÷</button>
+                    
+                    <button type="button" class="calc-btn" onclick="calculatorInput('4')">4</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('5')">5</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('6')">6</button>
+                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('*')">×</button>
+                    
+                    <button type="button" class="calc-btn" onclick="calculatorInput('1')">1</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('2')">2</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('3')">3</button>
+                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('-')">−</button>
+                    
+                    <button type="button" class="calc-btn" onclick="calculatorInput('0')">0</button>
+                    <button type="button" class="calc-btn" onclick="calculatorInput('.')">.</button>
+                    <button type="button" class="calc-btn calc-equals" onclick="calculatorCalculate()">=</button>
+                    <button type="button" class="calc-btn calc-operator" onclick="calculatorInput('+')">+</button>
+                    
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**2')">x²</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**3')">x³</button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInput('**(1/2)')">
+                      {% if lang == 'fr' %}√{% else %}√{% endif %}
+                    </button>
+                    <button type="button" class="calc-btn calc-special" onclick="calculatorInsertResult()">
+                      {% if lang == 'fr' %}→{% else %}→{% endif %}
+                    </button>
+                  </div>
+                  <div style="color: #ecf0f1; font-size: 0.8rem; text-align: center; margin-top: 10px;">
+                    <i class="fas fa-info-circle"></i> 
+                    {% if lang == 'fr' %}
+                      Utilisez ** pour les puissances (ex: 2**3 = 8)
+                    {% else %}
+                      Use ** for powers (e.g., 2**3 = 8)
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
               <div class="help-text">
                 <i class="fas fa-calculator"></i> <strong>{% if lang == 'fr' %}Nouveau :{% else %}New:{% endif %}</strong> 
                 {% if lang == 'fr' %}
-                  Votre réponse sera vérifiée mathématiquement avec SymPy pour garantir l'exactitude.
+                  Utilisez la calculatrice pour vos calculs et cliquez sur → pour insérer le résultat.
                 {% else %}
-                  Your answer will be mathematically verified with SymPy to ensure accuracy.
+                  Use the calculator for your calculations and click → to insert the result.
                 {% endif %}
               </div>
             </div>
@@ -2310,62 +2370,72 @@
     let selectedContestStars = {{ reponse.etoiles + 1 if reponse and reponse.etoiles is not none else 3 }};
     let editMode = {% if edit_mode %}true{% else %}false{% endif %};
 
-    // Variables pour la mini calculatrice
-    let miniCalcValue = '0';
+    // Variables pour la calculatrice
+    let calcDisplay = document.getElementById('calcDisplay');
+    let currentCalcValue = '0';
 
-    function toggleMiniCalculator() {
-      const calc = document.getElementById('miniCalculator');
+    function toggleCalculator() {
+      const calc = document.getElementById('calculator');
       if (calc.style.display === 'none' || !calc.style.display) {
         calc.style.display = 'block';
-        miniCalcValue = '0';
-        document.getElementById('miniCalcInput').value = miniCalcValue;
-        
-        // Fermer la calculatrice si on clique en dehors
-        setTimeout(() => {
-          document.addEventListener('click', function closeCalc(e) {
-            if (!calc.contains(e.target) && !e.target.closest('.math-btn')) {
-              calc.style.display = 'none';
-              document.removeEventListener('click', closeCalc);
-            }
-          });
-        }, 10);
+        currentCalcValue = '0';
+        document.getElementById('calcDisplay').textContent = currentCalcValue;
       } else {
         calc.style.display = 'none';
       }
     }
 
-    function miniCalcInput(value) {
-      if (miniCalcValue === '0' && !isNaN(value)) {
-        miniCalcValue = value;
+    function calculatorInput(value) {
+      if (currentCalcValue === '0' && !isNaN(value) && value !== '.') {
+        currentCalcValue = value;
       } else {
-        miniCalcValue += value;
+        currentCalcValue += value;
       }
-      document.getElementById('miniCalcInput').value = miniCalcValue;
+      document.getElementById('calcDisplay').textContent = currentCalcValue;
     }
 
-    function miniCalcClear() {
-      miniCalcValue = '0';
-      document.getElementById('miniCalcInput').value = miniCalcValue;
+    function calculatorClear() {
+      currentCalcValue = '0';
+      document.getElementById('calcDisplay').textContent = currentCalcValue;
     }
 
-    function miniCalcCalculate() {
+    function calculatorDelete() {
+      if (currentCalcValue.length > 1) {
+        currentCalcValue = currentCalcValue.slice(0, -1);
+      } else {
+        currentCalcValue = '0';
+      }
+      document.getElementById('calcDisplay').textContent = currentCalcValue;
+    }
+
+    function calculatorCalculate() {
       try {
-        let expr = miniCalcValue.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+        let expr = currentCalcValue
+          .replace(/×/g, '*')
+          .replace(/÷/g, '/')
+          .replace(/−/g, '-');
+        
         let result = Function('"use strict";return (' + expr + ')')();
-        miniCalcValue = result.toString();
-        document.getElementById('miniCalcInput').value = miniCalcValue;
+        
+        if (isNaN(result) || !isFinite(result)) {
+          document.getElementById('calcDisplay').textContent = 'Erreur';
+          currentCalcValue = '0';
+        } else {
+          currentCalcValue = result.toString();
+          document.getElementById('calcDisplay').textContent = currentCalcValue;
+        }
       } catch (e) {
-        document.getElementById('miniCalcInput').value = 'Erreur';
+        document.getElementById('calcDisplay').textContent = 'Erreur';
+        currentCalcValue = '0';
       }
     }
 
-    function miniCalcInsert() {
+    function calculatorInsertResult() {
       const visualEditor = document.getElementById('visualMathEditor');
-      if (visualEditor && miniCalcValue !== '0' && miniCalcValue !== 'Erreur') {
+      if (visualEditor && currentCalcValue !== '0' && currentCalcValue !== 'Erreur') {
         visualEditor.focus();
-        document.execCommand('insertText', false, miniCalcValue);
+        document.execCommand('insertText', false, currentCalcValue);
         updateHiddenField();
-        document.getElementById('miniCalculator').style.display = 'none';
       }
     }
 
@@ -2755,6 +2825,9 @@
     document.addEventListener("DOMContentLoaded", () => {
       console.log('DOM loaded, initializing MathJax...');
       
+      // Initialiser la référence à l'élément d'affichage de la calculatrice
+      calcDisplay = document.getElementById('calcDisplay');
+      
       // Traiter le contenu mathématique après le chargement
       setTimeout(processMathContent, 1000);
 
@@ -2832,6 +2905,18 @@
         if (e.key === 'Escape') {
           closeQuickNavigation();
           closeExerciseModal();
+        }
+      });
+      
+      // Fermer la calculatrice si on clique en dehors
+      document.addEventListener('click', function(e) {
+        const calculator = document.getElementById('calculator');
+        const toggleBtn = document.querySelector('.calculator-toggle');
+        
+        if (calculator && calculator.style.display === 'block' && 
+            !calculator.contains(e.target) && 
+            !toggleBtn.contains(e.target)) {
+          calculator.style.display = 'none';
         }
       });
     });
