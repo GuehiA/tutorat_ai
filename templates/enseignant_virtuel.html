@@ -1,1217 +1,884 @@
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if lang == 'en' %}Virtual Teacher Naima{% else %}Enseignant Virtuel Naima{% endif %}</title>
-
-  <!-- Cache control STRICT -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-  <!-- Bootstrap for alerts only -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- MathJax -->
-  <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [['\\(', '\\)']],
-        displayMath: [['\\[', '\\]']]
-      },
-      startup: {
-        pageReady: () => MathJax.startup.defaultPageReady()
-      }
-    };
-  </script>
-  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
-  <style>
-    :root {
-      --primary: #4361ee;
-      --primary-dark: #3a56d4;
-      --success: #3fba83;
-      --warning: #fcc419;
-      --danger: #e85959;
-      --light: #f8f9ff;
-      --dark: #121826;
-      --accent: #9b59b6;
-      --orange: #ff9f43;
-      --purple: #9b59b6;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #f8f9ff 0%, #e8eaff 100%);
-      margin: 0;
-      padding: 15px;
-      min-height: 100vh;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      height: 100%;
-    }
-
-    /* Header */
-    .header {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-      color: white;
-      padding: 15px 20px;
-      border-radius: 12px;
-      margin-bottom: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .student-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .avatar {
-      width: 45px;
-      height: 45px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 1.2rem;
-    }
-
-    .niveau-badge {
-      background: rgba(255, 255, 255, 0.2);
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    /* Session info */
-    .session-info {
-      background: rgba(67, 97, 238, 0.1);
-      border-radius: 8px;
-      padding: 10px 15px;
-      margin: 10px 0 15px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.9rem;
-    }
-
-    .session-matiere {
-      background: var(--accent);
-      color: white;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-    }
-
-    /* Sélecteur de matière */
-    .matiere-selector {
-      margin-bottom: 15px;
-      background: white;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .matiere-selector label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 500;
-      margin-bottom: 8px;
-      color: var(--dark);
-    }
-
-    .matiere-selector select {
-      width: 100%;
-      padding: 10px 15px;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: 1rem;
-      background: white;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .matiere-selector select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-    }
-
-    /* Bouton retour */
-    .btn-back {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-      padding: 8px 15px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.3s ease;
-    }
-
-    .btn-back:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateX(-3px);
-    }
-
-    /* Controls principaux */
-    .controls {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-      flex-wrap: wrap;
-    }
-
-    .controls form {
-      margin: 0;
-      flex: 1;
-      display: flex;
-    }
-
-    .btn {
-      padding: 12px 20px;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      justify-content: center;
-      width: 100%;
-      font-weight: 500;
-    }
-
-    .btn:active {
-      transform: scale(0.98);
-    }
-
-    .btn-new {
-      background: var(--success);
-      color: white;
-    }
-
-    .btn-new:hover {
-      background: #38a873;
-    }
-
-    .btn-understood {
-      background: var(--orange);
-      color: white;
-    }
-
-    .btn-understood:hover {
-      background: #ff8c2e;
-    }
-
-    .btn-exercice {
-      background: var(--purple);
-      color: white;
-    }
-
-    .btn-exercice:hover {
-      background: #8e44ad;
-    }
-
-    /* Contrôles exercice */
-    .exercice-controls {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-      width: 100%;
-    }
-
-    .difficulte-selector {
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid #ddd;
-      background: white;
-      min-width: 120px;
-    }
-
-    /* Barre de progression */
-    .progress-container {
-      margin: 10px 0 15px 0;
-      padding: 10px 15px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      display: none;
-    }
-
-    .progress-bar {
-      background: #f0f0f0;
-      height: 8px;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-bottom: 5px;
-    }
-
-    .progress-fill {
-      background: linear-gradient(90deg, var(--success), #38a873);
-      height: 100%;
-      width: 0%;
-      transition: width 0.3s ease;
-    }
-
-    .progress-text {
-      font-size: 0.85rem;
-      color: #666;
-      display: flex;
-      justify-content: space-between;
-    }
-
-    /* Chat Container */
-    .chat-container {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      height: calc(100vh - 350px);
-      min-height: 400px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* Messages Area */
-    .messages-area {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      scroll-behavior: smooth;
-    }
-
-    .messages-area::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .messages-area::-webkit-scrollbar-track {
-      background: #f1f1f1;
-    }
-
-    .messages-area::-webkit-scrollbar-thumb {
-      background: var(--primary);
-      border-radius: 3px;
-    }
-
-    /* Messages */
-    .message {
-      margin-bottom: 15px;
-      max-width: 85%;
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .user-message {
-      margin-left: auto;
-    }
-
-    .bot-message {
-      margin-right: auto;
-    }
-
-    .message-bubble {
-      padding: 12px 16px;
-      border-radius: 15px;
-      line-height: 1.4;
-    }
-
-    .user-message .message-bubble {
-      background: var(--primary);
-      color: white;
-      border-bottom-right-radius: 5px;
-    }
-
-    .bot-message .message-bubble {
-      background: #f0f2f5;
-      color: var(--dark);
-      border-bottom-left-radius: 5px;
-      border-left: 3px solid var(--primary);
-    }
-
-    .message-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 5px;
-      font-size: 0.85rem;
-      opacity: 0.8;
-    }
-
-    /* Exercice dans le message */
-    .exercice-card {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 15px;
-      border-radius: 10px;
-      margin: 10px 0;
-    }
-
-    .hint-card {
-      background: #fff9e6;
-      border-left: 4px solid var(--warning);
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-
-    .feedback-correct {
-      background: #d4edda;
-      color: #155724;
-      border-left: 4px solid #28a745;
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-
-    .feedback-incorrect {
-      background: #f8d7da;
-      color: #721c24;
-      border-left: 4px solid #dc3545;
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-
-    /* Welcome message */
-    .welcome-message .message-bubble {
-      background: linear-gradient(135deg, #f0f2f5 0%, #e8eaff 100%);
-      border-left: 4px solid var(--primary);
-      padding: 20px;
-    }
-
-    .welcome-message h4 {
-      margin-top: 0;
-      margin-bottom: 15px;
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.4rem;
-    }
-
-    .welcome-message ol {
-      margin: 15px 0;
-      padding-left: 20px;
-    }
-
-    .welcome-message li {
-      margin-bottom: 10px;
-      line-height: 1.5;
-    }
-
-    /* Input Area */
-    .input-area {
-      border-top: 1px solid #e2e8f0;
-      padding: 15px;
-      background: white;
-      flex-shrink: 0;
-    }
-
-    .input-group {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-
-    textarea {
-      flex: 1;
-      min-height: 60px;
-      max-height: 150px;
-      padding: 12px;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      resize: vertical;
-      font-family: inherit;
-      font-size: 1rem;
-    }
-
-    textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    .btn-send {
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 20px;
-      cursor: pointer;
-      font-weight: 500;
-      height: 60px;
-      min-width: 60px;
-      transition: all 0.3s ease;
-    }
-
-    .btn-send:hover:not(:disabled) {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-    }
-
-    .btn-send:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .btn-send:not(:disabled):active {
-      transform: scale(0.98);
-    }
-
-    /* Bouton j'ai compris */
-    .understood-btn-container {
-      display: flex;
-      justify-content: flex-end;
-      margin: 10px 0;
-    }
-
-    .btn-understood-small {
-      background: var(--orange);
-      color: white;
-      border: none;
-      border-radius: 20px;
-      padding: 8px 16px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.3s ease;
-    }
-
-    .btn-understood-small:hover {
-      background: #ff8c2e;
-      transform: scale(1.05);
-    }
-
-    /* Badges */
-    .badge-enseignant {
-      background: linear-gradient(135deg, #9b59b6, #8e44ad);
-      color: white;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .badge-exercice {
-      background: var(--purple);
-      color: white;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      margin-left: 8px;
-    }
-
-    .spinner {
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-
-      .header {
-        padding: 12px 15px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-      }
-
-      .header-left {
-        width: 100%;
-        justify-content: space-between;
-      }
-
-      .niveau-badge {
-        align-self: flex-start;
-        margin-top: 5px;
-      }
-
-      .btn-back span {
-        display: none;
-      }
-
-      .btn-back {
-        padding: 8px 12px;
-      }
-
-      .controls {
-        flex-direction: column;
-      }
-
-      .exercice-controls {
-        flex-direction: column;
-      }
-
-      .chat-container {
-        height: calc(100vh - 400px);
-      }
-
-      .message {
-        max-width: 90%;
-      }
-
-      .matiere-selector {
-        padding: 12px;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        {% if lang == 'fr' %}
+            Naima - Enseignant Virtuel
+        {% else %}
+            Naima - Virtual Teacher
+        {% endif %}
+    </title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #2ecc71;
+            --secondary-dark: #27ae60;
+            --accent: #9b59b6;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --gray: #95a5a6;
+            --white: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+
+        /* Sidebar gauche - Informations */
+        .info-sidebar {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+        }
+
+        .profile-card {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .profile-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        .profile-level {
+            color: var(--primary);
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
+        .info-section {
+            margin-bottom: 25px;
+        }
+
+        .info-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .info-title i {
+            color: var(--primary);
+        }
+
+        .subject-badge {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .tips-list {
+            list-style: none;
+        }
+
+        .tips-list li {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: var(--light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tips-list li i {
+            color: var(--warning);
+            font-size: 1.2rem;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 25px;
+            background: var(--gray);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: var(--transition);
+            width: 100%;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .back-btn:hover {
+            background: var(--dark);
+            transform: translateY(-2px);
+        }
+
+        /* Main content - Chat */
+        .chat-main {
+            background: white;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .naima-avatar {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            animation: pulse 2s infinite;
+        }
+
+        .chat-header-info h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        .chat-header-info p {
+            margin: 5px 0 0;
+            font-size: 0.9rem;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .online-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: var(--secondary);
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .message.naima {
+            align-items: flex-start;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: var(--secondary);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 15px;
+            line-height: 1.6;
+            font-size: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .message.naima .message-content {
+            background: white;
+            border-top-left-radius: 0;
+        }
+
+        .message.user .message-content {
+            background: var(--primary);
+            color: white;
+            border-top-right-radius: 0;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .chat-input-area {
+            padding: 20px 25px;
+            background: white;
+            border-top: 2px solid var(--light);
+        }
+
+        .subject-selector {
+            margin-bottom: 15px;
+        }
+
+        .subject-selector select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--light);
+            border-radius: 8px;
+            font-size: 1rem;
+            color: var(--dark);
+            background: white;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .subject-selector select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-group textarea {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid var(--light);
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: none;
+            min-height: 60px;
+            max-height: 120px;
+            transition: var(--transition);
+        }
+
+        .input-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+        }
+
+        .input-group button {
+            padding: 0 25px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-group button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52,152,219,0.3);
+        }
+
+        .input-group button i {
+            font-size: 1rem;
+        }
+
+        .new-conversation-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            background: transparent;
+            border: 2px solid var(--gray);
+            color: var(--gray);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .new-conversation-btn:hover {
+            background: var(--gray);
+            color: white;
+            border-color: var(--gray);
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 15px;
+            border-top-left-radius: 0;
+            width: fit-content;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--gray);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Scrollbar personnalisée */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: var(--light);
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .info-sidebar {
+                display: none;
+            }
+
+            .chat-main {
+                height: calc(100vh - 40px);
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+        }
+
+        /* Animation de chargement */
+        .loading-message .message-content {
+            background: #f0f0f0;
+            color: var(--gray);
+            font-style: italic;
+        }
+    </style>
 </head>
-
 <body>
-  <div class="container">
-    <!-- Header -->
-    <header class="header">
-      <div class="header-left">
-        <div class="student-info">
-          <div class="avatar">
-            {{ eleve.nom_complet.split(' ')[0][0] }}
-            {{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
-          </div>
-          <div>
-            <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <i class="fas fa-robot"></i>
-              {% if lang == 'en' %}Virtual Teacher Naima{% else %}Enseignant Virtuel Naima{% endif %}
-              <span class="badge-enseignant">
-                <i class="fas fa-bolt"></i>
-                {% if lang == 'en' %}24/7{% else %}24h/24{% endif %}
-              </span>
-            </h3>
-            <p style="margin: 3px 0 0 0; opacity: 0.9; font-size: 0.85rem;">
-              {{ eleve.nom_complet.split(' ')[0] }}
-            </p>
-          </div>
+    <div class="container">
+        <!-- Sidebar gauche - Informations -->
+        <div class="info-sidebar">
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+                </div>
+                <div class="profile-name">{{ eleve.nom_complet }}</div>
+                <div class="profile-level">
+                    {% if lang == 'fr' %}
+                        Niveau: {{ eleve.niveau.nom if eleve.niveau else 'Non défini' }}
+                    {% else %}
+                        Level: {{ eleve.niveau.nom_en if eleve.niveau and eleve.niveau.nom_en else eleve.niveau.nom if eleve.niveau else 'Not defined' }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-title">
+                    <i class="fas fa-graduation-cap"></i>
+                    {% if lang == 'fr' %}Matière actuelle{% else %}Current subject{% endif %}
+                </div>
+                <div class="subject-badge">
+                    <i class="fas fa-{% if matiere == 'mathématiques' %}calculator{% elif matiere == 'français' %}language{% elif matiere == 'histoire' %}landmark{% elif matiere == 'sciences' %}flask{% else %}book{% endif %}"></i>
+                    {{ matiere|capitalize }}
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-title">
+                    <i class="fas fa-lightbulb"></i>
+                    {% if lang == 'fr' %}Conseils pour progresser{% else %}Tips to progress{% endif %}
+                </div>
+                <ul class="tips-list">
+                    <li>
+                        <i class="fas fa-question-circle"></i>
+                        {% if lang == 'fr' %}N'hésite pas à poser des questions{% else %}Don't hesitate to ask questions{% endif %}
+                    </li>
+                    <li>
+                        <i class="fas fa-pencil-alt"></i>
+                        {% if lang == 'fr' %}Explique ton raisonnement{% else %}Explain your reasoning{% endif %}
+                    </li>
+                    <li>
+                        <i class="fas fa-redo-alt"></i>
+                        {% if lang == 'fr' %}Tu peux revenir en arrière{% else %}You can go back{% endif %}
+                    </li>
+                    <li>
+                        <i class="fas fa-star"></i>
+                        {% if lang == 'fr' %}Chaque erreur est une chance d'apprendre{% else %}Every mistake is a chance to learn{% endif %}
+                    </li>
+                </ul>
+            </div>
+
+            <div class="info-section">
+                <div class="info-title">
+                    <i class="fas fa-robot"></i>
+                    {% if lang == 'fr' %}À propos de Naima{% else %}About Naima{% endif %}
+                </div>
+                <p style="line-height: 1.6; color: var(--gray);">
+                    {% if lang == 'fr' %}
+                        Naima est ton enseignante virtuelle. Elle est là pour te guider, pas pour donner les réponses. Pose-lui des questions, elle t'aidera à trouver les solutions par toi-même !
+                    {% else %}
+                        Naima is your virtual teacher. She's here to guide you, not to give answers. Ask her questions, she'll help you find solutions by yourself!
+                    {% endif %}
+                </p>
+            </div>
+
+            <a href="{% if request.args.get('redirect') %}{{ request.args.get('redirect') }}{% else %}/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}{% endif %}" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                {% if lang == 'fr' %}Retour{% else %}Back{% endif %}
+            </a>
         </div>
 
-        <a href="{{ url_for('dashboard_eleve') }}" class="btn-back">
-          <i class="fas fa-arrow-left"></i>
-          <span>{% if lang == 'en' %}Dashboard{% else %}Retour{% endif %}</span>
-        </a>
-      </div>
-
-      <div class="niveau-badge">
-        <i class="fas fa-graduation-cap"></i>
-        {{ eleve.niveau.nom if eleve.niveau else ('6th grade' if lang == 'en' else '6ème') }}
-      </div>
-    </header>
-
-    <!-- Session info -->
-    <div class="session-info">
-      <div>
-        <i class="fas fa-clock" style="margin-right: 5px; color: var(--primary);"></i>
-        <span id="currentTime">{{ date_du_jour.strftime('%H:%M') if date_du_jour else '' }}</span>
-      </div>
-      <div class="session-matiere" id="currentSubject">
-        <i class="fas fa-book"></i>
-        {{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics')|title }}
-      </div>
-    </div>
-
-    <!-- Sélecteur de matière -->
-    <div class="matiere-selector">
-      <label for="matiere">
-        <i class="fas fa-book-open"></i>
-        {% if lang == 'en' %}Select Subject:{% else %}Choisir la matière :{% endif %}
-      </label>
-      <select name="matiere" id="matiereSelect">
-        {% if lang == 'fr' %}
-          <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>Mathématiques</option>
-          <option value="français" {% if matiere == 'français' %}selected{% endif %}>Français</option>
-          <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>Histoire</option>
-          <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>Sciences</option>
-          <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>Géographie</option>
-        {% else %}
-          <option value="mathematics" {% if matiere == 'mathematics' %}selected{% endif %}>Mathematics</option>
-          <option value="french" {% if matiere == 'french' %}selected{% endif %}>French</option>
-          <option value="history" {% if matiere == 'history' %}selected{% endif %}>History</option>
-          <option value="science" {% if matiere == 'science' %}selected{% endif %}>Science</option>
-          <option value="geography" {% if matiere == 'geography' %}selected{% endif %}>Geography</option>
-        {% endif %}
-      </select>
-    </div>
-
-    <!-- Barre de progression exercice -->
-    <div class="progress-container" id="progressContainer">
-      <div class="progress-bar">
-        <div class="progress-fill" id="progressFill"></div>
-      </div>
-      <div class="progress-text">
-        <span id="progressStatus"></span>
-        <span id="progressCount"></span>
-      </div>
-    </div>
-
-    <!-- Controls -->
-    <div class="controls">
-      <form method="POST" action="/nouvel-exercice" id="newExerciseForm" style="flex: 1;">
-        <button type="submit" class="btn btn-new" id="newExerciseBtn">
-          <i class="fas fa-plus-circle"></i>
-          {% if lang == 'en' %}New Conversation{% else %}Nouvelle Conversation{% endif %}
-        </button>
-      </form>
-      
-      <!-- Bouton J'ai compris (visible seulement pendant une conversation) -->
-      {% set conversation = session.get('conversation', []) %}
-      {% if conversation and conversation|length > 0 %}
-      <form method="POST" action="/terminer-conversation" id="endConversationForm" style="flex: 1;">
-        <button type="submit" class="btn btn-understood" id="understoodBtn">
-          <i class="fas fa-check-circle"></i>
-          {% if lang == 'en' %}I Understand ✓{% else %}J'ai Compris ✓{% endif %}
-        </button>
-      </form>
-      {% endif %}
-    </div>
-
-    <!-- Exercice controls (toujours visibles) -->
-    <div class="exercice-controls">
-      <button type="button" class="btn btn-exercice" id="exerciceBtn" onclick="demanderExercice()" style="flex: 2;">
-        <i class="fas fa-pencil-alt"></i>
-        {% if lang == 'en' %}Practice Exercise{% else %}Exercice d'entraînement{% endif %}
-      </button>
-      
-      <select id="difficulteSelect" class="difficulte-selector">
-        <option value="facile">🌟 {% if lang == 'en' %}Easy{% else %}Facile{% endif %}</option>
-        <option value="moyen" selected>⭐⭐ {% if lang == 'en' %}Medium{% else %}Moyen{% endif %}</option>
-        <option value="difficile">⭐⭐⭐ {% if lang == 'en' %}Hard{% else %}Difficile{% endif %}</option>
-      </select>
-    </div>
-
-    <!-- Chat Container -->
-    <div class="chat-container">
-      <!-- Messages Area -->
-      <div class="messages-area" id="messagesArea">
-        {% set conversation = session.get('conversation', []) %}
-        {% set has_conversation = conversation and conversation|length > 0 %}
-
-        {% if has_conversation %}
-          {% for message in conversation %}
-            {% if '👤 Student:' in message or '👤 Élève:' in message %}
-              <div class="message user-message">
-                <div class="message-header">
-                  <i class="fas fa-user"></i>
-                  <span>{% if lang == 'en' %}You{% else %}Toi{% endif %}</span>
+        <!-- Main content - Chat -->
+        <div class="chat-main">
+            <div class="chat-header">
+                <div class="naima-avatar">
+                    <i class="fas fa-robot"></i>
                 </div>
-                <div class="message-bubble">
-                  {{ message.replace('👤 Student: ', '').replace('👤 Élève: ', '')|safe }}
+                <div class="chat-header-info">
+                    <h2>Naima ✨</h2>
+                    <p>
+                        <span class="online-status"></span>
+                        {% if lang == 'fr' %}
+                            En ligne • Enseignante virtuelle
+                        {% else %}
+                            Online • Virtual Teacher
+                        {% endif %}
+                    </p>
                 </div>
-              </div>
-            {% elif '🤖 Teacher:' in message or '🤖 Enseignant:' in message or '🤖 Naima:' in message %}
-              <div class="message bot-message">
-                <div class="message-header">
-                  <i class="fas fa-robot"></i>
-                  <span>Naima</span>
-                </div>
-                <div class="message-bubble">
-                  {{ message.replace('🤖 Teacher: ', '').replace('🤖 Enseignant: ', '').replace('🤖 Naima: ', '')|safe }}
-                </div>
-              </div>
-            {% endif %}
-          {% endfor %}
+            </div>
 
-          <!-- Afficher la dernière question de Naima si elle existe -->
-          {% set derniere_q_ia = session.get('derniere_q_ia') %}
-          {% if derniere_q_ia and not session.get('conversation_terminee') %}
-          <div class="understood-btn-container">
-            <button class="btn-understood-small" onclick="marquerCompris()">
-              <i class="fas fa-check-circle"></i>
-              {% if lang == 'en' %}✓ I've understood, stop here{% else %}✓ J'ai compris, arrêter ici{% endif %}
-            </button>
-          </div>
-          {% endif %}
-
-        {% else %}
-          <!-- Welcome Message -->
-          <div class="message bot-message welcome-message" id="welcomeMessage">
-            <div class="message-bubble">
-              <h4><i class="fas fa-graduation-cap"></i>
-                {% if lang == 'en' %}Hello {{ eleve.nom_complet.split(' ')[0] }}!{% else %}Bonjour {{ eleve.nom_complet.split(' ')[0] }} !{% endif %}
-              </h4>
-
-              <p><strong>{% if lang == 'en' %}I'm Naima, your Virtual Teacher{% else %}Je suis Naima, ton Enseignante Virtuelle{% endif %}</strong> 👩‍🏫</p>
-
-              <p>{% if lang == 'en' %}
-                I'm here to help you understand concepts and solve problems in any subject!
-                <strong>I won't give direct answers</strong>, but I'll guide you step by step.
-              {% else %}
-                Je suis là pour t'aider à comprendre les concepts et résoudre des problèmes dans toutes les matières !
-                <strong>Je ne donnerai pas les réponses directement</strong>, mais je te guiderai pas à pas.
-              {% endif %}</p>
-
-              <p><strong>{% if lang == 'en' %}How to use:{% else %}Comment utiliser :{% endif %}</strong></p>
-              <ol>
-                <li>{% if lang == 'en' %}Select your subject above{% else %}Choisis ta matière ci-dessus{% endif %}</li>
-                <li>{% if lang == 'en' %}Ask your question{% else %}Pose ta question{% endif %}</li>
-                <li>{% if lang == 'en' %}I'll guide you with questions{% else %}Je te guiderai avec des questions{% endif %}</li>
-                <li>{% if lang == 'en' %}Click "I Understand" when you're done{% else %}Clique sur "J'ai Compris" quand tu as terminé{% endif %}</li>
-              </ol>
-
-              <p style="margin-top: 15px; padding: 10px; background: rgba(67, 97, 238, 0.1); border-radius: 8px;">
-                <i class="fas fa-lightbulb" style="color: #fcc419;"></i>
-                <strong>{% if lang == 'en' %}New:{% else %}Nouveau :{% endif %}</strong>
-                {% if lang == 'en' %}
-                  You can also click "Practice Exercise" for automatic exercises!
+            <div class="chat-messages" id="chatMessages">
+                {% if conversation %}
+                    {% for message in conversation %}
+                        {% if '👤' in message %}
+                            <!-- Message de l'élève -->
+                            <div class="message user">
+                                <div class="message-avatar">
+                                    <i class="fas fa-user-graduate"></i>
+                                </div>
+                                <div class="message-content">
+                                    {{ message.replace('👤 Élève:', '').replace('👤 Student:', '').strip() }}
+                                    <div class="message-time">
+                                        {{ datetime.now().strftime('%H:%M') if datetime else 'Maintenant' }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% elif '🤖' in message %}
+                            <!-- Message de Naima -->
+                            <div class="message naima">
+                                <div class="message-avatar">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div class="message-content">
+                                    {{ message.replace('🤖 Naima:', '').strip() }}
+                                    <div class="message-time">
+                                        {{ datetime.now().strftime('%H:%M') if datetime else 'Maintenant' }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
                 {% else %}
-                  Tu peux aussi cliquer sur "Exercice d'entraînement" pour des exercices automatiques !
+                    <!-- Message de bienvenue -->
+                    <div class="message naima">
+                        <div class="message-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            {% if lang == 'fr' %}
+                                Bonjour ! Je suis Naima, ton enseignante virtuelle. 
+                                Je suis là pour t'aider à comprendre tes leçons et résoudre tes exercices.
+                                De quelle matière veux-tu qu'on parle ? N'hésite pas à me poser des questions !
+                            {% else %}
+                                Hello! I'm Naima, your virtual teacher.
+                                I'm here to help you understand your lessons and solve your exercises.
+                                What subject would you like to talk about? Feel free to ask me questions!
+                            {% endif %}
+                            <div class="message-time">
+                                {{ datetime.now().strftime('%H:%M') if datetime else 'Maintenant' }}
+                            </div>
+                        </div>
+                    </div>
                 {% endif %}
-              </p>
-
-              <p style="text-align: center; margin-top: 20px;">
-                <em>✨ {% if lang == 'en' %}Ready to learn? Write your question below!{% else %}Prêt à apprendre ? Écris ta question ci-dessous !{% endif %}</em>
-              </p>
             </div>
-          </div>
-        {% endif %}
-      </div>
 
-      <!-- Input Area -->
-      <div class="input-area">
-        <form method="POST" action="{{ url_for('enseignant_virtuel') }}" id="mainForm">
-          <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere|default('mathématiques' if lang == 'fr' else 'mathematics') }}">
-          
-          <!-- Indicateur de mode -->
-          <input type="hidden" id="modeConversation" value="{% if session.get('mode_exercice') %}exercice{% else %}normale{% endif %}">
-
-          <div class="input-group">
-            <textarea
-              name="question"
-              id="questionInput"
-              placeholder="{% if session.get('derniere_q_ia') %}{% if lang == 'en' %}Answer Naima's question...{% else %}Réponds à la question de Naima...{% endif %}{% else %}{% if lang == 'en' %}Ask your question to Naima...{% else %}Pose ta question à Naima...{% endif %}{% endif %}"
-              required
-              autofocus
-              rows="3"></textarea>
-
-            <button type="submit" class="btn-send" id="submitBtn">
-              <i class="fas fa-paper-plane"></i>
-            </button>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-            <small style="color: #666; font-size: 0.85rem;">
-              <i class="fas fa-keyboard"></i>
-              {% if lang == 'en' %}Press Enter to send, Shift+Enter for new line{% else %}Entrée pour envoyer, Shift+Entrée pour nouvelle ligne{% endif %}
-            </small>
-            <small id="charCount" style="color: #999; font-size: 0.85rem;">0/500</small>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-  <script>
-    // Variables globales
-    const lang = '{{ lang }}';
-    let modeExercice = {{ 'true' if session.get('mode_exercice') else 'false' }};
-    let exerciceEnCours = {{ 'true' if session.get('exercice_actuel') else 'false' }};
-
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log("📱 Naima Virtual Teacher - Page chargée");
-
-      // Éléments DOM
-      const textarea = document.getElementById('questionInput');
-      const submitBtn = document.getElementById('submitBtn');
-      const matiereSelect = document.getElementById('matiereSelect');
-      const matiereInput = document.getElementById('matiereInput');
-      const currentSubject = document.getElementById('currentSubject');
-      const charCount = document.getElementById('charCount');
-      const form = document.getElementById('mainForm');
-      const messagesArea = document.getElementById('messagesArea');
-      const progressContainer = document.getElementById('progressContainer');
-
-      // Scroll en bas si conversation active
-      if (messagesArea) {
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-      }
-
-      // Focus sur textarea
-      if (textarea) {
-        textarea.focus();
-        
-        // Compteur de caractères
-        textarea.addEventListener('input', function() {
-          const length = this.value.length;
-          if (charCount) {
-            charCount.textContent = `${length}/500`;
-            charCount.style.color = length > 450 ? '#e85959' : length > 300 ? '#fcc419' : '#999';
-          }
-        });
-
-        // Gérer Entrée pour envoyer
-        textarea.addEventListener('keydown', function(e) {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            if (form && textarea.value.trim().length >= 3) {
-              form.requestSubmit();
-            }
-          }
-        });
-      }
-
-      // Sélecteur de matière
-      if (matiereSelect && matiereInput && currentSubject) {
-        matiereSelect.addEventListener('change', function() {
-          const selectedMatiere = this.value;
-          matiereInput.value = selectedMatiere;
-
-          const subjectNames = {
-            'mathématiques': 'Mathématiques', 'français': 'Français', 'histoire': 'Histoire',
-            'sciences': 'Sciences', 'géographie': 'Géographie',
-            'mathematics': 'Mathematics', 'french': 'French', 'history': 'History',
-            'science': 'Science', 'geography': 'Geography'
-          };
-
-          currentSubject.innerHTML = `<i class="fas fa-book"></i> ${subjectNames[selectedMatiere] || selectedMatiere}`;
-        });
-      }
-
-      // Validation formulaire
-      if (form) {
-        form.addEventListener('submit', function(e) {
-          if (!textarea || textarea.value.trim().length < 3) {
-            e.preventDefault();
-            alert(lang === 'en' ? 'Please enter at least 3 characters' : 'Veuillez entrer au moins 3 caractères');
-            return false;
-          }
-
-          if (textarea.value.trim().length > 500) {
-            e.preventDefault();
-            alert(lang === 'en' ? 'Maximum 500 characters' : 'Maximum 500 caractères');
-            return false;
-          }
-
-          // Désactiver le bouton
-          if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i>';
-          }
-
-          console.log('📤 Formulaire soumis');
-        });
-      }
-
-      // Mise à jour heure
-      function updateTime() {
-        const now = new Date();
-        const timeElement = document.getElementById('currentTime');
-        if (timeElement) {
-          timeElement.textContent = now.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', 
-            { hour: '2-digit', minute: '2-digit' });
-        }
-      }
-      updateTime();
-      setInterval(updateTime, 60000);
-
-      // MathJax
-      if (window.MathJax) {
-        MathJax.typesetPromise();
-      }
-
-      // Restaurer la progression si exercice en cours
-      if (exerciceEnCours) {
-        const savedProgress = sessionStorage.getItem('exercice_progress');
-        if (savedProgress) {
-          const progress = JSON.parse(savedProgress);
-          updateProgressBar(progress.current, progress.total);
-        }
-      }
-    });
-
-    // Fonction pour marquer comme compris
-    function marquerCompris() {
-      fetch('/terminer-conversation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Ajouter message de félicitations
-          const messagesArea = document.getElementById('messagesArea');
-          const felicitation = document.createElement('div');
-          felicitation.className = 'message bot-message';
-          felicitation.innerHTML = `
-            <div class="message-header">
-              <i class="fas fa-robot"></i>
-              <span>Naima</span>
-            </div>
-            <div class="message-bubble" style="background: #d4edda; border-left-color: #28a745;">
-              <i class="fas fa-check-circle" style="color: #28a745;"></i>
-              ${lang === 'en' ? 
-                '🎉 Excellent! You understood! Feel free to ask another question anytime.' : 
-                '🎉 Excellent ! Tu as compris ! N\'hésite pas à poser une autre question.'}
-              <br><br>
-              <small>✨ ${lang === 'en' ? 'Naima will be here to help you again' : 'Naima sera là pour t\'aider à nouveau'}</small>
-            </div>
-          `;
-          messagesArea.appendChild(felicitation);
-          messagesArea.scrollTop = messagesArea.scrollHeight;
-          
-          // Recharger après 2 secondes
-          setTimeout(() => {
-            window.location.href = '/nouvel-exercice';
-          }, 2000);
-        }
-      });
-    }
-
-    // Fonction pour demander un exercice
-    async function demanderExercice() {
-      const matiere = document.getElementById('matiereSelect').value;
-      const difficulte = document.getElementById('difficulteSelect').value;
-      const btn = document.getElementById('exerciceBtn');
-      
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner spinner"></i> ' + 
-        (lang === 'en' ? 'Generating...' : 'Génération...');
-      
-      try {
-        const response = await fetch('/demander-exercice', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            matiere: matiere, 
-            difficulte: difficulte,
-            type: 'exercice'
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          // Ajouter l'exercice à la conversation
-          const messagesArea = document.getElementById('messagesArea');
-          
-          // Supprimer le message de bienvenue si présent
-          const welcomeMsg = document.getElementById('welcomeMessage');
-          if (welcomeMsg) welcomeMsg.remove();
-          
-          // Ajouter l'exercice
-          const exerciceHTML = `
-            <div class="message bot-message">
-              <div class="message-header">
-                <i class="fas fa-robot"></i>
-                <span>Naima <span class="badge-exercice">📝 ${lang === 'en' ? 'Exercise' : 'Exercice'}</span></span>
-              </div>
-              <div class="message-bubble" style="background: #e8f4ff;">
-                <h5 style="margin-top: 0; color: #4361ee;">
-                  <i class="fas fa-pencil-alt"></i> 
-                  ${lang === 'en' ? 'Here\'s an exercise for you:' : 'Voici un exercice pour toi :'}
-                </h5>
-                <div class="exercice-card">
-                  <p style="font-size: 1.1rem; margin: 0;">
-                    ${data.enonce}
-                  </p>
-                </div>
-                ${data.indice_initial ? `
-                  <div class="hint-card">
-                    <i class="fas fa-lightbulb" style="color: #fcc419;"></i>
-                    <strong>${lang === 'en' ? 'Hint:' : 'Indice :'}</strong> ${data.indice_initial}
-                  </div>
-                ` : ''}
-                <p style="margin-top: 10px; font-style: italic;">
-                  ${lang === 'en' ? 'Write your answer below and I\'ll help you!' : 'Écris ta réponse ci-dessous et je t\'aiderai !'}
-                </p>
-              </div>
-            </div>
-          `;
-          
-          messagesArea.insertAdjacentHTML('beforeend', exerciceHTML);
-          messagesArea.scrollTop = messagesArea.scrollHeight;
-          
-          // Activer mode exercice
-          modeExercice = true;
-          sessionStorage.setItem('mode_exercice', 'true');
-          
-          // Afficher progression
-          document.getElementById('progressContainer').style.display = 'block';
-          updateProgressBar(0, data.total_etapes || 3);
-        }
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        alert(lang === 'en' ? 'Error generating exercise' : 'Erreur lors de la génération');
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-pencil-alt"></i> ' + 
-          (lang === 'en' ? 'Practice Exercise' : 'Exercice d\'entraînement');
-      }
-    }
-
-    // Fonction pour mettre à jour la barre de progression
-    function updateProgressBar(current, total) {
-      const progressFill = document.getElementById('progressFill');
-      const progressStatus = document.getElementById('progressStatus');
-      const progressCount = document.getElementById('progressCount');
-      
-      if (progressFill) {
-        const percent = (current / total) * 100;
-        progressFill.style.width = `${percent}%`;
-      }
-      
-      if (progressStatus) {
-        progressStatus.textContent = lang === 'en' ? 'Progress:' : 'Progression :';
-      }
-      
-      if (progressCount) {
-        progressCount.textContent = `${current}/${total}`;
-      }
-      
-      // Sauvegarder
-      sessionStorage.setItem('exercice_progress', JSON.stringify({ current, total }));
-    }
-
-    // Fonction pour vérifier réponse exercice
-    async function verifierReponseExercice(reponse) {
-      try {
-        const response = await fetch('/verifier-reponse-exercice', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reponse: reponse })
-        });
-        
-        const data = await response.json();
-        
-        const messagesArea = document.getElementById('messagesArea');
-        
-        if (data.termine) {
-          // Exercice terminé avec succès
-          const successHTML = `
-            <div class="message bot-message">
-              <div class="message-header">
-                <i class="fas fa-robot"></i>
-                <span>Naima</span>
-              </div>
-              <div class="message-bubble feedback-correct">
-                <i class="fas fa-trophy" style="color: #ffd700;"></i>
-                <strong>${lang === 'en' ? 'BRAVO!' : 'BRAVO !'}</strong>
-                <p>${data.message}</p>
-                <button onclick="demanderExercice()" class="btn btn-exercice" style="margin-top: 10px;">
-                  <i class="fas fa-redo"></i>
-                  ${lang === 'en' ? 'Another exercise' : 'Un autre exercice'}
+            <div class="chat-input-area">
+                <form method="POST" action="{{ url_for('enseignant_virtuel') }}" id="chatForm">
+                    <div class="subject-selector">
+                        <select name="matiere" id="matiere">
+                            <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>
+                                📐 {% if lang == 'fr' %}Mathématiques{% else %}Mathematics{% endif %}
+                            </option>
+                            <option value="français" {% if matiere == 'français' %}selected{% endif %}>
+                                📖 {% if lang == 'fr' %}Français{% else %}French{% endif %}
+                            </option>
+                            <option value="anglais" {% if matiere == 'anglais' %}selected{% endif %}>
+                                🇬🇧 {% if lang == 'fr' %}Anglais{% else %}English{% endif %}
+                            </option>
+                            <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>
+                                🏛️ {% if lang == 'fr' %}Histoire{% else %}History{% endif %}
+                            </option>
+                            <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>
+                                🔬 {% if lang == 'fr' %}Sciences{% else %}Science{% endif %}
+                            </option>
+                            <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>
+                                🌍 {% if lang == 'fr' %}Géographie{% else %}Geography{% endif %}
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <textarea 
+                            name="question" 
+                            id="questionInput"
+                            placeholder="{% if lang == 'fr' %}Écris ta question à Naima...{% else %}Write your question to Naima...{% endif %}"
+                            rows="1"
+                            required
+                        ></textarea>
+                        <button type="submit" id="sendBtn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+                
+                <button class="new-conversation-btn" onclick="startNewConversation()">
+                    <i class="fas fa-plus-circle"></i>
+                    {% if lang == 'fr' %}Nouvelle conversation{% else %}New conversation{% endif %}
                 </button>
-              </div>
             </div>
-          `;
-          messagesArea.insertAdjacentHTML('beforeend', successHTML);
-          
-          // Reset mode exercice
-          modeExercice = false;
-          sessionStorage.removeItem('mode_exercice');
-          sessionStorage.removeItem('exercice_progress');
-          document.getElementById('progressContainer').style.display = 'none';
-          
-        } else {
-          // Feedback sur la réponse
-          const feedbackClass = data.correct ? 'feedback-correct' : 'feedback-incorrect';
-          const feedbackHTML = `
-            <div class="message bot-message">
-              <div class="message-header">
-                <i class="fas fa-robot"></i>
-                <span>Naima</span>
-              </div>
-              <div class="message-bubble ${feedbackClass}">
-                ${data.feedback}
-                ${data.indice_suivant ? `
-                  <div class="hint-card" style="margin-top: 10px;">
-                    <i class="fas fa-lightbulb"></i> ${data.indice_suivant}
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          `;
-          messagesArea.insertAdjacentHTML('beforeend', feedbackHTML);
-          
-          if (data.progression) {
-            const [current, total] = data.progression.split('/').map(Number);
-            updateProgressBar(current, total);
-          }
-        }
-        
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-        
-      } catch (error) {
-        console.error('Erreur vérification:', error);
-      }
-    }
+        </div>
+    </div>
 
-    // Intercepter l'envoi du formulaire principal
-    const originalForm = document.getElementById('mainForm');
-    if (originalForm) {
-      originalForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const textarea = document.getElementById('questionInput');
-        const message = textarea.value.trim();
-        
-        if (message.length < 3) return;
-        
-        // Si en mode exercice
-        if (modeExercice || sessionStorage.getItem('mode_exercice') === 'true') {
-          textarea.value = '';
-          await verifierReponseExercice(message);
-          textarea.focus();
-          return;
-        }
-        
-        // Sinon, comportement normal
-        textarea.value = '';
-        this.submit();
-      });
-    }
+    <script>
+        // Variables globales
+        let isSubmitting = false;
+        const chatMessages = document.getElementById('chatMessages');
+        const questionInput = document.getElementById('questionInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatForm = document.getElementById('chatForm');
 
-    // Forcer rechargement si page vient du cache
-    window.addEventListener('pageshow', function(event) {
-      if (event.persisted) {
-        window.location.reload();
-      }
-    });
-  </script>
+        // Auto-resize textarea
+        questionInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Envoi du formulaire
+        chatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (isSubmitting) return;
+            
+            const question = questionInput.value.trim();
+            if (!question) return;
+            
+            isSubmitting = true;
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            // Ajouter le message de l'utilisateur immédiatement
+            addUserMessage(question);
+            
+            // Effacer l'input
+            questionInput.value = '';
+            questionInput.style.height = 'auto';
+            
+            // Afficher l'indicateur de frappe de Naima
+            const typingId = showTypingIndicator();
+            
+            try {
+                // Récupérer la matière sélectionnée
+                const matiere = document.getElementById('matiere').value;
+                
+                // Créer le FormData
+                const formData = new FormData();
+                formData.append('question', question);
+                formData.append('matiere', matiere);
+                
+                // Envoyer la requête
+                const response = await fetch('{{ url_for("enseignant_virtuel") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+                
+                // Supprimer l'indicateur de frappe
+                removeTypingIndicator(typingId);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success && data.messages && data.messages.length > 0) {
+                        // Ajouter le dernier message de Naima
+                        const lastMessage = data.messages[data.messages.length - 1];
+                        addNaimaMessage(lastMessage);
+                    }
+                    
+                    // Scroll vers le bas
+                    scrollToBottom();
+                } else {
+                    // Message d'erreur
+                    addNaimaMessage(`
+                        <div class="message-content">
+                            {% if lang == 'fr' %}
+                                Désolée, j'ai eu un problème technique. Peux-tu réessayer ?
+                            {% else %}
+                                Sorry, I had a technical issue. Can you try again?
+                            {% endif %}
+                        </div>
+                    `);
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                removeTypingIndicator(typingId);
+                addNaimaMessage(`
+                    <div class="message-content">
+                        {% if lang == 'fr' %}
+                            Oups ! La connexion a échoué. Vérifie ta connexion internet.
+                        {% else %}
+                            Oops! Connection failed. Check your internet connection.
+                        {% endif %}
+                    </div>
+                `);
+            } finally {
+                isSubmitting = false;
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            }
+        });
+
+        function addUserMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user';
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <div class="message-content">
+                    ${escapeHtml(text)}
+                    <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                </div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function addNaimaMessage(htmlContent) {
+            // Si htmlContent est une chaîne avec la structure complète
+            if (htmlContent.includes('message-content')) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = htmlContent;
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message naima';
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    ${tempDiv.innerHTML}
+                `;
+                chatMessages.appendChild(messageDiv);
+            } else {
+                // Si c'est juste du texte
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message naima';
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        ${escapeHtml(htmlContent)}
+                        <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    </div>
+                `;
+                chatMessages.appendChild(messageDiv);
+            }
+            scrollToBottom();
+        }
+
+        function showTypingIndicator() {
+            const id = 'typing-' + Date.now();
+            const typingDiv = document.createElement('div');
+            typingDiv.id = id;
+            typingDiv.className = 'message naima';
+            typingDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            scrollToBottom();
+            return id;
+        }
+
+        function removeTypingIndicator(id) {
+            const indicator = document.getElementById(id);
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function startNewConversation() {
+            if (confirm('{% if lang == "fr" %}Commencer une nouvelle conversation ? L\'historique sera effacé.{% else %}Start a new conversation? History will be cleared.{% endif %}')) {
+                window.location.href = '{{ url_for("enseignant_virtuel") }}?t=' + Date.now();
+            }
+        }
+
+        // Scroll en bas au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            scrollToBottom();
+            questionInput.focus();
+        });
+
+        // Gestion de la touche Entrée
+        questionInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
 </body>
 </html>
