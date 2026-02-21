@@ -1075,7 +1075,8 @@ def obtenir_nom_matiere_objet(matiere_obj, lang="fr"):
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
     """Route pour l'enseignant virtuel Naima - Support AJAX pour les exercices"""
-    from datetime import datetime  # ← IMPORT ICI
+    from datetime import datetime
+    import time
     
     print(f"[DEBUG] Accès enseignant virtuel")
     
@@ -1196,6 +1197,25 @@ def enseignant_virtuel():
                 # Sauvegarder
                 session[conversation_key] = conversation
                 
+                # ✅ Enregistrer la réponse dans la base de données si c'est une réponse d'exercice
+                if exercice_id and reponse_eleve:
+                    try:
+                        from models import StudentResponse
+                        nouvelle_reponse = StudentResponse(
+                            user_id=eleve.id,
+                            exercice_id=exercice_id if not contexte_exercice else None,
+                            test_exercice_id=exercice_id if contexte_exercice else None,
+                            reponse_eleve=reponse_eleve,
+                            analyse_ia=reponse,
+                            timestamp=datetime.utcnow()
+                        )
+                        db.session.add(nouvelle_reponse)
+                        db.session.commit()
+                        print(f"[DEBUG] ✅ Réponse enregistrée dans la base")
+                    except Exception as e:
+                        print(f"[DEBUG] ❌ Erreur enregistrement réponse: {e}")
+                        db.session.rollback()
+                
             except Exception as e:
                 print(f"Erreur: {e}")
                 import traceback
@@ -1211,6 +1231,66 @@ def enseignant_virtuel():
                 conversation.append(f"{enseignant_label} {msg_erreur}")
                 session[conversation_key] = conversation
     
+    # ✅ Calculer les statistiques de l'élève
+    from models import StudentResponse
+    from sqlalchemy import func
+    
+    total_exercices = StudentResponse.query.filter_by(user_id=eleve.id).count()
+    exercices_reussis = StudentResponse.query.filter(
+        StudentResponse.user_id == eleve.id,
+        StudentResponse.etoiles >= 3
+    ).count() if hasattr(StudentResponse, 'etoiles') else 0
+    
+    # Calculer la série (streak)
+    serie = 0
+    try:
+        # Récupérer les dates des exercices (sans doublons)
+        dates_exercices = db.session.query(
+            func.date(StudentResponse.timestamp)
+        ).filter(
+            StudentResponse.user_id == eleve.id
+        ).distinct().order_by(
+            func.date(StudentResponse.timestamp).desc()
+        ).all()
+        
+        if dates_exercices:
+            dates = [d[0] for d in dates_exercices]
+            today = datetime.utcnow().date()
+            
+            # Vérifier si l'élève a fait un exercice aujourd'hui
+            if dates and dates[0] == today:
+                serie = 1
+                # Compter les jours consécutifs
+                for i in range(len(dates) - 1):
+                    if (dates[i] - dates[i+1]).days == 1:
+                        serie += 1
+                    else:
+                        break
+    except Exception as e:
+        print(f"[DEBUG] Erreur calcul série: {e}")
+    
+    # Calculer le temps total d'apprentissage (si le champ existe)
+    temps_apprentissage = 0
+    if hasattr(StudentResponse, 'temps_passe'):
+        temps_total = db.session.query(
+            func.sum(StudentResponse.temps_passe)
+        ).filter(
+            StudentResponse.user_id == eleve.id
+        ).scalar() or 0
+        temps_apprentissage = round(temps_total / 60)  # Convertir en minutes
+    
+    # Statistiques pour l'affichage
+    stats = {
+        'total_exercices': total_exercices,
+        'exercices_reussis': exercices_reussis,
+        'taux_reussite': round((exercices_reussis / total_exercices * 100) if total_exercices > 0 else 0),
+        'serie': serie,
+        'temps_apprentissage': temps_apprentissage,
+        'date_inscription': eleve.date_inscription.strftime('%d/%m/%Y') if eleve.date_inscription else 'N/A'
+    }
+    
+    print(f"[DEBUG] Stats élève: {stats}")
+    
     # Pour les requêtes AJAX, retourner seulement les nouveaux messages
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         # Récupérer les 10 derniers messages
@@ -1224,7 +1304,8 @@ def enseignant_virtuel():
         return jsonify({
             'success': True,
             'messages': messages_html,
-            'last_message': messages_html[-1] if messages_html else ''
+            'last_message': messages_html[-1] if messages_html else '',
+            'stats': stats  # ← Optionnel: renvoyer les stats pour mise à jour AJAX
         })
     
     # Pour les requêtes normales, retourner la page complète
@@ -1232,13 +1313,14 @@ def enseignant_virtuel():
         "enseignant_virtuel.html",
         lang=lang,
         eleve=eleve,
+        stats=stats,  # ← Passage des statistiques
         conversation=conversation,
         exercice_remediation=None,
         access_count=0,
-        date_du_jour=datetime.utcnow(),  # ← Passage de datetime
+        date_du_jour=datetime.utcnow(),
         matiere=matiere,
         theme=theme,
-        datetime=datetime  # ← Passage de la classe datetime
+        datetime=datetime
     )
 
 def extraire_question(reponse, lang):
