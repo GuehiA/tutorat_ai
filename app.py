@@ -2956,23 +2956,26 @@ def generer_exercice_specifique(matiere, niveau, difficulte="moyen", type_exerci
     """Génère un exercice spécifique selon les options choisies"""
     from openai import OpenAI
     import os
+    import re
+    import json
     
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
     # Construire le contexte des mots-clés
     contexte_mots_cles = f" sur le thème de {mots_cles}" if mots_cles else ""
     
-    # Définir les types d'exercices
+    # Définir les types d'exercices (garder en français pour la clé, mais le contenu sera traduit)
     types = {
-        "exercice": "un exercice standard",
-        "probleme": "un problème à résoudre (mise en situation concrète)",
-        "qcm": "un QCM (question à choix multiples) avec 4 options",
-        "logique": "un exercice de logique ou de raisonnement"
+        "exercice": "un exercice standard" if langue == "fr" else "a standard exercise",
+        "probleme": "un problème à résoudre (mise en situation concrète)" if langue == "fr" else "a problem to solve (real-life situation)",
+        "qcm": "un QCM (question à choix multiples) avec 4 options" if langue == "fr" else "a multiple choice question with 4 options",
+        "logique": "un exercice de logique ou de raisonnement" if langue == "fr" else "a logic or reasoning exercise"
     }
     
-    type_description = types.get(type_exercice, "un exercice")
+    type_description = types.get(type_exercice, "un exercice" if langue == "fr" else "an exercise")
     
     if langue == "fr":
+        system_prompt = "Tu es Naima, une enseignante virtuelle spécialisée dans la création d'exercices pédagogiques variés. Tu réponds TOUJOURS en FRANÇAIS."
         prompt = f"""En tant que Naima, génère {type_description} de {matiere}{contexte_mots_cles} pour un élève de niveau {niveau} (difficulté: {difficulte}).
 
 RÈGLES IMPORTANTES:
@@ -2992,7 +2995,7 @@ Format de réponse (JSON uniquement):
     }}
 }}"""
     else:
-        # Version anglaise
+        system_prompt = "You are Naima, a virtual teacher specialized in creating varied educational exercises. You ALWAYS answer in ENGLISH."
         prompt = f"""As Naima, generate {type_description} in {matiere}{contexte_mots_cles} for a {niveau} level student (difficulty: {difficulte}).
 
 IMPORTANT RULES:
@@ -3016,7 +3019,7 @@ Response format (JSON only):
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Tu es Naima, une enseignante virtuelle spécialisée dans la création d'exercices pédagogiques variés."},
+                {"role": "system", "content": system_prompt},  # ← Maintenant bilingue
                 {"role": "user", "content": prompt}
             ],
             temperature=0.8,
@@ -3024,14 +3027,21 @@ Response format (JSON only):
         )
         
         reponse_texte = response.choices[0].message.content
+        print(f"📥 Réponse brute: {reponse_texte[:200]}...")  # Pour déboguer
         
         # Extraire le JSON
-        import re
         json_match = re.search(r'(\{.*\})', reponse_texte, re.DOTALL)
         if json_match:
             reponse_texte = json_match.group(1)
         
         exercice = json.loads(reponse_texte)
+        
+        # ✅ Vérification que l'exercice est dans la bonne langue
+        if langue == "en":
+            print("✅ Exercice généré en anglais")
+        else:
+            print("✅ Exercice généré en français")
+            
         return exercice
         
     except Exception as e:
@@ -3041,50 +3051,123 @@ Response format (JSON only):
 
 
 def generer_exercice_fallback(matiere, type_exercice, mots_cles, difficulte, langue):
-    """Fallback avec des exercices pré-définis mais variés"""
+    """Fallback avec des exercices pré-définis mais variés - VERSION BILINGUE"""
     import random
     
-    # Base d'exercices par matière et type
+    # Base d'exercices par matière et type - VERSION BILINGUE
     exercices_db = {
         "mathématiques": {
             "exercice": [
                 {
-                    "message_accueil": "Voici un exercice sur les équations !",
-                    "enonce": "Résous l'équation : 3x + 5 = 20",
-                    "premiere_question": "Par quoi commencer pour isoler x ?",
-                    "indices": ["Enlève d'abord le +5", "Divise par 3 ensuite"]
+                    "message_accueil": "Voici un exercice sur les équations !" if langue == "fr" else "Here's an exercise on equations!",
+                    "enonce": "Résous l'équation : 3x + 5 = 20" if langue == "fr" else "Solve the equation: 3x + 5 = 20",
+                    "premiere_question": "Par quoi commencer pour isoler x ?" if langue == "fr" else "What should you do first to isolate x?",
+                    "indices": ["Enlève d'abord le +5", "Divise par 3 ensuite"] if langue == "fr" else ["First remove +5", "Then divide by 3"],
+                    "difficulte": difficulte
                 },
                 {
-                    "message_accueil": "Un petit exercice de fractions !",
-                    "enonce": "Calcule : 2/3 + 1/4",
-                    "premiere_question": "Quel est le dénominateur commun ?",
-                    "indices": ["12 est un multiple de 3 et 4", "2/3 = 8/12"]
+                    "message_accueil": "Un petit exercice de fractions !" if langue == "fr" else "A small exercise on fractions!",
+                    "enonce": "Calcule : 2/3 + 1/4" if langue == "fr" else "Calculate: 2/3 + 1/4",
+                    "premiere_question": "Quel est le dénominateur commun ?" if langue == "fr" else "What is the common denominator?",
+                    "indices": ["12 est un multiple de 3 et 4", "2/3 = 8/12"] if langue == "fr" else ["12 is a multiple of 3 and 4", "2/3 = 8/12"],
+                    "difficulte": difficulte
+                },
+                {
+                    "message_accueil": "Exercice sur les puissances !" if langue == "fr" else "Exercise on exponents!",
+                    "enonce": "Calcule : 2³ × 2²" if langue == "fr" else "Calculate: 2³ × 2²",
+                    "premiere_question": "Que fais-tu avec les exposants quand on multiplie ?" if langue == "fr" else "What do you do with exponents when multiplying?",
+                    "indices": ["On additionne les exposants", "2³ × 2² = 2⁵"] if langue == "fr" else ["Add the exponents", "2³ × 2² = 2⁵"],
+                    "difficulte": difficulte
                 }
             ],
             "probleme": [
                 {
-                    "message_accueil": "Voici un problème concret !",
-                    "enonce": "Un train parcourt 280 km à 70 km/h. Combien de temps dure le trajet ?",
-                    "premiere_question": "Quelle formule utiliser pour calculer le temps ?",
-                    "indices": ["Temps = Distance ÷ Vitesse", "280 ÷ 70 = ?"]
+                    "message_accueil": "Voici un problème concret !" if langue == "fr" else "Here's a real-world problem!",
+                    "enonce": "Un train parcourt 280 km à 70 km/h. Combien de temps dure le trajet ?" if langue == "fr" else "A train travels 280 km at 70 km/h. How long does the journey take?",
+                    "premiere_question": "Quelle formule utiliser pour calculer le temps ?" if langue == "fr" else "What formula do you use to calculate time?",
+                    "indices": ["Temps = Distance ÷ Vitesse", "280 ÷ 70 = ?"] if langue == "fr" else ["Time = Distance ÷ Speed", "280 ÷ 70 = ?"],
+                    "difficulte": difficulte
+                },
+                {
+                    "message_accueil": "Problème de pourcentages !" if langue == "fr" else "Percentage problem!",
+                    "enonce": "Un article coûte 80€. Il augmente de 15%. Quel est son nouveau prix ?" if langue == "fr" else "An item costs $80. It increases by 15%. What is its new price?",
+                    "premiere_question": "Comment calcules-tu le montant de l'augmentation ?" if langue == "fr" else "How do you calculate the increase amount?",
+                    "indices": ["15% de 80 = 0,15 × 80", "80 + 12 = 92"] if langue == "fr" else ["15% of 80 = 0.15 × 80", "80 + 12 = 92"],
+                    "difficulte": difficulte
                 }
             ],
             "qcm": [
                 {
-                    "message_accueil": "Voici un QCM !",
-                    "enonce": "Quelle est la solution de l'équation 2x - 6 = 10 ?\nA) x = 8\nB) x = 6\nC) x = 10\nD) x = 12",
-                    "premiere_question": "Quelle option choisis-tu ?",
-                    "indices": ["Isole x", "2x = 16", "x = 8"]
+                    "message_accueil": "Voici un QCM !" if langue == "fr" else "Here's a multiple choice question!",
+                    "enonce": "Quelle est la solution de l'équation 2x - 6 = 10 ?\nA) x = 8\nB) x = 6\nC) x = 10\nD) x = 12" if langue == "fr" else "What is the solution to the equation 2x - 6 = 10?\nA) x = 8\nB) x = 6\nC) x = 10\nD) x = 12",
+                    "premiere_question": "Quelle option choisis-tu ?" if langue == "fr" else "Which option do you choose?",
+                    "indices": ["Isole x", "2x = 16", "x = 8"] if langue == "fr" else ["Isolate x", "2x = 16", "x = 8"],
+                    "difficulte": difficulte
+                }
+            ],
+            "logique": [
+                {
+                    "message_accueil": "Un exercice de logique !" if langue == "fr" else "A logic exercise!",
+                    "enonce": "Si 3 chats attrapent 3 souris en 3 minutes, combien de temps faut-il à 100 chats pour attraper 100 souris ?" if langue == "fr" else "If 3 cats catch 3 mice in 3 minutes, how long does it take for 100 cats to catch 100 mice?",
+                    "premiere_question": "Quelle est ta première réflexion ?" if langue == "fr" else "What is your first thought?",
+                    "indices": ["Le nombre de chats n'affecte pas le temps par souris", "Chaque chat attrape 1 souris en 3 minutes"] if langue == "fr" else ["The number of cats doesn't affect the time per mouse", "Each cat catches 1 mouse in 3 minutes"],
+                    "difficulte": difficulte
+                }
+            ]
+        },
+        "français": {
+            "exercice": [
+                {
+                    "message_accueil": "Exercice de conjugaison !" if langue == "fr" else "Conjugation exercise!",
+                    "enonce": "Conjugue le verbe 'aller' au présent : je ____, tu ____, il ____" if langue == "fr" else "Conjugate the verb 'to go' in present tense: I ____, you ____, he ____",
+                    "premiere_question": "Quelle est la première personne ?" if langue == "fr" else "What is the first person?",
+                    "indices": ["je vais", "tu vas", "il va"] if langue == "fr" else ["I go", "you go", "he goes"],
+                    "difficulte": difficulte
+                }
+            ]
+        },
+        "anglais": {
+            "exercice": [
+                {
+                    "message_accueil": "English exercise!" if langue == "fr" else "English exercise!",
+                    "enonce": "Translate: 'Je suis content de te voir'" if langue == "fr" else "Translate: 'Je suis content de te voir'",
+                    "premiere_question": "Quelle est la traduction ?" if langue == "fr" else "What is the translation?",
+                    "indices": ["I am happy", "to see you"] if langue == "fr" else ["I am happy", "to see you"],
+                    "difficulte": difficulte
                 }
             ]
         }
     }
     
-    matiere_key = matiere.lower() if matiere.lower() in exercices_db else "mathématiques"
-    type_key = type_exercice if type_exercice in exercices_db[matiere_key] else "exercice"
+    # Normaliser la matière
+    matiere_key = matiere.lower().strip()
+    if matiere_key not in exercices_db:
+        # Si la matière n'existe pas, utiliser mathématiques par défaut
+        matiere_key = "mathématiques"
+        print(f"[DEBUG] Matière '{matiere}' non trouvée, utilisation de mathématiques")
     
-    exercices = exercices_db[matiere_key][type_key]
-    return random.choice(exercices)
+    # Vérifier si le type d'exercice existe pour cette matière
+    if type_exercice not in exercices_db[matiere_key]:
+        type_exercice = "exercice"
+    
+    # Sélectionner un exercice aléatoire
+    exercices = exercices_db[matiere_key][type_exercice]
+    exercice_choisi = random.choice(exercices).copy()
+    
+    # Ajouter la difficulté et autres métadonnées
+    exercice_choisi['difficulte'] = difficulte
+    exercice_choisi['type'] = type_exercice
+    exercice_choisi['matiere'] = matiere
+    
+    # Ajouter une correction simple si elle n'existe pas
+    if 'correction' not in exercice_choisi:
+        exercice_choisi['correction'] = {
+            'reponse_finale': "Réponse à vérifier",
+            'explication': "Consulte ton professeur pour la correction détaillée."
+        }
+    
+    print(f"[DEBUG] Exercice fallback généré en {langue}")
+    return exercice_choisi
 
 
 
