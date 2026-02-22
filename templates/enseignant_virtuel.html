@@ -1472,20 +1472,18 @@
     // Fonction pour mettre à jour la sidebar avec l'exercice en cours
     function updateExerciseSidebar(exerciseData) {
       if (exerciseData && exerciseData.enonce) {
-        // Cacher le message "aucun exercice"
         document.getElementById('noExerciseMessage').style.display = 'none';
         
-        // Afficher la sidebar d'exercice
         const sidebar = document.getElementById('currentExerciseSidebar');
         sidebar.style.display = 'block';
         
-        // Mettre à jour le titre et la question
+        // ✅ CORRIGÉ : Utiliser la syntaxe Jinja, pas de ternaire JavaScript
         document.getElementById('sidebarExerciseTitle').textContent = 
-          '{{ lang == "fr" ? "Exercice en cours" : "Current Exercise" }}';
+          '{% if lang == "fr" %}Exercice en cours{% else %}Current Exercise{% endif %}';
+        
         document.getElementById('sidebarExerciseQuestion').textContent = 
           exerciseData.enonce.substring(0, 100) + '...';
         
-        // Mettre à jour la difficulté
         const difficultyBadge = document.getElementById('sidebarExerciseDifficulty');
         if (exerciseData.difficulte) {
           difficultyBadge.textContent = 
@@ -1493,7 +1491,6 @@
             exerciseData.difficulte === 'moyen' ? 'Moyen' : 'Difficile';
         }
         
-        // Afficher la progression si disponible
         if (exerciseData.etape && exerciseData.total_etapes) {
           document.getElementById('sidebarProgress').style.display = 'block';
           document.getElementById('progressText').textContent = 
@@ -1502,7 +1499,6 @@
             (exerciseData.etape / exerciseData.total_etapes * 100) + '%';
         }
       } else {
-        // Aucun exercice en cours
         document.getElementById('currentExerciseSidebar').style.display = 'none';
         document.getElementById('noExerciseMessage').style.display = 'block';
       }
