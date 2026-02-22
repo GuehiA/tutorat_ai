@@ -78,7 +78,7 @@
       margin: 0 auto;
       padding: 20px;
       display: grid;
-      grid-template-columns: 300px 1fr 300px;  /* Gauche et droite symétriques */
+      grid-template-columns: 300px 1fr 300px;
       gap: 20px;
       height: calc(100vh - 40px);
     }
@@ -92,7 +92,7 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-      overflow: hidden;  /* Pas de scroll global */
+      overflow: hidden;
     }
 
     /* ===== SIDEBAR GAUCHE ===== */
@@ -150,7 +150,6 @@
       font-size: 0.7rem;
     }
 
-    /* Stats en ligne (3 colonnes) */
     .stats-row {
       display: flex;
       gap: 8px;
@@ -199,7 +198,6 @@
       letter-spacing: 0.3px;
     }
 
-    /* Matière en cours */
     .subject-card {
       background: linear-gradient(135deg, var(--primary), var(--accent));
       border-radius: var(--radius);
@@ -232,7 +230,6 @@
       opacity: 0.9;
     }
 
-    /* Info ligne */
     .info-row {
       display: flex;
       align-items: center;
@@ -265,7 +262,6 @@
       font-size: 0.7rem;
     }
 
-    /* Grille de conseils */
     .tips-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -291,7 +287,6 @@
       width: 16px;
     }
 
-    /* Bouton retour */
     .back-btn {
       display: inline-flex;
       align-items: center;
@@ -743,7 +738,6 @@
       box-shadow: var(--shadow);
     }
 
-    /* Exercice en cours */
     .current-exercise {
       background: var(--light);
       border-radius: var(--radius);
@@ -819,7 +813,30 @@
       margin-bottom: 16px;
     }
 
-    /* Animations */
+    /* Fin d'exercice - message spécial */
+    .exercise-finished-message {
+      background: #e8f5e9;
+      border-left: 4px solid var(--secondary);
+      padding: 15px;
+      border-radius: 10px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.5s ease;
+    }
+
+    .exercise-finished-message i {
+      color: var(--secondary);
+      font-size: 1.5rem;
+    }
+
+    .exercise-finished-message p {
+      margin: 0;
+      color: var(--dark);
+      font-weight: 500;
+    }
+
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.2); }
@@ -862,7 +879,6 @@
       30% { transform: translateY(-8px); opacity: 1; }
     }
 
-    /* Scrollbar */
     .chat-messages::-webkit-scrollbar,
     .current-exercise::-webkit-scrollbar,
     .generation-options::-webkit-scrollbar {
@@ -888,7 +904,6 @@
       background: var(--primary);
     }
 
-    /* Responsive */
     @media (max-width: 1024px) {
       .container {
         grid-template-columns: 1fr;
@@ -945,7 +960,6 @@
   <div class="container">
     <!-- ===== SIDEBAR GAUCHE ===== -->
     <div class="profile-sidebar">
-      <!-- Profile -->
       <div class="profile-header">
         <div class="profile-avatar">
           {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
@@ -965,7 +979,6 @@
         </div>
       </div>
     
-      <!-- Stats en ligne -->
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-icon">
@@ -996,7 +1009,6 @@
         </div>
       </div>
     
-      <!-- Matière en cours -->
       <div class="subject-card">
         <div class="subject-icon" id="subjectIcon">
           <i class="fas 
@@ -1031,7 +1043,6 @@
         </div>
       </div>
     
-      <!-- Info ligne -->
       <div class="info-row">
         <div class="member-since">
           <i class="fas fa-calendar-alt"></i>
@@ -1043,7 +1054,6 @@
         </div>
       </div>
     
-      <!-- Conseils en grille -->
       <div class="tips-grid">
         <div class="tip-item">
           <i class="fas fa-lightbulb"></i>
@@ -1063,7 +1073,6 @@
         </div>
       </div>
     
-      <!-- Bouton retour -->
       <a href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}" class="back-btn">
         <i class="fas fa-arrow-left"></i>
         {% if lang == 'fr' %}Retour{% else %}Back{% endif %}
@@ -1087,7 +1096,6 @@
           </div>
         </div>
         <div class="header-actions">
-          <!-- Sélecteur de matière bilingue -->
           <div class="subject-selector">
             <select id="matiereSelect" class="subject-dropdown" onchange="updateMatiere()">
               {% set matieres = {
@@ -1106,7 +1114,6 @@
               {% endfor %}
             </select>
           </div>
-          <!-- Formulaire pour nouvel exercice -->
           <form method="POST" action="{{ url_for('nouvel_exercice') }}" style="display: inline;" id="exerciseForm">
             <input type="hidden" name="matiere" id="matiereHidden" value="{{ matiere }}">
             <input type="hidden" name="difficulte" id="difficulteHidden" value="moyen">
@@ -1124,7 +1131,6 @@
         {% if conversation %}
           {% for message in conversation %}
             {% if '👤' in message %}
-              <!-- Message élève -->
               <div class="message user">
                 <div class="message-avatar">
                   <i class="fas fa-user-graduate"></i>
@@ -1135,7 +1141,6 @@
                 </div>
               </div>
             {% elif '🤖' in message %}
-              <!-- Message Naima -->
               <div class="message naima">
                 <div class="message-avatar">
                   <i class="fas fa-robot"></i>
@@ -1148,7 +1153,6 @@
             {% endif %}
           {% endfor %}
         {% else %}
-          <!-- Message de bienvenue -->
           <div class="message naima">
             <div class="message-avatar">
               <i class="fas fa-robot"></i>
@@ -1216,7 +1220,6 @@
         {% if lang == 'fr' %}Exercice en cours{% else %}Current Exercise{% endif %}
       </div>
 
-      <!-- Options de génération -->
       <div class="generation-options">
         <h4 class="options-title">
           <i class="fas fa-sliders-h"></i>
@@ -1270,7 +1273,6 @@
         </button>
       </div>
 
-      <!-- Exercice en cours -->
       <div class="current-exercise" id="currentExerciseSidebar" style="display: none;">
         <h4 id="sidebarExerciseTitle">
           {% if lang == 'fr' %}Exercice en cours{% else %}Current Exercise{% endif %}
@@ -1340,7 +1342,6 @@
       });
       document.getElementById(`difficile${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`).classList.add('active');
       
-      // Mettre à jour le champ caché du formulaire
       const difficulteHidden = document.getElementById('difficulteHidden');
       if (difficulteHidden) {
         difficulteHidden.value = difficulty;
@@ -1354,7 +1355,6 @@
       console.log('✅ Difficulté changée:', difficulty);
     }
 
-    // Fonction pour mettre à jour la matière
     function updateMatiere() {
       const matiere = document.getElementById('matiereSelect').value;
       
@@ -1366,7 +1366,6 @@
       sessionStorage.setItem('currentMatiere', matiere);
     }
 
-    // Soumettre le formulaire avec les options
     function submitWithOptions() {
       const matiere = document.getElementById('matiereSelect').value;
       const difficulte = selectedDifficulty;
@@ -1379,6 +1378,7 @@
       document.getElementById('motsClesHidden').value = motsCles;
       
       sessionStorage.setItem('currentMatiere', matiere);
+      sessionStorage.removeItem('exercice_termine'); // Réinitialiser l'état de fin
       
       document.getElementById('currentExerciseSidebar').style.display = 'none';
       document.getElementById('noExerciseMessage').style.display = 'flex';
@@ -1386,7 +1386,6 @@
       document.getElementById('exerciseForm').submit();
     }
 
-    // Mettre à jour la matière sélectionnée
     document.getElementById('matiereSelect').addEventListener('change', function() {
       document.getElementById('matiereHidden').value = this.value;
       document.getElementById('matiereInput').value = this.value;
@@ -1400,7 +1399,6 @@
       document.getElementById('motsClesHidden').value = this.value;
     });
 
-    // Mettre à jour la sidebar exercice
     function updateExerciseSidebar(exerciseData) {
       if (exerciseData && exerciseData.enonce) {
         document.getElementById('noExerciseMessage').style.display = 'none';
@@ -1441,7 +1439,6 @@
       }
     }
 
-    // Mettre à jour la matière dans la sidebar gauche
     function updateSubjectSidebar(matiere) {
       if (matiere) {
         const lang = document.documentElement.lang;
@@ -1477,7 +1474,6 @@
       }
     }
 
-    // Mettre à jour les statistiques
     async function updateStats() {
       try {
         const response = await fetch('/api/eleve/stats', {
@@ -1572,11 +1568,41 @@
       return div.innerHTML;
     }
 
-    // Gestion de l'envoi du formulaire
+    // ✅ Gestion de l'envoi du formulaire avec détection de fin d'exercice
     const chatForm = document.getElementById('chatForm');
     if (chatForm) {
       chatForm.addEventListener('submit', async function(e) {
         e.preventDefault();
+        
+        // ✅ Vérifier si l'exercice est terminé
+        if (sessionStorage.getItem('exercice_termine') === 'true') {
+          const question = questionInput.value.trim();
+          if (question) {
+            addUserMessage(question);
+            questionInput.value = '';
+            questionInput.style.height = 'auto';
+            
+            const msgFin = document.documentElement.lang === 'fr' 
+              ? '✅ Exercice terminé ! Clique sur "Nouvel exercice" pour continuer.'
+              : '✅ Exercise finished! Click "New exercise" to continue.';
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message naima';
+            messageDiv.innerHTML = `
+              <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+              </div>
+              <div class="message-content exercise-finished-message" style="background: #e8f5e9; border-left-color: var(--secondary);">
+                <i class="fas fa-check-circle" style="color: var(--secondary);"></i>
+                <span>${msgFin}</span>
+                <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+              </div>
+            `;
+            document.getElementById('chatMessages').appendChild(messageDiv);
+            scrollToBottom();
+          }
+          return;
+        }
         
         const question = questionInput.value.trim();
         console.log('📤 Question à envoyer:', question);
@@ -1615,6 +1641,11 @@
           if (response.ok) {
             const data = await response.json();
             console.log('📥 Réponse du serveur:', data);
+            
+            // ✅ Vérifier si l'exercice est terminé
+            if (data.termine) {
+              sessionStorage.setItem('exercice_termine', 'true');
+            }
             
             if (data.success && data.messages && data.messages.length > 0) {
               const lastMessage = data.messages[data.messages.length - 1];
@@ -1671,6 +1702,9 @@
         document.getElementById('matiereInput').value = savedMatiere;
         updateSubjectSidebar(savedMatiere);
       }
+      
+      // ✅ Réinitialiser l'état de fin si on recharge la page
+      sessionStorage.removeItem('exercice_termine');
       
       {% if session.get('exercice_en_cours') %}
         updateExerciseSidebar({{ session.get('exercice_en_cours')|tojson }});
