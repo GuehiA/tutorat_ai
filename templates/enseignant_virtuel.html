@@ -1384,7 +1384,7 @@
     </div>
   </div>
 
-  <script>
+    <script>
     // Variables globales
     let isSubmitting = false;
     let currentExerciseId = null;
@@ -1470,6 +1470,8 @@
             'X-Requested-With': 'XMLHttpRequest'
           }
         });
+        
+        if (!response.ok) return;
         
         const data = await response.json();
         
@@ -1682,23 +1684,39 @@
       return div.innerHTML;
     }
 
-    // Gestion de l'envoi du formulaire
+    // ✅ GESTION CORRIGÉE DE L'ENVOI DU FORMULAIRE
     const chatForm = document.getElementById('chatForm');
     if (chatForm) {
       chatForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const question = questionInput.value.trim();
-        if (!question) return;
+        console.log('📤 Question à envoyer:', question);  // ← LOG DE DÉBOGAGE
         
+        if (!question) {
+          console.log('❌ Question vide');
+          return;
+        }
+        
+        // Afficher la question de l'utilisateur immédiatement
         addUserMessage(question);
+        
+        // Vider le textarea
         questionInput.value = '';
         questionInput.style.height = 'auto';
         
+        // Afficher l'indicateur de frappe
         const typingId = showTypingIndicator();
         
         try {
-          const formData = new FormData(chatForm);
+          const formData = new FormData();
+          formData.append('question', question);
+          formData.append('matiere', document.getElementById('matiereSelect').value);
+          
+          // ✅ LOG DU FORMDATA
+          for (let pair of formData.entries()) {
+            console.log('📦 FormData:', pair[0], pair[1]);
+          }
           
           const response = await fetch('{{ url_for("enseignant_virtuel") }}', {
             method: 'POST',
@@ -1712,11 +1730,17 @@
           
           if (response.ok) {
             const data = await response.json();
+            console.log('📥 Réponse du serveur:', data);  // ← LOG DE LA RÉPONSE
+            
             if (data.success && data.messages && data.messages.length > 0) {
+              // Ajouter le dernier message de Naima
               const lastMessage = data.messages[data.messages.length - 1];
+              
+              // Extraire le contenu du message (sans les balises)
               const tempDiv = document.createElement('div');
               tempDiv.innerHTML = lastMessage;
               const content = tempDiv.querySelector('.message-content')?.innerHTML || lastMessage;
+              
               addNaimaMessage(content);
               
               // Mettre à jour les stats si elles sont renvoyées
@@ -1727,11 +1751,13 @@
                 document.getElementById('stat-temps').textContent = data.stats.temps_apprentissage + ' min';
               }
             } else {
-              window.location.reload();
+              console.log('⚠️ Pas de messages dans la réponse');
             }
+          } else {
+            console.error('❌ Erreur HTTP:', response.status);
           }
         } catch (error) {
-          console.error('Erreur:', error);
+          console.error('❌ Erreur fetch:', error);
           removeTypingIndicator(typingId);
           addNaimaMessage('{% if lang == "fr" %}Désolée, j\'ai eu un problème technique. Peux-tu réessayer ?{% else %}Sorry, I had a technical issue. Can you try again?{% endif %}');
         }
