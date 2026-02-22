@@ -2214,7 +2214,7 @@ def enseignant_virtuel():
                 
                 # Sauvegarder
                 session["conversation"] = conversation
-                session.modified = True
+                session.modified = True  # ← TRÈS IMPORTANT
                 print(f"[DEBUG] Conversation sauvegardée: {len(conversation)} messages")
                 
             except Exception as e:
@@ -2231,8 +2231,50 @@ def enseignant_virtuel():
                 enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
                 conversation.append(f"{enseignant_label} {msg_erreur}")
                 session["conversation"] = conversation
+                session.modified = True
+        
+        # ✅ POUR LES REQUÊTES AJAX - RENVOYER LES MESSAGES FORMATÉS
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            messages_html = []
+            for msg in conversation[-10:]:
+                if "👤" in msg:
+                    content = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
+                    messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
+                elif "🤖" in msg:
+                    content = msg.replace("🤖 Naima:", "").strip()
+                    messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
+            
+            # ✅ Calculer les stats pour les renvoyer aussi
+            try:
+                total_exercices = eleve.total_exercices_realises
+                exercices_reussis = eleve.exercices_reussis
+                serie = eleve.serie_actuelle
+                temps_apprentissage = eleve.temps_total_apprentissage
+                
+                stats = {
+                    'total_exercices': total_exercices,
+                    'exercices_reussis': exercices_reussis,
+                    'taux_reussite': round((exercices_reussis / total_exercices * 100) if total_exercices > 0 else 0),
+                    'serie': serie,
+                    'temps_apprentissage': temps_apprentissage,
+                }
+            except:
+                stats = {
+                    'total_exercices': 0,
+                    'exercices_reussis': 0,
+                    'taux_reussite': 0,
+                    'serie': 0,
+                    'temps_apprentissage': 0
+                }
+            
+            return jsonify({
+                'success': True,
+                'messages': messages_html,
+                'last_message': messages_html[-1] if messages_html else '',
+                'stats': stats
+            })
     
-    # ✅ Calculer les statistiques de l'élève
+    # ✅ Calculer les statistiques de l'élève pour l'affichage normal
     from models import StudentResponse
     from sqlalchemy import func
     
@@ -2296,25 +2338,7 @@ def enseignant_virtuel():
     
     print(f"[DEBUG] Stats élève: {stats}")
     
-    # Pour les requêtes AJAX
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        messages_html = []
-        for msg in conversation[-10:]:
-            if "👤" in msg:
-                content = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
-                messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
-            elif "🤖" in msg:
-                content = msg.replace("🤖 Naima:", "").strip()
-                messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
-        
-        return jsonify({
-            'success': True,
-            'messages': messages_html,
-            'last_message': messages_html[-1] if messages_html else '',
-            'stats': stats
-        })
-    
-    # Pour les requêtes normales
+    # Pour les requêtes normales (non AJAX)
     return render_template(
         "enseignant_virtuel.html",
         lang=lang,
