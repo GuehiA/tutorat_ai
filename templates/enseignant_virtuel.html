@@ -1183,7 +1183,7 @@
         </div>
         <div class="header-actions">
           <div class="subject-selector">
-            <select id="matiereSelect" class="subject-dropdown">
+            <select id="matiereSelect" class="subject-dropdown" onchange="updateMatiere()">
               <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>📐 Mathématiques</option>
               <option value="français" {% if matiere == 'français' %}selected{% endif %}>📖 Français</option>
               <option value="anglais" {% if matiere == 'anglais' %}selected{% endif %}>🇬🇧 Anglais</option>
@@ -1432,6 +1432,21 @@
       }
     }
 
+    // Fonction pour mettre à jour la matière quand on change la sélection
+    function updateMatiere() {
+      const matiere = document.getElementById('matiereSelect').value;
+      
+      // Mettre à jour les champs cachés
+      document.getElementById('matiereHidden').value = matiere;
+      document.getElementById('matiereInput').value = matiere;
+      
+      // Mettre à jour l'affichage dans la sidebar gauche immédiatement
+      updateSubjectSidebar(matiere);
+      
+      // Sauvegarder la matière dans sessionStorage
+      sessionStorage.setItem('currentMatiere', matiere);
+    }
+
     // Soumettre le formulaire avec les options
     function submitWithOptions() {
       const matiere = document.getElementById('matiereSelect').value;
@@ -1444,6 +1459,9 @@
       document.getElementById('difficulteHidden').value = difficulte;
       document.getElementById('typeHidden').value = typeExercice;
       document.getElementById('motsClesHidden').value = motsCles;
+      
+      // Sauvegarder la matière avant soumission
+      sessionStorage.setItem('currentMatiere', matiere);
       
       // Vider la sidebar avant de soumettre
       document.getElementById('currentExerciseSidebar').style.display = 'none';
@@ -1472,18 +1490,22 @@
     // Fonction pour mettre à jour la sidebar avec l'exercice en cours
     function updateExerciseSidebar(exerciseData) {
       if (exerciseData && exerciseData.enonce) {
+        // Cacher le message "aucun exercice"
         document.getElementById('noExerciseMessage').style.display = 'none';
         
+        // Afficher la sidebar d'exercice
         const sidebar = document.getElementById('currentExerciseSidebar');
         sidebar.style.display = 'block';
         
-        // ✅ CORRIGÉ : Utiliser la syntaxe Jinja, pas de ternaire JavaScript
+        // Mettre à jour le titre
         document.getElementById('sidebarExerciseTitle').textContent = 
-          '{% if lang == "fr" %}Exercice en cours{% else %}Current Exercise{% endif %}';
+          document.documentElement.lang === 'fr' ? 'Exercice en cours' : 'Current Exercise';
         
+        // Mettre à jour la question
         document.getElementById('sidebarExerciseQuestion').textContent = 
           exerciseData.enonce.substring(0, 100) + '...';
         
+        // Mettre à jour la difficulté
         const difficultyBadge = document.getElementById('sidebarExerciseDifficulty');
         if (exerciseData.difficulte) {
           difficultyBadge.textContent = 
@@ -1491,6 +1513,7 @@
             exerciseData.difficulte === 'moyen' ? 'Moyen' : 'Difficile';
         }
         
+        // Afficher la progression si disponible
         if (exerciseData.etape && exerciseData.total_etapes) {
           document.getElementById('sidebarProgress').style.display = 'block';
           document.getElementById('progressText').textContent = 
@@ -1499,6 +1522,7 @@
             (exerciseData.etape / exerciseData.total_etapes * 100) + '%';
         }
       } else {
+        // Aucun exercice en cours
         document.getElementById('currentExerciseSidebar').style.display = 'none';
         document.getElementById('noExerciseMessage').style.display = 'block';
       }
@@ -1850,6 +1874,15 @@
       }
       setDifficulty('moyen');
       document.getElementById('typeHidden').value = document.getElementById('typeExercice').value;
+      
+      // Restaurer la matière depuis sessionStorage si disponible
+      const savedMatiere = sessionStorage.getItem('currentMatiere');
+      if (savedMatiere) {
+        document.getElementById('matiereSelect').value = savedMatiere;
+        document.getElementById('matiereHidden').value = savedMatiere;
+        document.getElementById('matiereInput').value = savedMatiere;
+        updateSubjectSidebar(savedMatiere);
+      }
       
       // Vérifier s'il y a un exercice en cours au chargement
       {% if session.get('exercice_en_cours') %}
