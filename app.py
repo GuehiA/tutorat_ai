@@ -1772,6 +1772,12 @@ def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="
     print(f"💬 Réponse élève: {reponse[:100]}...")
     print(f"📚 Matière: {matiere}, Niveau: {niveau}")
     
+    # ✅ Vérifier si l'exercice est déjà terminé
+    from flask import session
+    if session.get('exercice_termine'):
+        print(f"[DEBUG] ⏸️ Exercice terminé - pas de nouvelle réponse")
+        return None
+    
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
     # Préparer l'historique contextuel (les 10 derniers messages)
@@ -1801,17 +1807,18 @@ La réponse de l'élève : "{reponse}"
 3. Si c'est partiellement correct : reconnais ce qui est bon, guide pour corriger
 4. Si c'est incorrect : ne dis pas "c'est faux", guide avec un indice
 5. Pose UNE SEULE nouvelle question pour faire avancer la réflexion
+6. **IMPORTANT: Si l'exercice est terminé (plus d'étapes), félicite l'élève et dis-lui que l'exercice est fini. Ne pose plus de question.**
 
 **FORMAT DE TA RÉPONSE :**
 - Réaction à la réponse de l'élève (félicitations/guidage)
 - Explication très brève si nécessaire
-- Nouvelle question précise
+- Nouvelle question précise (sauf si exercice terminé)
 - Signature : — Naima ✨
 
-**EXEMPLE :**
-"Super, tu as bien identifié le premier terme ! Maintenant, regarde le deuxième : quelle opération vois-tu ?
+**EXEMPLE DE FIN D'EXERCICE :**
+"Bravo ! Tu as parfaitement résolu cet exercice ! 🎉 Tu peux maintenant passer à l'exercice suivant ou en générer un nouveau.
 
-— Naima ✨"""
+— Naima ✨" """
     else:
         system_prompt = f"""You are Naima, a kind and patient virtual teacher. You help {niveau} students with {matiere}.
 
@@ -1832,17 +1839,18 @@ Student's answer: "{reponse}"
 3. If partially correct: acknowledge what's good, guide to correct
 4. If incorrect: don't say "that's wrong", guide with a hint
 5. Ask ONLY ONE new question to advance their thinking
+6. **IMPORTANT: If the exercise is finished (no more steps), congratulate the student and tell them the exercise is done. Do not ask more questions.**
 
 **YOUR RESPONSE FORMAT:**
 - Reaction to student's answer (praise/guidance)
 - Very brief explanation if needed
-- New precise question
+- New precise question (unless exercise is finished)
 - Signature: — Naima ✨
 
-**EXAMPLE:**
-"Great, you correctly identified the first term! Now, look at the second one: what operation do you see?
+**EXAMPLE OF EXERCISE COMPLETION:**
+"Congratulations! You've successfully completed this exercise! 🎉 You can now move to the next exercise or generate a new one.
 
-— Naima ✨"""
+— Naima ✨" """
     
     prompt = f"""**Historique de conversation ({matiere}) :**
 {historique_text}
@@ -1852,7 +1860,7 @@ Student's answer: "{reponse}"
     
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # ✅ Changé de gpt-4 à gpt-3.5-turbo
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
@@ -1863,6 +1871,22 @@ Student's answer: "{reponse}"
         
         reponse_naima = response.choices[0].message.content.strip()
         print(f"✅✅✅ Réponse générée: {reponse_naima[:100]}...")
+        
+        # ✅ Détecter si l'exercice est terminé (plus de question)
+        exercice_termine = False
+        if langue == "fr":
+            if "exercice est terminé" in reponse_naima.lower() or "fini" in reponse_naima.lower() or "peux maintenant" in reponse_naima.lower():
+                exercice_termine = True
+        else:
+            if "exercise is finished" in reponse_naima.lower() or "completed" in reponse_naima.lower() or "can now" in reponse_naima.lower():
+                exercice_termine = True
+        
+        # ✅ Stocker l'état dans la session
+        if exercice_termine:
+            from flask import session
+            session['exercice_termine'] = True
+            session.modified = True
+            print(f"[DEBUG] 🏁 Exercice marqué comme terminé")
         
         # S'assurer que Naima signe sa réponse
         if langue == "fr":
@@ -2343,6 +2367,36 @@ def enseignant_virtuel():
             eleve_label = "👤 Élève:" if lang == "fr" else "👤 Student:"
             conversation.append(f"{eleve_label} {question}")
             
+            # ✅ Vérifier si l'exercice est terminé
+            if session.get('exercice_termine'):
+                print(f"[DEBUG] 🏁 Exercice déjà terminé - pas d'appel IA")
+                if lang == "fr":
+                    msg_fin = "🤖 Naima: L'exercice est terminé ! Si tu veux continuer, clique sur 'Nouvel exercice'."
+                else:
+                    msg_fin = "🤖 Naima: The exercise is finished! If you want to continue, click 'New exercise'."
+                
+                conversation.append(msg_fin)
+                session["conversation"] = conversation
+                session.modified = True
+                
+                # Réponse AJAX
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    messages_html = []
+                    for msg in conversation[-10:]:
+                        if "👤" in msg:
+                            content = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
+                            messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
+                        elif "🤖" in msg:
+                            content = msg.replace("🤖 Naima:", "").strip()
+                            messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
+                    
+                    return jsonify({
+                        'success': True,
+                        'messages': messages_html,
+                        'last_message': messages_html[-1] if messages_html else '',
+                        'termine': True
+                    })
+            
             try:
                 # ✅ Vérifier si c'est une réponse à une question précédente
                 derniere_q_ia = session.get('derniere_q_ia')
@@ -2388,13 +2442,14 @@ def enseignant_virtuel():
                 conversation.append(f"{enseignant_label} {reponse}")
                 print(f"[DEBUG] Réponse ajoutée: {reponse[:100]}...")
                 
-                # ✅ Extraire la NOUVELLE question de Naima pour la suite
-                nouvelle_q = extraire_question(reponse, lang)
-                if nouvelle_q:
-                    session['derniere_q_ia'] = nouvelle_q
-                    print(f"[DEBUG] ✅ Nouvelle question extraite: {nouvelle_q[:100]}...")
-                else:
-                    print(f"[DEBUG] ⚠️ Aucune question extraite de la réponse")
+                # ✅ Extraire la NOUVELLE question de Naima pour la suite (sauf si exercice terminé)
+                if not session.get('exercice_termine'):
+                    nouvelle_q = extraire_question(reponse, lang)
+                    if nouvelle_q:
+                        session['derniere_q_ia'] = nouvelle_q
+                        print(f"[DEBUG] ✅ Nouvelle question extraite: {nouvelle_q[:100]}...")
+                    else:
+                        print(f"[DEBUG] ⚠️ Aucune question extraite de la réponse")
                 
                 # Limiter la taille de la conversation
                 if len(conversation) > 20:
@@ -2402,7 +2457,7 @@ def enseignant_virtuel():
                 
                 # Sauvegarder
                 session["conversation"] = conversation
-                session.modified = True  # ← TRÈS IMPORTANT
+                session.modified = True
                 print(f"[DEBUG] Conversation sauvegardée: {len(conversation)} messages")
                 
             except Exception as e:
@@ -2461,8 +2516,8 @@ def enseignant_virtuel():
                 'last_message': messages_html[-1] if messages_html else '',
                 'stats': stats,
                 'matiere': matiere,
-                'exercice_en_cours': session.get('exercice_en_cours')
-                
+                'exercice_en_cours': session.get('exercice_en_cours'),
+                'termine': session.get('exercice_termine', False)
             })
     
     # ✅ Calculer les statistiques de l'élève pour l'affichage normal
@@ -2884,6 +2939,9 @@ def nouvel_exercice():
     
     print(f"[DEBUG] Options: {matiere}, {difficulte}, {type_exercice}, mots-clés: {mots_cles}")
     
+    # ✅ Réinitialiser l'état de fin d'exercice
+    session.pop('exercice_termine', None)
+    
     # Vider la conversation existante
     session_keys_to_remove = ["conversation", "derniere_q_ia", "exercice_en_cours", "mode_examen"]
     for key in session_keys_to_remove:
@@ -2894,7 +2952,7 @@ def nouvel_exercice():
         # Récupérer le niveau de l'élève
         niveau_eleve = eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème")
         
-        # ✅ Utiliser la nouvelle fonction qui prend en compte les options
+        # ✅ Utiliser la fonction qui prend en compte les options
         exercice = generer_exercice_specifique(
             matiere=matiere,
             niveau=niveau_eleve,
