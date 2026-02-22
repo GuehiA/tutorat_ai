@@ -1821,7 +1821,13 @@
           {% if lecon.unite %}
             <div class="meta-item">
               <i class="fas fa-book"></i>
-              <span><strong>{% if lang == 'fr' %}Unité :{% else %}Unit:{% endif %}</strong> {{ lecon.unite.nom }}</span>
+              <span><strong>{% if lang == 'fr' %}Unité :{% else %}Unit:{% endif %}</strong> 
+                {% if lang == 'en' and lecon.unite.nom_en %}
+                  {{ lecon.unite.nom_en }}
+                {% else %}
+                  {{ lecon.unite.nom }}
+                {% endif %}
+              </span>
             </div>
           {% endif %}
           
