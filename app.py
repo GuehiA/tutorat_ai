@@ -2919,7 +2919,10 @@ def nouvel_exercice():
             'indices': exercice.get('indices', []),
             'correction': exercice.get('correction', {}),
             'type': type_exercice,
-            'matiere': matiere
+            'matiere': matiere,
+            'difficulte': difficulte,
+            'etape': 1,
+            'total_etapes': len(exercice.get('correction', {}).get('etapes', [3]))
         }
         
         print(f"[DEBUG] ✅ Exercice {type_exercice} généré avec succès")
