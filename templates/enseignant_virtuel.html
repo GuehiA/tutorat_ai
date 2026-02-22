@@ -1313,6 +1313,7 @@
       <div class="chat-input-area">
         <form id="chatForm" style="width: 100%;" method="POST" action="{{ url_for('enseignant_virtuel') }}">
           <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere }}">
+          <input type="hidden" name="difficulte" id="difficulteChatHidden" value="moyen">
           <div class="input-container">
             <textarea 
               name="question" 
@@ -1469,6 +1470,14 @@
       if (difficulteHidden) {
         difficulteHidden.value = difficulty;
       }
+
+      // Mettre à jour aussi le champ caché du formulaire de chat (optionnel)
+      const difficulteChatHidden = document.getElementById('difficulteChatHidden');
+      if (difficulteChatHidden) {
+          difficulteChatHidden.value = difficulty;
+      }
+      
+      console.log('✅ Difficulté changée:', difficulty); // Pour déboguer
     }
 
     // Fonction pour mettre à jour la matière quand on change la sélection
@@ -1529,27 +1538,31 @@
     // Fonction pour mettre à jour la sidebar avec l'exercice en cours
     function updateExerciseSidebar(exerciseData) {
       if (exerciseData && exerciseData.enonce) {
-        // Cacher le message "aucun exercice"
         document.getElementById('noExerciseMessage').style.display = 'none';
         
-        // Afficher la sidebar d'exercice
         const sidebar = document.getElementById('currentExerciseSidebar');
         sidebar.style.display = 'block';
         
-        // Mettre à jour le titre
+        // Titre bilingue
         document.getElementById('sidebarExerciseTitle').textContent = 
           document.documentElement.lang === 'fr' ? 'Exercice en cours' : 'Current Exercise';
         
-        // Mettre à jour la question
         document.getElementById('sidebarExerciseQuestion').textContent = 
           exerciseData.enonce.substring(0, 100) + '...';
         
-        // Mettre à jour la difficulté
+        // ✅ DIFFICULTÉ BILINGUE
         const difficultyBadge = document.getElementById('sidebarExerciseDifficulty');
         if (exerciseData.difficulte) {
-          difficultyBadge.textContent = 
-            exerciseData.difficulte === 'facile' ? 'Facile' : 
-            exerciseData.difficulte === 'moyen' ? 'Moyen' : 'Difficile';
+          const lang = document.documentElement.lang;
+          if (lang === 'fr') {
+            difficultyBadge.textContent = 
+              exerciseData.difficulte === 'facile' ? 'Facile' : 
+              exerciseData.difficulte === 'moyen' ? 'Moyen' : 'Difficile';
+          } else {
+            difficultyBadge.textContent = 
+              exerciseData.difficulte === 'facile' ? 'Easy' : 
+              exerciseData.difficulte === 'moyen' ? 'Medium' : 'Hard';
+          }
         }
         
         // Afficher la progression si disponible
@@ -1561,7 +1574,6 @@
             (exerciseData.etape / exerciseData.total_etapes * 100) + '%';
         }
       } else {
-        // Aucun exercice en cours
         document.getElementById('currentExerciseSidebar').style.display = 'none';
         document.getElementById('noExerciseMessage').style.display = 'block';
       }
