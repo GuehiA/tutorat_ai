@@ -1075,13 +1075,20 @@
         </div>
         <h3 class="profile-name">{{ eleve.nom_complet }}</h3>
         <div class="profile-level">
-          <span>{{ eleve.niveau.nom if eleve.niveau else '6ème' }}</span>
+          <!-- ✅ NIVEAU BILINGUE - utilise nom_en si disponible -->
+          <span>
+            {% if lang == 'en' and eleve.niveau and eleve.niveau.nom_en %}
+              {{ eleve.niveau.nom_en }}
+            {% else %}
+              {{ eleve.niveau.nom if eleve.niveau else ('6th grade' if lang == 'en' else '6ème') }}
+            {% endif %}
+          </span>
           <span class="level-badge">
             {% if lang == 'fr' %}Actif{% else %}Active{% endif %}
           </span>
         </div>
       </div>
-
+    
       <!-- Statistiques principales -->
       <div class="stats-grid">
         <div class="stat-card">
@@ -1103,7 +1110,7 @@
           </div>
         </div>
       </div>
-
+    
       <!-- Statistiques supplémentaires -->
       <div class="extra-stats">
         <div class="extra-stat">
@@ -1115,29 +1122,50 @@
           <div class="extra-stat-value" id="stat-temps">{{ stats.temps_apprentissage if stats else 0 }} min</div>
         </div>
       </div>
-
-      <!-- Matière en cours - AVEC ID POUR MISE À JOUR DYNAMIQUE -->
+    
+      <!-- ✅ MATIÈRE EN COURS - BILINGUE avec nom_en -->
       <div class="subject-card">
         <div class="subject-icon" id="subjectIcon">
-          <i class="fas {% if matiere == 'mathématiques' %}fa-calculator{% elif matiere == 'français' %}fa-language{% elif matiere == 'anglais' %}fa-globe{% elif matiere == 'histoire' %}fa-landmark{% elif matiere == 'sciences' %}fa-flask{% else %}fa-book{% endif %}"></i>
+          <i class="fas 
+            {% if matiere == 'mathématiques' %}fa-calculator
+            {% elif matiere == 'français' %}fa-language
+            {% elif matiere == 'anglais' %}fa-globe
+            {% elif matiere == 'histoire' %}fa-landmark
+            {% elif matiere == 'sciences' %}fa-flask
+            {% elif matiere == 'géographie' %}fa-globe-americas
+            {% else %}fa-book{% endif %}"></i>
         </div>
-        <div class="subject-name" id="currentSubjectName">{{ matiere|capitalize }}</div>
+        <div class="subject-name" id="currentSubjectName">
+          {% if lang == 'en' %}
+            {% if matiere == 'mathématiques' %}Mathematics
+            {% elif matiere == 'français' %}French
+            {% elif matiere == 'anglais' %}English
+            {% elif matiere == 'histoire' %}History
+            {% elif matiere == 'sciences' %}Science
+            {% elif matiere == 'géographie' %}Geography
+            {% else %}{{ matiere|capitalize }}
+            {% endif %}
+          {% else %}
+            {{ matiere|capitalize }}
+          {% endif %}
+        </div>
+        <!-- ✅ THÈME - bilingue aussi -->
         <div class="subject-topic" id="currentSubjectTopic">
-          {% if theme %}
+          {% if theme and theme != 'général' and theme != 'general' %}
             {{ theme }}
           {% else %}
             {% if lang == 'fr' %}Prêt à apprendre{% else %}Ready to learn{% endif %}
           {% endif %}
         </div>
       </div>
-
+    
       <!-- Date d'inscription -->
       <div class="member-since">
         <i class="fas fa-calendar-alt"></i> 
         {% if lang == 'fr' %}Membre depuis{% else %}Member since{% endif %} 
         <span id="member-date">{{ stats.date_inscription if stats else 'N/A' }}</span>
       </div>
-
+    
       <!-- Conseils -->
       <ul class="tips-list">
         <li>
@@ -1157,7 +1185,7 @@
           <span>{% if lang == 'fr' %}Prends ton temps{% else %}Take your time{% endif %}</span>
         </li>
       </ul>
-
+    
       <!-- Bouton retour -->
       <a href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}" class="back-btn">
         <i class="fas fa-arrow-left"></i>
@@ -1182,14 +1210,25 @@
           </div>
         </div>
         <div class="header-actions">
+          
+          <!-- Dans le header, le sélecteur de matière - VERSION BILINGUE -->
+          <!-- Version avec dictionnaire - PLUS PROPRE -->
           <div class="subject-selector">
             <select id="matiereSelect" class="subject-dropdown" onchange="updateMatiere()">
-              <option value="mathématiques" {% if matiere == 'mathématiques' %}selected{% endif %}>📐 Mathématiques</option>
-              <option value="français" {% if matiere == 'français' %}selected{% endif %}>📖 Français</option>
-              <option value="anglais" {% if matiere == 'anglais' %}selected{% endif %}>🇬🇧 Anglais</option>
-              <option value="histoire" {% if matiere == 'histoire' %}selected{% endif %}>🏛️ Histoire</option>
-              <option value="sciences" {% if matiere == 'sciences' %}selected{% endif %}>🔬 Sciences</option>
-              <option value="géographie" {% if matiere == 'géographie' %}selected{% endif %}>🌍 Géographie</option>
+              {% set matieres = {
+                'mathématiques': {'fr': 'Mathématiques', 'en': 'Mathematics', 'icon': '📐'},
+                'français': {'fr': 'Français', 'en': 'French', 'icon': '📖'},
+                'anglais': {'fr': 'Anglais', 'en': 'English', 'icon': '🇬🇧'},
+                'histoire': {'fr': 'Histoire', 'en': 'History', 'icon': '🏛️'},
+                'sciences': {'fr': 'Sciences', 'en': 'Science', 'icon': '🔬'},
+                'géographie': {'fr': 'Géographie', 'en': 'Geography', 'icon': '🌍'}
+              } %}
+              
+              {% for value, data in matieres.items() %}
+                <option value="{{ value }}" {% if matiere == value %}selected{% endif %}>
+                  {{ data.icon }} {{ data[lang] if lang in data else data['fr'] }}
+                </option>
+              {% endfor %}
             </select>
           </div>
           <!-- Formulaire pour nouvel exercice -->
@@ -1531,9 +1570,20 @@
     // Fonction pour mettre à jour la matière dans la sidebar gauche
     function updateSubjectSidebar(matiere) {
       if (matiere) {
-        // Mettre à jour le nom
-        document.getElementById('currentSubjectName').textContent = 
-          matiere.charAt(0).toUpperCase() + matiere.slice(1);
+        // Mettre à jour le nom avec traduction
+        const lang = document.documentElement.lang;
+        let displayName = matiere.charAt(0).toUpperCase() + matiere.slice(1);
+        
+        if (lang === 'en') {
+          if (matiere === 'mathématiques') displayName = 'Mathematics';
+          else if (matiere === 'français') displayName = 'French';
+          else if (matiere === 'anglais') displayName = 'English';
+          else if (matiere === 'histoire') displayName = 'History';
+          else if (matiere === 'sciences') displayName = 'Science';
+          else if (matiere === 'géographie') displayName = 'Geography';
+        }
+        
+        document.getElementById('currentSubjectName').textContent = displayName;
         
         // Mettre à jour l'icône
         const icon = document.querySelector('#subjectIcon i');
@@ -1544,7 +1594,14 @@
           else if (m === 'anglais') icon.className = 'fas fa-globe';
           else if (m === 'histoire') icon.className = 'fas fa-landmark';
           else if (m === 'sciences') icon.className = 'fas fa-flask';
+          else if (m === 'géographie') icon.className = 'fas fa-globe-americas';
           else icon.className = 'fas fa-book';
+        }
+        
+        // Mettre à jour le thème
+        const topicElement = document.getElementById('currentSubjectTopic');
+        if (topicElement) {
+          topicElement.textContent = lang === 'fr' ? 'Prêt à apprendre' : 'Ready to learn';
         }
       }
     }
