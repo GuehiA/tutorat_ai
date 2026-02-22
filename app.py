@@ -2459,7 +2459,10 @@ def enseignant_virtuel():
                 'success': True,
                 'messages': messages_html,
                 'last_message': messages_html[-1] if messages_html else '',
-                'stats': stats
+                'stats': stats,
+                'matiere': matiere,
+                'exercice_en_cours': session.get('exercice_en_cours')
+                
             })
     
     # ✅ Calculer les statistiques de l'élève pour l'affichage normal
