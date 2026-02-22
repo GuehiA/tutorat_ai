@@ -78,82 +78,85 @@
       margin: 0 auto;
       padding: 20px;
       display: grid;
-      grid-template-columns: 300px 1fr 350px;
+      grid-template-columns: 280px 1fr 350px; /* Sidebar gauche réduite */
       gap: 20px;
       height: calc(100vh - 40px);
     }
 
-    /* ===== SIDEBAR GAUCHE - PROFIL & STATS ===== */
+    /* ===== SIDEBAR GAUCHE - PROFIL & STATS OPTIMISÉ ===== */
     .profile-sidebar {
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
       border-radius: var(--radius-lg);
-      padding: 24px;
+      padding: 16px;  /* Réduit de 24px à 16px */
       box-shadow: var(--shadow-lg);
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 12px;  /* Réduit de 20px à 12px */
       overflow-y: auto;
       border: 1px solid rgba(255, 255, 255, 0.2);
+      height: fit-content;
+      max-height: calc(100vh - 40px);
     }
 
     .profile-header {
       text-align: center;
-      padding-bottom: 16px;
+      padding-bottom: 8px;  /* Réduit */
       border-bottom: 2px solid var(--light);
     }
 
     .profile-avatar {
-      width: 90px;
-      height: 90px;
+      width: 70px;  /* Réduit de 90px à 70px */
+      height: 70px;
       border-radius: 50%;
       background: linear-gradient(135deg, var(--primary), var(--accent));
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 12px;
+      margin: 0 auto 8px;  /* Réduit */
       color: white;
-      font-size: 2.2rem;
+      font-size: 1.8rem;  /* Réduit */
       font-weight: 600;
       box-shadow: var(--shadow-lg);
       border: 3px solid white;
     }
 
     .profile-name {
-      font-size: 1.2rem;
+      font-size: 1rem;  /* Réduit */
       font-weight: 700;
       color: var(--dark);
-      margin-bottom: 4px;
+      margin-bottom: 2px;  /* Réduit */
     }
 
     .profile-level {
-      font-size: 0.85rem;
+      font-size: 0.75rem;  /* Réduit */
       color: var(--gray);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;  /* Réduit */
     }
 
     .level-badge {
       background: var(--primary-light);
       color: var(--primary-dark);
-      padding: 4px 10px;
+      padding: 2px 8px;  /* Réduit */
       border-radius: 20px;
       font-weight: 600;
-      font-size: 0.7rem;
+      font-size: 0.65rem;  /* Réduit */
     }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+    /* Stats en ligne (3 colonnes) */
+    .stats-row {
+      display: flex;
+      gap: 6px;
       margin-bottom: 8px;
     }
 
     .stat-card {
+      flex: 1;
       background: var(--light);
-      padding: 14px 10px;
+      padding: 8px 4px;  /* Réduit */
       border-radius: var(--radius);
       text-align: center;
       transition: var(--transition);
@@ -165,143 +168,133 @@
     }
 
     .stat-icon {
-      width: 36px;
-      height: 36px;
+      width: 24px;  /* Réduit */
+      height: 24px;
       background: white;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 6px;
+      margin: 0 auto 2px;  /* Réduit */
       color: var(--primary);
-      font-size: 1.1rem;
+      font-size: 0.8rem;  /* Réduit */
     }
 
     .stat-value {
-      font-size: 1.4rem;
+      font-size: 1rem;  /* Réduit */
       font-weight: 700;
       color: var(--dark);
       line-height: 1.2;
     }
 
     .stat-label {
-      font-size: 0.7rem;
+      font-size: 0.55rem;  /* Réduit */
       color: var(--gray);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
 
-    /* Stats supplémentaires */
-    .extra-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .extra-stat {
-      background: var(--light);
-      padding: 10px 8px;
-      border-radius: var(--radius-sm);
-      text-align: center;
-    }
-
-    .extra-stat-label {
-      font-size: 0.65rem;
-      color: var(--gray);
-      text-transform: uppercase;
-      margin-bottom: 2px;
-    }
-
-    .extra-stat-value {
-      font-weight: 700;
-      color: var(--primary);
-      font-size: 1rem;
-    }
-
-    /* Matière en cours - avec ID pour mise à jour dynamique */
+    /* Matière en cours - compact */
     .subject-card {
       background: linear-gradient(135deg, var(--primary), var(--accent));
       border-radius: var(--radius);
-      padding: 16px;
+      padding: 12px;  /* Réduit */
       color: white;
-      margin-bottom: 8px;
+      margin-bottom: 4px;  /* Réduit */
     }
 
     .subject-icon {
-      width: 40px;
-      height: 40px;
+      width: 32px;  /* Réduit */
+      height: 32px;
       background: rgba(255, 255, 255, 0.2);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.3rem;
-      margin-bottom: 10px;
+      font-size: 1rem;  /* Réduit */
+      margin-bottom: 6px;  /* Réduit */
     }
 
     .subject-name {
-      font-size: 1rem;
+      font-size: 0.9rem;  /* Réduit */
       font-weight: 600;
       margin-bottom: 2px;
     }
 
     .subject-topic {
-      font-size: 0.8rem;
+      font-size: 0.7rem;  /* Réduit */
       opacity: 0.9;
     }
 
-    .member-since {
-      font-size: 0.7rem;
-      color: var(--gray);
-      text-align: center;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px dashed var(--light);
-    }
-
-    .tips-list {
-      list-style: none;
-      background: var(--light);
-      border-radius: var(--radius);
-      padding: 14px;
-      margin-bottom: 16px;
-    }
-
-    .tips-list li {
+    /* Date et infos en ligne */
+    .info-row {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-      font-size: 0.85rem;
-    }
-
-    .tips-list li:last-child {
-      border-bottom: none;
-    }
-
-    .tips-list li i {
-      color: var(--warning);
-      font-size: 0.9rem;
-      width: 18px;
-    }
-
-    .tips-list li span {
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.65rem;
       color: var(--gray);
+    }
+
+    .member-since {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .quick-tips {
+      display: flex;
+      gap: 8px;
+    }
+
+    .quick-tip {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: var(--gray);
+    }
+
+    .quick-tip i {
+      color: var(--warning);
+      font-size: 0.7rem;
+    }
+
+    /* Conseils simplifiés en grille */
+    .tips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: var(--light);
+      border-radius: var(--radius);
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+
+    .tip-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      color: var(--gray);
+    }
+
+    .tip-item i {
+      color: var(--warning);
+      font-size: 0.7rem;
+      width: 14px;
     }
 
     .back-btn {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
+      gap: 6px;
+      padding: 6px 12px;  /* Réduit */
       background: var(--light);
       color: var(--gray);
       text-decoration: none;
       border-radius: 30px;
       font-weight: 600;
-      font-size: 0.8rem;
+      font-size: 0.7rem;  /* Réduit */
       margin-top: auto;
       transition: var(--transition);
       justify-content: center;
@@ -312,7 +305,7 @@
       color: var(--primary);
     }
 
-    /* ===== ZONE PRINCIPALE - CHAT ===== */
+    /* ===== ZONE PRINCIPALE - CHAT (inchangé) ===== */
     .chat-main {
       background: white;
       border-radius: var(--radius-lg);
@@ -694,7 +687,7 @@
       transform: none;
     }
 
-    /* ===== SIDEBAR DROITE - EXERCICE EN COURS ===== */
+    /* ===== SIDEBAR DROITE - EXERCICE EN COURS (inchangé) ===== */
     .exercise-sidebar {
       background: white;
       border-radius: var(--radius-lg);
@@ -843,7 +836,6 @@
       box-shadow: var(--shadow);
     }
 
-    /* Exercice en cours - avec IDs pour mise à jour dynamique */
     .current-exercise {
       background: var(--light);
       border-radius: var(--radius);
@@ -1067,15 +1059,15 @@
 </head>
 <body>
   <div class="container">
-    <!-- ===== SIDEBAR GAUCHE - PROFIL & STATS DYNAMIQUES ===== -->
+    <!-- ===== SIDEBAR GAUCHE - PROFIL & STATS OPTIMISÉ ===== -->
     <div class="profile-sidebar">
+      <!-- Profile compact -->
       <div class="profile-header">
         <div class="profile-avatar">
           {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
         </div>
         <h3 class="profile-name">{{ eleve.nom_complet }}</h3>
         <div class="profile-level">
-          <!-- ✅ NIVEAU BILINGUE - utilise nom_en si disponible -->
           <span>
             {% if lang == 'en' and eleve.niveau and eleve.niveau.nom_en %}
               {{ eleve.niveau.nom_en }}
@@ -1089,8 +1081,8 @@
         </div>
       </div>
     
-      <!-- Statistiques principales -->
-      <div class="stats-grid">
+      <!-- Stats en ligne (3 colonnes) -->
+      <div class="stats-row">
         <div class="stat-card">
           <div class="stat-icon">
             <i class="fas fa-star"></i>
@@ -1109,21 +1101,18 @@
             {% if lang == 'fr' %}Série{% else %}Streak{% endif %}
           </div>
         </div>
-      </div>
-    
-      <!-- Statistiques supplémentaires -->
-      <div class="extra-stats">
-        <div class="extra-stat">
-          <div class="extra-stat-label">{% if lang == 'fr' %}Réussite{% else %}Success{% endif %}</div>
-          <div class="extra-stat-value" id="stat-reussite">{{ stats.taux_reussite if stats else 0 }}%</div>
-        </div>
-        <div class="extra-stat">
-          <div class="extra-stat-label">{% if lang == 'fr' %}Temps{% else %}Time{% endif %}</div>
-          <div class="extra-stat-value" id="stat-temps">{{ stats.temps_apprentissage if stats else 0 }} min</div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <div class="stat-value" id="stat-reussite">{{ stats.taux_reussite if stats else 0 }}%</div>
+          <div class="stat-label">
+            {% if lang == 'fr' %}Réussite{% else %}Success{% endif %}
+          </div>
         </div>
       </div>
     
-      <!-- ✅ MATIÈRE EN COURS - BILINGUE avec nom_en -->
+      <!-- Matière en cours - compacte -->
       <div class="subject-card">
         <div class="subject-icon" id="subjectIcon">
           <i class="fas 
@@ -1149,7 +1138,6 @@
             {{ matiere|capitalize }}
           {% endif %}
         </div>
-        <!-- ✅ THÈME - bilingue aussi -->
         <div class="subject-topic" id="currentSubjectTopic">
           {% if theme and theme != 'général' and theme != 'general' %}
             {{ theme }}
@@ -1159,37 +1147,42 @@
         </div>
       </div>
     
-      <!-- Date d'inscription -->
-      <div class="member-since">
-        <i class="fas fa-calendar-alt"></i> 
-        {% if lang == 'fr' %}Membre depuis{% else %}Member since{% endif %} 
-        <span id="member-date">{{ stats.date_inscription if stats else 'N/A' }}</span>
+      <!-- Date et infos en ligne -->
+      <div class="info-row">
+        <div class="member-since">
+          <i class="fas fa-calendar-alt"></i>
+          <span id="member-date">{{ stats.date_inscription if stats else 'N/A' }}</span>
+        </div>
+        <div class="quick-tips">
+          <span class="quick-tip"><i class="fas fa-lightbulb"></i> {% if lang == 'fr' %}Précis{% else %}Specific{% endif %}</span>
+          <span class="quick-tip"><i class="fas fa-pencil-alt"></i> {% if lang == 'fr' %}Raisonné{% else %}Reasoned{% endif %}</span>
+        </div>
       </div>
     
-      <!-- Conseils -->
-      <ul class="tips-list">
-        <li>
+      <!-- Conseils en grille -->
+      <div class="tips-grid">
+        <div class="tip-item">
           <i class="fas fa-lightbulb"></i>
-          <span>{% if lang == 'fr' %}Pose des questions précises{% else %}Ask specific questions{% endif %}</span>
-        </li>
-        <li>
+          <span>{% if lang == 'fr' %}Questions précises{% else %}Specific questions{% endif %}</span>
+        </div>
+        <div class="tip-item">
           <i class="fas fa-pencil-alt"></i>
-          <span>{% if lang == 'fr' %}Explique ton raisonnement{% else %}Explain your reasoning{% endif %}</span>
-        </li>
-        <li>
+          <span>{% if lang == 'fr' %}Explique ton raisonnement{% else %}Explain reasoning{% endif %}</span>
+        </div>
+        <div class="tip-item">
           <i class="fas fa-redo-alt"></i>
-          <span>{% if lang == 'fr' %}N'aie pas peur des erreurs{% else %}Don't fear mistakes{% endif %}</span>
-        </li>
-        <li>
+          <span>{% if lang == 'fr' %}Pas peur des erreurs{% else %}Don't fear mistakes{% endif %}</span>
+        </div>
+        <div class="tip-item">
           <i class="fas fa-clock"></i>
           <span>{% if lang == 'fr' %}Prends ton temps{% else %}Take your time{% endif %}</span>
-        </li>
-      </ul>
+        </div>
+      </div>
     
-      <!-- Bouton retour -->
+      <!-- Bouton retour compact -->
       <a href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}" class="back-btn">
         <i class="fas fa-arrow-left"></i>
-        {% if lang == 'fr' %}Retour au tableau de bord{% else %}Back to dashboard{% endif %}
+        {% if lang == 'fr' %}Retour{% else %}Back{% endif %}
       </a>
     </div>
 
@@ -1210,9 +1203,7 @@
           </div>
         </div>
         <div class="header-actions">
-          
-          <!-- Dans le header, le sélecteur de matière - VERSION BILINGUE -->
-          <!-- Version avec dictionnaire - PLUS PROPRE -->
+          <!-- Sélecteur de matière bilingue -->
           <div class="subject-selector">
             <select id="matiereSelect" class="subject-dropdown" onchange="updateMatiere()">
               {% set matieres = {
@@ -1395,7 +1386,7 @@
         </button>
       </div>
 
-      <!-- Exercice en cours - AVEC IDS POUR MISE À JOUR DYNAMIQUE -->
+      <!-- Exercice en cours -->
       <div class="current-exercise" id="currentExerciseSidebar" style="display: none;">
         <h4 id="sidebarExerciseTitle">
           {% if lang == 'fr' %}Exercice en cours{% else %}Current Exercise{% endif %}
@@ -1471,27 +1462,23 @@
         difficulteHidden.value = difficulty;
       }
 
-      // Mettre à jour aussi le champ caché du formulaire de chat (optionnel)
       const difficulteChatHidden = document.getElementById('difficulteChatHidden');
       if (difficulteChatHidden) {
           difficulteChatHidden.value = difficulty;
       }
       
-      console.log('✅ Difficulté changée:', difficulty); // Pour déboguer
+      console.log('✅ Difficulté changée:', difficulty);
     }
 
-    // Fonction pour mettre à jour la matière quand on change la sélection
+    // Fonction pour mettre à jour la matière
     function updateMatiere() {
       const matiere = document.getElementById('matiereSelect').value;
       
-      // Mettre à jour les champs cachés
       document.getElementById('matiereHidden').value = matiere;
       document.getElementById('matiereInput').value = matiere;
       
-      // Mettre à jour l'affichage dans la sidebar gauche immédiatement
       updateSubjectSidebar(matiere);
       
-      // Sauvegarder la matière dans sessionStorage
       sessionStorage.setItem('currentMatiere', matiere);
     }
 
@@ -1502,20 +1489,16 @@
       const typeExercice = document.getElementById('typeExercice').value;
       const motsCles = document.getElementById('motsCles').value;
       
-      // Mettre à jour les champs cachés
       document.getElementById('matiereHidden').value = matiere;
       document.getElementById('difficulteHidden').value = difficulte;
       document.getElementById('typeHidden').value = typeExercice;
       document.getElementById('motsClesHidden').value = motsCles;
       
-      // Sauvegarder la matière avant soumission
       sessionStorage.setItem('currentMatiere', matiere);
       
-      // Vider la sidebar avant de soumettre
       document.getElementById('currentExerciseSidebar').style.display = 'none';
       document.getElementById('noExerciseMessage').style.display = 'block';
       
-      // Soumettre le formulaire
       document.getElementById('exerciseForm').submit();
     }
 
@@ -1525,17 +1508,15 @@
       document.getElementById('matiereInput').value = this.value;
     });
 
-    // Mettre à jour le type d'exercice quand il change
     document.getElementById('typeExercice').addEventListener('change', function() {
       document.getElementById('typeHidden').value = this.value;
     });
 
-    // Mettre à jour les mots-clés quand ils changent
     document.getElementById('motsCles').addEventListener('input', function() {
       document.getElementById('motsClesHidden').value = this.value;
     });
 
-    // Fonction pour mettre à jour la sidebar avec l'exercice en cours
+    // Mettre à jour la sidebar exercice
     function updateExerciseSidebar(exerciseData) {
       if (exerciseData && exerciseData.enonce) {
         document.getElementById('noExerciseMessage').style.display = 'none';
@@ -1543,14 +1524,12 @@
         const sidebar = document.getElementById('currentExerciseSidebar');
         sidebar.style.display = 'block';
         
-        // Titre bilingue
         document.getElementById('sidebarExerciseTitle').textContent = 
           document.documentElement.lang === 'fr' ? 'Exercice en cours' : 'Current Exercise';
         
         document.getElementById('sidebarExerciseQuestion').textContent = 
           exerciseData.enonce.substring(0, 100) + '...';
         
-        // ✅ DIFFICULTÉ BILINGUE
         const difficultyBadge = document.getElementById('sidebarExerciseDifficulty');
         if (exerciseData.difficulte) {
           const lang = document.documentElement.lang;
@@ -1565,7 +1544,6 @@
           }
         }
         
-        // Afficher la progression si disponible
         if (exerciseData.etape && exerciseData.total_etapes) {
           document.getElementById('sidebarProgress').style.display = 'block';
           document.getElementById('progressText').textContent = 
@@ -1579,10 +1557,9 @@
       }
     }
 
-    // Fonction pour mettre à jour la matière dans la sidebar gauche
+    // Mettre à jour la matière dans la sidebar gauche
     function updateSubjectSidebar(matiere) {
       if (matiere) {
-        // Mettre à jour le nom avec traduction
         const lang = document.documentElement.lang;
         let displayName = matiere.charAt(0).toUpperCase() + matiere.slice(1);
         
@@ -1597,7 +1574,6 @@
         
         document.getElementById('currentSubjectName').textContent = displayName;
         
-        // Mettre à jour l'icône
         const icon = document.querySelector('#subjectIcon i');
         if (icon) {
           const m = matiere.toLowerCase();
@@ -1610,7 +1586,6 @@
           else icon.className = 'fas fa-book';
         }
         
-        // Mettre à jour le thème
         const topicElement = document.getElementById('currentSubjectTopic');
         if (topicElement) {
           topicElement.textContent = lang === 'fr' ? 'Prêt à apprendre' : 'Ready to learn';
@@ -1618,7 +1593,7 @@
       }
     }
 
-    // Fonction pour mettre à jour les statistiques
+    // Mettre à jour les statistiques
     async function updateStats() {
       try {
         const response = await fetch('/api/eleve/stats', {
@@ -1680,7 +1655,6 @@
           if (exerciseDiv) exerciseDiv.remove();
           hideSidebarExercise();
           
-          // Mettre à jour les stats après un exercice terminé
           updateStats();
         } else {
           let feedbackHtml = `
@@ -1841,7 +1815,7 @@
       return div.innerHTML;
     }
 
-    // ✅ GESTION CORRIGÉE DE L'ENVOI DU FORMULAIRE
+    // Gestion de l'envoi du formulaire
     const chatForm = document.getElementById('chatForm');
     if (chatForm) {
       chatForm.addEventListener('submit', async function(e) {
@@ -1855,22 +1829,18 @@
           return;
         }
         
-        // Afficher la question de l'utilisateur immédiatement
         addUserMessage(question);
-        
-        // Vider le textarea
         questionInput.value = '';
         questionInput.style.height = 'auto';
         
-        // Afficher l'indicateur de frappe
         const typingId = showTypingIndicator();
         
         try {
           const formData = new FormData();
           formData.append('question', question);
           formData.append('matiere', document.getElementById('matiereSelect').value);
+          formData.append('difficulte', document.getElementById('difficulteChatHidden').value);
           
-          // Log du FormData
           for (let pair of formData.entries()) {
             console.log('📦 FormData:', pair[0], pair[1]);
           }
@@ -1890,31 +1860,25 @@
             console.log('📥 Réponse du serveur:', data);
             
             if (data.success && data.messages && data.messages.length > 0) {
-              // Ajouter le dernier message de Naima
               const lastMessage = data.messages[data.messages.length - 1];
               
-              // Extraire le contenu du message (sans les balises)
               const tempDiv = document.createElement('div');
               tempDiv.innerHTML = lastMessage;
               const content = tempDiv.querySelector('.message-content')?.innerHTML || lastMessage;
               
               addNaimaMessage(content);
               
-              // ✅ Mettre à jour la matière dans la sidebar gauche
               if (data.matiere) {
                 updateSubjectSidebar(data.matiere);
               }
               
-              // ✅ Mettre à jour l'exercice en cours dans la sidebar droite
               if (data.exercice_en_cours) {
                 updateExerciseSidebar(data.exercice_en_cours);
               } else {
-                // Cacher la sidebar si plus d'exercice
                 document.getElementById('currentExerciseSidebar').style.display = 'none';
                 document.getElementById('noExerciseMessage').style.display = 'block';
               }
               
-              // Mettre à jour les stats
               if (data.stats) {
                 document.getElementById('stat-exercices').textContent = data.stats.total_exercices;
                 document.getElementById('stat-serie').textContent = data.stats.serie;
@@ -1944,7 +1908,6 @@
       setDifficulty('moyen');
       document.getElementById('typeHidden').value = document.getElementById('typeExercice').value;
       
-      // Restaurer la matière depuis sessionStorage si disponible
       const savedMatiere = sessionStorage.getItem('currentMatiere');
       if (savedMatiere) {
         document.getElementById('matiereSelect').value = savedMatiere;
@@ -1953,16 +1916,13 @@
         updateSubjectSidebar(savedMatiere);
       }
       
-      // Vérifier s'il y a un exercice en cours au chargement
       {% if session.get('exercice_en_cours') %}
         updateExerciseSidebar({{ session.get('exercice_en_cours')|tojson }});
       {% endif %}
       
-      // Mise à jour périodique des stats (toutes les 30 secondes)
       setInterval(updateStats, 30000);
     });
 
-    // Gestion de la touche Entrée
     if (questionInput) {
       questionInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
