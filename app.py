@@ -2938,6 +2938,7 @@ def nouvel_exercice():
     
     session['user_id'] = eleve.id
     session['lang'] = lang
+    session['matiere'] = matiere
     session.modified = True
     
     if lang == "fr":
@@ -2945,7 +2946,7 @@ def nouvel_exercice():
     else:
         flash(f"✨ {matiere} {type_exercice} generated!", "success")
     
-    redirect_url = url_for("enseignant_virtuel") + f"?t={int(time.time())}"
+    redirect_url = url_for("enseignant_virtuel", matiere=matiere) + f"?t={int(time.time())}"
     return redirect(redirect_url)
 
 def generer_exercice_specifique(matiere, niveau, difficulte="moyen", type_exercice="exercice", mots_cles="", langue="fr"):
