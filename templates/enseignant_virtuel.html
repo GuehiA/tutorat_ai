@@ -219,6 +219,7 @@
       font-size: 1rem;
     }
 
+    /* Matière en cours - avec ID pour mise à jour dynamique */
     .subject-card {
       background: linear-gradient(135deg, var(--primary), var(--accent));
       border-radius: var(--radius);
@@ -842,6 +843,7 @@
       box-shadow: var(--shadow);
     }
 
+    /* Exercice en cours - avec IDs pour mise à jour dynamique */
     .current-exercise {
       background: var(--light);
       border-radius: var(--radius);
@@ -1114,13 +1116,13 @@
         </div>
       </div>
 
-      <!-- Matière en cours -->
+      <!-- Matière en cours - AVEC ID POUR MISE À JOUR DYNAMIQUE -->
       <div class="subject-card">
-        <div class="subject-icon">
+        <div class="subject-icon" id="subjectIcon">
           <i class="fas {% if matiere == 'mathématiques' %}fa-calculator{% elif matiere == 'français' %}fa-language{% elif matiere == 'anglais' %}fa-globe{% elif matiere == 'histoire' %}fa-landmark{% elif matiere == 'sciences' %}fa-flask{% else %}fa-book{% endif %}"></i>
         </div>
-        <div class="subject-name">{{ matiere|capitalize }}</div>
-        <div class="subject-topic">
+        <div class="subject-name" id="currentSubjectName">{{ matiere|capitalize }}</div>
+        <div class="subject-topic" id="currentSubjectTopic">
           {% if theme %}
             {{ theme }}
           {% else %}
@@ -1353,9 +1355,11 @@
         </button>
       </div>
 
-      <!-- Exercice en cours -->
+      <!-- Exercice en cours - AVEC IDS POUR MISE À JOUR DYNAMIQUE -->
       <div class="current-exercise" id="currentExerciseSidebar" style="display: none;">
-        <h4 id="sidebarExerciseTitle">Exercice</h4>
+        <h4 id="sidebarExerciseTitle">
+          {% if lang == 'fr' %}Exercice en cours{% else %}Current Exercise{% endif %}
+        </h4>
         <p id="sidebarExerciseQuestion"></p>
         <span class="difficulty-badge" id="sidebarExerciseDifficulty">Moyen</span>
         <div class="progress-section" id="sidebarProgress" style="display: none;">
@@ -1384,7 +1388,7 @@
     </div>
   </div>
 
-    <script>
+  <script>
     // Variables globales
     let isSubmitting = false;
     let currentExerciseId = null;
@@ -1441,6 +1445,10 @@
       document.getElementById('typeHidden').value = typeExercice;
       document.getElementById('motsClesHidden').value = motsCles;
       
+      // Vider la sidebar avant de soumettre
+      document.getElementById('currentExerciseSidebar').style.display = 'none';
+      document.getElementById('noExerciseMessage').style.display = 'block';
+      
       // Soumettre le formulaire
       document.getElementById('exerciseForm').submit();
     }
@@ -1460,6 +1468,66 @@
     document.getElementById('motsCles').addEventListener('input', function() {
       document.getElementById('motsClesHidden').value = this.value;
     });
+
+    // Fonction pour mettre à jour la sidebar avec l'exercice en cours
+    function updateExerciseSidebar(exerciseData) {
+      if (exerciseData && exerciseData.enonce) {
+        // Cacher le message "aucun exercice"
+        document.getElementById('noExerciseMessage').style.display = 'none';
+        
+        // Afficher la sidebar d'exercice
+        const sidebar = document.getElementById('currentExerciseSidebar');
+        sidebar.style.display = 'block';
+        
+        // Mettre à jour le titre et la question
+        document.getElementById('sidebarExerciseTitle').textContent = 
+          '{{ lang == "fr" ? "Exercice en cours" : "Current Exercise" }}';
+        document.getElementById('sidebarExerciseQuestion').textContent = 
+          exerciseData.enonce.substring(0, 100) + '...';
+        
+        // Mettre à jour la difficulté
+        const difficultyBadge = document.getElementById('sidebarExerciseDifficulty');
+        if (exerciseData.difficulte) {
+          difficultyBadge.textContent = 
+            exerciseData.difficulte === 'facile' ? 'Facile' : 
+            exerciseData.difficulte === 'moyen' ? 'Moyen' : 'Difficile';
+        }
+        
+        // Afficher la progression si disponible
+        if (exerciseData.etape && exerciseData.total_etapes) {
+          document.getElementById('sidebarProgress').style.display = 'block';
+          document.getElementById('progressText').textContent = 
+            `${exerciseData.etape}/${exerciseData.total_etapes}`;
+          document.getElementById('progressBar').style.width = 
+            (exerciseData.etape / exerciseData.total_etapes * 100) + '%';
+        }
+      } else {
+        // Aucun exercice en cours
+        document.getElementById('currentExerciseSidebar').style.display = 'none';
+        document.getElementById('noExerciseMessage').style.display = 'block';
+      }
+    }
+
+    // Fonction pour mettre à jour la matière dans la sidebar gauche
+    function updateSubjectSidebar(matiere) {
+      if (matiere) {
+        // Mettre à jour le nom
+        document.getElementById('currentSubjectName').textContent = 
+          matiere.charAt(0).toUpperCase() + matiere.slice(1);
+        
+        // Mettre à jour l'icône
+        const icon = document.querySelector('#subjectIcon i');
+        if (icon) {
+          const m = matiere.toLowerCase();
+          if (m === 'mathématiques') icon.className = 'fas fa-calculator';
+          else if (m === 'français') icon.className = 'fas fa-language';
+          else if (m === 'anglais') icon.className = 'fas fa-globe';
+          else if (m === 'histoire') icon.className = 'fas fa-landmark';
+          else if (m === 'sciences') icon.className = 'fas fa-flask';
+          else icon.className = 'fas fa-book';
+        }
+      }
+    }
 
     // Fonction pour mettre à jour les statistiques
     async function updateStats() {
@@ -1691,7 +1759,7 @@
         e.preventDefault();
         
         const question = questionInput.value.trim();
-        console.log('📤 Question à envoyer:', question);  // ← LOG DE DÉBOGAGE
+        console.log('📤 Question à envoyer:', question);
         
         if (!question) {
           console.log('❌ Question vide');
@@ -1713,7 +1781,7 @@
           formData.append('question', question);
           formData.append('matiere', document.getElementById('matiereSelect').value);
           
-          // ✅ LOG DU FORMDATA
+          // Log du FormData
           for (let pair of formData.entries()) {
             console.log('📦 FormData:', pair[0], pair[1]);
           }
@@ -1730,7 +1798,7 @@
           
           if (response.ok) {
             const data = await response.json();
-            console.log('📥 Réponse du serveur:', data);  // ← LOG DE LA RÉPONSE
+            console.log('📥 Réponse du serveur:', data);
             
             if (data.success && data.messages && data.messages.length > 0) {
               // Ajouter le dernier message de Naima
@@ -1743,7 +1811,21 @@
               
               addNaimaMessage(content);
               
-              // Mettre à jour les stats si elles sont renvoyées
+              // ✅ Mettre à jour la matière dans la sidebar gauche
+              if (data.matiere) {
+                updateSubjectSidebar(data.matiere);
+              }
+              
+              // ✅ Mettre à jour l'exercice en cours dans la sidebar droite
+              if (data.exercice_en_cours) {
+                updateExerciseSidebar(data.exercice_en_cours);
+              } else {
+                // Cacher la sidebar si plus d'exercice
+                document.getElementById('currentExerciseSidebar').style.display = 'none';
+                document.getElementById('noExerciseMessage').style.display = 'block';
+              }
+              
+              // Mettre à jour les stats
               if (data.stats) {
                 document.getElementById('stat-exercices').textContent = data.stats.total_exercices;
                 document.getElementById('stat-serie').textContent = data.stats.serie;
@@ -1772,6 +1854,11 @@
       }
       setDifficulty('moyen');
       document.getElementById('typeHidden').value = document.getElementById('typeExercice').value;
+      
+      // Vérifier s'il y a un exercice en cours au chargement
+      {% if session.get('exercice_en_cours') %}
+        updateExerciseSidebar({{ session.get('exercice_en_cours')|tojson }});
+      {% endif %}
       
       // Mise à jour périodique des stats (toutes les 30 secondes)
       setInterval(updateStats, 30000);
