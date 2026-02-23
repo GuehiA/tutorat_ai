@@ -9818,18 +9818,18 @@ from sqlalchemy import and_
 
 @app.route("/dashboard-eleve")
 def dashboard_eleve():
-    """Dashboard élève"""
+    """Dashboard élève avec recommandations personnalisées Naima"""
     # Vérifier si l'utilisateur est connecté
-    if "user_id" not in session:  # CORRIGÉ: "user_id" au lieu de "eleve_id"
+    if "user_id" not in session:
         return redirect(url_for("login_eleve"))
     
     # Vérifier si c'est un élève
     user_role = session.get("role")
-    if user_role not in ["élève", "eleve"]:  # Accepter les deux formats
+    if user_role not in ["élève", "eleve"]:
         flash("Accès réservé aux élèves", "error")
         return redirect(url_for("login_eleve"))
     
-    eleve = User.query.options(db.joinedload(User.niveau)).get(session["user_id"])  # CORRIGÉ: "user_id"
+    eleve = User.query.options(joinedload(User.niveau)).get(session["user_id"])
     if not eleve or eleve.role not in ["élève", "eleve"]:
         flash("Élève non trouvé", "error")
         return redirect(url_for("login_eleve"))
@@ -9839,7 +9839,7 @@ def dashboard_eleve():
         flash("Votre période d'essai gratuit de 48h est terminée. Veuillez choisir un abonnement pour continuer.", "warning")
         return redirect(url_for('upgrade_options'))
 
-    # ✅ CORRECTION : Stocker pour l'enseignant virtuel
+    # ✅ Stocker pour l'enseignant virtuel
     session['current_student'] = eleve.username
 
     lang = request.args.get("lang") or session.get("lang", "fr")
@@ -9884,7 +9884,22 @@ def dashboard_eleve():
         "success": taux_reussite
     }
 
-    # 📈 Courbe progression - MOYENNE PAR JOUR (AMÉLIORÉ)
+    # 📊 Statistiques par matière (optionnel - à adapter selon ta structure)
+    stats_par_matiere = []
+    try:
+        # Cette partie dépend de comment tu structures tes exercices
+        # Exemple simple - à adapter selon ton modèle
+        from sqlalchemy import func
+        # Grouper par matière (si tu as cette info)
+        # stats_par_matiere = [...] 
+        pass
+    except:
+        pass
+    
+    if stats_par_matiere:
+        stats['par_matiere'] = stats_par_matiere
+
+    # 📈 Courbe progression - MOYENNE PAR JOUR
     courbe_progression = None
     if reponses_eleve:
         try:
@@ -10065,13 +10080,85 @@ def dashboard_eleve():
         'percent': progression_percent
     }
     
-    # ✅ NOUVEAU : AJOUTER LE STATUT DE PAIEMENT POUR LE TEMPLATE
+    # ✅ STATUT DE PAIEMENT
     statut_paiement_info = {
         'est_en_essai': hasattr(eleve, 'est_en_essai_gratuit') and eleve.est_en_essai_gratuit(),
         'est_paye': eleve.statut_paiement == "paye",
         'essai_expire': hasattr(eleve, 'essai_est_expire') and eleve.essai_est_expire(),
         'jours_restants_abonnement': eleve.jours_restants_abonnement() if hasattr(eleve, 'jours_restants_abonnement') else 0
     }
+
+    # ===== RECOMMANDATIONS NAIMA PERSONNALISÉES =====
+    naima_recommendations = []
+    naima_recommendations_count = 0
+
+    if stats["total"] == 0:
+        # Nouvel élève - pas encore d'exercices
+        naima_recommendations.append({
+            'icon': 'fas fa-play-circle',
+            'titre': 'Commence ton premier exercice !' if lang == 'fr' else 'Start your first exercise!',
+            'description': 'Naima est là pour t\'aider à faire tes premiers pas. Pose-lui une question ou commence un exercice par leçon.' if lang == 'fr' else 'Naima is here to help you take your first steps. Ask her a question or start a lesson exercise.',
+            'theme': 'Débutant' if lang == 'fr' else 'Beginner',
+            'lien': '/enseignant-virtuel'
+        })
+        naima_recommendations_count = 1
+        
+    elif stats["average"] < 3:
+        # Performances faibles - besoin de progression
+        naima_recommendations.append({
+            'icon': 'fas fa-chart-line',
+            'titre': 'Progressons ensemble !' if lang == 'fr' else 'Let\'s improve together!',
+            'description': f'Ta moyenne est de {stats["average"]}/5. Naima peut t\'aider à comprendre tes erreurs et à t\'améliorer.' if lang == 'fr' else f'Your average is {stats["average"]}/5. Naima can help you understand your mistakes and improve.',
+            'theme': 'Progression' if lang == 'fr' else 'Improvement',
+            'lien': '/enseignant-virtuel'
+        })
+        naima_recommendations_count = 1
+        
+        # Si des remédiations non lues existent, ajouter une recommandation
+        if remediations_non_lues:
+            naima_recommendations.append({
+                'icon': 'fas fa-tools',
+                'titre': 'Remédiation disponible' if lang == 'fr' else 'Remediation available',
+                'description': 'Des exercices ciblés t\'attendent pour renforcer tes compétences sur les sujets difficiles.' if lang == 'fr' else 'Targeted exercises await to strengthen your skills on difficult topics.',
+                'theme': 'Remédiation' if lang == 'fr' else 'Remediation',
+                'lien': '/eleve/remediations'
+            })
+            naima_recommendations_count = 2
+            
+    elif stats["average"] >= 4:
+        # Excellent élève
+        naima_recommendations.append({
+            'icon': 'fas fa-trophy',
+            'titre': 'Excellent travail !' if lang == 'fr' else 'Excellent work!',
+            'description': 'Tu progresses très bien ! Naima peut te proposer des défis plus avancés pour continuer à te dépasser.' if lang == 'fr' else 'You\'re doing great! Naima can offer you more advanced challenges to keep pushing yourself.',
+            'theme': 'Défi' if lang == 'fr' else 'Challenge',
+            'lien': '/enseignant-virtuel'
+        })
+        naima_recommendations_count = 1
+        
+    else:
+        # Bon élève (moyenne entre 3 et 4)
+        naima_recommendations.append({
+            'icon': 'fas fa-star',
+            'titre': 'Bon travail !' if lang == 'fr' else 'Good work!',
+            'description': 'Tu fais du bon travail. Continue comme ça ! Naima est là si tu as des questions.' if lang == 'fr' else 'You\'re doing good work. Keep it up! Naima is here if you have questions.',
+            'theme': 'Encouragement' if lang == 'fr' else 'Encouragement',
+            'lien': '/enseignant-virtuel'
+        })
+        naima_recommendations_count = 1
+        
+        # Si des remédiations existent, les suggérer
+        if remediations_non_lues:
+            naima_recommendations.append({
+                'icon': 'fas fa-tools',
+                'titre': 'Remédiation disponible' if lang == 'fr' else 'Remediation available',
+                'description': 'Des exercices de renforcement t\'attendent pour consolider tes acquis.' if lang == 'fr' else 'Reinforcement exercises await to consolidate your knowledge.',
+                'theme': 'Renforcement' if lang == 'fr' else 'Reinforcement',
+                'lien': '/eleve/remediations'
+            })
+            naima_recommendations_count = 2
+
+    # ===== FIN RECOMMANDATIONS NAIMA =====
 
     return render_template(
         "dashboard_eleve.html",
@@ -10088,7 +10175,10 @@ def dashboard_eleve():
         progression_quotidienne=progression_quotidienne,
         remediations_completees=remediations_completees,
         date_du_jour=datetime.utcnow(),
-        statut_paiement_info=statut_paiement_info
+        statut_paiement_info=statut_paiement_info,
+        # 👇 NOUVELLES VARIABLES POUR NAIMA
+        naima_recommendations=naima_recommendations,
+        naima_recommendations_count=naima_recommendations_count
     )
 
 import re
