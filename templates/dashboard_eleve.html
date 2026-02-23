@@ -157,7 +157,7 @@
       to { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
     }
     
-    /* SECTION ACTIONS PRINCIPALES - PLUS COMPACTE */
+    /* SECTION ACTIONS PRINCIPALES */
     .main-actions-section {
       margin-bottom: 30px;
     }
@@ -228,7 +228,7 @@
       line-height: 1.4;
     }
     
-    /* CARTE NAIMA - ENSEIGNANT VIRTUEL */
+    /* CARTE NAIMA - AVEC RECOMMANDATIONS */
     .naima-card {
       background: linear-gradient(135deg, #667eea 0%, var(--naima-purple) 100%);
       color: white;
@@ -248,6 +248,27 @@
     .naima-card:hover .main-action-icon {
       background: white;
       color: var(--naima-purple);
+    }
+    
+    /* BADGE DE RECOMMANDATION */
+    .recommendation-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--danger);
+      color: white;
+      border-radius: 50px;
+      padding: 5px 12px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      box-shadow: 0 2px 10px rgba(231, 76, 60, 0.5);
+      animation: pulse 2s infinite;
+      z-index: 10;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
     }
     
     /* SECTION TABLEAU DE BORD */
@@ -291,7 +312,7 @@
       color: var(--primary);
     }
     
-    /* SECTION NAIMA PEDAGOGIQUE */
+    /* SECTION NAIMA PEDAGOGIQUE AMÉLIORÉE */
     .naima-section {
       grid-column: 1 / -1;
       background: linear-gradient(135deg, #f8f9ff 0%, var(--naima-light) 100%);
@@ -349,6 +370,95 @@
       font-size: 0.95rem;
     }
     
+    /* RECOMMANDATIONS PERSONNALISÉES */
+    .recommendations-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .recommendation-card {
+      background: white;
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transition: var(--transition);
+      border-left: 4px solid var(--naima-purple);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .recommendation-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    
+    .recommendation-icon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 2.5rem;
+      opacity: 0.1;
+      color: var(--naima-purple);
+    }
+    
+    .recommendation-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: var(--dark);
+      font-size: 1.1rem;
+    }
+    
+    .recommendation-title i {
+      color: var(--naima-purple);
+    }
+    
+    .recommendation-content {
+      color: #34495e;
+      line-height: 1.5;
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+    }
+    
+    .recommendation-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+    
+    .recommendation-tag {
+      background: var(--light);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      color: var(--gray);
+    }
+    
+    .recommendation-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, var(--naima-purple), #764ba2);
+      color: white;
+      text-decoration: none;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      transition: var(--transition);
+    }
+    
+    .recommendation-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(155, 89, 182, 0.4);
+    }
+    
+    /* STATISTIQUES NAIMA (Série, Temps, Succès) */
     .naima-insights {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -391,6 +501,20 @@
       font-size: 0.9rem;
     }
     
+    .streak-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--naima-purple);
+      text-align: center;
+      line-height: 1.2;
+    }
+    
+    .streak-label {
+      text-align: center;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+    
     .naima-cta-button {
       display: inline-flex;
       align-items: center;
@@ -411,6 +535,53 @@
     .naima-cta-button:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 15px rgba(155, 89, 182, 0.3);
+    }
+    
+    /* PROGRESSION PAR MATIÈRE */
+    .subjects-progress {
+      margin-top: 20px;
+    }
+    
+    .subject-progress-item {
+      margin-bottom: 15px;
+    }
+    
+    .subject-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    
+    .subject-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+    
+    .subject-name i {
+      color: var(--primary);
+      width: 20px;
+    }
+    
+    .subject-score {
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+    
+    .subject-progress-bar {
+      height: 8px;
+      background: var(--light);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .subject-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 4px;
+      transition: width 0.5s ease;
     }
     
     /* COMPTEUR D'ESSAI */
@@ -455,11 +626,6 @@
       font-family: 'Courier New', monospace;
       margin-bottom: 8px;
       animation: pulse 1.5s infinite;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
     }
     
     .trial-progress {
@@ -521,10 +687,6 @@
       display: flex;
       flex-direction: column;
       gap: 15px;
-    }
-    
-    .notif-content p {
-      line-height: 1.6;
     }
     
     .notif-actions {
@@ -589,7 +751,7 @@
       margin-top: 20px;
     }
     
-    /* CARTE ASSISTANT RÉMÉDIATION COMPACTE */
+    /* CARTE ASSISTANT RÉMÉDIATION */
     .remediation-compact-card {
       background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
       border-radius: 15px;
@@ -805,6 +967,43 @@
       color: var(--gray);
     }
     
+    /* ÉTOILES */
+    .stars-container {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .star {
+      color: #ddd;
+      font-size: 0.85rem;
+    }
+    
+    .star.filled {
+      color: #f39c12;
+    }
+    
+    .score-text {
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-left: 5px;
+      color: #2c3e50;
+    }
+    
+    .low-score-badge {
+      background: #ffebee;
+      color: #c62828;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: 8px;
+    }
+    
     /* BOUTONS */
     .btn {
       display: inline-block;
@@ -874,42 +1073,6 @@
       to { box-shadow: 0 0 10px rgba(155, 89, 182, 0.8); }
     }
     
-    /* ÉTOILES */
-    .stars-container {
-      display: flex;
-      gap: 2px;
-      align-items: center;
-    }
-    
-    .star {
-      color: #ddd;
-      font-size: 0.85rem;
-    }
-    
-    .star.filled {
-      color: #f39c12;
-    }
-    
-    .score-text {
-      font-size: 0.8rem;
-      font-weight: bold;
-      margin-left: 5px;
-      color: #2c3e50;
-    }
-    
-    .low-score-badge {
-      background: #ffebee;
-      color: #c62828;
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      margin-left: 8px;
-    }
-    
     /* DÉCONNEXION */
     .logout-btn {
       display: block;
@@ -946,7 +1109,6 @@
       animation: fadeInUp 0.5s ease forwards;
     }
     
-    /* ANIMATION SPÉCIALE NAIMA */
     @keyframes naimaPulse {
       0% { transform: scale(1); }
       50% { transform: scale(1.05); }
@@ -1005,19 +1167,19 @@
         </p>
       </div>
       <div class="level-badge">
-        {% if lang == 'en' %}
-          Level: {{ eleve.niveau.nom_en if eleve.niveau.nom_en else eleve.niveau.nom }}
+        {% if lang == 'en' and eleve.niveau and eleve.niveau.nom_en %}
+          {{ eleve.niveau.nom_en }}
         {% else %}
-          Niveau : {{ eleve.niveau.nom }}
+          {{ eleve.niveau.nom if eleve.niveau else ('6th grade' if lang == 'en' else '6ème') }}
         {% endif %}
       </div>
     </div>
 
-    <!-- SECTION ACTIONS PRINCIPALES EN PREMIER -->
+    <!-- SECTION ACTIONS PRINCIPALES -->
     <div class="main-actions-section">
       <div class="main-actions-grid">
-        <!-- CARTE NAIMA - ENSEIGNANTE VIRTUELLE -->
-        <a href="/enseignant-virtuel" class="main-action-card naima-card animated-card naima-pulse" style="animation-delay: 0.1s;">
+        <!-- CARTE NAIMA - AVEC RECOMMANDATIONS -->
+        <a href="/enseignant-virtuel" class="main-action-card naima-card animated-card naima-pulse">
           <div class="main-action-icon">
             <i class="fas fa-robot"></i>
           </div>
@@ -1030,19 +1192,24 @@
           </h4>
           <p>
             {% if lang == 'en' %}
-              Get help from Naima, your AI teacher for any subject
+              Get personalized help from Naima
             {% else %}
-              Obtenez de l'aide de Naima, votre enseignante IA pour toutes les matières
+              Obtenez de l'aide personnalisée de Naima
             {% endif %}
           </p>
           <span class="badge badge-naima">
             <i class="fas fa-star"></i>
-            {% if lang == 'en' %}MEET NAIMA{% else %}RENCONTREZ NAIMA{% endif %}
+            {% if lang == 'en' %}24/7{% else %}24h/24{% endif %}
           </span>
+          {% if naima_recommendations_count > 0 %}
+          <span class="recommendation-badge">
+            <i class="fas fa-lightbulb"></i> {{ naima_recommendations_count }}
+          </span>
+          {% endif %}
         </a>
         
-        <!-- MODIFICATION : "Séquence Guidée" devient "Débuter les exercices par leçon" -->
-        <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.2s;">
+        <!-- DÉBUTER LES EXERCICES PAR LEÇON -->
+        <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card">
           <div class="main-action-icon">
             <i class="fas fa-play-circle"></i>
           </div>
@@ -1055,14 +1222,15 @@
           </h4>
           <p>
             {% if lang == 'en' %}
-              Start exercises by lesson for targeted practice
+              Practice with targeted exercises
             {% else %}
-              Débutez les exercices par leçon pour une pratique ciblée
+              Pratique avec des exercices ciblés
             {% endif %}
           </p>
         </a>
         
-        <a href="/historique?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.3s;">
+        <!-- HISTORIQUE -->
+        <a href="/historique?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card">
           <div class="main-action-icon">
             <i class="fas fa-history"></i>
           </div>
@@ -1075,14 +1243,15 @@
           </h4>
           <p>
             {% if lang == 'en' %}
-              Review your past activities and progress
+              Review your past activities
             {% else %}
-              Consulte tes activités passées et ta progression
+              Consulte tes activités passées
             {% endif %}
           </p>
         </a>
         
-        <a href="/eleve/remediations?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card" style="animation-delay: 0.4s;">
+        <!-- REMÉDIATIONS -->
+        <a href="/eleve/remediations?username={{ eleve.username }}&lang={{ lang }}" class="main-action-card animated-card">
           <div class="main-action-icon">
             <i class="fas fa-tools"></i>
           </div>
@@ -1109,8 +1278,8 @@
       </div>
     </div>
 
-    <!-- SECTION : NAIMA L'ENSEIGNANTE VIRTUELLE -->
-    <div class="naima-section animated-card" style="animation-delay: 0.7s;">
+    <!-- SECTION NAIMA PÉDAGOGIQUE AVEC RECOMMANDATIONS -->
+    <div class="naima-section animated-card">
       <div class="naima-header">
         <div class="naima-avatar">
           <i class="fas fa-robot"></i>
@@ -1118,152 +1287,126 @@
         <div class="naima-info">
           <h3>
             {% if lang == 'en' %}
-              👩‍🏫 Meet Naima - Your Virtual Teacher
+              👩‍🏫 Naima's Personalized Recommendations
             {% else %}
-              👩‍🏫 Naima - Votre Enseignante Virtuelle
+              👩‍🏫 Recommandations Personnalisées de Naima
             {% endif %}
           </h3>
           <p>
             {% if lang == 'en' %}
-              Your personal AI teacher available 24/7 to guide you
+              Based on your progress, Naima suggests:
             {% else %}
-              Votre enseignante IA personnelle disponible 24h/24 pour vous guider
+              Basé sur ta progression, Naima te suggère :
             {% endif %}
           </p>
         </div>
       </div>
       
+      <!-- RECOMMANDATIONS DYNAMIQUES -->
+      <div class="recommendations-grid">
+        {% if naima_recommendations %}
+          {% for rec in naima_recommendations %}
+          <div class="recommendation-card">
+            <div class="recommendation-icon">
+              <i class="{{ rec.icon }}"></i>
+            </div>
+            <div class="recommendation-title">
+              <i class="fas fa-lightbulb"></i>
+              <strong>{{ rec.titre }}</strong>
+            </div>
+            <div class="recommendation-content">
+              {{ rec.description }}
+            </div>
+            <div class="recommendation-meta">
+              <span class="recommendation-tag">
+                <i class="fas fa-tag"></i> {{ rec.theme }}
+              </span>
+              <a href="{{ rec.lien }}" class="recommendation-btn">
+                {% if lang == 'en' %}Practice{% else %}S'entraîner{% endif %} <i class="fas fa-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="recommendation-card">
+            <div class="recommendation-icon">
+              <i class="fas fa-smile"></i>
+            </div>
+            <div class="recommendation-title">
+              <i class="fas fa-star"></i>
+              <strong>{% if lang == 'en' %}Great job!{% else %}Excellent travail !{% endif %}</strong>
+            </div>
+            <div class="recommendation-content">
+              {% if lang == 'en' %}
+                You're doing great! Keep up the good work. Ask Naima if you need help with anything.
+              {% else %}
+                Tu fais un excellent travail ! Continue comme ça. Demande à Naima si tu as besoin d'aide.
+              {% endif %}
+            </div>
+            <div class="recommendation-meta">
+              <span class="recommendation-tag">
+                <i class="fas fa-check-circle"></i> {% if lang == 'en' %}All good{% else %}Tout va bien{% endif %}
+              </span>
+              <a href="/enseignant-virtuel" class="recommendation-btn">
+                {% if lang == 'en' %}Ask Naima{% else %}Demander à Naima{% endif %} <i class="fas fa-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+      
+      <!-- STATISTIQUES NAIMA -->
       <div class="naima-insights">
         <div class="naima-card-insight">
           <div class="naima-card-title">
-            <i class="fas fa-comments"></i>
-            {% if lang == 'en' %}
-              How Naima Helps You
-            {% else %}
-              Comment Naima vous aide
-            {% endif %}
+            <i class="fas fa-fire"></i>
+            {% if lang == 'en' %}Learning Streak{% else %}Série d'Apprentissage{% endif %}
           </div>
           <div class="naima-card-content">
-            <p style="margin-bottom: 10px;">
-              <strong style="color: var(--naima-purple);">
-                {% if lang == 'en' %}
-                  Interactive Guidance:
-                {% else %}
-                  Guidance Interactive :
-                {% endif %}
-              </strong>
-              {% if lang == 'en' %}
-                Naima asks questions step by step to help you find answers yourself.
-              {% else %}
-                Naima pose des questions étape par étape pour vous aider à trouver les réponses vous-même.
-              {% endif %}
-            </p>
-            <p>
-              <strong style="color: var(--naima-purple);">
-                {% if lang == 'en' %}
-                  All Subjects Covered:
-                {% else %}
-                  Toutes Matières :
-                {% endif %}
-              </strong>
-              {% if lang == 'en' %}
-                Mathematics, French, History, Science, Geography, and more!
-              {% else %}
-                Mathématiques, Français, Histoire, Sciences, Géographie, et plus !
-              {% endif %}
-            </p>
+            <div class="streak-number">{{ eleve.serie_actuelle if eleve.serie_actuelle else 0 }}</div>
+            <div class="streak-label">
+              {% if lang == 'en' %}days in a row{% else %}jours d'affilée{% endif %}
+            </div>
           </div>
-          <a href="/enseignant-virtuel" class="naima-cta-button">
-            <i class="fas fa-graduation-cap"></i>
-            {% if lang == 'en' %}
-              Ask Naima a Question
-            {% else %}
-              Poser une question à Naima
-            {% endif %}
-          </a>
-        </div>
-        
-        <div class="naima-card-insight">
-          <div class="naima-card-title">
-            <i class="fas fa-lightbulb"></i>
-            {% if lang == 'en' %}
-              Naima's Teaching Method
-            {% else %}
-              Méthode d'enseignement de Naima
-            {% endif %}
-          </div>
-          <div class="naima-card-content">
-            <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
-              <li style="margin-bottom: 5px;">
-                {% if lang == 'en' %}
-                  <strong>Never gives direct answers</strong> - guides you to discover them
-                {% else %}
-                  <strong>Ne donne jamais de réponses directes</strong> - vous guide pour les découvrir
-                {% endif %}
-              </li>
-              <li style="margin-bottom: 5px;">
-                {% if lang == 'en' %}
-                  <strong>Adapts to your level</strong> - uses simple, clear explanations
-                {% else %}
-                  <strong>S'adapte à votre niveau</strong> - utilise des explications simples et claires
-                {% endif %}
-              </li>
-              <li>
-                {% if lang == 'en' %}
-                  <strong>Encourages and praises</strong> - builds your confidence
-                {% else %}
-                  <strong>Encourage et félicite</strong> - renforce votre confiance
-                {% endif %}
-              </li>
-            </ul>
-          </div>
-          <button class="naima-cta-button" onclick="showNaimaDemo()">
-            <i class="fas fa-play-circle"></i>
-            {% if lang == 'en' %}
-              See Naima in Action
-            {% else %}
-              Voir Naima en action
-            {% endif %}
-          </button>
         </div>
         
         <div class="naima-card-insight">
           <div class="naima-card-title">
             <i class="fas fa-clock"></i>
-            {% if lang == 'en' %}
-              Available 24/7
-            {% else %}
-              Disponible 24h/24
-            {% endif %}
+            {% if lang == 'en' %}Learning Time{% else %}Temps d'Apprentissage{% endif %}
           </div>
           <div class="naima-card-content">
-            <p style="margin-bottom: 10px;">
-              {% if lang == 'en' %}
-                🎯 <strong>Naima is always here for you!</strong> Whether it's homework help, exam prep, or concept explanations.
-              {% else %}
-                🎯 <strong>Naima est toujours là pour vous !</strong> Que ce soit pour l'aide aux devoirs, la préparation d'examens ou l'explication de concepts.
-              {% endif %}
-            </p>
-            <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-top: 10px;">
-              <p style="margin: 0; font-size: 0.85rem; color: #666;">
-                <i class="fas fa-tip" style="color: var(--naima-purple);"></i>
-                {% if lang == 'en' %}
-                  <strong>Tip:</strong> Start with "Hello Naima, I need help with..."
-                {% else %}
-                  <strong>Astuce :</strong> Commencez par "Bonjour Naima, j'ai besoin d'aide pour..."
-                {% endif %}
-              </p>
+            <div class="streak-number">{{ eleve.temps_total_apprentissage if eleve.temps_total_apprentissage else 0 }} <span style="font-size: 1.5rem;">min</span></div>
+            <div class="streak-label">
+              {% if lang == 'en' %}total time spent{% else %}temps total passé{% endif %}
             </div>
           </div>
-          <a href="/enseignant-virtuel" class="naima-cta-button" style="background: linear-gradient(135deg, #4361ee, var(--naima-purple));">
-            <i class="fas fa-arrow-right"></i>
-            {% if lang == 'en' %}
-              Start Chatting with Naima
-            {% else %}
-              Commencer à discuter avec Naima
-            {% endif %}
-          </a>
         </div>
+        
+        <div class="naima-card-insight">
+          <div class="naima-card-title">
+            <i class="fas fa-chart-pie"></i>
+            {% if lang == 'en' %}Success Rate{% else %}Taux de Réussite{% endif %}
+          </div>
+          <div class="naima-card-content">
+            <div class="streak-number">{{ stats.success if stats else 0 }}%</div>
+            <div class="streak-label">
+              {{ stats.total - (stats.total * stats.success / 100)|int if stats.total else 0 }}/{{ stats.total if stats.total else 0 }} 
+              {% if lang == 'en' %}successful{% else %}réussis{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="/enseignant-virtuel" class="naima-cta-button">
+          <i class="fas fa-comment-dots"></i>
+          {% if lang == 'en' %}
+            Chat with Naima Now
+          {% else %}
+            Discuter avec Naima Maintenant
+          {% endif %}
+        </a>
       </div>
     </div>
 
@@ -1271,7 +1414,7 @@
     <div class="dashboard">
       <!-- Notifications et compteur d'essai -->
       {% if eleve.est_en_essai_gratuit() and total_seconds > 0 %}
-      <div class="card trial-counter-card animated-card" style="animation-delay: 0.8s;">
+      <div class="card trial-counter-card animated-card">
         <div class="trial-header">
           <h3>
             <i class="fas fa-clock"></i>
@@ -1307,7 +1450,7 @@
         </button>
       </div>
       {% elif eleve.essai_est_expire() %}
-      <div class="card trial-counter-card expired animated-card" style="animation-delay: 0.8s;">
+      <div class="card trial-counter-card expired animated-card">
         <div class="trial-header">
           <h3>
             <i class="fas fa-exclamation-triangle"></i>
@@ -1346,7 +1489,7 @@
       {% endif %}
 
       {% if remediations_non_lues %}
-      <div class="card notif-card animated-card" style="animation-delay: 0.9s;">
+      <div class="card notif-card animated-card">
         <h3><i class="fas fa-bell"></i>
           {% if lang == 'en' %}
             New Remediation
@@ -1379,7 +1522,7 @@
       {% endif %}
 
       <!-- Assistant de Rémédiation -->
-      <div class="remediation-compact-card animated-card" style="animation-delay: 1.0s;">
+      <div class="remediation-compact-card animated-card">
         <div class="remediation-header-compact">
           <div class="remediation-avatar-compact">
             <i class="fas fa-hands-helping"></i>
@@ -1422,7 +1565,7 @@
       </div>
       
       <!-- Objectifs du Jour -->
-      <div class="card animated-card" style="animation-delay: 1.1s;">
+      <div class="card animated-card">
         <h3><i class="fas fa-bullseye"></i>
           {% if lang == 'en' %}
             Today's Goals
@@ -1435,21 +1578,21 @@
         </h3>
         
         <div class="goals-container">
-          <!-- Objectif 1: Compléter 1 exercice -->
-          <div class="goal-item {% if objectifs_du_jour[0].completed %}goal-completed{% endif %}">
+          {% for objectif in objectifs_du_jour %}
+          <div class="goal-item {% if objectif.completed %}goal-completed{% endif %}">
             <div class="goal-checkbox">
-              <input type="checkbox" id="goal1" 
-                     {% if objectifs_du_jour[0].completed %}checked{% endif %} disabled>
-              <label for="goal1"></label>
+              <input type="checkbox" id="goal{{ loop.index }}" 
+                     {% if objectif.completed %}checked{% endif %} disabled>
+              <label for="goal{{ loop.index }}"></label>
             </div>
             <div class="goal-content">
               <span class="goal-text">
-                {{ objectifs_du_jour[0].text }}
+                {{ objectif.text }}
                 <small style="display: block; font-size: 0.75em; color: var(--gray); margin-top: 2px;">
-                  {{ objectifs_du_jour[0].progress }}
+                  {{ objectif.progress }}
                 </small>
               </span>
-              {% if objectifs_du_jour[0].completed %}
+              {% if objectif.completed %}
               <span class="goal-completed">
                 <i class="fas fa-check"></i>
                 {% if lang == 'en' %}Done{% else %}Fait{% endif %}
@@ -1457,52 +1600,7 @@
               {% endif %}
             </div>
           </div>
-
-          <!-- Objectif 2: Moyenne 3+ étoiles -->
-          <div class="goal-item {% if objectifs_du_jour[1].completed %}goal-completed{% endif %}">
-            <div class="goal-checkbox">
-              <input type="checkbox" id="goal2" 
-                     {% if objectifs_du_jour[1].completed %}checked{% endif %} disabled>
-              <label for="goal2"></label>
-            </div>
-            <div class="goal-content">
-              <span class="goal-text">
-                {{ objectifs_du_jour[1].text }}
-                <small style="display: block; font-size: 0.75em; color: var(--gray); margin-top: 2px;">
-                  {{ objectifs_du_jour[1].progress }}
-                </small>
-              </span>
-              {% if objectifs_du_jour[1].completed %}
-              <span class="goal-completed">
-                <i class="fas fa-check"></i>
-                {% if lang == 'en' %}Done{% else %}Fait{% endif %}
-              </span>
-              {% endif %}
-            </div>
-          </div>
-
-          <!-- Objectif 3: Utiliser Naima -->
-          <div class="goal-item {% if objectifs_du_jour[2].completed %}goal-completed{% endif %}">
-            <div class="goal-checkbox">
-              <input type="checkbox" id="goal3" 
-                     {% if objectifs_du_jour[2].completed %}checked{% endif %} disabled>
-              <label for="goal3"></label>
-            </div>
-            <div class="goal-content">
-              <span class="goal-text">
-                {{ objectifs_du_jour[2].text }}
-                <small style="display: block; font-size: 0.75em; color: var(--gray); margin-top: 2px;">
-                  {{ objectifs_du_jour[2].progress }}
-                </small>
-              </span>
-              {% if objectifs_du_jour[2].completed %}
-              <span class="goal-completed">
-                <i class="fas fa-check"></i>
-                {% if lang == 'en' %}Done{% else %}Fait{% endif %}
-              </span>
-              {% endif %}
-            </div>
-          </div>
+          {% endfor %}
         </div>
 
         <!-- Barre de progression -->
@@ -1537,7 +1635,7 @@
       </div>
 
       <!-- Statistiques de progression -->
-      <div class="card stats-card animated-card" style="animation-delay: 1.2s;">
+      <div class="card stats-card animated-card">
         <h3><i class="fas fa-chart-line"></i>
           {% if lang == 'en' %}
             Your Progress
@@ -1548,7 +1646,7 @@
 
         <div class="stats-grid">
           <div class="stat-item">
-            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-value">{{ stats.total if stats else 0 }}</div>
             <div class="stat-label">
               {% if lang == 'en' %}
                 Exercises
@@ -1559,7 +1657,7 @@
           </div>
 
           <div class="stat-item">
-            <div class="stat-value">{{ stats.average }}/5</div>
+            <div class="stat-value">{{ stats.average if stats else 0 }}/5</div>
             <div class="stat-label">
               {% if lang == 'en' %}
                 Avg Score
@@ -1570,16 +1668,46 @@
           </div>
 
           <div class="stat-item">
-            <div class="stat-value">{{ stats.success }}%</div>
+            <div class="stat-value">{{ stats.success if stats else 0 }}%</div>
             <div class="stat-label">
               {% if lang == 'en' %}
                 Success Rate
               {% else %}
-                Réussite
+                Taux de Réussite
               {% endif %}
             </div>
           </div>
         </div>
+
+        <!-- Progression par matière (à ajouter dans ta route) -->
+        {% if stats.par_matiere %}
+        <div class="subjects-progress">
+          <h4 style="margin-bottom: 15px; font-size: 1rem; color: var(--dark);">
+            <i class="fas fa-book-open"></i>
+            {% if lang == 'en' %}Progress by Subject{% else %}Progression par Matière{% endif %}
+          </h4>
+          {% for matiere in stats.par_matiere %}
+          <div class="subject-progress-item">
+            <div class="subject-header">
+              <div class="subject-name">
+                <i class="fas fa-{% if matiere.nom == 'mathématiques' %}calculator{% elif matiere.nom == 'français' %}language{% elif matiere.nom == 'anglais' %}globe{% elif matiere.nom == 'histoire' %}landmark{% elif matiere.nom == 'sciences' %}flask{% else %}book{% endif %}"></i>
+                <span>
+                  {% if lang == 'en' and matiere.nom_en %}
+                    {{ matiere.nom_en }}
+                  {% else %}
+                    {{ matiere.nom }}
+                  {% endif %}
+                </span>
+              </div>
+              <div class="subject-score">{{ matiere.reussis }}/{{ matiere.total }} ({{ matiere.taux_reussite }}%)</div>
+            </div>
+            <div class="subject-progress-bar">
+              <div class="subject-progress-fill" style="width: {{ matiere.taux_reussite }}%;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
 
         {% if courbe_progression %}
         <div class="chart-container">
@@ -1589,7 +1717,7 @@
       </div>
 
       <!-- Activité Récente -->
-      <div class="card animated-card" style="grid-column: 1 / -1; animation-delay: 1.3s;">
+      <div class="card animated-card" style="grid-column: 1 / -1;">
         <h3><i class="fas fa-clock"></i>
           {% if lang == 'en' %}
             Recent Activity
@@ -1599,32 +1727,26 @@
         </h3>
         <div class="recent-activity">
           {% if reponses_eleve and reponses_eleve|length > 0 %}
-            {% for reponse in reponses_eleve[-4:] | reverse %}
+            {% for reponse in reponses_eleve[-5:] | reverse %}
             <div class="activity-item">
               <div class="activity-icon">
-                <div class="stars-container">
-                  {% for i in range(5) %}
-                    {% if i < reponse.etoiles %}
-                      <span class="star filled">★</span>
-                    {% else %}
-                      <span class="star">★</span>
-                    {% endif %}
-                  {% endfor %}
-                  <span class="score-text">{{ reponse.etoiles }}/5</span>
-                  {% if reponse.etoiles < 3 %}
-                  <span class="low-score-badge">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {% if lang == 'en' %}Needs review{% else %}À revoir{% endif %}
-                  </span>
-                  {% endif %}
-                </div>
+                <i class="fas fa-{% if reponse.etoiles >= 4 %}check-circle{% elif reponse.etoiles >= 2 %}lightbulb{% else %}exclamation-circle{% endif %}" 
+                   style="color: {% if reponse.etoiles >= 4 %}#2ecc71{% elif reponse.etoiles >= 2 %}#f39c12{% else %}#e74c3c{% endif %};"></i>
               </div>
               <div class="activity-details">
                 <div class="activity-title">
-                  {% if lang == 'en' %}
-                    Exercise
-                  {% else %}
-                    Exercice
+                  {% if lang == 'en' %}Exercise{% else %}Exercice{% endif %}
+                  <div class="stars-container" style="display: inline-flex; margin-left: 10px;">
+                    {% for i in range(5) %}
+                      <span class="star {% if i < reponse.etoiles %}filled{% endif %}">★</span>
+                    {% endfor %}
+                    <span class="score-text">{{ reponse.etoiles }}/5</span>
+                  </div>
+                  {% if reponse.etoiles < 3 %}
+                  <span class="low-score-badge">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {% if lang == 'en' %}Review{% else %}À revoir{% endif %}
+                  </span>
                   {% endif %}
                 </div>
                 <div class="activity-meta">
@@ -1646,11 +1768,11 @@
               <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center;">
                 <a href="/choisir-sequence?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-secondary">
                   <i class="fas fa-play"></i>
-                  {% if lang == 'en' %}Start Learning{% else %}Commencer à apprendre{% endif %}
+                  {% if lang == 'en' %}Start Learning{% else %}Commencer{% endif %}
                 </a>
                 <a href="/enseignant-virtuel" class="btn" style="background: var(--naima-purple);">
                   <i class="fas fa-robot"></i>
-                  {% if lang == 'en' %}Ask Naima{% else %}Demander à Naima{% endif %}
+                  {% if lang == 'en' %}Ask Naima{% else %}Naima{% endif %}
                 </a>
               </div>
             </div>
@@ -1660,7 +1782,7 @@
     </div>
 
     <!-- Déconnexion -->
-    <a class="logout-btn animated-card" href="/logout" style="animation-delay: 1.4s;">
+    <a class="logout-btn animated-card" href="/logout">
       <i class="fas fa-sign-out-alt"></i>
       {% if lang == 'en' %}Log out{% else %}Se déconnecter{% endif %}
     </a>
@@ -1686,13 +1808,15 @@
       {% endif %}
       
       // Animation des barres de progression
-      const progressBars = document.querySelectorAll('.ia-progress-fill');
+      const progressBars = document.querySelectorAll('.subject-progress-fill, .progress-fill');
       progressBars.forEach(bar => {
-        const width = bar.style.width;
-        bar.style.width = '0';
-        setTimeout(() => {
-          bar.style.width = width;
-        }, 500);
+        if (bar.style.width) {
+          const width = bar.style.width;
+          bar.style.width = '0';
+          setTimeout(() => {
+            bar.style.width = width;
+          }, 500);
+        }
       });
       
       // Animation des cartes avec délai
@@ -1724,9 +1848,10 @@
       if (!timerElement) return;
 
       const initialSeconds = totalSeconds;
+      let seconds = totalSeconds;
 
       function updateTimer() {
-        if (totalSeconds <= 0) {
+        if (seconds <= 0) {
           timerElement.textContent = "00:00:00";
           if (progressBar) progressBar.style.width = '0%';
           timerElement.classList.add('urgent');
@@ -1736,14 +1861,14 @@
           return;
         }
 
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
         timerElement.textContent =
-          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
         if (progressBar) {
-          const progressPercentage = (totalSeconds / initialSeconds) * 100;
+          const progressPercentage = (seconds / initialSeconds) * 100;
           progressBar.style.width = `${progressPercentage}%`;
         }
 
@@ -1755,7 +1880,7 @@
           if (progressBar) progressBar.style.background = 'linear-gradient(90deg, #2ecc71, #f1c40f)';
         }
 
-        totalSeconds--;
+        seconds--;
         setTimeout(updateTimer, 1000);
       }
 
