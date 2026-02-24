@@ -5135,17 +5135,6 @@ def supprimer_matiere(id):
     # Rediriger vers une route qui existe
     return redirect(url_for("admin_dashboard"))  # Si votre dashboard est sur "/admin"
 
-@app.route("/admin/supprimer-test/<int:test_id>", methods=["POST"])
-def supprimer_test(test_id):
-    test = TestSommatif.query.get_or_404(test_id)
-    db.session.delete(test)
-    db.session.commit()
-    
-    # Si la requête vient d'AJAX, ne fais pas de redirection
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return '', 204  # No Content
-    
-    return redirect(url_for("liste_tests"))
 
 
 
