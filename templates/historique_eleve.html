@@ -1330,12 +1330,6 @@
                                       </div>
                                       <div class="content-block math-content">{{ exercice.reponse_eleve|default('', true)|safe }}</div>
 
-                                      <div class="content-title">
-                                        <i class="fas fa-robot"></i>
-                                        <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
-                                      </div>
-                                      <div class="content-block math-content">{{ exercice.analyse_ia|default('', true)|safe }}</div>
-
                                       <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                                         <div>
                                           <strong style="color: var(--primary-dark); font-size: 1.1rem;">{{ 'Note :' if lang == 'fr' else 'Score:' }}</strong>
@@ -1499,12 +1493,6 @@
                 </div>
                 <div class="content-block math-content">{{ t.reponse_eleve|default('', true)|safe }}</div>
 
-                <div class="content-title">
-                  <i class="fas fa-robot"></i>
-                  <span>{{ 'Analyse IA' if lang == 'fr' else 'AI Feedback' }}</span>
-                </div>
-                <div class="content-block math-content">{{ t.analyse_ia|default('', true)|safe }}</div>
-
                 <div style="display: flex; align-items: center; gap: 25px; margin-top: 30px; padding-top: 25px; border-top: 2px solid var(--light); flex-wrap: wrap;">
                   <div>
                     <strong style="color: var(--primary-dark); font-size: 1.1rem;">{{ 'Note :' if lang == 'fr' else 'Score:' }}</strong>
@@ -1614,31 +1602,6 @@
           MathJax.typesetPromise().catch(err => console.warn('MathJax initial error:', err));
         }, 500);
       }
-      
-      // Traitement des réponses JSON
-      document.querySelectorAll('.content-block').forEach(block => {
-        try {
-          const content = block.innerHTML.trim();
-          if (content.startsWith('{') && content.endsWith('}')) {
-            const data = JSON.parse(content);
-            const feedback = data.current_feedback || data.feedback || data.original || 
-                            data.analyse || data.analysis || data.reponse || content;
-            
-            let cleanFeedback = String(feedback)
-              .replace(/\\n/g, '<br>')
-              .replace(/\\r/g, '')
-              .replace(/\\t/g, ' ')
-              .replace(/\\\\\[/g, '$$')
-              .replace(/\\\\\]/g, '$$')
-              .replace(/\\\\\(/g, '$')
-              .replace(/\\\\\)/g, '$');
-            
-            block.innerHTML = cleanFeedback;
-          }
-        } catch(e) {
-          // Pas du JSON
-        }
-      });
       
       // Animer les barres de progression
       document.querySelectorAll('.progress-bar').forEach(bar => {
