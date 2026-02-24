@@ -358,6 +358,7 @@
       box-shadow: 0 5px 10px rgba(52, 152, 219, 0.3);
     }
 
+    /* Styles pour les modals */
     .modal {
       display: none;
       position: fixed;
@@ -474,19 +475,27 @@
           <i class="fas fa-plus"></i> 
           {% if lang == 'en' %}Add Manual Question{% else %}Ajouter question manuelle{% endif %}
         </a>
+        
+        <!-- 🔴 BOUTON SUPPRIMER LE TEST -->
+        <button class="btn btn-danger" onclick="showDeleteTestModal()">
+          <i class="fas fa-trash"></i> 
+          {% if lang == 'en' %}Delete Test{% else %}Supprimer le test{% endif %}
+        </button>
       </div>
     </div>
 
     <!-- Section PDF -->
-    {% if test.fichier_pdf %}
+    {% if test.chemin_fichier or test.chemin_corrige %}
     <div class="pdf-section">
       <h3><i class="fas fa-file-pdf"></i> {% if lang == 'en' %}Test Documents{% else %}Documents du test{% endif %}</h3>
       <div class="pdf-actions">
-        <a href="{{ url_for('static', filename='uploads/' + test.fichier_pdf) }}" class="btn btn-primary" target="_blank">
+        {% if test.chemin_fichier %}
+        <a href="{{ url_for('static', filename='uploads/' + test.chemin_fichier) }}" class="btn btn-primary" target="_blank">
           <i class="fas fa-eye"></i> {% if lang == 'en' %}View Test PDF{% else %}Voir le PDF du test{% endif %}
         </a>
-        {% if test.fichier_corrige %}
-        <a href="{{ url_for('static', filename='uploads/' + test.fichier_corrige) }}" class="btn btn-success" target="_blank">
+        {% endif %}
+        {% if test.chemin_corrige %}
+        <a href="{{ url_for('static', filename='uploads/' + test.chemin_corrige) }}" class="btn btn-success" target="_blank">
           <i class="fas fa-check-circle"></i> {% if lang == 'en' %}View Correction PDF{% else %}Voir le corrigé PDF{% endif %}
         </a>
         {% endif %}
@@ -595,6 +604,12 @@
             <i class="fas fa-plus"></i> 
             {% if lang == 'en' %}Add Manual Question{% else %}Ajouter question manuelle{% endif %}
           </a>
+          
+          <!-- 🔴 BOUTON SUPPRIMER LE TEST AUSSI DANS L'ÉTAT VIDE -->
+          <button class="btn btn-danger" onclick="showDeleteTestModal()">
+            <i class="fas fa-trash"></i> 
+            {% if lang == 'en' %}Delete Test{% else %}Supprimer le test{% endif %}
+          </button>
         </div>
       </div>
     {% endif %}
@@ -607,16 +622,50 @@
     </div>
   </div>
 
-  <!-- Modal de confirmation de suppression -->
+  <!-- Modal de confirmation de suppression d'une question -->
   <div class="modal" id="deleteModal">
     <div class="modal-content">
       <h3>{% if lang == 'en' %}Confirm Deletion{% else %}Confirmer la suppression{% endif %}</h3>
       <p>{% if lang == 'en' %}Are you sure you want to delete this question?{% else %}Êtes-vous sûr de vouloir supprimer cette question ?{% endif %}</p>
       <p><small>{% if lang == 'en' %}This action cannot be undone.{% else %}Cette action ne peut pas être annulée.{% endif %}</small></p>
       <div class="modal-actions">
-        <button class="btn" id="cancelDelete">{% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}</button>
+        <button class="btn" onclick="closeDeleteModal()">{% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}</button>
         <form method="POST" action="" id="deleteForm" style="display: inline;">
           <button type="submit" class="btn btn-danger">{% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmation de suppression du test -->
+  <div class="modal" id="deleteTestModal">
+    <div class="modal-content">
+      <h3>{% if lang == 'en' %}Delete Entire Test{% else %}Supprimer tout le test{% endif %}</h3>
+      <p>
+        {% if lang == 'en' %}
+          Are you sure you want to delete this entire test?
+          <br><strong>This will delete all {{ exercices|length }} questions permanently.</strong>
+        {% else %}
+          Êtes-vous sûr de vouloir supprimer ce test ?
+          <br><strong>Cela supprimera définitivement les {{ exercices|length }} questions.</strong>
+        {% endif %}
+      </p>
+      <p><small style="color: var(--danger);">
+        {% if lang == 'en' %}
+          ⚠️ This action cannot be undone.
+        {% else %}
+          ⚠️ Cette action ne peut pas être annulée.
+        {% endif %}
+      </small></p>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeDeleteTestModal()">
+          {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
+        </button>
+        <form method="POST" action="/admin/supprimer-test/{{ test.id }}" style="display: inline;">
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash"></i> 
+            {% if lang == 'en' %}Delete Test{% else %}Supprimer{% endif %}
+          </button>
         </form>
       </div>
     </div>
@@ -625,7 +674,6 @@
   <script>
     // Gestion des onglets de langue
     document.addEventListener('DOMContentLoaded', function() {
-      // Initialiser tous les onglets
       const allTabs = document.querySelectorAll('.tab');
       
       allTabs.forEach(tab => {
@@ -656,10 +704,9 @@
         });
       });
 
-      // Gestion de la suppression avec modal
+      // Gestion de la suppression d'une question
       const deleteButtons = document.querySelectorAll('.delete-btn');
       const deleteModal = document.getElementById('deleteModal');
-      const cancelDelete = document.getElementById('cancelDelete');
       const deleteForm = document.getElementById('deleteForm');
       
       deleteButtons.forEach(button => {
@@ -669,22 +716,37 @@
           deleteModal.style.display = 'flex';
         });
       });
-      
-      // Fermer la modal
-      cancelDelete.addEventListener('click', function() {
-        deleteModal.style.display = 'none';
-      });
-      
-      // Fermer la modal en cliquant à l'extérieur
-      window.addEventListener('click', function(event) {
-        if (event.target === deleteModal) {
-          deleteModal.style.display = 'none';
-        }
-      });
 
-      // Re-trigger MathJax pour s'assurer que tout le contenu est rendu
+      // Re-trigger MathJax
       if (window.MathJax) {
         window.MathJax.typesetPromise();
+      }
+    });
+
+    // Fonctions pour la modal de suppression de question
+    function closeDeleteModal() {
+      document.getElementById('deleteModal').style.display = 'none';
+    }
+
+    // Fonctions pour la modal de suppression du test
+    function showDeleteTestModal() {
+      document.getElementById('deleteTestModal').style.display = 'flex';
+    }
+
+    function closeDeleteTestModal() {
+      document.getElementById('deleteTestModal').style.display = 'none';
+    }
+
+    // Fermer les modals en cliquant à l'extérieur
+    window.addEventListener('click', function(event) {
+      const deleteModal = document.getElementById('deleteModal');
+      const deleteTestModal = document.getElementById('deleteTestModal');
+      
+      if (event.target === deleteModal) {
+        deleteModal.style.display = 'none';
+      }
+      if (event.target === deleteTestModal) {
+        deleteTestModal.style.display = 'none';
       }
     });
   </script>
