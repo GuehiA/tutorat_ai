@@ -211,7 +211,7 @@
             margin-top: 20px;
         }
         
-        /* Style pour la sélection multiple */
+        /* Style pour la sélection multiple - SANS BOUTON TOUT SÉLECTIONNER */
         .selection-controls {
             display: flex;
             gap: 10px;
@@ -222,13 +222,9 @@
             border-radius: 8px;
         }
         
-        .select-all-checkbox {
-            margin-right: 5px;
-            cursor: pointer;
-        }
-        
-        .exercise-checkbox {
-            margin-right: 10px;
+        .selection-label {
+            font-weight: 600;
+            color: #2c3e50;
         }
         
         .selected-count {
@@ -248,6 +244,7 @@
             padding: 10px;
             background: #f8f9fa;
             border-radius: 8px;
+            border-left: 4px solid #dc3545;
         }
         
         .bulk-actions.active {
@@ -257,6 +254,24 @@
         .exercise-item.selected {
             background-color: rgba(67, 97, 238, 0.1);
             border-left: 4px solid #4361ee;
+        }
+        
+        .exercise-checkbox {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .exercise-checkbox:checked {
+            accent-color: #4361ee;
+        }
+        
+        /* Avertissement pour la sélection multiple */
+        .selection-warning {
+            color: #dc3545;
+            font-size: 0.85rem;
+            margin-left: 15px;
         }
         
         /* Style responsive */
@@ -296,6 +311,11 @@
             .selection-controls, .bulk-actions {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+            
+            .selection-warning {
+                margin-left: 0;
+                margin-top: 5px;
             }
         }
         
@@ -449,15 +469,17 @@
             </button>
         </div>
 
-        <!-- Contrôles de sélection multiple -->
+        <!-- Contrôles de sélection multiple - SANS BOUTON TOUT SÉLECTIONNER -->
         <div class="selection-controls">
-            <div class="form-check">
-                <input type="checkbox" class="form-check-input select-all-checkbox" id="selectAll">
-                <label class="form-check-label" for="selectAll">
-                    {% if lang == 'en' %}Select All{% else %}Tout sélectionner{% endif %}
-                </label>
-            </div>
+            <span class="selection-label">
+                <i class="fas fa-hand-pointer me-1"></i>
+                {% if lang == 'en' %}Select exercises individually:{% else %}Sélectionnez les exercices individuellement :{% endif %}
+            </span>
             <span class="selected-count" id="selectedCount">0</span>
+            <span class="selection-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                {% if lang == 'en' %}Each exercise must be selected one by one{% else %}Chaque exercice doit être sélectionné un par un{% endif %}
+            </span>
         </div>
 
         <div class="bulk-actions" id="bulkActions">
@@ -755,7 +777,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Variables globales - CORRECTION : déclaré en dehors de DOMContentLoaded
+        // Variables globales
         const langJs = "{{ lang }}";
         let selectedExercises = new Set();
 
@@ -787,7 +809,7 @@
             });
         });
 
-        // Initialiser la sélection multiple - VERSION CORRIGÉE
+        // Initialiser la sélection multiple - SANS TOUT SÉLECTIONNER
         function initMultiSelect() {
             console.log('Initialisation de la sélection multiple...');
             
@@ -815,32 +837,6 @@
                 });
             });
             
-            // Événement pour "Tout sélectionner"
-            document.getElementById('selectAll').addEventListener('change', function() {
-                console.log('Select All changé:', this.checked);
-                const checkboxes = document.querySelectorAll('.exercise-checkbox');
-                const allChecked = this.checked;
-                
-                // Vider le Set avant de remplir
-                selectedExercises.clear();
-                
-                checkboxes.forEach(checkbox => {
-                    checkbox.checked = allChecked;
-                    const exerciceId = checkbox.getAttribute('data-exercice-id');
-                    const exerciseItem = checkbox.closest('.exercise-item');
-                    
-                    if (allChecked) {
-                        selectedExercises.add(exerciceId);
-                        exerciseItem.classList.add('selected');
-                    } else {
-                        selectedExercises.delete(exerciceId);
-                        exerciseItem.classList.remove('selected');
-                    }
-                });
-                
-                updateSelectionUI();
-            });
-            
             // Événement pour le bouton de suppression multiple
             document.getElementById('deleteSelectedBtn').addEventListener('click', function(e) {
                 e.preventDefault();
@@ -855,7 +851,7 @@
                 clearSelection();
             });
             
-            // Événements pour les boutons de suppression individuels - VERSION CORRIGÉE
+            // Événements pour les boutons de suppression individuels
             document.querySelectorAll('.delete-single-btn').forEach(btn => {
                 // Cloner le bouton pour éviter les doublons
                 const newBtn = btn.cloneNode(true);
@@ -896,13 +892,7 @@
                 bulkActions.classList.add('active');
             } else {
                 bulkActions.classList.remove('active');
-                document.getElementById('selectAll').checked = false;
             }
-            
-            // Vérifier si tous sont sélectionnés
-            const totalCheckboxes = document.querySelectorAll('.exercise-checkbox').length;
-            const allChecked = selectedExercises.size === totalCheckboxes && totalCheckboxes > 0;
-            document.getElementById('selectAll').checked = allChecked;
         }
 
         // Effacer la sélection
@@ -960,7 +950,7 @@
                 deleteBtn.disabled = true;
             }
             
-            // Envoyer la requête AJAX - CORRECTION : envoi des IDs en tant qu'entiers
+            // Envoyer la requête AJAX
             console.log('Envoi AJAX pour supprimer:', exerciseIds);
             
             fetch('/admin/supprimer-exercices-multiple', {
