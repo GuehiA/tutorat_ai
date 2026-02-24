@@ -101,19 +101,6 @@
             background: linear-gradient(to bottom, transparent, white);
         }
         
-        /* Contrôles d'accordéon globaux */
-        .accordion-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            justify-content: flex-end;
-        }
-        
-        .accordion-controls .btn-sm {
-            padding: 5px 10px;
-            font-size: 0.8rem;
-        }
-        
         /* Nouvelles classes pour l'organisation par matière/unité */
         .matiere-section {
             margin-bottom: 30px;
@@ -341,6 +328,13 @@
             top: 50%;
             transform: translate(-50%, -50%);
         }
+        
+        /* Optimisation performance - pas de hover sur mobile */
+        @media (max-width: 768px) {
+            .exercise-actions {
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -451,22 +445,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Contrôles des accordéons -->
-        <div class="accordion-controls">
-            <button class="btn btn-sm btn-outline-primary" id="expandAllBtn">
-                <i class="fas fa-expand-alt"></i>
-                {% if lang == 'en' %}Expand All{% else %}Tout développer{% endif %}
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" id="collapseAllBtn">
-                <i class="fas fa-compress-alt"></i>
-                {% if lang == 'en' %}Collapse All{% else %}Tout réduire{% endif %}
-            </button>
-            <button class="btn btn-sm btn-outline-info" id="expandWithExercisesBtn">
-                <i class="fas fa-filter"></i>
-                {% if lang == 'en' %}Expand with Exercises{% else %}Développer avec exercices{% endif %}
-            </button>
         </div>
 
         <!-- Contrôles de sélection multiple - SANS BOUTON TOUT SÉLECTIONNER -->
@@ -785,12 +763,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM chargé, initialisation de la sélection multiple...');
             
-            // Ouvrir le premier accordéon de la première unité par défaut
-            const firstAccordion = document.querySelector('.accordion-item:first-child .accordion-button');
-            if (firstAccordion) {
-                firstAccordion.click();
-            }
-            
             // Attacher les événements aux boutons d'aperçu
             attachPreviewEvents();
             
@@ -800,13 +772,8 @@
             // Initialiser la sélection multiple
             initMultiSelect();
             
-            // Ajouter un écouteur pour debug
-            document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('exercise-checkbox')) {
-                    console.log('Checkbox cliquée, ID:', e.target.dataset.exerciceId, 'checked:', e.target.checked);
-                    console.log('SelectedExercises:', Array.from(selectedExercises));
-                }
-            });
+            // Appliquer les filtres initiaux si présents dans l'URL
+            applyFiltersFromURL();
         });
 
         // Initialiser la sélection multiple - SANS TOUT SÉLECTIONNER
@@ -877,6 +844,29 @@
             
             // Initialiser l'UI
             updateSelectionUI();
+        }
+
+        // Appliquer les filtres depuis l'URL
+        function applyFiltersFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const niveauId = urlParams.get('niveau');
+            const matiereId = urlParams.get('matiere');
+            const search = urlParams.get('search');
+            
+            if (niveauId) {
+                document.getElementById('niveauFilter').value = niveauId;
+                filterByNiveau();
+            }
+            
+            if (matiereId) {
+                document.getElementById('matiereFilter').value = matiereId;
+                filterByMatiere();
+            }
+            
+            if (search) {
+                document.getElementById('searchInput').value = search;
+                filterExercises();
+            }
         }
 
         // Mettre à jour l'interface de sélection
@@ -1341,53 +1331,6 @@
             }
         }
 
-        // Contrôles des accordéons
-        document.getElementById('expandAllBtn').addEventListener('click', function() {
-            const accordions = document.querySelectorAll('.accordion-button.collapsed');
-            accordions.forEach(btn => {
-                if (!btn.classList.contains('collapsed')) return;
-                const collapseId = btn.getAttribute('data-bs-target');
-                const collapseElement = document.querySelector(collapseId);
-                if (collapseElement) {
-                    new bootstrap.Collapse(collapseElement, { toggle: true });
-                }
-            });
-        });
-
-        document.getElementById('collapseAllBtn').addEventListener('click', function() {
-            const accordions = document.querySelectorAll('.accordion-button:not(.collapsed)');
-            accordions.forEach(btn => {
-                if (btn.classList.contains('collapsed')) return;
-                const collapseId = btn.getAttribute('data-bs-target');
-                const collapseElement = document.querySelector(collapseId);
-                if (collapseElement) {
-                    new bootstrap.Collapse(collapseElement, { toggle: true });
-                }
-            });
-        });
-
-        document.getElementById('expandWithExercisesBtn').addEventListener('click', function() {
-            const accordions = document.querySelectorAll('.accordion-item');
-            accordions.forEach(item => {
-                const hasExercises = item.querySelector('.exercise-item');
-                const button = item.querySelector('.accordion-button');
-                
-                if (hasExercises && button.classList.contains('collapsed')) {
-                    const collapseId = button.getAttribute('data-bs-target');
-                    const collapseElement = document.querySelector(collapseId);
-                    if (collapseElement) {
-                        new bootstrap.Collapse(collapseElement, { toggle: true });
-                    }
-                } else if (!hasExercises && !button.classList.contains('collapsed')) {
-                    const collapseId = button.getAttribute('data-bs-target');
-                    const collapseElement = document.querySelector(collapseId);
-                    if (collapseElement) {
-                        new bootstrap.Collapse(collapseElement, { toggle: true });
-                    }
-                }
-            });
-        });
-
         // Filtrage par niveau et matière
         document.getElementById('niveauFilter').addEventListener('change', function() {
             filterByNiveau();
@@ -1455,7 +1398,12 @@
                     const accordionItem = exerciseItem.closest('.accordion-item');
                     const button = accordionItem.querySelector('.accordion-button');
                     if (button && button.classList.contains('collapsed')) {
-                        button.click();
+                        // Utiliser Bootstrap Collapse
+                        const collapseId = button.getAttribute('data-bs-target');
+                        const collapseElement = document.querySelector(collapseId);
+                        if (collapseElement) {
+                            new bootstrap.Collapse(collapseElement, { toggle: true });
+                        }
                     }
                     
                     // Ouvrir la section unité si fermée
@@ -1490,12 +1438,12 @@
                 message.className = 'alert alert-warning mt-3';
                 message.innerHTML = `
                     <i class="fas fa-search me-2"></i>
-                    <strong>${langJs === 'en' ? 'No results found' : 'Aucun résultat trouvé'}</strong>
+                    <strong id="noResultsText"></strong>
                     <p class="mb-0 mt-2">${langJs === 'en' ? 'Try different keywords or filters' : 'Essayez d\'autres mots-clés ou filtres'}</p>
                 `;
                 document.querySelector('.container').appendChild(message);
             }
-            message.querySelector('strong').textContent = 
+            document.getElementById('noResultsText').textContent = 
                 langJs === 'en' ? `No results found for "${searchTerm}"` : `Aucun résultat trouvé pour "${searchTerm}"`;
         }
 
@@ -1517,7 +1465,7 @@
         }
     </script>
     
-    <!-- Bouton de debug (temporaire) -->
+    <!-- Bouton de debug (temporaire) - Caché par défaut -->
     <button onclick="debugSelection()" class="btn btn-sm btn-warning" style="position: fixed; bottom: 10px; right: 10px; z-index: 1000; display: none;">
         <i class="fas fa-bug"></i> Debug
     </button>
