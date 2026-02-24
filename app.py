@@ -3572,6 +3572,52 @@ def visualiser_test_sommatif(test_id):
         dashboard_url=dashboard_url
     )
 
+@app.route("/admin/supprimer-test/<int:test_id>", methods=["POST"])
+@admin_required
+def supprimer_test(test_id):
+    """Supprime un test sommatif et tous ses exercices associés"""
+    test = TestSommatif.query.get_or_404(test_id)
+    
+    try:
+        # Récupérer le dashboard URL avant de supprimer
+        if session.get("is_admin"):
+            dashboard_url = "/admin/dashboard"
+        elif session.get("enseignant_id"):
+            dashboard_url = "/dashboard-enseignant"
+        else:
+            dashboard_url = "/"
+        
+        # 1. Supprimer d'abord tous les exercices du test
+        exercices = TestExercice.query.filter_by(test_id=test_id).all()
+        count_exercices = len(exercices)
+        for exercice in exercices:
+            db.session.delete(exercice)
+        
+        # 2. Supprimer les réponses associées (si elles existent)
+        reponses = TestResponse.query.filter_by(test_id=test_id).all()
+        for reponse in reponses:
+            db.session.delete(reponse)
+        
+        # 3. Supprimer le test lui-même
+        db.session.delete(test)
+        db.session.commit()
+        
+        # Message selon la langue
+        if session.get("lang") == "en":
+            flash(f"✅ Test and {count_exercices} questions successfully deleted", "success")
+        else:
+            flash(f"✅ Test et {count_exercices} questions supprimés avec succès", "success")
+            
+    except Exception as e:
+        db.session.rollback()
+        if session.get("lang") == "en":
+            flash(f"❌ Error deleting test: {str(e)}", "error")
+        else:
+            flash(f"❌ Erreur lors de la suppression du test: {str(e)}", "error")
+    
+    # Redirection vers la page appropriée
+    return redirect(dashboard_url)
+
 @app.route("/admin/supprimer-exercice/<int:exercice_id>", methods=["POST"])
 @admin_required
 def supprimer_exercice(exercice_id):
