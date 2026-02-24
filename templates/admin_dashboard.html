@@ -116,7 +116,6 @@
       transition: var(--transition);
       border: 1px solid rgba(255, 255, 255, 0.2);
       overflow: hidden;
-      opacity: 0;
       animation: fadeInUp 0.6s ease-out forwards;
       height: 100%;
       width: 100%;
@@ -170,12 +169,7 @@
       gap: 5px;
     }
     
-    .tab-item {
-      margin-bottom: -2px;
-    }
-    
     .tab-button {
-      display: block;
       padding: 12px 25px;
       background: transparent;
       border: none;
@@ -214,11 +208,6 @@
     
     .tab-pane-css.active {
       display: block;
-    }
-    
-    /* Cache les radio buttons */
-    .tab-radio {
-      display: none;
     }
     
     .action-btn {
@@ -751,6 +740,30 @@
       }
     }
     
+    /* Skeleton loading */
+    .skeleton-card {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 12px;
+      height: 100px;
+      margin-bottom: 20px;
+    }
+    
+    .skeleton-text {
+      height: 20px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
     /* Responsive */
     @media (min-width: 1600px) {
       .container-fluid {
@@ -837,30 +850,6 @@
         padding: 8px 12px;
       }
     }
-
-    /* Styles pour le skeleton loading */
-    .skeleton-card {
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: loading 1.5s infinite;
-      border-radius: 12px;
-      height: 100px;
-      margin-bottom: 20px;
-    }
-    
-    .skeleton-text {
-      height: 20px;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: loading 1.5s infinite;
-      border-radius: 4px;
-      margin: 10px 0;
-    }
-    
-    @keyframes loading {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
   </style>
 </head>
 <body>
@@ -898,7 +887,6 @@
 
     <!-- Cartes de statistiques avec Skeleton Loading -->
     <div class="row g-3 g-md-4 mb-4" id="stats-cards">
-      <!-- Skeleton cards affichées pendant le chargement -->
       <div class="col-12 col-sm-6 col-md-3">
         <div class="skeleton-card"></div>
       </div>
@@ -915,14 +903,54 @@
 
     <!-- Conteneur principal pour les données AJAX -->
     <div id="dashboard-content">
-      <!-- Skeleton pour les onglets -->
       <div class="tab-container">
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-          <div class="skeleton-text" style="width: 150px; height: 40px;"></div>
-          <div class="skeleton-text" style="width: 150px; height: 40px;"></div>
-          <div class="skeleton-text" style="width: 150px; height: 40px;"></div>
+        <div class="tab-list" id="tab-list">
+          <button class="tab-button active" onclick="switchTab('actions')">
+            <i class="fas fa-tachometer-alt me-2"></i>{% if lang == 'en' %}Quick Actions{% else %}Actions Rapides{% endif %}
+          </button>
+          <button class="tab-button" onclick="switchTab('content')">
+            <i class="fas fa-sitemap me-2"></i>{% if lang == 'en' %}Content Structure{% else %}Structure du Contenu{% endif %}
+          </button>
+          <button class="tab-button" onclick="switchTab('monetization')">
+            <i class="fas fa-money-bill-wave me-2"></i>{% if lang == 'en' %}Monetization{% else %}Monétisation{% endif %}
+          </button>
+          <button class="tab-button" onclick="switchTab('analytics')">
+            <i class="fas fa-chart-bar me-2"></i>{% if lang == 'en' %}Analytics{% else %}Analytiques{% endif %}
+          </button>
         </div>
-        <div class="skeleton-card" style="height: 300px;"></div>
+        
+        <div class="tab-pane-css active" id="pane-actions">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">{% if lang == 'en' %}Loading actions...{% else %}Chargement des actions...{% endif %}</p>
+          </div>
+        </div>
+        <div class="tab-pane-css" id="pane-content">
+          <div class="text-center py-4">
+            <div class="spinner-border text-success" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">{% if lang == 'en' %}Loading content structure...{% else %}Chargement de la structure...{% endif %}</p>
+          </div>
+        </div>
+        <div class="tab-pane-css" id="pane-monetization">
+          <div class="text-center py-4">
+            <div class="spinner-border text-warning" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">{% if lang == 'en' %}Loading monetization data...{% else %}Chargement des données de monétisation...{% endif %}</p>
+          </div>
+        </div>
+        <div class="tab-pane-css" id="pane-analytics">
+          <div class="text-center py-4">
+            <div class="spinner-border text-info" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">{% if lang == 'en' %}Loading analytics...{% else %}Chargement des analytiques...{% endif %}</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -937,18 +965,13 @@
     const app = {
       lang: '{{ lang }}',
       data: null,
-      isLoading: true
+      isLoading: true,
+      currentTab: 'actions'
     };
 
     // Initialisation au chargement
     document.addEventListener('DOMContentLoaded', function() {
       console.log('🚀 Initialisation du dashboard...');
-      
-      // Activer le premier onglet
-      const firstTab = document.querySelector('.tab-button');
-      if (firstTab) {
-        firstTab.click();
-      }
       
       // Charger les données
       loadDashboardData();
@@ -976,9 +999,6 @@
         // Mettre à jour l'interface
         updateDashboard();
         
-        // Initialiser le graphique
-        initializeCharts();
-        
       } catch (error) {
         console.error('❌ Erreur chargement données:', error);
         showError();
@@ -997,7 +1017,12 @@
       updateStatsCards();
       
       // 2. Générer le contenu des onglets
-      generateTabs();
+      updateTabContent();
+      
+      // 3. Initialiser le graphique si on est sur l'onglet analytics
+      if (app.currentTab === 'analytics') {
+        setTimeout(() => initializeCharts(), 100);
+      }
       
       console.log('✅ Dashboard mis à jour');
     }
@@ -1005,131 +1030,64 @@
     function updateStatsCards() {
       const stats = app.data.stats || {};
       
-      // Utiliser les noms exacts de votre API
-      const enseignants = stats.enseignants_count || 0;
-      const eleves = stats.eleves_count || 0;
-      const lecons = stats.lecons_count || 0;
-      const exercices = stats.exercices_count || 0;
-      const tests = stats.total_tests || 0;
-      
-      console.log('📊 Stats values:', { enseignants, eleves, lecons, exercices, tests });
+      const statsContainer = document.getElementById('stats-cards');
+      if (!statsContainer) return;
       
       const html = `
         <div class="col-12 col-sm-6 col-md-3">
           <div class="stats-card">
-            <div class="stats-number">${enseignants}</div>
+            <div class="stats-number">${stats.enseignants_count || 0}</div>
             <div class="stats-label">${app.lang === 'en' ? 'Teachers' : 'Enseignants'}</div>
           </div>
         </div>
         <div class="col-12 col-sm-6 col-md-3">
           <div class="stats-card">
-            <div class="stats-number">${eleves}</div>
+            <div class="stats-number">${stats.eleves_count || 0}</div>
             <div class="stats-label">${app.lang === 'en' ? 'Students' : 'Élèves'}</div>
           </div>
         </div>
         <div class="col-12 col-sm-6 col-md-3">
           <div class="stats-card">
-            <div class="stats-number">${lecons}</div>
+            <div class="stats-number">${stats.lecons_count || 0}</div>
             <div class="stats-label">${app.lang === 'en' ? 'Lessons' : 'Leçons'}</div>
           </div>
         </div>
         <div class="col-12 col-sm-6 col-md-3">
           <div class="stats-card">
-            <div class="stats-number">${exercices}</div>
+            <div class="stats-number">${stats.exercices_count || 0}</div>
             <div class="stats-label">${app.lang === 'en' ? 'Exercises' : 'Exercices'}</div>
           </div>
         </div>
       `;
       
-      const statsContainer = document.getElementById('stats-cards');
-      if (statsContainer) {
-        statsContainer.innerHTML = html;
-      }
+      statsContainer.innerHTML = html;
     }
 
-    function generateTabs() {
-      console.log('🔄 Génération des onglets...');
+    function updateTabContent() {
+      // Mettre à jour chaque onglet avec les données
+      const actionsPane = document.getElementById('pane-actions');
+      const contentPane = document.getElementById('pane-content');
+      const monetizationPane = document.getElementById('pane-monetization');
+      const analyticsPane = document.getElementById('pane-analytics');
       
-      const html = `
-        <div class="tab-container">
-          <!-- Radio buttons -->
-          <input type="radio" name="tab" id="tab-actions" class="tab-radio" checked>
-          <input type="radio" name="tab" id="tab-content" class="tab-radio">
-          <input type="radio" name="tab" id="tab-monetization" class="tab-radio">
-          <input type="radio" name="tab" id="tab-analytics" class="tab-radio">
-          
-          <!-- Onglets -->
-          <div class="tab-list">
-            <label for="tab-actions" class="tab-item">
-              <span class="tab-button active" onclick="switchTab('actions')">
-                <i class="fas fa-tachometer-alt me-2"></i>${app.lang === 'en' ? 'Quick Actions' : 'Actions Rapides'}
-              </span>
-            </label>
-            <label for="tab-content" class="tab-item">
-              <span class="tab-button" onclick="switchTab('content')">
-                <i class="fas fa-sitemap me-2"></i>${app.lang === 'en' ? 'Content Structure' : 'Structure du Contenu'}
-              </span>
-            </label>
-            <label for="tab-monetization" class="tab-item">
-              <span class="tab-button" onclick="switchTab('monetization')">
-                <i class="fas fa-money-bill-wave me-2"></i>${app.lang === 'en' ? 'Monetization' : 'Monétisation'}
-              </span>
-            </label>
-            <label for="tab-analytics" class="tab-item">
-              <span class="tab-button" onclick="switchTab('analytics')">
-                <i class="fas fa-chart-bar me-2"></i>${app.lang === 'en' ? 'Analytics' : 'Analytiques'}
-              </span>
-            </label>
-          </div>
-          
-          <!-- Panneaux -->
-          <div class="tab-pane-css active" id="pane-actions">
-            ${generateActionsTab()}
-          </div>
-          <div class="tab-pane-css" id="pane-content">
-            ${generateContentTab()}
-          </div>
-          <div class="tab-pane-css" id="pane-monetization">
-            ${generateMonetizationTab()}
-          </div>
-          <div class="tab-pane-css" id="pane-analytics">
-            <div class="content-section mt-4">
-              <h4 class="mb-3">${app.lang === 'en' ? 'Platform Analytics' : 'Analytiques de la Plateforme'}</h4>
-              <div class="row g-3 g-md-4">
-                <div class="col-12 col-md-8">
-                  <div class="dashboard-card">
-                    <div class="card-header">
-                      <i class="fas fa-chart-line me-2"></i>
-                      ${app.lang === 'en' ? 'Students per Level' : 'Élèves par Niveau'}
-                    </div>
-                    <div class="card-body">
-                      <canvas id="chartElevesParNiveau" style="width: 100%; min-height: 200px;"></canvas>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <div class="dashboard-card">
-                    <div class="card-header">
-                      <i class="fas fa-bell me-2"></i>
-                      ${app.lang === 'en' ? 'Recent Activity' : 'Activité Récente'}
-                    </div>
-                    <div class="card-body">
-                      <div class="activity-list">
-                        ${generateActivityItems()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      const contentContainer = document.getElementById('dashboard-content');
-      if (contentContainer) {
-        contentContainer.innerHTML = html;
+      if (actionsPane) {
+        actionsPane.innerHTML = generateActionsTab();
       }
+      
+      if (contentPane) {
+        contentPane.innerHTML = generateContentTab();
+      }
+      
+      if (monetizationPane) {
+        monetizationPane.innerHTML = generateMonetizationTab();
+      }
+      
+      if (analyticsPane) {
+        analyticsPane.innerHTML = generateAnalyticsTab();
+      }
+      
+      // Réactiver l'onglet courant
+      switchTab(app.currentTab);
     }
 
     function generateActionsTab() {
@@ -1143,7 +1101,7 @@
                 ${app.lang === 'en' ? 'User Management' : 'Gestion des Utilisateurs'}
               </div>
               <div class="card-body">
-                <a href="{{ url_for('creer_enseignant_admin') }}" class="btn action-btn">
+                <a href="/admin/creer-enseignant" class="btn action-btn">
                   <i class="fas fa-plus-circle"></i>
                   ${app.lang === 'en' ? 'Add Teacher' : 'Ajouter un Enseignant'}
                 </a>
@@ -1151,7 +1109,7 @@
                   <i class="fas fa-user-plus"></i>
                   ${app.lang === 'en' ? 'Add Student' : 'Ajouter un Élève'}
                 </a>
-                <a href="/admin-enseignants" class="btn action-btn">
+                <a href="/admin/enseignants" class="btn action-btn">
                   <i class="fas fa-user-edit"></i>
                   ${app.lang === 'en' ? 'Manage Teachers' : 'Gérer les Enseignants'}
                 </a>
@@ -1255,8 +1213,6 @@
         `;
       }
       
-      console.log('📚 Génération du contenu avec', app.data.niveaux.length, 'niveaux');
-      
       let html = '<div class="accordion" id="contentAccordion">';
       
       app.data.niveaux.forEach((niveau) => {
@@ -1272,9 +1228,7 @@
             </h2>
             <div id="collapseNiveau${niveau.id}" class="accordion-collapse collapse">
               <div class="accordion-body">
-                <div class="accordion" id="matiereAccordion${niveau.id}">
-                  ${generateMatieresHTML(niveau.matieres, niveau.id)}
-                </div>
+                ${generateMatieresHTML(niveau.matieres)}
               </div>
             </div>
           </div>
@@ -1285,7 +1239,7 @@
       return html;
     }
 
-    function generateMatieresHTML(matieres, niveauId) {
+    function generateMatieresHTML(matieres) {
       if (!matieres || matieres.length === 0) {
         return `<p class="text-muted">${app.lang === 'en' ? 'No subjects available' : 'Aucune matière disponible'}</p>`;
       }
@@ -1294,18 +1248,13 @@
       matieres.forEach(matiere => {
         const unitesCount = matiere.unites ? matiere.unites.length : 0;
         html += `
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingMatiere${matiere.id}">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMatiere${matiere.id}">
-                <i class="fas fa-book me-2 text-success"></i>
-                ${matiere.nom}
-                <span class="badge bg-success badge-pill ms-2">${unitesCount} ${app.lang === 'en' ? 'units' : 'unités'}</span>
-              </button>
-            </h2>
-            <div id="collapseMatiere${matiere.id}" class="accordion-collapse collapse">
-              <div class="accordion-body">
-                ${generateUnitesHTML(matiere.unites, matiere.id)}
-              </div>
+          <div class="card mb-3">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+              <span><i class="fas fa-book me-2"></i>${matiere.nom}</span>
+              <span class="badge bg-light text-dark">${unitesCount} ${app.lang === 'en' ? 'units' : 'unités'}</span>
+            </div>
+            <div class="card-body">
+              ${generateUnitesHTML(matiere.unites)}
             </div>
           </div>
         `;
@@ -1314,7 +1263,7 @@
       return html;
     }
 
-    function generateUnitesHTML(unites, matiereId) {
+    function generateUnitesHTML(unites) {
       if (!unites || unites.length === 0) {
         return `<p class="text-muted">${app.lang === 'en' ? 'No units available' : 'Aucune unité disponible'}</p>`;
       }
@@ -1344,7 +1293,6 @@
     function generateLeconsHTML(lecons, tests) {
       let html = '';
       
-      // Tests
       if (tests && tests.length > 0) {
         html += `<h6 class="text-warning mb-2">${app.lang === 'en' ? 'Summative Tests' : 'Tests Sommatifs'}</h6>`;
         tests.forEach(test => {
@@ -1359,7 +1307,6 @@
         });
       }
       
-      // Leçons
       if (lecons && lecons.length > 0) {
         html += `<h6 class="text-secondary mb-2 mt-3">${app.lang === 'en' ? 'Lessons' : 'Leçons'}</h6>`;
         lecons.forEach(lecon => {
@@ -1374,7 +1321,7 @@
         });
       }
       
-      if (!tests?.length && !lecons?.length) {
+      if ((!tests || tests.length === 0) && (!lecons || lecons.length === 0)) {
         html += `<p class="text-muted mb-0">${app.lang === 'en' ? 'No content' : 'Aucun contenu'}</p>`;
       }
       
@@ -1389,9 +1336,6 @@
       const m = app.data.monetization_stats;
       const payments = app.data.recent_payments || [];
       const teachers = app.data.teacher_commissions || [];
-      
-      console.log('💰 Génération monétisation avec', payments.length, 'paiements');
-      console.log('💰 Données monétisation:', m);
       
       return `
         <div class="content-section mt-4">
@@ -1555,24 +1499,52 @@
       `;
     }
 
-    function generateActivityItems() {
+    function generateAnalyticsTab() {
       return `
-        <div class="activity-item d-flex mb-3">
-          <div class="activity-icon bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-            <i class="fas fa-user-plus text-white"></i>
-          </div>
-          <div>
-            <p class="mb-0">${app.lang === 'en' ? 'New teacher registered' : 'Nouvel enseignant inscrit'}</p>
-            <small class="text-muted">2 hours ago</small>
-          </div>
-        </div>
-        <div class="activity-item d-flex mb-3">
-          <div class="activity-icon bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-            <i class="fas fa-book text-white"></i>
-          </div>
-          <div>
-            <p class="mb-0">${app.lang === 'en' ? 'New lesson added' : 'Nouvelle leçon ajoutée'}</p>
-            <small class="text-muted">5 hours ago</small>
+        <div class="content-section mt-4">
+          <h4 class="mb-3">${app.lang === 'en' ? 'Platform Analytics' : 'Analytiques de la Plateforme'}</h4>
+          <div class="row g-3 g-md-4">
+            <div class="col-12 col-md-8">
+              <div class="dashboard-card">
+                <div class="card-header">
+                  <i class="fas fa-chart-line me-2"></i>
+                  ${app.lang === 'en' ? 'Students per Level' : 'Élèves par Niveau'}
+                </div>
+                <div class="card-body">
+                  <canvas id="chartElevesParNiveau" style="width: 100%; min-height: 200px;"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="dashboard-card">
+                <div class="card-header">
+                  <i class="fas fa-bell me-2"></i>
+                  ${app.lang === 'en' ? 'Recent Activity' : 'Activité Récente'}
+                </div>
+                <div class="card-body">
+                  <div class="activity-list">
+                    <div class="activity-item d-flex mb-3">
+                      <div class="activity-icon bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-user-plus text-white"></i>
+                      </div>
+                      <div>
+                        <p class="mb-0">${app.lang === 'en' ? 'New teacher registered' : 'Nouvel enseignant inscrit'}</p>
+                        <small class="text-muted">2 hours ago</small>
+                      </div>
+                    </div>
+                    <div class="activity-item d-flex mb-3">
+                      <div class="activity-icon bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-book text-white"></i>
+                      </div>
+                      <div>
+                        <p class="mb-0">${app.lang === 'en' ? 'New lesson added' : 'Nouvelle leçon ajoutée'}</p>
+                        <small class="text-muted">5 hours ago</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -1580,6 +1552,7 @@
 
     function switchTab(tab) {
       console.log('🔄 Changement vers onglet:', tab);
+      app.currentTab = tab;
       
       document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-pane-css').forEach(p => p.classList.remove('active'));
@@ -1599,17 +1572,31 @@
       if (pane) {
         pane.classList.add('active');
       }
+      
+      // Initialiser le graphique si on passe à l'onglet analytics
+      if (tab === 'analytics' && app.data && !app.isLoading) {
+        setTimeout(() => initializeCharts(), 100);
+      }
     }
 
     function initializeCharts() {
-      const ctx = document.getElementById('chartElevesParNiveau');
-      if (ctx && app.data && app.data.eleves_par_niveau && app.data.eleves_par_niveau.length > 0) {
+      const canvas = document.getElementById('chartElevesParNiveau');
+      if (!canvas) return;
+      
+      // Détruire l'ancien graphique s'il existe
+      if (window.studentsChart) {
+        window.studentsChart.destroy();
+      }
+      
+      const ctx = canvas.getContext('2d');
+      
+      if (app.data && app.data.eleves_par_niveau && app.data.eleves_par_niveau.length > 0) {
         console.log('📊 Initialisation du graphique avec', app.data.eleves_par_niveau.length, 'données');
         
-        const labels = app.data.eleves_par_niveau.map(item => item[0]);
-        const data = app.data.eleves_par_niveau.map(item => item[1]);
+        const labels = app.data.eleves_par_niveau.map(item => item[0] || 'N/A');
+        const data = app.data.eleves_par_niveau.map(item => item[1] || 0);
         
-        new Chart(ctx, {
+        window.studentsChart = new Chart(ctx, {
           type: 'bar',
           data: {
             labels: labels,
@@ -1632,13 +1619,23 @@
               }
             },
             scales: {
-              y: { beginAtZero: true, ticks: { precision: 0 } }
+              y: { 
+                beginAtZero: true, 
+                ticks: { precision: 0 },
+                title: {
+                  display: true,
+                  text: app.lang === 'en' ? 'Number of students' : 'Nombre d\'élèves'
+                }
+              }
             }
           }
         });
         console.log('✅ Graphique chargé');
       } else {
-        console.log('📊 Pas de données pour le graphique');
+        ctx.font = '16px Inter';
+        ctx.fillStyle = '#718096';
+        ctx.textAlign = 'center';
+        ctx.fillText(app.lang === 'en' ? 'No data available' : 'Aucune donnée disponible', canvas.width/2, canvas.height/2);
       }
     }
 
