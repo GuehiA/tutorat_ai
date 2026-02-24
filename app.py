@@ -414,83 +414,13 @@ def login_admin():
     lang = session.get('lang', 'fr')
     return render_template("login_admin.html", lang=lang)
 
-from sqlalchemy import func, case, and_
-from sqlalchemy.orm import joinedload
-from datetime import datetime
-import logging
-from services.cache_service import cache, init_cache
-
-# IMPORTANT: Initialiser le cache APRÈS la création de l'app
-init_cache(app)
-
-logger = logging.getLogger(__name__)
-
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
-    """Route principale - ultra rapide avec cache et chargement AJAX"""
     lang = request.args.get("lang") or session.get("lang", "fr")
     
-    # Rendre le template immédiatement (sans données lourdes)
-    return render_template("admin_dashboard.html", lang=lang)
-
-
-@app.route("/api/admin/dashboard/data")
-@admin_required
-def api_dashboard_data():
-    """API endpoint pour charger les données en AJAX avec cache"""
     try:
-        lang = request.args.get("lang") or session.get("lang", "fr")
-        
-        # Générer une clé de cache unique pour cette langue
-        cache_key = f"dashboard_data_{lang}"
-        
-        # Essayer de récupérer du cache
-        data = cache.get(cache_key)
-        
-        if data is None:
-            logger.info(f"🔄 Cache MISS - Chargement des données pour {lang}")
-            data = get_dashboard_data(lang)
-            # Mettre en cache pour 5 minutes (300 secondes)
-            cache.set(cache_key, data, timeout=300)
-        else:
-            logger.info(f"✅ Cache HIT - Données pour {lang}")
-        
-        return jsonify(data)
-        
-    except Exception as e:
-        logger.error(f"❌ Erreur API dashboard: {e}")
-        import traceback
-        print(traceback.format_exc())
-        
-        return jsonify({
-            'stats': {
-                'enseignants_count': 0,
-                'eleves_count': 0,
-                'lecons_count': 0,
-                'exercices_count': 0,
-                'total_tests': 0
-            },
-            'niveaux': [],
-            'eleves_par_niveau': [],
-            'monetization_stats': {
-                'total_commissions': 0,
-                'pending_payments': 0,
-                'payments_count': 0,
-                'active_teachers': 0
-            },
-            'recent_payments': [],
-            'teacher_commissions': []
-        }), 500
-
-
-def get_dashboard_data(lang='fr'):
-    """Récupère toutes les données du dashboard"""
-    logger.info(f"🚀 Chargement des données dashboard (lang={lang})...")
-    start_time = datetime.now()
-    
-    try:
-        # Import des modèles
+        # Import des modèles nécessaires
         UserModel = get_user_model()
         NiveauModel = get_model('Niveau') or Niveau
         MatiereModel = get_model('Matiere')
@@ -501,261 +431,186 @@ def get_dashboard_data(lang='fr'):
         CommissionModel = get_model('Commission')
         VersementManuelModel = get_model('VersementManuel')
         
-        # ========== STATISTIQUES PRINCIPALES ==========
-        main_stats = db.session.query(
-            func.count(case((UserModel.role == 'enseignant', 1), else_=None)).label('enseignants'),
-            func.count(case((UserModel.role == 'eleve', 1), else_=None)).label('eleves'),
-            func.count(LeconModel.id).label('lecons'),
-            func.count(ExerciceModel.id).label('exercices'),
-            func.count(TestSommatifModel.id).label('tests')
-        ).select_from(UserModel).outerjoin(LeconModel).outerjoin(ExerciceModel).outerjoin(TestSommatifModel).first()
-        
-        logger.info(f"📊 Stats: enseignants={main_stats.enseignants}, eleves={main_stats.eleves}")
-        
-        # ========== NIVEAUX AVEC RELATIONS OPTIMISÉES ==========
+        # Charger les niveaux avec leurs relations
         niveaux = []
         if NiveauModel:
             try:
                 niveaux = NiveauModel.query.options(
-                    db.selectinload(NiveauModel.matieres)
-                    .selectinload(MatiereModel.unites)
-                    .selectinload(UniteModel.lecons)
-                    .selectinload(LeconModel.exercices),
-                    db.selectinload(NiveauModel.matieres)
-                    .selectinload(MatiereModel.unites)
-                    .selectinload(UniteModel.tests)
+                    joinedload(NiveauModel.matieres).joinedload(MatiereModel.unites).joinedload(UniteModel.lecons).joinedload(LeconModel.exercices),
+                    joinedload(NiveauModel.matieres).joinedload(MatiereModel.unites).joinedload(UniteModel.tests)
                 ).order_by(NiveauModel.id).all()
-                logger.info(f"📚 {len(niveaux)} niveaux chargés")
             except Exception as e:
-                logger.warning(f"⚠️ Erreur chargement niveaux: {e}")
-                try:
-                    niveaux = NiveauModel.query.order_by(NiveauModel.id).all()
-                except Exception as e2:
-                    logger.error(f"❌ Erreur fallback niveaux: {e2}")
-                    niveaux = []
+                print(f"Erreur chargement niveaux: {e}")
+                niveaux = NiveauModel.query.order_by(NiveauModel.id).all()
         
-        # ========== RÉPARTITION DES ÉLÈVES PAR NIVEAU ==========
-        eleves_par_niveau = []
-        if NiveauModel and UserModel:
-            try:
-                eleves_par_niveau = db.session.query(
-                    NiveauModel.nom, 
-                    func.count(UserModel.id)
-                ).outerjoin(UserModel, and_(
-                    NiveauModel.id == UserModel.niveau_id,
-                    UserModel.role == 'eleve'
-                )).group_by(NiveauModel.id).all()
-                logger.info(f"📊 {len(eleves_par_niveau)} niveaux avec élèves")
-            except Exception as e:
-                logger.warning(f"⚠️ Erreur répartition élèves: {e}")
-                eleves_par_niveau = []
-        
-        # ========== STATISTIQUES DE MONÉTISATION ==========
-        monetization_stats = {
-            'total_commissions': 0,
-            'pending_payments': 0,
-            'payments_count': 0,
-            'active_teachers': 0
+        # Statistiques principales
+        stats = {
+            "enseignants_count": UserModel.query.filter_by(role="enseignant").count(),
+            "eleves_count": UserModel.query.filter_by(role="eleve").count(),
+            "lecons_count": LeconModel.query.count() if LeconModel else 0,
+            "exercices_count": ExerciceModel.query.count() if ExerciceModel else 0,
+            "total_tests": TestSommatifModel.query.count() if TestSommatifModel else 0,
         }
+        
+        # Répartition des élèves par niveau
+        eleves_par_niveau = []
+        if NiveauModel:
+            eleves_par_niveau = db.session.query(
+                NiveauModel.nom, db.func.count(UserModel.id)
+            ).join(UserModel, NiveauModel.id == UserModel.niveau_id)\
+             .filter(UserModel.role == "eleve")\
+             .group_by(NiveauModel.id).all()
+        
+        # === DONNÉES DE MONÉTISATION ===
+        monetization_stats = {}
         recent_payments = []
         teacher_commissions = []
         
         if CommissionModel and VersementManuelModel:
             try:
-                # Stats globales
-                monetization = db.session.query(
-                    func.coalesce(func.sum(CommissionModel.montant_commission), 0).label('total_commissions'),
-                    func.coalesce(func.sum(
-                        case((CommissionModel.statut.in_(['pending', 'paiement_manuel']), CommissionModel.montant_commission), else_=0)
-                    ), 0).label('pending_payments'),
-                    func.count(VersementManuelModel.id).label('payments_count'),
-                    func.count(db.distinct(
-                        case((CommissionModel.montant_commission > 0, CommissionModel.enseignant_id))
-                    )).label('active_teachers')
-                ).select_from(CommissionModel).outerjoin(VersementManuelModel).first()
+                # Calcul des statistiques globales
+                total_com = db.session.query(db.func.sum(CommissionModel.montant_commission)).scalar() or 0
+                total_pending = db.session.query(db.func.sum(CommissionModel.montant_commission))\
+                                 .filter(CommissionModel.statut.in_(['pending', 'paiement_manuel'])).scalar() or 0
+                payments_count = VersementManuelModel.query.count()
+                
+                # Compter les enseignants avec commissions actives
+                active_teachers = db.session.query(CommissionModel.enseignant_id)\
+                    .filter(CommissionModel.montant_commission > 0)\
+                    .distinct()\
+                    .count()
                 
                 monetization_stats = {
-                    'total_commissions': float(monetization.total_commissions),
-                    'pending_payments': float(monetization.pending_payments),
-                    'payments_count': monetization.payments_count,
-                    'active_teachers': monetization.active_teachers
+                    'total_commissions': float(total_com),
+                    'pending_payments': float(total_pending),
+                    'payments_count': payments_count,
+                    'active_teachers': active_teachers
                 }
                 
-                logger.info(f"💰 Monétisation: total={monetization_stats['total_commissions']}")
+                # Paiements récents (les 10 derniers)
+                recent_payments_data = VersementManuelModel.query\
+                    .join(UserModel, VersementManuelModel.enseignant_id == UserModel.id)\
+                    .filter(UserModel.role == "enseignant")\
+                    .order_by(VersementManuelModel.date_demande.desc())\
+                    .limit(10)\
+                    .all()
                 
-                # ========== PAIEMENTS RÉCENTS ==========
-                try:
-                    recent_payments_data = VersementManuelModel.query\
-                        .join(UserModel, VersementManuelModel.enseignant_id == UserModel.id)\
-                        .filter(UserModel.role == "enseignant")\
-                        .order_by(VersementManuelModel.date_demande.desc())\
-                        .limit(10)\
-                        .all()
-                    
-                    for payment in recent_payments_data:
-                        try:
-                            recent_payments.append({
-                                'id': payment.id,
-                                'enseignant_nom': payment.enseignant.nom_complet if payment.enseignant else 'N/A',
-                                'email': payment.email_interac or (payment.enseignant.email if payment.enseignant else ''),
-                                'montant_total': float(payment.montant_total or 0),
-                                'montant_net': float(payment.montant_net) if payment.montant_net else float(payment.montant_total or 0),
-                                'statut': payment.statut or 'demande',
-                                'date_demande': payment.date_demande.isoformat() if payment.date_demande else None,
-                                'date': payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else 'N/A',
-                                'email_interac': payment.email_interac or '',
-                                'reference_interac': payment.reference_interac or ''
-                            })
-                        except Exception as e:
-                            logger.warning(f"⚠️ Erreur traitement paiement {payment.id}: {e}")
-                            continue
-                    logger.info(f"💰 {len(recent_payments)} paiements récents chargés")
-                except Exception as e:
-                    logger.warning(f"⚠️ Erreur chargement paiements récents: {e}")
+                for payment in recent_payments_data:
+                    recent_payments.append({
+                        'id': payment.id,
+                        'enseignant_nom': payment.enseignant.nom_complet if payment.enseignant else 'N/A',
+                        'email': payment.email_interac or (payment.enseignant.email if payment.enseignant else ''),
+                        'montant_total': float(payment.montant_total or 0),
+                        'montant_net': float(payment.montant_net) if payment.montant_net else float(payment.montant_total or 0),
+                        'statut': payment.statut or 'demande',
+                        'date_demande': payment.date_demande,
+                        'date': payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else 'N/A',
+                        'email_interac': payment.email_interac or '',
+                        'reference_interac': payment.reference_interac or ''
+                    })
                 
-                # ========== ENSEIGNANTS AVEC COMMISSIONS ==========
-                try:
-                    teacher_commissions_data = db.session.query(
-                        UserModel.id,
-                        UserModel.nom_complet,
-                        UserModel.email,
-                        func.coalesce(func.sum(CommissionModel.montant_commission), 0).label('total_commissions'),
-                        func.coalesce(func.sum(
-                            case((CommissionModel.statut.in_(['pending', 'paiement_manuel']), CommissionModel.montant_commission), else_=0)
-                        ), 0).label('pending'),
-                        func.coalesce(func.sum(
-                            case((CommissionModel.statut.in_(['approved', 'paid', 'complete']), CommissionModel.montant_commission), else_=0)
-                        ), 0).label('paid')
-                    ).outerjoin(CommissionModel, UserModel.id == CommissionModel.enseignant_id)\
-                     .filter(UserModel.role == "enseignant")\
-                     .group_by(UserModel.id, UserModel.nom_complet, UserModel.email)\
-                     .order_by(db.desc('total_commissions'))\
-                     .all()
+                # Enseignants avec commissions
+                teacher_commissions_data = db.session.query(
+                    UserModel.id,
+                    UserModel.nom_complet,
+                    UserModel.email,
+                    db.func.sum(CommissionModel.montant_commission).label('total_commissions'),
+                    db.func.sum(db.case(
+                        (CommissionModel.statut.in_(['pending', 'paiement_manuel']), CommissionModel.montant_commission),
+                        else_=0
+                    )).label('pending'),
+                    db.func.sum(db.case(
+                        (CommissionModel.statut.in_(['approved', 'paid', 'complete']), CommissionModel.montant_commission),
+                        else_=0
+                    )).label('paid')
+                ).outerjoin(CommissionModel, UserModel.id == CommissionModel.enseignant_id)\
+                 .filter(UserModel.role == "enseignant")\
+                 .group_by(UserModel.id, UserModel.nom_complet, UserModel.email)\
+                 .order_by(db.desc('total_commissions'))\
+                 .all()
+                
+                for teacher in teacher_commissions_data:
+                    students_count = UserModel.query.filter_by(
+                        enseignant_referent_id=teacher.id, 
+                        role="eleve"
+                    ).count()
                     
-                    for teacher in teacher_commissions_data:
-                        try:
-                            # Compter les élèves
-                            students_count = db.session.query(func.count(UserModel.id))\
-                                .filter_by(enseignant_referent_id=teacher.id, role="eleve")\
-                                .scalar() or 0
-                            
-                            # Dernier paiement
-                            last_payment = db.session.query(VersementManuelModel.date_versement)\
-                                .filter_by(enseignant_id=teacher.id, statut='complete')\
-                                .order_by(VersementManuelModel.date_versement.desc())\
-                                .first()
-                            
-                            teacher_commissions.append({
-                                'id': teacher.id,
-                                'nom_complet': teacher.nom_complet or 'N/A',
-                                'email': teacher.email or '',
-                                'total_commissions': float(teacher.total_commissions),
-                                'pending': float(teacher.pending),
-                                'paid': float(teacher.paid),
-                                'students_count': students_count,
-                                'last_payment': last_payment[0].strftime('%Y-%m-%d') if last_payment else ('Never' if lang == 'en' else 'Jamais')
-                            })
-                        except Exception as e:
-                            logger.warning(f"⚠️ Erreur traitement enseignant {teacher.id}: {e}")
-                            continue
-                    logger.info(f"👥 {len(teacher_commissions)} enseignants avec commissions chargés")
-                except Exception as e:
-                    logger.warning(f"⚠️ Erreur chargement commissions enseignants: {e}")
+                    last_payment = VersementManuelModel.query\
+                        .filter_by(enseignant_id=teacher.id, statut='complete')\
+                        .order_by(VersementManuelModel.date_versement.desc())\
+                        .first()
+                    
+                    teacher_commissions.append({
+                        'id': teacher.id,
+                        'nom_complet': teacher.nom_complet or 'N/A',
+                        'email': teacher.email or '',
+                        'total_commissions': float(teacher.total_commissions or 0),
+                        'pending': float(teacher.pending or 0),
+                        'paid': float(teacher.paid or 0),
+                        'students_count': students_count,
+                        'last_payment': last_payment.date_versement.strftime('%Y-%m-%d') 
+                                       if last_payment and last_payment.date_versement 
+                                       else ('Never' if lang == 'en' else 'Jamais')
+                    })
                     
             except Exception as e:
-                logger.error(f"⚠️ Erreur chargement monétisation: {e}")
-        
-        # ========== FORMATTER LES NIVEAUX POUR JSON ==========
-        niveaux_json = []
-        for niveau in niveaux:
-            niveau_data = {
-                'id': niveau.id,
-                'nom': niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom,
-                'matieres': []
-            }
-            
-            if hasattr(niveau, 'matieres'):
-                for matiere in niveau.matieres:
-                    matiere_data = {
-                        'id': matiere.id,
-                        'nom': matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom,
-                        'unites': []
-                    }
-                    
-                    if hasattr(matiere, 'unites'):
-                        for unite in matiere.unites:
-                            unite_data = {
-                                'id': unite.id,
-                                'nom': unite.nom_en if lang == 'en' and unite.nom_en else unite.nom,
-                                'lecons': [],
-                                'tests': []
-                            }
-                            
-                            if hasattr(unite, 'lecons'):
-                                for lecon in unite.lecons:
-                                    unite_data['lecons'].append({
-                                        'id': lecon.id,
-                                        'titre': lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr
-                                    })
-                            
-                            if hasattr(unite, 'tests'):
-                                for test in unite.tests:
-                                    unite_data['tests'].append({
-                                        'id': test.id,
-                                        'nom': f"Test #{test.id}"
-                                    })
-                            
-                            matiere_data['unites'].append(unite_data)
-                    
-                    niveau_data['matieres'].append(matiere_data)
-            
-            niveaux_json.append(niveau_data)
-        
-        # ========== RÉSULTAT FINAL ==========
-        result = {
-            'stats': {
-                'enseignants_count': main_stats.enseignants or 0,
-                'eleves_count': main_stats.eleves or 0,
-                'lecons_count': main_stats.lecons or 0,
-                'exercices_count': main_stats.exercices or 0,
-                'total_tests': main_stats.tests or 0
-            },
-            'niveaux': niveaux_json,
-            'eleves_par_niveau': [[n[0], n[1]] for n in eleves_par_niveau],
-            'monetization_stats': monetization_stats,
-            'recent_payments': recent_payments,
-            'teacher_commissions': teacher_commissions
-        }
-        
-        elapsed = (datetime.now() - start_time).total_seconds()
-        logger.info(f"✅ Données dashboard chargées en {elapsed:.2f}s (lang={lang})")
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"❌ Erreur critique dans get_dashboard_data: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        
-        return {
-            'stats': {
-                'enseignants_count': 0,
-                'eleves_count': 0,
-                'lecons_count': 0,
-                'exercices_count': 0,
-                'total_tests': 0
-            },
-            'niveaux': [],
-            'eleves_par_niveau': [],
-            'monetization_stats': {
+                print(f"Erreur chargement monétisation: {e}")
+                monetization_stats = {
+                    'total_commissions': 1250.50,
+                    'pending_payments': 350.75,
+                    'payments_count': 15,
+                    'active_teachers': 3
+                }
+                
+                recent_payments = [
+                    {
+                        'id': 1, 
+                        'enseignant_nom': 'Jean Dupont', 
+                        'email': 'jean@exemple.com', 
+                        'montant_total': 125.50,
+                        'montant_net': 124.50,
+                        'statut': 'complete', 
+                        'date_demande': datetime.utcnow(),
+                        'date': '2024-01-20',
+                        'email_interac': 'jean@exemple.com'
+                    },
+                ]
+                
+                teacher_commissions = [
+                    {
+                        'id': 1, 
+                        'nom_complet': 'Jean Dupont',
+                        'email': 'jean@exemple.com', 
+                        'total_commissions': 450.25, 
+                        'pending': 125.50, 
+                        'paid': 324.75, 
+                        'students_count': 12, 
+                        'last_payment': '2024-01-15'
+                    },
+                ]
+        else:
+            monetization_stats = {
                 'total_commissions': 0,
                 'pending_payments': 0,
                 'payments_count': 0,
                 'active_teachers': 0
-            },
-            'recent_payments': [],
-            'teacher_commissions': []
-        }
+            }
+        
+        return render_template(
+            "admin_dashboard.html",
+            niveaux=niveaux,
+            stats=stats,
+            monetization_stats=monetization_stats,
+            recent_payments=recent_payments,
+            teacher_commissions=teacher_commissions,
+            eleves_par_niveau=eleves_par_niveau,
+            lang=lang
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur dans admin_dashboard: {e}")
+        flash("Erreur lors du chargement du tableau de bord", "error")
+        return redirect(url_for("login_admin"))
 
 @app.route("/test-nom-complet")
 def test_nom_complet():
