@@ -2,12 +2,6 @@
 <html lang="{{ lang }}" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Anti-cache pour éviter les problèmes d'affichage -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  
   <!-- Favicon VirtuEduc -->
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -16,14 +10,12 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  
   <title>{% if lang == 'en' %}Admin Dashboard{% else %}Tableau de Bord Admin{% endif %}</title>
-  
-  <!-- CSS uniquement dans le head -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
   <style>
     :root {
       --primary: #4361ee;
@@ -55,7 +47,6 @@
       --monetization-dark: #0da271;
       --monetization-light: #e0f7ed;
     }
-    
     [data-theme="dark"] {
       --light: #121826;
       --dark: #f8f9ff;
@@ -66,13 +57,9 @@
       --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
       --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
     }
-    
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
-    
     body {
       font-family: 'Inter', sans-serif;
       background: linear-gradient(135deg, var(--light) 0%, #e8eaff 100%);
@@ -82,20 +69,10 @@
       transition: var(--transition);
       line-height: 1.6;
     }
-    
     h1, h2, h3, h4, h5, h6 {
       font-family: 'Poppins', sans-serif;
       font-weight: 600;
     }
-    
-    .container-fluid {
-      width: 100%;
-      max-width: 1600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    
-    /* Dashboard Header */
     .dashboard-header {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -106,8 +83,6 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       animation: fadeInDown 0.6s ease-out;
     }
-    
-    /* Dashboard Cards */
     .dashboard-card {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -116,100 +91,77 @@
       transition: var(--transition);
       border: 1px solid rgba(255, 255, 255, 0.2);
       overflow: hidden;
+      opacity: 0;
       animation: fadeInUp 0.6s ease-out forwards;
       height: 100%;
-      width: 100%;
-      max-width: 100%;
-      display: flex;
-      flex-direction: column;
     }
-    
     .dashboard-card:nth-child(1) { animation-delay: 0.1s; }
     .dashboard-card:nth-child(2) { animation-delay: 0.2s; }
     .dashboard-card:nth-child(3) { animation-delay: 0.3s; }
     .dashboard-card:nth-child(4) { animation-delay: 0.4s; }
-    
     .dashboard-card:hover {
       transform: translateY(-8px) scale(1.01);
       box-shadow: var(--shadow-lg);
     }
-    
     .dashboard-card .card-header {
       border-bottom: 1px solid var(--border);
       font-weight: 600;
-      padding: 20px 25px;
+      padding: 25px;
       font-size: 1.2rem;
       display: flex;
       align-items: center;
       gap: 12px;
-      min-height: 80px;
-      flex-wrap: wrap;
+      height: 80px;
     }
-    
     .dashboard-card .card-body {
       padding: 25px;
-      flex: 1;
+      min-height: 280px;
       display: flex;
       flex-direction: column;
-      width: 100%;
     }
-    
-    /* Onglets CSS Pur - Nouvelle version */
-    .tab-container {
+    .nav-tabs {
+      border-bottom: 1px solid var(--border);
       margin-bottom: 25px;
     }
-    
-    .tab-list {
-      display: flex;
-      flex-wrap: wrap;
-      border-bottom: 2px solid var(--border);
-      list-style: none;
-      padding: 0;
-      margin: 0 0 20px 0;
-      gap: 5px;
-    }
-    
-    .tab-button {
-      padding: 12px 25px;
-      background: transparent;
+    .nav-tabs .nav-link {
       border: none;
       border-radius: var(--radius) var(--radius) 0 0;
       font-weight: 500;
+      padding: 15px 25px;
       color: var(--text-light);
-      cursor: pointer;
       transition: var(--transition);
       position: relative;
-      font-size: 1rem;
+      overflow: hidden;
     }
-    
-    .tab-button:hover {
-      color: var(--primary);
-    }
-    
-    .tab-button.active {
-      color: var(--primary);
-      font-weight: 600;
-    }
-    
-    .tab-button.active::after {
+    .nav-tabs .nav-link::before {
       content: '';
       position: absolute;
-      bottom: -2px;
+      bottom: 0;
       left: 0;
       width: 100%;
       height: 3px;
       background: var(--primary);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
     }
-    
-    .tab-pane-css {
-      display: none;
-      animation: fadeIn 0.3s ease;
+    .nav-tabs .nav-link.active {
+      background-color: transparent;
+      color: var(--primary);
+      font-weight: 600;
     }
-    
-    .tab-pane-css.active {
-      display: block;
+    .nav-tabs .nav-link.active::before {
+      transform: scaleX(1);
     }
-    
+    .content-section {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 25px;
+      margin-top: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      animation: fadeIn 0.6s ease-out;
+    }
     .action-btn {
       border-radius: 10px;
       padding: 14px 18px;
@@ -231,7 +183,6 @@
       color: var(--text);
       border: 1px solid var(--border);
     }
-    
     .action-btn::after {
       content: "";
       display: block;
@@ -245,85 +196,68 @@
       transform-origin: right;
       transition: transform 0.3s ease;
     }
-    
     .action-btn:hover {
       transform: translateY(-3px);
       box-shadow: 0 6px 15px rgba(0,0,0,0.1);
       border-color: transparent;
     }
-    
     .action-btn:hover::after {
       transform: scaleX(1);
       transform-origin: left;
     }
-    
     .action-btn i {
       font-size: 1.1rem;
       width: 24px;
       text-align: center;
     }
-    
-    /* User Management Card */
+    /* User Management */
     .user-management .card-header {
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: white;
     }
-    
     .user-management .action-btn:hover {
       background: linear-gradient(135deg, var(--primary-light) 0%, #d0d9ff 100%);
       color: var(--primary-dark);
     }
-    
     .user-management .action-btn i {
       color: var(--primary);
     }
-    
-    /* Content Management Card */
+    /* Content Management */
     .content-management .card-header {
       background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
       color: white;
     }
-    
     .content-management .action-btn:hover {
       background: linear-gradient(135deg, var(--success-light) 0%, #c0ebd9 100%);
       color: var(--success-dark);
     }
-    
     .content-management .action-btn i {
       color: var(--success);
     }
-    
-    /* Evaluations Card */
+    /* Evaluations */
     .evaluations .card-header {
       background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
       color: white;
     }
-    
     .evaluations .action-btn:hover {
       background: linear-gradient(135deg, var(--warning-light) 0%, #ffeccc 100%);
       color: var(--warning-dark);
     }
-    
     .evaluations .action-btn i {
       color: var(--warning);
     }
-    
-    /* Monetization Card */
+    /* Monetization */
     .monetization .card-header {
       background: linear-gradient(135deg, var(--monetization) 0%, var(--monetization-dark) 100%);
       color: white;
     }
-    
     .monetization .action-btn:hover {
       background: linear-gradient(135deg, var(--monetization-light) 0%, #c0ebd9 100%);
       color: var(--monetization-dark);
     }
-    
     .monetization .action-btn i {
       color: var(--monetization);
     }
-    
-    /* Stats Cards */
     .stats-card {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -336,9 +270,7 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       position: relative;
       overflow: hidden;
-      height: 100%;
     }
-    
     .stats-card::before {
       content: '';
       position: absolute;
@@ -348,46 +280,28 @@
       height: 4px;
       background: linear-gradient(90deg, var(--primary), var(--success));
     }
-    
     .stats-card:hover {
       transform: translateY(-5px);
       box-shadow: var(--shadow-lg);
     }
-    
     .stats-number {
       font-size: 2.5rem;
       font-weight: 700;
       margin-bottom: 5px;
     }
-    
-    @media (max-width: 768px) {
-      .stats-number {
-        font-size: 2rem;
-      }
-    }
-    
     .stats-label {
       font-size: 0.9rem;
       color: var(--text-light);
       font-weight: 500;
     }
-    
-    /* Language Selector */
     .lang-selector {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
       border-radius: var(--radius);
-      padding: 8px 15px;
+      padding: 10px 15px;
       box-shadow: var(--shadow);
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
-    
-    .lang-selector .form-select {
-      width: auto;
-      min-width: 120px;
-    }
-    
-    /* Theme Toggle */
     .theme-toggle {
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -403,18 +317,15 @@
       transition: var(--transition);
       margin-left: 10px;
     }
-    
     .theme-toggle:hover {
       transform: rotate(15deg);
     }
-    
-    /* Logout Button */
     .logout-btn {
       background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
       color: white;
       border: none;
       border-radius: 30px;
-      padding: 10px 20px;
+      padding: 12px 25px;
       font-weight: 500;
       display: flex;
       align-items: center;
@@ -422,72 +333,45 @@
       transition: var(--transition);
       text-decoration: none;
       cursor: pointer;
-      white-space: nowrap;
+      margin-left: 10px;
     }
-    
     .logout-btn:hover {
       background: linear-gradient(135deg, var(--danger-dark) 0%, #c44545 100%);
       transform: translateY(-2px);
       box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-      color: white;
     }
-    
-    /* Quick Actions Row */
+    /* Cartes alignées */
     .quick-actions-row {
       margin-top: 20px;
     }
-    
     .card-icon {
       font-size: 1.5rem;
     }
-    
-    /* Accordion Styles */
+    /* Styles pour les accordéons */
     .accordion-button:not(.collapsed) {
       background-color: rgba(67, 97, 238, 0.1);
       color: var(--primary);
       box-shadow: none;
     }
-    
     .accordion-button {
       font-weight: 600;
       padding: 15px 20px;
-      background-color: var(--card-bg);
-      color: var(--text);
     }
-    
     .accordion-button:focus {
       box-shadow: none;
       border-color: var(--primary);
     }
-    
-    .accordion-item {
-      background-color: transparent;
-      border-color: var(--border);
-    }
-    
-    /* Badges */
     .badge-pill {
       border-radius: 20px;
       padding: 6px 12px;
       font-size: 0.75rem;
       font-weight: 600;
     }
-    
-    /* Nested Content */
     .nested-content {
-      margin-left: 15px;
-      padding-left: 15px;
+      margin-left: 20px;
+      padding-left: 20px;
       border-left: 2px solid var(--border);
     }
-    
-    @media (max-width: 768px) {
-      .nested-content {
-        margin-left: 10px;
-        padding-left: 10px;
-      }
-    }
-    
-    /* Content Items */
     .content-item {
       padding: 15px;
       border-left: 4px solid var(--primary);
@@ -498,37 +382,27 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
     }
-    
     .content-item:hover {
       background: rgba(67, 97, 238, 0.1);
       transform: translateX(5px);
     }
-    
     .content-item .content-info {
       flex: 1;
-      min-width: 200px;
     }
-    
     .lecon-item {
       background: rgba(23, 162, 184, 0.05);
       border-left: 4px solid var(--info);
     }
-    
     .exercice-item {
       background: rgba(108, 117, 125, 0.05);
       border-left: 4px solid #6c757d;
     }
-    
-    /* Action Buttons */
     .action-buttons {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
+      margin-left: auto;
     }
-    
     .action-buttons .btn-action {
       width: 36px;
       height: 36px;
@@ -543,130 +417,82 @@
       transition: var(--transition);
       text-decoration: none;
     }
-    
     .action-buttons .btn-action:hover {
       transform: translateY(-2px) scale(1.1);
       box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
-    
     .action-buttons .btn-edit {
       background: var(--success);
     }
-    
     .action-buttons .btn-edit:hover {
       background: var(--success-dark);
     }
-    
     .action-buttons .btn-delete {
       background: var(--danger);
     }
-    
     .action-buttons .btn-delete:hover {
       background: var(--danger-dark);
     }
-    
     .action-buttons .btn-view {
       background: var(--info);
     }
-    
     .action-buttons .btn-view:hover {
       background: var(--info-dark);
     }
-    
-    /* Import Batch Button */
+    /* Styles pour le bouton d'importation en lot */
     .import-batch-btn {
       background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
       color: white;
       border-left: 4px solid #8e44ad;
     }
-    
     .import-batch-btn:hover {
       background: linear-gradient(135deg, #8e44ad 0%, #7d3c98 100%);
       color: white;
     }
-    
     .import-batch-btn i {
       color: white !important;
     }
-    
-    /* Table Styling */
-    .table-responsive {
-      width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    
+    /* Table styling */
     .table-monetization {
       background: var(--card-bg);
       border-radius: var(--radius);
       overflow: hidden;
       box-shadow: var(--shadow);
-      width: 100%;
     }
-    
     .table-monetization thead {
       background: linear-gradient(135deg, var(--monetization) 0%, var(--monetization-dark) 100%);
       color: white;
     }
-    
     .table-monetization th {
       border: none;
       padding: 15px;
       font-weight: 600;
-      white-space: nowrap;
     }
-    
     .table-monetization td {
       padding: 12px 15px;
       vertical-align: middle;
       border-color: var(--border);
     }
-    
     .table-monetization tbody tr:hover {
       background: rgba(16, 185, 129, 0.05);
     }
-    
-    /* Badge Status */
+    /* Badge status */
     .badge-paid {
       background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
       color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      display: inline-block;
     }
-    
     .badge-pending {
       background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
       color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      display: inline-block;
     }
-    
     .badge-processing {
       background: linear-gradient(135deg, var(--info) 0%, var(--info-dark) 100%);
       color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      display: inline-block;
     }
-    
     .badge-demande {
       background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
       color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      display: inline-block;
     }
-    
     /* Payment details */
     .payment-details {
       background: var(--monetization-light);
@@ -674,40 +500,18 @@
       padding: 15px;
       margin-top: 10px;
     }
-    
     .payment-row {
       display: flex;
       justify-content: space-between;
       margin-bottom: 5px;
-      flex-wrap: wrap;
-      gap: 10px;
     }
-    
     .payment-label {
       color: var(--text-light);
     }
-    
     .payment-value {
       font-weight: 600;
       color: var(--monetization-dark);
     }
-    
-    /* Activity list */
-    .activity-list {
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    
-    .activity-item {
-      padding: 10px;
-      border-radius: 8px;
-      transition: var(--transition);
-    }
-    
-    .activity-item:hover {
-      background: rgba(67, 97, 238, 0.05);
-    }
-    
     /* Animations */
     @keyframes fadeInUp {
       from {
@@ -719,7 +523,6 @@
         transform: translateY(0);
       }
     }
-    
     @keyframes fadeInDown {
       from {
         opacity: 0;
@@ -730,7 +533,6 @@
         transform: translateY(0);
       }
     }
-    
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -739,1053 +541,954 @@
         opacity: 1;
       }
     }
-    
-    /* Skeleton loading */
-    .skeleton-card {
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: loading 1.5s infinite;
-      border-radius: 12px;
-      height: 100px;
-      margin-bottom: 20px;
-    }
-    
-    .skeleton-text {
-      height: 20px;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: loading 1.5s infinite;
-      border-radius: 4px;
-      margin: 10px 0;
-    }
-    
-    @keyframes loading {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    
     /* Responsive */
-    @media (min-width: 1600px) {
-      .container-fluid {
-        max-width: 1540px;
-      }
-      .dashboard-card .card-body {
-        min-height: 320px;
-      }
-      .stats-number {
-        font-size: 3rem;
-      }
-    }
-    
-    @media (max-width: 1200px) {
-      .dashboard-card .card-header {
-        font-size: 1.1rem;
-        padding: 15px 20px;
-      }
-    }
-    
-    @media (max-width: 992px) {
-      .container-fluid {
+    @media (max-width: 768px) {
+      body {
         padding: 15px;
       }
       .dashboard-header {
         padding: 20px;
       }
-    }
-    
-    @media (max-width: 768px) {
-      .container-fluid {
-        padding: 10px;
+      .stats-number {
+        font-size: 2rem;
       }
-      .dashboard-header {
-        padding: 15px;
-      }
-      .tab-button {
-        padding: 10px 12px;
-        font-size: 0.85rem;
+      .nav-tabs .nav-link {
+        padding: 12px 15px;
+        font-size: 0.9rem;
       }
       .dashboard-card .card-header {
-        padding: 15px;
-        min-height: auto;
+        padding: 20px;
+        height: auto;
+        flex-wrap: wrap;
       }
       .action-btn {
         padding: 12px 15px;
         font-size: 0.9rem;
       }
       .logout-btn {
-        padding: 8px 15px;
+        padding: 10px 15px;
         font-size: 0.9rem;
+        margin-left: 5px;
       }
       .action-buttons {
-        flex-direction: row;
-        justify-content: flex-end;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .action-buttons .btn-action {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
       }
       .content-item {
         flex-direction: column;
         align-items: flex-start;
+        gap: 10px;
       }
       .content-item .action-buttons {
+        margin-left: 0;
         align-self: flex-end;
       }
-      .table td, .table th {
-        white-space: nowrap;
-      }
     }
-    
     @media (max-width: 576px) {
-      .quick-actions-row .col-12 {
+      .quick-actions-row .col-md-4 {
         margin-bottom: 20px;
-      }
-      .stats-card {
-        margin-bottom: 15px;
-      }
-      .lang-selector .form-select {
-        min-width: 100px;
-        font-size: 0.85rem;
-      }
-      .logout-btn span {
-        display: none;
-      }
-      .logout-btn {
-        padding: 8px 12px;
       }
     }
   </style>
 </head>
 <body>
-  <div class="container-fluid px-3 px-md-4 py-3 py-md-4">
-    <!-- Header avec sélecteur de langue, thème et bouton de déconnexion -->
-    <div class="dashboard-header">
-      <div class="row align-items-center g-3">
-        <div class="col-12 col-md-6">
-          <h1 class="h3 mb-1">{% if lang == 'en' %}🛠️ Admin Dashboard{% else %}🛠️ Tableau de Bord Administrateur{% endif %}</h1>
-          <p class="text-muted mb-0">{% if lang == 'en' %}Manage your educational platform{% else %}Gérez votre plateforme éducative{% endif %}</p>
+  <!-- Header avec sélecteur de langue, thème et bouton de déconnexion -->
+  <div class="dashboard-header">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <h1 class="h3 mb-1">{% if lang == 'en' %}🛠️ Admin Dashboard{% else %}🛠️ Tableau de Bord Administrateur{% endif %}</h1>
+        <p class="text-muted mb-0">{% if lang == 'en' %}Manage your educational platform{% else %}Gérez votre plateforme éducative{% endif %}</p>
+      </div>
+      <div class="col-md-6 text-end">
+        <div class="d-flex justify-content-end align-items-center">
+          <div class="lang-selector d-inline-block me-2">
+            <form method="POST" action="/changer-langue" class="d-flex align-items-center">
+              <label for="lang" class="me-2">🌍</label>
+              <select name="lang" id="lang" onchange="this.form.submit()" class="form-select form-select-sm border-0 bg-transparent">
+                <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
+                <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+              </select>
+              <input type="hidden" name="redirect_page" value="admin_dashboard">
+            </form>
+          </div>
+          <a href="/logout" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i>
+            {% if lang == 'en' %}Logout{% else %}Déconnexion{% endif %}
+          </a>
+          <div class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+          </div>
         </div>
-        <div class="col-12 col-md-6">
-          <div class="d-flex flex-wrap justify-content-start justify-content-md-end align-items-center gap-2 gap-md-3">
-            <div class="lang-selector">
-              <form method="POST" action="/changer-langue" class="d-flex align-items-center">
-                <label for="lang" class="me-2 d-none d-sm-inline">🌍</label>
-                <select name="lang" id="lang" onchange="this.form.submit()" class="form-select form-select-sm border-0 bg-transparent">
-                  <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-                  <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
-                </select>
-                <input type="hidden" name="redirect_page" value="admin_dashboard">
-              </form>
+      </div>
+    </div>
+  </div>
+  <!-- Cartes de statistiques rapides -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="stats-card">
+        <div class="stats-number">{{ stats.enseignants_count if stats and stats.enseignants_count else '0' }}</div>
+        <div class="stats-label">{% if lang == 'en' %}Teachers{% else %}Enseignants{% endif %}</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stats-card">
+        <div class="stats-number">{{ stats.eleves_count if stats and stats.eleves_count else '0' }}</div>
+        <div class="stats-label">{% if lang == 'en' %}Students{% else %}Élèves{% endif %}</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stats-card">
+        <div class="stats-number">{{ stats.lecons_count if stats and stats.lecons_count else '0' }}</div>
+        <div class="stats-label">{% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}</div>
+      </div>
+    </div>
+  </div>
+  <!-- Navigation par onglets -->
+  <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="actions-tab" data-bs-toggle="tab" data-bs-target="#actions" type="button" role="tab">
+        <i class="fas fa-tachometer-alt me-2"></i>{% if lang == 'en' %}Quick Actions{% else %}Actions Rapides{% endif %}
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab">
+        <i class="fas fa-sitemap me-2"></i>{% if lang == 'en' %}Content Structure{% else %}Structure du Contenu{% endif %}
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="monetization-tab" data-bs-toggle="tab" data-bs-target="#monetization" type="button" role="tab">
+        <i class="fas fa-money-bill-wave me-2"></i>{% if lang == 'en' %}Monetization{% else %}Monétisation{% endif %}
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+        <i class="fas fa-chart-bar me-2"></i>{% if lang == 'en' %}Analytics{% else %}Analytiques{% endif %}
+      </button>
+    </li>
+  </ul>
+  <!-- Contenu des onglets -->
+  <div class="tab-content" id="adminTabsContent">
+    <!-- Onglet Actions Rapides -->
+    <div class="tab-pane fade show active" id="actions" role="tabpanel">
+      <div class="row quick-actions-row">
+        <!-- Gestion des Utilisateurs -->
+        <div class="col-md-4">
+          <div class="dashboard-card user-management">
+            <div class="card-header">
+              <i class="fas fa-users card-icon"></i>
+              {% if lang == 'en' %}User Management{% else %}Gestion des Utilisateurs{% endif %}
             </div>
-            <a href="/logout" class="logout-btn">
-              <i class="fas fa-sign-out-alt"></i>
-              <span class="d-none d-sm-inline">{% if lang == 'en' %}Logout{% else %}Déconnexion{% endif %}</span>
-            </a>
-            <div class="theme-toggle" id="themeToggle">
-              <i class="fas fa-moon"></i>
+            <div class="card-body">
+              <a href="{{ url_for('creer_enseignant_admin') }}" class="btn action-btn">
+                <i class="fas fa-plus-circle"></i>
+                {% if lang == 'en' %}Add Teacher{% else %}Ajouter un Enseignant{% endif %}
+              </a>
+              <a href="/admin/creer-eleve" class="btn action-btn">
+                <i class="fas fa-user-plus"></i>
+                {% if lang == 'en' %}Add Student{% else %}Ajouter un Élève{% endif %}
+              </a>
+              <a href="/admin-enseignants" class="btn action-btn">
+                <i class="fas fa-user-edit"></i>
+                {% if lang == 'en' %}Manage Teachers{% else %}Gérer les Enseignants{% endif %}
+              </a>
+              <a href="/admin/eleves" class="btn action-btn">
+                <i class="fas fa-user-graduate"></i>
+                {% if lang == 'en' %}Manage Students{% else %}Gérer les Élèves{% endif %}
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- Gestion des Contenus -->
+        <div class="col-md-4">
+          <div class="dashboard-card content-management">
+            <div class="card-header">
+              <i class="fas fa-book card-icon"></i>
+              {% if lang == 'en' %}Content Management{% else %}Gestion des Contenus{% endif %}
+            </div>
+            <div class="card-body">
+              <!-- Niveaux, Matières, Unités, Leçons -->
+              <a href="/admin/ajouter-niveau" class="btn action-btn">
+                <i class="fas fa-layer-group"></i>
+                {% if lang == 'en' %}Add Level{% else %}Ajouter un Niveau{% endif %}
+              </a>
+              <a href="/admin/ajouter-matiere" class="btn action-btn">
+                <i class="fas fa-book-open"></i>
+                {% if lang == 'en' %}Add Subject{% else %}Ajouter une Matière{% endif %}
+              </a>
+              <a href="/admin/ajouter-unite" class="btn action-btn">
+                <i class="fas fa-cube"></i>
+                {% if lang == 'en' %}Add Unit{% else %}Ajouter une Unité{% endif %}
+              </a>
+              <a href="/admin/ajouter-lecon" class="btn action-btn">
+                <i class="fas fa-file-alt"></i>
+                {% if lang == 'en' %}Add Lesson{% else %}Ajouter une Leçon{% endif %}
+              </a>
+              
+              <!-- IMPORTATION EN LOT DE LECONS -->
+              <a href="/admin/import-lessons" class="btn action-btn import-batch-btn">
+                <i class="fas fa-file-import"></i>
+                <div>
+                  <strong>{% if lang == 'en' %}Batch Import Lessons{% else %}Importation de Leçons en Lot{% endif %}</strong>
+                  <br>
+                  <small style="opacity: 0.9;">
+                    {% if lang == 'en' %}Import multiple lessons with bilingual objectives{% else %}Importez plusieurs leçons avec objectifs bilingues{% endif %}
+                  </small>
+                </div>
+              </a>
+              
+              <!-- Importation en lot d'exercices -->
+              <a href="/admin/batch-create-exercises" class="btn action-btn" 
+                 style="border-left: 4px solid #9b59b6; background: rgba(155, 89, 182, 0.1);">
+                <i class="fas fa-file-import" style="color: #9b59b6;"></i>
+                <div>
+                  <strong>{% if lang == 'en' %}Batch Import Exercises{% else %}Importation d'Exercices en Lot{% endif %}</strong>
+                  <br>
+                  <small class="text-muted">
+                    {% if lang == 'en' %}Import multiple exercises at once{% else %}Importez plusieurs exercices en une fois{% endif %}
+                  </small>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- Évaluations -->
+        <div class="col-md-4">
+          <div class="dashboard-card evaluations">
+            <div class="card-header">
+              <i class="fas fa-clipboard-check card-icon"></i>
+              {% if lang == 'en' %}Evaluations{% else %}Évaluations{% endif %}
+            </div>
+            <div class="card-body">
+              <a href="/admin/ajouter-exercice" class="btn action-btn">
+                <i class="fas fa-edit"></i>
+                {% if lang == 'en' %}Add Exercise{% else %}Ajouter un Exercice{% endif %}
+              </a>
+              <a href="/admin/exercices" class="btn action-btn">
+                <i class="fas fa-list"></i>
+                {% if lang == 'en' %}Manage Exercises{% else %}Gérer les Exercices{% endif %}
+              </a>
+              <a href="/admin/creer-exercice-ia" class="btn action-btn">
+                <i class="fas fa-robot"></i>
+                {% if lang == 'en' %}Generate Exercises (AI){% else %}Générer des Exercices (IA){% endif %}
+              </a>
+              <a href="/admin/ajouter-test" class="btn action-btn">
+                <i class="fas fa-vial"></i>
+                {% if lang == 'en' %}Add Summative Test{% else %}Ajouter un Test Sommatif{% endif %}
+              </a>
+              <a href="/admin/creer-test-sommatif-ia" class="btn action-btn">
+                <i class="fas fa-magic"></i>
+                {% if lang == 'en' %}Generate Summative Test (AI){% else %}Générer un Test Sommatif (IA){% endif %}
+              </a>
+              <a href="/admin/tests" class="btn action-btn">
+                <i class="fas fa-list"></i>
+                {% if lang == 'en' %}View All Tests{% else %}Voir tous les Tests{% endif %}
+              </a>
             </div>
           </div>
         </div>
       </div>
     </div>
+    <!-- Onglet Structure du Contenu (ACCORDÉON ÉLÉGANT) -->
+    <div class="tab-pane fade" id="content" role="tabpanel">
+      <div class="content-section mt-4">
+        <h4 class="mb-3">{% if lang == 'en' %}Content Hierarchy{% else %}Hiérarchie du Contenu{% endif %}</h4>
 
-    <!-- Cartes de statistiques avec Skeleton Loading -->
-    <div class="row g-3 g-md-4 mb-4" id="stats-cards">
-      <div class="col-12 col-sm-6 col-md-3">
-        <div class="skeleton-card"></div>
-      </div>
-      <div class="col-12 col-sm-6 col-md-3">
-        <div class="skeleton-card"></div>
-      </div>
-      <div class="col-12 col-sm-6 col-md-3">
-        <div class="skeleton-card"></div>
-      </div>
-      <div class="col-12 col-sm-6 col-md-3">
-        <div class="skeleton-card"></div>
+        <!-- Accordéon principal pour les niveaux -->
+        <div class="accordion" id="contentAccordion">
+          {% for niveau in niveaux %}
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingNiveau{{ niveau.id }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau{{ niveau.id }}" aria-expanded="false" aria-controls="collapseNiveau{{ niveau.id }}">
+                  <i class="fas fa-layer-group me-2 text-primary"></i>
+                  {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
+                  <span class="badge bg-primary badge-pill ms-2">{{ niveau.matieres|length if niveau.matieres else 0 }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}</span>
+                </button>
+              </h2>
+              <div id="collapseNiveau{{ niveau.id }}" class="accordion-collapse collapse" aria-labelledby="headingNiveau{{ niveau.id }}" data-bs-parent="#contentAccordion">
+                <div class="accordion-body">
+                  <!-- Accordéon pour les matières -->
+                  <div class="accordion" id="matiereAccordion{{ niveau.id }}">
+                    {% for matiere in niveau.matieres %}
+                      <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingMatiere{{ matiere.id }}">
+                          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMatiere{{ matiere.id }}" aria-expanded="false" aria-controls="collapseMatiere{{ matiere.id }}">
+                            <i class="fas fa-book me-2 text-success"></i>
+                            {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
+                            <span class="badge bg-success badge-pill ms-2">{{ matiere.unites|length if matiere.unites else 0 }} {% if lang == 'en' %}units{% else %}unités{% endif %}</span>
+                          </button>
+                        </h2>
+                        <div id="collapseMatiere{{ matiere.id }}" class="accordion-collapse collapse" aria-labelledby="headingMatiere{{ matiere.id }}" data-bs-parent="#matiereAccordion{{ niveau.id }}">
+                          <div class="accordion-body">
+                            <!-- Boutons d'action pour la matière -->
+                            <div class="d-flex justify-content-end mb-3">
+                              <div class="action-buttons">
+                                <a href="{{ url_for('modifier_matiere', id=matiere.id) if 'modifier_matiere' in url_functions else '/admin/modifier-matiere/' + matiere.id|string }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit subject{% else %}Modifier la matière{% endif %}">
+                                  <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('supprimer_matiere', id=matiere.id) if 'supprimer_matiere' in url_functions else '/admin/supprimer-matiere/' + matiere.id|string }}" class="d-inline">
+                                  <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Are you sure you want to delete this subject? This will also delete all associated units, lessons, and exercises.{% else %}Êtes-vous sûr de vouloir supprimer cette matière ? Toutes les unités, leçons et exercices associés seront également supprimés.{% endif %}')">
+                                    <i class="fas fa-trash"></i>
+                                  </button>
+                                </form>
+                              </div>
+                            </div>
+
+                            <!-- Accordéon pour les unités -->
+                            <div class="accordion" id="uniteAccordion{{ matiere.id }}">
+                              {% for unite in matiere.unites %}
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="headingUnite{{ unite.id }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUnite{{ unite.id }}" aria-expanded="false" aria-controls="collapseUnite{{ unite.id }}">
+                                      <i class="fas fa-cube me-2 text-info"></i>
+                                      {{ unite.nom_en if lang == 'en' and unite.nom_en else unite.nom }}
+                                      <span class="badge bg-info badge-pill ms-2">
+                                        {{ (unite.lecons|length if unite.lecons else 0) + (unite.tests|length if unite.tests else 0) }} {% if lang == 'en' %}items{% else %}éléments{% endif %}
+                                      </span>
+                                    </button>
+                                  </h2>
+                                  <div id="collapseUnite{{ unite.id }}" class="accordion-collapse collapse" aria-labelledby="headingUnite{{ unite.id }}" data-bs-parent="#uniteAccordion{{ matiere.id }}">
+                                    <div class="accordion-body">
+                                      <!-- Boutons d'action pour l'unité -->
+                                      <div class="d-flex justify-content-end mb-3">
+                                        <div class="action-buttons">
+                                          <!-- LIEN POUR IMPORTER DES LECONS SUR CETTE UNITE -->
+                                          <a href="/admin/import-lessons?unite_id={{ unite.id }}" 
+                                             class="btn-action" 
+                                             style="background: #9b59b6;" 
+                                             title="{% if lang == 'en' %}Import lessons to this unit{% else %}Importer des leçons dans cette unité{% endif %}">
+                                            <i class="fas fa-file-import"></i>
+                                          </a>
+                                          <form method="POST" action="/admin/supprimer-unite/{{ unite.id }}" class="d-inline">
+                                            <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Delete this unit? All associated lessons and exercises will also be deleted.{% else %}Supprimer cette unité ? Toutes les leçons et exercices associés seront également supprimés.{% endif %}')">
+                                              <i class="fas fa-trash"></i>
+                                            </button>
+                                          </form>
+                                        </div>
+                                      </div>
+
+                                      <!-- Liste des leçons et tests -->
+                                      <div class="nested-content">
+                                        <!-- Tests -->
+                                        {% if unite.tests and unite.tests|length > 0 %}
+                                          <h6 class="text-warning mb-2">{% if lang == 'en' %}Summative Tests{% else %}Tests Sommatifs{% endif %}</h6>
+                                          {% for test in unite.tests %}
+                                            <div class="content-item lecon-item mb-2">
+                                              <div class="content-info">
+                                                <i class="fas fa-vial me-2 text-warning"></i>
+                                                {% if lang == 'en' %}Test #{{ test.id }}{% else %}Test #{{ test.id }}{% endif %}
+                                              </div>
+                                              <div class="action-buttons">
+                                                <a href="/admin/visualiser-test-sommatif/{{ test.id }}" class="btn-action btn-view" title="{% if lang == 'en' %}View test{% else %}Voir le test{% endif %}">
+                                                  <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="/admin/modifier-test/{{ test.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit test{% else %}Modifier le test{% endif %}">
+                                                  <i class="fas fa-edit"></i>
+                                                </a>
+                                              </div>
+                                            </div>
+                                          {% endfor %}
+                                        {% endif %}
+
+                                        <!-- Leçons -->
+                                        <h6 class="text-secondary mb-2 mt-3">{% if lang == 'en' %}Lessons{% else %}Leçons{% endif %}</h6>
+                                        {% if unite.lecons and unite.lecons|length > 0 %}
+                                          {% for lecon in unite.lecons %}
+                                            <div class="accordion" id="leconAccordion{{ lecon.id }}">
+                                              <div class="accordion-item">
+                                                <h2 class="accordion-header" id="headingLecon{{ lecon.id }}">
+                                                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLecon{{ lecon.id }}" aria-expanded="false" aria-controls="collapseLecon{{ lecon.id }}">
+                                                    <i class="fas fa-file-alt me-2 text-secondary"></i>
+                                                    {{ lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr }}
+                                                    <span class="badge bg-secondary badge-pill ms-2">{{ lecon.exercices|length if lecon.exercices else 0 }} {% if lang == 'en' %}exercises{% else %}exercices{% endif %}</span>
+                                                  </button>
+                                                </h2>
+                                                <div id="collapseLecon{{ lecon.id }}" class="accordion-collapse collapse" aria-labelledby="headingLecon{{ lecon.id }}" data-bs-parent="#leconAccordion{{ lecon.id }}">
+                                                  <div class="accordion-body">
+                                                    <!-- Boutons d'action pour la leçon -->
+                                                    <div class="d-flex justify-content-end mb-3">
+                                                      <div class="action-buttons">
+                                                        <a href="/admin/modifier-lecon/{{ lecon.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit lesson{% else %}Modifier la leçon{% endif %}">
+                                                          <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <!-- Alternative ✅ -->
+                                                        <form method="POST" action="/admin/lecon/supprimer/{{ lecon.id }}" class="d-inline">
+                                                          <button type="submit" class="btn-action btn-delete" onclick="return confirm('{% if lang == 'en' %}Delete this lesson? All associated exercises will also be deleted.{% else %}Supprimer cette leçon ? Tous les exercices associés seront également supprimés.{% endif %}')">
+                                                            <i class="fas fa-trash"></i>
+                                                          </button>
+                                                        </form>
+                                                      </div>
+                                                    </div>
+
+                                                    <!-- Exercices -->
+                                                    {% if lecon.exercices and lecon.exercices|length > 0 %}
+                                                      <div class="nested-content">
+                                                        {% for exercice in lecon.exercices %}
+                                                          <div class="content-item exercice-item mb-2">
+                                                            <div class="content-info">
+                                                              <i class="fas fa-edit me-2 text-muted"></i>
+                                                              <small>
+                                                                {% if lang == 'en' %}
+                                                                  {{ exercice.question_en[:50] if exercice.question_en else exercice.question_fr[:50] }}...
+                                                                {% else %}
+                                                                  {{ exercice.question_fr[:50] if exercice.question_fr else exercice.question_en[:50] }}...
+                                                                {% endif %}
+                                                              </small>
+                                                            </div>
+                                                            <div class="action-buttons">
+                                                              <a href="/admin/modifier-exercice/{{ exercice.id }}" class="btn-action btn-edit" title="{% if lang == 'en' %}Edit exercise{% else %}Modifier l'exercice{% endif %}">
+                                                                <i class="fas fa-edit"></i>
+                                                              </a>
+                                                              <button type="button" class="btn-action btn-delete" onclick="confirmDelete('{{ exercice.id }}')" title="{% if lang == 'en' %}Delete exercise{% else %}Supprimer l'exercice{% endif %}">
+                                                                <i class="fas fa-trash"></i>
+                                                              </button>
+                                                            </div>
+                                                          </div>
+                                                        {% endfor %}
+                                                      </div>
+                                                    {% else %}
+                                                      <p class="text-muted mb-0">{% if lang == 'en' %}No exercises for this lesson.{% else %}Aucun exercice pour cette leçon.{% endif %}</p>
+                                                    {% endif %}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          {% endfor %}
+                                        {% else %}
+                                          <p class="text-muted mb-0">{% if lang == 'en' %}No lessons for this unit.{% else %}Aucune leçon pour cette unité.{% endif %}</p>
+                                        {% endif %}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <div class="text-center py-4">
+              <i class="fas fa-layer-group fa-3x text-muted mb-3"></i>
+              <p class="text-muted">{% if lang == 'en' %}No content levels defined yet.{% else %}Aucun niveau de contenu défini pour le moment.{% endif %}</p>
+              <a href="/admin/ajouter-niveau" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>
+                {% if lang == 'en' %}Add First Level{% else %}Ajouter un Premier Niveau{% endif %}
+              </a>
+            </div>
+          {% endfor %}
+        </div>
       </div>
     </div>
-
-    <!-- Conteneur principal pour les données AJAX -->
-    <div id="dashboard-content">
-      <div class="tab-container">
-        <div class="tab-list" id="tab-list">
-          <button class="tab-button active" onclick="switchTab('actions')">
-            <i class="fas fa-tachometer-alt me-2"></i>{% if lang == 'en' %}Quick Actions{% else %}Actions Rapides{% endif %}
-          </button>
-          <button class="tab-button" onclick="switchTab('content')">
-            <i class="fas fa-sitemap me-2"></i>{% if lang == 'en' %}Content Structure{% else %}Structure du Contenu{% endif %}
-          </button>
-          <button class="tab-button" onclick="switchTab('monetization')">
-            <i class="fas fa-money-bill-wave me-2"></i>{% if lang == 'en' %}Monetization{% else %}Monétisation{% endif %}
-          </button>
-          <button class="tab-button" onclick="switchTab('analytics')">
-            <i class="fas fa-chart-bar me-2"></i>{% if lang == 'en' %}Analytics{% else %}Analytiques{% endif %}
-          </button>
+    <!-- Onglet Monétisation -->
+    <div class="tab-pane fade" id="monetization" role="tabpanel">
+      <div class="content-section mt-4">
+        <h4 class="mb-3">
+          <i class="fas fa-money-bill-wave me-2 text-success"></i>
+          {% if lang == 'en' %}Teacher Commissions & Payments{% else %}Commissions & Paiements Enseignants{% endif %}
+        </h4>
+        
+        <!-- Cartes de statistiques monétaires -->
+        <div class="row mb-4">
+          <div class="col-md-3">
+            <div class="stats-card" style="border-left: 4px solid #10b981;">
+              <div class="stats-number text-success">${{ "%.2f"|format(monetization_stats.total_commissions if monetization_stats and monetization_stats.total_commissions else 0) }}</div>
+              <div class="stats-label">{% if lang == 'en' %}Total Commissions{% else %}Commissions Totales{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stats-card" style="border-left: 4px solid #f59e0b;">
+              <div class="stats-number text-warning">${{ "%.2f"|format(monetization_stats.pending_payments if monetization_stats and monetization_stats.pending_payments else 0) }}</div>
+              <div class="stats-label">{% if lang == 'en' %}Pending Payments{% else %}Paiements en Attente{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stats-card" style="border-left: 4px solid #3b82f6;">
+              <div class="stats-number text-info">{{ monetization_stats.payments_count if monetization_stats and monetization_stats.payments_count else 0 }}</div>
+              <div class="stats-label">{% if lang == 'en' %}Payments Made{% else %}Paiements Effectués{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stats-card" style="border-left: 4px solid #8b5cf6;">
+              <div class="stats-number text-purple">{{ monetization_stats.active_teachers if monetization_stats and monetization_stats.active_teachers else 0 }}</div>
+              <div class="stats-label">{% if lang == 'en' %}Active Teachers{% else %}Enseignants Actifs{% endif %}</div>
+            </div>
+          </div>
         </div>
         
-        <div class="tab-pane-css active" id="pane-actions">
-          <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Loading...</span>
+        <!-- Cartes d'action rapide -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <div class="dashboard-card monetization">
+              <div class="card-header">
+                <i class="fas fa-money-check-alt card-icon"></i>
+                {% if lang == 'en' %}Payment Management{% else %}Gestion des Paiements{% endif %}
+              </div>
+              <div class="card-body">
+                <a href="/admin/versements-manuels" target="_blank" class="btn action-btn">
+                  <i class="fas fa-hand-holding-usd"></i>
+                  {% if lang == 'en' %}Manual Payments{% else %}Paiements Manuels{% endif %}
+                </a>
+                <a href="/admin/commissions" class="btn action-btn">
+                  <i class="fas fa-percentage"></i>
+                  {% if lang == 'en' %}View Commissions{% else %}Voir les Commissions{% endif %}
+                </a>
+                <a href="/admin/interac-payments" class="btn action-btn">
+                  <i class="fas fa-exchange-alt"></i>
+                  {% if lang == 'en' %}Interac Transfers{% else %}Transferts Interac{% endif %}
+                </a>
+                <a href="/admin/generate-payment-report" class="btn action-btn">
+                  <i class="fas fa-file-export"></i>
+                  {% if lang == 'en' %}Generate Report{% else %}Générer Rapport{% endif %}
+                </a>
+              </div>
             </div>
-            <p class="mt-2 text-muted">{% if lang == 'en' %}Loading actions...{% else %}Chargement des actions...{% endif %}</p>
+          </div>
+          
+          <!-- Tableau des paiements récents -->
+          <div class="col-md-8">
+            <div class="dashboard-card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="fas fa-history me-2"></i>
+                  {% if lang == 'en' %}Recent Payments{% else %}Paiements Récents{% endif %}
+                </div>
+                <a href="/admin/versements-manuels" target="_blank" class="btn action-btn">
+                  {% if lang == 'en' %}View All{% else %}Voir Tout{% endif %}
+                </a>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-monetization table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>{% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}</th>
+                        <th>{% if lang == 'en' %}Amount{% else %}Montant{% endif %}</th>
+                        <th>{% if lang == 'en' %}Status{% else %}Statut{% endif %}</th>
+                        <th>{% if lang == 'en' %}Date{% else %}Date{% endif %}</th>
+                        <th>{% if lang == 'en' %}Actions{% else %}Actions{% endif %}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% if recent_payments and recent_payments|length > 0 %}
+                        {% for payment in recent_payments %}
+                        <tr>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                {{ payment.enseignant_nom[:1] if payment.enseignant_nom and payment.enseignant_nom|length > 0 else 'T' }}
+                              </div>
+                              <div>
+                                <div class="fw-bold">{{ payment.enseignant_nom or 'N/A' }}</div>
+                                <small class="text-muted">{{ payment.email_interac or payment.email or '' }}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="fw-bold">${{ "%.2f"|format(payment.montant_total if payment.montant_total else payment.montant_net if payment.montant_net else 0) }}</td>
+                          <td>
+                            {% if payment.statut == 'complete' %}
+                              <span class="badge badge-paid">{% if lang == 'en' %}Paid{% else %}Payé{% endif %}</span>
+                            {% elif payment.statut == 'en_cours' %}
+                              <span class="badge badge-processing">{% if lang == 'en' %}Processing{% else %}En traitement{% endif %}</span>
+                            {% elif payment.statut == 'demande' %}
+                              <span class="badge badge-demande">{% if lang == 'en' %}Request{% else %}Demande{% endif %}</span>
+                            {% else %}
+                              <span class="badge badge-pending">{% if lang == 'en' %}Pending{% else %}En attente{% endif %}</span>
+                            {% endif %}
+                          </td>
+                          <td>{{ payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else (payment.date[:10] if payment.date else 'N/A') }}</td>
+                          <td>
+                            <div class="action-buttons">
+                              <button class="btn-action btn-view" onclick="viewPaymentDetails({{ payment.id }})" title="{% if lang == 'en' %}View details{% else %}Voir détails{% endif %}">
+                                <i class="fas fa-eye"></i>
+                              </button>
+                              {% if payment.statut != 'complete' %}
+                              <button class="btn-action btn-edit" onclick="markAsPaid({{ payment.id }})" title="{% if lang == 'en' %}Mark as paid{% else %}Marquer comme payé{% endif %}">
+                                <i class="fas fa-check"></i>
+                              </button>
+                              {% endif %}
+                            </div>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      {% else %}
+                      <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                          <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
+                          <p>{% if lang == 'en' %}No recent payments{% else %}Aucun paiement récent{% endif %}</p>
+                          <a href="/admin/versements-manuels" target="_blank" class="btn action-btn">
+                            <i class="fas fa-plus me-2"></i>
+                            {% if lang == 'en' %}Add Payment{% else %}Ajouter un Paiement{% endif %}
+                          </a>
+                        </td>
+                      </tr>
+                      {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="tab-pane-css" id="pane-content">
-          <div class="text-center py-4">
-            <div class="spinner-border text-success" role="status">
-              <span class="visually-hidden">Loading...</span>
+        
+        <!-- Section des enseignants avec commissions -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <i class="fas fa-chart-line card-icon"></i>
+            {% if lang == 'en' %}Teacher Commission Overview{% else %}Aperçu des Commissions Enseignants{% endif %}
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>{% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}</th>
+                    <th>{% if lang == 'en' %}Total Commissions{% else %}Commissions Totales{% endif %}</th>
+                    <th>{% if lang == 'en' %}Pending{% else %}En Attente{% endif %}</th>
+                    <th>{% if lang == 'en' %}Paid{% else %}Payé{% endif %}</th>
+                    <th>{% if lang == 'en' %}Students{% else %}Élèves{% endif %}</th>
+                    <th>{% if lang == 'en' %}Last Payment{% else %}Dernier Paiement{% endif %}</th>
+                    <th>{% if lang == 'en' %}Actions{% else %}Actions{% endif %}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if teacher_commissions and teacher_commissions|length > 0 %}
+                    {% for teacher in teacher_commissions %}
+                    <tr>
+                      <td>
+                        <div class="d-flex align-items-center">
+                          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px;">
+                            {{ teacher.nom_complet[:1] if teacher.nom_complet and teacher.nom_complet|length > 0 else 'T' }}
+                          </div>
+                          <div>
+                            <div class="fw-bold">{{ teacher.nom_complet or 'N/A' }}</div>
+                            <small class="text-muted">{{ teacher.email or '' }}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="fw-bold">${{ "%.2f"|format(teacher.total_commissions or 0) }}</td>
+                      <td class="text-warning">${{ "%.2f"|format(teacher.pending or 0) }}</td>
+                      <td class="text-success">${{ "%.2f"|format(teacher.paid or 0) }}</td>
+                      <td>{{ teacher.students_count or 0 }}</td>
+                      <td>{{ teacher.last_payment[:10] if teacher.last_payment else 'Never' }}</td>
+                      <td>
+                        <div class="action-buttons">
+                          <a href="/admin/teacher/{{ teacher.id }}/commissions" class="btn-action btn-view" title="{% if lang == 'en' %}View commissions{% else %}Voir commissions{% endif %}">
+                            <i class="fas fa-eye"></i>
+                          </a>
+                          <button class="btn-action btn-edit" onclick="sendPaymentReminder({{ teacher.id }})" title="{% if lang == 'en' %}Send reminder{% else %}Envoyer rappel{% endif %}">
+                            <i class="fas fa-bell"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  {% else %}
+                  <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                      <i class="fas fa-user-tie fa-2x mb-2"></i>
+                      <p>{% if lang == 'en' %}No teacher commission data{% else %}Aucune donnée de commission{% endif %}</p>
+                      <a href="/admin/commissions" class="btn btn-sm btn-success">
+                        <i class="fas fa-sync me-2"></i>
+                        {% if lang == 'en' %}Check Commissions{% else %}Vérifier Commissions{% endif %}
+                      </a>
+                    </td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+              </table>
             </div>
-            <p class="mt-2 text-muted">{% if lang == 'en' %}Loading content structure...{% else %}Chargement de la structure...{% endif %}</p>
           </div>
         </div>
-        <div class="tab-pane-css" id="pane-monetization">
-          <div class="text-center py-4">
-            <div class="spinner-border text-warning" role="status">
-              <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+    <!-- Onglet Analytics -->
+    <div class="tab-pane fade" id="analytics" role="tabpanel">
+      <div class="content-section mt-4">
+        <h4 class="mb-3">{% if lang == 'en' %}Platform Analytics{% else %}Analytiques de la Plateforme{% endif %}</h4>
+        <div class="row">
+          <div class="col-md-8">
+            <div class="dashboard-card">
+              <div class="card-header d-flex align-items-center">
+                <i class="fas fa-chart-line me-2"></i>
+                {% if lang == 'en' %}Usage Statistics{% else %}Statistiques d'Utilisation{% endif %}
+              </div>
+              <div class="card-body">
+                <!-- Graphique dynamique des élèves par niveau -->
+                <canvas id="chartElevesParNiveau" height="120"></canvas>
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <script>
+                  const ctx = document.getElementById('chartElevesParNiveau');
+                  const data = {
+                    labels: {{ eleves_par_niveau|map(attribute=0)|list|tojson if eleves_par_niveau else [] }},
+                    datasets: [{
+                      label: '{{ "Nombre d\'élèves par niveau" if lang == "fr" else "Students per level" }}',
+                      data: {{ eleves_par_niveau|map(attribute=1)|list|tojson if eleves_par_niveau else [] }},
+                      backgroundColor: [
+                        '#4361ee', '#3fba83', '#fcc419', '#e85959', '#17a2b8', '#9b59b6', '#ff6b6b'
+                      ],
+                      borderWidth: 1
+                    }]
+                  };
+                  if (ctx) {
+                    new Chart(ctx, {
+                      type: 'bar',
+                      data: data,
+                      options: {
+                        responsive: true,
+                        plugins: {
+                          legend: {
+                            display: false
+                          },
+                          title: {
+                            display: true,
+                            text: '{{ "Répartition des élèves par niveau" if lang == "fr" else "Students per level" }}',
+                            font: { size: 18 }
+                          }
+                        },
+                        scales: {
+                          y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                      }
+                    });
+                  }
+                </script>
+              </div>
             </div>
-            <p class="mt-2 text-muted">{% if lang == 'en' %}Loading monetization data...{% else %}Chargement des données de monétisation...{% endif %}</p>
           </div>
-        </div>
-        <div class="tab-pane-css" id="pane-analytics">
-          <div class="text-center py-4">
-            <div class="spinner-border text-info" role="status">
-              <span class="visually-hidden">Loading...</span>
+          <div class="col-md-4">
+            <div class="dashboard-card">
+              <div class="card-header d-flex align-items-center">
+                <i class="fas fa-bell me-2"></i>
+                {% if lang == 'en' %}Recent Activity{% else %}Activité Récente{% endif %}
+              </div>
+              <div class="card-body">
+                <div class="activity-list">
+                  <div class="activity-item d-flex mb-3">
+                    <div class="activity-icon bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                      <i class="fas fa-user-plus text-white"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0">{% if lang == 'en' %}New teacher registered{% else %}Nouvel enseignant inscrit{% endif %}</p>
+                      <small class="text-muted">2 hours ago</small>
+                    </div>
+                  </div>
+                  <div class="activity-item d-flex mb-3">
+                    <div class="activity-icon bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                      <i class="fas fa-book text-white"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0">{% if lang == 'en' %}New lesson added{% else %}Nouvelle leçon ajoutée{% endif %}</p>
+                      <small class="text-muted">5 hours ago</small>
+                    </div>
+                  </div>
+                  <div class="activity-item d-flex mb-3">
+                    <div class="activity-icon bg-warning rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                      <i class="fas fa-vial text-white"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0">{% if lang == 'en' %}New test created{% else %}Nouveau test créé{% endif %}</p>
+                      <small class="text-muted">Yesterday</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p class="mt-2 text-muted">{% if lang == 'en' %}Loading analytics...{% else %}Chargement des analytiques...{% endif %}</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- TOUS LES SCRIPTS À LA FIN -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <script>
-    // État de l'application
-    const app = {
-      lang: '{{ lang }}',
-      data: null,
-      isLoading: true,
-      currentTab: 'actions'
-    };
-
-    // Initialisation au chargement
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 Initialisation du dashboard...');
-      
-      // Charger les données
-      loadDashboardData();
-    });
-
-    // Chargement des données AJAX
-    async function loadDashboardData() {
-      try {
-        console.log('📡 Chargement des données depuis l\'API...');
-        const startTime = performance.now();
-        
-        const response = await fetch('/api/admin/dashboard/data');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        app.data = await response.json();
-        
-        const endTime = performance.now();
-        console.log(`✅ Données chargées en ${((endTime - startTime) / 1000).toFixed(2)} secondes`);
-        console.log('📊 Données reçues:', app.data);
-        
-        app.isLoading = false;
-        
-        // Mettre à jour l'interface
-        updateDashboard();
-        
-      } catch (error) {
-        console.error('❌ Erreur chargement données:', error);
-        showError();
-      }
-    }
-
-    function updateDashboard() {
-      if (!app.data) {
-        console.error('❌ Aucune données disponibles');
-        return;
-      }
-      
-      console.log('🔄 Mise à jour du dashboard...');
-      
-      // 1. Mettre à jour les cartes de statistiques
-      updateStatsCards();
-      
-      // 2. Générer le contenu des onglets
-      updateTabContent();
-      
-      // 3. Initialiser le graphique si on est sur l'onglet analytics
-      if (app.currentTab === 'analytics') {
-        setTimeout(() => initializeCharts(), 100);
-      }
-      
-      console.log('✅ Dashboard mis à jour');
-    }
-
-    function updateStatsCards() {
-      const stats = app.data.stats || {};
-      
-      const statsContainer = document.getElementById('stats-cards');
-      if (!statsContainer) return;
-      
-      const html = `
-        <div class="col-12 col-sm-6 col-md-3">
-          <div class="stats-card">
-            <div class="stats-number">${stats.enseignants_count || 0}</div>
-            <div class="stats-label">${app.lang === 'en' ? 'Teachers' : 'Enseignants'}</div>
-          </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-3">
-          <div class="stats-card">
-            <div class="stats-number">${stats.eleves_count || 0}</div>
-            <div class="stats-label">${app.lang === 'en' ? 'Students' : 'Élèves'}</div>
-          </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-3">
-          <div class="stats-card">
-            <div class="stats-number">${stats.lecons_count || 0}</div>
-            <div class="stats-label">${app.lang === 'en' ? 'Lessons' : 'Leçons'}</div>
-          </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-3">
-          <div class="stats-card">
-            <div class="stats-number">${stats.exercices_count || 0}</div>
-            <div class="stats-label">${app.lang === 'en' ? 'Exercises' : 'Exercices'}</div>
-          </div>
-        </div>
-      `;
-      
-      statsContainer.innerHTML = html;
-    }
-
-    function updateTabContent() {
-      // Mettre à jour chaque onglet avec les données
-      const actionsPane = document.getElementById('pane-actions');
-      const contentPane = document.getElementById('pane-content');
-      const monetizationPane = document.getElementById('pane-monetization');
-      const analyticsPane = document.getElementById('pane-analytics');
-      
-      if (actionsPane) {
-        actionsPane.innerHTML = generateActionsTab();
-      }
-      
-      if (contentPane) {
-        contentPane.innerHTML = generateContentTab();
-      }
-      
-      if (monetizationPane) {
-        monetizationPane.innerHTML = generateMonetizationTab();
-      }
-      
-      if (analyticsPane) {
-        analyticsPane.innerHTML = generateAnalyticsTab();
-      }
-      
-      // Réactiver l'onglet courant
-      switchTab(app.currentTab);
-    }
-
-    function generateActionsTab() {
-      return `
-        <div class="row quick-actions-row g-3 g-md-4">
-          <!-- Gestion des Utilisateurs -->
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="dashboard-card user-management">
-              <div class="card-header">
-                <i class="fas fa-users card-icon"></i>
-                ${app.lang === 'en' ? 'User Management' : 'Gestion des Utilisateurs'}
-              </div>
-              <div class="card-body">
-                <a href="/admin/creer-enseignant" class="btn action-btn">
-                  <i class="fas fa-plus-circle"></i>
-                  ${app.lang === 'en' ? 'Add Teacher' : 'Ajouter un Enseignant'}
-                </a>
-                <a href="/admin/creer-eleve" class="btn action-btn">
-                  <i class="fas fa-user-plus"></i>
-                  ${app.lang === 'en' ? 'Add Student' : 'Ajouter un Élève'}
-                </a>
-                <a href="/admin/enseignants" class="btn action-btn">
-                  <i class="fas fa-user-edit"></i>
-                  ${app.lang === 'en' ? 'Manage Teachers' : 'Gérer les Enseignants'}
-                </a>
-                <a href="/admin/eleves" class="btn action-btn">
-                  <i class="fas fa-user-graduate"></i>
-                  ${app.lang === 'en' ? 'Manage Students' : 'Gérer les Élèves'}
-                </a>
-              </div>
-            </div>
-          </div>
-          <!-- Gestion des Contenus -->
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="dashboard-card content-management">
-              <div class="card-header">
-                <i class="fas fa-book card-icon"></i>
-                ${app.lang === 'en' ? 'Content Management' : 'Gestion des Contenus'}
-              </div>
-              <div class="card-body">
-                <a href="/admin/ajouter-niveau" class="btn action-btn">
-                  <i class="fas fa-layer-group"></i>
-                  ${app.lang === 'en' ? 'Add Level' : 'Ajouter un Niveau'}
-                </a>
-                <a href="/admin/ajouter-matiere" class="btn action-btn">
-                  <i class="fas fa-book-open"></i>
-                  ${app.lang === 'en' ? 'Add Subject' : 'Ajouter une Matière'}
-                </a>
-                <a href="/admin/ajouter-unite" class="btn action-btn">
-                  <i class="fas fa-cube"></i>
-                  ${app.lang === 'en' ? 'Add Unit' : 'Ajouter une Unité'}
-                </a>
-                <a href="/admin/ajouter-lecon" class="btn action-btn">
-                  <i class="fas fa-file-alt"></i>
-                  ${app.lang === 'en' ? 'Add Lesson' : 'Ajouter une Leçon'}
-                </a>
-                <a href="/admin/import-lessons" class="btn action-btn import-batch-btn">
-                  <i class="fas fa-file-import"></i>
-                  <div>
-                    <strong>${app.lang === 'en' ? 'Batch Import Lessons' : 'Importation de Leçons en Lot'}</strong>
-                  </div>
-                </a>
-                <a href="/admin/batch-create-exercises" class="btn action-btn" 
-                   style="border-left: 4px solid #9b59b6; background: rgba(155, 89, 182, 0.1);">
-                  <i class="fas fa-file-import" style="color: #9b59b6;"></i>
-                  <div>
-                    <strong>${app.lang === 'en' ? 'Batch Import Exercises' : 'Importation d\'Exercices en Lot'}</strong>
-                  </div>
-                </a>
-              </div>
-            </div>
-          </div>
-          <!-- Évaluations -->
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="dashboard-card evaluations">
-              <div class="card-header">
-                <i class="fas fa-clipboard-check card-icon"></i>
-                ${app.lang === 'en' ? 'Evaluations' : 'Évaluations'}
-              </div>
-              <div class="card-body">
-                <a href="/admin/ajouter-exercice" class="btn action-btn">
-                  <i class="fas fa-edit"></i>
-                  ${app.lang === 'en' ? 'Add Exercise' : 'Ajouter un Exercice'}
-                </a>
-                <a href="/admin/exercices" class="btn action-btn">
-                  <i class="fas fa-list"></i>
-                  ${app.lang === 'en' ? 'Manage Exercises' : 'Gérer les Exercices'}
-                </a>
-                <a href="/admin/creer-exercice-ia" class="btn action-btn">
-                  <i class="fas fa-robot"></i>
-                  ${app.lang === 'en' ? 'Generate Exercises (AI)' : 'Générer des Exercices (IA)'}
-                </a>
-                <a href="/admin/ajouter-test" class="btn action-btn">
-                  <i class="fas fa-vial"></i>
-                  ${app.lang === 'en' ? 'Add Summative Test' : 'Ajouter un Test Sommatif'}
-                </a>
-                <a href="/admin/creer-test-sommatif-ia" class="btn action-btn">
-                  <i class="fas fa-magic"></i>
-                  ${app.lang === 'en' ? 'Generate Summative Test (AI)' : 'Générer un Test Sommatif (IA)'}
-                </a>
-                <a href="/admin/tests" class="btn action-btn">
-                  <i class="fas fa-list"></i>
-                  ${app.lang === 'en' ? 'View All Tests' : 'Voir tous les Tests'}
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function generateContentTab() {
-      if (!app.data || !app.data.niveaux || app.data.niveaux.length === 0) {
-        return `
-          <div class="text-center py-4">
-            <i class="fas fa-layer-group fa-3x text-muted mb-3"></i>
-            <p class="text-muted">${app.lang === 'en' ? 'No content levels defined yet.' : 'Aucun niveau de contenu défini pour le moment.'}</p>
-            <a href="/admin/ajouter-niveau" class="btn btn-primary">
-              <i class="fas fa-plus me-2"></i>
-              ${app.lang === 'en' ? 'Add First Level' : 'Ajouter un Premier Niveau'}
-            </a>
-          </div>
-        `;
-      }
-      
-      let html = '<div class="accordion" id="contentAccordion">';
-      
-      app.data.niveaux.forEach((niveau) => {
-        const matieresCount = niveau.matieres ? niveau.matieres.length : 0;
-        html += `
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingNiveau${niveau.id}">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNiveau${niveau.id}">
-                <i class="fas fa-layer-group me-2 text-primary"></i>
-                ${niveau.nom}
-                <span class="badge bg-primary badge-pill ms-2">${matieresCount} ${app.lang === 'en' ? 'subjects' : 'matières'}</span>
-              </button>
-            </h2>
-            <div id="collapseNiveau${niveau.id}" class="accordion-collapse collapse">
-              <div class="accordion-body">
-                ${generateMatieresHTML(niveau.matieres)}
-              </div>
-            </div>
-          </div>
-        `;
-      });
-      
-      html += '</div>';
-      return html;
-    }
-
-    function generateMatieresHTML(matieres) {
-      if (!matieres || matieres.length === 0) {
-        return `<p class="text-muted">${app.lang === 'en' ? 'No subjects available' : 'Aucune matière disponible'}</p>`;
-      }
-      
-      let html = '';
-      matieres.forEach(matiere => {
-        const unitesCount = matiere.unites ? matiere.unites.length : 0;
-        html += `
-          <div class="card mb-3">
-            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-              <span><i class="fas fa-book me-2"></i>${matiere.nom}</span>
-              <span class="badge bg-light text-dark">${unitesCount} ${app.lang === 'en' ? 'units' : 'unités'}</span>
-            </div>
-            <div class="card-body">
-              ${generateUnitesHTML(matiere.unites)}
-            </div>
-          </div>
-        `;
-      });
-      
-      return html;
-    }
-
-    function generateUnitesHTML(unites) {
-      if (!unites || unites.length === 0) {
-        return `<p class="text-muted">${app.lang === 'en' ? 'No units available' : 'Aucune unité disponible'}</p>`;
-      }
-      
-      let html = '';
-      unites.forEach(unite => {
-        const leconsCount = unite.lecons ? unite.lecons.length : 0;
-        const testsCount = unite.tests ? unite.tests.length : 0;
-        const totalItems = leconsCount + testsCount;
-        
-        html += `
-          <div class="card mb-3">
-            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-              <span><i class="fas fa-cube me-2"></i>${unite.nom}</span>
-              <span class="badge bg-light text-dark">${totalItems} ${app.lang === 'en' ? 'items' : 'éléments'}</span>
-            </div>
-            <div class="card-body">
-              ${generateLeconsHTML(unite.lecons, unite.tests)}
-            </div>
-          </div>
-        `;
-      });
-      
-      return html;
-    }
-
-    function generateLeconsHTML(lecons, tests) {
-      let html = '';
-      
-      if (tests && tests.length > 0) {
-        html += `<h6 class="text-warning mb-2">${app.lang === 'en' ? 'Summative Tests' : 'Tests Sommatifs'}</h6>`;
-        tests.forEach(test => {
-          html += `
-            <div class="content-item lecon-item mb-2">
-              <div class="content-info">
-                <i class="fas fa-vial me-2 text-warning"></i>
-                ${app.lang === 'en' ? 'Test' : 'Test'} #${test.id}
-              </div>
-            </div>
-          `;
-        });
-      }
-      
-      if (lecons && lecons.length > 0) {
-        html += `<h6 class="text-secondary mb-2 mt-3">${app.lang === 'en' ? 'Lessons' : 'Leçons'}</h6>`;
-        lecons.forEach(lecon => {
-          html += `
-            <div class="content-item lecon-item mb-2">
-              <div class="content-info">
-                <i class="fas fa-file-alt me-2 text-secondary"></i>
-                ${lecon.titre}
-              </div>
-            </div>
-          `;
-        });
-      }
-      
-      if ((!tests || tests.length === 0) && (!lecons || lecons.length === 0)) {
-        html += `<p class="text-muted mb-0">${app.lang === 'en' ? 'No content' : 'Aucun contenu'}</p>`;
-      }
-      
-      return html;
-    }
-
-    function generateMonetizationTab() {
-      if (!app.data || !app.data.monetization_stats) {
-        return '<p class="text-center py-4">Chargement...</p>';
-      }
-      
-      const m = app.data.monetization_stats;
-      const payments = app.data.recent_payments || [];
-      const teachers = app.data.teacher_commissions || [];
-      
-      return `
-        <div class="content-section mt-4">
-          <h4 class="mb-3">
-            <i class="fas fa-money-bill-wave me-2 text-success"></i>
-            ${app.lang === 'en' ? 'Teacher Commissions & Payments' : 'Commissions & Paiements Enseignants'}
-          </h4>
-          
-          <!-- Cartes de statistiques monétaires -->
-          <div class="row g-3 g-md-4 mb-4">
-            <div class="col-12 col-sm-6 col-md-3">
-              <div class="stats-card" style="border-left: 4px solid #10b981;">
-                <div class="stats-number text-success">$${m.total_commissions ? m.total_commissions.toFixed(2) : '0.00'}</div>
-                <div class="stats-label">${app.lang === 'en' ? 'Total Commissions' : 'Commissions Totales'}</div>
-              </div>
-            </div>
-            <div class="col-12 col-sm-6 col-md-3">
-              <div class="stats-card" style="border-left: 4px solid #f59e0b;">
-                <div class="stats-number text-warning">$${m.pending_payments ? m.pending_payments.toFixed(2) : '0.00'}</div>
-                <div class="stats-label">${app.lang === 'en' ? 'Pending Payments' : 'Paiements en Attente'}</div>
-              </div>
-            </div>
-            <div class="col-12 col-sm-6 col-md-3">
-              <div class="stats-card" style="border-left: 4px solid #3b82f6;">
-                <div class="stats-number text-info">${m.payments_count || 0}</div>
-                <div class="stats-label">${app.lang === 'en' ? 'Payments Made' : 'Paiements Effectués'}</div>
-              </div>
-            </div>
-            <div class="col-12 col-sm-6 col-md-3">
-              <div class="stats-card" style="border-left: 4px solid #8b5cf6;">
-                <div class="stats-number text-purple">${m.active_teachers || 0}</div>
-                <div class="stats-label">${app.lang === 'en' ? 'Active Teachers' : 'Enseignants Actifs'}</div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Tableau des paiements récents -->
-          <div class="dashboard-card mb-4">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <div>
-                <i class="fas fa-history me-2"></i>
-                ${app.lang === 'en' ? 'Recent Payments' : 'Paiements Récents'}
-              </div>
-              <a href="/admin/versements-manuels" target="_blank" class="btn btn-sm btn-success">
-                ${app.lang === 'en' ? 'View All' : 'Voir Tout'}
-              </a>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-monetization table-hover mb-0">
-                  <thead>
-                    <tr>
-                      <th>${app.lang === 'en' ? 'Teacher' : 'Enseignant'}</th>
-                      <th>${app.lang === 'en' ? 'Amount' : 'Montant'}</th>
-                      <th>${app.lang === 'en' ? 'Status' : 'Statut'}</th>
-                      <th>${app.lang === 'en' ? 'Date' : 'Date'}</th>
-                      <th>${app.lang === 'en' ? 'Actions' : 'Actions'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${payments.map(p => `
-                      <tr>
-                        <td>
-                          <div class="d-flex align-items-center">
-                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                              ${p.enseignant_nom ? p.enseignant_nom.charAt(0) : '?'}
-                            </div>
-                            <div>
-                              <div class="fw-bold">${p.enseignant_nom || 'N/A'}</div>
-                              <small class="text-muted">${p.email || ''}</small>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="fw-bold">$${p.montant_total ? p.montant_total.toFixed(2) : '0.00'}</td>
-                        <td>
-                          <span class="badge-${p.statut === 'complete' ? 'paid' : (p.statut === 'en_cours' ? 'processing' : (p.statut === 'demande' ? 'demande' : 'pending'))}">
-                            ${p.statut === 'complete' ? (app.lang === 'en' ? 'Paid' : 'Payé') : 
-                              (p.statut === 'en_cours' ? (app.lang === 'en' ? 'Processing' : 'En traitement') :
-                              (p.statut === 'demande' ? (app.lang === 'en' ? 'Request' : 'Demande') : 
-                              (app.lang === 'en' ? 'Pending' : 'En attente')))}
-                          </span>
-                        </td>
-                        <td>${p.date || ''}</td>
-                        <td>
-                          <div class="action-buttons">
-                            <button class="btn-action btn-view" onclick="viewPaymentDetails(${p.id})" title="${app.lang === 'en' ? 'View details' : 'Voir détails'}">
-                              <i class="fas fa-eye"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    `).join('')}
-                    ${payments.length === 0 ? `
-                      <tr>
-                        <td colspan="5" class="text-center py-4 text-muted">
-                          <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
-                          <p>${app.lang === 'en' ? 'No recent payments' : 'Aucun paiement récent'}</p>
-                        </td>
-                      </tr>
-                    ` : ''}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Section des enseignants avec commissions -->
-          <div class="dashboard-card">
-            <div class="card-header">
-              <i class="fas fa-chart-line card-icon"></i>
-              ${app.lang === 'en' ? 'Teacher Commission Overview' : 'Aperçu des Commissions Enseignants'}
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                  <thead>
-                    <tr>
-                      <th>${app.lang === 'en' ? 'Teacher' : 'Enseignant'}</th>
-                      <th>${app.lang === 'en' ? 'Total Commissions' : 'Commissions Totales'}</th>
-                      <th>${app.lang === 'en' ? 'Pending' : 'En Attente'}</th>
-                      <th>${app.lang === 'en' ? 'Paid' : 'Payé'}</th>
-                      <th>${app.lang === 'en' ? 'Students' : 'Élèves'}</th>
-                      <th>${app.lang === 'en' ? 'Last Payment' : 'Dernier Paiement'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${teachers.map(t => `
-                      <tr>
-                        <td>
-                          <div class="d-flex align-items-center">
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px;">
-                              ${t.nom_complet ? t.nom_complet.charAt(0) : '?'}
-                            </div>
-                            <div>
-                              <div class="fw-bold">${t.nom_complet || 'N/A'}</div>
-                              <small class="text-muted">${t.email || ''}</small>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="fw-bold">$${t.total_commissions ? t.total_commissions.toFixed(2) : '0.00'}</td>
-                        <td class="text-warning">$${t.pending ? t.pending.toFixed(2) : '0.00'}</td>
-                        <td class="text-success">$${t.paid ? t.paid.toFixed(2) : '0.00'}</td>
-                        <td>${t.students_count || 0}</td>
-                        <td>${t.last_payment || (app.lang === 'en' ? 'Never' : 'Jamais')}</td>
-                      </tr>
-                    `).join('')}
-                    ${teachers.length === 0 ? `
-                      <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">
-                          <i class="fas fa-user-tie fa-2x mb-2"></i>
-                          <p>${app.lang === 'en' ? 'No teacher commission data' : 'Aucune donnée de commission'}</p>
-                        </td>
-                      </tr>
-                    ` : ''}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function generateAnalyticsTab() {
-      return `
-        <div class="content-section mt-4">
-          <h4 class="mb-3">${app.lang === 'en' ? 'Platform Analytics' : 'Analytiques de la Plateforme'}</h4>
-          <div class="row g-3 g-md-4">
-            <div class="col-12 col-md-8">
-              <div class="dashboard-card">
-                <div class="card-header">
-                  <i class="fas fa-chart-line me-2"></i>
-                  ${app.lang === 'en' ? 'Students per Level' : 'Élèves par Niveau'}
-                </div>
-                <div class="card-body">
-                  <canvas id="chartElevesParNiveau" style="width: 100%; min-height: 200px;"></canvas>
-                </div>
-              </div>
-            </div>
-            <div class="col-12 col-md-4">
-              <div class="dashboard-card">
-                <div class="card-header">
-                  <i class="fas fa-bell me-2"></i>
-                  ${app.lang === 'en' ? 'Recent Activity' : 'Activité Récente'}
-                </div>
-                <div class="card-body">
-                  <div class="activity-list">
-                    <div class="activity-item d-flex mb-3">
-                      <div class="activity-icon bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                        <i class="fas fa-user-plus text-white"></i>
-                      </div>
-                      <div>
-                        <p class="mb-0">${app.lang === 'en' ? 'New teacher registered' : 'Nouvel enseignant inscrit'}</p>
-                        <small class="text-muted">2 hours ago</small>
-                      </div>
-                    </div>
-                    <div class="activity-item d-flex mb-3">
-                      <div class="activity-icon bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                        <i class="fas fa-book text-white"></i>
-                      </div>
-                      <div>
-                        <p class="mb-0">${app.lang === 'en' ? 'New lesson added' : 'Nouvelle leçon ajoutée'}</p>
-                        <small class="text-muted">5 hours ago</small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function switchTab(tab) {
-      console.log('🔄 Changement vers onglet:', tab);
-      app.currentTab = tab;
-      
-      document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-pane-css').forEach(p => p.classList.remove('active'));
-      
-      const buttons = document.querySelectorAll('.tab-button');
-      buttons.forEach(b => {
-        if (b.textContent.toLowerCase().includes(tab) || 
-            (tab === 'actions' && b.textContent.includes('Actions')) ||
-            (tab === 'content' && b.textContent.includes('Content')) ||
-            (tab === 'monetization' && b.textContent.includes('Monetization')) ||
-            (tab === 'analytics' && b.textContent.includes('Analytics'))) {
-          b.classList.add('active');
-        }
-      });
-      
-      const pane = document.getElementById(`pane-${tab}`);
-      if (pane) {
-        pane.classList.add('active');
-      }
-      
-      // Initialiser le graphique si on passe à l'onglet analytics
-      if (tab === 'analytics' && app.data && !app.isLoading) {
-        setTimeout(() => initializeCharts(), 100);
-      }
-    }
-
-    function initializeCharts() {
-      const canvas = document.getElementById('chartElevesParNiveau');
-      if (!canvas) return;
-      
-      // Détruire l'ancien graphique s'il existe
-      if (window.studentsChart) {
-        window.studentsChart.destroy();
-      }
-      
-      const ctx = canvas.getContext('2d');
-      
-      if (app.data && app.data.eleves_par_niveau && app.data.eleves_par_niveau.length > 0) {
-        console.log('📊 Initialisation du graphique avec', app.data.eleves_par_niveau.length, 'données');
-        
-        const labels = app.data.eleves_par_niveau.map(item => item[0] || 'N/A');
-        const data = app.data.eleves_par_niveau.map(item => item[1] || 0);
-        
-        window.studentsChart = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: app.lang === 'en' ? 'Students per level' : 'Élèves par niveau',
-              data: data,
-              backgroundColor: ['#4361ee', '#3fba83', '#fcc419', '#e85959', '#17a2b8', '#9b59b6', '#ff6b6b'],
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-              legend: { display: false },
-              title: {
-                display: true,
-                text: app.lang === 'en' ? 'Students per level' : 'Répartition des élèves par niveau',
-                font: { size: 16 }
-              }
-            },
-            scales: {
-              y: { 
-                beginAtZero: true, 
-                ticks: { precision: 0 },
-                title: {
-                  display: true,
-                  text: app.lang === 'en' ? 'Number of students' : 'Nombre d\'élèves'
-                }
-              }
+    function confirmDelete(exerciceId) {
+      Swal.fire({
+        title: '{{ "Supprimer ?" if lang == "fr" else "Delete?" }}',
+        text: '{{ "Cette action est irréversible." if lang == "fr" else "This action cannot be undone." }}',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e74c3c',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '{{ "Oui, supprimer" if lang == "fr" else "Yes, delete" }}',
+        cancelButtonText: '{{ "Annuler" if lang == "fr" else "Cancel" }}'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          fetch('/admin/supprimer-exercice/' + exerciceId, { 
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
             }
-          }
-        });
-        console.log('✅ Graphique chargé');
-      } else {
-        ctx.font = '16px Inter';
-        ctx.fillStyle = '#718096';
-        ctx.textAlign = 'center';
-        ctx.fillText(app.lang === 'en' ? 'No data available' : 'Aucune donnée disponible', canvas.width/2, canvas.height/2);
-      }
+          })
+            .then(response => {
+              if (response.redirected) {
+                window.location.href = response.url;
+              } else {
+                Swal.fire('{{ "Erreur" if lang == "fr" else "Error" }}', '{{ "Une erreur est survenue." if lang == "fr" else "An error occurred." }}', 'error');
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              Swal.fire('{{ "Erreur" if lang == "fr" else "Error" }}', '{{ "Impossible de supprimer." if lang == "fr" else "Unable to delete." }}', 'error');
+            });
+        }
+      });
     }
 
+    // Fonctions pour la section monétisation
     function viewPaymentDetails(paymentId) {
-      fetch(`/admin/versements-manuels/${paymentId}/details`)
-        .then(response => response.json())
-        .then(data => {
-          const statusMap = {
-            'complete': app.lang === 'en' ? 'Paid' : 'Payé',
-            'en_cours': app.lang === 'en' ? 'Processing' : 'En traitement',
-            'demande': app.lang === 'en' ? 'Request' : 'Demande'
-          };
-          
-          Swal.fire({
-            title: app.lang === 'en' ? 'Payment Details' : 'Détails du paiement',
-            html: `
-              <div class="payment-details" style="text-align: left;">
-                <div class="payment-row mb-2">
-                  <span class="payment-label fw-bold">${app.lang === 'en' ? 'Teacher:' : 'Enseignant:'}</span>
-                  <span class="payment-value ms-2">${data.payment?.enseignant_nom || 'N/A'}</span>
-                </div>
-                <div class="payment-row mb-2">
-                  <span class="payment-label fw-bold">${app.lang === 'en' ? 'Amount:' : 'Montant:'}</span>
-                  <span class="payment-value ms-2">$${(data.payment?.montant_total || 0).toFixed(2)}</span>
-                </div>
-                <div class="payment-row mb-2">
-                  <span class="payment-label fw-bold">${app.lang === 'en' ? 'Status:' : 'Statut:'}</span>
-                  <span class="payment-value ms-2">${statusMap[data.payment?.statut] || data.payment?.statut || 'N/A'}</span>
-                </div>
-                <div class="payment-row mb-2">
-                  <span class="payment-label fw-bold">${app.lang === 'en' ? 'Date:' : 'Date:'}</span>
-                  <span class="payment-value ms-2">${data.payment?.date_demande || 'N/A'}</span>
-                </div>
-                ${data.payment?.reference_interac ? `<div class="payment-row">
-                  <span class="payment-label fw-bold">${app.lang === 'en' ? 'Reference:' : 'Référence:'}</span>
-                  <span class="payment-value ms-2">${data.payment.reference_interac}</span>
-                </div>` : ''}
-              </div>
-            `,
-            icon: 'info',
-            confirmButtonText: app.lang === 'en' ? 'OK' : 'OK'
-          });
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          Swal.fire(
-            app.lang === 'en' ? 'Error' : 'Erreur',
-            app.lang === 'en' ? 'Unable to load details' : 'Impossible de charger les détails',
-            'error'
-          );
-        });
+        fetch(`/admin/versements-manuels/${paymentId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                const lang = "{{ lang }}";
+                const statusMap = {
+                    'complete': lang === 'en' ? 'Paid' : 'Payé',
+                    'en_cours': lang === 'en' ? 'Processing' : 'En traitement',
+                    'demande': lang === 'en' ? 'Request' : 'Demande'
+                };
+                
+                Swal.fire({
+                    title: lang === 'en' ? 'Payment Details' : 'Détails du paiement',
+                    html: `
+                        <div class="payment-details" style="text-align: left;">
+                            <div class="payment-row mb-2">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Teacher:' : 'Enseignant:'}</span>
+                                <span class="payment-value ms-2">${data.payment?.enseignant_nom || 'N/A'}</span>
+                            </div>
+                            <div class="payment-row mb-2">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Amount:' : 'Montant:'}</span>
+                                <span class="payment-value ms-2">$${(data.payment?.montant_total || 0).toFixed(2)}</span>
+                            </div>
+                            <div class="payment-row mb-2">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Status:' : 'Statut:'}</span>
+                                <span class="payment-value ms-2">${statusMap[data.payment?.statut] || data.payment?.statut || 'N/A'}</span>
+                            </div>
+                            <div class="payment-row mb-2">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Date:' : 'Date:'}</span>
+                                <span class="payment-value ms-2">${data.payment?.date_demande || 'N/A'}</span>
+                            </div>
+                            ${data.payment?.reference_interac ? `<div class="payment-row">
+                                <span class="payment-label fw-bold">${lang === 'en' ? 'Reference:' : 'Référence:'}</span>
+                                <span class="payment-value ms-2">${data.payment.reference_interac}</span>
+                            </div>` : ''}
+                        </div>
+                    `,
+                    icon: 'info',
+                    confirmButtonText: lang === 'en' ? 'OK' : 'OK'
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire(
+                    '{{ "Erreur" if lang == "fr" else "Error" }}',
+                    '{{ "Impossible de charger les détails" if lang == "fr" else "Unable to load details" }}',
+                    'error'
+                );
+            });
     }
 
     function markAsPaid(paymentId) {
-      Swal.fire({
-        title: app.lang === 'en' ? 'Confirm Payment' : 'Confirmer le paiement',
-        text: app.lang === 'en' ? 'Mark this payment as completed?' : 'Marquer ce paiement comme effectué ?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: app.lang === 'en' ? 'Yes, mark as paid' : 'Oui, marquer comme payé',
-        cancelButtonText: app.lang === 'en' ? 'Cancel' : 'Annuler',
-        input: 'text',
-        inputLabel: app.lang === 'en' ? 'Interac Reference (optional)' : 'Référence Interac (optionnel)',
-        inputPlaceholder: app.lang === 'en' ? 'Enter reference...' : 'Entrez la référence...'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          const reference = result.value || '';
-          fetch(`/api/admin/versement/${paymentId}/traiter`, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              reference_interac: reference,
-              preuve_versement: null
-            })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success) {
-              Swal.fire(
-                app.lang === 'en' ? 'Success' : 'Succès',
-                data.message || (app.lang === 'en' ? 'Payment marked as completed' : 'Paiement marqué comme complété'),
-                'success'
-              );
-              setTimeout(() => location.reload(), 1500);
-            } else {
-              Swal.fire(
-                app.lang === 'en' ? 'Error' : 'Erreur',
-                data.error || data.message || (app.lang === 'en' ? 'An error occurred' : 'Une erreur est survenue'),
-                'error'
-              );
+        const lang = "{{ lang }}";
+        Swal.fire({
+            title: lang === 'en' ? 'Confirm Payment' : 'Confirmer le paiement',
+            text: lang === 'en' ? 'Mark this payment as completed?' : 'Marquer ce paiement comme effectué ?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: lang === 'en' ? 'Yes, mark as paid' : 'Oui, marquer comme payé',
+            cancelButtonText: lang === 'en' ? 'Cancel' : 'Annuler',
+            input: 'text',
+            inputLabel: lang === 'en' ? 'Interac Reference (optional)' : 'Référence Interac (optionnel)',
+            inputPlaceholder: lang === 'en' ? 'Enter reference...' : 'Entrez la référence...'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const reference = result.value || '';
+                fetch(`/api/admin/versement/${paymentId}/traiter`, { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        reference_interac: reference,
+                        preuve_versement: null
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire(
+                                lang === 'en' ? 'Success' : 'Succès',
+                                data.message || (lang === 'en' ? 'Payment marked as completed' : 'Paiement marqué comme complété'),
+                                'success'
+                            );
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            Swal.fire(
+                                lang === 'en' ? 'Error' : 'Erreur',
+                                data.error || data.message || (lang === 'en' ? 'An error occurred' : 'Une erreur est survenue'),
+                                'error'
+                            );
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire(
+                            lang === 'en' ? 'Error' : 'Erreur',
+                            lang === 'en' ? 'An error occurred' : 'Une erreur est survenue',
+                            'error'
+                        );
+                    });
             }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            Swal.fire(
-              app.lang === 'en' ? 'Error' : 'Erreur',
-              app.lang === 'en' ? 'An error occurred' : 'Une erreur est survenue',
-              'error'
-            );
-          });
-        }
-      });
+        });
     }
 
     function sendPaymentReminder(teacherId) {
-      fetch(`/admin/teacher/${teacherId}/send-reminder`, { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          Swal.fire(
-            app.lang === 'en' ? 'Reminder Sent' : 'Rappel envoyé',
-            data.message || (app.lang === 'en' ? 'Payment reminder sent successfully' : 'Rappel de paiement envoyé avec succès'),
-            'success'
-          );
-        } else {
-          Swal.fire(
-            app.lang === 'en' ? 'Error' : 'Erreur',
-            data.message || (app.lang === 'en' ? 'Failed to send reminder' : 'Échec de l\'envoi du rappel'),
-            'error'
-          );
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        Swal.fire(
-          app.lang === 'en' ? 'Error' : 'Erreur',
-          app.lang === 'en' ? 'Failed to send reminder' : 'Échec de l\'envoi du rappel',
-          'error'
-        );
-      });
-    }
-
-    function showError() {
-      Swal.fire({
-        icon: 'error',
-        title: app.lang === 'en' ? 'Error' : 'Erreur',
-        text: app.lang === 'en' ? 'Failed to load dashboard data' : 'Échec du chargement des données',
-        confirmButtonText: app.lang === 'en' ? 'Retry' : 'Réessayer'
-      }).then(() => loadDashboardData());
+        const lang = "{{ lang }}";
+        fetch(`/admin/teacher/${teacherId}/send-reminder`, { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        lang === 'en' ? 'Reminder Sent' : 'Rappel envoyé',
+                        data.message || (lang === 'en' ? 'Payment reminder sent successfully' : 'Rappel de paiement envoyé avec succès'),
+                        'success'
+                    );
+                } else {
+                    Swal.fire(
+                        lang === 'en' ? 'Error' : 'Erreur',
+                        data.message || (lang === 'en' ? 'Failed to send reminder' : 'Échec de l\'envoi du rappel'),
+                        'error'
+                    );
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire(
+                    lang === 'en' ? 'Error' : 'Erreur',
+                    lang === 'en' ? 'Failed to send reminder' : 'Échec de l\'envoi du rappel',
+                    'error'
+                );
+            });
     }
 
     // Gestion du thème
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = themeToggle.querySelector('i');
 
+    // Vérifier le thème sauvegardé ou la préférence système
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
@@ -1793,6 +1496,7 @@
     themeToggle.addEventListener('click', () => {
       const currentTheme = document.documentElement.getAttribute('data-theme');
       const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
       document.documentElement.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
       updateThemeIcon(newTheme);
@@ -1805,6 +1509,19 @@
         themeIcon.className = 'fas fa-moon';
       }
     }
+
+    // Animation au chargement
+    document.addEventListener('DOMContentLoaded', function() {
+      document.body.classList.add('loaded');
+      console.log('Admin dashboard loaded successfully');
+      
+      // Activer le premier onglet si nécessaire
+      const firstTab = document.querySelector('#adminTabs .nav-link');
+      if (firstTab && !firstTab.classList.contains('active')) {
+        firstTab.click();
+      }
+    });
   </script>
+
 </body>
 </html>
