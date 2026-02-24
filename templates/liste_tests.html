@@ -235,6 +235,35 @@
       border: 1px solid var(--light-gray);
       border-radius: 6px;
       font-family: inherit;
+      min-width: 200px;
+    }
+
+    .filter-group input {
+      min-width: 250px;
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-left: auto;
+    }
+
+    .clear-filters-btn {
+      padding: 8px 15px;
+      background: var(--light);
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.85rem;
+    }
+
+    .clear-filters-btn:hover {
+      background: var(--light-gray);
     }
 
     .stats-cards {
@@ -324,6 +353,7 @@
       justify-content: center;
       gap: 10px;
       margin-top: 20px;
+      flex-wrap: wrap;
     }
 
     .pagination-btn {
@@ -358,11 +388,21 @@
       
       .filters {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
       }
       
       .filter-group {
         width: 100%;
+      }
+      
+      .filter-group input, .filter-group select {
+        width: 100%;
+      }
+      
+      .filter-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-end;
       }
       
       table {
@@ -372,6 +412,11 @@
       
       .actions {
         flex-direction: column;
+      }
+      
+      .actions .btn {
+        width: 100%;
+        justify-content: center;
       }
     }
 
@@ -425,13 +470,14 @@
 
     .modal-header {
       display: flex;
-      justify-content: between;
+      justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
     }
 
     .modal-header h3 {
       color: var(--secondary);
+      margin: 0;
     }
 
     .modal-close {
@@ -440,6 +486,11 @@
       font-size: 1.5rem;
       cursor: pointer;
       color: var(--gray);
+      transition: var(--transition);
+    }
+
+    .modal-close:hover {
+      color: var(--danger);
     }
 
     .modal-body {
@@ -450,6 +501,51 @@
       display: flex;
       justify-content: flex-end;
       gap: 10px;
+    }
+
+    .warning-text {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .unit-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: var(--light);
+      color: var(--secondary);
+      font-size: 0.85rem;
+      margin-left: 5px;
+    }
+
+    .count-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: white;
+      font-size: 0.7rem;
+      margin-left: 5px;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
   </style>
 </head>
@@ -479,7 +575,7 @@
           <i class="fas fa-vial"></i>
         </div>
         <div class="stat-info">
-          <h3>{{ tests|length }}</h3>
+          <h3>{{ tests|length if tests else 0 }}</h3>
           <p>{% if lang == 'en' %}Total Tests{% else %}Tests totaux{% endif %}</p>
         </div>
       </div>
@@ -499,8 +595,14 @@
           <i class="fas fa-layer-group"></i>
         </div>
         <div class="stat-info">
-          <h3>{{ (tests|length / 3)|round|int if tests else 0 }}</h3>
-          <p>{% if lang == 'en' %}Average per Unit{% else %}Moyenne par unité{% endif %}</p>
+          <h3>
+            {% set total_questions = 0 %}
+            {% for test in tests %}
+              {% set total_questions = total_questions + (test.exercices|length if test.exercices else 0) %}
+            {% endfor %}
+            {{ total_questions }}
+          </h3>
+          <p>{% if lang == 'en' %}Total Questions{% else %}Questions totales{% endif %}</p>
         </div>
       </div>
     </div>
@@ -511,7 +613,13 @@
         <label for="filter-unit">{% if lang == 'en' %}Unit{% else %}Unité{% endif %}</label>
         <select id="filter-unit">
           <option value="">{% if lang == 'en' %}All Units{% else %}Toutes les unités{% endif %}</option>
-          <!-- Options would be populated dynamically -->
+          {% set unites = [] %}
+          {% for test in tests %}
+            {% if test.unite and test.unite.nom not in unites %}
+              {% set unites = unites.append(test.unite.nom) %}
+              <option value="{{ test.unite.nom }}">{{ test.unite.nom }}</option>
+            {% endif %}
+          {% endfor %}
         </select>
       </div>
       
@@ -519,15 +627,21 @@
         <label for="filter-duration">{% if lang == 'en' %}Duration{% else %}Durée{% endif %}</label>
         <select id="filter-duration">
           <option value="">{% if lang == 'en' %}Any Duration{% else %}Toute durée{% endif %}</option>
-          <option value="short">{% if lang == 'en' %}Short (< 5 min){% else %}Court (< 5 min){% endif %}</option>
+          <option value="short">{% if lang == 'en' %}Short (&lt; 5 min){% else %}Court (&lt; 5 min){% endif %}</option>
           <option value="medium">{% if lang == 'en' %}Medium (5-15 min){% else %}Moyen (5-15 min){% endif %}</option>
-          <option value="long">{% if lang == 'en' %}Long (> 15 min){% else %}Long (> 15 min){% endif %}</option>
+          <option value="long">{% if lang == 'en' %}Long (&gt; 15 min){% else %}Long (&gt; 15 min){% endif %}</option>
         </select>
       </div>
       
       <div class="filter-group">
         <label for="search">{% if lang == 'en' %}Search{% else %}Rechercher{% endif %}</label>
         <input type="text" id="search" placeholder="{% if lang == 'en' %}Search tests...{% else %}Rechercher des tests...{% endif %}">
+      </div>
+      
+      <div class="filter-actions">
+        <button class="clear-filters-btn" onclick="clearFilters()">
+          <i class="fas fa-times"></i> {% if lang == 'en' %}Clear{% else %}Effacer{% endif %}
+        </button>
       </div>
     </div>
 
@@ -539,8 +653,7 @@
           <tr>
             <th>ID</th>
             <th>{% if lang == 'en' %}Unit{% else %}Unité{% endif %}</th>
-            <th>{% if lang == 'en' %}Subject{% else %}Matière{% endif %}</th>
-            <th>{% if lang == 'en' %}Level{% else %}Niveau{% endif %}</th>
+            <th>{% if lang == 'en' %}Subject / Level{% else %}Matière / Niveau{% endif %}</th>
             <th>{% if lang == 'en' %}Time{% else %}Temps{% endif %}</th>
             <th>{% if lang == 'en' %}Questions{% else %}Questions{% endif %}</th>
             <th>{% if lang == 'en' %}Actions{% else %}Actions{% endif %}</th>
@@ -551,11 +664,13 @@
           <tr>
             <td><strong>#{{ test.id }}</strong></td>
             <td>
-              <div>{{ test.unite.nom }}</div>
-              <small class="badge badge-success">{{ test.unite.matiere.nom }}</small>
+              <div>{{ test.unite.nom if test.unite else 'N/A' }}</div>
+              <small class="unit-badge">{{ test.unite.matiere.nom if test.unite and test.unite.matiere else '' }}</small>
             </td>
-            <td>{{ test.unite.matiere.nom }}</td>
-            <td>{{ test.unite.matiere.niveau.nom }}</td>
+            <td>
+              {{ test.unite.matiere.nom if test.unite and test.unite.matiere else 'N/A' }}<br>
+              <small>{{ test.unite.matiere.niveau.nom if test.unite and test.unite.matiere and test.unite.matiere.niveau else '' }}</small>
+            </td>
             <td>
               <div class="time-display">
                 <i class="fas fa-clock"></i>
@@ -577,7 +692,7 @@
                 <a class="btn btn-warning" href="{{ url_for('modifier_test', test_id=test.id) }}">
                   <i class="fas fa-edit"></i> {% if lang == 'en' %}Edit{% else %}Modifier{% endif %}
                 </a>
-                <button class="btn btn-danger delete-btn" data-test-id="{{ test.id }}" data-test-name="{{ test.unite.nom }}">
+                <button class="btn btn-danger delete-btn" data-test-id="{{ test.id }}" data-test-name="{{ test.unite.nom if test.unite else 'Test' }}" data-question-count="{{ question_count }}">
                   <i class="fas fa-trash"></i> {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
                 </button>
               </div>
@@ -586,6 +701,18 @@
           {% endfor %}
         </tbody>
       </table>
+      
+      <!-- Pagination -->
+      {% if tests|length > 10 %}
+      <div class="pagination">
+        <button class="pagination-btn active">1</button>
+        <button class="pagination-btn">2</button>
+        <button class="pagination-btn">3</button>
+        <button class="pagination-btn">...</button>
+        <button class="pagination-btn">{{ (tests|length / 10)|round|int }}</button>
+      </div>
+      {% endif %}
+      
       {% else %}
       <div class="empty-state">
         <i class="fas fa-vial"></i>
@@ -597,17 +724,6 @@
       </div>
       {% endif %}
     </div>
-
-    <!-- Pagination -->
-    {% if tests and tests|length > 10 %}
-    <div class="pagination">
-      <button class="pagination-btn active">1</button>
-      <button class="pagination-btn">2</button>
-      <button class="pagination-btn">3</button>
-      <button class="pagination-btn">...</button>
-      <button class="pagination-btn">10</button>
-    </div>
-    {% endif %}
   </div>
 
   <!-- Modal de confirmation de suppression -->
@@ -615,16 +731,19 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>{% if lang == 'en' %}Confirm Deletion{% else %}Confirmer la suppression{% endif %}</h3>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <p>{% if lang == 'en' %}Are you sure you want to delete the test{% else %}Êtes-vous sûr de vouloir supprimer le test{% endif %} "<strong id="test-name"></strong>" ?</p>
-        <p><small>{% if lang == 'en' %}This action cannot be undone.{% else %}Cette action ne peut pas être annulée.{% endif %}</small></p>
+        <p>{% if lang == 'en' %}Are you sure you want to delete the test{% else %}Êtes-vous sûr de vouloir supprimer le test{% endif %} <strong id="test-name"></strong> ?</p>
+        <p><span id="question-count"></span></p>
+        <p><small class="warning-text">{% if lang == 'en' %}⚠️ This action cannot be undone.{% else %}⚠️ Cette action ne peut pas être annulée.{% endif %}</small></p>
       </div>
       <div class="modal-footer">
-        <button class="btn" id="cancelDelete">{% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}</button>
+        <button class="btn" onclick="closeDeleteModal()">{% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}</button>
         <form method="POST" action="" id="deleteForm" style="display: inline;">
-          <button type="submit" class="btn btn-danger">{% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}</button>
+          <button type="submit" class="btn btn-danger" id="confirmDeleteBtn">
+            <i class="fas fa-trash"></i> {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
+          </button>
         </form>
       </div>
     </div>
@@ -634,61 +753,109 @@
   <div class="notification" id="notification"></div>
 
   <script>
+    // État de l'application
+    let currentFilters = {
+      unit: '',
+      duration: '',
+      search: ''
+    };
+
     // Gestion de la suppression avec modal
     document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 Page chargée');
+      
       const deleteButtons = document.querySelectorAll('.delete-btn');
       const deleteModal = document.getElementById('deleteModal');
-      const cancelDelete = document.getElementById('cancelDelete');
-      const modalClose = document.querySelector('.modal-close');
       const testNameElement = document.getElementById('test-name');
+      const questionCountElement = document.getElementById('question-count');
       const deleteForm = document.getElementById('deleteForm');
       
       deleteButtons.forEach(button => {
         button.addEventListener('click', function() {
           const testId = this.getAttribute('data-test-id');
           const testName = this.getAttribute('data-test-name');
+          const questionCount = this.getAttribute('data-question-count');
+          
+          console.log('🗑️ Suppression test:', testId, testName);
           
           testNameElement.textContent = testName;
+          
+          // Message sur le nombre de questions
+          const lang = '{{ lang }}';
+          if (questionCount > 0) {
+            if (lang === 'en') {
+              questionCountElement.innerHTML = `<strong>${questionCount} questions</strong> will be permanently deleted.`;
+            } else {
+              questionCountElement.innerHTML = `<strong>${questionCount} questions</strong> seront définitivement supprimées.`;
+            }
+          } else {
+            questionCountElement.innerHTML = '';
+          }
+          
+          // Construire l'URL de suppression
           deleteForm.action = "{{ url_for('supprimer_test', test_id=0) }}".replace('0', testId);
           
           deleteModal.style.display = 'flex';
         });
       });
       
-      // Fermer la modal
-      cancelDelete.addEventListener('click', function() {
+      // Afficher une notification si disponible
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('deleted') === 'true') {
+        showNotification(
+          "{% if lang == 'en' %}Test deleted successfully!{% else %}Test supprimé avec succès !{% endif %}", 
+          'success'
+        );
+      } else if (urlParams.get('deleted') === 'false') {
+        showNotification(
+          "{% if lang == 'en' %}Error deleting test.{% else %}Erreur lors de la suppression.{% endif %}", 
+          'error'
+        );
+      }
+      
+      // Initialiser les filtres
+      initializeFilters();
+    });
+    
+    // Fermer la modal
+    function closeDeleteModal() {
+      document.getElementById('deleteModal').style.display = 'none';
+    }
+    
+    // Fermer la modal en cliquant à l'extérieur
+    window.addEventListener('click', function(event) {
+      const deleteModal = document.getElementById('deleteModal');
+      if (event.target === deleteModal) {
         deleteModal.style.display = 'none';
-      });
-      
-      modalClose.addEventListener('click', function() {
-        deleteModal.style.display = 'none';
-      });
-      
-      // Fermer la modal en cliquant à l'extérieur
-      window.addEventListener('click', function(event) {
-        if (event.target === deleteModal) {
-          deleteModal.style.display = 'none';
-        }
-      });
-      
-      // Filtrage des tests
+      }
+    });
+    
+    // Filtrage des tests
+    function initializeFilters() {
       const searchInput = document.getElementById('search');
       const filterUnit = document.getElementById('filter-unit');
       const filterDuration = document.getElementById('filter-duration');
       const tableRows = document.querySelectorAll('tbody tr');
       
+      if (!searchInput || !filterUnit || !filterDuration || !tableRows.length) return;
+      
       function filterTests() {
         const searchTerm = searchInput.value.toLowerCase();
-        const unitFilter = filterUnit.value;
+        const unitFilter = filterUnit.value.toLowerCase();
         const durationFilter = filterDuration.value;
         
+        let visibleCount = 0;
+        
         tableRows.forEach(row => {
-          const unitName = row.cells[1].textContent.toLowerCase();
-          const durationText = row.cells[4].textContent;
-          const durationSeconds = parseInt(durationText);
+          const unitCell = row.cells[1]?.textContent.toLowerCase() || '';
+          const timeCell = row.cells[3]?.textContent || '';
           
-          let matchesSearch = unitName.includes(searchTerm);
-          let matchesUnit = !unitFilter || unitName.includes(unitFilter.toLowerCase());
+          // Extraire le temps en secondes
+          const timeMatch = timeCell.match(/(\d+)s/);
+          const durationSeconds = timeMatch ? parseInt(timeMatch[1]) : 0;
+          
+          let matchesSearch = unitCell.includes(searchTerm);
+          let matchesUnit = !unitFilter || unitCell.includes(unitFilter);
           let matchesDuration = true;
           
           if (durationFilter === 'short') {
@@ -701,25 +868,54 @@
           
           if (matchesSearch && matchesUnit && matchesDuration) {
             row.style.display = '';
+            visibleCount++;
           } else {
             row.style.display = 'none';
           }
         });
+        
+        // Mettre à jour le compteur si nécessaire
+        const statsCard = document.querySelector('.stat-card:first-child .stat-info h3');
+        if (statsCard) {
+          statsCard.textContent = visibleCount;
+        }
       }
       
       searchInput.addEventListener('input', filterTests);
       filterUnit.addEventListener('change', filterTests);
       filterDuration.addEventListener('change', filterTests);
       
-      // Afficher une notification si disponible
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('deleted') === 'true') {
-        showNotification(
-          "{% if lang == 'en' %}Test deleted successfully!{% else %}Test supprimé avec succès !{% endif %}", 
-          'success'
-        );
+      // Sauvegarder les filtres
+      searchInput.addEventListener('input', function() {
+        currentFilters.search = this.value;
+      });
+      filterUnit.addEventListener('change', function() {
+        currentFilters.unit = this.value;
+      });
+      filterDuration.addEventListener('change', function() {
+        currentFilters.duration = this.value;
+      });
+    }
+    
+    // Effacer les filtres
+    function clearFilters() {
+      document.getElementById('search').value = '';
+      document.getElementById('filter-unit').value = '';
+      document.getElementById('filter-duration').value = '';
+      
+      currentFilters = { unit: '', duration: '', search: '' };
+      
+      // Réinitialiser l'affichage
+      document.querySelectorAll('tbody tr').forEach(row => {
+        row.style.display = '';
+      });
+      
+      // Remettre le compteur à jour
+      const statsCard = document.querySelector('.stat-card:first-child .stat-info h3');
+      if (statsCard) {
+        statsCard.textContent = document.querySelectorAll('tbody tr').length;
       }
-    });
+    }
     
     function showNotification(message, type) {
       const notification = document.getElementById('notification');
@@ -730,6 +926,18 @@
         notification.classList.remove('show');
       }, 3000);
     }
+    
+    // Désactiver les boutons pendant la soumission
+    document.querySelectorAll('form').forEach(form => {
+      form.addEventListener('submit', function() {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span class="spinner"></span> ' + 
+            ('{{ lang }}' === 'en' ? 'Deleting...' : 'Suppression...');
+        }
+      });
+    });
   </script>
 </body>
 </html>
