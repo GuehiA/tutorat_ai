@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon-ico') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
     <meta name="msapplication-TileColor" content="#4361ee">
     <meta name="theme-color" content="#4361ee">
     <title>{% if lang == 'en' %}Parent Login{% else %}Connexion Parent{% endif %}</title>
@@ -115,7 +115,7 @@
         
         h1 {
             color: var(--secondary);
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -130,6 +130,21 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
             font-size: 2.5rem;
+        }
+
+        /* Image associée */
+        .login-image {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .login-image img {
+            max-width: 120px;
+            height: auto;
+            border-radius: 50%;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            background: white;
+            padding: 8px;
         }
         
         .form-group {
@@ -313,6 +328,11 @@
                 <i class="fas fa-user-friends"></i>
                 {% if lang == 'en' %}Parent Login{% else %}Connexion Parent{% endif %}
             </h1>
+            
+            <!-- IMAGE ASSOCIÉE PARENT -->
+            <div class="login-image">
+                <img src="{{ url_for('static', filename='images/parent-ai.jpg') }}" alt="Parent">
+            </div>
             
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}

@@ -112,7 +112,7 @@
 
     .logo {
       text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
 
     .logo i {
@@ -121,6 +121,21 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+    }
+
+    /* Image associée */
+    .login-image {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .login-image img {
+      max-width: 120px;
+      height: auto;
+      border-radius: 50%;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      background: white;
+      padding: 8px;
     }
 
     h2 {
@@ -361,6 +376,11 @@
     <div class="login-box">
       <div class="logo">
         <i class="fas fa-user-graduate"></i>
+      </div>
+      
+      <!-- IMAGE ASSOCIÉE ÉLÈVE -->
+      <div class="login-image">
+        <img src="{{ url_for('static', filename='images/student-ai.jpg') }}" alt="Élève">
       </div>
       
       <h2>{% if lang == 'en' %}Student Login{% else %}Connexion Élève{% endif %}</h2>
