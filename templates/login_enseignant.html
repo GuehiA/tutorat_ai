@@ -9,8 +9,8 @@
   <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
   <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-  <meta name="msapplication-TileColor" content="#4361ee">
-  <meta name="theme-color" content="#4361ee">
+  <meta name="msapplication-TileColor" content="#9b59b6">
+  <meta name="theme-color" content="#9b59b6">
   <title>{% if lang == 'en' %}Teacher Login{% else %}Connexion Enseignant{% endif %}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -61,13 +61,6 @@
       display: flex;
       align-items: center;
       gap: 10px;
-    }
-
-    .lang-switch label {
-      margin: 0;
-      font-size: 1.4rem;
-      color: white;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
     .lang-switch select {
@@ -318,7 +311,7 @@
       .login-box {
         padding: 40px 25px;
       }
-      
+
       .lang-switch {
         position: relative;
         top: 0;
@@ -326,11 +319,11 @@
         text-align: center;
         margin-bottom: 20px;
       }
-      
+
       h2 {
         font-size: 1.8rem;
       }
-      
+
       .logo i {
         font-size: 3rem;
       }
@@ -383,10 +376,9 @@
   <!-- Sélecteur de langue -->
   <div class="lang-switch">
     <form method="POST" action="/changer-langue">
-      <label for="lang">🌍</label>
       <select name="lang" id="lang" onchange="this.form.submit()">
-        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-        <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>FR</option>
+        <option value="en" {% if lang == 'en' %}selected{% endif %}>EN</option>
       </select>
       <input type="hidden" name="redirect_page" value="login_enseignant">
     </form>
@@ -395,14 +387,14 @@
   <div class="container">
     <div class="login-box">
       <div class="logo">
-        <i class="fas fa-chalkboard-teacher"></i>
+        <i class="fas fa-robot"></i>
       </div>
-      
+
       <!-- IMAGE ASSOCIÉE ENSEIGNANT -->
       <div class="login-image">
-        <img src="{{ url_for('static', filename='images/teacher-ai.jpg') }}" alt="Enseignant">
+        <img src="{{ url_for('static', filename='images/teacher-ai.jpg') }}" alt="{% if lang == 'en' %}Teacher{% else %}Enseignant{% endif %}">
       </div>
-      
+
       <h2>{% if lang == 'en' %}Teacher Login{% else %}Connexion Enseignant{% endif %}</h2>
 
       <!-- Messages d'erreur/succès -->
@@ -474,30 +466,30 @@
     document.addEventListener('DOMContentLoaded', function() {
       const particlesContainer = document.getElementById('particles');
       const particleCount = 12;
-      
+
       for (let i = 0; i < particleCount; i++) {
         const particle = document.createElement('div');
         particle.className = 'particle';
-        
+
         const size = Math.random() * 5 + 2;
         particle.style.width = `${size}px`;
         particle.style.height = `${size}px`;
         particle.style.left = `${Math.random() * 100}%`;
         particle.style.top = `${Math.random() * 100}%`;
         particle.style.animationDelay = `${Math.random() * 6}s`;
-        
+
         particlesContainer.appendChild(particle);
       }
-      
+
       // Animation des interactions
       const inputs = document.querySelectorAll('input[type="email"], input[type="password"]');
-      
+
       inputs.forEach(input => {
         input.addEventListener('focus', function() {
           this.style.transform = 'translateY(-2px)';
           this.style.boxShadow = '0 12px 28px rgba(155, 89, 182, 0.2)';
         });
-        
+
         input.addEventListener('blur', function() {
           this.style.transform = 'translateY(0)';
           this.style.boxShadow = '0 8px 24px rgba(155, 89, 182, 0.15)';
@@ -508,18 +500,22 @@
     // Afficher/masquer le mot de passe
     function togglePassword() {
       const passwordInput = document.getElementById('mot_de_passe');
-      const icon = document.querySelector('.input-icon .fa-lock');
+      const icon = document.querySelector('.input-icon .fa-lock, .input-icon .fa-lock-open');
       const checkbox = document.getElementById('showPassword');
-      
+
       if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        icon.classList.remove('fa-lock');
-        icon.classList.add('fa-lock-open');
+        if (icon) {
+          icon.classList.remove('fa-lock');
+          icon.classList.add('fa-lock-open');
+        }
         checkbox.checked = true;
       } else {
         passwordInput.type = 'password';
-        icon.classList.remove('fa-lock-open');
-        icon.classList.add('fa-lock');
+        if (icon) {
+          icon.classList.remove('fa-lock-open');
+          icon.classList.add('fa-lock');
+        }
         checkbox.checked = false;
       }
     }
@@ -530,6 +526,5 @@
       togglePassword();
     });
   </script>
-
 </body>
 </html>

@@ -497,7 +497,7 @@
       color: white !important;
     }
 
-    /* ========== CARTES D'ACCÈS (inchangées) ========== */
+    /* ========== CARTES D'ACCÈS ========== */
     .cards-grid {
       display: flex;
       flex-wrap: wrap;
@@ -707,14 +707,16 @@
   <nav class="nav-glass">
     <div class="logo-wrapper">
       <div class="logo-icon"><i class="fas fa-robot"></i></div>
-      <span class="logo-text">TutorIA</span>
+      <span class="logo-text">
+        {% if lang=='fr' %}Tutorat IA{% else %}Tutor AI{% endif %}
+      </span>
     </div>
     <div class="nav-links">
       <a href="/a-propos" class="nav-link"><i class="fas fa-info-circle"></i> {% if lang=='fr' %}À propos{% else %}About{% endif %}</a>
       <form class="lang-switch" method="POST" action="/changer-langue">
         <select name="lang" onchange="this.form.submit()">
-          <option value="en" {% if lang!='fr' %}selected{% endif %}>🇬🇧 English</option>
-          <option value="fr" {% if lang=='fr' %}selected{% endif %}>🇫🇷 Français</option>
+          <option value="en" {% if lang!='fr' %}selected{% endif %}>EN</option>
+          <option value="fr" {% if lang=='fr' %}selected{% endif %}>FR</option>
         </select>
         <input type="hidden" name="redirect_page" value="index">
       </form>
@@ -769,13 +771,13 @@
     </div>
   </div>
 
-  <!-- ========== CARTES 3D FLIP : IA Adaptative, Validation Humaine, Équité, Transparence ========== -->
+  <!-- Cartes 3D Flip -->
   <div class="section-header">
     <h2>{% if lang=='fr' %}Pourquoi nous choisir ?{% else %}Why choose us?{% endif %}</h2>
   </div>
   <div class="features-mosaic">
-    
-    <!-- Carte 1 : IA Adaptative (BLEUE) -->
+
+    <!-- Carte 1 : IA Adaptative -->
     <div class="flip-card">
       <div class="flip-card-inner">
         <div class="flip-front">
@@ -790,15 +792,15 @@
             {% if lang=='fr' %}Analyse en temps réel les réponses, temps de réflexion et erreurs pour créer un parcours unique.{% else %}Real-time analysis of responses, response time and errors to create a unique path.{% endif %}
           </div>
           <ul class="feature-list">
-            <li><i class="fas fa-chart-line"></i> Suivi progression instantané</li>
-            <li><i class="fas fa-sliders-h"></i> Difficulté dynamique</li>
-            <li><i class="fas fa-lightbulb"></i> Recommandations intelligentes</li>
+            <li><i class="fas fa-chart-line"></i> {% if lang=='fr' %}Suivi progression instantané{% else %}Instant progress tracking{% endif %}</li>
+            <li><i class="fas fa-sliders-h"></i> {% if lang=='fr' %}Difficulté dynamique{% else %}Dynamic difficulty{% endif %}</li>
+            <li><i class="fas fa-lightbulb"></i> {% if lang=='fr' %}Recommandations intelligentes{% else %}Smart recommendations{% endif %}</li>
           </ul>
         </div>
       </div>
     </div>
 
-    <!-- Carte 2 : Validation Humaine (VERTE) -->
+    <!-- Carte 2 : Validation Humaine -->
     <div class="flip-card">
       <div class="flip-card-inner">
         <div class="flip-front">
@@ -808,20 +810,20 @@
         </div>
         <div class="flip-back">
           <div class="back-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-          <h4>Supervision humaine</h4>
+          <h4>{% if lang=='fr' %}Supervision humaine{% else %}Human oversight{% endif %}</h4>
           <div class="description-detailed">
             {% if lang=='fr' %}Chaque suggestion IA est examinée par un enseignant qualifié avant diffusion.{% else %}Every AI suggestion is reviewed by a qualified teacher before release.{% endif %}
           </div>
           <ul class="feature-list">
-            <li><i class="fas fa-shield-alt"></i> Double contrôle qualité</li>
-            <li><i class="fas fa-comments"></i> Feedback personnalisé</li>
-            <li><i class="fas fa-certificate"></i> Experts certifiés</li>
+            <li><i class="fas fa-shield-alt"></i> {% if lang=='fr' %}Double contrôle qualité{% else %}Double quality check{% endif %}</li>
+            <li><i class="fas fa-comments"></i> {% if lang=='fr' %}Feedback personnalisé{% else %}Personalized feedback{% endif %}</li>
+            <li><i class="fas fa-certificate"></i> {% if lang=='fr' %}Experts certifiés{% else %}Certified experts{% endif %}</li>
           </ul>
         </div>
       </div>
     </div>
 
-    <!-- Carte 3 : Équité (ORANGE) -->
+    <!-- Carte 3 : Équité -->
     <div class="flip-card">
       <div class="flip-card-inner">
         <div class="flip-front">
@@ -831,20 +833,20 @@
         </div>
         <div class="flip-back">
           <div class="back-icon"><i class="fas fa-gavel"></i></div>
-          <h4>Équité & Transparence</h4>
+          <h4>{% if lang=='fr' %}Équité & Transparence{% else %}Fairness & Transparency{% endif %}</h4>
           <div class="description-detailed">
             {% if lang=='fr' %}Système sans biais algorithmique. Droit de contester chaque évaluation.{% else %}Bias-free system. Right to challenge every assessment.{% endif %}
           </div>
           <ul class="feature-list">
-            <li><i class="fas fa-chart-pie"></i> Métriques transparentes</li>
-            <li><i class="fas fa-hand-peace"></i> Zéro biais algorithmique</li>
-            <li><i class="fas fa-envelope-open-text"></i> Droit de contestation</li>
+            <li><i class="fas fa-chart-pie"></i> {% if lang=='fr' %}Métriques transparentes{% else %}Transparent metrics{% endif %}</li>
+            <li><i class="fas fa-hand-peace"></i> {% if lang=='fr' %}Zéro biais algorithmique{% else %}Zero algorithmic bias{% endif %}</li>
+            <li><i class="fas fa-envelope-open-text"></i> {% if lang=='fr' %}Droit de contestation{% else %}Right to appeal{% endif %}</li>
           </ul>
         </div>
       </div>
     </div>
 
-    <!-- Carte 4 : Transparence (VIOLETTE) -->
+    <!-- Carte 4 : Transparence -->
     <div class="flip-card">
       <div class="flip-card-inner">
         <div class="flip-front">
@@ -854,14 +856,14 @@
         </div>
         <div class="flip-back">
           <div class="back-icon"><i class="fas fa-file-alt"></i></div>
-          <h4>Visibilité totale</h4>
+          <h4>{% if lang=='fr' %}Visibilité totale{% else %}Full visibility{% endif %}</h4>
           <div class="description-detailed">
             {% if lang=='fr' %}Tableaux de bord complets avec analyses détaillées des progrès.{% else %}Complete dashboards with detailed progress analytics.{% endif %}
           </div>
           <ul class="feature-list">
-            <li><i class="fas fa-chart-simple"></i> Rapports hebdomadaires</li>
-            <li><i class="fas fa-eye"></i> Visibilité temps réel</li>
-            <li><i class="fas fa-download"></i> Export de données</li>
+            <li><i class="fas fa-chart-simple"></i> {% if lang=='fr' %}Rapports hebdomadaires{% else %}Weekly reports{% endif %}</li>
+            <li><i class="fas fa-eye"></i> {% if lang=='fr' %}Visibilité temps réel{% else %}Real-time visibility{% endif %}</li>
+            <li><i class="fas fa-download"></i> {% if lang=='fr' %}Export de données{% else %}Data export{% endif %}</li>
           </ul>
         </div>
       </div>

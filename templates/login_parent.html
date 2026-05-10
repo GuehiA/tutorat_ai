@@ -1,403 +1,531 @@
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Favicon VirtuEduc -->
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-    <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-    <meta name="msapplication-TileColor" content="#4361ee">
-    <meta name="theme-color" content="#4361ee">
-    <title>{% if lang == 'en' %}Parent Login{% else %}Connexion Parent{% endif %}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: #3498db;
-            --primary-dark: #2980b9;
-            --secondary: #2c3e50;
-            --success: #27ae60;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-            --light: #f8f9fa;
-            --dark: #343a40;
-            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --border-radius: 16px;
-            --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            --transition: all 0.3s ease;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--gradient);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            color: var(--dark);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <meta name="msapplication-TileColor" content="#4361ee">
+  <meta name="theme-color" content="#4361ee">
+  <title>{% if lang == 'en' %}Parent Login{% else %}Connexion Parent{% endif %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --secondary: #2c3e50;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --gradient: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+      --border-radius: 16px;
+      --box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      --transition: all 0.3s ease;
+    }
 
-        .container {
-            width: 100%;
-            max-width: 440px;
-        }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        .lang-switch {
-            position: absolute;
-            top: 25px;
-            right: 25px;
-            z-index: 100;
-        }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--gradient);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--dark);
+    }
 
-        .lang-switch form {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .container {
+      width: 100%;
+      max-width: 440px;
+    }
 
-        .lang-switch label {
-            margin: 0;
-            font-size: 1.4rem;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
+    .lang-switch {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      z-index: 100;
+    }
 
-        .lang-switch select {
-            padding: 10px 14px;
-            border-radius: var(--border-radius);
-            font-size: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            background: rgba(255, 255, 255, 0.9);
-            cursor: pointer;
-            transition: var(--transition);
-            width: auto;
-            backdrop-filter: blur(10px);
-        }
+    .lang-switch form {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-        .lang-switch select:focus {
-            outline: none;
-            border-color: white;
-            background: white;
-            box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
-        }
-        
-        .login-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: var(--border-radius);
-            padding: 50px 40px;
-            box-shadow: var(--box-shadow);
-            width: 100%;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+    .lang-switch select {
+      padding: 10px 14px;
+      border-radius: var(--border-radius);
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+      transition: var(--transition);
+      width: auto;
+      backdrop-filter: blur(10px);
+    }
 
-        .login-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 6px;
-            background: linear-gradient(90deg, var(--primary), #764ba2);
-        }
-        
-        h1 {
-            color: var(--secondary);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            font-size: 2rem;
-            font-weight: 600;
-        }
-        
-        h1 i {
-            background: linear-gradient(135deg, var(--primary), #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-size: 2.5rem;
-        }
+    .lang-switch select:focus {
+      outline: none;
+      border-color: white;
+      background: white;
+      box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
+    }
 
-        /* Image associée */
-        .login-image {
-            text-align: center;
-            margin-bottom: 25px;
-        }
+    .login-box {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: var(--border-radius);
+      padding: 50px 40px;
+      box-shadow: var(--box-shadow);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
 
-        .login-image img {
-            max-width: 120px;
-            height: auto;
-            border-radius: 50%;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            background: white;
-            padding: 8px;
-        }
-        
-        .form-group {
-            margin-bottom: 24px;
-            text-align: left;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--secondary);
-            font-size: 0.95rem;
-        }
+    .login-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), #3a0ca3);
+    }
 
-        .input-container {
-            position: relative;
-        }
-        
-        input {
-            width: 100%;
-            padding: 16px 20px;
-            border: 2px solid rgba(52, 152, 219, 0.1);
-            border-radius: var(--border-radius);
-            font-size: 16px;
-            transition: var(--transition);
-            background: rgba(255, 255, 255, 0.8);
-            font-family: inherit;
-        }
-        
-        input:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: white;
-            box-shadow: 0 8px 24px rgba(52, 152, 219, 0.15);
-            transform: translateY(-2px);
-        }
+    .logo {
+      text-align: center;
+      margin-bottom: 20px;
+    }
 
-        .input-icon {
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #6c757d;
-            transition: var(--transition);
-        }
+    .logo i {
+      font-size: 3.5rem;
+      background: linear-gradient(135deg, var(--primary), #3a0ca3);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
 
-        input:focus + .input-icon {
-            color: var(--primary);
-            transform: translateY(-50%) scale(1.1);
-        }
-        
-        button {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            border: none;
-            border-radius: var(--border-radius);
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 8px 24px rgba(52, 152, 219, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(52, 152, 219, 0.4);
-        }
+    /* Image associée */
+    .login-image {
+      text-align: center;
+      margin-bottom: 25px;
+    }
 
-        button:active {
-            transform: translateY(0);
-        }
-        
-        .info-box {
-            background: #e8f4fc;
-            padding: 20px;
-            border-radius: var(--border-radius);
-            margin-top: 25px;
-            text-align: left;
-            border-left: 4px solid var(--primary);
-        }
-        
-        .info-box h3 {
-            color: var(--primary);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 1.1rem;
-        }
+    .login-image img {
+      max-width: 120px;
+      height: auto;
+      border-radius: 50%;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      background: white;
+      padding: 8px;
+    }
 
-        .info-box p {
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-            line-height: 1.4;
-            color: var(--secondary);
-        }
+    h2 {
+      text-align: center;
+      color: var(--secondary);
+      margin-bottom: 30px;
+      font-size: 2rem;
+      font-weight: 600;
+    }
 
-        .info-box p:last-child {
-            margin-bottom: 0;
-        }
+    .form-group {
+      margin-bottom: 24px;
+      position: relative;
+    }
 
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 25px;
-            text-decoration: none;
-            color: #6c757d;
-            font-weight: 500;
-            transition: var(--transition);
-            padding: 10px;
-            border-radius: var(--border-radius);
-        }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--secondary);
+      font-size: 0.95rem;
+    }
 
-        .back-link:hover {
-            color: var(--primary);
-            background: rgba(52, 152, 219, 0.05);
-        }
+    .input-container {
+      position: relative;
+    }
 
-        @media (max-width: 576px) {
-            .login-container {
-                padding: 40px 25px;
-            }
-            
-            .lang-switch {
-                position: relative;
-                top: 0;
-                right: 0;
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            
-            h1 {
-                font-size: 1.7rem;
-            }
-            
-            h1 i {
-                font-size: 2rem;
-            }
-        }
+    input {
+      width: 100%;
+      padding: 16px 20px;
+      border: 2px solid rgba(67, 97, 238, 0.1);
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      transition: var(--transition);
+      background: rgba(255, 255, 255, 0.8);
+      font-family: inherit;
+    }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 8px 24px rgba(67, 97, 238, 0.15);
+      transform: translateY(-2px);
+    }
 
-        .login-container {
-            animation: fadeInUp 0.6s ease;
-        }
-    </style>
+    .input-icon {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6c757d;
+      transition: var(--transition);
+    }
+
+    input:focus + .input-icon {
+      color: var(--primary);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .show-password {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #6c757d;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .show-password:hover {
+      color: var(--primary);
+    }
+
+    .show-password input[type="checkbox"] {
+      width: auto;
+      transform: scale(1.2);
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 16px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border: none;
+      color: white;
+      border-radius: var(--border-radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 8px 24px rgba(67, 97, 238, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(67, 97, 238, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .register-link {
+      text-align: center;
+      margin-top: 25px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .register-link p {
+      color: #6c757d;
+      margin-bottom: 15px;
+    }
+
+    .btn-register {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, var(--success), #2ecc71);
+      color: white;
+      text-decoration: none;
+      border-radius: var(--border-radius);
+      font-weight: 600;
+      transition: var(--transition);
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-register:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 25px;
+      text-decoration: none;
+      color: #6c757d;
+      font-weight: 500;
+      transition: var(--transition);
+      padding: 10px;
+      border-radius: var(--border-radius);
+    }
+
+    .back-link:hover {
+      color: var(--primary);
+      background: rgba(67, 97, 238, 0.05);
+    }
+
+    .alert {
+      padding: 16px;
+      border-radius: var(--border-radius);
+      margin-bottom: 24px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .alert-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    @media (max-width: 576px) {
+      .login-box {
+        padding: 40px 25px;
+      }
+
+      .lang-switch {
+        position: relative;
+        top: 0;
+        right: 0;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      h2 {
+        font-size: 1.8rem;
+      }
+
+      .logo i {
+        font-size: 3rem;
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .login-box {
+      animation: fadeInUp 0.6s ease;
+    }
+
+    /* Effet de particules */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      animation: float 6s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(180deg); }
+    }
+  </style>
 </head>
 <body>
 
-    <!-- Sélecteur de langue -->
-    <div class="lang-switch">
-        <form method="POST" action="/changer-langue">
-            <label for="lang">🌍</label>
-            <select name="lang" id="lang" onchange="this.form.submit()">
-                <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-                <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
-            </select>
-            <input type="hidden" name="redirect_page" value="login_parent">
-        </form>
-    </div>
+  <!-- Effet de particules -->
+  <div class="particles" id="particles"></div>
 
-    <div class="container">
-        <div class="login-container">
-            <h1>
-                <i class="fas fa-user-friends"></i>
-                {% if lang == 'en' %}Parent Login{% else %}Connexion Parent{% endif %}
-            </h1>
-            
-            <!-- IMAGE ASSOCIÉE PARENT -->
-            <div class="login-image">
-                <img src="{{ url_for('static', filename='images/parent-ai.jpg') }}" alt="Parent">
-            </div>
-            
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div style="
-                            padding: 16px;
-                            margin-bottom: 24px;
-                            border-radius: var(--border-radius);
-                            background: {% if category == 'success' %}#d4edda{% elif category == 'warning' %}#fff3cd{% else %}#f8d7da{% endif %};
-                            color: {% if category == 'success' %}#155724{% elif category == 'warning' %}#856404{% else %}#721c24{% endif %};
-                            border: 1px solid {% if category == 'success' %}#c3e6cb{% elif category == 'warning' %}#ffeaa7{% else %}#f5c6cb{% endif %};
-                            font-weight: 500;
-                        ">
-                            <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'warning' %}fa-exclamation-triangle{% else %}fa-exclamation-circle{% endif %}"></i>
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            <form method="POST">
-                <div class="form-group">
-                    <label for="email">
-                        <i class="fas fa-envelope"></i>
-                        {% if lang == 'en' %}Email Address{% else %}Adresse email{% endif %}
-                    </label>
-                    <div class="input-container">
-                        <input type="email" id="email" name="email" required placeholder="{% if lang == 'en' %}your@email.com{% else %}votre@email.com{% endif %}">
-                        <div class="input-icon">
-                            <i class="fas fa-envelope"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <button type="submit">
-                    <i class="fas fa-sign-in-alt"></i>
-                    {% if lang == 'en' %}Sign In{% else %}Se connecter{% endif %}
-                </button>
-            </form>
-            
-            <div class="info-box">
-                <h3>
-                    <i class="fas fa-info-circle"></i>
-                    {% if lang == 'en' %}How it works?{% else %}Comment ça marche ?{% endif %}
-                </h3>
-                <p>
-                    {% if lang == 'en' %}
-                        Use the email address you provided during your child's registration.
-                    {% else %}
-                        Utilisez l'adresse email que vous avez fournie lors de l'inscription de votre enfant.
-                    {% endif %}
-                </p>
-                <p>
-                    {% if lang == 'en' %}
-                        You will then be able to track the progress of all your children.
-                    {% else %}
-                        Vous pourrez ensuite suivre la progression de tous vos enfants.
-                    {% endif %}
-                </p>
-            </div>
+  <!-- Sélecteur de langue -->
+  <div class="lang-switch">
+    <form method="POST" action="/changer-langue">
+      <select name="lang" id="lang" onchange="this.form.submit()">
+        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>FR</option>
+        <option value="en" {% if lang == 'en' %}selected{% endif %}>EN</option>
+      </select>
+      <input type="hidden" name="redirect_page" value="login_parent">
+    </form>
+  </div>
 
-            <a class="back-link" href="{{ url_for('index') }}">
-                ← {% if lang == 'en' %}Back to Home{% else %}Retour à l'accueil{% endif %}
-            </a>
+  <div class="container">
+    <div class="login-box">
+      <div class="logo">
+        <i class="fas fa-robot"></i>
+      </div>
+
+      <!-- IMAGE ASSOCIÉE PARENT -->
+      <div class="login-image">
+        <img src="{{ url_for('static', filename='images/parent-ai.jpg') }}" alt="{% if lang == 'en' %}Parent{% else %}Parent{% endif %}">
+      </div>
+
+      <h2>{% if lang == 'en' %}Parent Login{% else %}Connexion Parent{% endif %}</h2>
+
+      <!-- Messages d'erreur/succès -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}">
+              <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="/login-parent">
+        <div class="form-group">
+          <label for="email">{% if lang == 'en' %}Email Address{% else %}Adresse email{% endif %}</label>
+          <div class="input-container">
+            <input type="email" id="email" name="email" required placeholder="{% if lang == 'en' %}your.email@example.com{% else %}votre.email@exemple.com{% endif %}">
+            <div class="input-icon">
+              <i class="fas fa-envelope"></i>
+            </div>
+          </div>
         </div>
+
+        <div class="form-group">
+          <label for="mot_de_passe">{% if lang == 'en' %}Password{% else %}Mot de passe{% endif %}</label>
+          <div class="input-container">
+            <input type="password" id="mot_de_passe" name="mot_de_passe" required placeholder="{% if lang == 'en' %}Enter your password{% else %}Saisissez votre mot de passe{% endif %}">
+            <div class="input-icon">
+              <i class="fas fa-lock"></i>
+            </div>
+          </div>
+          <div class="show-password" onclick="togglePassword()">
+            <input type="checkbox" id="showPassword">
+            <label for="showPassword">{% if lang == 'en' %}Show password{% else %}Afficher le mot de passe{% endif %}</label>
+          </div>
+        </div>
+
+        <button type="submit">
+          <i class="fas fa-sign-in-alt"></i>
+          {% if lang == 'en' %}Sign In{% else %}Se connecter{% endif %}
+        </button>
+      </form>
+
+      <!-- Lien d'inscription -->
+      <div class="register-link">
+        <p>
+          {% if lang == 'en' %}
+            Don't have an account yet?
+          {% else %}
+            Vous n'avez pas encore de compte ?
+          {% endif %}
+        </p>
+        <!-- Remplacement de l'endpoint 'inscription_parent' par 'inscription' -->
+        <a href="{{ url_for('inscription') }}" class="btn-register">
+          <i class="fas fa-user-plus"></i>
+          {% if lang == 'en' %}Create Parent Account{% else %}Créer un compte parent{% endif %}
+        </a>
+      </div>
+
+      <a class="back-link" href="{{ url_for('index') }}">
+        ← {% if lang == 'en' %}Back to Home{% else %}Retour à l'accueil{% endif %}
+      </a>
     </div>
+  </div>
+
+  <script>
+    // Animation des particules
+    document.addEventListener('DOMContentLoaded', function() {
+      const particlesContainer = document.getElementById('particles');
+      const particleCount = 12;
+
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+
+        const size = Math.random() * 5 + 2;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${Math.random() * 6}s`;
+
+        particlesContainer.appendChild(particle);
+      }
+
+      // Animation des interactions
+      const inputs = document.querySelectorAll('input[type="email"], input[type="password"]');
+
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          this.style.transform = 'translateY(-2px)';
+          this.style.boxShadow = '0 12px 28px rgba(67, 97, 238, 0.2)';
+        });
+
+        input.addEventListener('blur', function() {
+          this.style.transform = 'translateY(0)';
+          this.style.boxShadow = '0 8px 24px rgba(67, 97, 238, 0.15)';
+        });
+      });
+    });
+
+    // Afficher/masquer le mot de passe
+    function togglePassword() {
+      const passwordInput = document.getElementById('mot_de_passe');
+      const icon = document.querySelector('.input-icon .fa-lock, .input-icon .fa-lock-open');
+      const checkbox = document.getElementById('showPassword');
+
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        if (icon) {
+          icon.classList.remove('fa-lock');
+          icon.classList.add('fa-lock-open');
+        }
+        checkbox.checked = true;
+      } else {
+        passwordInput.type = 'password';
+        if (icon) {
+          icon.classList.remove('fa-lock-open');
+          icon.classList.add('fa-lock');
+        }
+        checkbox.checked = false;
+      }
+    }
+
+    // Permettre de cocher/décocher en cliquant sur la checkbox directement
+    document.getElementById('showPassword').addEventListener('click', function(e) {
+      e.stopPropagation();
+      togglePassword();
+    });
+  </script>
 </body>
 </html>
