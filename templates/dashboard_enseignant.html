@@ -369,6 +369,7 @@
     .subject-stats {
       display: flex;
       gap: 15px;
+      align-items: center;
     }
 
     .subject-stat {
@@ -428,6 +429,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .exercise-difficulty {
@@ -499,6 +502,25 @@
       color: var(--text-light);
     }
 
+    /* Alert styles */
+    .alert-warning {
+      background: linear-gradient(135deg, #fff3e0, #ffecb3);
+      border: 2px solid var(--warning);
+      border-radius: var(--radius);
+      padding: 20px 25px;
+      color: #856404;
+    }
+
+    .alert-link {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .alert-link:hover {
+      text-decoration: underline;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       body {
@@ -562,13 +584,12 @@
   <div class="header-section text-center">
     <!-- Language Selector -->
     <div class="lang-selector">
-      <form method="POST" action="/changer-langue" class="d-flex align-items-center">
+      <form method="POST" action="/dashboard-enseignant" class="d-flex align-items-center">
         <label for="lang" class="me-2 text-white">🌍</label>
         <select name="lang" id="lang" onchange="this.form.submit()" class="form-select form-select-sm border-0 bg-transparent text-white">
-          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-          <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+          <option value="fr" {% if lang == 'fr' %}selected{% endif %}>FR</option>
+          <option value="en" {% if lang == 'en' %}selected{% endif %}>EN</option>
         </select>
-        <input type="hidden" name="redirect_page" value="dashboard_enseignant">
       </form>
     </div>
 
@@ -586,7 +607,7 @@
 
   <!-- Content Section -->
   <div class="content-section">
-    <!-- Logout Button moved to top -->
+    <!-- Logout Button -->
     <div class="header-actions">
       <a href="/logout" class="logout-btn">
         <i class="fas fa-sign-out-alt"></i>
@@ -603,12 +624,6 @@
       </div>
       
       <div class="stat-card">
-        <div class="stat-icon">📚</div>
-        <div class="stat-number">{{ total_lessons if total_lessons else '0' }}</div>
-        <div class="stat-label">{% if lang == 'en' %}Lessons Created{% else %}Leçons Créées{% endif %}</div>
-      </div>
-      
-      <div class="stat-card">
         <div class="stat-icon">⭐</div>
         <div class="stat-number">{{ avg_stars if avg_stars else '0' }}/5</div>
         <div class="stat-label">{% if lang == 'en' %}Average Rating{% else %}Moyenne des Notes{% endif %}</div>
@@ -618,6 +633,12 @@
         <div class="stat-icon">💰</div>
         <div class="stat-number">{{ "%.2f"|format(total_commissions) if total_commissions else '0' }}$</div>
         <div class="stat-label">{% if lang == 'en' %}Total Commissions{% else %}Commissions Totales{% endif %}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-number">{{ eleves_payants if eleves_payants else '0' }}</div>
+        <div class="stat-label">{% if lang == 'en' %}Paying Students{% else %}Élèves Payants{% endif %}</div>
       </div>
     </div>
 
@@ -629,118 +650,161 @@
     
     <div class="action-grid">
       <a href="{{ url_for('modifier_profil_enseignant') }}" class="action-card">
-        <div class="action-icon">
-          <i class="fas fa-user-edit"></i>
-        </div>
-        <div class="action-title">
-          {% if lang == 'en' %}Edit Profile{% else %}Modifier le Profil{% endif %}
-        </div>
-        <div class="action-description">
-          {% if lang == 'en' %}Update your personal information and preferences{% else %}Modifiez vos informations personnelles et préférences{% endif %}
-        </div>
+        <div class="action-icon"><i class="fas fa-user-edit"></i></div>
+        <div class="action-title">{% if lang == 'en' %}Edit Profile{% else %}Modifier le Profil{% endif %}</div>
+        <div class="action-description">{% if lang == 'en' %}Update your personal information and preferences{% else %}Modifiez vos informations personnelles et préférences{% endif %}</div>
       </a>
 
       <a href="/enseignant/remediations-a-valider" class="action-card position-relative">
-        {% if nv_count > 0 %}
-          <div class="badge-notification">{{ nv_count }}</div>
-        {% endif %}
-        <div class="action-icon">
-          <i class="fas fa-tools"></i>
-        </div>
-        <div class="action-title">
-          {% if lang == 'en' %}Validate Remediations{% else %}Valider les Remédiations{% endif %}
-        </div>
-        <div class="action-description">
-          {% if lang == 'en' %}Review and validate student remediation requests{% else %}Examinez et validez les demandes de remédiation des élèves{% endif %}
-        </div>
+        {% if nv_count > 0 %}<div class="badge-notification">{{ nv_count }}</div>{% endif %}
+        <div class="action-icon"><i class="fas fa-tools"></i></div>
+        <div class="action-title">{% if lang == 'en' %}Validate Remediations{% else %}Valider les Remédiations{% endif %}</div>
+        <div class="action-description">{% if lang == 'en' %}Review and validate student remediation requests{% else %}Examinez et validez les demandes de remédiation des élèves{% endif %}</div>
       </a>
 
       <a href="/enseignant/eleves" class="action-card">
-        <div class="action-icon">
-          <i class="fas fa-users"></i>
-        </div>
-        <div class="action-title">
-          {% if lang == 'en' %}Manage Students{% else %}Gérer les Élèves{% endif %}
-        </div>
-        <div class="action-description">
-          {% if lang == 'en' %}View and manage your students' progress and profiles{% else %}Consultez et gérez la progression et les profils de vos élèves{% endif %}
-        </div>
+        <div class="action-icon"><i class="fas fa-users"></i></div>
+        <div class="action-title">{% if lang == 'en' %}Manage Students{% else %}Gérer les Élèves{% endif %}</div>
+        <div class="action-description">{% if lang == 'en' %}View and manage your students' progress and profiles{% else %}Consultez et gérez la progression et les profils de vos élèves{% endif %}</div>
       </a>
 
-      <!-- CARTE DES EXERCICES DES ÉLÈVES -->
       <a href="{{ url_for('enseignant_exercices') }}" class="action-card exercises-card position-relative">
-        <div class="action-icon">
-          <i class="fas fa-file-alt"></i>
-        </div>
-        <div class="action-title">
-          {% if lang == 'en' %}Students' Exercises{% else %}Exercices des Élèves{% endif %}
-        </div>
-        <div class="action-description">
-          {% if lang == 'en' %}Access all your students' exercises, sorted by subject and lesson{% else %}Accède à tous les exercices de tes élèves, classés par matière et leçon{% endif %}
-        </div>
+        <div class="action-icon"><i class="fas fa-file-alt"></i></div>
+        <div class="action-title">{% if lang == 'en' %}Students' Exercises{% else %}Exercices des Élèves{% endif %}</div>
+        <div class="action-description">{% if lang == 'en' %}Access all your students' exercises, sorted by subject and lesson{% else %}Accède à tous les exercices de tes élèves, classés par matière et leçon{% endif %}</div>
       </a>
 
-      <!-- CARTE DES COMMISSIONS -->
       <a href="/enseignant/commissions" class="action-card commission-card position-relative">
-        {% if commissions_pending > 0 %}
-          <div class="badge-commission">{{ commissions_pending if commissions_pending else '0' }}</div>
-        {% endif %}
-        <div class="action-icon">
-          <i class="fas fa-money-bill-wave"></i>
-        </div>
-        <div class="action-title">
-          {% if lang == 'en' %}My Commissions{% else %}Mes Commissions{% endif %}
-        </div>
-        <div class="action-description">
-          {% if lang == 'en' %}Track your earnings and request payments{% else %}Suivez vos revenus et demandez des versements{% endif %}
-        </div>
-        
-        <!-- Mini statistiques des commissions -->
+        {% if commissions_pending > 0 %}<div class="badge-commission">{{ commissions_pending if commissions_pending else '0' }}</div>{% endif %}
+        <div class="action-icon"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="action-title">{% if lang == 'en' %}My Commissions{% else %}Mes Commissions{% endif %}</div>
+        <div class="action-description">{% if lang == 'en' %}Track your earnings and request payments{% else %}Suivez vos revenus et demandez des versements{% endif %}</div>
         <div class="commission-stats">
-          <div class="commission-stat">
-            <div class="commission-amount">{{ "%.2f"|format(commissions_available) if commissions_available else '0.00' }}$</div>
-            <div class="commission-label">{% if lang == 'en' %}Available{% else %}Disponible{% endif %}</div>
-          </div>
-          <div class="commission-stat">
-            <div class="commission-amount">{{ "%.2f"|format(commissions_paid) if commissions_paid else '0.00' }}$</div>
-            <div class="commission-label">{% if lang == 'en' %}Paid{% else %}Versé{% endif %}</div>
-          </div>
+          <div class="commission-stat"><div class="commission-amount">{{ "%.2f"|format(commissions_available) if commissions_available else '0.00' }}$</div><div class="commission-label">{% if lang == 'en' %}Available{% else %}Disponible{% endif %}</div></div>
+          <div class="commission-stat"><div class="commission-amount">{{ "%.2f"|format(commissions_paid) if commissions_paid else '0.00' }}$</div><div class="commission-label">{% if lang == 'en' %}Paid{% else %}Versé{% endif %}</div></div>
         </div>
       </a>
 
       <a href="/enseignant/creer-contenu" class="action-card">
-        <div class="action-icon">
-          <i class="fas fa-plus-circle"></i>
-        </div>
-        <div class="action-title">
-          {% if lang == 'en' %}Create Content{% else %}Créer du Contenu{% endif %}
-        </div>
-        <div class="action-description">
-          {% if lang == 'en' %}Add new lessons, exercises, and assessments{% else %}Ajoutez de nouvelles leçons, exercices et évaluations{% endif %}
-        </div>
+        <div class="action-icon"><i class="fas fa-plus-circle"></i></div>
+        <div class="action-title">{% if lang == 'en' %}Create Content{% else %}Créer du Contenu{% endif %}</div>
+        <div class="action-description">{% if lang == 'en' %}Add new lessons, exercises, and assessments{% else %}Ajoutez de nouvelles leçons, exercices et évaluations{% endif %}</div>
       </a>
+    </div>
 
-      
+    <!-- ========== SECTION MES MATIÈRES ET NIVEAUX ========== -->
+    <div class="subjects-section">
+      <div class="subjects-header">
+        <h3>
+          <i class="fas fa-chalkboard me-2 text-primary"></i>
+          {% if lang == 'en' %}My Teaching Subjects{% else %}Mes Matières Enseignées{% endif %}
+        </h3>
+        <a href="{{ url_for('enseignant_matieres') }}" class="btn btn-sm btn-outline-primary">
+          <i class="fas fa-edit"></i>
+          {% if lang == 'en' %}Manage Subjects{% else %}Gérer les Matières{% endif %}
+        </a>
+      </div>
+
+      {% if niveaux_enseignant is defined and niveaux_enseignant and niveaux_enseignant|length > 0 %}
+        {% for niveau in niveaux_enseignant %}
+        <div class="subject-card" onclick="toggleSubject(this, '{{ niveau.id }}')">
+          <div class="subject-header">
+            <div class="subject-title">
+              <div class="subject-icon"><i class="fas fa-graduation-cap"></i></div>
+              <div class="subject-name">
+                {{ niveau.nom }}
+                <span class="badge bg-primary ms-2">{{ niveau.matieres|length }} {% if lang == 'en' %}subjects{% else %}matières{% endif %}</span>
+              </div>
+            </div>
+            <div class="subject-stats">
+              <div class="subject-stat">
+                <div class="stat-value">{{ niveau.matieres|length }}</div>
+                <div class="stat-label-small">{% if lang == 'en' %}Subjects{% else %}Matières{% endif %}</div>
+              </div>
+              <i class="fas fa-chevron-down chevron-icon text-muted"></i>
+            </div>
+          </div>
+          
+          <div class="exercises-container" id="exercises-{{ niveau.id }}">
+            <div class="exercises-list">
+              {% for matiere in niveau.matieres %}
+              <div class="exercise-card">
+                <div class="exercise-title">
+                  <span>{{ matiere.nom }}</span>
+                  <span class="exercise-difficulty">{{ niveau.nom }}</span>
+                </div>
+                <div class="exercise-meta">
+                  <span><i class="fas fa-microphone-alt text-info me-1"></i>{% if lang == 'en' %}Assigned to{% else %}Élèves assignés{% endif %}</span>
+                  <span class="fw-bold text-primary">
+                    {% set count = 0 %}
+                    {% for eleve in stats %}
+                      {% if eleve.niveau == niveau.nom %}
+                        {% set count = count + 1 %}
+                      {% endif %}
+                    {% endfor %}
+                    {{ count }}
+                  </span>
+                </div>
+                <div class="mt-2">
+                  <a href="{{ url_for('enseignant_matiere_detail', matiere_id=matiere.id) }}" class="btn btn-sm btn-primary w-100">
+                    <i class="fas fa-eye me-1"></i>
+                    {% if lang == 'en' %}View Details{% else %}Voir les détails{% endif %}
+                  </a>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Statistiques rapides des matières -->
+        <!-- Statistiques rapides des matières -->
+<div class="stats-grid mt-4">
+  <div class="stat-card">
+    <div class="stat-icon">📖</div>
+    <div class="stat-number">
+      {% set total_matieres = 0 %}
+      {% for niveau in niveaux_enseignant %}
+        {% set total_matieres = total_matieres + niveau.matieres|length %}
+      {% endfor %}
+      {{ total_matieres }}
+    </div>
+    <div class="stat-label">{% if lang == 'en' %}Total Subjects{% else %}Total Matières{% endif %}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🎓</div>
+    <div class="stat-number">{{ niveaux_enseignant|length }}</div>
+    <div class="stat-label">{% if lang == 'en' %}Levels Taught{% else %}Niveaux Enseignés{% endif %}</div>
+  </div>
+</div>
+        
+      {% else %}
+        <div class="alert alert-warning text-center">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          {% if lang == 'en' %}
+            You haven't selected any subjects to teach yet.
+            <a href="{{ url_for('enseignant_matieres') }}" class="alert-link">Click here to add your subjects.</a>
+          {% else %}
+            Vous n'avez pas encore sélectionné de matières à enseigner.
+            <a href="{{ url_for('enseignant_matieres') }}" class="alert-link">Cliquez ici pour ajouter vos matières.</a>
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
 
     <!-- Charts Section -->
     <div class="row">
       <div class="col-md-6">
         <div class="chart-container">
-          <div class="chart-title">
-            <i class="fas fa-chart-bar"></i>
-            {% if lang == 'en' %}Students by Level{% else %}Répartition par Niveau{% endif %}
-          </div>
+          <div class="chart-title"><i class="fas fa-chart-bar"></i>{% if lang == 'en' %}Students by Level{% else %}Répartition par Niveau{% endif %}</div>
           <canvas id="repartitionNiveau" height="250"></canvas>
         </div>
       </div>
       
       <div class="col-md-6">
         <div class="chart-container">
-          <div class="chart-title">
-            <i class="fas fa-star"></i>
-            {% if lang == 'en' %}Average Stars per Student{% else %}Moyenne des Étoiles{% endif %}
-          </div>
+          <div class="chart-title"><i class="fas fa-star"></i>{% if lang == 'en' %}Average Stars per Student{% else %}Moyenne des Étoiles{% endif %}</div>
           <canvas id="moyenneParEleve" height="250"></canvas>
         </div>
       </div>
@@ -749,33 +813,13 @@
     <!-- Commission Summary Card -->
     {% if total_commissions > 0 %}
     <div class="chart-container mt-4">
-      <div class="chart-title">
-        <i class="fas fa-chart-line text-success"></i>
-        {% if lang == 'en' %}Commission Summary{% else %}Résumé des Commissions{% endif %}
-      </div>
+      <div class="chart-title"><i class="fas fa-chart-line text-success"></i>{% if lang == 'en' %}Commission Summary{% else %}Résumé des Commissions{% endif %}</div>
       <div class="row">
-        <div class="col-md-4 text-center">
-          <div class="stat-number text-success">{{ "%.2f"|format(total_commissions) }}$</div>
-          <div class="stat-label">{% if lang == 'en' %}Total Earnings{% else %}Gains Totaux{% endif %}</div>
+        <div class="col-md-4 text-center"><div class="stat-number text-success">{{ "%.2f"|format(total_commissions) }}$</div><div class="stat-label">{% if lang == 'en' %}Total Earnings{% else %}Gains Totaux{% endif %}</div></div>
+        <div class="col-md-4 text-center"><div class="stat-number text-warning">{{ "%.2f"|format(commissions_available) }}$</div><div class="stat-label">{% if lang == 'en' %}Available for Payout{% else %}Disponible au Versement{% endif %}</div>
+          {% if commissions_available >= 25 %}<a href="/enseignant/commissions" class="btn btn-success btn-sm mt-2"><i class="fas fa-paper-plane me-1"></i>{% if lang == 'en' %}Request Payout{% else %}Demander Versement{% endif %}</a>{% else %}<small class="text-muted">{% if lang == 'en' %}Minimum $25 required{% else %}Minimum 25$ requis{% endif %}</small>{% endif %}
         </div>
-        <div class="col-md-4 text-center">
-          <div class="stat-number text-warning">{{ "%.2f"|format(commissions_available) }}$</div>
-          <div class="stat-label">{% if lang == 'en' %}Available for Payout{% else %}Disponible au Versement{% endif %}</div>
-          {% if commissions_available >= 25 %}
-          <a href="/enseignant/commissions" class="btn btn-success btn-sm mt-2">
-            <i class="fas fa-paper-plane me-1"></i>
-            {% if lang == 'en' %}Request Payout{% else %}Demander Versement{% endif %}
-          </a>
-          {% else %}
-          <small class="text-muted">
-            {% if lang == 'en' %}Minimum $25 required{% else %}Minimum 25$ requis{% endif %}
-          </small>
-          {% endif %}
-        </div>
-        <div class="col-md-4 text-center">
-          <div class="stat-number text-primary">{{ commissions_pending }}</div>
-          <div class="stat-label">{% if lang == 'en' %}Pending Commissions{% else %}Commissions en Attente{% endif %}</div>
-        </div>
+        <div class="col-md-4 text-center"><div class="stat-number text-primary">{{ commissions_pending }}</div><div class="stat-label">{% if lang == 'en' %}Pending Commissions{% else %}Commissions en Attente{% endif %}</div></div>
       </div>
     </div>
     {% endif %}
@@ -783,6 +827,33 @@
 </div>
 
 <script>
+  // Toggle subjects function
+  function toggleSubject(card, niveauId) {
+    card.classList.toggle('active');
+    const exercisesContainer = document.getElementById(`exercises-${niveauId}`);
+    if (exercisesContainer) {
+      exercisesContainer.classList.toggle('show');
+    }
+    
+    // Close other open subjects if needed
+    const allSubjects = document.querySelectorAll('.subject-card');
+    allSubjects.forEach(subject => {
+      if (subject !== card && subject.classList.contains('active')) {
+        const otherId = subject.getAttribute('onclick');
+        if (otherId) {
+          const match = otherId.match(/'(\d+)'/);
+          if (match && match[1]) {
+            const otherContainer = document.getElementById(`exercises-${match[1]}`);
+            if (otherContainer) {
+              otherContainer.classList.remove('show');
+              subject.classList.remove('active');
+            }
+          }
+        }
+      }
+    });
+  }
+
   // Student Distribution Chart
   const repartitionCtx = document.getElementById('repartitionNiveau').getContext('2d');
   new Chart(repartitionCtx, {
@@ -802,22 +873,11 @@
       responsive: true,
       plugins: {
         legend: { display: false },
-        title: {
-          display: true,
-          text: '{{ "Student distribution by level" if lang == "en" else "Répartition des élèves par niveau" }}',
-          font: { size: 14, family: 'Poppins' }
-        }
+        title: { display: true, text: '{{ "Student distribution by level" if lang == "en" else "Répartition des élèves par niveau" }}', font: { size: 14, family: 'Poppins' } }
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { font: { family: 'Inter' } },
-          grid: { color: 'rgba(0,0,0,0.05)' }
-        },
-        x: {
-          ticks: { font: { family: 'Inter' } },
-          grid: { display: false }
-        }
+        y: { beginAtZero: true, ticks: { font: { family: 'Inter' } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { font: { family: 'Inter' } }, grid: { display: false } }
       }
     }
   });
@@ -841,27 +901,11 @@
       responsive: true,
       plugins: {
         legend: { display: false },
-        title: {
-          display: true,
-          text: '{{ "Average stars by student" if lang == "en" else "Moyenne des étoiles par élève" }}',
-          font: { size: 14, family: 'Poppins' }
-        }
+        title: { display: true, text: '{{ "Average stars by student" if lang == "en" else "Moyenne des étoiles par élève" }}', font: { size: 14, family: 'Poppins' } }
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          suggestedMin: 0,
-          suggestedMax: 3,
-          ticks: { font: { family: 'Inter' } },
-          grid: { color: 'rgba(0,0,0,0.05)' }
-        },
-        x: {
-          ticks: { 
-            font: { family: 'Inter', size: 11 },
-            maxRotation: 45
-          },
-          grid: { display: false }
-        }
+        y: { beginAtZero: true, suggestedMin: 0, suggestedMax: 3, ticks: { font: { family: 'Inter' } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { font: { family: 'Inter', size: 11 }, maxRotation: 45 }, grid: { display: false } }
       }
     }
   });
@@ -871,42 +915,15 @@
   if (commissionCard) {
     setInterval(() => {
       commissionCard.style.transform = 'scale(1.02)';
-      setTimeout(() => {
-        commissionCard.style.transform = 'scale(1)';
-      }, 300);
+      setTimeout(() => { commissionCard.style.transform = 'scale(1)'; }, 300);
     }, 5000);
   }
 
   // Exercises Card Animation
   const exercisesCard = document.querySelector('.exercises-card');
   if (exercisesCard) {
-    exercisesCard.addEventListener('mouseenter', function() {
-      this.style.transform = 'translateY(-5px) scale(1.02)';
-    });
-    
-    exercisesCard.addEventListener('mouseleave', function() {
-      this.style.transform = 'translateY(-5px)';
-    });
-  }
-
-  // Toggle subjects function
-  function toggleSubject(card, subjectId) {
-    card.classList.toggle('active');
-    const exercisesContainer = document.getElementById(`exercises-${subjectId}`);
-    exercisesContainer.classList.toggle('show');
-    
-    // Close other open subjects if needed
-    const allSubjects = document.querySelectorAll('.subject-card');
-    allSubjects.forEach(subject => {
-      if (subject !== card && subject.classList.contains('active')) {
-        const otherId = subject.getAttribute('onclick').match(/'([^']+)'/)[1];
-        const otherExercises = document.getElementById(`exercises-${otherId}`);
-        if (otherExercises) {
-          otherExercises.classList.remove('show');
-          subject.classList.remove('active');
-        }
-      }
-    });
+    exercisesCard.addEventListener('mouseenter', function() { this.style.transform = 'translateY(-5px) scale(1.02)'; });
+    exercisesCard.addEventListener('mouseleave', function() { this.style.transform = 'translateY(-5px)'; });
   }
 
   // Add loading animation

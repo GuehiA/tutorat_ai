@@ -32,13 +32,116 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from datetime import datetime  # Pour le timestamp
 from datetime import timedelta
+from services.diagnostic_eleve_service import diagnostiquer_eleve_sur_lecon
+from services.recommandations import recommander_prochaine_action, choisir_exercice_pour_lecon
+from services.math_verification import verifier_expression_fractionnaire
+# Après les imports existants, ajouter :
+from naima_router import (
+    appel_ia, 
+    naima_generer_debut_conversation, 
+    naima_generer_suite_conversation,
+    naima_corriger_exercice,
+    naima_generer_exercice,
+    detecter_matiere
+)
 
+
+# 🚀 IMPORTANT: Créer l'app Flask SANS configurer SQLAlchemy immédiatement
 # 🚀 IMPORTANT: Créer l'app Flask SANS configurer SQLAlchemy immédiatement
 app = Flask(__name__)
 load_dotenv()
 
+# ====================================================================
+# 🤖 CONFIGURATION DES CLIENTS API (OpenAI + DeepSeek)
+# ====================================================================
+
+from openai import OpenAI
+
+# Clés API
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+
+# Initialisation des clients
+client_openai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+client_deepseek = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url=DEEPSEEK_BASE_URL
+) if DEEPSEEK_API_KEY else None
+
+# Pour garder la compatibilité avec l'ancien code (qui utilise "client" tout court)
+client = client_openai  # Garde la référence OpenAI par défaut
+
+print(f"✅ OpenAI configuré: {bool(client_openai)}")
+print(f"✅ DeepSeek configuré: {bool(client_deepseek)}")
+
+# ====================================================================
+# 🧠 FONCTION DE ROUTAGE INTELLIGENT
+# ====================================================================
+
+def get_ai_response(messages, matiere="maths", difficulte="moyen", max_tokens=800, temperature=0.7):
+    """
+    Route intelligente entre OpenAI et DeepSeek
+    """
+    # Maths complexes → DeepSeek Pro
+    if matiere == "maths" and difficulte in ["hard", "difficile", "complexe"]:
+        if client_deepseek:
+            model = "deepseek-v4-pro"
+            chosen_client = client_deepseek
+            print(f"🔀 Routage: DeepSeek Pro (maths complexes)")
+        else:
+            chosen_client = client_openai
+            model = "gpt-4o-mini"
+            print(f"⚠️ DeepSeek non dispo, fallback OpenAI")
+    
+    # Maths simples ou correction → DeepSeek Flash (économique)
+    elif matiere == "maths" or any(word in str(messages).lower() for word in ["corrig", "erreur", "faux", "correct"]):
+        if client_deepseek:
+            model = "deepseek-v4-flash"
+            chosen_client = client_deepseek
+            print(f"🔀 Routage: DeepSeek Flash (maths/correction)")
+        else:
+            chosen_client = client_openai
+            model = "gpt-4o-mini"
+            print(f"⚠️ DeepSeek non dispo, fallback OpenAI")
+    
+    # Tout le reste (francais, histoire, sciences générales) → OpenAI
+    else:
+        chosen_client = client_openai
+        model = "gpt-4o-mini"
+        print(f"🔀 Routage: OpenAI ({matiere})")
+    
+    try:
+        response = chosen_client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=30.0  # ← AJOUTE CETTE LIGNE (30 secondes)
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"❌ Erreur avec {model}: {e}")
+        # Fallback ultime sur OpenAI
+        if chosen_client != client_openai and client_openai:
+            try:
+                response = client_openai.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    timeout=30.0  # ← AJOUTE AUSSI ICI
+                )
+                return response.choices[0].message.content
+            except Exception as fallback_error:
+                print(f"❌ Fallback aussi en erreur: {fallback_error}")
+                return "Désolé, je rencontre une difficulté technique. Peux-tu reformuler ta question ?"
+        return "Désolé, je rencontre une difficulté technique. Peux-tu reformuler ta question ?"
+
+# ====================================================================
 # --- Configuration de session ---
+# (ton code existant continue ici)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-me')
+# ... le reste de ton code
 app.config['SESSION_COOKIE_NAME'] = 'tutorat_session'
 app.config['SESSION_COOKIE_SECURE'] = False  # Mettez True en production avec HTTPS seulement
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -154,10 +257,10 @@ print("✅ SQLAlchemy initialisé avec succès depuis models.py")
 # Maintenant que db est initialisé, importez les modèles depuis models
 with app.app_context():
     from models import (
-        User, Exercice, StudentResponse, Parent, ParentEleve,
-        RemediationSuggestion, Niveau, Matiere, Unite,
+        User, Exercice, StudentResponse, Parent, ParentEleve, EnseignantMatiere,
+        RemediationSuggestion, Niveau, Matiere, Unite, EleveMatiere,
         Lecon, TestSommatif, TestResponse, Commission, VersementManuel,
-        ExerciceRemediation, Enseignant, TestExercice, InfoVersementEnseignant
+        ExerciceRemediation, Enseignant, TestExercice, InfoVersementEnseignant, MatiereAIConfig
     )
     print("✅ Modèles importés depuis models.py")
 
@@ -416,6 +519,49 @@ def login_admin():
     lang = session.get('lang', 'fr')
     return render_template("login_admin.html", lang=lang)
 
+@app.route("/debug-ai")
+def debug_ai():
+    return {
+        "openai": "✅" if client_openai else "❌",
+        "deepseek": "✅" if client_deepseek else "❌",
+        "default_client": "openai" if client == client_openai else "deepseek"
+    }
+
+
+@app.route("/debug-conversation-state")
+def debug_conversation_state():
+    return {
+        "conversation": session.get("conversation", []),
+        "derniere_q_ia": session.get("derniere_q_ia"),
+        "exercice_termine": session.get("exercice_termine", False),
+        "mode_exercice": session.get("mode_exercice", False)
+    }
+
+@app.route("/debug-routing")
+def debug_routing():
+    from openai import OpenAI
+    import os
+    
+    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+    
+    # Test direct DeepSeek
+    try:
+        client = OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
+        response = client.chat.completions.create(
+            model="deepseek-v4-pro",
+            messages=[{"role": "user", "content": "Calcule 2/5 divise par 2. Reponds simplement par le resultat."}],
+            max_tokens=100
+        )
+        deepseek_result = response.choices[0].message.content
+    except Exception as e:
+        deepseek_result = f"Erreur: {e}"
+    
+    return {
+        "deepseek_key_configured": bool(deepseek_key),
+        "deepseek_test_result": deepseek_result,
+        "fallback_active": True
+    }
+
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
@@ -614,6 +760,25 @@ def admin_dashboard():
         flash("Erreur lors du chargement du tableau de bord", "error")
         return redirect(url_for("login_admin"))
 
+@app.route("/reset-chat", methods=["POST"])
+def reset_chat():
+    """Réinitialise la conversation de l'élève"""
+    if "user_id" not in session:
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    # Nettoyer la session
+    session.pop('conversation', None)
+    session.pop('derniere_q_ia', None)
+    session.pop('exercice_en_cours', None)
+    session.pop('exercice_termine', None)
+    session.pop('mode_exercice', None)
+    session.pop('remediation_access', None)
+    
+    session.modified = True
+    
+    return jsonify({"success": True, "message": "Conversation réinitialisée"})
+
+
 @app.route("/test-nom-complet")
 def test_nom_complet():
     """Test pour vérifier que nom_complet et nom_complet_complet fonctionnent"""
@@ -735,6 +900,37 @@ def replace_latex_filter(text):
     result = result.replace('<', '&lt;').replace('>', '&gt;')
     
     return Markup(result)
+
+
+@app.route("/api/matieres-par-niveau/<int:niveau_id>")
+def api_matieres_par_niveau(niveau_id):
+    """API pour récupérer les matières d'un niveau (utilisée par AJAX dans inscription_eleve.html)"""
+    from models import Matiere
+    
+    try:
+        matieres = Matiere.query.filter_by(niveau_id=niveau_id).order_by(Matiere.nom.asc()).all()
+
+        resultats = []
+        for matiere in matieres:
+            resultats.append({
+                "id": matiere.id,
+                "nom": matiere.nom,
+                "nom_en": matiere.nom_en or matiere.nom
+            })
+
+        return jsonify({
+            "success": True,
+            "niveau_id": niveau_id,
+            "matieres": resultats
+        })
+
+    except Exception as e:
+        print(f"❌ Erreur API matières: {e}")
+        return jsonify({
+            "success": False,
+            "message": str(e),
+            "matieres": []
+        }), 500
 
 
 # ... ensuite vos routes commencent ici ...
@@ -1123,10 +1319,14 @@ def get_message(key, lang="fr"):
 
 
 def extraire_question(reponse, lang="fr"):
-    """Extrait la question posée par Naima - version bilingue"""
+    """Extrait la question posée par Naima ou identifie qu'une réponse est attendue"""
     import re
     
-    # Patterns FRANÇAIS (Naima tutoie)
+    # Si la réponse ne contient pas de '?', c'est peut-être une réponse de l'élève
+    if '?' not in reponse:
+        return None  # Pas de question, c'est une réponse
+    
+    # Patterns FRANÇAIS
     patterns_fr = [
         r'[Pp]eux-tu\s+(.*?)\?',
         r'[Qq]u\'est-ce que\s+(.*?)\?',
@@ -1145,10 +1345,13 @@ def extraire_question(reponse, lang="fr"):
         r'[Ss]ais-tu\s+(.*?)\?',
         r'[Cc]onnais-tu\s+(.*?)\?',
         r'[Pp]ourrais-tu\s+(.*?)\?',
-        r'[Mm]ontre-moi\s+(.*?)\?'
+        r'[Mm]ontre-moi\s+(.*?)\?',
+        # NOUVEAU : Pattern pour les réponses attendues
+        r'[Qq]ue\s+(.*?)\?',
+        r'[Qq]uoi\s+(.*?)\?',
     ]
     
-    # Patterns ANGLAIS (Naima tutoie aussi en anglais avec "you")
+    # Patterns ANGLAIS
     patterns_en = [
         r'[Cc]an you\s+(.*?)\?',
         r'[Ww]hat is\s+(.*?)\?',
@@ -1167,24 +1370,22 @@ def extraire_question(reponse, lang="fr"):
         r'[Dd]o you know\s+(.*?)\?',
         r'[Hh]ave you\s+(.*?)\?',
         r'[Cc]ould you\s+(.*?)\?',
-        r'[Ww]ould you\s+(.*?)\?'
+        r'[Ww]ould you\s+(.*?)\?',
     ]
     
     patterns = patterns_fr if lang == "fr" else patterns_en
     
     for pattern in patterns:
-        match = re.search(pattern, reponse)
+        match = re.search(pattern, reponse, re.IGNORECASE)
         if match:
             question = match.group(1).strip()
-            if len(question) > 5:  # Minimum 5 caractères
+            if len(question) > 5:
                 return question
     
-    # Fallback : chercher la dernière phrase qui contient "?" 
-    # (mais exclure les signatures de Naima)
+    # Fallback : chercher la dernière phrase avec '?' 
     lines = reponse.split('\n')
     for line in reversed(lines):
         if '?' in line and 'Naima' not in line:
-            # Trouver le dernier "?" dans la ligne
             parts = line.split('?')
             if parts and len(parts) > 1:
                 question = parts[-2] + '?'
@@ -1192,7 +1393,69 @@ def extraire_question(reponse, lang="fr"):
                 if len(question) > 5:
                     return question
     
-    return None
+    return None  # Aucune question trouvée
+
+def get_correction_model_from_config(exercice):
+    """
+    Récupère la configuration IA pour la matière de l'exercice
+    L'admin peut tout configurer !
+    """
+    # Déterminer la matière de l'exercice
+    matiere_nom = None
+    try:
+        if exercice.lecon and exercice.lecon.unite and exercice.lecon.unite.matiere:
+            matiere_nom = exercice.lecon.unite.matiere.nom
+    except:
+        pass
+    
+    # Si pas de matière, essayer de détecter depuis la question
+    if not matiere_nom and exercice:
+        question = (exercice.question_fr or exercice.question_en or "").lower()
+        # Mapping des mots-clés vers les noms de matières configurées
+        keyword_mapping = {
+            "Mathématiques": ["équation", "calcul", "x=", "fraction", "géométrie", "algèbre", "fonction"],
+            "MCR3U": ["mcr3u", "fonction", "quadratique", "exponentiel"],
+            "MHF4U": ["mhf4u", "advanced function", "polynôme", "logarithme"],
+            "MCV4U": ["mcv4u", "calculus", "dérivée", "intégrale", "vecteur"],
+            "Français": ["grammaire", "conjugaison", "verbe", "phrase", "texte", "littérature"],
+            "English": ["grammar", "conjugation", "verb", "sentence", "literature"],
+            "Histoire": ["date", "guerre", "révolution", "siècle", "roi"],
+            "Sciences": ["atome", "cellule", "force", "énergie", "vitesse"],
+            "Physique": ["physique", "force", "vitesse", "accélération", "énergie"],
+            "Chimie": ["chimie", "atome", "molécule", "réaction", "acide"],
+            "Biologie": ["biologie", "cellule", "organe", "adn", "génétique"]
+        }
+        
+        for mat, keywords in keyword_mapping.items():
+            if any(kw in question for kw in keywords):
+                matiere_nom = mat
+                break
+    
+    if not matiere_nom:
+        matiere_nom = "Mathématiques"  # Par défaut
+    
+    print(f"🔍 Matière détectée: {matiere_nom}")
+    
+    # Chercher la configuration dans la base
+    config = MatiereAIConfig.query.filter_by(matiere_nom=matiere_nom, actif=True).first()
+    
+    if not config:
+        # Fallback sur la configuration par défaut
+        config = MatiereAIConfig.query.filter_by(matiere_nom="Mathématiques", actif=True).first()
+    
+    if config:
+        print(f"⚙️ Configuration trouvée: {config.matiere_nom} → {config.api_choice}/{config.modele_ia}")
+        
+        # Choisir le client
+        if config.api_choice == "deepseek":
+            client = client_deepseek
+        else:
+            client = client_openai
+        
+        return client, config.modele_ia
+    
+    # Dernier fallback
+    return client_deepseek, "deepseek-v4-flash"
 
 
 
@@ -1619,175 +1882,88 @@ Commence toujours par un accueil chaleureux avec ton nom : "Je suis Naima, ton e
     
     return prompt_final
 
-def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", mode_examen=False, exercice_context="", matiere="mathématiques"):
-    """Continue la conversation avec Naima qui guide l'élève en le tutoyant"""
-    from openai import OpenAI
-    import os
+def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", 
+                                mode_examen=False, exercice_context="", matiere="mathématiques"):
+    """Continue la conversation avec Naima - Version sans cas particuliers"""
     
-    print(f"🔵🔵🔵 generer_suite_conversation APPELÉE 🔵🔵🔵")
-    print(f"📝 Dernière question: {derniere_q[:100]}...")
-    print(f"💬 Réponse élève: {reponse[:100]}...")
-    print(f"📚 Matière: {matiere}, Niveau: {niveau}")
-    
-    # ✅ Vérifier si l'exercice est déjà terminé
-    from flask import session
-    if session.get('exercice_termine'):
-        print(f"[DEBUG] ⏸️ Exercice terminé - pas de nouvelle réponse")
-        return None
-    
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    
-    # Préparer l'historique contextuel (les 10 derniers messages)
-    historique_contextuel = []
-    for msg in historique[-10:]:
-        historique_contextuel.append(msg)
-    
-    historique_text = "\n".join(historique_contextuel)
+    # Préparer l'historique
+    historique_text = "\n".join(historique[-10:])
     
     if langue == "fr":
-        system_prompt = f"""Tu es Naima, une enseignante virtuelle bienveillante et patiente. Tu aides des élèves de niveau {niveau} en {matiere}.
+        system_prompt = f"""Tu es Naima, enseignante virtuelle en {matiere} (niveau {niveau}).
 
-**TON STYLE :**
-- Tu tutoies toujours l'élève (utilise "tu", "ta", "ton", "tes")
-- Tu es chaleureuse, encourageante et pédagogue
-- Tu signes tes messages avec "— Naima" ou "Naima ✨"
-- Tu poses toujours des questions guidantes une par une
-- Tu ne donnes JAMAIS la réponse directement
-- Tu corriges avec bienveillance et sans critique
+RÈGLES FONDAMENTALES À APPLIQUER SYSTÉMATIQUEMENT :
 
-**TA MISSION POUR CETTE RÉPONSE :**
-La dernière question que tu as posée : "{derniere_q}"
-La réponse de l'élève : "{reponse}"
+1. **VALIDATION IMMÉDIATE** : Dès qu'un élève donne une réponse mathématiquement correcte, réponds "Exact ! 🎉" ou "C'est juste ! 🎉" et passe immédiatement à l'étape suivante. Ne demande JAMAIS de répéter ou de détailler un calcul déjà correct.
 
-1. Analyse la réponse de l'élève
-2. Si c'est correct : félicite-le et pose la prochaine étape
-3. Si c'est partiellement correct : reconnais ce qui est bon, guide pour corriger
-4. Si c'est incorrect : ne dis pas "c'est faux", guide avec un indice
-5. Pose UNE SEULE nouvelle question pour faire avancer la réflexion
-6. **IMPORTANT: Si l'exercice est terminé (plus d'étapes), félicite l'élève et dis-lui que l'exercice est fini. Ne pose plus de question.**
+2. **PROGRESSION NATURELLE** : Chaque réponse correcte doit être suivie par la question suivante du problème. Tu ne dois pas rester bloqué sur la même étape.
 
-**FORMAT DE TA RÉPONSE :**
-- Réaction à la réponse de l'élève (félicitations/guidage)
-- Explication très brève si nécessaire
-- Nouvelle question précise (sauf si exercice terminé)
-- Signature : — Naima ✨
+3. **LONGUEUR LIMITÉE** : Tes réponses doivent faire maximum 2 à 3 phrases. Sois concise et va à l'essentiel.
 
-**EXEMPLE DE FIN D'EXERCICE :**
-"Bravo ! Tu as parfaitement résolu cet exercice ! 🎉 Tu peux maintenant passer à l'exercice suivant ou en générer un nouveau.
+4. **SIGNATURE** : Termine toujours par "— Naima ✨"
 
-— Naima ✨" """
+5. **PAS DE RÉPÉTITION** : Ne pose jamais deux fois la même question. Si l'élève a répondu, passe à la suite.
+
+6. **RECONNAISSANCE D'ERREUR** : Si l'élève te signale une erreur, réponds "Tu as raison, merci !" et corrige-toi.
+
+À RETENIR : La réponse de l'élève est soit correcte (tu valides et avances), soit incorrecte (tu guides sans répéter). Pas de troisième option.
+
+Réponds maintenant de façon naturelle et concise."""
     else:
-        system_prompt = f"""You are Naima, a kind and patient virtual teacher. You help {niveau} students with {matiere}.
+        system_prompt = f"""You are Naima, a virtual teacher in {matiere} (level {niveau}).
 
-**YOUR STYLE:**
-- You always use "you", "your" (friendly but professional)
-- You are warm, encouraging, and pedagogical
-- You sign your messages with "— Naima" or "Naima ✨"
-- You always ask guiding questions one at a time
-- You NEVER give the answer directly
-- You correct gently without criticism
+FUNDAMENTAL RULES TO APPLY SYSTEMATICALLY:
 
-**YOUR MISSION FOR THIS RESPONSE:**
-Last question you asked: "{derniere_q}"
-Student's answer: "{reponse}"
+1. **IMMEDIATE VALIDATION**: As soon as a student gives a mathematically correct answer, respond "Exactly! 🎉" or "That's right! 🎉" and immediately move to the next step. NEVER ask to repeat or detail a calculation that is already correct.
 
-1. Analyze the student's response
-2. If correct: praise them and ask the next step
-3. If partially correct: acknowledge what's good, guide to correct
-4. If incorrect: don't say "that's wrong", guide with a hint
-5. Ask ONLY ONE new question to advance their thinking
-6. **IMPORTANT: If the exercise is finished (no more steps), congratulate the student and tell them the exercise is done. Do not ask more questions.**
+2. **NATURAL PROGRESSION**: Each correct answer must be followed by the next question of the problem. Do not get stuck on the same step.
 
-**YOUR RESPONSE FORMAT:**
-- Reaction to student's answer (praise/guidance)
-- Very brief explanation if needed
-- New precise question (unless exercise is finished)
-- Signature: — Naima ✨
+3. **LIMITED LENGTH**: Your responses should be maximum 2-3 sentences. Be concise and get to the point.
 
-**EXAMPLE OF EXERCISE COMPLETION:**
-"Congratulations! You've successfully completed this exercise! 🎉 You can now move to the next exercise or generate a new one.
+4. **SIGNATURE**: Always end with "-- Naima ✨"
 
-— Naima ✨" """
+5. **NO REPETITION**: Never ask the same question twice. If the student has answered, move on.
+
+6. **ERROR RECOGNITION**: If the student points out an error, respond "You're right, thank you!" and correct yourself.
+
+REMEMBER: The student's answer is either correct (you validate and advance) or incorrect (you guide without repeating). No third option.
+
+Answer now naturally and concisely."""
     
-    prompt = f"""**Historique de conversation ({matiere}) :**
-{historique_text}
+    prompt_utilisateur = f"""Dernière question: {derniere_q}
+Réponse élève: {reponse}
 
-**Contexte :** Élève de {niveau} en {matiere}
-{"**Mode examen :** guide avec des indices, ne révèle pas les étapes complètes." if mode_examen else ""}"""
+Réponds maintenant en {'français' if langue == 'fr' else 'anglais'}:"""
     
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=500
-        )
-        
-        reponse_naima = response.choices[0].message.content.strip()
-        print(f"✅✅✅ Réponse générée: {reponse_naima[:100]}...")
-        
-        # ✅ Détecter si l'exercice est terminé (plus de question)
-        exercice_termine = False
-        if langue == "fr":
-            if "exercice est terminé" in reponse_naima.lower() or "fini" in reponse_naima.lower() or "peux maintenant" in reponse_naima.lower():
-                exercice_termine = True
-        else:
-            if "exercise is finished" in reponse_naima.lower() or "completed" in reponse_naima.lower() or "can now" in reponse_naima.lower():
-                exercice_termine = True
-        
-        # ✅ Stocker l'état dans la session
-        if exercice_termine:
-            from flask import session
-            session['exercice_termine'] = True
-            session.modified = True
-            print(f"[DEBUG] 🏁 Exercice marqué comme terminé")
-        
-        # S'assurer que Naima signe sa réponse
-        if langue == "fr":
-            if "— Naima" not in reponse_naima and "Naima" not in reponse_naima[-10:]:
-                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
-        else:
-            if "— Naima" not in reponse_naima and "Naima" not in reponse_naima[-10:]:
-                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
-        
-        return reponse_naima
-        
-    except Exception as e:
-        print(f"❌❌❌ Erreur génération suite conversation Naima: {e}")
-        import traceback
-        traceback.print_exc()
-        
-        # Fallback bilingue
-        if langue == "fr":
-            return f"""Merci pour ta réponse ! C'est intéressant de voir comment tu as abordé cette question de {matiere}.
-
-Je vois que tu as fait un premier pas, et c'est déjà très bien. Maintenant, pour t'aider à avancer :
-
-**Ma nouvelle question :** As-tu considéré toutes les informations données dans l'énoncé ? Y a-t-il un élément que tu n'as pas encore utilisé ?
-
-Prends ton temps, je suis là pour t'accompagner.
-
-— Naima ✨"""
-        else:
-            return f"""Thank you for your answer! It's interesting to see how you approached this {matiere} question.
-
-I see you've taken a first step, and that's already great. Now, to help you move forward:
-
-**My new question:** Have you considered all the information given in the statement? Is there an element you haven't used yet?
-
-Take your time, I'm here to support you.
-
-— Naima ✨"""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt_utilisateur}
+    ]
+    
+    # Paramètres clés
+    temperature = 0.2      # Plus bas = plus déterministe et cohérent
+    max_tokens = 250       # Plus court = réponses concises
+    
+    reponse_naima = appel_ia(
+        messages, 
+        type_requete="chat", 
+        matiere=matiere, 
+        niveau=niveau, 
+        langue=langue, 
+        temperature=temperature, 
+        max_tokens=max_tokens
+    )
+    
+    # Ajout de la signature si absente
+    if langue == "fr" and "— Naima" not in reponse_naima:
+        reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+    elif langue == "en" and "-- Naima" not in reponse_naima:
+        reponse_naima = f"{reponse_naima}\n\n-- Naima ✨"
+    
+    return reponse_naima
 
 def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False, matiere="mathématiques"):
-    """Début de conversation avec Naima - l'enseignante virtuelle qui tutoie"""
-    from openai import OpenAI
-    import os
-    
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    """Début de conversation avec Naima - Version avec routage DeepSeek/OpenAI"""
     
     if langue == "fr":
         system_prompt = f"""Tu es Naima, une enseignante virtuelle bienveillante et passionnée par {matiere}. Tu aides des élèves de niveau {niveau}.
@@ -1796,7 +1972,7 @@ def generer_debut_conversation(question, niveau, langue="fr", mode_examen=False,
 - Tu es Naima, l'enseignante virtuelle
 - Tu tutoies toujours l'élève (utilise "tu", "ta", "ton")
 - Tu es chaleureuse, encourageante et pédagogue
-- Tu signes tes messages avec "— Naima" ou "Naima ✨"
+- Tu signes tes messages avec "— Naima ✨"
 - Tu poses des questions guidantes une par une
 - Tu ne donnes JAMAIS la réponse directement
 
@@ -1814,22 +1990,15 @@ Un élève de {niveau} te pose cette question en {matiere} : "{question}"
 - Reformulation de la question
 - Orientation pédagogique
 - Première question précise
-- Signature : — Naima ✨
-
-**EXEMPLE :**
-"Bonjour ! Je suis Naima, ton enseignante virtuelle. Je vois que tu te poses une question intéressante sur [sujet]. Commençons par bien comprendre ce qu'on te demande...
-
-**Ma première question pour toi :** Peux-tu me dire ce que tu as déjà essayé ou ce que tu comprends de cette situation ?
-
-— Naima ✨"""
+- Signature : — Naima ✨"""
     else:
-        system_prompt = f"""You are Naima, a kind virtual teacher passionate about {matiere}. You help {niveau} students.
+        system_prompt = f"""You are Naima, a virtual teacher passionate about {matiere}. You help {niveau} students.
 
 **YOUR IDENTITY:**
 - You are Naima, the virtual teacher
-- You use "you", "your" (friendly but professional)
+- You use warm, friendly language
 - You are warm, encouraging, and pedagogical
-- You sign your messages with "— Naima" or "Naima ✨"
+- You sign your messages with "— Naima ✨"
 - You ask guiding questions one at a time
 - You NEVER give the answer directly
 
@@ -1847,14 +2016,7 @@ A {niveau} student asks you this {matiere} question: "{question}"
 - Question rephrasing
 - Pedagogical orientation
 - First precise question
-- Signature: — Naima ✨
-
-**EXAMPLE:**
-"Hello! I'm Naima, your virtual teacher. I see you're asking an interesting question about [topic]. Let's start by understanding exactly what's being asked...
-
-**My first question for you:** Can you tell me what you've already tried or what you understand about this situation?
-
-— Naima ✨"""
+- Signature: — Naima ✨"""
     
     prompt = f"""**Contexte pédagogique :**
 - Niveau : {niveau}
@@ -1862,62 +2024,31 @@ A {niveau} student asks you this {matiere} question: "{question}"
 - Mode : {"examen (guide avec indices)" if mode_examen else "apprentissage normal"}
 - Style : Tutoiement chaleureux et encourageant"""
     
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # ✅ Changé de gpt-4 à gpt-3.5-turbo
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=450
-        )
-        
-        reponse_naima = response.choices[0].message.content.strip()
-        
-        # S'assurer que Naima se présente et signe
-        if langue == "fr":
-            if "Naima" not in reponse_naima[:50]:  # Vérifie dans les premiers caractères
-                reponse_naima = f"Bonjour ! Je suis Naima, ton enseignante virtuelle. {reponse_naima}"
-            
-            if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
-                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
-        else:
-            if "Naima" not in reponse_naima[:50]:
-                reponse_naima = f"Hello! I'm Naima, your virtual teacher. {reponse_naima}"
-            
-            if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
-                reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
-        
-        return reponse_naima
-        
-    except Exception as e:
-        print(f"Erreur génération début conversation Naima: {e}")
-        # Fallback bilingue avec présentation de Naima
-        if langue == "fr":
-            return f"""Bonjour ! Je suis Naima, ton enseignante virtuelle. 
-
-Je vois que tu as une question intéressante sur {matiere} : "{question[:100]}..."
-
-Super de vouloir comprendre ! Je vais t'aider à trouver la réponse toi-même en te guidant étape par étape.
-
-**Ma première question pour démarrer :** Peux-tu me dire ce que tu as déjà essayé ou ce que tu comprends de cette situation ?
-
-Écris-moi ta réponse, et on avancera ensemble !
-
-— Naima ✨"""
-        else:
-            return f"""Hello! I'm Naima, your virtual teacher.
-
-I see you have an interesting question about {matiere}: "{question[:100]}..."
-
-Great that you want to understand! I'll help you find the answer yourself by guiding you step by step.
-
-**My first question to start:** Can you tell me what you've already tried or what you understand about this situation?
-
-Write me your answer, and we'll move forward together!
-
-— Naima ✨"""
+    # Utilisation du routage intelligent
+    reponse_naima = get_ai_response(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        matiere=matiere,
+        difficulte="moyen",
+        max_tokens=450,
+        temperature=0.7
+    )
+    
+    # S'assurer que Naima se présente et signe
+    if langue == "fr":
+        if "Naima" not in reponse_naima[:50]:
+            reponse_naima = f"Bonjour ! Je suis Naima, ton enseignante virtuelle. {reponse_naima}"
+        if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
+            reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+    else:
+        if "Naima" not in reponse_naima[:50]:
+            reponse_naima = f"Hello! I'm Naima, your virtual teacher. {reponse_naima}"
+        if "— Naima" not in reponse_naima and "Naima ✨" not in reponse_naima[-10:]:
+            reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
+    
+    return reponse_naima
 
 
 def get_message(key, lang="fr"):
@@ -2166,6 +2297,75 @@ def api_eleve_stats():
         "temps_apprentissage": 0  # À implémenter si besoin
     })
 
+@app.route("/admin/ai-config", methods=["GET"])
+@admin_required
+def admin_ai_config():
+    """Page de configuration IA par matière"""
+    configs = MatiereAIConfig.query.order_by(MatiereAIConfig.matiere_nom).all()
+    return render_template("admin_ai_config.html", configs=configs, lang=session.get("lang", "fr"))
+
+
+@app.route("/admin/ai-config/add", methods=["POST"])
+@admin_required
+def admin_ai_config_add():
+    """Ajouter une configuration"""
+    matiere_nom = request.form.get("matiere_nom")
+    api_choice = request.form.get("api_choice")
+    modele_ia = request.form.get("modele_ia")
+    description = request.form.get("description", "")
+    
+    if not matiere_nom or not api_choice or not modele_ia:
+        flash("Tous les champs sont requis", "error")
+        return redirect(url_for("admin_ai_config"))
+    
+    existing = MatiereAIConfig.query.filter_by(matiere_nom=matiere_nom).first()
+    if existing:
+        flash(f"La matière '{matiere_nom}' existe déjà", "error")
+        return redirect(url_for("admin_ai_config"))
+    
+    new_config = MatiereAIConfig(
+        matiere_nom=matiere_nom,
+        api_choice=api_choice,
+        modele_ia=modele_ia,
+        description=description,
+        actif=True
+    )
+    db.session.add(new_config)
+    db.session.commit()
+    
+    flash(f"Configuration pour '{matiere_nom}' ajoutée", "success")
+    return redirect(url_for("admin_ai_config"))
+
+
+@app.route("/admin/ai-config/<int:config_id>/edit", methods=["POST"])
+@admin_required
+def admin_ai_config_edit(config_id):
+    """Modifier une configuration"""
+    config = MatiereAIConfig.query.get_or_404(config_id)
+    
+    config.api_choice = request.form.get("api_choice")
+    config.modele_ia = request.form.get("modele_ia")
+    config.description = request.form.get("description", "")
+    config.actif = request.form.get("actif") == "on"
+    config.date_modification = datetime.utcnow()
+    
+    db.session.commit()
+    flash(f"Configuration pour '{config.matiere_nom}' mise à jour", "success")
+    return redirect(url_for("admin_ai_config"))
+
+
+@app.route("/admin/ai-config/<int:config_id>/delete", methods=["POST"])
+@admin_required
+def admin_ai_config_delete(config_id):
+    """Supprimer une configuration"""
+    config = MatiereAIConfig.query.get_or_404(config_id)
+    matiere_nom = config.matiere_nom
+    db.session.delete(config)
+    db.session.commit()
+    flash(f"Configuration pour '{matiere_nom}' supprimée", "success")
+    return redirect(url_for("admin_ai_config"))
+
+
 @app.route("/debug-conversation")
 def debug_conversation():
     """Affiche l'état de la conversation"""
@@ -2175,16 +2375,46 @@ def debug_conversation():
         "session_keys": list(session.keys())
     }
 
+
+def ia_detect_comprehension(conversation_recente, matiere, langue):
+    """Demande à l'IA si l'élève a vraiment compris"""
+    from openai import OpenAI
+    import os
     
+    prompt = f"""
+Analyse cette conversation et dis si l'élève a COMPRIS le concept ou s'il a besoin de continuer.
+
+CONVERSATION:
+{conversation_recente}
+
+MATIÈRE: {matiere}
+
+Réponds UNIQUEMENT par:
+- "COMPRIS" si l'élève a démontré une compréhension solide
+- "CONTINUER" si l'élève a besoin de plus de pratique
+"""
+    
+    try:
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=20
+        )
+        result = response.choices[0].message.content.strip().upper()
+        return result == "COMPRIS"
+    except:
+        return False  # En cas d'erreur, continuer
+
+
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel Naima - Support AJAX pour les exercices"""
+    """Route pour l'enseignant virtuel Naima - Version avec IA + diagnostic bayésien + vérification mathématique"""
     from datetime import datetime
-    import time
-    
-    print(f"[DEBUG] Accès enseignant virtuel")
-    print(f"[DEBUG] Session keys: {list(session.keys())}")
-    
+    from services.bayesian_diagnostic import diagnostiquer_difficulte
+    from services.math_verification import verifier_expression_fractionnaire
+
     # Vérifier l'authentification
     if "user_id" not in session:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -2192,261 +2422,510 @@ def enseignant_virtuel():
         return redirect(url_for("login_eleve"))
 
     utilisateur = User.query.get(session["user_id"])
+
     if not utilisateur or utilisateur.role != "eleve":
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Accès non autorisé'}), 403
         return redirect(url_for("login_eleve"))
-    
+
+    # Variables locales
     eleve = utilisateur
-    lang = session.get("lang", "fr")
-    
-    # ✅ Récupérer la conversation existante
+    current_lang = session.get("lang", "fr")
     conversation = session.get("conversation", [])
-    
-    # ✅ Récupérer la matière depuis la session si disponible
     matiere = session.get("matiere", "mathématiques")
-    
-    # TRAITEMENT POST
+    niveau_eleve = eleve.niveau.nom if eleve.niveau else ("6th grade" if current_lang == "en" else "6ème")
+
+    def format_messages(msgs, time_str):
+        html = []
+
+        for msg in msgs[-10:]:
+            if "👤" in msg:
+                content = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
+                html.append(
+                    f'<div class="message user">'
+                    f'<div class="message-avatar"><i class="fas fa-user-graduate"></i></div>'
+                    f'<div class="message-content">{content}'
+                    f'<div class="message-time">{time_str}</div>'
+                    f'</div></div>'
+                )
+
+            elif "🤖" in msg:
+                content = msg.replace("🤖 Naima:", "").strip()
+                html.append(
+                    f'<div class="message naima">'
+                    f'<div class="message-avatar"><i class="fas fa-robot"></i></div>'
+                    f'<div class="message-content">{content}'
+                    f'<div class="message-time">{time_str}</div>'
+                    f'</div></div>'
+                )
+
+        return html
+
+    def estimer_signaux_pedagogiques(question_eleve, derniere_question_ia=None):
+        """
+        Convertit une réponse d'élève en signaux simples pour le diagnostic bayésien.
+
+        Cette version ne contient pas de cas particulier comme 13/3 ou 13/6.
+        Elle estime plutôt l'état pédagogique à partir de signaux généraux :
+        - blocage explicite ;
+        - frustration ;
+        - réponse très courte ;
+        - présence d'un raisonnement ;
+        - contexte de calcul ;
+        - tentative de correction ;
+        - affirmation de réponse finale.
+        """
+
+        texte = (question_eleve or "").lower().strip()
+        derniere_q = (derniere_question_ia or "").lower().strip()
+
+        if not texte:
+            return "faible", "beaucoup", "lent"
+
+        mots_blocage = [
+            "je ne comprends pas",
+            "je comprends pas",
+            "je ne sais pas",
+            "je sais pas",
+            "aide-moi",
+            "aide moi",
+            "bloqué",
+            "bloquée",
+            "bloquee",
+            "je suis bloqué",
+            "je suis bloquée",
+            "difficile",
+            "je suis perdu",
+            "je suis perdue",
+            "pas compris",
+            "explique",
+            "explique-moi",
+            "explique moi",
+            "je n'arrive pas",
+            "j'arrive pas",
+            "je n’y arrive pas",
+            "je n'y arrive pas"
+        ]
+
+        mots_frustration = [
+            "c'est toi",
+            "tu ne sais pas",
+            "tu sais pas",
+            "vérifie toi-même",
+            "verifie toi meme",
+            "vérifie toi meme",
+            "je suis désolé",
+            "je suis desolé",
+            "ce n'est pas ça",
+            "ce n'est pas ca",
+            "c'est faux",
+            "tu te trompes",
+            "tu fais erreur",
+            "non",
+            "pas du tout"
+        ]
+
+        mots_maitrise = [
+            "j'ai compris",
+            "je comprends",
+            "c'est clair",
+            "facile",
+            "je pense que",
+            "la réponse est",
+            "la reponse est",
+            "donc",
+            "parce que",
+            "car",
+            "revient à",
+            "revient a",
+            "on obtient",
+            "j'obtiens",
+            "en divisant",
+            "en multipliant",
+            "en additionnant",
+            "en soustrayant",
+            "des deux côtés",
+            "des deux cotes",
+            "aux deux membres",
+            "je simplifie",
+            "je remplace"
+        ]
+
+        mots_correction = [
+            "pardon",
+            "je corrige",
+            "correction",
+            "je voulais dire",
+            "non plutôt",
+            "non plutot",
+            "c'est plutôt",
+            "c'est plutot",
+            "au lieu de",
+            "et non"
+        ]
+
+        mots_reponse_finale = [
+            "x=",
+            "x =",
+            "la réponse est",
+            "la reponse est",
+            "j'obtiens",
+            "on obtient",
+            "donc x",
+            "alors x",
+            "ça donne",
+            "ca donne"
+        ]
+
+        mots_operation = [
+            "+",
+            "-",
+            "*",
+            "×",
+            "/",
+            "÷",
+            "=",
+            "divisé",
+            "divise",
+            "multiplié",
+            "multiplie",
+            "addition",
+            "soustraction",
+            "fraction",
+            "simplifie",
+            "simplifier"
+        ]
+
+        blocage = any(mot in texte for mot in mots_blocage)
+        frustration = any(mot in texte for mot in mots_frustration)
+        maitrise = any(mot in texte for mot in mots_maitrise)
+        correction = any(mot in texte for mot in mots_correction)
+        reponse_finale = any(mot in texte for mot in mots_reponse_finale)
+        contient_operation = any(mot in texte for mot in mots_operation)
+
+        contexte_calcul = any(mot in derniere_q for mot in [
+            "isoler x",
+            "trouver la valeur",
+            "simplifier",
+            "calcule",
+            "calcul",
+            "division",
+            "fraction",
+            "équation",
+            "equation",
+            "résoudre",
+            "resoudre",
+            "addition",
+            "soustraction",
+            "multiplier",
+            "diviser"
+        ])
+
+        if blocage:
+            return "faible", "beaucoup", "lent"
+
+        if frustration:
+            return "faible", "beaucoup", "lent"
+
+        if correction and contient_operation:
+            return "moyenne", "peu", "rapide"
+
+        if contient_operation and maitrise:
+            return "bonne", "peu", "rapide"
+
+        if contexte_calcul and reponse_finale and len(texte) < 30:
+            return "moyenne", "peu", "rapide"
+
+        if contexte_calcul and len(texte) < 20:
+            return "moyenne", "peu", "rapide"
+
+        if maitrise and len(texte) >= 30:
+            return "bonne", "peu", "rapide"
+
+        if len(texte) < 12:
+            return "moyenne", "peu", "rapide"
+
+        if contient_operation:
+            return "moyenne", "peu", "rapide"
+
+        return "moyenne", "peu", "rapide"
+
+    def construire_instruction_bayesienne(diagnostic):
+        """
+        Transforme le diagnostic bayésien en consigne pédagogique pour Naima.
+        Cette consigne est ajoutée au contexte de l'IA.
+        """
+
+        niveau_risque = diagnostic.get("niveau_risque", "inconnu")
+        pourcentage = diagnostic.get("pourcentage_difficulte", 0)
+
+        if current_lang == "fr":
+            if niveau_risque == "élevé":
+                return (
+                    f"\n\nDiagnostic pédagogique interne : risque de difficulté élevé "
+                    f"({pourcentage}%). "
+                    f"Réponds comme une enseignante socratique très guidante. "
+                    f"Ne donne pas directement toute la solution. "
+                    f"Pose une question simple à la fois. "
+                    f"Reviens à l'étape précédente si nécessaire. "
+                    f"Encourage l'élève et vérifie sa compréhension. "
+                    f"Très important : avant de dire que l'élève s'est trompé, "
+                    f"vérifie soigneusement le calcul mathématique. "
+                    f"Si l'élève a raison, reconnais-le clairement et continue à partir de sa bonne réponse. "
+                    f"Si l'élève se trompe, explique l'erreur avec douceur, sans le décourager."
+                )
+
+            if niveau_risque == "moyen":
+                return (
+                    f"\n\nDiagnostic pédagogique interne : risque de difficulté moyen "
+                    f"({pourcentage}%). "
+                    f"Réponds de façon socratique. "
+                    f"Pose une question de clarification. "
+                    f"Aide l'élève à justifier son raisonnement sans donner directement toute la réponse. "
+                    f"Très important : avant de dire que l'élève s'est trompé, "
+                    f"vérifie toi-même le calcul mathématique. "
+                    f"Si l'élève a raison, reconnais-le clairement. "
+                    f"Si une étape est incomplète, demande-lui de la préciser."
+                )
+
+            return (
+                f"\n\nDiagnostic pédagogique interne : risque de difficulté faible "
+                f"({pourcentage}%). "
+                f"Tu peux proposer une question un peu plus exigeante, "
+                f"demander une justification ou encourager l'élève à généraliser sa méthode. "
+                f"Très important : avant de dire que l'élève s'est trompé, "
+                f"vérifie toi-même le calcul mathématique. "
+                f"Si l'élève a raison, reconnais-le clairement et valorise son raisonnement. "
+                f"Ne force pas l'élève à changer une réponse correcte."
+            )
+
+        else:
+            if niveau_risque == "élevé":
+                return (
+                    f"\n\nInternal pedagogical diagnosis: high difficulty risk "
+                    f"({pourcentage}%). "
+                    f"Answer like a very guided Socratic teacher. "
+                    f"Do not give the full solution directly. "
+                    f"Ask one simple question at a time. "
+                    f"Go back to the previous step if needed. "
+                    f"Encourage the student and check understanding. "
+                    f"Very important: before saying the student is wrong, "
+                    f"carefully verify the mathematical calculation yourself. "
+                    f"If the student is correct, clearly acknowledge it and continue from their correct answer. "
+                    f"If the student is wrong, explain the mistake gently without discouraging them."
+                )
+
+            if niveau_risque == "moyen":
+                return (
+                    f"\n\nInternal pedagogical diagnosis: medium difficulty risk "
+                    f"({pourcentage}%). "
+                    f"Use a Socratic approach. "
+                    f"Ask a clarifying question and help the student justify their reasoning. "
+                    f"Very important: before saying the student is wrong, "
+                    f"verify the mathematical calculation yourself. "
+                    f"If the student is correct, clearly acknowledge it. "
+                    f"If one step is incomplete, ask the student to clarify it."
+                )
+
+            return (
+                f"\n\nInternal pedagogical diagnosis: low difficulty risk "
+                f"({pourcentage}%). "
+                f"You may ask a more challenging question, request justification, "
+                f"or encourage the student to generalize the method. "
+                f"Very important: before saying the student is wrong, "
+                f"verify the mathematical calculation yourself. "
+                f"If the student is correct, clearly acknowledge it and value their reasoning. "
+                f"Do not force the student to change a correct answer."
+            )
+
     if request.method == 'POST':
         question = request.form.get("question", "").strip()
         matiere_form = request.form.get("matiere", "")
-        
+        difficulte_form = request.form.get("difficulte", "moyen")
+
         if matiere_form:
             matiere = matiere_form
             session["matiere"] = matiere
-        
-        print(f"[DEBUG] POST - Question: {question[:100]}...")
-        print(f"[DEBUG] Matière: {matiere}")
-        print(f"[DEBUG] Longueur question: {len(question)}")
-        
+
         if question and len(question) >= 3:
-            # Ajouter la question de l'élève
-            eleve_label = "👤 Élève:" if lang == "fr" else "👤 Student:"
+            eleve_label = "👤 Élève:" if current_lang == "fr" else "👤 Student:"
             conversation.append(f"{eleve_label} {question}")
-            
-            # ✅ Vérifier si l'exercice est terminé
+
+            # Vérification : exercice déjà terminé
             if session.get('exercice_termine'):
-                print(f"[DEBUG] 🏁 Exercice déjà terminé - pas d'appel IA")
-                if lang == "fr":
-                    msg_fin = "🤖 Naima: L'exercice est terminé ! Si tu veux continuer, clique sur 'Nouvel exercice'."
-                else:
-                    msg_fin = "🤖 Naima: The exercise is finished! If you want to continue, click 'New exercise'."
-                
-                conversation.append(msg_fin)
+                msg_fin = (
+                    "🎉 L'exercice est terminé ! Clique sur 'Nouvel exercice' pour continuer."
+                    if current_lang == "fr"
+                    else "🎉 The exercise is finished! Click 'New exercise' to continue."
+                )
+
+                conversation.append(f"🤖 Naima: {msg_fin}")
                 session["conversation"] = conversation
                 session.modified = True
-                
-                # Réponse AJAX
+
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    messages_html = []
-                    for msg in conversation[-10:]:
-                        if "👤" in msg:
-                            content = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
-                            messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
-                        elif "🤖" in msg:
-                            content = msg.replace("🤖 Naima:", "").strip()
-                            messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
-                    
                     return jsonify({
                         'success': True,
-                        'messages': messages_html,
-                        'last_message': messages_html[-1] if messages_html else '',
                         'termine': True
                     })
-            
+
+                return redirect(url_for("enseignant_virtuel"))
+
+            # Diagnostic bayésien
+            diagnostic_bayesien = None
+
             try:
-                # ✅ Vérifier si c'est une réponse à une question précédente
                 derniere_q_ia = session.get('derniere_q_ia')
-                print(f"[DEBUG] Dernière question IA trouvée: {derniere_q_ia if derniere_q_ia else 'AUCUNE'}")
-                
+
+                maitrise_cours, erreurs, temps_reponse = estimer_signaux_pedagogiques(
+                    question_eleve=question,
+                    derniere_question_ia=derniere_q_ia
+                )
+
+                diagnostic_bayesien = diagnostiquer_difficulte(
+                    maitrise_cours=maitrise_cours,
+                    erreurs=erreurs,
+                    temps_reponse=temps_reponse
+                )
+
+                session["diagnostic_bayesien"] = diagnostic_bayesien
+                session["signaux_bayesiens"] = {
+                    "maitrise_cours": maitrise_cours,
+                    "erreurs": erreurs,
+                    "temps_reponse": temps_reponse,
+                    "difficulte_demandee": difficulte_form
+                }
+
+                print("🧠 Diagnostic bayésien:", diagnostic_bayesien)
+                print("📊 Signaux bayésiens:", session["signaux_bayesiens"])
+
+            except Exception as e:
+                print(f"⚠️ Erreur diagnostic bayésien: {e}")
+                diagnostic_bayesien = None
+
+            # Utilisation réelle de l'IA
+            try:
+                print(f"🤖 Appel à OpenAI pour la matière: {matiere}")
+
+                derniere_q_ia = session.get('derniere_q_ia')
+
+                instruction_bayesienne = ""
+                if diagnostic_bayesien:
+                    instruction_bayesienne = construire_instruction_bayesienne(diagnostic_bayesien)
+
+                # Vérification mathématique locale avant l'appel IA
+                verification_calcul = verifier_expression_fractionnaire(question)
+
+                instruction_calcul = ""
+                if verification_calcul.get("calcul_verifie"):
+                    instruction_calcul = (
+                        "\n\nInstruction mathématique prioritaire : "
+                        + verification_calcul.get("message_interne", "")
+                    )
+
+                    session["verification_calcul"] = {
+                        "calcul_verifie": verification_calcul.get("calcul_verifie"),
+                        "est_correct": verification_calcul.get("est_correct"),
+                        "valeur_gauche": verification_calcul.get("valeur_gauche"),
+                        "valeur_droite": verification_calcul.get("valeur_droite"),
+                    }
+
+                    print("🧮 Vérification calcul:", session["verification_calcul"])
+
+                else:
+                    session.pop("verification_calcul", None)
+
+                instruction_interne_complete = instruction_bayesienne + instruction_calcul
+
                 if derniere_q_ia:
-                    # ✅ C'est une réponse à une question de Naima
-                    print(f"[DEBUG] Utilisation de generer_suite_conversation")
-                    reponse = generer_suite_conversation(
+                    reponse_ia = generer_suite_conversation(
                         derniere_q=derniere_q_ia,
-                        reponse=question,
+                        reponse=question + instruction_interne_complete,
                         historique=conversation,
-                        niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
-                        langue=lang,
+                        niveau=niveau_eleve,
+                        langue=current_lang,
                         mode_examen=session.get("mode_examen", False),
                         exercice_context="",
                         matiere=matiere
                     )
-                    # ✅ Effacer l'ancienne question APRÈS l'avoir utilisée
+
                     session.pop('derniere_q_ia', None)
-                    print(f"[DEBUG] Ancienne question effacée")
+
                 else:
-                    # ✅ Nouvelle question
-                    print(f"[DEBUG] Utilisation de generer_debut_conversation")
-                    reponse = generer_debut_conversation(
-                        question=question,
-                        niveau=eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème"),
-                        langue=lang,
+                    reponse_ia = generer_debut_conversation(
+                        question=question + instruction_interne_complete,
+                        niveau=niveau_eleve,
+                        langue=current_lang,
                         mode_examen=session.get("mode_examen", False),
                         matiere=matiere
                     )
-                
-                # ✅ Vérifier que la réponse n'est pas vide
-                if not reponse or len(reponse.strip()) < 10:
-                    print(f"[DEBUG] ⚠️ Réponse trop courte ou vide!")
-                    if lang == "fr":
-                        reponse = "Je réfléchis... Peux-tu reformuler ta question ?"
-                    else:
-                        reponse = "I'm thinking... Can you rephrase your question?"
-                
-                # Ajouter la réponse de Naima
-                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
-                conversation.append(f"{enseignant_label} {reponse}")
-                print(f"[DEBUG] Réponse ajoutée: {reponse[:100]}...")
-                
-                # ✅ Extraire la NOUVELLE question de Naima pour la suite (sauf si exercice terminé)
-                if not session.get('exercice_termine'):
-                    nouvelle_q = extraire_question(reponse, lang)
-                    if nouvelle_q:
-                        session['derniere_q_ia'] = nouvelle_q
-                        print(f"[DEBUG] ✅ Nouvelle question extraite: {nouvelle_q[:100]}...")
-                    else:
-                        print(f"[DEBUG] ⚠️ Aucune question extraite de la réponse")
-                
-                # Limiter la taille de la conversation
-                if len(conversation) > 20:
-                    conversation = conversation[-20:]
-                
-                # Sauvegarder
+
+                if not reponse_ia or len(reponse_ia.strip()) < 10:
+                    reponse_ia = (
+                        "Je réfléchis... Peux-tu reformuler ta question ?"
+                        if current_lang == "fr"
+                        else "I'm thinking... Can you rephrase?"
+                    )
+
+                conversation.append(f"🤖 Naima: {reponse_ia}")
+
+                nouvelle_q = extraire_question(reponse_ia, current_lang)
+
+                if nouvelle_q and len(nouvelle_q) > 5:
+                    session['derniere_q_ia'] = nouvelle_q
+
+                if len(conversation) > 30:
+                    conversation = conversation[-30:]
+
                 session["conversation"] = conversation
                 session.modified = True
-                print(f"[DEBUG] Conversation sauvegardée: {len(conversation)} messages")
-                
+
+                print("✅ Réponse IA générée avec succès")
+
             except Exception as e:
-                print(f"❌ Erreur lors de la génération: {e}")
+                print(f"❌ Erreur appel OpenAI: {e}")
                 import traceback
                 traceback.print_exc()
-                
-                # Message d'erreur
-                if lang == "fr":
-                    msg_erreur = "Désolée, j'ai eu un petit problème technique. Peux-tu reformuler ?"
-                else:
-                    msg_erreur = "Sorry, I had a technical issue. Can you rephrase?"
-                
-                enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
-                conversation.append(f"{enseignant_label} {msg_erreur}")
+
+                msg_erreur = (
+                    "⚠️ Je n'arrive pas à contacter mon IA en ce moment. "
+                    "Vérifie ta connexion internet ou réessaie plus tard."
+                    if current_lang == "fr"
+                    else
+                    "⚠️ I can't reach my AI right now. "
+                    "Check your internet connection or try again later."
+                )
+
+                conversation.append(f"🤖 Naima: {msg_erreur}")
                 session["conversation"] = conversation
                 session.modified = True
-        
-        # ✅ POUR LES REQUÊTES AJAX - RENVOYER LES MESSAGES FORMATÉS
+
+        # Réponse AJAX dans tous les cas de POST
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            messages_html = []
-            for msg in conversation[-10:]:
-                if "👤" in msg:
-                    content = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
-                    messages_html.append(f'<div class="message user"><div class="message-avatar"><i class="fas fa-user-graduate"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
-                elif "🤖" in msg:
-                    content = msg.replace("🤖 Naima:", "").strip()
-                    messages_html.append(f'<div class="message naima"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content">{content}<div class="message-time">{datetime.now().strftime("%H:%M")}</div></div></div>')
-            
-            # ✅ Calculer les stats pour les renvoyer aussi
-            try:
-                total_exercices = eleve.total_exercices_realises
-                exercices_reussis = eleve.exercices_reussis
-                serie = eleve.serie_actuelle
-                temps_apprentissage = eleve.temps_total_apprentissage
-                
-                stats = {
-                    'total_exercices': total_exercices,
-                    'exercices_reussis': exercices_reussis,
-                    'taux_reussite': round((exercices_reussis / total_exercices * 100) if total_exercices > 0 else 0),
-                    'serie': serie,
-                    'temps_apprentissage': temps_apprentissage,
-                }
-            except:
-                stats = {
-                    'total_exercices': 0,
-                    'exercices_reussis': 0,
-                    'taux_reussite': 0,
-                    'serie': 0,
-                    'temps_apprentissage': 0
-                }
-            
+            messages_html = format_messages(
+                conversation,
+                datetime.now().strftime("%H:%M")
+            )
+
             return jsonify({
                 'success': True,
                 'messages': messages_html,
                 'last_message': messages_html[-1] if messages_html else '',
-                'stats': stats,
                 'matiere': matiere,
-                'exercice_en_cours': session.get('exercice_en_cours'),
-                'termine': session.get('exercice_termine', False)
+                'termine': session.get('exercice_termine', False),
+                'diagnostic_bayesien': session.get("diagnostic_bayesien"),
+                'signaux_bayesiens': session.get("signaux_bayesiens"),
+                'verification_calcul': session.get("verification_calcul")
             })
-    
-    # ✅ Calculer les statistiques de l'élève pour l'affichage normal
-    from models import StudentResponse
-    from sqlalchemy import func
-    
-    try:
-        total_exercices = StudentResponse.query.filter_by(user_id=eleve.id).count()
-        exercices_reussis = StudentResponse.query.filter(
-            StudentResponse.user_id == eleve.id,
-            StudentResponse.etoiles >= 3
-        ).count() if hasattr(StudentResponse, 'etoiles') else 0
-    except Exception as e:
-        print(f"[DEBUG] Erreur calcul stats: {e}")
-        total_exercices = 0
-        exercices_reussis = 0
-    
-    # Calculer la série (streak)
-    serie = 0
-    try:
-        dates_exercices = db.session.query(
-            func.date(StudentResponse.timestamp)
-        ).filter(
-            StudentResponse.user_id == eleve.id
-        ).distinct().order_by(
-            func.date(StudentResponse.timestamp).desc()
-        ).all()
-        
-        if dates_exercices:
-            dates = [d[0] for d in dates_exercices]
-            today = datetime.utcnow().date()
-            
-            if dates and dates[0] == today:
-                serie = 1
-                for i in range(len(dates) - 1):
-                    if (dates[i] - dates[i+1]).days == 1:
-                        serie += 1
-                    else:
-                        break
-    except Exception as e:
-        print(f"[DEBUG] Erreur calcul série: {e}")
-    
-    # Calculer le temps total d'apprentissage
-    temps_apprentissage = 0
-    if hasattr(StudentResponse, 'temps_passe'):
-        try:
-            temps_total = db.session.query(
-                func.sum(StudentResponse.temps_passe)
-            ).filter(
-                StudentResponse.user_id == eleve.id
-            ).scalar() or 0
-            temps_apprentissage = round(temps_total / 60)
-        except Exception as e:
-            print(f"[DEBUG] Erreur calcul temps: {e}")
-    
-    stats = {
-        'total_exercices': total_exercices,
-        'exercices_reussis': exercices_reussis,
-        'taux_reussite': round((exercices_reussis / total_exercices * 100) if total_exercices > 0 else 0),
-        'serie': serie,
-        'temps_apprentissage': temps_apprentissage,
-        'date_inscription': eleve.date_inscription.strftime('%d/%m/%Y') if eleve.date_inscription else 'N/A'
-    }
-    
-    print(f"[DEBUG] Stats élève: {stats}")
-    
-    # Pour les requêtes normales (non AJAX)
+
+        return redirect(url_for("enseignant_virtuel"))
+
+    # Réponse GET
     return render_template(
         "enseignant_virtuel.html",
-        lang=lang,
+        lang=current_lang,
         eleve=eleve,
-        stats=stats,
+        stats={},
         conversation=conversation,
         exercice_remediation=None,
         access_count=0,
@@ -2455,6 +2934,7 @@ def enseignant_virtuel():
         theme="général",
         datetime=datetime
     )
+
 
 @app.route("/demander-exercice", methods=["POST"])
 def demander_exercice():
@@ -2669,81 +3149,20 @@ Answer with this JSON object (no text before/after):
 
 
 def analyser_reponse(enonce, reponse_eleve, correction, etape=1, langue="fr"):
-    """Analyse la réponse de l'élève - VERSION CORRIGÉE"""
-    from openai import OpenAI
-    import os
-    import json
+    """Wrapper vers naima_corriger_exercice"""
+    result = naima_corriger_exercice(
+        question=enonce,
+        reponse_eleve=reponse_eleve,
+        correction_attendue=correction.get("reponse_finale") if isinstance(correction, dict) else correction,
+        langue=langue
+    )
     
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    
-    if langue == "fr":
-        prompt = f"""En tant que Naima l'enseignante, analyse cette réponse d'élève.
-
-Énoncé: {enonce}
-Réponse de l'élève: {reponse_eleve}
-Correction attendue: {correction}
-Étape actuelle: {etape}
-
-Analyse si la réponse est correcte et donne un feedback constructif.
-
-Réponds UNIQUEMENT avec un objet JSON:
-{{
-    "correct": true/false,
-    "feedback": "Message d'encouragement ou de guidage (1-2 phrases)",
-    "indice": "Un petit indice pour avancer (optionnel)"
-}}"""
-    else:
-        prompt = f"""As teacher Naima, analyze this student's answer.
-
-Problem: {enonce}
-Student's answer: {reponse_eleve}
-Expected answer: {correction}
-Current step: {etape}
-
-Analyze if the answer is correct and give constructive feedback.
-
-Answer ONLY with a JSON object:
-{{
-    "correct": true/false,
-    "feedback": "Encouraging or guiding message (1-2 sentences)",
-    "hint": "A small hint to move forward (optional)"
-}}"""
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Tu es Naima, enseignante bienveillante. Réponds TOUJOURS avec un JSON valide."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.5,
-            max_tokens=300
-        )
-        
-        reponse_texte = response.choices[0].message.content
-        
-        # Nettoyer la réponse
-        import re
-        json_match = re.search(r'\{.*\}', reponse_texte, re.DOTALL)
-        if json_match:
-            reponse_texte = json_match.group()
-        
-        resultat = json.loads(reponse_texte)
-        
-        # Adapter les clés selon la langue
-        if langue == "en" and "hint" in resultat and "indice" not in resultat:
-            resultat["indice"] = resultat["hint"]
-        
-        return resultat
-        
-    except Exception as e:
-        print(f"❌ Erreur analyse réponse: {e}")
-        # Fallback
-        return {
-            "correct": False,
-            "feedback": "Continue à chercher, tu es sur la bonne voie !" if langue == "fr" else "Keep searching, you're on the right track!",
-            "indice": "Relis bien l'énoncé" if langue == "fr" else "Read the problem carefully"
-        }
+    # Convertir au format attendu par l'ancien code
+    return {
+        "correct": result.get("correct", False),
+        "feedback": result.get("feedback", ""),
+        "indice": result.get("analyse", "")[:200]  # Premier extrait comme indice
+    }
 
 
 @app.route("/terminer-conversation", methods=["POST"])
@@ -2867,103 +3286,17 @@ def nouvel_exercice():
     redirect_url = url_for("enseignant_virtuel", matiere=matiere) + f"?t={int(time.time())}"
     return redirect(redirect_url)
 
-def generer_exercice_specifique(matiere, niveau, difficulte="moyen", type_exercice="exercice", mots_cles="", langue="fr"):
-    """Génère un exercice spécifique selon les options choisies"""
-    from openai import OpenAI
-    import os
-    import re
-    import json
-    
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    
-    # Construire le contexte des mots-clés
-    contexte_mots_cles = f" sur le thème de {mots_cles}" if mots_cles else ""
-    
-    # Définir les types d'exercices (garder en français pour la clé, mais le contenu sera traduit)
-    types = {
-        "exercice": "un exercice standard" if langue == "fr" else "a standard exercise",
-        "probleme": "un problème à résoudre (mise en situation concrète)" if langue == "fr" else "a problem to solve (real-life situation)",
-        "qcm": "un QCM (question à choix multiples) avec 4 options" if langue == "fr" else "a multiple choice question with 4 options",
-        "logique": "un exercice de logique ou de raisonnement" if langue == "fr" else "a logic or reasoning exercise"
-    }
-    
-    type_description = types.get(type_exercice, "un exercice" if langue == "fr" else "an exercise")
-    
-    if langue == "fr":
-        system_prompt = "Tu es Naima, une enseignante virtuelle spécialisée dans la création d'exercices pédagogiques variés. Tu réponds TOUJOURS en FRANÇAIS."
-        prompt = f"""En tant que Naima, génère {type_description} de {matiere}{contexte_mots_cles} pour un élève de niveau {niveau} (difficulté: {difficulte}).
-
-RÈGLES IMPORTANTES:
-1. L'exercice doit être SPÉCIFIQUEMENT sur le thème demandé: {mots_cles if mots_cles else "pas de thème spécifique"}
-2. C'est un {type_description} - adapte le format en conséquence
-3. Sois créatif/ve mais reste fidèle au thème demandé
-
-Format de réponse (JSON uniquement):
-{{
-    "message_accueil": "Un message d'introduction chaleureux qui présente l'exercice",
-    "enonce": "L'énoncé complet de l'exercice",
-    "premiere_question": "La première question que tu poses à l'élève pour le guider",
-    "indices": ["indice 1 (aide douce)", "indice 2 (plus précis)", "indice 3 (presque la solution)"],
-    "correction": {{
-        "reponse_finale": "La réponse correcte",
-        "explication": "Explication complète"
-    }}
-}}"""
-    else:
-        system_prompt = "You are Naima, a virtual teacher specialized in creating varied educational exercises. You ALWAYS answer in ENGLISH."
-        prompt = f"""As Naima, generate {type_description} in {matiere}{contexte_mots_cles} for a {niveau} level student (difficulty: {difficulte}).
-
-IMPORTANT RULES:
-1. The exercise must be SPECIFICALLY about: {mots_cles if mots_cles else "no specific theme"}
-2. This is a {type_description} - adapt the format accordingly
-3. Be creative but stay true to the requested theme
-
-Response format (JSON only):
-{{
-    "message_accueil": "A warm introduction message presenting the exercise",
-    "enonce": "The complete exercise statement",
-    "premiere_question": "The first question you ask the student to guide them",
-    "indices": ["hint 1 (gentle help)", "hint 2 (more precise)", "hint 3 (almost the answer)"],
-    "correction": {{
-        "reponse_finale": "The correct answer",
-        "explication": "Full explanation"
-    }}
-}}"""
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},  # ← Maintenant bilingue
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.8,
-            max_tokens=800
-        )
-        
-        reponse_texte = response.choices[0].message.content
-        print(f"📥 Réponse brute: {reponse_texte[:200]}...")  # Pour déboguer
-        
-        # Extraire le JSON
-        json_match = re.search(r'(\{.*\})', reponse_texte, re.DOTALL)
-        if json_match:
-            reponse_texte = json_match.group(1)
-        
-        exercice = json.loads(reponse_texte)
-        
-        # ✅ Vérification que l'exercice est dans la bonne langue
-        if langue == "en":
-            print("✅ Exercice généré en anglais")
-        else:
-            print("✅ Exercice généré en français")
-            
-        return exercice
-        
-    except Exception as e:
-        print(f"❌ Erreur génération exercice: {e}")
-        # Fallback avec des exercices variés selon le type
-        return generer_exercice_fallback(matiere, type_exercice, mots_cles, difficulte, langue)
-
+def generer_exercice_specifique(matiere, niveau, difficulte="moyen", type_exercice="exercice", 
+                                 mots_cles="", langue="fr"):
+    """Wrapper vers naima_generer_exercice"""
+    return naima_generer_exercice(
+        matiere=matiere,
+        niveau=niveau,
+        difficulte=difficulte,
+        type_exercice=type_exercice,
+        mots_cles=mots_cles,
+        langue=langue
+    )
 
 def generer_exercice_fallback(matiere, type_exercice, mots_cles, difficulte, langue):
     """Fallback avec des exercices pré-définis mais variés - VERSION BILINGUE"""
@@ -4063,159 +4396,234 @@ def soumettre_reponse():
     lang = eleve.langue if hasattr(eleve, "langue") and eleve.langue == "en" else "fr"
     question = exercice.question_en if lang == "en" else exercice.question_fr
 
-    # ✅ NOUVEAU PROMPT avec barème sur 5
-    if lang == "en":
-        prompt = f"""
-Correct the student's answer to a school exercise.
+    # ============================================================
+    # 🎯 ROUTAGE INTELLIGENT SELON LA MATIÈRE (CONFIG ADMIN)
+    # ============================================================
+    
+    def get_correction_model_from_exercice(exercice):
+        """
+        Récupère la configuration IA pour la matière de l'exercice
+        L'admin peut tout configurer via /admin/ai-config
+        """
+        # Déterminer la matière de l'exercice
+        matiere_nom = None
+        try:
+            if exercice.lecon and exercice.lecon.unite and exercice.lecon.unite.matiere:
+                matiere_nom = exercice.lecon.unite.matiere.nom
+        except:
+            pass
+        
+        # Si pas de matière, essayer de détecter depuis la question
+        if not matiere_nom and exercice:
+            question_text = (exercice.question_fr or exercice.question_en or "").lower()
+            
+            # Mapping des mots-clés vers les noms de matières
+            keyword_mapping = {
+                "Mathématiques": ["equation", "calcul", "x=", "fraction", "geometrie", "algebre", "fonction", "trigonométrie"],
+                "MCR3U": ["mcr3u", "fonction", "quadratique", "exponentiel"],
+                "MHF4U": ["mhf4u", "advanced function", "polynôme", "logarithme"],
+                "MCV4U": ["mcv4u", "calculus", "derivée", "integrale", "vecteur"],
+                "Français": ["grammaire", "conjugaison", "verbe", "phrase", "texte", "littérature", "poème"],
+                "English": ["grammar", "conjugation", "verb", "sentence", "literature", "poem"],
+                "Histoire": ["date", "guerre", "revolution", "siecle", "roi", "bataille"],
+                "Sciences": ["atome", "cellule", "force", "energie", "vitesse", "masse"],
+                "Physique": ["physique", "force", "vitesse", "acceleration", "energie"],
+                "Chimie": ["chimie", "atome", "molecule", "reaction", "acide"],
+                "Biologie": ["biologie", "cellule", "organe", "adn", "genetique"]
+            }
+            
+            for mat, keywords in keyword_mapping.items():
+                if any(kw in question_text for kw in keywords):
+                    matiere_nom = mat
+                    break
+        
+        if not matiere_nom:
+            matiere_nom = "Mathématiques"  # Par défaut
+        
+        print(f"🔍 Matière détectée pour correction: {matiere_nom}")
+        
+        # Chercher la configuration dans la base de données
+        try:
+            from models import MatiereAIConfig
+            config = MatiereAIConfig.query.filter_by(matiere_nom=matiere_nom, actif=True).first()
+            
+            if config:
+                print(f"⚙️ Configuration trouvée: {config.matiere_nom} → {config.api_choice}/{config.modele_ia}")
+                
+                # Choisir le client
+                if config.api_choice == "deepseek":
+                    return client_deepseek, config.modele_ia, f"DeepSeek/{config.modele_ia}"
+                else:
+                    return client_openai, config.modele_ia, f"OpenAI/{config.modele_ia}"
+        except Exception as e:
+            print(f"⚠️ Erreur lecture config: {e}")
+        
+        # Fallback sur le routage par défaut
+        fallback_client = client_deepseek
+        fallback_model = "deepseek-v4-flash"
+        print(f"⚠️ Fallback config: DeepSeek Flash")
+        
+        return fallback_client, fallback_model, "DeepSeek/fallback"
+    
+    # Récupérer le client et modèle pour cet exercice
+    correction_client, correction_model, correction_source = get_correction_model_from_exercice(exercice)
+    print(f"🔀 Correction avec: {correction_source}")
 
-📘 Problem statement:
+    # ============================================================
+    # PROMPT SIMPLIFIÉ ET BILINGUE (compatible avec les deux API)
+    # ============================================================
+    
+    if lang == "en":
+        prompt = f"""Correct the student's answer.
+
+📘 Problem:
 {question}
 
 📜 Student's answer:
 {reponse_eleve}
 
-⭐ SCORING SCALE (5 POINTS MAXIMUM):
-- 5/5: Excellent reasoning, complete methodology, correct result
-- 4/5: Very good reasoning, appropriate method, minor calculation error  
-- 3/5: Good overall approach, method understood but imperfect application
-- 2/5: Partial reasoning, some relevant elements but incomplete
-- 1/5: Fragmented approach, very limited correct elements
-- 0/5: Off-topic or no answer
+⭐ SCORING (5 points):
+5: Excellent reasoning, correct result
+4: Very good, minor error
+3: Good approach, incomplete
+2: Partial reasoning
+1: Attempt but major error
+0: Off-topic or empty
 
-🎯 IMPORTANT: 
-- Give priority to reasoning over final result
-- Award partial credit for correct steps
-- You MUST use the 5-point scale above
-- ALWAYS write "Score: X/5" in your response
-
-📤 Expected format:
-Analysis:
-[...]
+Format:
+Analysis: ...
 Score: X/5
-Correction:
-- Expert resolution: [...]
-- Final answer: [...]
-""".strip()
+Correct answer: ..."""
     else:
-        prompt = f"""
-Corrige la réponse d'un élève à un exercice scolaire.
+        prompt = f"""Corrige la réponse de l'élève.
 
-📘 Énoncé :
+📘 Énoncé:
 {question}
 
-📜 Réponse de l'élève :
+📜 Réponse de l'élève:
 {reponse_eleve}
 
-⭐ BARÈME (5 POINTS MAXIMUM) :
-- 5/5 : Raisonnement excellent, méthodologie complète, résultat correct
-- 4/5 : Très bon raisonnement, méthode appropriée, erreur mineure de calcul
-- 3/5 : Bonne démarche globale, méthode comprise mais application imparfaite
-- 2/5 : Raisonnement partiel, éléments pertinents mais incomplets
-- 1/5 : Démarche ébauchée, éléments corrects très limités
-- 0/5 : Hors sujet ou absence de réponse
+⭐ BARÈME (5 points):
+5: Excellent raisonnement, résultat correct
+4: Très bon, erreur mineure
+3: Bonne approche, incomplet
+2: Raisonnement partiel
+1: Tentative mais erreur majeure
+0: Hors sujet ou vide
 
-🎯 IMPORTANT :
-- Privilégiez le raisonnement sur le résultat final
-- Accordez des points partiels pour les étapes correctes
-- Vous DEVEZ utiliser le barème sur 5 points ci-dessus
-- Écrivez TOUJOURS "Note : X/5" dans votre réponse
+Format:
+Analyse: ...
+Note: X/5
+Réponse correcte: ..."""
 
-📤 Format attendu :
-Analyse :
-[...]
-Note : X/5
-Correction :
-- Résolution experte : [...]
-- Résultat final : [...]
-""".strip()
-
+    # ============================================================
+    # APPEL À L'API CHOISIE (avec fallback)
+    # ============================================================
+    
+    analyse_ia = ""
+    etoiles = 0
+    
     try:
-        print("🤖 Appel à l'API OpenAI...")
-        chat_completion = client.chat.completions.create(
-            model="gpt-4",
+        print(f"🤖 Appel API pour correction ({correction_source})...")
+        chat_completion = correction_client.chat.completions.create(
+            model=correction_model,
             messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=500
         )
         analyse_ia = chat_completion.choices[0].message.content.strip()
-        print("✅ Analyse IA reçue avec succès")
+        print(f"✅ Correction reçue de {correction_source}")
     except Exception as e:
-        analyse_ia = f"Erreur IA : {e}"
-        print(f"❌ Erreur lors de l'appel IA: {e}")
+        print(f"❌ Erreur avec {correction_source}: {e}")
+        
+        # Fallback sur l'autre API
+        try:
+            print("🔄 Fallback sur l'autre API...")
+            if correction_client == client_deepseek:
+                fallback_client = client_openai
+                fallback_model = "gpt-4o-mini"
+                fallback_source = "OpenAI/gpt-4o-mini (fallback)"
+            else:
+                fallback_client = client_deepseek
+                fallback_model = "deepseek-v4-flash"
+                fallback_source = "DeepSeek Flash (fallback)"
+            
+            chat_completion = fallback_client.chat.completions.create(
+                model=fallback_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=500
+            )
+            analyse_ia = chat_completion.choices[0].message.content.strip()
+            print(f"✅ Fallback réussi avec {fallback_source}")
+        except Exception as e2:
+            analyse_ia = f"Erreur IA : {e2}"
+            print(f"❌ Erreur fallback: {e2}")
 
-    # ✅ EXTRACTION DE NOTE SUR 5
-    etoiles = 0
-    match = re.search(r"(Note|Score)\s*:\s*(\d)/5", analyse_ia, re.IGNORECASE)
-    if match:
-        etoiles = int(match.group(2))
-        print(f"⭐ Note extraite: {etoiles}/5")
-    else:
-        # Fallback si le format /5 n'est pas respecté
-        match = re.search(r"(Note|Score)\s*:\s*(\d)", analyse_ia, re.IGNORECASE)
+    # ============================================================
+    # EXTRACTION DE LA NOTE (bilingue)
+    # ============================================================
+    
+    if analyse_ia:
+        # Pattern pour "Note: X/5" ou "Score: X/5"
+        match = re.search(r"(Note|Score)\s*:\s*(\d)/?5?", analyse_ia, re.IGNORECASE)
         if match:
-            etoiles = min(int(match.group(2)), 5)  # Limite à 5 maximum
-            print(f"⭐ Note extraite (sans /5): {etoiles}/5")
+            etoiles = min(int(match.group(2)), 5)
+            print(f"⭐ Note extraite: {etoiles}/5")
         else:
-            print("⚠️ Impossible d'extraire la note de l'analyse IA")
+            # Fallback: chercher juste un nombre entre 0 et 5
+            match = re.search(r"\b([0-5])\b", analyse_ia)
+            if match:
+                etoiles = int(match.group(1))
+                print(f"⭐ Note extraite (fallback): {etoiles}/5")
+            else:
+                print("⚠️ Impossible d'extraire la note de l'analyse IA")
 
-    # ✅ GÉNÉRATION DE REMÉDIATION si note < 3/5
+    # ============================================================
+    # GÉNÉRATION DE REMÉDIATION si note < 3/5
+    # ============================================================
+    
     if etoiles < 3:
         print(f"🔄 Génération remédiation (note: {etoiles}/5)")
+        
         if lang == "en":
-            remediation_prompt = f"""
-Generate a new math remediation exercise for a student who scored {etoiles}/5 on the previous exercise.
+            remediation_prompt = f"""Generate a short remediation exercise for a student who scored {etoiles}/5.
 
-🧩 Context:
-- Original question: {question}
-- Student's answer: {reponse_eleve}
-- Student's score: {etoiles}/5
+Original question: {question}
+Student's answer: {reponse_eleve}
 
-✍️ Instructions:
-- Create an exercise with equivalent difficulty focusing on the same concepts
-- Adapt the exercise to address the specific difficulties shown in the student's answer
-- Write clear instructions
-- Provide the expected final answer
-- Provide a short hint to guide the student
-
-🎯 Output format:
+Output:
 Question: ...
 Expected answer: ...
-Hint: ...
-""".strip()
+Hint: ..."""
         else:
-            remediation_prompt = f"""
-Génère un nouvel exercice de remédiation en mathématiques pour un élève qui a obtenu {etoiles}/5 sur l'exercice précédent.
+            remediation_prompt = f"""Génère un court exercice de remédiation pour un élève qui a obtenu {etoiles}/5.
 
-🧩 Contexte :
-- Énoncé initial : {question}
-- Réponse de l'élève : {reponse_eleve}
-- Note de l'élève : {etoiles}/5
+Question originale: {question}
+Réponse de l'élève: {reponse_eleve}
 
-✍️ Consignes :
-- Crée un exercice de difficulté équivalente ciblant les mêmes concepts
-- Adapte l'exercice pour adresser les difficultés spécifiques montrées dans la réponse de l'élève
-- Rédige un énoncé clair
-- Donne la réponse attendue
-- Fournis un court indice pour aider l'élève
-
-🎯 Format attendu :
-Question : ...
-Réponse attendue : ...
-Indice : ...
-""".strip()
+Format:
+Question: ...
+Réponse attendue: ...
+Indice: ..."""
 
         try:
-            remediation_completion = client.chat.completions.create(
-                model="gpt-4",
+            # Utiliser DeepSeek Flash pour la remédiation (économique)
+            remediation_completion = client_deepseek.chat.completions.create(
+                model="deepseek-v4-flash",
                 messages=[{"role": "user", "content": remediation_prompt}],
+                temperature=0.7,
+                max_tokens=300
             )
             remediation_content = remediation_completion.choices[0].message.content.strip()
-            print("✅ Remédiation générée")
+            print("✅ Remédiation générée avec DeepSeek Flash")
             
             # Création de la suggestion de remédiation
             nouvelle_suggestion = RemediationSuggestion(
                 user_id=eleve.id,
-                theme=exercice.theme,
+                theme=exercice.theme if hasattr(exercice, 'theme') else "Général",
                 lecon=exercice.lecon.titre_fr if exercice.lecon else "Général",
-                message=f"Exercice de remédiation proposé automatiquement (note: {etoiles}/5).",
+                message=f"Exercice de remédiation (note: {etoiles}/5).",
                 exercice_suggere=remediation_content,
                 statut="en_attente",
                 timestamp=datetime.utcnow()
@@ -4223,19 +4631,22 @@ Indice : ...
             db.session.add(nouvelle_suggestion)
             print("✅ Suggestion de remédiation sauvegardée")
             
-            # 🆕 IMPORTANT: Autoriser l'accès à l'enseignant virtuel pour cette rémédiation
+            # Autoriser l'accès à l'enseignant virtuel
             session['remediation_access'] = {
                 'exercice_id': exercice.id,
                 'note': etoiles,
                 'access_count': 0,
                 'first_access': datetime.utcnow().isoformat()
             }
-            print(f"✅ Accès à l'enseignant virtuel autorisé (note: {etoiles}/5)")
+            print(f"✅ Accès enseignant virtuel autorisé (note: {etoiles}/5)")
             
         except Exception as e:
             print(f"❌ Erreur génération remédiation: {e}")
 
-    # Sauvegarde réponse
+    # ============================================================
+    # SAUVEGARDE DE LA RÉPONSE
+    # ============================================================
+    
     try:
         nouvelle = StudentResponse(
             user_id=eleve.id,
@@ -4254,16 +4665,19 @@ Indice : ...
 
     print("=== ✅ RÉPONSE SAUVEGARDÉE ===")
 
-    # ✅ Afficher la rétroaction au lieu de rediriger
+    # ============================================================
+    # AFFICHAGE DE LA RÉTROACTION
+    # ============================================================
+    
     return render_template(
         "exercice_detail.html",
         exercice=exercice,
         eleve=eleve,
         lang=lang,
-        reponse=nouvelle,  # ✅ Rétroaction incluse
-        show_feedback=True,  # ✅ Flag pour afficher la rétroaction
-        already_completed=True,  # ✅ Marquer comme déjà complété
-        show_teacher_button=(etoiles < 3)  # 🆕 Afficher bouton enseignant virtuel si note < 3
+        reponse=nouvelle,
+        show_feedback=True,
+        already_completed=True,
+        show_teacher_button=(etoiles < 3)
     )
 
 # ====================================================================
@@ -5494,44 +5908,128 @@ def inscription():
 @app.route("/inscription-enseignant", methods=["GET", "POST"])
 def inscription_enseignant():
     """Inscription d'un nouvel enseignant - accessible sans authentification"""
+
     lang = request.args.get("lang") or session.get("lang", "fr")
-    
+
+    # Charger les niveaux pour le formulaire GET et les retours d'erreur
+    niveaux = Niveau.query.order_by(Niveau.nom.asc()).all()
+
     if request.method == "POST":
         nom = request.form.get("nom")
         email = request.form.get("email")
         mot_de_passe = request.form.get("mot_de_passe")
         confirm_password = request.form.get("confirm_password")
 
+        # ✅ Récupérer les matières choisies
+        # Le template devra envoyer des checkbox name="matieres"
+        matiere_ids = request.form.getlist("matieres")
+
         # Validation basique
         if not all([nom, email, mot_de_passe, confirm_password]):
-            flash("Tous les champs sont requis" if lang == 'fr' else "All fields are required", "error")
-            return render_template("inscription_enseignant.html", lang=lang)
+            flash(
+                "Tous les champs sont requis" if lang == "fr" else "All fields are required",
+                "error"
+            )
+            return render_template(
+                "inscription_enseignant.html",
+                lang=lang,
+                niveaux=niveaux
+            )
 
         # Vérifier la confirmation du mot de passe
         if mot_de_passe != confirm_password:
-            flash("Les mots de passe ne correspondent pas" if lang == 'fr' else "Passwords do not match", "error")
-            return render_template("inscription_enseignant.html", lang=lang)
+            flash(
+                "Les mots de passe ne correspondent pas" if lang == "fr" else "Passwords do not match",
+                "error"
+            )
+            return render_template(
+                "inscription_enseignant.html",
+                lang=lang,
+                niveaux=niveaux
+            )
 
         # Vérifier la longueur du mot de passe
         if len(mot_de_passe) < 8:
-            flash("Le mot de passe doit contenir au moins 8 caractères" if lang == 'fr' else "Password must be at least 8 characters", "error")
-            return render_template("inscription_enseignant.html", lang=lang)
+            flash(
+                "Le mot de passe doit contenir au moins 8 caractères" if lang == "fr" else "Password must be at least 8 characters",
+                "error"
+            )
+            return render_template(
+                "inscription_enseignant.html",
+                lang=lang,
+                niveaux=niveaux
+            )
+
+        # ✅ Vérifier qu'au moins une matière est choisie
+        if not matiere_ids:
+            flash(
+                "Veuillez choisir au moins une matière à enseigner." if lang == "fr" else "Please choose at least one subject to teach.",
+                "error"
+            )
+            return render_template(
+                "inscription_enseignant.html",
+                lang=lang,
+                niveaux=niveaux
+            )
 
         # Vérifier si l'email existe déjà
         existing_user = User.query.filter_by(email=email.strip()).first()
         if existing_user:
-            flash("Un utilisateur avec cet email existe déjà." if lang == 'fr' else "A user with this email already exists.", "error")
-            return render_template("inscription_enseignant.html", lang=lang)
+            flash(
+                "Un utilisateur avec cet email existe déjà." if lang == "fr" else "A user with this email already exists.",
+                "error"
+            )
+            return render_template(
+                "inscription_enseignant.html",
+                lang=lang,
+                niveaux=niveaux
+            )
 
         try:
+            # ✅ Sécuriser les IDs reçus
+            matiere_ids_int = []
+
+            for mid in matiere_ids:
+                try:
+                    matiere_ids_int.append(int(mid))
+                except ValueError:
+                    pass
+
+            if not matiere_ids_int:
+                flash(
+                    "Les matières sélectionnées sont invalides." if lang == "fr" else "Selected subjects are invalid.",
+                    "error"
+                )
+                return render_template(
+                    "inscription_enseignant.html",
+                    lang=lang,
+                    niveaux=niveaux
+                )
+
+            # ✅ Récupérer les matières valides depuis la base
+            matieres_valides = Matiere.query.filter(
+                Matiere.id.in_(matiere_ids_int)
+            ).all()
+
+            if not matieres_valides:
+                flash(
+                    "Aucune matière valide n'a été trouvée." if lang == "fr" else "No valid subject was found.",
+                    "error"
+                )
+                return render_template(
+                    "inscription_enseignant.html",
+                    lang=lang,
+                    niveaux=niveaux
+                )
+
             # Créer l'utilisateur enseignant
             new_teacher = User(
-                username=email.strip().split('@')[0],  # Utilise la partie avant @ comme username
+                username=email.strip().split("@")[0],
                 nom_complet=nom.strip(),
                 email=email.strip(),
                 role="enseignant",
                 statut="actif",
-                statut_paiement="exempt",  # Enseignants n'ont pas besoin de payer
+                statut_paiement="exempt",
                 inscrit_par_admin=False,
                 langue=lang,
                 date_inscription=datetime.utcnow(),
@@ -5539,39 +6037,55 @@ def inscription_enseignant():
                 accepte_cgu=True,
                 date_acceptation_cgu=datetime.utcnow()
             )
-            
-            # Définir le mot de passe (le setter le hache automatiquement)
+
+            # Définir le mot de passe
             new_teacher.mot_de_passe = mot_de_passe
-            
+
             db.session.add(new_teacher)
+            db.session.flush()  # ✅ permet d'obtenir new_teacher.id sans commit immédiat
+
+            # ✅ Enregistrer les niveaux/matières de l'enseignant
+            for matiere in matieres_valides:
+                lien = EnseignantMatiere(
+                    enseignant_id=new_teacher.id,
+                    niveau_id=matiere.niveau_id,
+                    matiere_id=matiere.id
+                )
+                db.session.add(lien)
+
             db.session.commit()
 
-            # Envoyer un email de bienvenue (optionnel)
-            # send_welcome_email(new_teacher.email, new_teacher.nom_complet, lang)
-            
             flash(
-                "Inscription réussie ! Veuillez contacter le support à info@advanceteach.com pour vous connecter à vos élèves." 
-                if lang == 'fr' else 
-                "Registration successful! Please contact support at info@advanceteach.com to connect with your students.", 
+                "Inscription réussie ! Vos matières d'enseignement ont été enregistrées. Veuillez contacter le support à info@advanceteach.com pour vous connecter à vos élèves."
+                if lang == "fr" else
+                "Registration successful! Your teaching subjects have been saved. Please contact support at info@advanceteach.com to connect with your students.",
                 "success"
             )
-            
-            # Rediriger vers la page de connexion
+
             return redirect(url_for("login_enseignant", lang=lang))
 
         except Exception as e:
             db.session.rollback()
             print(f"Erreur inscription enseignant: {e}")
             flash(
-                f"Erreur lors de l'inscription: {str(e)}" 
-                if lang == 'fr' else 
-                f"Registration error: {str(e)}", 
+                f"Erreur lors de l'inscription: {str(e)}"
+                if lang == "fr" else
+                f"Registration error: {str(e)}",
                 "error"
             )
-            return render_template("inscription_enseignant.html", lang=lang)
+            return render_template(
+                "inscription_enseignant.html",
+                lang=lang,
+                niveaux=niveaux
+            )
 
-    # GET request - rendre le template avec la langue
-    return render_template("inscription_enseignant.html", lang=lang)
+    # GET request
+    return render_template(
+        "inscription_enseignant.html",
+        lang=lang,
+        niveaux=niveaux
+    )
+
 
 @app.route("/admin/creer-enseignant", methods=["GET", "POST"])
 @admin_required
@@ -5837,7 +6351,7 @@ def connexion():
 @app.route("/inscription-eleve", methods=["GET", "POST"])
 def inscription_eleve():
     from forms import InscriptionEleveForm
-    from models import Niveau, User, Parent, ParentEleve, Enseignant, db
+    from models import Niveau, Matiere, User, Parent, ParentEleve, Enseignant, EleveMatiere, db
     from datetime import datetime, timedelta
     
     form = InscriptionEleveForm()
@@ -5851,20 +6365,47 @@ def inscription_eleve():
         payment_option = request.form.get('payment_option', 'trial')
         plan_type = request.form.get('plan_type', 'monthly')
         
+        # ✅ Récupérer les matières choisies par l'élève
+        matiere_ids = request.form.getlist("matieres")
+        
         # Récupérer l'email de l'enseignant tuteur (optionnel)
         teacher_email = request.form.get('teacher_email')
         teacher_tutor = None
         
         print(f"📋 Option: {payment_option}, Plan: {plan_type}, Teacher Email: {teacher_email}")
+        print(f"📋 Matières sélectionnées: {matiere_ids}")
         
         # Vérifier les doublons
         if User.query.filter_by(email=form.email.data).first():
             flash("Cet email est déjà utilisé", "error")
-            return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'))
+            return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'), niveaux=niveaux)
         
         if User.query.filter_by(username=form.username.data).first():
             flash("Ce nom d'utilisateur est déjà utilisé", "error")
-            return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'))
+            return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'), niveaux=niveaux)
+        
+        # ✅ Vérifier qu'au moins une matière est choisie
+        if not matiere_ids:
+            flash("Veuillez choisir au moins une matière", "error")
+            return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'), niveaux=niveaux)
+        
+        # ✅ Sécuriser les IDs reçus
+        try:
+            matiere_ids_int = [int(mid) for mid in matiere_ids]
+        except ValueError:
+            flash("Sélection de matières invalide", "error")
+            return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'), niveaux=niveaux)
+        
+        # ✅ Vérifier que les matières appartiennent bien au niveau choisi
+        niveau_id = form.niveau.data
+        matieres_valides = Matiere.query.filter(
+            Matiere.niveau_id == niveau_id,
+            Matiere.id.in_(matiere_ids_int)
+        ).all()
+        
+        if not matieres_valides:
+            flash("Veuillez choisir au moins une matière valide pour ce niveau", "error")
+            return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'), niveaux=niveaux)
         
         # Vérifier si un enseignant est spécifié
         if teacher_email and teacher_email.strip():
@@ -5873,26 +6414,23 @@ def inscription_eleve():
             email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
             if not re.match(email_regex, teacher_email.strip()):
                 flash("Format d'email enseignant invalide", "error")
-                return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'))
+                return render_template("inscription_eleve.html", form=form, lang=session.get('lang', 'fr'), niveaux=niveaux)
             
-            # ✅ CORRECTION 1 : Rechercher l'enseignant dans User (modèle unifié)
-            # Chercher d'abord dans User (si vous avez migré)
+            # Rechercher l'enseignant dans User
             teacher_tutor = User.query.filter_by(
                 email=teacher_email.strip(), 
                 role="enseignant"
             ).first()
             
-            # ✅ CORRECTION 2 : Fallback sur l'ancien modèle Enseignant si besoin
+            # Fallback sur l'ancien modèle Enseignant si besoin
             if not teacher_tutor:
                 teacher_tutor_old = Enseignant.query.filter_by(email=teacher_email.strip()).first()
                 if teacher_tutor_old:
-                    # Convertir l'ancien enseignant en User si nécessaire
                     flash("Enseignant trouvé dans l'ancien système", "info")
-                    teacher_tutor = None  # Vous devriez migrer cet enseignant
+                    teacher_tutor = None
             
             if not teacher_tutor:
                 flash("Enseignant non trouvé avec cet email. Assurez-vous que l'enseignant est inscrit sur la plateforme.", "warning")
-                # Continuer sans enseignant
                 teacher_tutor = None
         
         # Récupérer les données du parent
@@ -5902,14 +6440,14 @@ def inscription_eleve():
         parent_telephone2 = request.form.get('parent_telephone2')
         include_parent = request.form.get('include_parent', 'on') == 'on'
         
-        # ✅ CORRECTION 3 : Création de l'élève avec les bons noms de colonnes
+        # Création de l'élève
         try:
             eleve = User(
                 username=form.username.data,
                 nom_complet=form.nom_complet.data,
                 email=form.email.data,
-                niveau_id=form.niveau.data,
-                role="eleve",  # ✅ CORRECTION : "eleve" pas "élève" (minuscule)
+                niveau_id=niveau_id,
+                role="eleve",
                 telephone=form.telephone.data,
                 statut="actif",
                 statut_paiement="essai_gratuit",
@@ -5917,14 +6455,22 @@ def inscription_eleve():
                 accepte_cgu=form.accepte_cgu.data,
                 date_acceptation_cgu=datetime.utcnow() if form.accepte_cgu.data else None,
                 langue=session.get('lang', 'fr'),
-                # ✅ CORRECTION : enseignant_referent_id pas enseignant_id
                 enseignant_referent_id=teacher_tutor.id if teacher_tutor else None
             )
             
             eleve.mot_de_passe = form.mot_de_passe.data
             
             db.session.add(eleve)
-            db.session.flush()
+            db.session.flush()  # ✅ permet d'obtenir eleve.id sans commit immédiat
+            
+            # ✅ Enregistrer les matières choisies par l'élève
+            for matiere in matieres_valides:
+                lien_matiere = EleveMatiere(
+                    eleve_id=eleve.id,
+                    matiere_id=matiere.id
+                )
+                db.session.add(lien_matiere)
+                print(f"✅ Matière enregistrée pour l'élève {eleve.id}: {matiere.nom}")
             
             # Création du parent si les informations sont fournies
             if include_parent and parent_nom_complet and parent_email:
@@ -5947,29 +6493,22 @@ def inscription_eleve():
             
             # Option 1: Essai gratuit (3 jours)
             if payment_option == 'trial':
-                # ✅ CORRECTION 4 : Vérifier si la méthode existe
                 if hasattr(eleve, 'activer_essai_gratuit'):
-                    eleve.activer_essai_gratuit(72)  # 72 heures = 3 jours
+                    eleve.activer_essai_gratuit(72)
                 else:
-                    # Fallback si la méthode n'existe pas
                     eleve.statut_essai = 'actif'
                     eleve.date_fin_essai = datetime.utcnow() + timedelta(hours=72)
                 
                 db.session.commit()
                 
-                # ✅ CORRECTION 5 : Connexion avec les bons noms de session
-                session['user_id'] = eleve.id  # ✅ Pas 'eleve_id'
-                session['username'] = eleve.username  # ✅ Pas 'eleve_username'
-                session['nom_complet'] = eleve.nom_complet  # ✅ Pas 'eleve_nom_complet'
-                session['role'] = 'eleve'  # ✅ Pas 'élève'
+                session['user_id'] = eleve.id
+                session['username'] = eleve.username
+                session['nom_complet'] = eleve.nom_complet
+                session['role'] = 'eleve'
                 session['lang'] = eleve.langue if eleve.langue else 'fr'
                 
-                # Notifier l'enseignant si assigné
                 if teacher_tutor:
-                    try:
-                        print(f"📧 Élève {eleve.nom_complet} assigné à l'enseignant {teacher_tutor.nom_complet}")
-                    except Exception as e:
-                        print(f"⚠️ Erreur notification enseignant: {e}")
+                    print(f"📧 Élève {eleve.nom_complet} assigné à l'enseignant {teacher_tutor.nom_complet}")
                 
                 lang = session.get('lang', 'fr')
                 flash_message = "✅ Essai gratuit de 3 jours activé ! Profitez de la plateforme." if lang == 'fr' else "✅ 3-day free trial activated! Enjoy the platform."
@@ -5993,7 +6532,6 @@ def inscription_eleve():
                     if not stripe.api_key:
                         raise Exception("Stripe non configuré")
                     
-                    # CONFIGURATION DES PLANS
                     plan_config = {
                         'monthly': {
                             'amount': 1999,
@@ -6025,10 +6563,8 @@ def inscription_eleve():
                     plan_info = plan_config.get(plan_type, plan_config['monthly'])
                     lang = session.get('lang', 'fr')
                     
-                    # ✅ CORRECTION 6 : Créer le customer Stripe pour cet élève
                     stripe_customer = None
                     try:
-                        # Créer ou récupérer le customer Stripe
                         stripe_customer = stripe.Customer.create(
                             email=eleve.email,
                             name=eleve.nom_complet,
@@ -6045,7 +6581,6 @@ def inscription_eleve():
                     except Exception as e:
                         print(f"⚠️ Erreur création customer Stripe: {e}")
                     
-                    # Créer la session checkout
                     checkout_session = stripe.checkout.Session.create(
                         payment_method_types=['card'],
                         line_items=[{
@@ -6087,8 +6622,6 @@ def inscription_eleve():
                     )
                     
                     print(f"🔗 Redirection vers Stripe pour paiement immédiat")
-                    print(f"📝 Plan: {plan_type}, Montant: {plan_info['amount']/100}$ CAD")
-                    
                     return redirect(checkout_session.url)
                     
                 except Exception as e:
@@ -6096,19 +6629,16 @@ def inscription_eleve():
                     import traceback
                     traceback.print_exc()
                     
-                    # En cas d'erreur Stripe, offrir l'essai gratuit
                     if hasattr(eleve, 'activer_essai_gratuit'):
                         eleve.activer_essai_gratuit(72)
                     
                     db.session.commit()
                     
-                    # Connexion automatique
                     session['user_id'] = eleve.id
                     session['username'] = eleve.username
                     session['nom_complet'] = eleve.nom_complet
                     session['role'] = 'eleve'
                     
-                    # Nettoyer les sessions
                     session.pop('pending_plan_type', None)
                     session.pop('pending_eleve_id', None)
                     session.pop('pending_payment_option', None)
@@ -6145,7 +6675,7 @@ def inscription_eleve():
         flash(cancel_message, "warning")
     
     lang = session.get('lang', 'fr')
-    return render_template("inscription_eleve.html", form=form, lang=lang)
+    return render_template("inscription_eleve.html", form=form, lang=lang, niveaux=niveaux)
 
 
 # Route pour les options d'upgrade
@@ -8029,6 +8559,45 @@ def dashboard_enseignant():
 
         lang = session.get("lang", "fr")
 
+        # ✅ NOUVEAU : Récupérer les matières et niveaux de l'enseignant
+        from models import EnseignantMatiere, Matiere, Niveau
+        
+        enseignant_matieres = db.session.query(
+            Matiere.id,
+            Matiere.nom,
+            Matiere.nom_en,
+            Niveau.id.label('niveau_id'),
+            Niveau.nom.label('niveau_nom'),
+            Niveau.nom_en.label('niveau_nom_en')
+        ).join(
+            EnseignantMatiere, EnseignantMatiere.matiere_id == Matiere.id
+        ).join(
+            Niveau, Matiere.niveau_id == Niveau.id
+        ).filter(
+            EnseignantMatiere.enseignant_id == enseignant.id
+        ).all()
+        
+        # Organiser par niveau
+        niveaux_enseignant = {}
+        for item in enseignant_matieres:
+            niveau_id = item.niveau_id
+            niveau_nom = item.niveau_nom_en if lang == 'en' and item.niveau_nom_en else item.niveau_nom
+            
+            if niveau_id not in niveaux_enseignant:
+                niveaux_enseignant[niveau_id] = {
+                    'id': niveau_id,
+                    'nom': niveau_nom,
+                    'matieres': []
+                }
+            
+            matiere_nom = item.nom_en if lang == 'en' and item.nom_en else item.nom
+            niveaux_enseignant[niveau_id]['matieres'].append({
+                'id': item.id,
+                'nom': matiere_nom
+            })
+        
+        niveaux_enseignant_list = list(niveaux_enseignant.values())
+
         # -----------------------------
         # Récupérer élèves
         # -----------------------------
@@ -8118,7 +8687,7 @@ def dashboard_enseignant():
         matieres = get_exercices_par_enseignant_for_template(enseignant, lang)
 
         # -----------------------------
-        # Rendu final
+        # Rendu final (AJOUT DE niveaux_enseignant)
         # -----------------------------
         return render_template(
             "dashboard_enseignant.html",
@@ -8140,7 +8709,8 @@ def dashboard_enseignant():
             eleves_payants=eleves_payants,
             eleves_essai=eleves_essai,
             commissions_implemented=True,
-            matieres=matieres
+            matieres=matieres,
+            niveaux_enseignant=niveaux_enseignant_list  # ✅ NOUVEAU : à ajouter
         )
 
     except Exception as e:
@@ -8148,9 +8718,320 @@ def dashboard_enseignant():
         flash("Une erreur est survenue sur le dashboard.", "error")
         return redirect("/")
 
+@app.route("/enseignant/matiere/<int:matiere_id>")
+def enseignant_matiere_detail(matiere_id):
+    """Voir les détails d'une matière - chargement progressif"""
+    from models import EnseignantMatiere, Matiere, User
+    
+    if "user_id" not in session or session.get("role") != "enseignant":
+        return redirect(url_for("login_enseignant"))
+    
+    enseignant = User.query.get(session["user_id"])
+    if not enseignant:
+        return redirect(url_for("login_enseignant"))
+    
+    # Vérifier que cette matière est bien assignée à l'enseignant
+    enseignant_matiere = EnseignantMatiere.query.filter_by(
+        enseignant_id=enseignant.id,
+        matiere_id=matiere_id
+    ).first()
+    
+    if not enseignant_matiere:
+        flash("Vous n'avez pas accès à cette matière", "error")
+        return redirect(url_for("dashboard_enseignant"))
+    
+    matiere = Matiere.query.get(matiere_id)
+    if not matiere:
+        flash("Matière non trouvée", "error")
+        return redirect(url_for("dashboard_enseignant"))
+    
+    lang = session.get("lang", "fr")
+    niveau = matiere.niveau
+    
+    # Charger UNIQUEMENT les unités (pas les leçons ni exercices)
+    unites = Unite.query.filter_by(matiere_id=matiere_id).all()
+    
+    unites_data = []
+    for unite in unites:
+        unite_nom = unite.nom_en if lang == 'en' and unite.nom_en else unite.nom
+        unites_data.append({
+            'id': unite.id,
+            'nom': unite_nom
+        })
+    
+    # Compter le total d'unités
+    total_unites = len(unites_data)
+    
+    # Récupérer les élèves (sans leurs exercices pour l'instant)
+    eleves = enseignant.get_eleves_encadres()
+    
+    eleves_data = []
+    for eleve in eleves:
+        # Vérifier si l'élève a cette matière
+        eleve_matiere = EleveMatiere.query.filter_by(
+            eleve_id=eleve.id,
+            matiere_id=matiere_id
+        ).first()
+        
+        if eleve_matiere:
+            eleves_data.append({
+                'id': eleve.id,
+                'nom': eleve.nom_complet
+            })
+    
+    return render_template(
+        "enseignant_matiere_detail.html",
+        matiere=matiere,
+        niveau=niveau,
+        unites=unites_data,
+        total_unites=total_unites,
+        eleves=eleves_data,
+        lang=lang
+    )
+
+@app.route("/api/unite/<int:unite_id>/lecons")
+def api_unite_lecons(unite_id):
+    """API pour charger les leçons d'une unité (chargement progressif)"""
+    from models import Unite, Lecon
+    
+    unite = Unite.query.get(unite_id)
+    if not unite:
+        return jsonify({'success': False, 'error': 'Unité non trouvée'})
+    
+    lang = request.args.get('lang', 'fr')
+    
+    lecons = Lecon.query.filter_by(unite_id=unite_id).all()
+    
+    lecons_data = []
+    for lecon in lecons:
+        lecon_nom = lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr
+        lecons_data.append({
+            'id': lecon.id,
+            'nom': lecon_nom
+        })
+    
+    return jsonify({
+        'success': True,
+        'unite_id': unite_id,
+        'lecons': lecons_data
+    })
 
 
+@app.route("/api/lecon/<int:lecon_id>/exercices")
+def api_lecon_exercices(lecon_id):
+    """API pour charger les exercices d'une leçon (chargement progressif)"""
+    from models import Lecon, Exercice
+    
+    lecon = Lecon.query.get(lecon_id)
+    if not lecon:
+        return jsonify({'success': False, 'error': 'Leçon non trouvée'})
+    
+    lang = request.args.get('lang', 'fr')
+    
+    exercices = Exercice.query.filter_by(lecon_id=lecon_id).all()
+    
+    exercices_data = []
+    for exo in exercices:
+        exercices_data.append({
+            'id': exo.id,
+            'titre': exo.titre,
+            'enonce': exo.enonce[:150] + '...' if len(exo.enonce) > 150 else exo.enonce
+        })
+    
+    return jsonify({
+        'success': True,
+        'lecon_id': lecon_id,
+        'exercices': exercices_data
+    })
 
+
+@app.route("/api/eleve/<int:eleve_id>/matiere/<int:matiere_id>/progress")
+def api_eleve_matiere_progress(eleve_id, matiere_id):
+    """API pour charger la progression d'un élève dans une matière"""
+    from models import User, EleveMatiere, StudentResponse, Exercice, Lecon, Unite
+    
+    eleve = User.query.get(eleve_id)
+    if not eleve:
+        return jsonify({'success': False, 'error': 'Élève non trouvé'})
+    
+    # Vérifier que l'élève a cette matière
+    eleve_matiere = EleveMatiere.query.filter_by(
+        eleve_id=eleve_id,
+        matiere_id=matiere_id
+    ).first()
+    
+    if not eleve_matiere:
+        return jsonify({'success': False, 'error': 'Élève non assigné à cette matière'})
+    
+    # Récupérer tous les exercices de la matière
+    exercices_matiere = db.session.query(Exercice).join(
+        Lecon, Lecon.id == Exercice.lecon_id
+    ).join(
+        Unite, Unite.id == Lecon.unite_id
+    ).filter(
+        Unite.matiere_id == matiere_id
+    ).all()
+    
+    exercice_ids = [ex.id for ex in exercices_matiere]
+    total = len(exercice_ids)
+    
+    # Récupérer les réponses de l'élève
+    reponses = StudentResponse.query.filter(
+        StudentResponse.user_id == eleve_id,
+        StudentResponse.exercice_id.in_(exercice_ids)
+    ).all()
+    
+    completed = len(reponses)
+    moyenne_etoiles = sum(r.etoiles for r in reponses) / completed if completed > 0 else 0
+    progression = (completed / total * 100) if total > 0 else 0
+    
+    # Détails par exercice
+    exercices_details = []
+    for exo in exercices_matiere:
+        reponse = next((r for r in reponses if r.exercice_id == exo.id), None)
+        exercices_details.append({
+            'id': exo.id,
+            'titre': exo.titre,
+            'statut': 'completed' if reponse else 'pending',
+            'score': reponse.etoiles if reponse else 0,
+            'date': reponse.date_soumission.strftime('%d/%m/%Y') if reponse else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'eleve_id': eleve_id,
+        'total_exercices': total,
+        'completed': completed,
+        'progression': progression,
+        'moyenne_etoiles': round(moyenne_etoiles, 1),
+        'exercices': exercices_details
+    })
+
+
+@app.route("/enseignant/matieres")
+def enseignant_matieres():
+    """Gérer les matières de l'enseignant (voir et modifier)"""
+    from models import EnseignantMatiere, Matiere, Niveau
+    
+    if "user_id" not in session or session.get("role") != "enseignant":
+        return redirect(url_for("login_enseignant"))
+    
+    enseignant = User.query.get(session["user_id"])
+    if not enseignant:
+        return redirect(url_for("login_enseignant"))
+    
+    lang = session.get("lang", "fr")
+    
+    # Récupérer TOUTES les matières disponibles par niveau
+    niveaux = Niveau.query.all()
+    
+    niveaux_data = []
+    for niveau in niveaux:
+        niveau_nom = niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom
+        
+        matieres_disponibles = []
+        for matiere in niveau.matieres:
+            # Vérifier si l'enseignant enseigne déjà cette matière
+            enseigne = EnseignantMatiere.query.filter_by(
+                enseignant_id=enseignant.id,
+                matiere_id=matiere.id
+            ).first()
+            
+            matieres_disponibles.append({
+                'id': matiere.id,
+                'nom': matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom,
+                'enseigne': enseigne is not None
+            })
+        
+        niveaux_data.append({
+            'id': niveau.id,
+            'nom': niveau_nom,
+            'matieres': matieres_disponibles
+        })
+    
+    # Récupérer les matières actuellement enseignées
+    matieres_enseignees = db.session.query(Matiere).join(
+        EnseignantMatiere
+    ).filter(
+        EnseignantMatiere.enseignant_id == enseignant.id
+    ).all()
+    
+    return render_template(
+        "enseignant_matieres.html",
+        niveaux=niveaux_data,
+        matieres_enseignees=matieres_enseignees,
+        lang=lang
+    )
+
+
+@app.route("/enseignant/matieres/ajouter", methods=["POST"])
+def enseignant_matieres_ajouter():
+    """Ajouter une matière à l'enseignant"""
+    from models import EnseignantMatiere
+    
+    if "user_id" not in session or session.get("role") != "enseignant":
+        return redirect(url_for("login_enseignant"))
+    
+    enseignant = User.query.get(session["user_id"])
+    if not enseignant:
+        return redirect(url_for("login_enseignant"))
+    
+    matiere_ids = request.form.getlist("matieres")
+    lang = session.get("lang", "fr")
+    
+    for matiere_id in matiere_ids:
+        # Vérifier si l'association n'existe pas déjà
+        existing = EnseignantMatiere.query.filter_by(
+            enseignant_id=enseignant.id,
+            matiere_id=matiere_id
+        ).first()
+        
+        if not existing:
+            nouvelle_matiere = EnseignantMatiere(
+                enseignant_id=enseignant.id,
+                matiere_id=matiere_id
+            )
+            db.session.add(nouvelle_matiere)
+    
+    db.session.commit()
+    
+    flash("Matières mises à jour avec succès", "success")
+    return redirect(url_for("enseignant_matieres"))
+
+
+@app.route("/enseignant/matieres/supprimer/<int:matiere_id>")
+def enseignant_matieres_supprimer(matiere_id):
+    """Supprimer une matière de l'enseignant"""
+    from models import EnseignantMatiere
+    
+    if "user_id" not in session or session.get("role") != "enseignant":
+        return redirect(url_for("login_enseignant"))
+    
+    enseignant = User.query.get(session["user_id"])
+    if not enseignant:
+        return redirect(url_for("login_enseignant"))
+    
+    association = EnseignantMatiere.query.filter_by(
+        enseignant_id=enseignant.id,
+        matiere_id=matiere_id
+    ).first()
+    
+    if association:
+        db.session.delete(association)
+        db.session.commit()
+        flash("Matière retirée avec succès", "success")
+    
+    return redirect(url_for("enseignant_matieres"))
+
+
+@app.route("/modifier-matieres-enseignant")
+def modifier_matieres_enseignant():
+    """Page temporaire pour gérer les matières de l'enseignant"""
+    if "user_id" not in session or session.get("role") != "enseignant":
+        return redirect(url_for("login_enseignant"))
+    
+    flash("Fonctionnalité en cours de développement", "info")
+    return redirect(url_for("dashboard_enseignant"))
 
 
 @app.route("/enseignant/commissions", methods=["GET"])
@@ -9551,21 +10432,28 @@ def parent_dashboard_pdf():
 
 @app.route("/choisir-sequence")
 def choisir_sequence():
+    from models import EleveMatiere
+    
     username = request.args.get("username")
     lang = request.args.get("lang", "fr")
 
-    # 1. Récupérer l'élève avec ses relations optimisées
+    # 1. Récupérer l'élève
     eleve = User.query.options(
         joinedload(User.niveau)
-        .joinedload(Niveau.matieres)
-        .joinedload(Matiere.unites)
+    ).filter_by(username=username).first_or_404()
+
+    # ✅ CORRECTION : Récupérer uniquement les matières sélectionnées par l'élève
+    matieres_eleve = db.session.query(Matiere).join(
+        EleveMatiere, EleveMatiere.matiere_id == Matiere.id
+    ).filter(
+        EleveMatiere.eleve_id == eleve.id
+    ).options(
+        joinedload(Matiere.unites)
         .joinedload(Unite.lecons)
         .joinedload(Lecon.exercices),
-        joinedload(User.niveau)
-        .joinedload(Niveau.matieres)
-        .joinedload(Matiere.unites)
+        joinedload(Matiere.unites)
         .joinedload(Unite.tests)
-    ).filter_by(username=username).first_or_404()
+    ).all()
 
     # 2. Récupérer les exercices complétés par l'élève (UNE SEULE REQUÊTE)
     completed_exercises = StudentResponse.query.filter_by(user_id=eleve.id)\
@@ -9577,12 +10465,12 @@ def choisir_sequence():
         .with_entities(TestResponse.test_id).all()
     completed_test_ids = {test[0] for test in completed_tests if test[0]}
 
-    # 4. Organiser les données par matière avec statistiques
+    # 4. Organiser les données par matière (UNIQUEMENT CELLES DE L'ÉLÈVE)
     matiere_data = {}
     unites_list = []
     lecons_filtrees = []
 
-    for matiere in eleve.niveau.matieres:
+    for matiere in matieres_eleve:  # ✅ Utilise les matières de l'élève, pas toutes du niveau
         matiere_nom = matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom
         
         if matiere_nom not in matiere_data:
@@ -9636,7 +10524,7 @@ def choisir_sequence():
                 unit_stats['total_exercises'] += total_exos
                 unit_stats['completed_exercises'] += completed_count
                 
-                # Filtrer les leçons avec exercices (pour compatibilité)
+                # Filtrer les leçons avec exercices
                 if total_exos > 0:
                     lecons_filtrees.append(lecon)
             
@@ -9651,18 +10539,19 @@ def choisir_sequence():
     
     print(f"✅ {len(unites_list)} unités trouvées")
     print(f"✅ {len(lecons_filtrees)} leçons avec exercices")
-    print(f"✅ {len(matiere_data)} matières organisées")
+    print(f"✅ {len(matiere_data)} matières organisées (uniquement celles sélectionnées par l'élève)")
 
     return render_template(
         "choisir_sequence.html",
         eleve=eleve,
-        unites=unites_list,  # Gardé pour compatibilité
-        lecons=lecons_filtrees,  # Gardé pour compatibilité
-        matiere_data=matiere_data,  # NOUVEAU : données organisées
+        unites=unites_list,
+        lecons=lecons_filtrees,
+        matiere_data=matiere_data,
         completed_exercise_ids=completed_exercise_ids,
         completed_test_ids=completed_test_ids,
         lang=lang
     )
+
 
 from functools import wraps
 
@@ -11772,6 +12661,9 @@ def contest_evaluation():
         if not reponse:
             return jsonify({'success': False, 'message': 'Réponse non trouvée'})
         
+        # Sauvegarder l'ancienne note pour référence
+        old_stars = reponse.etoiles
+        
         # 2. Récupérer l'exercice et les informations
         exercice = Exercice.query.get(reponse.exercice_id)
         eleve = User.query.get(reponse.user_id)
@@ -11809,6 +12701,10 @@ def contest_evaluation():
         print(f"📝 Justification: {data.get('justification', '')[:100]}...")
         
         # 4. TENTATIVE D'APPEL À L'IA
+        new_analysis = None
+        new_stars = old_stars
+        evaluation_method = "local_fallback"
+        
         try:
             from openai import OpenAI
             import os
@@ -11818,7 +12714,6 @@ def contest_evaluation():
             
             if not api_key:
                 print("❌ Clé API OpenAI non trouvée dans les variables d'environnement")
-                # Utiliser le fallback
                 raise Exception("OPENAI_API_KEY not configured")
             
             print(f"🔑 Clé API trouvée: {api_key[:5]}...{api_key[-5:]}")
@@ -11835,13 +12730,13 @@ RE-EVALUATE a student's answer considering their contestation arguments.
 📜 STUDENT'S ORIGINAL ANSWER:
 {reponse.reponse_eleve}
 
-🎯 ORIGINAL AI CORRECTION (current grade: {reponse.etoiles}/5):
+🎯 ORIGINAL AI CORRECTION (current grade: {old_stars}/5):
 {analysis_text}
 
 📝 STUDENT'S CONTESTATION ARGUMENTS:
 "{data.get('justification', '')}"
 
-⭐ STUDENT'S PROPOSED GRADE: {data.get('proposed_stars', reponse.etoiles)}/5
+⭐ STUDENT'S PROPOSED GRADE: {data.get('proposed_stars', old_stars)}/5
 
 🔍 YOUR TASK:
 1. RE-EVALUATE the student's answer considering their arguments
@@ -11871,13 +12766,13 @@ RÉÉVALUEZ la réponse d'un élève en considérant ses arguments de contestati
 📜 RÉPONSE ORIGINALE DE L'ÉLÈVE :
 {reponse.reponse_eleve}
 
-🎯 CORRECTION IA ORIGINALE (note actuelle : {reponse.etoiles}/5) :
+🎯 CORRECTION IA ORIGINALE (note actuelle : {old_stars}/5) :
 {analysis_text}
 
 📝 ARGUMENTS DE CONTESTATION DE L'ÉLÈVE :
 "{data.get('justification', '')}"
 
-⭐ NOTE PROPOSÉE PAR L'ÉLÈVE : {data.get('proposed_stars', reponse.etoiles)}/5
+⭐ NOTE PROPOSÉE PAR L'ÉLÈVE : {data.get('proposed_stars', old_stars)}/5
 
 🔍 VOTRE TÂCHE :
 1. RÉÉVALUER la réponse de l'élève en considérant ses arguments
@@ -11902,19 +12797,19 @@ Feedback détaillé : [...]
             print(f"📤 Longueur du prompt: {len(prompt)} caractères")
             
             chat_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",  # Utilisez gpt-3.5-turbo pour moins cher
+                model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=1000
             )
             
             new_analysis = chat_completion.choices[0].message.content.strip()
+            evaluation_method = "ai"
             print(f"✅ Réévaluation IA reçue avec succès")
             print(f"📥 Réponse IA (premiers 200 chars): {new_analysis[:200]}...")
             
             # 5. EXTRACTION DE LA NOUVELLE NOTE
             import re
-            new_stars = reponse.etoiles  # Par défaut, garder l'ancienne
             
             # Chercher la nouvelle note dans la réponse de l'IA
             match = re.search(r"(?:New grade|Nouvelle note|Grade|Note)\s*:\s*(\d)(?:\s*/?\s*5)?", new_analysis, re.IGNORECASE)
@@ -11922,19 +12817,17 @@ Feedback détaillé : [...]
                 new_stars = int(match.group(1))
                 print(f"⭐ Nouvelle note extraite: {new_stars}/5")
             else:
-                # Fallback
+                # Fallback - chercher d'autres formats
                 match = re.search(r"\b(\d)(?:\s*[/\\]\s*5)?\s*(?:⭐|stars|étoiles)", new_analysis, re.IGNORECASE)
                 if match:
                     new_stars = min(int(match.group(1)), 5)
                     print(f"⭐ Nouvelle note extraite (format alternatif): {new_stars}/5")
                 else:
-                    # Dernier recours
                     match = re.search(r"\bgrade\s*:\s*(\d)\b", new_analysis, re.IGNORECASE)
                     if match:
                         new_stars = int(match.group(1))
                     else:
-                        # Si pas trouvé, garder la note actuelle
-                        new_stars = reponse.etoiles
+                        new_stars = old_stars
                         print(f"⭐ Note non trouvée, maintien de la note actuelle: {new_stars}/5")
             
             # S'assurer que la note est entre 1 et 5
@@ -11945,95 +12838,73 @@ Feedback détaillé : [...]
             import traceback
             traceback.print_exc()
             
-            # FALLBACK - Utiliser la logique locale d'évaluation
-            print("⚠️ Utilisation du fallback local pour l'évaluation")
+            # FALLBACK SIMPLIFIÉ - sans dépendances externes
+            print("⚠️ Utilisation du fallback local simplifié")
+            evaluation_method = "local_fallback"
             
-            # Analyser la justification avec votre fonction existante
-            from your_module import analyze_student_justification, evaluate_contestation
+            justification = data.get('justification', '').lower()
+            proposed = data.get('proposed_stars', old_stars)
             
-            analysis = analyze_student_justification(
-                data.get('justification', ''),
-                reponse.reponse_eleve,
-                analysis_text
-            )
+            # Logique simple d'évaluation locale
+            new_stars = old_stars
+            reason = "Nous n'avons pas pu contacter l'IA pour réévaluer votre réponse."
             
-            # Évaluer la contestation
-            adjustment_needed, reason, new_stars = evaluate_contestation(
-                analysis,
-                reponse.etoiles,
-                data.get('proposed_stars', reponse.etoiles)
-            )
+            # Mots-clés pour différents cas
+            positive_keywords = ['bonne réponse', 'juste', 'correct', 'équivalent', 'alternative valide', 'bon raisonnement']
+            partial_keywords = ['erreur mineure', 'petite erreur', 'étourderie', 'calcul']
+            negative_keywords = ['mal évalué', 'injuste', 'trop sévère']
             
-            print(f"📊 Analyse locale: {analysis}")
-            print(f"📊 Ajustement nécessaire: {adjustment_needed}, Raison: {reason}, Nouvelle note: {new_stars}")
+            if any(word in justification for word in positive_keywords):
+                new_stars = min(old_stars + 1, 5)
+                if proposed > old_stars:
+                    new_stars = min(proposed, 5)
+                reason = "Votre argument suggère que la réponse mérite une meilleure évaluation."
+            elif any(word in justification for word in partial_keywords):
+                if old_stars < 3:
+                    new_stars = min(old_stars + 1, 5)
+                    reason = "Nous prenons en compte les erreurs mineures pour ajuster la note."
+            elif any(word in justification for word in negative_keywords):
+                reason = "Nous allons examiner votre demande plus attentivement."
+            else:
+                reason = "Arguments insuffisants pour justifier un changement de note."
             
             # Générer une réponse locale
             if lang == 'en':
-                if adjustment_needed:
-                    new_analysis = f"""
-✅ **Contestation Re-evaluated (Local System)**
+                new_analysis = f"""
+⚠️ **Temporary Review (AI Unavailable)**
 
 **Your arguments:** {data.get('justification', '')}
 
-**Decision:** Grade adjusted from {reponse.etoiles} to {new_stars}/5 stars
+**Temporary decision:** Grade {'adjusted to' if new_stars != old_stars else 'maintained at'} {new_stars}/5 stars
+**Previous grade:** {old_stars}/5
+
 **Reason:** {reason}
 
-**Detailed feedback:**
-Based on your justification, we have reconsidered your answer. {reason}
-
-Continue your learning journey!
-"""
-                else:
-                    new_analysis = f"""
-ℹ️ **Contestation Re-evaluated (Local System)**
-
-**Your arguments:** {data.get('justification', '')}
-
-**Decision:** Grade maintained at {new_stars}/5 stars
-**Reason:** {reason}
-
-**Detailed feedback:**
-{reason}. To improve your grade, provide more detailed mathematical reasoning.
-
-Keep practicing!
+Our AI system is temporarily unavailable. Your contestation has been logged and will be reviewed by a teacher.
 """
             else:
-                if adjustment_needed:
-                    new_analysis = f"""
-✅ **Contestation Réévaluée (Système Local)**
+                new_analysis = f"""
+⚠️ **Révision Temporaire (IA Indisponible)**
 
 **Vos arguments :** {data.get('justification', '')}
 
-**Décision :** Note ajustée de {reponse.etoiles} à {new_stars}/5 étoiles
+**Décision temporaire :** Note {'ajustée à' if new_stars != old_stars else 'maintenue à'} {new_stars}/5 étoiles
+**Note précédente :** {old_stars}/5
+
 **Raison :** {reason}
 
-**Feedback détaillé :**
-Suite à votre justification, nous avons réévalué votre réponse. {reason}
-
-Continuez votre apprentissage !
-"""
-                else:
-                    new_analysis = f"""
-ℹ️ **Contestation Réévaluée (Système Local)**
-
-**Vos arguments :** {data.get('justification', '')}
-
-**Décision :** Note maintenue à {new_stars}/5 étoiles
-**Raison :** {reason}
-
-**Feedback détaillé :**
-{reason}. Pour améliorer votre note, fournissez un raisonnement mathématique plus détaillé.
-
-Continuez à vous entraîner !
+Notre système IA est temporairement indisponible. Votre contestation a été enregistrée et sera examinée par un professeur.
 """
         
         # 6. METTRE À JOUR LA BASE DE DONNÉES
         try:
             # Récupérer l'analyse existante
-            try:
-                existing_analysis = json.loads(reponse.analyse_ia) if reponse.analyse_ia and reponse.analyse_ia.strip().startswith('{') else {}
-            except:
-                existing_analysis = {}
+            existing_analysis = {}
+            if reponse.analyse_ia and reponse.analyse_ia.strip().startswith('{'):
+                try:
+                    existing_analysis = json.loads(reponse.analyse_ia)
+                except json.JSONDecodeError:
+                    existing_analysis = {}
             
             # Créer un nouvel objet JSON avec l'historique
             if not existing_analysis:
@@ -12041,19 +12912,21 @@ Continuez à vous entraîner !
                     "original": analysis_text,
                     "history": [],
                     "current_feedback": analysis_text,
-                    "current_stars": reponse.etoiles
+                    "current_stars": old_stars
                 }
             
             # Ajouter la contestation à l'historique
+            from datetime import datetime
+            
             contestation_entry = {
                 "type": "contestation",
                 "date": datetime.now().isoformat(),
                 "justification": data.get('justification', ''),
-                "proposed_stars": data.get('proposed_stars', reponse.etoiles),
-                "previous_stars": reponse.etoiles,
+                "proposed_stars": data.get('proposed_stars', old_stars),
+                "previous_stars": old_stars,
                 "new_stars": new_stars,
                 "ai_response": new_analysis,
-                "evaluation_method": "ai" if 'chat_completion' in locals() else "local_fallback"
+                "evaluation_method": evaluation_method
             }
             
             if "history" not in existing_analysis:
@@ -12062,6 +12935,7 @@ Continuez à vous entraîner !
             existing_analysis["history"].append(contestation_entry)
             existing_analysis["current_feedback"] = new_analysis
             existing_analysis["current_stars"] = new_stars
+            existing_analysis["last_contestation_date"] = datetime.now().isoformat()
             
             # Mettre à jour la base de données
             reponse.analyse_ia = json.dumps(existing_analysis, ensure_ascii=False, indent=2)
@@ -12069,7 +12943,7 @@ Continuez à vous entraîner !
             reponse.date_modification = datetime.now()
             
             db.session.commit()
-            print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5")
+            print(f"✅ Base de données mise à jour. Nouvelle note: {new_stars}/5 (était: {old_stars}/5)")
             
         except Exception as db_error:
             db.session.rollback()
@@ -12077,16 +12951,16 @@ Continuez à vous entraîner !
             # Continuer malgré l'erreur DB pour retourner une réponse
         
         # 7. PRÉPARER LA RÉPONSE
-        stars_changed = new_stars != reponse.etoiles
+        stars_changed = new_stars != old_stars
         
         if lang == 'en':
             if stars_changed:
-                message = f"✅ Grade changed from {reponse.etoiles} to {new_stars}/5 stars!"
+                message = f"✅ Grade changed from {old_stars} to {new_stars}/5 stars!"
             else:
                 message = f"ℹ️ Grade maintained at {new_stars}/5 stars."
         else:
             if stars_changed:
-                message = f"✅ Note changée de {reponse.etoiles} à {new_stars}/5 étoiles !"
+                message = f"✅ Note changée de {old_stars} à {new_stars}/5 étoiles !"
             else:
                 message = f"ℹ️ Note maintenue à {new_stars}/5 étoiles."
         
@@ -12094,11 +12968,11 @@ Continuez à vous entraîner !
             'success': True,
             'new_stars': new_stars,
             'new_feedback': new_analysis,
-            'old_stars': reponse.etoiles,
+            'old_stars': old_stars,
             'stars_changed': stars_changed,
             'message': message,
-            'has_ai_reassessment': 'chat_completion' in locals(),
-            'evaluation_method': 'ai' if 'chat_completion' in locals() else 'local_fallback'
+            'has_ai_reassessment': evaluation_method == 'ai',
+            'evaluation_method': evaluation_method
         })
         
     except Exception as e:
@@ -12108,13 +12982,14 @@ Continuez à vous entraîner !
         traceback.print_exc()
         
         error_message = "Erreur interne du serveur"
-        if 'lang' in locals() and lang == 'en':
+        lang = request.json.get('lang', 'fr') if request.json else 'fr'
+        if lang == 'en':
             error_message = "Internal server error"
             
         return jsonify({
             'success': False, 
             'message': f'{error_message}: {str(e)}'
-        })
+        }), 500
 
 
 # Ajoutez ces imports en haut du fichier si nécessaire
@@ -12809,6 +13684,8 @@ def progression_eleve():
 
 @app.route("/historique")
 def historique_eleve():
+    from models import EleveMatiere, Matiere, Unite, Lecon, Exercice, StudentResponse
+    
     username = request.args.get("username")
     
     # Si pas de username dans les paramètres, vérifier la session
@@ -12833,42 +13710,36 @@ def historique_eleve():
             flash(f"Student {username} not found", "danger")
         return redirect(url_for("dashboard_parent" if session.get("parent_email") else "dashboard_eleve"))
 
-    # ✅ DÉTECTION DU CONTEXTE - CORRIGÉE
+    # DÉTECTION DU CONTEXTE
     user_id = session.get("user_id")
     parent_email = session.get("parent_email")
     enseignant_id = session.get("enseignant_id")
     
-    # DEBUG
     print(f"SESSION - user_id: {user_id}")
     print(f"SESSION - parent_email: {parent_email}")
     print(f"SESSION - enseignant_id: {enseignant_id}")
     print(f"ÉLÈVE TROUVÉ - {eleve.nom_complet} (username: {username})")
     
-    # ✅ VÉRIFIER SI L'UTILISATEUR CONNECTÉ EST UN ENSEIGNANT
+    # VÉRIFIER SI L'UTILISATEUR CONNECTÉ EST UN ENSEIGNANT
     if user_id:
-        # Récupérer l'utilisateur connecté
         utilisateur = User.query.get(user_id)
         if utilisateur and utilisateur.role == "enseignant":
-            # C'est un enseignant connecté (même s'il a aussi un email parent)
             is_enseignant_access = True
             is_parent_access = False
             is_eleve_direct_access = False
             print(f"ACCÈS - ENSEIGNANT (ID: {user_id}, rôle: {utilisateur.role})")
         elif parent_email:
-            # C'est un parent connecté
             is_parent_access = True
             is_enseignant_access = False
             is_eleve_direct_access = False
             print(f"ACCÈS - PARENT (email: {parent_email})")
         else:
-            # Vérifier si l'élève accède à son propre historique
             eleve_session_username = session.get("username")
             is_eleve_direct_access = eleve_session_username == username
             is_parent_access = False
             is_enseignant_access = False
             print(f"ACCÈS - ÉLÈVE (session: {eleve_session_username}, requested: {username})")
     else:
-        # Pas de user_id, vérifier parent
         if parent_email:
             is_parent_access = True
             is_enseignant_access = False
@@ -12880,7 +13751,7 @@ def historique_eleve():
 
     # Récupérer l'ID de l'élève et son niveau
     eleve_id = eleve.id
-    niveau_eleve = eleve.niveau  # Récupère l'objet Niveau de l'élève
+    niveau_eleve = eleve.niveau
     
     if not niveau_eleve:
         if lang == "fr":
@@ -12888,6 +13759,145 @@ def historique_eleve():
         else:
             flash("Student level not defined", "warning")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+    
+    # ✅ CORRECTION : Récupérer UNIQUEMENT les matières sélectionnées par l'élève
+    matieres_eleve = db.session.query(Matiere).join(
+        EleveMatiere, EleveMatiere.matiere_id == Matiere.id
+    ).filter(
+        EleveMatiere.eleve_id == eleve_id
+    ).all()
+    
+    matiere_ids = [m.id for m in matieres_eleve]
+    
+    print(f"📚 Matières sélectionnées par l'élève: {[m.nom for m in matieres_eleve]}")
+    
+    # Si l'élève n'a pas de matières sélectionnées, afficher un message
+    if not matiere_ids:
+        return render_template(
+            "historique_eleve.html",
+            eleve=eleve,
+            niveau_eleve=niveau_eleve,
+            stats_matiere=[],
+            total_exercices=0,
+            completed_exercices=0,
+            pourcentage_global=0,
+            is_parent_access=is_parent_access,
+            is_enseignant_access=is_enseignant_access,
+            is_eleve_direct_access=is_eleve_direct_access,
+            lang=lang
+        )
+    
+    # ✅ CORRECTION 2 : Récupérer TOUS les exercices pour l'élève
+    # Même ceux qu'il n'a pas encore complétés pour afficher les matières
+    
+    # D'abord, récupérer les exercices complétés
+    completed_exercises = StudentResponse.query.filter_by(user_id=eleve_id)\
+        .with_entities(StudentResponse.exercice_id).all()
+    completed_exercise_ids = {ex[0] for ex in completed_exercises if ex[0]}
+    
+    # Calculer les statistiques globales
+    total_exercices_eleve = 0
+    completed_exercices_eleve = len(completed_exercise_ids)
+    
+    # Préparer les données détaillées pour le template
+    matieres_stats = []
+    
+    for matiere in matieres_eleve:
+        # Récupérer toutes les unités de cette matière
+        unites = Unite.query.filter_by(matiere_id=matiere.id).all()
+        
+        total_matiere = 0
+        completed_matiere = 0
+        details_matiere = {}
+        
+        for unite in unites:
+            unite_nom = unite.nom_en if lang == 'en' and unite.nom_en else unite.nom
+            details_matiere[unite_nom] = {
+                'total': 0,
+                'completed': 0,
+                'lecons': {}
+            }
+            
+            # Récupérer les leçons de cette unité
+            lecons = Lecon.query.filter_by(unite_id=unite.id).all()
+            
+            for lecon in lecons:
+                lecon_nom = lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr
+                details_matiere[unite_nom]['lecons'][lecon_nom] = {
+                    'total': 0,
+                    'completed': 0,
+                    'exercices': []
+                }
+                
+                # Récupérer les exercices de cette leçon
+                exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()
+                
+                for exercice in exercices:
+                    details_matiere[unite_nom]['lecons'][lecon_nom]['total'] += 1
+                    details_matiere[unite_nom]['total'] += 1
+                    total_matiere += 1
+                    total_exercices_eleve += 1
+                    
+                    if exercice.id in completed_exercise_ids:
+                        details_matiere[unite_nom]['lecons'][lecon_nom]['completed'] += 1
+                        details_matiere[unite_nom]['completed'] += 1
+                        completed_matiere += 1
+                        
+                        # Récupérer la réponse pour cet exercice
+                        reponse = StudentResponse.query.filter_by(
+                            user_id=eleve_id,
+                            exercice_id=exercice.id
+                        ).first()
+                        
+                        exercice_data = {
+                            'id': exercice.id,
+                            'enonce': exercice.enonce,
+                            'reponse_eleve': reponse.reponse if reponse else None,
+                            'etoiles': reponse.score if reponse else 0,
+                            'date': reponse.date_soumission.strftime('%d/%m/%Y %H:%M') if reponse else None
+                        }
+                        details_matiere[unite_nom]['lecons'][lecon_nom]['exercices'].append(exercice_data)
+                    else:
+                        # Même sans réponse, on ajoute un exercice sans détails
+                        exercice_data = {
+                            'id': exercice.id,
+                            'enonce': exercice.enonce,
+                            'reponse_eleve': None,
+                            'etoiles': 0,
+                            'date': None
+                        }
+                        details_matiere[unite_nom]['lecons'][lecon_nom]['exercices'].append(exercice_data)
+        
+        pourcentage = (completed_matiere / total_matiere * 100) if total_matiere > 0 else 0
+        
+        matieres_stats.append({
+            'id': matiere.id,
+            'nom': matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom,
+            'total_exercices': total_matiere,
+            'completed_exercices': completed_matiere,
+            'pourcentage': pourcentage,
+            'details': details_matiere
+        })
+    
+    # Calculer le pourcentage global
+    pourcentage_global = (completed_exercices_eleve / total_exercices_eleve * 100) if total_exercices_eleve > 0 else 0
+    
+    print(f"📊 Total exercices: {total_exercices_eleve}, Complétés: {completed_exercices_eleve}, %: {pourcentage_global}")
+    
+    return render_template(
+        "historique_eleve.html",
+        eleve=eleve,
+        niveau_eleve=niveau_eleve,
+        stats_matiere=matieres_stats,
+        total_exercices=total_exercices_eleve,
+        completed_exercices=completed_exercices_eleve,
+        pourcentage_global=pourcentage_global,
+        is_parent_access=is_parent_access,
+        is_enseignant_access=is_enseignant_access,
+        is_eleve_direct_access=is_eleve_direct_access,
+        lang=lang
+    )
+
     
     # ============================================
     # FONCTION UTILITAIRE POUR OBTENIR LE NOM TRADUIT

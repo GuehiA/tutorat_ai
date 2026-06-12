@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="https://briskteaching.com/favicon.png">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
   
   <title>
     {% if lang == 'fr' %}
@@ -15,12 +14,9 @@
     {% endif %}
   </title>
   
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- MathJax -->
@@ -30,6 +26,14 @@
         inlineMath: [['$', '$'], ['\\(', '\\)']],
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true
+      },
+      startup: {
+        ready: function() {
+          MathJax.startup.defaultReady();
+          MathJax.startup.promise.then(function() {
+            console.log('MathJax ready');
+          });
+        }
       }
     };
   </script>
@@ -45,6 +49,7 @@
       --accent: #8b5cf6;
       --warning: #f59e0b;
       --danger: #ef4444;
+      --danger-dark: #dc2626;
       --light: #f3f4f6;
       --dark: #1f2937;
       --gray: #6b7280;
@@ -78,12 +83,12 @@
       margin: 0 auto;
       padding: 20px;
       display: grid;
-      grid-template-columns: 300px 1fr 300px;
+      grid-template-columns: 280px 1fr 320px;
       gap: 20px;
       height: calc(100vh - 40px);
     }
 
-    /* ===== STYLES COMMUNS AUX SIDEBARS ===== */
+    /* ===== SIDEBAR GAUCHE - PROFIL ===== */
     .profile-sidebar, .exercise-sidebar {
       background: white;
       border-radius: var(--radius-lg);
@@ -95,7 +100,6 @@
       overflow: hidden;
     }
 
-    /* ===== SIDEBAR GAUCHE ===== */
     .profile-sidebar {
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
@@ -377,44 +381,12 @@
       gap: 6px;
     }
 
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .subject-selector {
-      position: relative;
-    }
-
-    .subject-dropdown {
-      padding: 8px 14px;
-      border: 2px solid var(--light);
-      border-radius: 30px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--dark);
-      background: white;
-      cursor: pointer;
-      transition: var(--transition);
-      min-width: 140px;
-    }
-
-    .subject-dropdown:hover {
-      border-color: var(--primary);
-    }
-
-    .subject-dropdown:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .generate-exercise-btn {
-      background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+    /* Bouton Réinitialiser */
+    .reset-btn {
+      background: var(--danger);
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 8px 18px;
       border-radius: 30px;
       font-weight: 600;
       font-size: 0.8rem;
@@ -422,16 +394,17 @@
       transition: var(--transition);
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       box-shadow: var(--shadow);
     }
 
-    .generate-exercise-btn:hover {
+    .reset-btn:hover {
+      background: var(--danger-dark);
       transform: translateY(-2px);
       box-shadow: var(--shadow-lg);
     }
 
-    .generate-exercise-btn:disabled {
+    .reset-btn:disabled {
       opacity: 0.7;
       cursor: not-allowed;
       transform: none;
@@ -592,7 +565,7 @@
       transform: none;
     }
 
-    /* ===== SIDEBAR DROITE ===== */
+    /* ===== SIDEBAR DROITE - GÉNÉRATION EXERCICE ===== */
     .exercise-sidebar {
       background: white;
       padding: 20px;
@@ -600,72 +573,89 @@
 
     .sidebar-title {
       font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--gray);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 14px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 16px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--light);
     }
 
     .sidebar-title i {
       color: var(--primary);
+      font-size: 1.1rem;
     }
 
     .generation-options {
       background: var(--light);
       border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 16px;
-      flex-shrink: 0;
-    }
-
-    .options-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--dark);
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .options-title i {
-      color: var(--primary);
+      padding: 18px;
+      margin-bottom: 20px;
     }
 
     .option-group {
-      margin-bottom: 14px;
+      margin-bottom: 16px;
+    }
+
+    .option-group:last-child {
+      margin-bottom: 0;
     }
 
     .option-label {
       display: block;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 600;
       color: var(--gray);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       text-transform: uppercase;
       letter-spacing: 0.3px;
     }
 
     .option-label i {
-      margin-right: 4px;
+      margin-right: 6px;
       color: var(--primary);
+    }
+
+    /* Matière - style spécial */
+    .subject-select-wrapper {
+      width: 100%;
+    }
+
+    .subject-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--light);
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--dark);
+      background: white;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .subject-select:hover {
+      border-color: var(--primary-light);
+    }
+
+    .subject-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
 
     .difficulty-buttons {
       display: flex;
-      gap: 6px;
+      gap: 8px;
     }
 
     .difficulty-btn {
       flex: 1;
-      padding: 6px 8px;
+      padding: 8px 6px;
       border: 2px solid transparent;
-      border-radius: 20px;
+      border-radius: 30px;
       font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
@@ -687,10 +677,10 @@
 
     .type-select {
       width: 100%;
-      padding: 8px 10px;
+      padding: 10px 12px;
       border: 2px solid var(--light);
-      border-radius: 20px;
-      font-size: 0.8rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
       color: var(--dark);
       background: white;
       cursor: pointer;
@@ -703,10 +693,10 @@
 
     .keywords-input {
       width: 100%;
-      padding: 8px 10px;
+      padding: 10px 12px;
       border: 2px solid var(--light);
-      border-radius: 20px;
-      font-size: 0.8rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
       color: var(--dark);
       background: white;
     }
@@ -716,26 +706,38 @@
       border-color: var(--primary);
     }
 
-    .apply-options-btn {
+    .keywords-input::placeholder {
+      color: var(--gray-light);
+      font-size: 0.75rem;
+    }
+
+    .generate-btn {
       width: 100%;
-      padding: 10px;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
+      padding: 12px;
+      background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
       color: white;
       border: none;
-      border-radius: 25px;
-      font-weight: 600;
-      font-size: 0.8rem;
+      border-radius: 30px;
+      font-weight: 700;
+      font-size: 0.9rem;
       cursor: pointer;
       transition: var(--transition);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 8px;
+      margin-top: 8px;
     }
 
-    .apply-options-btn:hover {
+    .generate-btn:hover {
       transform: translateY(-2px);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .generate-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .current-exercise {
@@ -748,10 +750,13 @@
     }
 
     .current-exercise h4 {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 600;
       color: var(--dark);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .current-exercise p {
@@ -771,31 +776,6 @@
       color: var(--primary-dark);
     }
 
-    .progress-section {
-      margin: 16px 0 8px;
-    }
-
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 5px;
-      font-size: 0.75rem;
-    }
-
-    .progress-bar {
-      height: 6px;
-      background: var(--light);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--secondary), var(--primary));
-      border-radius: 3px;
-      transition: width 0.5s ease;
-    }
-
     #noExerciseMessage {
       flex: 1;
       display: flex;
@@ -813,7 +793,11 @@
       margin-bottom: 16px;
     }
 
-    /* Fin d'exercice - message spécial */
+    #noExerciseMessage p {
+      color: var(--gray);
+      font-size: 0.85rem;
+    }
+
     .exercise-finished-message {
       background: #e8f5e9;
       border-left: 4px solid var(--secondary);
@@ -831,8 +815,7 @@
       font-size: 1.5rem;
     }
 
-    .exercise-finished-message p {
-      margin: 0;
+    .exercise-finished-message span {
       color: var(--dark);
       font-weight: 500;
     }
@@ -880,27 +863,23 @@
     }
 
     .chat-messages::-webkit-scrollbar,
-    .current-exercise::-webkit-scrollbar,
-    .generation-options::-webkit-scrollbar {
+    .current-exercise::-webkit-scrollbar {
       width: 5px;
     }
 
     .chat-messages::-webkit-scrollbar-track,
-    .current-exercise::-webkit-scrollbar-track,
-    .generation-options::-webkit-scrollbar-track {
+    .current-exercise::-webkit-scrollbar-track {
       background: var(--light);
     }
 
     .chat-messages::-webkit-scrollbar-thumb,
-    .current-exercise::-webkit-scrollbar-thumb,
-    .generation-options::-webkit-scrollbar-thumb {
+    .current-exercise::-webkit-scrollbar-thumb {
       background: var(--primary-light);
       border-radius: 3px;
     }
 
     .chat-messages::-webkit-scrollbar-thumb:hover,
-    .current-exercise::-webkit-scrollbar-thumb:hover,
-    .generation-options::-webkit-scrollbar-thumb:hover {
+    .current-exercise::-webkit-scrollbar-thumb:hover {
       background: var(--primary);
     }
 
@@ -919,19 +898,6 @@
       .chat-main {
         height: calc(100vh - 40px);
       }
-
-      .header-actions {
-        flex-direction: column;
-        width: 100%;
-      }
-      
-      .subject-selector {
-        width: 100%;
-      }
-      
-      .subject-dropdown {
-        width: 100%;
-      }
     }
 
     @media (max-width: 640px) {
@@ -945,11 +911,6 @@
         gap: 10px;
       }
 
-      .generate-exercise-btn {
-        width: 100%;
-        justify-content: center;
-      }
-
       .message {
         max-width: 95%;
       }
@@ -958,7 +919,7 @@
 </head>
 <body>
   <div class="container">
-    <!-- ===== SIDEBAR GAUCHE ===== -->
+    <!-- ===== SIDEBAR GAUCHE - PROFIL ===== -->
     <div class="profile-sidebar">
       <div class="profile-header">
         <div class="profile-avatar">
@@ -981,65 +942,29 @@
     
       <div class="stats-row">
         <div class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-star"></i>
-          </div>
+          <div class="stat-icon"><i class="fas fa-star"></i></div>
           <div class="stat-value" id="stat-exercices">{{ stats.total_exercices if stats else 0 }}</div>
-          <div class="stat-label">
-            {% if lang == 'fr' %}Exercices{% else %}Exercises{% endif %}
-          </div>
+          <div class="stat-label">{% if lang == 'fr' %}Exercices{% else %}Exercises{% endif %}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-fire"></i>
-          </div>
+          <div class="stat-icon"><i class="fas fa-fire"></i></div>
           <div class="stat-value" id="stat-serie">{{ stats.serie if stats else 0 }}</div>
-          <div class="stat-label">
-            {% if lang == 'fr' %}Série{% else %}Streak{% endif %}
-          </div>
+          <div class="stat-label">{% if lang == 'fr' %}Série{% else %}Streak{% endif %}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-chart-line"></i>
-          </div>
+          <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
           <div class="stat-value" id="stat-reussite">{{ stats.taux_reussite if stats else 0 }}%</div>
-          <div class="stat-label">
-            {% if lang == 'fr' %}Réussite{% else %}Success{% endif %}
-          </div>
+          <div class="stat-label">{% if lang == 'fr' %}Réussite{% else %}Success{% endif %}</div>
         </div>
       </div>
     
       <div class="subject-card">
         <div class="subject-icon" id="subjectIcon">
-          <i class="fas 
-            {% if matiere == 'mathématiques' %}fa-calculator
-            {% elif matiere == 'français' %}fa-language
-            {% elif matiere == 'anglais' %}fa-globe
-            {% elif matiere == 'histoire' %}fa-landmark
-            {% elif matiere == 'sciences' %}fa-flask
-            {% elif matiere == 'géographie' %}fa-globe-americas
-            {% else %}fa-book{% endif %}"></i>
+          <i class="fas fa-calculator"></i>
         </div>
-        <div class="subject-name" id="currentSubjectName">
-          {% if lang == 'en' %}
-            {% if matiere == 'mathématiques' %}Mathematics
-            {% elif matiere == 'français' %}French
-            {% elif matiere == 'anglais' %}English
-            {% elif matiere == 'histoire' %}History
-            {% elif matiere == 'sciences' %}Science
-            {% elif matiere == 'géographie' %}Geography
-            {% else %}{{ matiere|capitalize }}
-            {% endif %}
-          {% else %}
-            {{ matiere|capitalize }}
-          {% endif %}
-        </div>
+        <div class="subject-name" id="currentSubjectName">Mathématiques</div>
         <div class="subject-topic" id="currentSubjectTopic">
-          {% if theme and theme != 'général' and theme != 'general' %}
-            {{ theme }}
-          {% else %}
-            {% if lang == 'fr' %}Prêt à apprendre{% else %}Ready to learn{% endif %}
-          {% endif %}
+          {% if lang == 'fr' %}Prêt à apprendre{% else %}Ready to learn{% endif %}
         </div>
       </div>
     
@@ -1055,22 +980,10 @@
       </div>
     
       <div class="tips-grid">
-        <div class="tip-item">
-          <i class="fas fa-lightbulb"></i>
-          <span>{% if lang == 'fr' %}Questions précises{% else %}Specific questions{% endif %}</span>
-        </div>
-        <div class="tip-item">
-          <i class="fas fa-pencil-alt"></i>
-          <span>{% if lang == 'fr' %}Explique ton raisonnement{% else %}Explain reasoning{% endif %}</span>
-        </div>
-        <div class="tip-item">
-          <i class="fas fa-redo-alt"></i>
-          <span>{% if lang == 'fr' %}Pas peur des erreurs{% else %}Don't fear mistakes{% endif %}</span>
-        </div>
-        <div class="tip-item">
-          <i class="fas fa-clock"></i>
-          <span>{% if lang == 'fr' %}Prends ton temps{% else %}Take your time{% endif %}</span>
-        </div>
+        <div class="tip-item"><i class="fas fa-lightbulb"></i><span>{% if lang == 'fr' %}Questions précises{% else %}Specific questions{% endif %}</span></div>
+        <div class="tip-item"><i class="fas fa-pencil-alt"></i><span>{% if lang == 'fr' %}Explique ton raisonnement{% else %}Explain reasoning{% endif %}</span></div>
+        <div class="tip-item"><i class="fas fa-redo-alt"></i><span>{% if lang == 'fr' %}Pas peur des erreurs{% else %}Don't fear mistakes{% endif %}</span></div>
+        <div class="tip-item"><i class="fas fa-clock"></i><span>{% if lang == 'fr' %}Prends ton temps{% else %}Take your time{% endif %}</span></div>
       </div>
     
       <a href="/dashboard-eleve?username={{ eleve.username }}&lang={{ lang }}" class="back-btn">
@@ -1089,42 +1002,13 @@
           </div>
           <div class="chat-header-info">
             <h2>Naima ✨</h2>
-            <p>
-              <i class="fas fa-circle" style="color: var(--secondary); font-size: 0.5rem;"></i>
-              {% if lang == 'fr' %}En ligne • Enseignante virtuelle{% else %}Online • Virtual Teacher{% endif %}
-            </p>
+            <p><i class="fas fa-circle" style="color: var(--secondary); font-size: 0.5rem;"></i>{% if lang == 'fr' %}En ligne • Enseignante virtuelle{% else %}Online • Virtual Teacher{% endif %}</p>
           </div>
         </div>
-        <div class="header-actions">
-          <div class="subject-selector">
-            <select id="matiereSelect" class="subject-dropdown" onchange="updateMatiere()">
-              {% set matieres = {
-                'mathématiques': {'fr': 'Mathématiques', 'en': 'Mathematics', 'icon': '📐'},
-                'français': {'fr': 'Français', 'en': 'French', 'icon': '📖'},
-                'anglais': {'fr': 'Anglais', 'en': 'English', 'icon': '🇬🇧'},
-                'histoire': {'fr': 'Histoire', 'en': 'History', 'icon': '🏛️'},
-                'sciences': {'fr': 'Sciences', 'en': 'Science', 'icon': '🔬'},
-                'géographie': {'fr': 'Géographie', 'en': 'Geography', 'icon': '🌍'}
-              } %}
-              
-              {% for value, data in matieres.items() %}
-                <option value="{{ value }}" {% if matiere == value %}selected{% endif %}>
-                  {{ data.icon }} {{ data[lang] if lang in data else data['fr'] }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-          <form method="POST" action="{{ url_for('nouvel_exercice') }}" style="display: inline;" id="exerciseForm">
-            <input type="hidden" name="matiere" id="matiereHidden" value="{{ matiere }}">
-            <input type="hidden" name="difficulte" id="difficulteHidden" value="moyen">
-            <input type="hidden" name="type_exercice" id="typeHidden" value="exercice">
-            <input type="hidden" name="mots_cles" id="motsClesHidden" value="">
-            <button type="submit" class="generate-exercise-btn" id="generateBtn">
-              <i class="fas fa-plus-circle"></i>
-              {% if lang == 'fr' %}Nouvel exercice{% else %}New exercise{% endif %}
-            </button>
-          </form>
-        </div>
+        <button type="button" class="reset-btn" id="resetChatBtn" onclick="resetConversation()">
+          <i class="fas fa-trash-alt"></i>
+          {% if lang == 'fr' %}Réinitialiser{% else %}Reset{% endif %}
+        </button>
       </div>
 
       <div class="chat-messages" id="chatMessages">
@@ -1132,9 +1016,7 @@
           {% for message in conversation %}
             {% if '👤' in message %}
               <div class="message user">
-                <div class="message-avatar">
-                  <i class="fas fa-user-graduate"></i>
-                </div>
+                <div class="message-avatar"><i class="fas fa-user-graduate"></i></div>
                 <div class="message-content">
                   {{ message.replace('👤 Élève:', '').replace('👤 Student:', '').strip() | safe }}
                   <div class="message-time">{{ datetime.now().strftime('%H:%M') }}</div>
@@ -1142,9 +1024,7 @@
               </div>
             {% elif '🤖' in message %}
               <div class="message naima">
-                <div class="message-avatar">
-                  <i class="fas fa-robot"></i>
-                </div>
+                <div class="message-avatar"><i class="fas fa-robot"></i></div>
                 <div class="message-content">
                   {{ message.replace('🤖 Naima:', '').strip() | safe }}
                   <div class="message-time">{{ datetime.now().strftime('%H:%M') }}</div>
@@ -1154,9 +1034,7 @@
           {% endfor %}
         {% else %}
           <div class="message naima">
-            <div class="message-avatar">
-              <i class="fas fa-robot"></i>
-            </div>
+            <div class="message-avatar"><i class="fas fa-robot"></i></div>
             <div class="message-content">
               {% if lang == 'fr' %}
                 👋 Bonjour ! Je suis Naima, ton enseignante virtuelle. 
@@ -1168,7 +1046,7 @@
                 <ul style="margin-top: 8px; margin-left: 20px;">
                   <li>Me poser une question sur un exercice</li>
                   <li>Me demander de t'expliquer une notion</li>
-                  <li>Choisir une matière et cliquer sur "Nouvel exercice" pour t'entraîner</li>
+                  <li>Choisir une matière à droite, régler les options et cliquer sur "Générer l'exercice"</li>
                 </ul>
               {% else %}
                 👋 Hello! I'm Naima, your virtual teacher.
@@ -1180,7 +1058,7 @@
                 <ul style="margin-top: 8px; margin-left: 20px;">
                   <li>Ask me a question about an exercise</li>
                   <li>Ask me to explain a concept</li>
-                  <li>Choose a subject and click "New exercise" to practice</li>
+                  <li>Choose a subject on the right, set options and click "Generate exercise"</li>
                 </ul>
               {% endif %}
               <div class="message-time">{{ datetime.now().strftime('%H:%M') }}</div>
@@ -1213,23 +1091,44 @@
       </div>
     </div>
 
-    <!-- ===== SIDEBAR DROITE ===== -->
+    <!-- ===== SIDEBAR DROITE - GÉNÉRATION EXERCICE ===== -->
     <div class="exercise-sidebar">
       <div class="sidebar-title">
-        <i class="fas fa-pencil-alt"></i>
-        {% if lang == 'fr' %}Exercice en cours{% else %}Current Exercise{% endif %}
+        <i class="fas fa-cog"></i>
+        {% if lang == 'fr' %}Configurer et générer{% else %}Configure & generate{% endif %}
       </div>
 
       <div class="generation-options">
-        <h4 class="options-title">
-          <i class="fas fa-sliders-h"></i>
-          {% if lang == 'fr' %}Options de génération{% else %}Generation options{% endif %}
-        </h4>
-        
+        <!-- MATIÈRE -->
+        <div class="option-group">
+          <label class="option-label">
+            <i class="fas fa-book"></i>
+            {% if lang == 'fr' %}Matière{% else %}Subject{% endif %}
+          </label>
+          <div class="subject-select-wrapper">
+            <select id="matiereSelect" class="subject-select">
+              {% set matieres = {
+                'mathématiques': {'fr': 'Mathématiques', 'en': 'Mathematics', 'icon': '📐'},
+                'français': {'fr': 'Français', 'en': 'French', 'icon': '📖'},
+                'anglais': {'fr': 'Anglais', 'en': 'English', 'icon': '🇬🇧'},
+                'histoire': {'fr': 'Histoire', 'en': 'History', 'icon': '🏛️'},
+                'sciences': {'fr': 'Sciences', 'en': 'Science', 'icon': '🔬'},
+                'géographie': {'fr': 'Géographie', 'en': 'Geography', 'icon': '🌍'}
+              } %}
+              {% for value, data in matieres.items() %}
+                <option value="{{ value }}" {% if matiere == value %}selected{% endif %}>
+                  {{ data.icon }} {{ data[lang] if lang in data else data['fr'] }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- DIFFICULTÉ -->
         <div class="option-group">
           <label class="option-label">
             <i class="fas fa-tachometer-alt"></i>
-            {% if lang == 'fr' %}Difficulté :{% else %}Difficulty:{% endif %}
+            {% if lang == 'fr' %}Difficulté{% else %}Difficulty{% endif %}
           </label>
           <div class="difficulty-buttons">
             <button type="button" class="difficulty-btn" onclick="setDifficulty('facile')" id="difficileFacile">
@@ -1244,61 +1143,53 @@
           </div>
         </div>
 
+        <!-- TYPE D'EXERCICE -->
         <div class="option-group">
           <label class="option-label">
             <i class="fas fa-tag"></i>
-            {% if lang == 'fr' %}Type d'exercice :{% else %}Exercise type:{% endif %}
+            {% if lang == 'fr' %}Type d'exercice{% else %}Exercise type{% endif %}
           </label>
           <select id="typeExercice" class="type-select">
-            <option value="exercice">📝 {% if lang == 'fr' %}Exercice standard{% else %}Standard exercise{% endif %}</option>
+            <option value="exercice">📝 {% if lang == 'fr' %}Standard{% else %}Standard{% endif %}</option>
             <option value="probleme">🧮 {% if lang == 'fr' %}Problème{% else %}Problem{% endif %}</option>
-            <option value="qcm">✅ {% if lang == 'fr' %}QCM{% else %}Multiple choice{% endif %}</option>
-            <option value="logique">🧠 {% if lang == 'fr' %}Exercice de logique{% else %}Logic exercise{% endif %}</option>
+            <option value="qcm">✅ {% if lang == 'fr' %}QCM{% else %}MCQ{% endif %}</option>
+            <option value="logique">🧠 {% if lang == 'fr' %}Logique{% else %}Logic{% endif %}</option>
           </select>
         </div>
 
+        <!-- MOTS-CLÉS -->
         <div class="option-group">
           <label class="option-label">
             <i class="fas fa-key"></i>
-            {% if lang == 'fr' %}Mots-clés (optionnel) :{% else %}Keywords (optional):{% endif %}
+            {% if lang == 'fr' %}Mots-clés (optionnel){% else %}Keywords (optional){% endif %}
           </label>
           <input type="text" id="motsCles" class="keywords-input" 
                  placeholder="{% if lang == 'fr' %}ex: fractions, équations...{% else %}ex: fractions, equations...{% endif %}"
                  value="">
         </div>
 
-        <button type="button" class="apply-options-btn" onclick="submitWithOptions()">
+        <!-- BOUTON GÉNÉRER -->
+        <button type="button" class="generate-btn" onclick="generateExercise()">
           <i class="fas fa-magic"></i>
-          {% if lang == 'fr' %}Générer avec ces options{% else %}Generate with these options{% endif %}
+          {% if lang == 'fr' %}Générer l'exercice{% else %}Generate exercise{% endif %}
         </button>
       </div>
 
+      <!-- EXERCICE EN COURS -->
       <div class="current-exercise" id="currentExerciseSidebar" style="display: none;">
-        <h4 id="sidebarExerciseTitle">
-          {% if lang == 'fr' %}Exercice en cours{% else %}Current Exercise{% endif %}
-        </h4>
+        <h4><i class="fas fa-pencil-alt"></i> {% if lang == 'fr' %}Exercice en cours{% else %}Current exercise{% endif %}</h4>
         <p id="sidebarExerciseQuestion"></p>
         <span class="difficulty-badge" id="sidebarExerciseDifficulty">Moyen</span>
-        <div class="progress-section" id="sidebarProgress" style="display: none;">
-          <div class="progress-header">
-            <span>{% if lang == 'fr' %}Progression{% else %}Progress{% endif %}</span>
-            <span id="progressText">1/3</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" id="progressBar" style="width: 33%"></div>
-          </div>
-        </div>
       </div>
 
+      <!-- AUCUN EXERCICE -->
       <div class="current-exercise" id="noExerciseMessage" style="display: flex;">
         <i class="fas fa-book-open"></i>
-        <p style="color: var(--gray);">
+        <p>
           {% if lang == 'fr' %}
-            Aucun exercice en cours.<br>
-            Choisis une matière et clique sur "Nouvel exercice" !
+            Choisis une matière, règle les options<br>et clique sur "Générer l'exercice" !
           {% else %}
-            No exercise in progress.<br>
-            Choose a subject and click "New exercise"!
+            Choose a subject, set options<br>and click "Generate exercise"!
           {% endif %}
         </p>
       </div>
@@ -1306,14 +1197,231 @@
   </div>
 
   <script>
-    // Variables globales
+    // ============================================================
+    // CONVERSION DES FRACTIONS POUR MATHJAX
+    // ============================================================
+    
+    function formatMathExpressions(text) {
+      if (!text) return text;
+      
+      let result = text;
+      
+      if (result.includes('\\frac') || result.includes('\\(')) {
+        return result;
+      }
+      
+      result = result.replace(/(\d+)\s*\/\s*(\d+)/g, function(match, num, den) {
+        return `\\(\\frac{${num}}{${den}}\\)`;
+      });
+      
+      return result;
+    }
+    
+    function formatAndRenderMath(element) {
+      if (!element) return;
+      
+      let content = element.innerHTML;
+      
+      let tempDiv = document.createElement('div');
+      tempDiv.innerHTML = content;
+      let textContent = tempDiv.textContent || tempDiv.innerText || '';
+      
+      let formatted = formatMathExpressions(textContent);
+      
+      if (formatted !== textContent) {
+        element.innerHTML = formatted;
+      }
+      
+      if (window.MathJax) {
+        MathJax.typesetPromise([element]).catch(function(err) {
+          console.log('MathJax error:', err);
+        });
+      }
+    }
+    
+    function formatAllMessages() {
+      const messageContents = document.querySelectorAll('.message-content');
+      messageContents.forEach(function(content) {
+        formatAndRenderMath(content);
+      });
+    }
+    
+    // ============================================================
+    // VARIABLES GLOBALES
+    // ============================================================
+    
     let isSubmitting = false;
-    let currentExerciseId = null;
-    let currentHintLevel = 0;
     let selectedDifficulty = 'moyen';
 
-    // Auto-resize textarea
     const questionInput = document.getElementById('questionInput');
+    const chatForm = document.getElementById('chatForm');
+
+    // ============================================================
+    // RÉINITIALISATION
+    // ============================================================
+    
+    async function resetConversation() {
+      if (isSubmitting) return;
+      
+      const confirmMsg = document.documentElement.lang === 'fr' 
+        ? '⚠️ Es-tu sûr de vouloir réinitialiser la conversation ? Tout l\'historique sera effacé.'
+        : '⚠️ Are you sure you want to reset the conversation? All history will be erased.';
+      
+      if (confirm(confirmMsg)) {
+        setLoadingState(true);
+        
+        try {
+          const response = await fetch('/reset-chat', {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+          
+          if (response.ok) {
+            const messagesDiv = document.getElementById('chatMessages');
+            if (messagesDiv) {
+              messagesDiv.innerHTML = '';
+            }
+            
+            const welcomeMsg = document.documentElement.lang === 'fr'
+              ? '👋 Bonjour ! Je suis Naima, ton enseignante virtuelle. La conversation a été réinitialisée. Comment puis-je t\'aider ?'
+              : '👋 Hello! I\'m Naima, your virtual teacher. The conversation has been reset. How can I help you?';
+            
+            addNaimaMessage(welcomeMsg);
+            
+            sessionStorage.removeItem('exercice_termine');
+            
+            updateExerciseSidebar(null);
+          }
+        } catch (error) {
+          console.error('Erreur reset:', error);
+        } finally {
+          setLoadingState(false);
+          if (questionInput) questionInput.focus();
+        }
+      }
+    }
+
+    // ============================================================
+    // GÉNÉRATION D'EXERCICE
+    // ============================================================
+    
+    function generateExercise() {
+      if (isSubmitting) return;
+
+      const matiere = document.getElementById('matiereSelect')?.value || 'mathématiques';
+      const difficulte = selectedDifficulty;
+      const typeExercice = document.getElementById('typeExercice')?.value || 'exercice';
+      const motsCles = document.getElementById('motsCles')?.value || '';
+
+      // Mettre à jour les champs cachés du formulaire
+      const matiereHidden = document.getElementById('matiereInput');
+      const difficulteHidden = document.getElementById('difficulteChatHidden');
+      
+      if (matiereHidden) matiereHidden.value = matiere;
+      if (difficulteHidden) difficulteHidden.value = difficulte;
+
+      // Créer un formulaire temporaire pour la soumission
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = "{{ url_for('nouvel_exercice') }}";
+      form.style.display = 'none';
+      
+      const matiereField = document.createElement('input');
+      matiereField.name = 'matiere';
+      matiereField.value = matiere;
+      form.appendChild(matiereField);
+      
+      const difficulteField = document.createElement('input');
+      difficulteField.name = 'difficulte';
+      difficulteField.value = difficulte;
+      form.appendChild(difficulteField);
+      
+      const typeField = document.createElement('input');
+      typeField.name = 'type_exercice';
+      typeField.value = typeExercice;
+      form.appendChild(typeField);
+      
+      const motsClesField = document.createElement('input');
+      motsClesField.name = 'mots_cles';
+      motsClesField.value = motsCles;
+      form.appendChild(motsClesField);
+      
+      document.body.appendChild(form);
+      
+      sessionStorage.removeItem('exercice_termine');
+
+      const currentExerciseSidebar = document.getElementById('currentExerciseSidebar');
+      const noExerciseMessage = document.getElementById('noExerciseMessage');
+
+      if (currentExerciseSidebar) currentExerciseSidebar.style.display = 'none';
+      if (noExerciseMessage) noExerciseMessage.style.display = 'flex';
+
+      setLoadingState(true);
+      form.submit();
+    }
+
+    // ============================================================
+    // FONCTIONS UTILITAIRES
+    // ============================================================
+    
+    function normalizeCurrentUrl() {
+      const currentUrl = window.location.href;
+      const firstQuestionMark = currentUrl.indexOf('?');
+      const lastQuestionMark = currentUrl.lastIndexOf('?');
+
+      if (firstQuestionMark !== -1 && lastQuestionMark !== firstQuestionMark) {
+        const correctedUrl = currentUrl.substring(0, firstQuestionMark + 1) +
+          currentUrl.substring(firstQuestionMark + 1).replace(/\?/g, '&');
+        window.history.replaceState({}, document.title, correctedUrl);
+      }
+    }
+
+    function redirectToLoginIfNeeded(response) {
+      if (response.status === 401 || response.status === 403) {
+        window.location.href = "{{ url_for('login_eleve') }}";
+        return true;
+      }
+
+      if (response.redirected && response.url && response.url.includes('/login-eleve')) {
+        window.location.href = response.url;
+        return true;
+      }
+
+      return false;
+    }
+
+    function setLoadingState(isLoading) {
+      isSubmitting = isLoading;
+
+      const sendBtn = document.getElementById('sendBtn');
+      const generateBtn = document.querySelector('.generate-btn');
+      const resetBtn = document.getElementById('resetChatBtn');
+
+      if (sendBtn) {
+        sendBtn.disabled = isLoading;
+        sendBtn.innerHTML = isLoading
+          ? '<i class="fas fa-spinner fa-spin"></i>'
+          : '<i class="fas fa-paper-plane"></i>';
+      }
+
+      if (generateBtn) {
+        generateBtn.disabled = isLoading;
+        generateBtn.innerHTML = isLoading
+          ? '<i class="fas fa-spinner fa-spin"></i> Génération...'
+          : '<i class="fas fa-magic"></i> ' + (document.documentElement.lang === 'fr' ? 'Générer l\'exercice' : 'Generate exercise');
+      }
+
+      if (resetBtn) {
+        resetBtn.disabled = isLoading;
+      }
+
+      if (questionInput) {
+        questionInput.disabled = isLoading;
+      }
+    }
+
     if (questionInput) {
       questionInput.addEventListener('input', function() {
         this.style.height = 'auto';
@@ -1321,156 +1429,111 @@
       });
     }
 
-    // Insérer symbole mathématique
     function insertMathSymbol(symbol) {
+      if (!questionInput) return;
+
       const start = questionInput.selectionStart;
       const end = questionInput.selectionEnd;
       const text = questionInput.value;
-      
+
       questionInput.value = text.substring(0, start) + symbol + text.substring(end);
       questionInput.focus();
       questionInput.selectionStart = questionInput.selectionEnd = start + symbol.length;
       questionInput.dispatchEvent(new Event('input'));
     }
 
-    // Changer la difficulté
     function setDifficulty(difficulty) {
       selectedDifficulty = difficulty;
-      
+
       document.querySelectorAll('.difficulty-btn').forEach(btn => {
         btn.classList.remove('active');
       });
-      document.getElementById(`difficile${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`).classList.add('active');
-      
-      const difficulteHidden = document.getElementById('difficulteHidden');
+
+      const activeBtn = document.getElementById(
+        `difficile${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`
+      );
+
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+      }
+
+      const difficulteHidden = document.getElementById('difficulteChatHidden');
       if (difficulteHidden) {
         difficulteHidden.value = difficulty;
-      }
-
-      const difficulteChatHidden = document.getElementById('difficulteChatHidden');
-      if (difficulteChatHidden) {
-          difficulteChatHidden.value = difficulty;
-      }
-      
-      console.log('✅ Difficulté changée:', difficulty);
-    }
-
-    function updateMatiere() {
-      const matiere = document.getElementById('matiereSelect').value;
-      
-      document.getElementById('matiereHidden').value = matiere;
-      document.getElementById('matiereInput').value = matiere;
-      
-      updateSubjectSidebar(matiere);
-      
-      sessionStorage.setItem('currentMatiere', matiere);
-    }
-
-    function submitWithOptions() {
-      const matiere = document.getElementById('matiereSelect').value;
-      const difficulte = selectedDifficulty;
-      const typeExercice = document.getElementById('typeExercice').value;
-      const motsCles = document.getElementById('motsCles').value;
-      
-      document.getElementById('matiereHidden').value = matiere;
-      document.getElementById('difficulteHidden').value = difficulte;
-      document.getElementById('typeHidden').value = typeExercice;
-      document.getElementById('motsClesHidden').value = motsCles;
-      
-      sessionStorage.setItem('currentMatiere', matiere);
-      sessionStorage.removeItem('exercice_termine'); // Réinitialiser l'état de fin
-      
-      document.getElementById('currentExerciseSidebar').style.display = 'none';
-      document.getElementById('noExerciseMessage').style.display = 'flex';
-      
-      document.getElementById('exerciseForm').submit();
-    }
-
-    document.getElementById('matiereSelect').addEventListener('change', function() {
-      document.getElementById('matiereHidden').value = this.value;
-      document.getElementById('matiereInput').value = this.value;
-    });
-
-    document.getElementById('typeExercice').addEventListener('change', function() {
-      document.getElementById('typeHidden').value = this.value;
-    });
-
-    document.getElementById('motsCles').addEventListener('input', function() {
-      document.getElementById('motsClesHidden').value = this.value;
-    });
-
-    function updateExerciseSidebar(exerciseData) {
-      if (exerciseData && exerciseData.enonce) {
-        document.getElementById('noExerciseMessage').style.display = 'none';
-        
-        const sidebar = document.getElementById('currentExerciseSidebar');
-        sidebar.style.display = 'block';
-        
-        document.getElementById('sidebarExerciseTitle').textContent = 
-          document.documentElement.lang === 'fr' ? 'Exercice en cours' : 'Current Exercise';
-        
-        document.getElementById('sidebarExerciseQuestion').textContent = 
-          exerciseData.enonce.substring(0, 100) + '...';
-        
-        const difficultyBadge = document.getElementById('sidebarExerciseDifficulty');
-        if (exerciseData.difficulte) {
-          const lang = document.documentElement.lang;
-          if (lang === 'fr') {
-            difficultyBadge.textContent = 
-              exerciseData.difficulte === 'facile' ? 'Facile' : 
-              exerciseData.difficulte === 'moyen' ? 'Moyen' : 'Difficile';
-          } else {
-            difficultyBadge.textContent = 
-              exerciseData.difficulte === 'facile' ? 'Easy' : 
-              exerciseData.difficulte === 'moyen' ? 'Medium' : 'Hard';
-          }
-        }
-        
-        if (exerciseData.etape && exerciseData.total_etapes) {
-          document.getElementById('sidebarProgress').style.display = 'block';
-          document.getElementById('progressText').textContent = 
-            `${exerciseData.etape}/${exerciseData.total_etapes}`;
-          document.getElementById('progressBar').style.width = 
-            (exerciseData.etape / exerciseData.total_etapes * 100) + '%';
-        }
-      } else {
-        document.getElementById('currentExerciseSidebar').style.display = 'none';
-        document.getElementById('noExerciseMessage').style.display = 'flex';
       }
     }
 
     function updateSubjectSidebar(matiere) {
-      if (matiere) {
-        const lang = document.documentElement.lang;
-        let displayName = matiere.charAt(0).toUpperCase() + matiere.slice(1);
-        
-        if (lang === 'en') {
-          if (matiere === 'mathématiques') displayName = 'Mathematics';
-          else if (matiere === 'français') displayName = 'French';
-          else if (matiere === 'anglais') displayName = 'English';
-          else if (matiere === 'histoire') displayName = 'History';
-          else if (matiere === 'sciences') displayName = 'Science';
-          else if (matiere === 'géographie') displayName = 'Geography';
+      if (!matiere) return;
+
+      const lang = document.documentElement.lang;
+      let displayName = matiere.charAt(0).toUpperCase() + matiere.slice(1);
+      let iconClass = 'fa-calculator';
+
+      if (lang === 'en') {
+        if (matiere === 'mathématiques') { displayName = 'Mathematics'; iconClass = 'fa-calculator'; }
+        else if (matiere === 'français') { displayName = 'French'; iconClass = 'fa-language'; }
+        else if (matiere === 'anglais') { displayName = 'English'; iconClass = 'fa-globe'; }
+        else if (matiere === 'histoire') { displayName = 'History'; iconClass = 'fa-landmark'; }
+        else if (matiere === 'sciences') { displayName = 'Science'; iconClass = 'fa-flask'; }
+        else if (matiere === 'géographie') { displayName = 'Geography'; iconClass = 'fa-globe-americas'; }
+      } else {
+        if (matiere === 'mathématiques') { displayName = 'Mathématiques'; iconClass = 'fa-calculator'; }
+        else if (matiere === 'français') { displayName = 'Français'; iconClass = 'fa-language'; }
+        else if (matiere === 'anglais') { displayName = 'Anglais'; iconClass = 'fa-globe'; }
+        else if (matiere === 'histoire') { displayName = 'Histoire'; iconClass = 'fa-landmark'; }
+        else if (matiere === 'sciences') { displayName = 'Sciences'; iconClass = 'fa-flask'; }
+        else if (matiere === 'géographie') { displayName = 'Géographie'; iconClass = 'fa-globe-americas'; }
+      }
+
+      const subjectName = document.getElementById('currentSubjectName');
+      if (subjectName) subjectName.textContent = displayName;
+
+      const icon = document.querySelector('#subjectIcon i');
+      if (icon) {
+        icon.className = `fas ${iconClass}`;
+      }
+
+      const topicElement = document.getElementById('currentSubjectTopic');
+      if (topicElement) {
+        topicElement.textContent = lang === 'fr' ? `Exercices de ${displayName}` : `${displayName} exercises`;
+      }
+    }
+
+    document.getElementById('matiereSelect')?.addEventListener('change', function() {
+      updateSubjectSidebar(this.value);
+    });
+
+    function updateExerciseSidebar(exerciseData) {
+      const noExerciseMessage = document.getElementById('noExerciseMessage');
+      const sidebar = document.getElementById('currentExerciseSidebar');
+
+      if (exerciseData && exerciseData.enonce) {
+        if (noExerciseMessage) noExerciseMessage.style.display = 'none';
+        if (sidebar) sidebar.style.display = 'block';
+
+        const question = document.getElementById('sidebarExerciseQuestion');
+        const difficultyBadge = document.getElementById('sidebarExerciseDifficulty');
+
+        if (question) {
+          question.textContent = exerciseData.enonce.substring(0, 120) + (exerciseData.enonce.length > 120 ? '...' : '');
         }
-        
-        document.getElementById('currentSubjectName').textContent = displayName;
-        
-        const icon = document.querySelector('#subjectIcon i');
-        if (icon) {
-          const m = matiere.toLowerCase();
-          if (m === 'mathématiques') icon.className = 'fas fa-calculator';
-          else if (m === 'français') icon.className = 'fas fa-language';
-          else if (m === 'anglais') icon.className = 'fas fa-globe';
-          else if (m === 'histoire') icon.className = 'fas fa-landmark';
-          else if (m === 'sciences') icon.className = 'fas fa-flask';
-          else if (m === 'géographie') icon.className = 'fas fa-globe-americas';
-          else icon.className = 'fas fa-book';
+
+        if (difficultyBadge && exerciseData.difficulte) {
+          const lang = document.documentElement.lang;
+          if (lang === 'fr') {
+            difficultyBadge.textContent =
+              exerciseData.difficulte === 'facile' ? 'Facile' :
+              exerciseData.difficulte === 'moyen' ? 'Moyen' : 'Difficile';
+          } else {
+            difficultyBadge.textContent =
+              exerciseData.difficulte === 'facile' ? 'Easy' :
+              exerciseData.difficulte === 'moyen' ? 'Medium' : 'Hard';
+          }
         }
-        
-        const topicElement = document.getElementById('currentSubjectTopic');
-        if (topicElement) {
-          topicElement.textContent = lang === 'fr' ? 'Prêt à apprendre' : 'Ready to learn';
-        }
+      } else {
+        if (sidebar) sidebar.style.display = 'none';
+        if (noExerciseMessage) noExerciseMessage.style.display = 'flex';
       }
     }
 
@@ -1482,15 +1545,23 @@
             'X-Requested-With': 'XMLHttpRequest'
           }
         });
-        
+
+        if (redirectToLoginIfNeeded(response)) return;
         if (!response.ok) return;
-        
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return;
+
         const data = await response.json();
-        
+
         if (data.success) {
-          document.getElementById('stat-exercices').textContent = data.total_exercices;
-          document.getElementById('stat-serie').textContent = data.serie;
-          document.getElementById('stat-reussite').textContent = data.taux_reussite + '%';
+          const statExercices = document.getElementById('stat-exercices');
+          const statSerie = document.getElementById('stat-serie');
+          const statReussite = document.getElementById('stat-reussite');
+
+          if (statExercices) statExercices.textContent = data.total_exercices;
+          if (statSerie) statSerie.textContent = data.serie;
+          if (statReussite) statReussite.textContent = data.taux_reussite + '%';
         }
       } catch (error) {
         console.error('Erreur mise à jour stats:', error);
@@ -1499,6 +1570,8 @@
 
     function addNaimaMessage(content) {
       const messagesDiv = document.getElementById('chatMessages');
+      if (!messagesDiv) return;
+
       const messageDiv = document.createElement('div');
       messageDiv.className = 'message naima';
       messageDiv.innerHTML = `
@@ -1510,12 +1583,20 @@
           <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
         </div>
       `;
+
       messagesDiv.appendChild(messageDiv);
       scrollToBottom();
+      
+      const newContent = messageDiv.querySelector('.message-content');
+      if (newContent) {
+        formatAndRenderMath(newContent);
+      }
     }
 
     function addUserMessage(text) {
       const messagesDiv = document.getElementById('chatMessages');
+      if (!messagesDiv) return;
+
       const messageDiv = document.createElement('div');
       messageDiv.className = 'message user';
       messageDiv.innerHTML = `
@@ -1527,6 +1608,7 @@
           <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
         </div>
       `;
+
       messagesDiv.appendChild(messageDiv);
       scrollToBottom();
     }
@@ -1534,6 +1616,8 @@
     function showTypingIndicator() {
       const id = 'typing-' + Date.now();
       const messagesDiv = document.getElementById('chatMessages');
+      if (!messagesDiv) return null;
+
       const typingDiv = document.createElement('div');
       typingDiv.id = id;
       typingDiv.className = 'message naima';
@@ -1547,19 +1631,23 @@
           <span></span>
         </div>
       `;
+
       messagesDiv.appendChild(typingDiv);
       scrollToBottom();
       return id;
     }
 
     function removeTypingIndicator(id) {
+      if (!id) return;
       const indicator = document.getElementById(id);
       if (indicator) indicator.remove();
     }
 
     function scrollToBottom() {
       const messagesDiv = document.getElementById('chatMessages');
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      if (messagesDiv) {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
     }
 
     function escapeHtml(text) {
@@ -1568,159 +1656,162 @@
       return div.innerHTML;
     }
 
-    // ✅ Gestion de l'envoi du formulaire avec détection de fin d'exercice
-    const chatForm = document.getElementById('chatForm');
-    if (chatForm) {
-      chatForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        // ✅ Vérifier si l'exercice est terminé
-        if (sessionStorage.getItem('exercice_termine') === 'true') {
-          const question = questionInput.value.trim();
-          if (question) {
-            addUserMessage(question);
-            questionInput.value = '';
-            questionInput.style.height = 'auto';
-            
-            const msgFin = document.documentElement.lang === 'fr' 
-              ? '✅ Exercice terminé ! Clique sur "Nouvel exercice" pour continuer.'
-              : '✅ Exercise finished! Click "New exercise" to continue.';
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message naima';
-            messageDiv.innerHTML = `
-              <div class="message-avatar">
-                <i class="fas fa-robot"></i>
-              </div>
-              <div class="message-content exercise-finished-message" style="background: #e8f5e9; border-left-color: var(--secondary);">
-                <i class="fas fa-check-circle" style="color: var(--secondary);"></i>
-                <span>${msgFin}</span>
-                <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-              </div>
-            `;
-            document.getElementById('chatMessages').appendChild(messageDiv);
-            scrollToBottom();
-          }
-          return;
-        }
-        
-        const question = questionInput.value.trim();
-        console.log('📤 Question à envoyer:', question);
-        
-        if (!question) {
-          console.log('❌ Question vide');
-          return;
-        }
-        
+    async function handleChatSubmit(e) {
+      if (e) e.preventDefault();
+
+      if (isSubmitting) {
+        console.log('⏳ Envoi déjà en cours, requête ignorée.');
+        return;
+      }
+
+      if (!questionInput) return;
+
+      const question = questionInput.value.trim();
+
+      if (!question) return;
+
+      if (sessionStorage.getItem('exercice_termine') === 'true') {
         addUserMessage(question);
         questionInput.value = '';
         questionInput.style.height = 'auto';
-        
-        const typingId = showTypingIndicator();
-        
-        try {
-          const formData = new FormData();
-          formData.append('question', question);
-          formData.append('matiere', document.getElementById('matiereSelect').value);
-          formData.append('difficulte', document.getElementById('difficulteChatHidden').value);
-          
-          for (let pair of formData.entries()) {
-            console.log('📦 FormData:', pair[0], pair[1]);
-          }
-          
-          const response = await fetch('{{ url_for("enseignant_virtuel") }}', {
-            method: 'POST',
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-          });
-          
-          removeTypingIndicator(typingId);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('📥 Réponse du serveur:', data);
-            
-            // ✅ Vérifier si l'exercice est terminé
-            if (data.termine) {
-              sessionStorage.setItem('exercice_termine', 'true');
-            }
-            
-            if (data.success && data.messages && data.messages.length > 0) {
-              const lastMessage = data.messages[data.messages.length - 1];
-              
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = lastMessage;
-              const content = tempDiv.querySelector('.message-content')?.innerHTML || lastMessage;
-              
-              addNaimaMessage(content);
-              
-              if (data.matiere) {
-                updateSubjectSidebar(data.matiere);
-              }
-              
-              if (data.exercice_en_cours) {
-                updateExerciseSidebar(data.exercice_en_cours);
-              } else {
-                document.getElementById('currentExerciseSidebar').style.display = 'none';
-                document.getElementById('noExerciseMessage').style.display = 'flex';
-              }
-              
-              if (data.stats) {
-                document.getElementById('stat-exercices').textContent = data.stats.total_exercices;
-                document.getElementById('stat-serie').textContent = data.stats.serie;
-                document.getElementById('stat-reussite').textContent = data.stats.taux_reussite + '%';
-              }
-            } else {
-              console.log('⚠️ Pas de messages dans la réponse');
-            }
-          } else {
-            console.error('❌ Erreur HTTP:', response.status);
-          }
-        } catch (error) {
-          console.error('❌ Erreur fetch:', error);
-          removeTypingIndicator(typingId);
-          addNaimaMessage('{% if lang == "fr" %}Désolée, j\'ai eu un problème technique. Peux-tu réessayer ?{% else %}Sorry, I had a technical issue. Can you try again?{% endif %}');
+
+        const msgFin = document.documentElement.lang === 'fr'
+          ? '✅ Exercice terminé ! Clique sur "Réinitialiser" pour recommencer.'
+          : '✅ Exercise finished! Click "Reset" to start over.';
+
+        addNaimaMessage(`
+          <div class="exercise-finished-message" style="background: #e8f5e9; border-left-color: var(--secondary);">
+            <i class="fas fa-check-circle" style="color: var(--secondary);"></i>
+            <span>${msgFin}</span>
+          </div>
+        `);
+
+        return;
+      }
+
+      let typingId = null;
+
+      try {
+        setLoadingState(true);
+        addUserMessage(question);
+        questionInput.value = '';
+        questionInput.style.height = 'auto';
+        typingId = showTypingIndicator();
+
+        const formData = new FormData();
+        formData.append('question', question);
+        formData.append('matiere', document.getElementById('matiereSelect')?.value || 'mathématiques');
+        formData.append('difficulte', document.getElementById('difficulteChatHidden')?.value || 'moyen');
+
+        const response = await fetch('{{ url_for("enseignant_virtuel") }}', {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData
+        });
+
+        removeTypingIndicator(typingId);
+        typingId = null;
+
+        if (redirectToLoginIfNeeded(response)) return;
+
+        const contentType = response.headers.get('content-type') || '';
+
+        if (!response.ok) {
+          addNaimaMessage('{% if lang == "fr" %}Désolée, une erreur est survenue. Peux-tu réessayer ?{% else %}Sorry, an error occurred. Can you try again?{% endif %}');
+          return;
         }
-      });
+
+        if (!contentType.includes('application/json')) {
+          addNaimaMessage('{% if lang == "fr" %}Ta session semble avoir expiré. Reconnecte-toi puis réessaie.{% else %}Your session seems to have expired. Please sign in again and try again.{% endif %}');
+          return;
+        }
+
+        const data = await response.json();
+        console.log('📥 Réponse du serveur:', data);
+
+        if (data.termine) {
+          sessionStorage.setItem('exercice_termine', 'true');
+        }
+
+        if (data.success && data.messages && data.messages.length > 0) {
+          const lastMessage = data.messages[data.messages.length - 1];
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = lastMessage;
+          const content = tempDiv.querySelector('.message-content')?.innerHTML || lastMessage;
+
+          addNaimaMessage(content);
+
+          if (data.matiere) {
+            updateSubjectSidebar(data.matiere);
+          }
+
+          if (data.exercice_en_cours) {
+            updateExerciseSidebar(data.exercice_en_cours);
+          } else {
+            updateExerciseSidebar(null);
+          }
+
+          if (data.stats) {
+            const statExercices = document.getElementById('stat-exercices');
+            const statSerie = document.getElementById('stat-serie');
+            const statReussite = document.getElementById('stat-reussite');
+
+            if (statExercices) statExercices.textContent = data.stats.total_exercices;
+            if (statSerie) statSerie.textContent = data.stats.serie;
+            if (statReussite) statReussite.textContent = data.stats.taux_reussite + '%';
+          }
+        } else {
+          addNaimaMessage('{% if lang == "fr" %}Je n\'ai pas reçu de réponse claire. Peux-tu réessayer ?{% else %}I did not receive a clear response. Can you try again?{% endif %}');
+        }
+      } catch (error) {
+        console.error('❌ Erreur fetch:', error);
+        removeTypingIndicator(typingId);
+        addNaimaMessage('{% if lang == "fr" %}Désolée, j\'ai eu un problème technique. Peux-tu réessayer ?{% else %}Sorry, I had a technical issue. Can you try again?{% endif %}');
+      } finally {
+        setLoadingState(false);
+        if (questionInput) questionInput.focus();
+      }
     }
 
-    // Initialisation
-    document.addEventListener('DOMContentLoaded', function() {
-      scrollToBottom();
-      if (questionInput) {
-        questionInput.focus();
-      }
-      setDifficulty('moyen');
-      document.getElementById('typeHidden').value = document.getElementById('typeExercice').value;
-      
-      const savedMatiere = sessionStorage.getItem('currentMatiere');
-      if (savedMatiere) {
-        document.getElementById('matiereSelect').value = savedMatiere;
-        document.getElementById('matiereHidden').value = savedMatiere;
-        document.getElementById('matiereInput').value = savedMatiere;
-        updateSubjectSidebar(savedMatiere);
-      }
-      
-      // ✅ Réinitialiser l'état de fin si on recharge la page
-      sessionStorage.removeItem('exercice_termine');
-      
-      {% if session.get('exercice_en_cours') %}
-        updateExerciseSidebar({{ session.get('exercice_en_cours')|tojson }});
-      {% endif %}
-      
-      setInterval(updateStats, 30000);
-    });
+    if (chatForm) {
+      chatForm.addEventListener('submit', handleChatSubmit);
+    }
 
-    if (questionInput) {
+    if (questionInput && chatForm) {
       questionInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          chatForm.dispatchEvent(new Event('submit'));
+          handleChatSubmit(e);
         }
       });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      normalizeCurrentUrl();
+      scrollToBottom();
+      
+      formatAllMessages();
+
+      if (questionInput) {
+        questionInput.focus();
+      }
+
+      setDifficulty('moyen');
+
+      const savedMatiere = document.getElementById('matiereSelect')?.value || 'mathématiques';
+      updateSubjectSidebar(savedMatiere);
+
+      sessionStorage.removeItem('exercice_termine');
+
+      {% if session.get('exercice_en_cours') %}
+        updateExerciseSidebar({{ session.get('exercice_en_cours')|tojson }});
+      {% endif %}
+
+      setInterval(updateStats, 60000);
+    });
   </script>
+
 </body>
 </html>

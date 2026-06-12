@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>{% if lang == 'fr' %}Configuration IA par matière{% else %}AI Configuration by Subject{% endif %}</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3>{% if lang == 'fr' %}Matières configurées{% else %}Configured subjects{% endif %}</h3>
+            <button class="btn btn-primary" onclick="showAddForm()">+ {% if lang == 'fr' %}Ajouter{% else %}Add{% endif %}</button>
+        </div>
+        
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Matière{% else %}Subject{% endif %}</th>
+                        <th>API</th>
+                        <th>{% if lang == 'fr' %}Modèle{% else %}Model{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Actif{% else %}Active{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Actions{% else %}Actions{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for config in configs %}
+                    <tr>
+                        <td><strong>{{ config.matiere_nom }}</strong></td>
+                        <td>
+                            <span class="badge {% if config.api_choice == 'deepseek' %}bg-info{% else %}bg-success{% endif %}">
+                                {{ config.api_choice | upper }}
+                            </span>
+                        </td>
+                        <td><code>{{ config.modele_ia }}</code></td>
+                        <td>{% if config.actif %}✅{% else %}❌{% endif %}</td>
+                        <td>
+                            <button onclick="editConfig({{ config.id }})" class="btn btn-sm btn-warning">
+                                ✏️
+                            </button>
+                            <form method="POST" action="{{ url_for('admin_ai_config_delete', config_id=config.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ?')">
+                                    🗑️
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr id="edit-{{ config.id }}" style="display:none;">
+                        <td colspan="5">
+                            <form method="POST" action="{{ url_for('admin_ai_config_edit', config_id=config.id) }}">
+                                <div class="row">
+                                    <div class="col">
+                                        <select name="api_choice" class="form-control">
+                                            <option value="deepseek" {% if config.api_choice == 'deepseek' %}selected{% endif %}>DeepSeek</option>
+                                            <option value="openai" {% if config.api_choice == 'openai' %}selected{% endif %}>OpenAI</option>
+                                        </select>
+                                    </div>
+                                    <div class="col">
+                                        <select name="modele_ia" class="form-control">
+                                            <optgroup label="DeepSeek">
+                                                <option value="deepseek-v4-pro">DeepSeek V4 Pro (maths complexes)</option>
+                                                <option value="deepseek-v4-flash">DeepSeek V4 Flash (rapide)</option>
+                                            </optgroup>
+                                            <optgroup label="OpenAI">
+                                                <option value="gpt-4o">GPT-4o (meilleur)</option>
+                                                <option value="gpt-4o-mini">GPT-4o Mini (économique)</option>
+                                                <option value="gpt-4">GPT-4 (précis)</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" name="description" class="form-control" placeholder="Description" value="{{ config.description }}">
+                                    </div>
+                                    <div class="col">
+                                        <label>
+                                            <input type="checkbox" name="actif" {% if config.actif %}checked{% endif %}> Actif
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <button type="submit" class="btn btn-success">Sauvegarder</button>
+                                        <button type="button" onclick="hideEdit({{ config.id }})" class="btn btn-secondary">Annuler</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Formulaire d'ajout -->
+    <div id="addForm" style="display:none;" class="card mt-3">
+        <div class="card-header">Ajouter une matière</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin_ai_config_add') }}">
+                <div class="row">
+                    <div class="col">
+                        <input type="text" name="matiere_nom" class="form-control" placeholder="Nom de la matière (ex: MCR3U)" required>
+                    </div>
+                    <div class="col">
+                        <select name="api_choice" class="form-control">
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="openai">OpenAI</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <select name="modele_ia" class="form-control">
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <input type="text" name="description" class="form-control" placeholder="Description">
+                    </div>
+                    <div class="col">
+                        <button type="submit" class="btn btn-primary">Ajouter</button>
+                        <button type="button" onclick="hideAddForm()" class="btn btn-secondary">Annuler</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showAddForm() {
+    document.getElementById('addForm').style.display = 'block';
+}
+function hideAddForm() {
+    document.getElementById('addForm').style.display = 'none';
+}
+function editConfig(id) {
+    document.getElementById(`edit-${id}`).style.display = 'table-row';
+}
+function hideEdit(id) {
+    document.getElementById(`edit-${id}`).style.display = 'none';
+}
+</script>
+{% endblock %}

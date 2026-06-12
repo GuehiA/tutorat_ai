@@ -45,7 +45,6 @@
       overflow-x: hidden;
     }
 
-    /* Effet de particules de fond */
     body::before {
       content: '';
       position: fixed;
@@ -62,9 +61,9 @@
 
     .container {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1400px;
       display: grid;
-      grid-template-columns: 1.2fr 1fr;
+      grid-template-columns: 1fr 1.2fr;
       gap: 40px;
       align-items: stretch;
       position: relative;
@@ -74,7 +73,7 @@
     @media (max-width: 992px) {
       .container {
         grid-template-columns: 1fr;
-        max-width: 600px;
+        max-width: 700px;
         gap: 30px;
       }
     }
@@ -143,7 +142,6 @@
       font-weight: 400;
     }
 
-    /* Étapes du processus */
     .process-steps {
       display: flex;
       flex-direction: column;
@@ -163,7 +161,14 @@
       cursor: pointer;
       position: relative;
       overflow: hidden;
+      animation: fadeInUp 0.6s ease-out forwards;
+      opacity: 0;
     }
+
+    .process-step:nth-child(1) { animation-delay: 0.1s; }
+    .process-step:nth-child(2) { animation-delay: 0.2s; }
+    .process-step:nth-child(3) { animation-delay: 0.3s; }
+    .process-step:nth-child(4) { animation-delay: 0.4s; }
 
     .process-step:hover {
       transform: translateY(-5px);
@@ -199,7 +204,6 @@
       line-height: 1.6;
     }
 
-    /* Note importante */
     .important-note {
       background: linear-gradient(135deg, #fff3e0, #ffecb3);
       border-radius: var(--border-radius-sm);
@@ -237,7 +241,6 @@
       line-height: 1.6;
     }
 
-    /* Email display box */
     .email-display-box {
       background: linear-gradient(135deg, var(--primary-light), rgba(67, 97, 238, 0.1));
       border-radius: var(--border-radius-sm);
@@ -348,7 +351,6 @@
       margin: 0 auto;
     }
 
-    /* Formulaire */
     .form-group {
       margin-bottom: 30px;
       position: relative;
@@ -422,7 +424,99 @@
       color: var(--primary);
     }
 
-    /* Bouton d'inscription */
+    /* Section Niveaux et Matières */
+    .subjects-section {
+      margin: 30px 0;
+      padding: 25px;
+      background: var(--light-gray);
+      border-radius: var(--border-radius-sm);
+    }
+
+    .subjects-section h3 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .subjects-section h3 i {
+      color: var(--primary);
+    }
+
+    .subjects-section .text-muted {
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+
+    .niveau-card {
+      background: white;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: var(--border-radius-sm);
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: var(--transition);
+    }
+
+    .niveau-card:hover {
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .niveau-card h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: var(--primary);
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--primary-light);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .matieres-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .matiere-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .matiere-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    .matiere-item label {
+      font-size: 0.9rem;
+      color: var(--dark);
+      cursor: pointer;
+      margin: 0;
+      font-weight: 400;
+    }
+
+    .matiere-item label:hover {
+      color: var(--primary);
+    }
+
+    .alert-warning {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      padding: 15px;
+      border-radius: var(--border-radius-sm);
+      color: #856404;
+    }
+
+    /* Bouton */
     .submit-btn {
       width: 100%;
       padding: 20px;
@@ -468,7 +562,11 @@
       transform: translateY(-1px);
     }
 
-    /* Liens */
+    .submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
     .form-footer {
       text-align: center;
       margin-top: 30px;
@@ -512,7 +610,6 @@
       transform: translateY(-2px);
     }
 
-    /* Email visible dans le formulaire */
     .form-email-display {
       background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
       border-radius: var(--border-radius-sm);
@@ -542,62 +639,12 @@
       border: 2px solid #c8e6c9;
     }
 
-    .form-email-note {
-      color: var(--gray);
-      font-size: 0.9rem;
-      margin-top: 10px;
-      line-height: 1.4;
-    }
-
-    /* Sélecteur de langue */
-    .lang-switch {
-      position: fixed;
-      top: 25px;
-      right: 25px;
-      z-index: 1000;
-    }
-
-    .lang-switch form {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 10px 15px;
-      border-radius: 50px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .lang-switch label {
-      margin: 0;
-      font-size: 1.2rem;
-    }
-
-    .lang-switch select {
-      padding: 8px 12px;
-      border-radius: var(--border-radius-sm);
-      font-size: 14px;
-      border: 1px solid var(--light-gray);
-      background: white;
-      cursor: pointer;
-      transition: var(--transition);
-      font-weight: 500;
-    }
-
-    .lang-switch select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
-    }
-
-    /* Checkbox personnalisée */
     .checkbox-container {
       display: flex;
       align-items: flex-start;
       gap: 15px;
-      margin-top: 30px;
-      padding: 25px;
+      margin-top: 25px;
+      padding: 20px;
       background: var(--light-gray);
       border-radius: var(--border-radius-sm);
       transition: var(--transition);
@@ -672,7 +719,49 @@
       text-decoration: underline;
     }
 
-    /* Animation des étapes */
+    /* Sélecteur de langue */
+    .lang-switch {
+      position: fixed;
+      top: 25px;
+      right: 25px;
+      z-index: 1000;
+    }
+
+    .lang-switch form {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px 15px;
+      border-radius: 50px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .lang-switch label {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .lang-switch select {
+      padding: 8px 12px;
+      border-radius: var(--border-radius-sm);
+      font-size: 14px;
+      border: 1px solid var(--light-gray);
+      background: white;
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 500;
+    }
+
+    .lang-switch select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+    }
+
+    /* Animations */
     @keyframes fadeInUp {
       from {
         opacity: 0;
@@ -684,23 +773,10 @@
       }
     }
 
-    .process-step {
-      animation: fadeInUp 0.6s ease-out forwards;
-      opacity: 0;
-    }
-
-    .process-step:nth-child(1) { animation-delay: 0.1s; }
-    .process-step:nth-child(2) { animation-delay: 0.2s; }
-    .process-step:nth-child(3) { animation-delay: 0.3s; }
-
     /* Responsive */
     @media (max-width: 992px) {
-      .container {
-        padding: 10px;
-      }
-      
-      .welcome-card,
-      .form-card {
+      .form-card,
+      .welcome-card {
         padding: 40px 30px;
       }
       
@@ -712,14 +788,14 @@
         font-size: 1.8rem;
       }
       
-      .teacher-illustration i {
-        font-size: 4rem;
+      .matieres-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       }
     }
 
     @media (max-width: 576px) {
-      .welcome-card,
-      .form-card {
+      .form-card,
+      .welcome-card {
         padding: 30px 20px;
       }
       
@@ -752,10 +828,8 @@
         background: rgba(255, 255, 255, 0.95);
       }
       
-      .email-address,
-      .form-email-address {
-        font-size: 1rem;
-        padding: 10px 15px;
+      .matieres-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -767,8 +841,8 @@
     <form method="POST" action="/changer-langue">
       <label for="lang">🌍</label>
       <select name="lang" id="lang" onchange="this.form.submit()">
-        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>🇫🇷 Français</option>
-        <option value="en" {% if lang == 'en' %}selected{% endif %}>🇬🇧 English</option>
+        <option value="fr" {% if lang == 'fr' %}selected{% endif %}>FR</option>
+        <option value="en" {% if lang == 'en' %}selected{% endif %}>EN</option>
       </select>
       <input type="hidden" name="redirect_page" value="inscription_enseignant">
     </form>
@@ -812,6 +886,20 @@
           <div class="process-step">
             <div class="step-indicator">2</div>
             <div class="step-content">
+              <h4>{% if lang == 'en' %}Select Your Subjects{% else %}Choisissez vos matières{% endif %}</h4>
+              <p>
+                {% if lang == 'en' %}
+                  Select the levels and subjects you want to teach
+                {% else %}
+                  Sélectionnez les niveaux et matières que vous souhaitez enseigner
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          
+          <div class="process-step">
+            <div class="step-indicator">3</div>
+            <div class="step-content">
               <h4>{% if lang == 'en' %}Contact Support{% else %}Contactez le support{% endif %}</h4>
               <p>
                 {% if lang == 'en' %}
@@ -824,7 +912,7 @@
           </div>
           
           <div class="process-step">
-            <div class="step-indicator">3</div>
+            <div class="step-indicator">4</div>
             <div class="step-content">
               <h4>{% if lang == 'en' %}Guide & Monitor{% else %}Guidez & Suivez{% endif %}</h4>
               <p>
@@ -849,7 +937,6 @@
           </p>
         </div>
 
-        <!-- Boîte email dans la section info -->
         <div class="email-display-box">
           <h6><i class="fas fa-envelope"></i> {% if lang == 'en' %}Contact Support Email{% else %}Email du support{% endif %}</h6>
           <a href="mailto:info@advanceteach.com?subject=Teacher%20Support%20-%20Student%20Connection" class="email-address">
@@ -936,7 +1023,73 @@
           </div>
         </div>
 
-        <!-- Boîte email visible dans le formulaire -->
+        <!-- SECTION NIVEAUX ET MATIÈRES -->
+        <div class="subjects-section">
+          <h3>
+            <i class="fas fa-book-open"></i>
+            {% if lang == 'en' %}Teaching Levels and Subjects{% else %}Niveaux et matières enseignées{% endif %}
+          </h3>
+          <p class="text-muted small">
+            {% if lang == 'en' %}
+              Select the subjects you want to teach according to the available levels.
+            {% else %}
+              Sélectionnez les matières que vous souhaitez enseigner selon les niveaux disponibles.
+            {% endif %}
+          </p>
+
+          {% if niveaux %}
+            {% for niveau in niveaux %}
+              <div class="niveau-card">
+                <h4>
+                  <i class="fas fa-graduation-cap"></i>
+                  {% if lang == 'en' %}
+                    {{ niveau.nom_en or niveau.nom }}
+                  {% else %}
+                    {{ niveau.nom }}
+                  {% endif %}
+                </h4>
+
+                {% if niveau.matieres %}
+                  <div class="matieres-grid">
+                    {% for matiere in niveau.matieres %}
+                      <div class="matiere-item">
+                        <input type="checkbox" 
+                               name="matieres" 
+                               value="{{ matiere.id }}" 
+                               id="matiere_{{ matiere.id }}">
+                        <label for="matiere_{{ matiere.id }}">
+                          {% if lang == 'en' %}
+                            {{ matiere.nom_en or matiere.nom }}
+                          {% else %}
+                            {{ matiere.nom }}
+                          {% endif %}
+                        </label>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <p class="text-muted mb-0">
+                    {% if lang == 'en' %}
+                      No subject available for this level.
+                    {% else %}
+                      Aucune matière disponible pour ce niveau.
+                    {% endif %}
+                  </p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="alert-warning">
+              <i class="fas fa-exclamation-triangle"></i>
+              {% if lang == 'en' %}
+                No levels available at the moment.
+              {% else %}
+                Aucun niveau disponible pour le moment.
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+
         <div class="form-email-display">
           <h6><i class="fas fa-life-ring"></i> {% if lang == 'en' %}Need Help Connecting Students?{% else %}Besoin d'aide pour connecter des élèves ?{% endif %}</h6>
           <div class="form-email-address">
@@ -958,9 +1111,9 @@
           </div>
           <label for="terms" class="checkbox-label">
             {% if lang == 'en' %}
-              I understand that after registration, I need to contact the support team at <strong>info@advanceteach.com</strong> to be linked with my recommended students.
+              I understand that after registration, I need to contact the support team at <strong>info@advanceteach.com</strong> to be linked with my recommended students, and that my selected subjects will be saved.
             {% else %}
-              Je comprends qu'après inscription, je dois contacter l'équipe de support à <strong>info@advanceteach.com</strong> pour être mis en lien avec mes élèves recommandés.
+              Je comprends qu'après inscription, je dois contacter l'équipe de support à <strong>info@advanceteach.com</strong> pour être mis en lien avec mes élèves recommandés, et que mes matières sélectionnées seront enregistrées.
             {% endif %}
           </label>
         </div>
@@ -992,58 +1145,74 @@
     const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
     const confirmPasswordInput = document.getElementById('confirm_password');
 
-    togglePassword.addEventListener('click', function() {
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
-      this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-    });
+    if (togglePassword) {
+      togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+      });
+    }
 
-    toggleConfirmPassword.addEventListener('click', function() {
-      const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      confirmPasswordInput.setAttribute('type', type);
-      this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-    });
+    if (toggleConfirmPassword) {
+      toggleConfirmPassword.addEventListener('click', function() {
+        const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        confirmPasswordInput.setAttribute('type', type);
+        this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+      });
+    }
 
     // Form validation
-    document.getElementById('teacherForm').addEventListener('submit', function(e) {
-      const password = passwordInput.value;
-      const confirmPassword = confirmPasswordInput.value;
-      const terms = document.getElementById('terms').checked;
-      
-      if (!terms) {
-        e.preventDefault();
-        alert("{% if lang == 'en' %}Please accept the terms to proceed.{% else %}Veuillez accepter les conditions pour continuer.{% endif %}");
-        return false;
-      }
-      
-      if (password !== confirmPassword) {
-        e.preventDefault();
-        alert("{% if lang == 'en' %}Passwords do not match!{% else %}Les mots de passe ne correspondent pas !{% endif %}");
-        confirmPasswordInput.focus();
-        return false;
-      }
-      
-      if (password.length < 8) {
-        e.preventDefault();
-        alert("{% if lang == 'en' %}Password must be at least 8 characters.{% else %}Le mot de passe doit contenir au moins 8 caractères.{% endif %}");
-        passwordInput.focus();
-        return false;
-      }
-      
-      // Animation du bouton
-      const submitBtn = document.querySelector('.submit-btn');
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == 'en' %}Processing...{% else %}Traitement en cours...{% endif %}';
-      submitBtn.disabled = true;
-      
-      return true;
-    });
-
-    // Copier l'adresse email au clic
-    const emailAddresses = document.querySelectorAll('.email-address, .form-email-address');
-    emailAddresses.forEach(email => {
-      email.addEventListener('click', function(e) {
-        if (this.tagName === 'A') return; // Laisse le lien fonctionner
+    const form = document.getElementById('teacherForm');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        const terms = document.getElementById('terms').checked;
         
+        // Vérifier qu'au moins une matière est sélectionnée
+        const matiereCheckboxes = document.querySelectorAll('input[name="matieres"]:checked');
+        if (matiereCheckboxes.length === 0) {
+          e.preventDefault();
+          alert("{% if lang == 'en' %}Please select at least one subject to teach.{% else %}Veuillez sélectionner au moins une matière à enseigner.{% endif %}");
+          return false;
+        }
+        
+        if (!terms) {
+          e.preventDefault();
+          alert("{% if lang == 'en' %}Please accept the terms to proceed.{% else %}Veuillez accepter les conditions pour continuer.{% endif %}");
+          return false;
+        }
+        
+        if (password !== confirmPassword) {
+          e.preventDefault();
+          alert("{% if lang == 'en' %}Passwords do not match!{% else %}Les mots de passe ne correspondent pas !{% endif %}");
+          confirmPasswordInput.focus();
+          return false;
+        }
+        
+        if (password.length < 8) {
+          e.preventDefault();
+          alert("{% if lang == 'en' %}Password must be at least 8 characters.{% else %}Le mot de passe doit contenir au moins 8 caractères.{% endif %}");
+          passwordInput.focus();
+          return false;
+        }
+        
+        // Animation du bouton
+        const submitBtn = document.querySelector('.submit-btn');
+        if (submitBtn) {
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == 'en' %}Processing...{% else %}Traitement en cours...{% endif %}';
+          submitBtn.disabled = true;
+        }
+        
+        return true;
+      });
+    }
+
+    // Copier l'adresse email
+    const emailAddresses = document.querySelectorAll('.email-address, .form-email-address');
+    emailAddresses.forEach(emailEl => {
+      emailEl.addEventListener('click', function(e) {
+        if (this.tagName === 'A') return;
         e.preventDefault();
         const emailText = 'info@advanceteach.com';
         navigator.clipboard.writeText(emailText).then(() => {
@@ -1066,25 +1235,6 @@
       input.addEventListener('blur', function() {
         this.parentElement.style.transform = 'scale(1)';
       });
-    });
-
-    // Animation des étapes au scroll
-    const observerOptions = {
-      threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.style.animation = 'fadeInUp 0.6s ease-out forwards';
-          observer.unobserve(entry.target);
-        }
-      });
-    }, observerOptions);
-
-    document.querySelectorAll('.process-step').forEach(step => {
-      observer.observe(step);
     });
   </script>
 

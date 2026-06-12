@@ -46,6 +46,8 @@
       --monetization: #10b981;
       --monetization-dark: #0da271;
       --monetization-light: #e0f7ed;
+      --ai-config: #8b5cf6;
+      --ai-config-dark: #7c3aed;
     }
     [data-theme="dark"] {
       --light: #121826;
@@ -209,6 +211,18 @@
       font-size: 1.1rem;
       width: 24px;
       text-align: center;
+    }
+    /* Configuration IA - style spécial */
+    .ai-config .card-header {
+      background: linear-gradient(135deg, var(--ai-config) 0%, var(--ai-config-dark) 100%);
+      color: white;
+    }
+    .ai-config .action-btn:hover {
+      background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+      color: var(--ai-config-dark);
+    }
+    .ai-config .action-btn i {
+      color: var(--ai-config);
     }
     /* User Management */
     .user-management .card-header {
@@ -676,6 +690,28 @@
     <!-- Onglet Actions Rapides -->
     <div class="tab-pane fade show active" id="actions" role="tabpanel">
       <div class="row quick-actions-row">
+        <!-- Configuration IA - NOUVEAU ! -->
+        <div class="col-md-4">
+          <div class="dashboard-card ai-config">
+            <div class="card-header">
+              <i class="fas fa-robot card-icon"></i>
+              {% if lang == 'en' %}AI Configuration{% else %}Configuration IA{% endif %}
+            </div>
+            <div class="card-body">
+              <a href="/admin/ai-config" class="btn action-btn">
+                <i class="fas fa-microchip"></i>
+                <div>
+                  <strong>{% if lang == 'en' %}AI Model per Subject{% else %}Modèle IA par Matière{% endif %}</strong>
+                  <br>
+                  <small class="text-muted">
+                    {% if lang == 'en' %}Configure which AI model to use for each subject (DeepSeek/OpenAI){% else %}Choisissez quel modèle IA utiliser pour chaque matière (DeepSeek/OpenAI){% endif %}
+                  </small>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+
         <!-- Gestion des Utilisateurs -->
         <div class="col-md-4">
           <div class="dashboard-card user-management">
@@ -703,6 +739,7 @@
             </div>
           </div>
         </div>
+        
         <!-- Gestion des Contenus -->
         <div class="col-md-4">
           <div class="dashboard-card content-management">
@@ -756,6 +793,10 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Deuxième ligne -->
+      <div class="row quick-actions-row mt-3">
         <!-- Évaluations -->
         <div class="col-md-4">
           <div class="dashboard-card evaluations">
@@ -791,8 +832,19 @@
             </div>
           </div>
         </div>
+
+        <!-- Gestion des Élèves (vide pour aligner) -->
+        <div class="col-md-4">
+          <!-- Espace réservé pour d'autres cartes -->
+        </div>
+
+        <!-- Gestion des Enseignants -->
+        <div class="col-md-4">
+          <!-- Espace réservé -->
+        </div>
       </div>
     </div>
+    
     <!-- Onglet Structure du Contenu (ACCORDÉON ÉLÉGANT) -->
     <div class="tab-pane fade" id="content" role="tabpanel">
       <div class="content-section mt-4">
@@ -988,6 +1040,7 @@
         </div>
       </div>
     </div>
+    
     <!-- Onglet Monétisation -->
     <div class="tab-pane fade" id="monetization" role="tabpanel">
       <div class="content-section mt-4">
@@ -1091,7 +1144,7 @@
                                 <small class="text-muted">{{ payment.email_interac or payment.email or '' }}</small>
                               </div>
                             </div>
-                          </td>
+                           </div>
                           <td class="fw-bold">${{ "%.2f"|format(payment.montant_total if payment.montant_total else payment.montant_net if payment.montant_net else 0) }}</td>
                           <td>
                             {% if payment.statut == 'complete' %}
@@ -1173,7 +1226,7 @@
                             <small class="text-muted">{{ teacher.email or '' }}</small>
                           </div>
                         </div>
-                      </td>
+                       </div>
                       <td class="fw-bold">${{ "%.2f"|format(teacher.total_commissions or 0) }}</td>
                       <td class="text-warning">${{ "%.2f"|format(teacher.pending or 0) }}</td>
                       <td class="text-success">${{ "%.2f"|format(teacher.paid or 0) }}</td>
@@ -1210,6 +1263,7 @@
         </div>
       </div>
     </div>
+    
     <!-- Onglet Analytics -->
     <div class="tab-pane fade" id="analytics" role="tabpanel">
       <div class="content-section mt-4">

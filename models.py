@@ -433,6 +433,100 @@ class Matiere(db.Model):
     unites = db.relationship("Unite", backref="matiere", cascade="all, delete-orphan")
 
 
+class EleveMatiere(db.Model):
+    __tablename__ = "eleve_matieres"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    eleve_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    matiere_id = db.Column(
+        db.Integer,
+        db.ForeignKey("matieres.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    date_ajout = db.Column(db.DateTime, default=datetime.utcnow)
+
+    eleve = db.relationship(
+        "User",
+        backref=db.backref("matieres_choisies", cascade="all, delete-orphan")
+    )
+
+    matiere = db.relationship(
+        "Matiere",
+        backref=db.backref("eleves_inscrits", cascade="all, delete-orphan")
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint("eleve_id", "matiere_id", name="uq_eleve_matiere"),
+    )
+
+    def __repr__(self):
+        return f"<EleveMatiere eleve_id={self.eleve_id} matiere_id={self.matiere_id}>"
+
+
+
+class EnseignantMatiere(db.Model):
+    __tablename__ = "enseignant_matieres"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    enseignant_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    niveau_id = db.Column(
+        db.Integer,
+        db.ForeignKey("niveaux.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    matiere_id = db.Column(
+        db.Integer,
+        db.ForeignKey("matieres.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    date_ajout = db.Column(db.DateTime, default=datetime.utcnow)
+
+    enseignant = db.relationship(
+        "User",
+        backref=db.backref("matieres_enseignees", cascade="all, delete-orphan")
+    )
+
+    niveau = db.relationship(
+        "Niveau",
+        backref=db.backref("enseignants_par_niveau", cascade="all, delete-orphan")
+    )
+
+    matiere = db.relationship(
+        "Matiere",
+        backref=db.backref("enseignants_par_matiere", cascade="all, delete-orphan")
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "enseignant_id",
+            "niveau_id",
+            "matiere_id",
+            name="uq_enseignant_niveau_matiere"
+        ),
+    )
+
+    def __repr__(self):
+        return (
+            f"<EnseignantMatiere enseignant_id={self.enseignant_id} "
+            f"niveau_id={self.niveau_id} matiere_id={self.matiere_id}>"
+        )
+
+
 class Unite(db.Model):
     __tablename__ = "unites"
     id = db.Column(db.Integer, primary_key=True)
@@ -587,19 +681,119 @@ class TestSommatif(db.Model):
 
 class StudentResponse(db.Model):
     __tablename__ = "student_responses"
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    exercice_id = db.Column(db.Integer, db.ForeignKey('exercices.id', ondelete='CASCADE'), nullable=True)
-    test_exercice_id = db.Column(db.Integer, db.ForeignKey('test_exercices.id'), nullable=True)
-    test_id = db.Column(db.Integer, db.ForeignKey('tests_sommatifs.id'), nullable=True)
 
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Élève concerné
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False
+    )
+
+    # Exercice normal
+    exercice_id = db.Column(
+        db.Integer,
+        db.ForeignKey('exercices.id', ondelete='CASCADE'),
+        nullable=True
+    )
+
+    # Exercice venant d’un test sommatif
+    test_exercice_id = db.Column(
+        db.Integer,
+        db.ForeignKey('test_exercices.id'),
+        nullable=True
+    )
+
+    # Test sommatif concerné
+    test_id = db.Column(
+        db.Integer,
+        db.ForeignKey('tests_sommatifs.id'),
+        nullable=True
+    )
+
+    # Réponse donnée par l’élève
     reponse_eleve = db.Column(db.Text)
+
+    # Analyse textuelle produite par l’IA
     analyse_ia = db.Column(db.Text)
+
+    # Évaluation simple déjà utilisée dans ton projet
+    # Exemple : 1 à 5 étoiles
     etoiles = db.Column(db.Integer)
+
+    # Nouveau : score numérique plus précis
+    # Exemple : 0 à 100
+    score = db.Column(db.Float, nullable=True)
+
+    # Nouveau : type d’erreur détectée par l’IA
+    # Exemples :
+    # erreur_de_calcul, erreur_de_signe, mauvaise_methode,
+    # raisonnement_incomplet, confusion_notion, etc.
+    type_erreur = db.Column(db.String(100), nullable=True)
+
+    # Nouveau : niveau de difficulté de l’exercice au moment de la réponse
+    # Exemples : facile, moyen, difficile
+    niveau_difficulte = db.Column(db.String(50), nullable=True)
+
+    # Nouveau : temps passé par l’élève sur l’exercice, en secondes
+    temps_passe = db.Column(db.Integer, nullable=True)
+
+    # Nouveau : indique si l’élève a utilisé une aide, un indice ou le chatbot
+    aide_utilisee = db.Column(db.Boolean, default=False)
+
+    # Nouveau : données structurées retournées par l’IA
+    # Utile plus tard pour stocker un JSON comme :
+    # {
+    #   "notion": "équations",
+    #   "competence": "isoler une variable",
+    #   "erreur": "ordre_des_operations",
+    #   "confiance": 0.82
+    # }
+    feedback_ia_structure = db.Column(db.JSON, nullable=True)
+
+    # Date de soumission
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relations utiles
     test_exercice = db.relationship("TestExercice")
+
+class MatiereAIConfig(db.Model):
+    """Configuration IA par matière - gérable par l'admin"""
+    __tablename__ = "matiere_ai_config"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # La matière (peut être "MCR3U", "Mathématiques", "Français", etc.)
+    matiere_nom = db.Column(db.String(100), nullable=False, unique=True)
+    
+    # Choix du modèle: "deepseek-pro", "deepseek-flash", "openai-gpt4o", "openai-gpt4o-mini", "openai-gpt4"
+    modele_ia = db.Column(db.String(50), nullable=False, default="deepseek-flash")
+    
+    # API à utiliser: "deepseek" ou "openai"
+    api_choice = db.Column(db.String(20), nullable=False, default="deepseek")
+    
+    # Priorité (pour les règles de fallback)
+    priorite = db.Column(db.Integer, default=0)
+    
+    # Activer ou non
+    actif = db.Column(db.Boolean, default=True)
+    
+    # Description (pour l'admin)
+    description = db.Column(db.String(255), nullable=True)
+    
+    # Date de modification
+    date_modification = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "matiere_nom": self.matiere_nom,
+            "modele_ia": self.modele_ia,
+            "api_choice": self.api_choice,
+            "actif": self.actif,
+            "description": self.description
+        }
 
 
 ### --- MODÈLES DE COMMISSIONS --- ###
@@ -655,6 +849,8 @@ class Commission(db.Model):
             'reference_interac': self.reference_interac,
             'email_interac': self.email_interac
         }
+
+
 
 
 class VersementManuel(db.Model):

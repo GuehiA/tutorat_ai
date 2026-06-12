@@ -15,6 +15,7 @@
     
     <title>{% if lang == 'en' %}Student Registration - TutoratAI{% else %}Inscription Élève - TutoratAI{% endif %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #4361ee;
@@ -89,7 +90,6 @@
             }
         }
 
-        /* BOUTON RETOUR ADMIN */
         .admin-back-btn {
             position: absolute;
             top: 25px;
@@ -119,14 +119,13 @@
             color: white;
         }
 
-        /* BOUTON DE CONNEXION FIXE EN HAUT */
         .login-top-btn {
             position: absolute;
             top: 25px;
             right: 25px;
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
-            border: 2px solid var(--primary);
+            border: none;
             padding: 10px 20px;
             border-radius: 12px;
             font-size: 14px;
@@ -197,7 +196,7 @@
             line-height: 1.6;
         }
 
-        /* FORMULAIRES */
+        /* Formulaire */
         .form-section {
             background: var(--light);
             border-radius: 20px;
@@ -234,16 +233,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .parent-section .section-header i {
-            color: var(--parent);
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.1));
-        }
-
-        .teacher-section .section-header i {
-            color: var(--teacher);
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(244, 114, 182, 0.1));
         }
 
         .section-header h3 {
@@ -292,16 +281,6 @@
             transform: translateY(-1px);
         }
 
-        .parent-section .form-control:focus {
-            border-color: var(--parent);
-            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
-        }
-
-        .teacher-section .form-control:focus {
-            border-color: var(--teacher);
-            box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.1);
-        }
-
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -314,19 +293,65 @@
             gap: 20px;
         }
 
-        @media (max-width: 768px) {
-            .form-row, .form-row-3 {
-                grid-template-columns: 1fr;
-            }
+        /* SECTION MATIÈRES */
+        .subjects-section {
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.03), rgba(155, 89, 182, 0.03));
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
         }
 
-        /* OPTIONS D'ABONNEMENT - DESIGN MODERNE */
-        .payment-options {
-            margin: 40px 0;
-            position: relative;
-            z-index: 1;
+        .subjects-section h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
+        .matieres-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .matiere-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
+        }
+
+        .matiere-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .matiere-item label {
+            font-size: 0.9rem;
+            color: var(--dark);
+            cursor: pointer;
+            margin: 0;
+            font-weight: 400;
+        }
+
+        .matiere-item label:hover {
+            color: var(--primary);
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 12px;
+            color: #856404;
+        }
+
+        /* Plans */
         .plan-cards {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -343,9 +368,10 @@
         @media (max-width: 768px) {
             .plan-cards {
                 grid-template-columns: 1fr;
-                gap: 25px;
             }
-            
+            .form-row, .form-row-3 {
+                grid-template-columns: 1fr;
+            }
             .registration-box {
                 padding: 30px 20px;
             }
@@ -366,98 +392,21 @@
             height: 100%;
         }
 
-        .plan-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: linear-gradient(90deg, var(--border), var(--border));
-            transition: all 0.4s ease;
-        }
-
         .plan-card:hover {
             transform: translateY(-8px);
             box-shadow: var(--hover-shadow);
-            border-color: transparent;
-        }
-
-        .plan-card:hover::before {
-            height: 8px;
         }
 
         .plan-card.selected {
-            border-color: transparent;
-            box-shadow: var(--hover-shadow);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2), var(--hover-shadow);
             transform: translateY(-5px);
         }
 
-        .plan-card.selected::before {
-            height: 8px;
-        }
-
-        /* Couleurs spécifiques aux plans */
-        .plan-card.trial::before {
-            background: linear-gradient(90deg, var(--trial), #34d399);
-        }
-
-        .plan-card.monthly::before {
-            background: linear-gradient(90deg, var(--monthly), #60a5fa);
-        }
-
-        .plan-card.quarterly::before {
-            background: linear-gradient(90deg, var(--quarterly), #a78bfa);
-        }
-
-        .plan-card.annual::before {
-            background: linear-gradient(90deg, var(--annual), #fbbf24);
-        }
-
-        .plan-card.selected.trial {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.02), rgba(52, 211, 153, 0.02));
-        }
-
-        .plan-card.selected.monthly {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.02), rgba(96, 165, 250, 0.02));
-        }
-
-        .plan-card.selected.quarterly {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(167, 139, 250, 0.02));
-        }
-
-        .plan-card.selected.annual {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.02), rgba(251, 191, 36, 0.02));
-        }
-
-        /* Badges */
-        .plan-badge {
-            position: absolute;
-            top: 20px;
-            right: -30px;
-            background: linear-gradient(135deg, var(--primary), #9b59b6);
-            color: white;
-            padding: 6px 40px;
-            font-size: 12px;
-            font-weight: 700;
-            transform: rotate(45deg);
-            z-index: 2;
-            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
-        }
-
-        .plan-card.popular .plan-badge {
-            background: linear-gradient(135deg, var(--monthly), #3b82f6);
-        }
-
-        .plan-card.best-value .plan-badge {
-            background: linear-gradient(135deg, var(--annual), #f59e0b);
-        }
-
-        .plan-header {
-            margin-bottom: 25px;
-            padding-bottom: 25px;
-            border-bottom: 1px solid rgba(0,0,0,0.08);
-        }
+        .plan-card.trial.selected { border-color: var(--trial); }
+        .plan-card.monthly.selected { border-color: var(--monthly); }
+        .plan-card.quarterly.selected { border-color: var(--quarterly); }
+        .plan-card.annual.selected { border-color: var(--annual); }
 
         .plan-icon {
             width: 70px;
@@ -472,68 +421,53 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
         }
 
-        .plan-icon.trial {
-            background: linear-gradient(135deg, var(--trial), #34d399);
-        }
-
-        .plan-icon.monthly {
-            background: linear-gradient(135deg, var(--monthly), #60a5fa);
-        }
-
-        .plan-icon.quarterly {
-            background: linear-gradient(135deg, var(--quarterly), #a78bfa);
-        }
-
-        .plan-icon.annual {
-            background: linear-gradient(135deg, var(--annual), #fbbf24);
-        }
+        .plan-icon.trial { background: linear-gradient(135deg, var(--trial), #34d399); }
+        .plan-icon.monthly { background: linear-gradient(135deg, var(--monthly), #60a5fa); }
+        .plan-icon.quarterly { background: linear-gradient(135deg, var(--quarterly), #a78bfa); }
+        .plan-icon.annual { background: linear-gradient(135deg, var(--annual), #fbbf24); }
 
         .plan-name {
             font-size: 20px;
             font-weight: 700;
             margin-bottom: 8px;
-            color: var(--dark);
         }
 
         .plan-price {
             font-size: 42px;
             font-weight: 800;
             margin: 15px 0 5px;
-            line-height: 1;
         }
 
-        .plan-price.trial {
-            color: var(--trial);
-        }
-
-        .plan-price.monthly {
-            color: var(--monthly);
-        }
-
-        .plan-price.quarterly {
-            color: var(--quarterly);
-        }
-
-        .plan-price.annual {
-            color: var(--annual);
-        }
+        .plan-price.trial { color: var(--trial); }
+        .plan-price.monthly { color: var(--monthly); }
+        .plan-price.quarterly { color: var(--quarterly); }
+        .plan-price.annual { color: var(--annual); }
 
         .plan-period {
             font-size: 16px;
             color: #64748b;
             margin-bottom: 15px;
-            font-weight: 500;
         }
 
-        .price-per-month {
-            font-size: 15px;
-            color: #94a3b8;
-            font-weight: 500;
-            margin-bottom: 20px;
-            padding: 6px 12px;
-            background: rgba(0,0,0,0.03);
-            border-radius: 20px;
-            display: inline-block;
+        .plan-features {
+            list-style: none;
+            text-align: left;
+            font-size: 14px;
+            flex-grow: 1;
+            margin: 20px 0;
+            padding: 0;
+        }
+
+        .plan-features li {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .plan-features li i {
+            color: var(--success);
+            width: 18px;
         }
 
         .plan-savings {
@@ -544,49 +478,7 @@
             border-radius: 20px;
             font-size: 14px;
             font-weight: 700;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-        }
-
-        .plan-features {
-            list-style: none;
-            text-align: left;
-            font-size: 15px;
-            color: #475569;
-            flex-grow: 1;
-            margin-bottom: 30px;
-            padding: 0 5px;
-        }
-
-        .plan-features li {
-            margin-bottom: 12px;
-            padding: 8px 0;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            line-height: 1.5;
-            border-bottom: 1px solid rgba(0,0,0,0.04);
-        }
-
-        .plan-features li:last-child {
-            border-bottom: none;
-        }
-
-        .plan-features li i {
-            flex-shrink: 0;
-            margin-top: 2px;
-            font-size: 16px;
-        }
-
-        .feature-included {
-            color: var(--success);
-        }
-
-        /* BOUTON DE SOUMISSION */
-        .btn-submit-container {
-            margin-top: 40px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 15px;
         }
 
         .btn-submit {
@@ -605,21 +497,6 @@
             justify-content: center;
             gap: 12px;
             box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
-            position: relative;
-            overflow: hidden;
-            z-index: 1;
-        }
-
-        .btn-submit::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.6s ease;
-            z-index: -1;
         }
 
         .btn-submit:hover {
@@ -627,87 +504,6 @@
             box-shadow: 0 15px 35px rgba(67, 97, 238, 0.4);
         }
 
-        .btn-submit:hover::before {
-            left: 100%;
-        }
-
-        .btn-submit:active {
-            transform: translateY(-1px);
-        }
-
-        .btn-submit:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .btn-submit i {
-            font-size: 20px;
-        }
-
-        /* SECTION INFORMATIVES */
-        .info-section {
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-            border-radius: 20px;
-            padding: 35px;
-            margin: 30px 0;
-            border: 2px solid #bae6fd;
-            position: relative;
-            z-index: 1;
-        }
-
-        .info-section h3 {
-            color: var(--primary);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 22px;
-        }
-
-        .info-section ul {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .info-section li {
-            margin-bottom: 14px;
-            padding-left: 30px;
-            position: relative;
-            color: #475569;
-            line-height: 1.6;
-        }
-
-        .info-section li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: var(--success);
-            font-weight: bold;
-            font-size: 16px;
-        }
-
-        /* MESSAGES D'ERREUR */
-        .error-message {
-            color: var(--danger);
-            font-size: 14px;
-            margin-top: 8px;
-            padding: 10px 14px;
-            background: linear-gradient(135deg, rgba(239, 71, 111, 0.05), rgba(239, 71, 111, 0.1));
-            border-radius: 10px;
-            border-left: 4px solid var(--danger);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .error-message i {
-            font-size: 16px;
-        }
-
-        /* CHECKBOX CGU */
         .checkbox-group {
             display: flex;
             align-items: flex-start;
@@ -717,1668 +513,347 @@
             background: white;
             border-radius: 16px;
             border: 2px solid var(--border);
-            transition: all 0.3s ease;
-        }
-
-        .checkbox-group:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
         }
 
         .checkbox-group input[type="checkbox"] {
             margin-top: 3px;
             width: 22px;
             height: 22px;
-            min-width: 22px;
             cursor: pointer;
             accent-color: var(--primary);
-            border-radius: 6px;
         }
 
-        .checkbox-group label {
-            font-weight: 500;
-            margin-bottom: 0;
-            cursor: pointer;
-            color: var(--dark);
-            line-height: 1.6;
-            flex: 1;
-        }
-
-        /* SECTION OBLIGATOIRE POUR ONTARIO */
-        .ontario-requirement {
-            background: linear-gradient(135deg, rgba(239, 71, 111, 0.05), rgba(239, 71, 111, 0.1));
-            border: 2px solid var(--danger);
-            border-left: 6px solid var(--danger);
-            border-radius: 16px;
-            padding: 20px 25px;
-            margin: 20px 0;
-            position: relative;
-            z-index: 1;
-        }
-
-        .ontario-requirement h4 {
+        .error-message {
             color: var(--danger);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 18px;
-        }
-
-        .ontario-requirement h4 i {
-            font-size: 20px;
-        }
-
-        .ontario-requirement p {
-            color: var(--dark);
-            margin-bottom: 10px;
-            line-height: 1.6;
-        }
-
-        .ontario-requirement .note {
-            color: #64748b;
             font-size: 14px;
-            font-style: italic;
-            margin-top: 10px;
-        }
-
-        .ontario-requirement strong {
-            color: var(--danger);
-        }
-
-        /* LIENS */
-        .login-link {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 35px;
-            border-top: 2px solid var(--border);
-            position: relative;
-            z-index: 1;
-        }
-
-        .login-link a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 600;
-            padding: 8px 16px;
+            margin-top: 8px;
+            padding: 10px 14px;
+            background: rgba(239, 71, 111, 0.1);
             border-radius: 10px;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .login-link a:hover {
-            background: rgba(67, 97, 238, 0.1);
-            transform: translateY(-2px);
-        }
-
-        /* SECTION CONNEXION SIMPLIFIÉE */
-        .login-section {
-            background: linear-gradient(135deg, #f0fff4, #dcfce7);
-            border-radius: 20px;
-            padding: 30px;
-            margin: 30px 0;
-            border: 2px solid #86efac;
-            position: relative;
-            z-index: 1;
-            text-align: center;
-        }
-
-        .login-section h4 {
-            color: var(--success);
-            margin-bottom: 15px;
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .login-btn-simple {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            margin-top: 15px;
-            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.3);
-        }
-
-        .login-btn-simple:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.4);
-        }
-
-        /* ANIMATIONS */
-        .animated-card {
-            animation: fadeInUp 0.6s ease forwards;
-            opacity: 0;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* TABLEAU COMPARATIF */
-        .comparison-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin: 30px 0;
-            background: white;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-            font-size: 15px;
-        }
-
-        .comparison-table th, .comparison-table td {
-            padding: 16px 12px;
-            text-align: center;
-            border-right: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .comparison-table th:last-child,
-        .comparison-table td:last-child {
-            border-right: none;
-        }
-
-        .comparison-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .comparison-table th {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .comparison-table th:first-child {
-            text-align: left;
-            background: linear-gradient(135deg, #1e293b, #334155);
-        }
-
-        .comparison-table td:first-child {
-            text-align: left;
-            font-weight: 500;
-            background: #f8fafc;
-        }
-
-        .comparison-table .check {
-            color: var(--success);
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        .comparison-table .cross {
-            color: #cbd5e1;
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        /* SECTION PAYEMENT SECURISE */
-        .secure-payment {
-            text-align: center;
-            margin: 30px 0;
-            padding: 25px;
-            background: linear-gradient(135deg, #f0fff4, #dcfce7);
-            border-radius: 16px;
-            border: 2px solid #86efac;
-        }
-
-        .secure-payment i {
-            color: var(--trial);
-            font-size: 28px;
-            margin-bottom: 15px;
-            display: block;
-        }
-
-        .secure-payment strong {
-            color: var(--dark);
-            font-size: 18px;
-            display: block;
-            margin-bottom: 10px;
-        }
-
-        .stripe-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #635bff, #0a2540);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 700;
-            margin-top: 10px;
-            letter-spacing: 0.5px;
-        }
-
-        /* SECTION PARENT - STYLE SPÉCIAL */
-        .parent-section {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(167, 139, 250, 0.05));
-            border-color: rgba(139, 92, 246, 0.2);
-        }
-
-        .parent-section:hover {
-            border-color: var(--parent);
-        }
-
-        .parent-info {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.1));
-            border-radius: 16px;
-            padding: 20px;
-            margin: 20px 0;
-            border-left: 4px solid var(--parent);
-        }
-
-        .parent-info i {
-            color: var(--parent);
-            margin-right: 10px;
-        }
-
-        /* SECTION ENSEIGNANT - STYLE SPÉCIAL */
-        .teacher-section {
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.05), rgba(244, 114, 182, 0.05));
-            border-color: rgba(236, 72, 153, 0.2);
-        }
-
-        .teacher-section:hover {
-            border-color: var(--teacher);
-        }
-
-        .teacher-info {
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(244, 114, 182, 0.1));
-            border-radius: 16px;
-            padding: 20px;
-            margin: 20px 0;
-            border-left: 4px solid var(--teacher);
-        }
-
-        .teacher-info i {
-            color: var(--teacher);
-            margin-right: 10px;
-        }
-
-        /* TOGGLE SWITCH */
-        .toggle-switch {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 25px;
-            padding: 15px 20px;
-            background: white;
-            border-radius: 16px;
-            border: 2px solid var(--border);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .toggle-switch:hover {
-            border-color: var(--parent);
-        }
-
-        .toggle-switch.active {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(167, 139, 250, 0.05));
-            border-color: var(--parent);
-        }
-
-        .teacher-toggle:hover {
-            border-color: var(--teacher);
-        }
-
-        .teacher-toggle.active {
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.05), rgba(244, 114, 182, 0.05));
-            border-color: var(--teacher);
-        }
-
-        .toggle-switch label {
-            font-weight: 600;
-            color: var(--dark);
-            cursor: pointer;
-            margin: 0;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        .parent-switch input:checked + .slider {
-            background-color: var(--parent);
-        }
-
-        .teacher-switch input:checked + .slider {
-            background-color: var(--teacher);
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-
-        /* SECTION INFOS ENTREPRISE */
-        .company-info {
-            background: linear-gradient(135deg, rgba(31, 41, 55, 0.05), rgba(55, 65, 81, 0.05));
-            border-radius: 16px;
-            padding: 20px;
-            margin: 20px 0;
-            border-left: 4px solid var(--dark);
-            font-size: 14px;
-            color: #475569;
-        }
-
-        .company-info h5 {
-            color: var(--dark);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 16px;
-        }
-
-        .company-info p {
-            margin-bottom: 5px;
-            line-height: 1.6;
-        }
-
-        .company-info i {
-            color: var(--primary);
-            width: 18px;
-        }
-
-        /* LIENS DES POLITIQUES */
-        .policy-links {
-            display: flex;
-            gap: 15px;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-
-        .policy-links a {
-            color: var(--primary);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 8px 15px;
-            background: rgba(67, 97, 238, 0.08);
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .policy-links a:hover {
-            background: rgba(67, 97, 238, 0.15);
-            transform: translateY(-2px);
-        }
-
-        /* RESPONSIVE */
-        @media (max-width: 992px) {
-            .policy-links {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .policy-links a {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .registration-box {
-                padding: 30px 20px;
-            }
-            
-            h2 {
-                font-size: 28px;
-            }
-            
-            .subtitle {
-                font-size: 16px;
-            }
-            
-            .form-section {
-                padding: 25px;
-            }
-            
-            .plan-cards {
-                gap: 15px;
-            }
-            
-            .plan-card {
-                padding: 20px;
-            }
-            
-            .plan-price {
-                font-size: 36px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header {
-                margin-bottom: 30px;
-            }
-            
-            .logo {
-                width: 70px;
-                height: 70px;
-            }
-            
-            .logo i {
-                font-size: 28px;
-            }
-            
-            h2 {
-                font-size: 24px;
-            }
-            
-            .btn-submit {
-                padding: 16px;
-                font-size: 16px;
-            }
-            
-            .ontario-requirement {
-                padding: 15px;
-            }
+            border-left: 4px solid var(--danger);
         }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="registration-box">
-        <!-- BOUTON RETOUR ADMIN (caché si pas admin) -->
         {% if session.get('is_admin') %}
         <a href="{{ url_for('admin_dashboard') }}" class="admin-back-btn">
-            <i class="fas fa-arrow-left"></i>
-            {{ 'Back to Admin Dashboard' if lang == 'en' else 'Retour au Tableau de Bord Admin' }}
+            <i class="fas fa-arrow-left"></i> {{ 'Back to Admin' if lang == 'en' else 'Retour Admin' }}
         </a>
         {% endif %}
 
-        <!-- BOUTON DE CONNEXION FIXE EN HAUT -->
         <a href="{{ url_for('login_eleve') }}" class="login-top-btn">
-            <i class="fas fa-sign-in-alt"></i>
-            {{ 'Login' if lang == 'en' else 'Connexion' }}
+            <i class="fas fa-sign-in-alt"></i> {{ 'Login' if lang == 'en' else 'Connexion' }}
         </a>
 
         <div class="header">
             <div class="logo">
                 <i class="fas fa-graduation-cap"></i>
             </div>
-            <h2>{{ 'Student Registration - TutoratAI' if lang == 'en' else 'Inscription Élève - TutoratAI' }}</h2>
+            <h2>{{ 'Student Registration' if lang == 'en' else 'Inscription Élève' }}</h2>
             <p class="subtitle">
-                {{ 'Create your student account to access our intelligent tutoring platform' if lang == 'en' else 'Créez votre compte élève pour accéder à notre plateforme de tutorat intelligent' }}
+                {{ 'Create your account to access our intelligent tutoring platform' if lang == 'en' else 'Créez votre compte pour accéder à notre plateforme de tutorat intelligent' }}
             </p>
-        </div>
-
-        <!-- SECTION PROMOTIONNELLE POUR LES PLANS -->
-        <div class="info-section animated-card" style="animation-delay: 0.1s">
-            <h3><i class="fas fa-gift"></i> {{ 'Special Offer - Save up to 37%!' if lang == 'en' else 'Offre Spéciale - Économisez jusqu\'à 37% !' }}</h3>
-            {% if lang == 'en' %}
-                <p style="margin-bottom: 20px; color: #475569; line-height: 1.7;">Choose the <strong>Annual Plan</strong> and get <strong>12 months of access</strong> for only <strong>$149.99</strong> (≈$12.50/month). That's <strong>less than $0.42 per school day</strong> for personalized AI tutoring!</p>
-                <ul>
-                    <li>✓ <strong>37% savings</strong> compared to monthly billing</li>
-                    <li>✓ Full access during summer for review and consolidation</li>
-                    <li>✓ Priority parent support and detailed annual report</li>
-                    <li>✓ Cancel anytime with pro-rated refund</li>
-                </ul>
-            {% else %}
-                <p style="margin-bottom: 20px; color: #475569; line-height: 1.7;">Choisissez le <strong>Forfait Annuel</strong> et obtenez <strong>12 mois d'accès</strong> pour seulement <strong>149,99 $</strong> (≈12,50 $/mois). C'est <strong>moins de 0,42 $ par jour d'école</strong> pour du tutorat IA personnalisé !</p>
-                <ul>
-                    <li>✓ <strong>37% d'économies</strong> par rapport au mensuel</li>
-                    <li>✓ Accès complet pendant l'été pour révisions et consolidation</li>
-                    <li>✓ Support parent prioritaire et rapport annuel détaillé</li>
-                    <li>✓ Annulez à tout moment avec remboursement au prorata</li>
-                </ul>
-            {% endif %}
-        </div>
-
-        <!-- SECTION OBLIGATOIRE POUR ONTARIO -->
-        <div class="ontario-requirement animated-card" style="animation-delay: 0.15s">
-            <h4><i class="fas fa-exclamation-triangle"></i> 
-                {% if lang == 'en' %}
-                    For users in Ontario, Canada
-                {% else %}
-                    Pour les utilisateurs en Ontario, Canada
-                {% endif %}
-            </h4>
-            <p>
-                {% if lang == 'en' %}
-                    <strong>Important:</strong> In Ontario, parental consent is required for users under 16 years old.
-                {% else %}
-                    <strong>Important :</strong> En Ontario, le consentement parental est requis pour les utilisateurs de moins de 16 ans.
-                {% endif %}
-            </p>
-            <p class="note">
-                {% if lang == 'en' %}
-                    By checking the acceptance box below, you confirm that you are at least 16 years old OR have obtained parental consent.
-                {% else %}
-                    En cochant la case d'acceptation ci-dessous, vous confirmez que vous avez au moins 16 ans OU que vous avez obtenu le consentement parental.
-                {% endif %}
-            </p>
-        </div>
-
-        <!-- SECTION DE CONNEXION SIMPLIFIÉE -->
-        <div class="login-section animated-card" style="animation-delay: 0.2s">
-            <h4><i class="fas fa-sign-in-alt"></i> {{ 'Already Registered?' if lang == 'en' else 'Déjà Inscrit ?' }}</h4>
-            <p style="color: #475569; margin-bottom: 15px; font-size: 16px;">
-                {% if lang == 'en' %}
-                    If you already have a student account, you can log in directly.
-                {% else %}
-                    Si vous avez déjà un compte élève, vous pouvez vous connecter directement.
-                {% endif %}
-            </p>
-            <a href="{{ url_for('login_eleve') }}" class="login-btn-simple">
-                <i class="fas fa-user-graduate"></i>
-                {{ 'Student Login' if lang == 'en' else 'Connexion Élève' }}
-            </a>
         </div>
 
         <form method="POST" id="studentForm">
             {{ form.hidden_tag() }}
             
-            <!-- SECTION INFORMATIONS ÉLÈVE -->
-            <div class="form-section animated-card" style="animation-delay: 0.25s">
+            <!-- Informations Élève -->
+            <div class="form-section">
                 <div class="section-header">
                     <i class="fas fa-user-graduate"></i>
-                    <h3>{{ 'Student Information' if lang == 'en' else 'Informations de l\'Élève' }}</h3>
+                    <h3>{{ 'Student Information' if lang == 'en' else 'Informations Élève' }}</h3>
                 </div>
-
+                
                 <div class="form-group">
-                    <label for="username" class="required">
-                        <i class="fas fa-user"></i>
-                        {{ 'Username' if lang == 'en' else 'Nom d\'utilisateur' }}
-                    </label>
+                    <label for="username" class="required">{{ 'Username' if lang == 'en' else 'Nom d\'utilisateur' }}</label>
                     {{ form.username(class="form-control", placeholder="john_doe") }}
-                    {% if form.username.errors %}
-                        <div class="error-message">
-                            <i class="fas fa-exclamation-circle"></i>
-                            {% for error in form.username.errors %}
-                                <small>{{ error }}</small>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="email" class="required">
-                        <i class="fas fa-envelope"></i>
-                        {{ 'Email' if lang == 'en' else 'Email' }}
-                    </label>
+                    <label for="email" class="required">Email</label>
                     {{ form.email(class="form-control", placeholder="email@example.com") }}
-                    {% if form.email.errors %}
-                        <div class="error-message">
-                            <i class="fas fa-exclamation-circle"></i>
-                            {% for error in form.email.errors %}
-                                <small>{{ error }}</small>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nom_complet" class="required">{{ 'Full Name' if lang == 'en' else 'Nom complet' }}</label>
+                        {{ form.nom_complet(class="form-control", placeholder="John Doe") }}
+                    </div>
+                    <div class="form-group">
+                        <label for="telephone">{{ 'Phone (Optional)' if lang == 'en' else 'Téléphone (Optionnel)' }}</label>
+                        {{ form.telephone(class="form-control", placeholder="+1 (555) 123-4567") }}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mot_de_passe" class="required">{{ 'Password' if lang == 'en' else 'Mot de passe' }}</label>
+                        {{ form.mot_de_passe(class="form-control", type="password", placeholder="••••••") }}
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmer_mot_de_passe" class="required">{{ 'Confirm Password' if lang == 'en' else 'Confirmer' }}</label>
+                        {{ form.confirmer_mot_de_passe(class="form-control", type="password", placeholder="••••••") }}
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="nom_complet" class="required">
-                        <i class="fas fa-id-card"></i>
-                        {{ 'Full Name' if lang == 'en' else 'Nom Complet' }}
-                    </label>
-                    {{ form.nom_complet(class="form-control", placeholder="John Doe") }}
-                    {% if form.nom_complet.errors %}
-                        <div class="error-message">
-                            <i class="fas fa-exclamation-circle"></i>
-                            {% for error in form.nom_complet.errors %}
-                                <small>{{ error }}</small>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
+                    <label for="niveau" class="required">{{ 'Level' if lang == 'en' else 'Niveau' }}</label>
+                    <select name="niveau" id="niveau" class="form-select" required>
+                        <option value="">{{ 'Select your level' if lang == 'en' else 'Sélectionnez votre niveau' }}</option>
+                        {% for niveau in niveaux %}
+                            <option value="{{ niveau.id }}">{{ niveau.nom }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
+            </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="mot_de_passe" class="required">
-                            <i class="fas fa-lock"></i>
-                            {{ 'Password' if lang == 'en' else 'Mot de Passe' }}
-                        </label>
-                        {{ form.mot_de_passe(class="form-control", placeholder="••••••") }}
-                        {% if form.mot_de_passe.errors %}
-                            <div class="error-message">
-                                <i class="fas fa-exclamation-circle"></i>
-                                {% for error in form.mot_de_passe.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-group">
-                        <label for="confirmer_mot_de_passe" class="required">
-                            <i class="fas fa-lock"></i>
-                            {{ 'Confirm Password' if lang == 'en' else 'Confirmer le Mot de Passe' }}
-                        </label>
-                        {{ form.confirmer_mot_de_passe(class="form-control", placeholder="••••••") }}
-                        {% if form.confirmer_mot_de_passe.errors %}
-                            <div class="error-message">
-                                <i class="fas fa-exclamation-circle"></i>
-                                {% for error in form.confirmer_mot_de_passe.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
+            <!-- SECTION MATIÈRES (AJOUTÉE) -->
+            <div class="form-section" id="matieresSection" style="display: none;">
+                <div class="section-header">
+                    <i class="fas fa-book"></i>
+                    <h3>{{ 'Select Your Subjects' if lang == 'en' else 'Choisissez vos matières' }}</h3>
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="niveau" class="required">
-                            <i class="fas fa-chart-line"></i>
-                            {{ 'Level' if lang == 'en' else 'Niveau' }}
-                        </label>
-                        <select name="niveau" id="niveau" class="form-select" required>
-                            <option value="">{{ 'Select your level' if lang == 'en' else 'Sélectionnez votre niveau' }}</option>
-                            {% for niveau_id, niveau_nom in form.niveau.choices %}
-                                <option value="{{ niveau_id }}">{{ niveau_nom }}</option>
-                            {% endfor %}
-                        </select>
-                        {% if form.niveau.errors %}
-                            <div class="error-message">
-                                <i class="fas fa-exclamation-circle"></i>
-                                {% for error in form.niveau.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-group">
-                        <label for="telephone">
-                            <i class="fas fa-phone"></i>
-                            {{ 'Phone (Optional)' if lang == 'en' else 'Téléphone (Optionnel)' }}
-                        </label>
-                        {{ form.telephone(class="form-control", placeholder="+1 (555) 123-4567") }}
+                <div class="subjects-section">
+                    <div id="matieresList">
+                        <p class="text-muted">{{ 'Please select a level first' if lang == 'en' else 'Veuillez d\'abord sélectionner un niveau' }}</p>
                     </div>
                 </div>
             </div>
 
-            <!-- SECTION ENSEIGNANT TUTEUR (OPTIONNEL) -->
-            <div class="form-section teacher-section animated-card" style="animation-delay: 0.27s" id="teacherSection">
+            <!-- SECTION ENSEIGNANT TUTEUR -->
+            <div class="form-section" id="teacherSection">
                 <div class="section-header">
                     <i class="fas fa-chalkboard-teacher"></i>
                     <h3>{{ 'Tutor Teacher (Optional)' if lang == 'en' else 'Enseignant Tuteur (Optionnel)' }}</h3>
                 </div>
 
-                <!-- Information pour l'enseignant -->
-                <div class="teacher-info">
-                    <p>
-                        <i class="fas fa-info-circle"></i>
-                        {% if lang == 'en' %}
-                            <strong>Optional:</strong> You can choose a specific teacher as your tutor. If you don't have a preference, leave this section empty and the system will assign you to the appropriate teacher.
-                        {% else %}
-                            <strong>Optionnel :</strong> Vous pouvez choisir un enseignant spécifique comme tuteur. Si vous n'avez pas de préférence, laissez cette section vide et le système vous assignera à l'enseignant approprié.
-                        {% endif %}
-                    </p>
-                </div>
+                <label style="cursor: pointer;">
+                    <input type="checkbox" id="include_teacher" name="include_teacher">
+                    {{ 'Specify a tutor teacher' if lang == 'en' else 'Spécifier un enseignant tuteur' }}
+                </label>
 
-                <!-- Toggle pour activer/désactiver l'enseignant -->
-                <div class="toggle-switch teacher-toggle" id="teacherToggle">
-                    <label for="include_teacher">
-                        <i class="fas fa-user-tie"></i>
-                        {% if lang == 'en' %}
-                            Specify a tutor teacher
-                        {% else %}
-                            Spécifier un enseignant tuteur
-                        {% endif %}
-                    </label>
-                    <div class="switch teacher-switch">
-                        <input type="checkbox" id="include_teacher" name="include_teacher">
-                        <span class="slider"></span>
-                    </div>
-                </div>
-
-                <!-- Champ pour l'email de l'enseignant (affiché uniquement si activé) -->
-                <div id="teacherFields" style="display: none;">
+                <div id="teacherFields" style="display: none; margin-top: 20px;">
                     <div class="form-group">
-                        <label for="teacher_email">
-                            <i class="fas fa-envelope"></i>
-                            {{ 'Teacher Email (Login Email)' if lang == 'en' else 'Email de l\'Enseignant (Email de connexion)' }}
-                        </label>
-                        <input type="email" 
-                               class="form-control" 
-                               id="teacher_email" 
-                               name="teacher_email" 
-                               placeholder="teacher@example.com"
-                               value="{{ request.form.get('teacher_email', '') }}"
-                               pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$">
-                        <small style="color: #64748b; margin-top: 5px; display: block;">
-                            <i class="fas fa-info-circle"></i>
-                            {% if lang == 'en' %}
-                                Enter the exact login email of your tutor teacher. This email must match the teacher's registered account.
-                            {% else %}
-                                Entrez l'email exact de connexion de votre enseignant tuteur. Cet email doit correspondre au compte enregistré de l'enseignant.
-                            {% endif %}
-                        </small>
-                        <div id="teacherValidation" style="margin-top: 8px;"></div>
+                        <label for="teacher_email">{{ 'Teacher Email' if lang == 'en' else 'Email de l\'enseignant' }}</label>
+                        <input type="email" class="form-control" id="teacher_email" name="teacher_email" placeholder="teacher@example.com">
                     </div>
                 </div>
             </div>
 
-            <!-- SECTION INFORMATIONS PARENT/TUTEUR -->
-            <div class="form-section parent-section animated-card" style="animation-delay: 0.3s" id="parentSection">
+            <!-- SECTION PARENT -->
+            <div class="form-section" id="parentSection">
                 <div class="section-header">
                     <i class="fas fa-users"></i>
                     <h3>{{ 'Parent/Tutor Information' if lang == 'en' else 'Informations Parent/Tuteur' }}</h3>
                 </div>
 
-                <!-- Information pour le parent -->
-                <div class="parent-info">
-                    <p>
-                        <i class="fas fa-info-circle"></i>
-                        {% if lang == 'en' %}
-                            <strong>Parent access:</strong> The parent/guardian will receive login credentials to monitor their child's progress, view reports, and manage the account. The email provided will be used for the parent account.
-                        {% else %}
-                            <strong>Accès parent :</strong> Le parent/tuteur recevra ses identifiants de connexion pour suivre la progression de son enfant, consulter les rapports et gérer le compte. L'email fourni sera utilisé pour le compte parent.
-                        {% endif %}
-                    </p>
-                </div>
+                <label style="cursor: pointer;">
+                    <input type="checkbox" id="include_parent" name="include_parent" checked>
+                    {{ 'Include parent information' if lang == 'en' else 'Inclure les informations parent' }}
+                </label>
 
-                <!-- Toggle pour activer/désactiver les infos parent -->
-                <div class="toggle-switch" id="parentToggle">
-                    <label for="include_parent">
-                        <i class="fas fa-user-plus"></i>
-                        {% if lang == 'en' %}
-                            Include parent/tutor information
-                        {% else %}
-                            Inclure les informations parent/tuteur
-                        {% endif %}
-                    </label>
-                    <div class="switch parent-switch">
-                        <input type="checkbox" id="include_parent" name="include_parent" checked>
-                        <span class="slider"></span>
-                    </div>
-                </div>
-
-                <!-- Champs parent (affichés par défaut) -->
-                <div id="parentFields">
+                <div id="parentFields" style="margin-top: 20px;">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="parent_nom_complet" class="required">
-                                <i class="fas fa-user"></i>
-                                {{ 'Full Name' if lang == 'en' else 'Nom Complet' }}
-                            </label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="parent_nom_complet" 
-                                   name="parent_nom_complet" 
-                                   placeholder="{% if lang == 'en' %}Jane Doe{% else %}Jean Dupont{% endif %}"
-                                   value="{{ request.form.get('parent_nom_complet', '') }}"
-                                   required>
+                            <label for="parent_nom_complet">{{ 'Parent Name' if lang == 'en' else 'Nom du parent' }}</label>
+                            <input type="text" class="form-control" id="parent_nom_complet" name="parent_nom_complet">
                         </div>
-
                         <div class="form-group">
-                            <label for="parent_email" class="required">
-                                <i class="fas fa-envelope"></i>
-                                {{ 'Email (Parent Account)' if lang == 'en' else 'Email (Compte Parent)' }}
-                            </label>
-                            <input type="email" 
-                                   class="form-control" 
-                                   id="parent_email" 
-                                   name="parent_email" 
-                                   placeholder="parent@example.com"
-                                   value="{{ request.form.get('parent_email', '') }}"
-                                   required>
-                            <small style="color: #64748b; margin-top: 5px; display: block;">
-                                <i class="fas fa-info-circle"></i>
-                                {% if lang == 'en' %}
-                                    This email will be used for the parent account login
-                                {% else %}
-                                    Cet email servira pour la connexion au compte parent
-                                {% endif %}
-                            </small>
+                            <label for="parent_email">{{ 'Parent Email' if lang == 'en' else 'Email du parent' }}</label>
+                            <input type="email" class="form-control" id="parent_email" name="parent_email">
                         </div>
                     </div>
-
                     <div class="form-row-3">
                         <div class="form-group">
-                            <label for="parent_telephone">
-                                <i class="fas fa-phone"></i>
-                                {{ 'Phone' if lang == 'en' else 'Téléphone' }}
-                            </label>
-                            <input type="tel" 
-                                   class="form-control" 
-                                   id="parent_telephone" 
-                                   name="parent_telephone" 
-                                   placeholder="+1 (555) 123-4567"
-                                   value="{{ request.form.get('parent_telephone', '') }}">
+                            <label for="parent_telephone">{{ 'Phone' if lang == 'en' else 'Téléphone' }}</label>
+                            <input type="tel" class="form-control" id="parent_telephone" name="parent_telephone">
                         </div>
-
                         <div class="form-group">
-                            <label for="parent_telephone2">
-                                <i class="fas fa-phone-alt"></i>
-                                {{ 'Secondary Phone' if lang == 'en' else 'Téléphone Secondaire' }}
-                            </label>
-                            <input type="tel" 
-                                   class="form-control" 
-                                   id="parent_telephone2" 
-                                   name="parent_telephone2" 
-                                   placeholder="{% if lang == 'en' %}Optional{% else %}Optionnel{% endif %}"
-                                   value="{{ request.form.get('parent_telephone2', '') }}">
+                            <label for="parent_telephone2">{{ 'Secondary Phone' if lang == 'en' else 'Téléphone secondaire' }}</label>
+                            <input type="tel" class="form-control" id="parent_telephone2" name="parent_telephone2">
                         </div>
-
                         <div class="form-group">
-                            <label for="parent_relation">
-                                <i class="fas fa-user-friends"></i>
-                                {{ 'Relationship' if lang == 'en' else 'Lien de Parenté' }}
-                            </label>
+                            <label for="parent_relation">{{ 'Relationship' if lang == 'en' else 'Lien de parenté' }}</label>
                             <select class="form-select" id="parent_relation" name="parent_relation">
                                 <option value="">{{ 'Select' if lang == 'en' else 'Sélectionner' }}</option>
-                                <option value="mother" {% if request.form.get('parent_relation') == 'mother' %}selected{% endif %}>
-                                    {{ 'Mother' if lang == 'en' else 'Mère' }}
-                                </option>
-                                <option value="father" {% if request.form.get('parent_relation') == 'father' %}selected{% endif %}>
-                                    {{ 'Father' if lang == 'en' else 'Père' }}
-                                </option>
-                                <option value="guardian" {% if request.form.get('parent_relation') == 'guardian' %}selected{% endif %}>
-                                    {{ 'Guardian' if lang == 'en' else 'Tuteur' }}
-                                </option>
-                                <option value="other" {% if request.form.get('parent_relation') == 'other' %}selected{% endif %}>
-                                    {{ 'Other' if lang == 'en' else 'Autre' }}
-                                </option>
+                                <option value="mother">{{ 'Mother' if lang == 'en' else 'Mère' }}</option>
+                                <option value="father">{{ 'Father' if lang == 'en' else 'Père' }}</option>
+                                <option value="guardian">{{ 'Guardian' if lang == 'en' else 'Tuteur' }}</option>
                             </select>
                         </div>
                     </div>
-
-                    <!-- Notes supplémentaires -->
-                    <div class="form-group">
-                        <label for="parent_notes">
-                            <i class="fas fa-sticky-note"></i>
-                            {{ 'Additional Notes' if lang == 'en' else 'Notes Additionnelles' }}
-                        </label>
-                        <textarea class="form-control" 
-                                  id="parent_notes" 
-                                  name="parent_notes" 
-                                  rows="3" 
-                                  placeholder="{% if lang == 'en' %}Any special instructions or information...{% else %}Instructions particulières ou informations supplémentaires...{% endif %}">{{ request.form.get('parent_notes', '') }}</textarea>
-                    </div>
                 </div>
             </div>
 
-            <!-- SECTION OPTIONS D'ABONNEMENT OPTIMISÉES -->
-            <div class="payment-options">
-                <div class="section-header animated-card" style="animation-delay: 0.35s">
-                    <i class="fas fa-crown"></i>
-                    <h3>{{ 'Choose Your Plan' if lang == 'en' else 'Choisissez Votre Forfait' }}</h3>
+            <!-- Plans d'abonnement -->
+            <div class="plan-cards">
+                <div class="plan-card trial selected" onclick="selectPlan('trial')" id="trialPlan">
+                    <div class="plan-icon trial"><i class="fas fa-gift"></i></div>
+                    <h3 class="plan-name">{{ 'Free Trial' if lang == 'en' else 'Essai Gratuit' }}</h3>
+                    <div class="plan-price trial">0$</div>
+                    <div class="plan-period">{{ '3 days' if lang == 'en' else '3 jours' }}</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> {{ 'Full platform access' if lang == 'en' else 'Accès complet' }}</li>
+                        <li><i class="fas fa-check"></i> {{ 'No credit card required' if lang == 'en' else 'Sans carte de crédit' }}</li>
+                        <li><i class="fas fa-check"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulation gratuite' }}</li>
+                    </ul>
                 </div>
 
-                <p style="text-align: center; color: #64748b; margin-bottom: 20px; font-size: 16px;" class="animated-card" style="animation-delay: 0.4s">
-                    {% if lang == 'en' %}
-                        Select the plan that best fits your learning needs. <strong>All plans include full platform access with our AI virtual teacher.</strong>
-                    {% else %}
-                        Sélectionnez le forfait qui correspond le mieux à vos besoins d'apprentissage. <strong>Tous les forfaits incluent l'accès complet à la plateforme avec notre enseignant virtuel IA.</strong>
-                    {% endif %}
-                </p>
-
-                <!-- TABLEAU COMPARATIF - MISES À JOUR DES PRIX -->
-                <div style="overflow-x: auto; margin-bottom: 40px;" class="animated-card" style="animation-delay: 0.45s">
-                    <table class="comparison-table">
-                        <thead>
-                            <tr>
-                                <th>{{ 'Features' if lang == 'en' else 'Fonctionnalités' }}</th>
-                                <th>{{ '3-Day Trial' if lang == 'en' else 'Essai 3 Jours' }}</th>
-                                <th>{{ 'Monthly' if lang == 'en' else 'Mensuel' }}</th>
-                                <th>{{ 'Quarterly' if lang == 'en' else 'Trimestriel' }}</th>
-                                <th>{{ 'Annual' if lang == 'en' else 'Annuel' }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>{{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td>{{ 'Virtual teacher assistance' if lang == 'en' else 'Assistance par enseignant virtuel' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td>{{ 'Progress tracking & reports' if lang == 'en' else 'Suivi de progression & rapports' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td>{{ 'Parent dashboard access' if lang == 'en' else 'Accès tableau de bord parent' }}</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td>{{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</td>
-                                <td class="cross">✗</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                                <td class="check">✓</td>
-                            </tr>
-                            <tr>
-                                <td>{{ 'Monthly savings' if lang == 'en' else 'Économies mensuelles' }}</td>
-                                <td>-</td>
-                                <td>0%</td>
-                                <td>~17%</td>
-                                <td>~37%</td>
-                            </tr>
-                            <tr>
-                                <td>{{ 'Price per month' if lang == 'en' else 'Prix par mois' }}</td>
-                                <td>Free</td>
-                                <td>$19.99</td>
-                                <td>$16.66</td>
-                                <td>$12.50</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="plan-card monthly" onclick="selectPlan('monthly')" id="monthlyPlan">
+                    <div class="plan-icon monthly"><i class="fas fa-calendar-alt"></i></div>
+                    <h3 class="plan-name">{{ 'Monthly' if lang == 'en' else 'Mensuel' }}</h3>
+                    <div class="plan-price monthly">19.99$</div>
+                    <div class="plan-period">{{ 'per month' if lang == 'en' else 'par mois' }}</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> {{ 'All features' if lang == 'en' else 'Toutes les fonctionnalités' }}</li>
+                        <li><i class="fas fa-check"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
+                        <li><i class="fas fa-check"></i> {{ 'Weekly reports' if lang == 'en' else 'Rapports hebdomadaires' }}</li>
+                    </ul>
                 </div>
 
-                <!-- Section paiement sécurisé -->
-                <div class="secure-payment animated-card" style="animation-delay: 0.5s">
-                    <i class="fas fa-shield-alt"></i>
-                    <strong>{{ 'Secure Payment Processing' if lang == 'en' else 'Paiement sécurisé' }}</strong>
-                    <span class="stripe-badge">STRIPE</span>
-                    <br>
-                    <small style="color: #64748b; margin-top: 10px; display: inline-block;">
-                        {% if lang == 'en' %}
-                        Your payment information is securely processed by Stripe. We never store your credit card details.
-                        {% else %}
-                        Vos informations de paiement sont traitées de manière sécurisée par Stripe. Nous ne stockons jamais vos données de carte bancaire.
-                        {% endif %}
-                    </small>
+                <div class="plan-card quarterly" onclick="selectPlan('quarterly')" id="quarterlyPlan">
+                    <div class="plan-icon quarterly"><i class="fas fa-chart-line"></i></div>
+                    <h3 class="plan-name">{{ 'Quarterly' if lang == 'en' else 'Trimestriel' }}</h3>
+                    <div class="plan-price quarterly">49.99$</div>
+                    <div class="plan-period">{{ 'per 3 months' if lang == 'en' else 'par 3 mois' }}</div>
+                    <div class="plan-savings">{{ 'SAVE 17%' if lang == 'en' else 'ÉCONOMISEZ 17%' }}</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> {{ 'All monthly features' if lang == 'en' else 'Tous les avantages mensuels' }}</li>
+                        <li><i class="fas fa-check"></i> {{ 'Quarterly assessments' if lang == 'en' else 'Évaluations trimestrielles' }}</li>
+                    </ul>
                 </div>
 
-                <!-- CARTES DES PLANS OPTIMISÉES - NOUVELLE GRILLE DE PRIX -->
-                <div class="plan-cards">
-                    <!-- Essai Gratuit (3 Jours) -->
-                    <div class="plan-card trial selected animated-card" style="animation-delay: 0.55s" onclick="selectPlan('trial')" id="trialPlan">
-                        <div class="plan-header">
-                            <div class="plan-icon trial">
-                                <i class="fas fa-gift"></i>
-                            </div>
-                            <h3 class="plan-name">{{ 'Free Trial' if lang == 'en' else 'Essai Gratuit' }}</h3>
-                            <div class="plan-price trial">0$ CAD</div>
-                            <div class="plan-period">{{ '3 days access' if lang == 'en' else 'Accès 3 jours' }}</div>
-                        </div>
-                        <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Test all features' if lang == 'en' else 'Testez toutes les fonctionnalités' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'No credit card required' if lang == 'en' else 'Aucune carte requise' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Virtual teacher available' if lang == 'en' else 'Enseignant virtuel disponible' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Parent dashboard' if lang == 'en' else 'Tableau de bord parent' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
-                        </ul>
-                    </div>
-
-                    <!-- Mensuel - MIS À JOUR À 19.99$ -->
-                    <div class="plan-card monthly animated-card" style="animation-delay: 0.6s" onclick="selectPlan('monthly')" id="monthlyPlan">
-                        <div class="plan-header">
-                            <div class="plan-icon monthly">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            <h3 class="plan-name">{{ 'Monthly' if lang == 'en' else 'Mensuel' }}</h3>
-                            <div class="plan-price monthly">19.99$ CAD</div>
-                            <div class="plan-period">{{ 'per month' if lang == 'en' else 'par mois' }}</div>
-                            <div class="price-per-month">{{ '19.99$/month' if lang == 'en' else '19.99$/mois' }}</div>
-                            <div class="plan-savings" style="background: linear-gradient(135deg, #64748b, #94a3b8);">
-                                {{ 'FLEXIBLE' if lang == 'en' else 'FLEXIBLE' }}
-                            </div>
-                        </div>
-                        <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Full platform access' if lang == 'en' else 'Accès complet à la plateforme' }}</strong></li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Priority support' if lang == 'en' else 'Support prioritaire' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Weekly progress reports' if lang == 'en' else 'Rapports hebdomadaires' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Parent notifications' if lang == 'en' else 'Notifications aux parents' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
-                        </ul>
-                        <div style="margin-top: auto; font-size: 13px; color: #64748b; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
-                            <i class="fas fa-info-circle"></i>
-                            {{ 'Less than $0.67 per day' if lang == 'en' else 'Moins de 0,67$ par jour' }}
-                        </div>
-                    </div>
-
-                    <!-- Trimestriel - MIS À JOUR À 49.99$ -->
-                    <div class="plan-card quarterly popular animated-card" style="animation-delay: 0.65s" onclick="selectPlan('quarterly')" id="quarterlyPlan">
-                        <div class="plan-badge">{{ 'POPULAR' if lang == 'en' else 'POPULAIRE' }}</div>
-                        <div class="plan-header">
-                            <div class="plan-icon quarterly">
-                                <i class="fas fa-chart-line"></i>
-                            </div>
-                            <h3 class="plan-name">{{ 'Quarterly' if lang == 'en' else 'Trimestriel' }}</h3>
-                            <div class="plan-price quarterly">49.99$ CAD</div>
-                            <div class="plan-period">{{ 'per 3 months' if lang == 'en' else 'par 3 mois' }}</div>
-                            <div class="plan-savings">{{ 'SAVE 17%' if lang == 'en' else 'ÉCONOMISEZ 17%' }}</div>
-                            <div class="price-per-month">{{ '≈16.66$/month' if lang == 'en' else '≈16.66$/mois' }}</div>
-                        </div>
-                        <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Save 3.33$/month' if lang == 'en' else 'Économisez 3.33$/mois' }}</strong></li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'All monthly features' if lang == 'en' else 'Toutes les fonctionnalités mensuelles' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Quarterly assessments' if lang == 'en' else 'Évaluations trimestrielles' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Parent-teacher meetings' if lang == 'en' else 'Rencontres parent-enseignant' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Cancel anytime' if lang == 'en' else 'Annulez à tout moment' }}</li>
-                        </ul>
-                        <div style="margin-top: auto; font-size: 13px; color: #64748b; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
-                            <i class="fas fa-graduation-cap"></i>
-                            {{ 'Ideal for a school session' if lang == 'en' else 'Idéal pour une session scolaire' }}
-                        </div>
-                    </div>
-
-                    <!-- Annuel - MIS À JOUR À 149.99$ -->
-                    <div class="plan-card annual best-value animated-card" style="animation-delay: 0.7s" onclick="selectPlan('annual')" id="annualPlan">
-                        <div class="plan-badge">{{ 'BEST VALUE' if lang == 'en' else 'MEILLEUR RAPPORT' }}</div>
-                        <div class="plan-header">
-                            <div class="plan-icon annual">
-                                <i class="fas fa-crown"></i>
-                            </div>
-                            <h3 class="plan-name">{{ 'Annual' if lang == 'en' else 'Annuel' }}</h3>
-                            <div class="plan-price annual">149.99$ CAD</div>
-                            <div class="plan-period">{{ 'per year' if lang == 'en' else 'par an' }}</div>
-                            <div class="plan-savings">{{ 'SAVE 37%' if lang == 'en' else 'ÉCONOMISEZ 37%' }}</div>
-                            <div class="price-per-month">{{ '≈12.50$/month' if lang == 'en' else '≈12.50$/mois' }}</div>
-                        </div>
-                        <ul class="plan-features">
-                            <li><i class="fas fa-check feature-included"></i> <strong>{{ 'Only 12.50$/month' if lang == 'en' else 'Seulement 12.50$/mois' }}</strong></li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'All quarterly features' if lang == 'en' else 'Toutes les fonctionnalités trimestrielles' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Detailed annual report' if lang == 'en' else 'Rapport annuel détaillé' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Priority parent support' if lang == 'en' else 'Support parent prioritaire' }}</li>
-                            <li><i class="fas fa-check feature-included"></i> {{ 'Access during summer for review' if lang == 'en' else 'Accès pendant l\'été pour révisions' }}</li>
-                        </ul>
-                        <div style="margin-top: auto; font-size: 13px; color: #64748b; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
-                            <i class="fas fa-calendar-check"></i>
-                            {{ '12 months access - Best choice' if lang == 'en' else '12 mois d\'accès - Meilleur choix' }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Champs cachés pour WTForms -->
-                {{ form.plan_type(id="planType", class="form-control", style="display: none;", value="trial") }}
-            </div>
-
-            <!-- SECTION INFOS ENTREPRISE ET COMPLIANCE -->
-            <div class="company-info animated-card" style="animation-delay: 0.75s">
-                <h5><i class="fas fa-building"></i> {{ 'Company Information & Compliance' if lang == 'en' else 'Informations Entreprise et Conformité' }}</h5>
-                <p><i class="fas fa-map-marker-alt"></i> <strong>Advanceteach INC - TutoratAI</strong></p>
-                <p><i class="fas fa-location-dot"></i> 6 Whitmore, St. Catharines, Ontario L2R 6P4</p>
-                <p><i class="fas fa-envelope"></i> Courriel : info@advanceteach.com</p>
-                <p><i class="fas fa-globe"></i> Site web : www.tutoratai.com</p>
-                <p><i class="fas fa-shield"></i> 
-                    {% if lang == 'en' %}
-                        Data protection compliant with GDPR and PIPEDA
-                    {% else %}
-                        Protection des données conforme au RGPD et PIPEDA
-                    {% endif %}
-                </p>
-                <p><i class="fas fa-handshake"></i> 
-                    {% if lang == 'en' %}
-                        IA recommendations supervised by human teachers
-                    {% else %}
-                        Les recommandations IA sont supervisées par des enseignants humains
-                    {% endif %}
-                </p>
-                <p><i class="fas fa-credit-card"></i> 
-                    {% if lang == 'en' %}
-                        Stripe handles secure payment processing
-                    {% else %}
-                        Stripe gère le traitement sécurisé des paiements
-                    {% endif %}
-                </p>
-                <p><i class="fas fa-calendar-times"></i> 
-                    {% if lang == 'en' %}
-                        Realistic cancellation policy (see details)
-                    {% else %}
-                        Politique d'annulation réaliste (voir détails)
-                    {% endif %}
-                </p>
-            </div>
-
-            <!-- SECTION CGU SIMPLIFIÉE -->
-            <div class="form-section animated-card" style="animation-delay: 0.8s">
-                <div class="section-header">
-                    <i class="fas fa-file-contract"></i>
-                    <h3>{{ 'Terms and Conditions' if lang == 'en' else "Conditions Générales d'Utilisation" }}</h3>
-                </div>
-
-                <div class="checkbox-group">
-                    {{ form.accepte_cgu(id="accepte_cgu_checkbox") }}
-                    <label for="accepte_cgu_checkbox">
-                        {% if lang == 'en' %}
-                        ✓ I confirm that I am at least 16 years old, or have obtained parental consent. I accept the Terms and Conditions and Privacy Policy. I understand that the Annual Plan provides 12 months of continuous access.
-                        {% else %}
-                        ✓ Je confirme que j'ai au moins 16 ans, ou que j'ai obtenu le consentement parental. J'accepte les Conditions Générales d'Utilisation et la Politique de Confidentialité. Je comprends que le Forfait Annuel offre 12 mois d'accès continu.
-                        {% endif %}
-                    </label>
-                </div>
-                {% if form.accepte_cgu.errors %}
-                    <div class="error-message">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {% for error in form.accepte_cgu.errors %}
-                            <small>{{ error }}</small>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-
-                <div class="policy-links">
-                    <a href="#" onclick="showTerms('cgu')">
-                        <i class="fas fa-file-alt"></i>
-                        {{ 'View Terms and Conditions' if lang == 'en' else 'Voir les Conditions Générales' }}
-                    </a>
-                    <a href="#" onclick="showTerms('privacy')">
-                        <i class="fas fa-user-shield"></i>
-                        {{ 'View Privacy Policy' if lang == 'en' else 'Voir la Politique de Confidentialité' }}
-                    </a>
-                    <a href="#" onclick="showTerms('cancellation')">
-                        <i class="fas fa-ban"></i>
-                        {{ 'View Cancellation Policy' if lang == 'en' else 'Voir la Politique d\'Annulation' }}
-                    </a>
+                <div class="plan-card annual" onclick="selectPlan('annual')" id="annualPlan">
+                    <div class="plan-icon annual"><i class="fas fa-crown"></i></div>
+                    <h3 class="plan-name">{{ 'Annual' if lang == 'en' else 'Annuel' }}</h3>
+                    <div class="plan-price annual">149.99$</div>
+                    <div class="plan-period">{{ 'per year' if lang == 'en' else 'par an' }}</div>
+                    <div class="plan-savings">{{ 'SAVE 37%' if lang == 'en' else 'ÉCONOMISEZ 37%' }}</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> {{ 'Best value' if lang == 'en' else 'Meilleur rapport qualité-prix' }}</li>
+                        <li><i class="fas fa-check"></i> {{ 'Summer access included' if lang == 'en' else 'Accès été inclus' }}</li>
+                        <li><i class="fas fa-check"></i> {{ 'Annual report' if lang == 'en' else 'Rapport annuel' }}</li>
+                    </ul>
                 </div>
             </div>
 
-            <!-- BOUTON DE SOUMISSION - CORRIGÉ -->
-            <div class="btn-submit-container animated-card" style="animation-delay: 0.85s">
-                <button type="submit" class="btn-submit" id="submitButton">
-                    <i class="fas fa-gift" id="submitIcon"></i>
-                    <span id="submitText">
-                        {% if lang == 'en' %}
-                            Start 3-Day Free Trial
-                        {% else %}
-                            Commencer l'Essai Gratuit de 3 Jours
-                        {% endif %}
-                    </span>
-                </button>
+            {{ form.plan_type(id="planType", style="display: none;", value="trial") }}
+
+            <!-- CGU -->
+            <div class="checkbox-group">
+                {{ form.accepte_cgu(id="accepte_cgu") }}
+                <label for="accepte_cgu">
+                    {{ 'I accept the Terms and Conditions and confirm that I am at least 16 years old or have parental consent.' if lang == 'en' else 'J\'accepte les Conditions Générales et confirme que j\'ai au moins 16 ans ou le consentement parental.' }}
+                </label>
             </div>
+
+            <button type="submit" class="btn-submit" id="submitButton">
+                <i class="fas fa-gift"></i>
+                <span>{{ 'Start 3-Day Free Trial' if lang == 'en' else 'Commencer l\'Essai Gratuit' }}</span>
+            </button>
         </form>
 
-        <!-- LIEN DE CONNEXION EN BAS -->
-        <div class="login-link animated-card" style="animation-delay: 0.9s">
-            <p style="font-size: 16px; color: #64748b; margin-bottom: 15px;">
-                {% if lang == 'en' %}
-                    Already have an account?
-                {% else %}
-                    Vous avez déjà un compte ?
-                {% endif %}
-            </p>
-            <div style="text-align: center;">
-                <a href="{{ url_for('login_eleve') }}" style="
-                    background: white;
-                    color: var(--dark);
-                    border: 2px solid var(--border);
-                    padding: 14px 28px;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    text-decoration: none;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 12px;
-                    transition: all 0.3s ease;
-                    font-size: 16px;
-                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-                ">
-                    <i class="fas fa-sign-in-alt"></i>
-                    {{ 'Student Login' if lang == 'en' else 'Connexion Élève' }}
-                </a>
-            </div>
-            <p style="font-size: 14px; color: #94a3b8; margin-top: 20px;">
-                <i class="fas fa-info-circle"></i>
-                {% if lang == 'en' %}
-                    Need help? <a href="mailto:support@tutoratai.com" style="color: var(--primary); font-weight: 500;">Contact support</a>
-                {% else %}
-                    Besoin d'aide ? <a href="mailto:support@tutoratai.com" style="color: var(--primary); font-weight: 500;">Contactez le support</a>
-                {% endif %}
-            </p>
+        <div class="login-link" style="text-align: center; margin-top: 30px; padding-top: 30px; border-top: 2px solid var(--border);">
+            <a href="{{ url_for('login_eleve') }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">
+                <i class="fas fa-sign-in-alt"></i> {{ 'Already have an account? Login' if lang == 'en' else 'Déjà un compte ? Se connecter' }}
+            </a>
         </div>
     </div>
 
     <script>
-        // Configuration des plans optimisés
-        const plans = {
-            'trial': {
-                name: 'Free Trial',
-                price: '0$ CAD',
-                period: '3 days',
-                buttonText: 'Start 3-Day Free Trial',
-                buttonIcon: 'fas fa-gift',
-                buttonTextFr: 'Commencer l\'Essai Gratuit de 3 Jours',
-                monthlyPrice: '0$/month'
-            },
-            'monthly': {
-                name: 'Monthly Plan',
-                price: '19.99$ CAD',  // MODIFIÉ À 19.99$
-                period: 'per month',
-                buttonText: 'Subscribe to Monthly Plan (19.99$/month)',
-                buttonTextFr: 'S\'abonner au Forfait Mensuel (19.99$/mois)',
-                buttonIcon: 'fas fa-calendar-alt',
-                monthlyPrice: '19.99$/month'
-            },
-            'quarterly': {
-                name: 'Quarterly Plan',
-                price: '49.99$ CAD',  // MIS À JOUR POUR REBFLECTER LE NOUVEAU CALCUL
-                period: 'per 3 months',
-                buttonText: 'Subscribe to Quarterly Plan (49.99$/3 months)',
-                buttonTextFr: 'S\'abonner au Forfait Trimestriel (49.99$/3 mois)',
-                buttonIcon: 'fas fa-chart-line',
-                monthlyPrice: '16.66$/month'
-            },
-            'annual': {
-                name: 'Annual Plan',
-                price: '149.99$ CAD',  // MIS À JOUR POUR REFLECTER LE NOUVEAU CALCUL
-                period: 'per year',
-                buttonText: 'Subscribe to Annual Plan (149.99$/year)',
-                buttonTextFr: 'S\'abonner au Forfait Annuel (149.99$/an)',
-                buttonIcon: 'fas fa-crown',
-                monthlyPrice: '12.50$/month'
-            }
-        };
-
-        // Gestion de la sélection du plan
+        // Sélection du plan
         function selectPlan(planType) {
-            console.log(`✅ Plan sélectionné: ${planType}`);
+            document.querySelectorAll('.plan-card').forEach(card => card.classList.remove('selected'));
+            document.getElementById(planType + 'Plan').classList.add('selected');
+            document.getElementById('planType').value = planType;
             
-            // Retirer la classe selected de tous les plans
-            document.querySelectorAll('.plan-card').forEach(card => {
-                card.classList.remove('selected');
-            });
+            const lang = '{{ lang }}';
+            const btn = document.getElementById('submitButton');
+            const icon = btn.querySelector('i');
+            const text = btn.querySelector('span');
             
-            // Ajouter la classe selected au plan choisi
-            const selectedPlan = document.getElementById(planType + 'Plan');
-            if (selectedPlan) {
-                selectedPlan.classList.add('selected');
+            if (planType === 'trial') {
+                icon.className = 'fas fa-gift';
+                text.textContent = lang === 'fr' ? 'Commencer l\'Essai Gratuit de 3 Jours' : 'Start 3-Day Free Trial';
+            } else if (planType === 'monthly') {
+                icon.className = 'fas fa-calendar-alt';
+                text.textContent = lang === 'fr' ? 'S\'abonner au Forfait Mensuel (19.99$/mois)' : 'Subscribe to Monthly Plan (19.99$/month)';
+            } else if (planType === 'quarterly') {
+                icon.className = 'fas fa-chart-line';
+                text.textContent = lang === 'fr' ? 'S\'abonner au Forfait Trimestriel (49.99$/3 mois)' : 'Subscribe to Quarterly Plan (49.99$/3 months)';
+            } else if (planType === 'annual') {
+                icon.className = 'fas fa-crown';
+                text.textContent = lang === 'fr' ? 'S\'abonner au Forfait Annuel (149.99$/an)' : 'Subscribe to Annual Plan (149.99$/year)';
             }
-            
-            // Mettre à jour le champ WTForms
-            const planTypeInput = document.getElementById('planType');
-            if (planTypeInput) {
-                planTypeInput.value = planType;
-            }
-            
-            // Mettre à jour le bouton de soumission
-            updateSubmitButton(planType);
         }
-
-        function updateSubmitButton(planType) {
-            const lang = '{{ lang }}' || 'en';
-            const submitText = document.getElementById('submitText');
-            const submitIcon = document.getElementById('submitIcon');
-            const plan = plans[planType];
+        
+        // Chargement dynamique des matières via AJAX
+        document.getElementById('niveau').addEventListener('change', function() {
+            const niveauId = this.value;
+            const matieresSection = document.getElementById('matieresSection');
+            const matieresList = document.getElementById('matieresList');
             
-            if (submitText && plan) {
-                if (lang === 'fr') {
-                    submitText.textContent = plan.buttonTextFr || plan.buttonText;
-                } else {
-                    submitText.textContent = plan.buttonText;
-                }
+            if (!niveauId) {
+                matieresSection.style.display = 'none';
+                return;
             }
             
-            if (submitIcon && plan) {
-                submitIcon.className = plan.buttonIcon;
-            }
-            
-            console.log(`🔄 Bouton mis à jour pour: ${planType}`);
-        }
-
-        // Gestion du toggle parent
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("🎓 TutoratAI Registration Form Loaded");
-            
-            // Gestion du toggle parent
-            const parentToggle = document.getElementById('include_parent');
-            const parentFields = document.getElementById('parentFields');
-            const parentToggleSwitch = document.getElementById('parentToggle');
-            
-            if (parentToggle && parentFields && parentToggleSwitch) {
-                function toggleParentFields() {
-                    if (parentToggle.checked) {
-                        parentFields.style.display = 'block';
-                        parentToggleSwitch.classList.add('active');
-                        // Rendre les champs requis
-                        document.querySelectorAll('#parentFields input[required], #parentFields select[required]').forEach(field => {
-                            field.required = true;
-                        });
+            fetch(`/api/matieres-par-niveau/${niveauId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.matieres && data.matieres.length > 0) {
+                        matieresList.innerHTML = '<div class="matieres-grid">' + 
+                            data.matieres.map(m => `
+                                <div class="matiere-item">
+                                    <input type="checkbox" name="matieres" value="${m.id}" id="matiere_${m.id}">
+                                    <label for="matiere_${m.id}">${m.nom}</label>
+                                </div>
+                            `).join('') + '</div>';
+                        matieresSection.style.display = 'block';
                     } else {
-                        parentFields.style.display = 'none';
-                        parentToggleSwitch.classList.remove('active');
-                        // Rendre les champs non requis
-                        document.querySelectorAll('#parentFields input, #parentFields select').forEach(field => {
-                            field.required = false;
-                        });
+                        matieresList.innerHTML = '<p class="text-muted">Aucune matière disponible pour ce niveau</p>';
+                        matieresSection.style.display = 'block';
                     }
-                }
-                
-                // Initialiser
-                toggleParentFields();
-                
-                // Écouter les changements
-                parentToggle.addEventListener('change', toggleParentFields);
-            }
-            
-            // Gestion du toggle enseignant
-            const teacherToggle = document.getElementById('include_teacher');
-            const teacherFields = document.getElementById('teacherFields');
-            const teacherToggleSwitch = document.getElementById('teacherToggle');
-            
-            if (teacherToggle && teacherFields && teacherToggleSwitch) {
-                function toggleTeacherFields() {
-                    if (teacherToggle.checked) {
-                        teacherFields.style.display = 'block';
-                        teacherToggleSwitch.classList.add('active');
-                        // Facultatif: Rendre le champ requis si activé
-                        const teacherEmail = document.getElementById('teacher_email');
-                        if (teacherEmail) {
-                            teacherEmail.required = true;
-                        }
-                    } else {
-                        teacherFields.style.display = 'none';
-                        teacherToggleSwitch.classList.remove('active');
-                        // Facultatif: Rendre le champ non requis si désactivé
-                        const teacherEmail = document.getElementById('teacher_email');
-                        if (teacherEmail) {
-                            teacherEmail.required = false;
-                        }
-                    }
-                }
-                
-                // Initialiser
-                toggleTeacherFields();
-                
-                // Écouter les changements
-                teacherToggle.addEventListener('change', toggleTeacherFields);
-                
-                // Validation de l'email de l'enseignant
-                const teacherEmailInput = document.getElementById('teacher_email');
-                const teacherValidation = document.getElementById('teacherValidation');
-                
-                if (teacherEmailInput && teacherValidation) {
-                    teacherEmailInput.addEventListener('blur', function() {
-                        const email = this.value.trim();
-                        if (email) {
-                            // Validation basique d'email
-                            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-                            if (!emailRegex.test(email)) {
-                                showTeacherValidation('error', '{{ "Please enter a valid email address" if lang == "en" else "Veuillez entrer une adresse email valide" }}');
-                            } else {
-                                showTeacherValidation('success', '{{ "Valid email format" if lang == "en" else "Format d\'email valide" }}');
-                            }
-                        } else {
-                            teacherValidation.innerHTML = '';
-                        }
-                    });
-                }
-            }
-            
-            function showTeacherValidation(type, message) {
-                const teacherValidation = document.getElementById('teacherValidation');
-                if (!teacherValidation) return;
-                
-                teacherValidation.innerHTML = '';
-                const div = document.createElement('div');
-                div.className = type === 'success' ? 'error-message' : 'error-message';
-                div.style.background = type === 'success' ? 
-                    'linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(52, 211, 153, 0.1))' :
-                    'linear-gradient(135deg, rgba(239, 71, 111, 0.05), rgba(239, 71, 111, 0.1))';
-                div.style.borderLeft = type === 'success' ? '4px solid var(--success)' : '4px solid var(--danger)';
-                div.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> <small>${message}</small>`;
-                teacherValidation.appendChild(div);
-            }
-            
-            // Animation des cartes
-            const planCards = document.querySelectorAll('.plan-card');
-            planCards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, 300 + (index * 100));
-            });
-            
-            // Vérification de l'accès admin
-            const adminBackBtn = document.querySelector('.admin-back-btn');
-            const urlParams = new URLSearchParams(window.location.search);
-            const fromAdmin = urlParams.get('from_admin') === 'true';
-            
-            if (!fromAdmin && adminBackBtn) {
-                adminBackBtn.style.display = 'none';
-            }
-            
-            // Gestion de la soumission du formulaire
-            const form = document.getElementById('studentForm');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    const planTypeInput = document.getElementById('planType');
-                    const cguCheckbox = document.getElementById('accepte_cgu_checkbox');
-                    
-                    if (!planTypeInput || !planTypeInput.value) {
-                        e.preventDefault();
-                        const lang = '{{ lang }}' || 'en';
-                        alert(lang === 'en' 
-                            ? "Please select a plan" 
-                            : "Veuillez sélectionner un forfait");
-                        return;
-                    }
-                    
-                    if (cguCheckbox && !cguCheckbox.checked) {
-                        e.preventDefault();
-                        const lang = '{{ lang }}' || 'en';
-                        alert(lang === 'en' 
-                            ? "You must accept the Terms and Conditions" 
-                            : "Vous devez accepter les Conditions Générales d'Utilisation");
-                        return;
-                    }
-                    
-                    // Vérifier les champs parent si activés
-                    const parentToggle = document.getElementById('include_parent');
-                    if (parentToggle && parentToggle.checked) {
-                        const parentEmail = document.getElementById('parent_email');
-                        const parentName = document.getElementById('parent_nom_complet');
-                        
-                        if (parentEmail && !parentEmail.value) {
-                            e.preventDefault();
-                            const lang = '{{ lang }}' || 'en';
-                            alert(lang === 'en' 
-                                ? "Parent email is required when parent information is included" 
-                                : "L'email du parent est requis lorsque les informations parentales sont incluses");
-                            parentEmail.focus();
-                            return;
-                        }
-                        
-                        if (parentName && !parentName.value) {
-                            e.preventDefault();
-                            const lang = '{{ lang }}' || 'en';
-                            alert(lang === 'en' 
-                                ? "Parent name is required when parent information is included" 
-                                : "Le nom du parent est requis lorsque les informations parentales sont incluses");
-                            parentName.focus();
-                            return;
-                        }
-                    }
-                    
-                    // Vérifier l'email de l'enseignant si activé
-                    const teacherToggle = document.getElementById('include_teacher');
-                    if (teacherToggle && teacherToggle.checked) {
-                        const teacherEmail = document.getElementById('teacher_email');
-                        if (teacherEmail && teacherEmail.value.trim()) {
-                            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-                            if (!emailRegex.test(teacherEmail.value.trim())) {
-                                e.preventDefault();
-                                const lang = '{{ lang }}' || 'en';
-                                alert(lang === 'en' 
-                                    ? "Please enter a valid teacher email address" 
-                                    : "Veuillez entrer une adresse email valide pour l'enseignant");
-                                teacherEmail.focus();
-                                return;
-                            }
-                        }
-                    }
-                    
-                    // Animation de chargement
-                    const btn = document.getElementById('submitButton');
-                    const originalHTML = btn.innerHTML;
-                    const lang = '{{ lang }}' || 'en';
-                    const processingText = lang === 'en' ? 'Processing...' : 'Traitement en cours...';
-                    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${processingText}`;
-                    btn.disabled = true;
-                    
-                    // Réactiver le bouton après 10s au cas où
-                    setTimeout(() => {
-                        btn.innerHTML = originalHTML;
-                        btn.disabled = false;
-                    }, 10000);
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    matieresList.innerHTML = '<p class="text-danger">Erreur lors du chargement des matières</p>';
+                    matieresSection.style.display = 'block';
                 });
-            }
         });
-
-        // Fonction pour afficher les CGU et politiques
-        function showTerms(type) {
-            const lang = '{{ lang }}' || 'en';
-            let title, message;
-            
-            if (type === 'cgu') {
-                title = lang === 'en' ? 'Terms and Conditions' : 'Conditions Générales d\'Utilisation';
-                message = lang === 'en' 
-                    ? `TERMS AND CONDITIONS
-
-Company: Advanceteach INC - TutoratAI
-Address: 6 Whitmore, St. Catharines, Ontario L2R 6P4
-Email: info@advanceteach.com
-Website: www.tutoratai.com
-
-Key Points:
-• Parental consent required for students under 16 years old in Ontario
-• AI recommendations supervised by human teachers
-• Stripe handles secure payment processing
-• Realistic cancellation policy (see details)
-• Data protection compliant with GDPR and PIPEDA
-• Annual Plan: 12 months continuous access, summer access included for review
-
-By registering, you accept our full Terms and Conditions available on our website.`
-                    : `CONDITIONS GÉNÉRALES D'UTILISATION
-
-Entreprise : Advanceteach INC - TutoratAI
-Adresse : 6 Whitmore, St. Catharines, Ontario L2R 6P4
-Courriel : info@advanceteach.com
-Site web : www.tutoratai.com
-
-Points Clés :
-• Consentement parental requis pour les élèves de moins de 16 ans en Ontario
-• Les recommandations IA sont supervisées par des enseignants humains
-• Stripe gère le traitement sécurisé des paiements
-• Politique d'annulation réaliste (voir détails)
-• Protection des données conforme au RGPD et PIPEDA
-• Forfait Annuel : 12 mois d'accès continu, accès été inclus pour révisions
-
-En vous inscrivant, vous acceptez nos Conditions Générales complètes disponibles sur notre site web.`;
-            } else if (type === 'privacy') {
-                title = lang === 'en' ? 'Privacy Policy' : 'Politique de Confidentialité';
-                message = lang === 'en' 
-                    ? `PRIVACY POLICY
-
-We are committed to protecting your privacy. Our privacy policy outlines how we collect, use, and protect your personal information in compliance with:
-• GDPR (General Data Protection Regulation)
-• PIPEDA (Personal Information Protection and Electronic Documents Act)
-
-We only collect necessary information for providing our tutoring services and do not share your data with third parties without your consent.`
-                    : `POLITIQUE DE CONFIDENTIALITÉ
-
-Nous nous engageons à protéger votre vie privée. Notre politique de confidentialité décrit comment nous collectons, utilisons et protégeons vos informations personnelles conformément à :
-• RGPD (Règlement Général sur la Protection des Données)
-• PIPEDA (Loi sur la protection des renseignements personnels et les documents électroniques)
-
-Nous collectons uniquement les informations nécessaires pour fournir nos services de tutorat et ne partageons pas vos données avec des tiers sans votre consentement.`;
-            } else if (type === 'cancellation') {
-                title = lang === 'en' ? 'Cancellation Policy' : 'Politique d\'Annulation';
-                message = lang === 'en' 
-                    ? `CANCELLATION POLICY
-
-• Free Trial: Cancel anytime during the trial period without charge
-• Monthly Plan: Cancel anytime, no cancellation fees
-• Quarterly/Annual Plans: Pro-rated refund for unused months
-• All cancellations take effect at the end of the current billing cycle
-• To cancel, contact support@tutoratai.com
-
-Annual Plan Note: Provides 12 months continuous access. Summer access included for review and consolidation.`
-                    : `POLITIQUE D'ANNULATION
-
-• Essai Gratuit : Annulez à tout moment pendant la période d'essai sans frais
-• Forfait Mensuel : Annulez à tout moment, pas de frais d'annulation
-• Forfaits Trimestriels/Annuels : Remboursement au prorata des mois non utilisés
-• Toutes les annulations prennent effet à la fin du cycle de facturation en cours
-• Pour annuler, contactez support@tutoratai.com
-
-Note Forfait Annuel : Offre 12 mois d'accès continu. Accès été inclus pour révisions et consolidation.`;
-            } else {
-                title = lang === 'en' ? 'Important Information' : 'Informations Importantes';
-                message = lang === 'en' 
-                    ? "Company: Advanceteach INC - TutoratAI\nAddress: 6 Whitmore, St. Catharines, Ontario L2R 6P4\nEmail: info@advanceteach.com\n\nTerms: By registering, you accept our terms of service and privacy policy. Parental consent required for users under 16 in Ontario."
-                    : "Entreprise : Advanceteach INC - TutoratAI\nAdresse : 6 Whitmore, St. Catharines, Ontario L2R 6P4\nCourriel : info@advanceteach.com\n\nConditions : En vous inscrivant, vous acceptez nos conditions d'utilisation et politique de confidentialité. Consentement parental requis pour les utilisateurs de moins de 16 ans en Ontario.";
+        
+        // Toggle enseignant
+        document.getElementById('include_teacher').addEventListener('change', function() {
+            document.getElementById('teacherFields').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Toggle parent
+        document.getElementById('include_parent').addEventListener('change', function() {
+            document.getElementById('parentFields').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Validation du formulaire
+        document.getElementById('studentForm').addEventListener('submit', function(e) {
+            const matieresCheckboxes = document.querySelectorAll('input[name="matieres"]:checked');
+            if (matieresCheckboxes.length === 0) {
+                e.preventDefault();
+                alert('{{ "Please select at least one subject" if lang == "en" else "Veuillez sélectionner au moins une matière" }}');
+                return false;
             }
             
-            alert(`${title}\n\n${message}`);
-        }
-
-        // S'assurer que le plan trial est sélectionné par défaut
-        window.onload = function() {
-            selectPlan('trial');
-        };
+            const cgu = document.getElementById('accepte_cgu');
+            if (!cgu.checked) {
+                e.preventDefault();
+                alert('{{ "You must accept the Terms and Conditions" if lang == "en" else "Vous devez accepter les Conditions Générales" }}');
+                return false;
+            }
+            
+            const btn = document.getElementById('submitButton');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ "Processing..." if lang == "en" else "Traitement..." }}';
+        });
     </script>
 </body>
 </html>
