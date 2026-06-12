@@ -56,7 +56,6 @@ packaging==26.2
 pandas==3.0.3
 patsy==1.0.2
 pdfkit==1.0.0
-pgmpy==1.1.2
 pillow==12.2.0
 psycopg2-binary==2.9.9
 pydantic==2.13.4
