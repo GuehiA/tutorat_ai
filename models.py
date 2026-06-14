@@ -593,20 +593,65 @@ class Exercice(db.Model):
 
     temps = db.Column(db.Integer)
 
-    chemin_image = db.Column(db.String(255))  # Chemin du fichier image facultatif
+    # --------------------------------------------------
+    # Classification pédagogique pour le réseau bayésien
+    # --------------------------------------------------
 
-    # ✅ NOUVEAUX CHAMPS pour l'optimisation IA
-    image_description_fr = db.Column(db.Text)  # Description française de l'image
-    image_description_en = db.Column(db.Text)  # Description anglaise de l'image
-    image_keywords = db.Column(db.String(500))  # Mots-clés pour l'IA
-    image_elements = db.Column(db.Text)  # Éléments visuels importants (JSON)
+    notion_cible = db.Column(db.String(255), nullable=True)
+
+    competence_cible = db.Column(db.String(255), nullable=True)
+
+    niveau_difficulte = db.Column(
+        db.String(50),
+        nullable=True,
+        default="moyen"
+    )  # facile, moyen, difficile
+
+    type_exercice = db.Column(
+        db.String(100),
+        nullable=True,
+        default="application"
+    )  # rappel, application, consolidation, remediation, defi
+
+    ordre_progression = db.Column(
+        db.Integer,
+        nullable=True,
+        default=1
+    )
+
+    prerequis = db.Column(db.JSON, nullable=True)
+
+    classification_ia = db.Column(db.JSON, nullable=True)
+
+    classification_validee = db.Column(
+        db.Boolean,
+        default=False
+    )
+
+    confiance_classification = db.Column(
+        db.Float,
+        nullable=True
+    )
+
+    # --------------------------------------------------
+    # Image facultative
+    # --------------------------------------------------
+
+    chemin_image = db.Column(db.String(255))
+
+    image_description_fr = db.Column(db.Text)
+    image_description_en = db.Column(db.Text)
+    image_keywords = db.Column(db.String(500))
+    image_elements = db.Column(db.Text)
 
     # Relation avec les réponses des élèves
-    reponses_eleves = db.relationship("StudentResponse", 
-                                     backref="exercice",
-                                     cascade="all, delete-orphan",
-                                     lazy=True)
-    
+    reponses_eleves = db.relationship(
+        "StudentResponse",
+        backref="exercice",
+        cascade="all, delete-orphan",
+        lazy=True
+    )
+
     @property
     def theme(self):
         try:
@@ -625,13 +670,21 @@ class Exercice(db.Model):
         """Retourne le contexte d'image optimisé pour l'IA"""
         if not self.chemin_image:
             return ""
-        
-        description = self.image_description_fr if lang == 'fr' else self.image_description_en
-        if description:
-            return f"\n📊 Description de l'image: {description}" if lang == 'fr' else f"\n📊 Image description: {description}"
-        else:
-            return f"\n📊 [Élément visuel lié à l'exercice]" if lang == 'fr' else f"\n📊 [Visual element related to the exercise]"
 
+        description = self.image_description_fr if lang == 'fr' else self.image_description_en
+
+        if description:
+            return (
+                f"\n📊 Description de l'image: {description}"
+                if lang == 'fr'
+                else f"\n📊 Image description: {description}"
+            )
+
+        return (
+            "\n📊 [Élément visuel lié à l'exercice]"
+            if lang == 'fr'
+            else "\n📊 [Visual element related to the exercise]"
+        )
 
 class TestExercice(db.Model):
     __tablename__ = "test_exercices"
@@ -794,6 +847,72 @@ class MatiereAIConfig(db.Model):
             "actif": self.actif,
             "description": self.description
         }
+
+class DiagnosticBayesien(db.Model):
+    __tablename__ = "diagnostics_bayesiens"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Élève concerné
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Contexte pédagogique optionnel
+    exercice_id = db.Column(
+        db.Integer,
+        db.ForeignKey("exercices.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    lecon_id = db.Column(
+        db.Integer,
+        db.ForeignKey("lecons.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    matiere = db.Column(db.String(100), nullable=True)
+
+    # Diagnostic bayésien
+    probabilite_difficulte = db.Column(db.Float, nullable=True)
+    pourcentage_difficulte = db.Column(db.Float, nullable=True)
+    niveau_risque = db.Column(db.String(50), nullable=True)
+
+    # Signaux utilisés par le réseau bayésien
+    maitrise_cours = db.Column(db.String(50), nullable=True)
+    erreurs = db.Column(db.String(50), nullable=True)
+    temps_reponse = db.Column(db.String(50), nullable=True)
+
+    # Vérification mathématique locale
+    verification_calcul = db.Column(db.JSON, nullable=True)
+
+    # Recommandation simple générée à partir du risque
+    recommandation = db.Column(db.Text, nullable=True)
+
+    # Analyse pédagogique intelligente
+    notion_cible = db.Column(db.String(255), nullable=True)
+    notions_maitrisees = db.Column(db.JSON, nullable=True)
+    notions_non_maitrisees = db.Column(db.JSON, nullable=True)
+    erreurs_probables = db.Column(db.JSON, nullable=True)
+    recommandation_enseignant = db.Column(db.Text, nullable=True)
+    exercice_remediation_suggere = db.Column(db.Text, nullable=True)
+    niveau_intervention = db.Column(db.String(50), nullable=True)
+    analyse_pedagogique_ia = db.Column(db.JSON, nullable=True)
+
+    # Diagnostic complet pour consultation détaillée
+    diagnostic_complet = db.Column(db.JSON, nullable=True)
+
+    # Source du diagnostic : naima, exercice, test, etc.
+    source = db.Column(db.String(50), default="naima")
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relations
+    user = db.relationship("User", backref="diagnostics_bayesiens")
+    exercice = db.relationship("Exercice", backref="diagnostics_bayesiens")
+    lecon = db.relationship("Lecon", backref="diagnostics_bayesiens")
 
 
 ### --- MODÈLES DE COMMISSIONS --- ###
