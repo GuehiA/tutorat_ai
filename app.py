@@ -34,7 +34,11 @@ from datetime import datetime  # Pour le timestamp
 from datetime import timedelta
 from services.diagnostic_eleve_service import diagnostiquer_eleve_sur_lecon
 from services.recommandations import recommander_prochaine_action, choisir_exercice_pour_lecon
-from services.math_verification import verifier_expression_fractionnaire
+from services.math_verification import (
+    verifier_expression_fractionnaire,
+    verifier_solution_equation_fractionnaire
+)
+from models import DiagnosticBayesien
 # Après les imports existants, ajouter :
 from naima_router import (
     appel_ia, 
@@ -759,6 +763,250 @@ def admin_dashboard():
         logger.error(f"Erreur dans admin_dashboard: {e}")
         flash("Erreur lors du chargement du tableau de bord", "error")
         return redirect(url_for("login_admin"))
+
+
+@app.route("/admin/diagnostics-bayesiens")
+@admin_required
+def admin_diagnostics_bayesiens():
+    from sqlalchemy import desc
+    from sqlalchemy.orm import joinedload
+
+    # ============================================================
+    # PARAMÈTRES DE FILTRAGE
+    # ============================================================
+
+    risque = request.args.get("risque", "").strip()
+    user_id = request.args.get("user_id", "").strip()
+    matiere = request.args.get("matiere", "").strip()
+    source = request.args.get("source", "").strip()
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
+
+    # Sécurité : éviter qu'on charge 200 éléments d'un coup
+    if per_page not in [5, 10, 20]:
+        per_page = 10
+
+    # La page doit rester vide au départ.
+    # On affiche les diagnostics seulement si au moins un filtre est utilisé.
+    afficher_resultats = bool(risque or user_id or matiere or source)
+
+    # ============================================================
+    # STATISTIQUES GLOBALES LÉGÈRES
+    # ============================================================
+
+    total = DiagnosticBayesien.query.count()
+
+    risques_eleves = DiagnosticBayesien.query.filter_by(
+        niveau_risque="élevé"
+    ).count()
+
+    risques_moyens = DiagnosticBayesien.query.filter_by(
+        niveau_risque="moyen"
+    ).count()
+
+    risques_faibles = DiagnosticBayesien.query.filter_by(
+        niveau_risque="faible"
+    ).count()
+
+    # Nombre d'élèves ayant au moins un diagnostic
+    eleves_avec_diagnostics = (
+        db.session.query(DiagnosticBayesien.user_id)
+        .distinct()
+        .count()
+    )
+
+    # Liste des élèves pour le filtre
+    eleves = (
+        User.query
+        .filter(User.role.in_(["élève", "eleve"]))
+        .order_by(User.nom_complet.asc())
+        .all()
+    )
+
+    # ============================================================
+    # VALEURS PAR DÉFAUT
+    # ============================================================
+
+    diagnostics = []
+    pagination = None
+    total_filtre = 0
+    synthese_eleve = None
+
+    # ============================================================
+    # CHARGEMENT DES DIAGNOSTICS UNIQUEMENT APRÈS FILTRE
+    # ============================================================
+
+    if afficher_resultats:
+        query = DiagnosticBayesien.query.options(
+            joinedload(DiagnosticBayesien.user),
+            joinedload(DiagnosticBayesien.exercice),
+            joinedload(DiagnosticBayesien.lecon)
+        )
+
+        if risque:
+            query = query.filter(DiagnosticBayesien.niveau_risque == risque)
+
+        if user_id:
+            try:
+                query = query.filter(DiagnosticBayesien.user_id == int(user_id))
+            except ValueError:
+                pass
+
+        if matiere:
+            query = query.filter(DiagnosticBayesien.matiere.ilike(f"%{matiere}%"))
+
+        if source:
+            query = query.filter(DiagnosticBayesien.source == source)
+
+        total_filtre = query.count()
+
+        pagination = (
+            query
+            .order_by(desc(DiagnosticBayesien.created_at))
+            .paginate(
+                page=page,
+                per_page=per_page,
+                error_out=False
+            )
+        )
+
+        diagnostics = pagination.items
+
+    # ============================================================
+    # SYNTHÈSE RAPIDE SI UN ÉLÈVE EST SÉLECTIONNÉ
+    # ============================================================
+
+    if user_id:
+        try:
+            user_id_int = int(user_id)
+
+            eleve_selectionne = User.query.get(user_id_int)
+
+            derniers_diagnostics_eleve = (
+                DiagnosticBayesien.query
+                .filter(DiagnosticBayesien.user_id == user_id_int)
+                .order_by(desc(DiagnosticBayesien.created_at))
+                .limit(100)
+                .all()
+            )
+
+            notions_maitrisees = []
+            notions_non_maitrisees = []
+            erreurs_probables = []
+            notions_ciblees = []
+
+            nb_eleve_total = len(derniers_diagnostics_eleve)
+            nb_risque_eleve = 0
+            nb_risque_moyen = 0
+            nb_risque_faible = 0
+
+            derniere_activite = None
+
+            for d in derniers_diagnostics_eleve:
+                if d.created_at and not derniere_activite:
+                    derniere_activite = d.created_at
+
+                if d.niveau_risque == "élevé":
+                    nb_risque_eleve += 1
+                elif d.niveau_risque == "moyen":
+                    nb_risque_moyen += 1
+                elif d.niveau_risque == "faible":
+                    nb_risque_faible += 1
+
+                if d.notion_cible:
+                    notions_ciblees.append(d.notion_cible)
+
+                if d.notions_maitrisees:
+                    if isinstance(d.notions_maitrisees, list):
+                        notions_maitrisees.extend(d.notions_maitrisees)
+
+                if d.notions_non_maitrisees:
+                    if isinstance(d.notions_non_maitrisees, list):
+                        notions_non_maitrisees.extend(d.notions_non_maitrisees)
+
+                if d.erreurs_probables:
+                    if isinstance(d.erreurs_probables, list):
+                        erreurs_probables.extend(d.erreurs_probables)
+
+            def top_items(items, limite=5):
+                compteur = {}
+
+                for item in items:
+                    if not item:
+                        continue
+
+                    item = str(item).strip()
+
+                    if not item:
+                        continue
+
+                    compteur[item] = compteur.get(item, 0) + 1
+
+                return sorted(
+                    compteur.items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:limite]
+
+            risque_dominant = "non déterminé"
+
+            if nb_risque_eleve >= nb_risque_moyen and nb_risque_eleve >= nb_risque_faible and nb_risque_eleve > 0:
+                risque_dominant = "élevé"
+            elif nb_risque_moyen >= nb_risque_faible and nb_risque_moyen > 0:
+                risque_dominant = "moyen"
+            elif nb_risque_faible > 0:
+                risque_dominant = "faible"
+
+            synthese_eleve = {
+                "eleve": eleve_selectionne,
+                "total_diagnostics": nb_eleve_total,
+                "risque_dominant": risque_dominant,
+                "risques_eleves": nb_risque_eleve,
+                "risques_moyens": nb_risque_moyen,
+                "risques_faibles": nb_risque_faible,
+                "derniere_activite": derniere_activite,
+                "notions_ciblees": top_items(notions_ciblees, 5),
+                "notions_maitrisees": top_items(notions_maitrisees, 5),
+                "notions_non_maitrisees": top_items(notions_non_maitrisees, 5),
+                "erreurs_probables": top_items(erreurs_probables, 5)
+            }
+
+        except ValueError:
+            synthese_eleve = None
+
+    # ============================================================
+    # RENDU TEMPLATE
+    # ============================================================
+
+    return render_template(
+        "admin/admin_diagnostics_bayesiens.html",
+
+        # Résultats
+        diagnostics=diagnostics,
+        pagination=pagination,
+        afficher_resultats=afficher_resultats,
+        total_filtre=total_filtre,
+
+        # Synthèse élève
+        synthese_eleve=synthese_eleve,
+
+        # Filtres
+        eleves=eleves,
+        filtre_risque=risque,
+        filtre_user_id=user_id,
+        filtre_matiere=matiere,
+        filtre_source=source,
+        per_page=per_page,
+
+        # Statistiques globales
+        total=total,
+        risques_eleves=risques_eleves,
+        risques_moyens=risques_moyens,
+        risques_faibles=risques_faibles,
+        eleves_avec_diagnostics=eleves_avec_diagnostics
+    )
+
 
 @app.route("/reset-chat", methods=["POST"])
 def reset_chat():
@@ -1884,7 +2132,15 @@ Commence toujours par un accueil chaleureux avec ton nom : "Je suis Naima, ton e
 
 def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="fr", 
                                 mode_examen=False, exercice_context="", matiere="mathématiques"):
-    """Continue la conversation avec Naima - Version sans cas particuliers"""
+    """Continue la conversation avec Naima - Version avec garde-fou et retour au sujet"""
+    
+    # Extraire la question initiale de l'élève (garder le cap)
+    question_initiale = ""
+    for msg in historique:
+        if "👤" in msg and not question_initiale:
+            question_initiale = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
+            if len(question_initiale) > 10:
+                break
     
     # Préparer l'historique
     historique_text = "\n".join(historique[-10:])
@@ -1892,57 +2148,53 @@ def generer_suite_conversation(derniere_q, reponse, historique, niveau, langue="
     if langue == "fr":
         system_prompt = f"""Tu es Naima, enseignante virtuelle en {matiere} (niveau {niveau}).
 
-RÈGLES FONDAMENTALES À APPLIQUER SYSTÉMATIQUEMENT :
+**GARDE LE CAP - RÈGLE D'OR :**
 
-1. **VALIDATION IMMÉDIATE** : Dès qu'un élève donne une réponse mathématiquement correcte, réponds "Exact ! 🎉" ou "C'est juste ! 🎉" et passe immédiatement à l'étape suivante. Ne demande JAMAIS de répéter ou de détailler un calcul déjà correct.
+La question initiale de l'élève était : "{question_initiale if question_initiale else 'résoudre une équation'}"
 
-2. **PROGRESSION NATURELLE** : Chaque réponse correcte doit être suivie par la question suivante du problème. Tu ne dois pas rester bloqué sur la même étape.
+Tu dois TOUJOURS revenir à cette question. Chaque étape doit te rapprocher de la solution.
 
-3. **LONGUEUR LIMITÉE** : Tes réponses doivent faire maximum 2 à 3 phrases. Sois concise et va à l'essentiel.
+**RÈGLES :**
+1. Si l'élève s'éloigne du sujet, ramène-le à la question initiale.
+2. Ne pars pas dans des sujets parallèles.
+3. Réponses max 2-3 phrases.
+4. Signe par "— Naima ✨"
 
-4. **SIGNATURE** : Termine toujours par "— Naima ✨"
+**RAPPEL :** Objectif = {question_initiale if question_initiale else "aider l'élève"}
 
-5. **PAS DE RÉPÉTITION** : Ne pose jamais deux fois la même question. Si l'élève a répondu, passe à la suite.
-
-6. **RECONNAISSANCE D'ERREUR** : Si l'élève te signale une erreur, réponds "Tu as raison, merci !" et corrige-toi.
-
-À RETENIR : La réponse de l'élève est soit correcte (tu valides et avances), soit incorrecte (tu guides sans répéter). Pas de troisième option.
-
-Réponds maintenant de façon naturelle et concise."""
+Réponds maintenant :"""
     else:
         system_prompt = f"""You are Naima, a virtual teacher in {matiere} (level {niveau}).
 
-FUNDAMENTAL RULES TO APPLY SYSTEMATICALLY:
+**STAY ON TRACK - GOLDEN RULE:**
 
-1. **IMMEDIATE VALIDATION**: As soon as a student gives a mathematically correct answer, respond "Exactly! 🎉" or "That's right! 🎉" and immediately move to the next step. NEVER ask to repeat or detail a calculation that is already correct.
+The student's initial question was: "{question_initiale if question_initiale else 'solve an equation'}"
 
-2. **NATURAL PROGRESSION**: Each correct answer must be followed by the next question of the problem. Do not get stuck on the same step.
+You MUST always come back to this question. Each step must move toward the solution.
 
-3. **LIMITED LENGTH**: Your responses should be maximum 2-3 sentences. Be concise and get to the point.
+**RULES:**
+1. If the student goes off-topic, bring them back to the initial question.
+2. Don't go into parallel subjects.
+3. Max 2-3 sentences per response.
+4. Sign with "-- Naima ✨"
 
-4. **SIGNATURE**: Always end with "-- Naima ✨"
+**REMEMBER:** Goal = {question_initiale if question_initiale else "help the student"}
 
-5. **NO REPETITION**: Never ask the same question twice. If the student has answered, move on.
-
-6. **ERROR RECOGNITION**: If the student points out an error, respond "You're right, thank you!" and correct yourself.
-
-REMEMBER: The student's answer is either correct (you validate and advance) or incorrect (you guide without repeating). No third option.
-
-Answer now naturally and concisely."""
+Answer now:"""
     
     prompt_utilisateur = f"""Dernière question: {derniere_q}
 Réponse élève: {reponse}
+Rappel objectif initial: {question_initiale}
 
-Réponds maintenant en {'français' if langue == 'fr' else 'anglais'}:"""
+Ne t'éloigne pas du sujet. Reste concentré sur la résolution de : {question_initiale}"""
     
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt_utilisateur}
     ]
     
-    # Paramètres clés
-    temperature = 0.2      # Plus bas = plus déterministe et cohérent
-    max_tokens = 250       # Plus court = réponses concises
+    temperature = 0.2
+    max_tokens = 300
     
     reponse_naima = appel_ia(
         messages, 
@@ -1954,7 +2206,6 @@ Réponds maintenant en {'français' if langue == 'fr' else 'anglais'}:"""
         max_tokens=max_tokens
     )
     
-    # Ajout de la signature si absente
     if langue == "fr" and "— Naima" not in reponse_naima:
         reponse_naima = f"{reponse_naima}\n\n— Naima ✨"
     elif langue == "en" and "-- Naima" not in reponse_naima:
@@ -2408,14 +2659,103 @@ Réponds UNIQUEMENT par:
         return False  # En cas d'erreur, continuer
 
 
+def detecter_mode_pedagogique(question):
+    """
+    Détecte le type de demande de l'élève.
+    Retourne :
+    - explication_lecon
+    - resolution
+    - entrainement
+    - conversation
+    """
+
+    texte = (question or "").lower().strip()
+
+    mots_explication = [
+        "explique",
+        "explique-moi",
+        "explique moi",
+        "je veux comprendre",
+        "je ne comprends pas la leçon",
+        "je ne comprends pas la lecon",
+        "aide-moi à comprendre",
+        "aide moi à comprendre",
+        "c'est quoi",
+        "qu'est-ce que",
+        "qu’est-ce que",
+        "peux-tu m'expliquer",
+        "peux tu m'expliquer",
+        "cours sur",
+        "leçon sur",
+        "lecon sur"
+    ]
+
+    mots_resolution = [
+        "résous",
+        "resous",
+        "résoudre",
+        "resoudre",
+        "calcule",
+        "trouve",
+        "détermine",
+        "determine",
+        "factorise",
+        "simplifie",
+        "résolution",
+        "resolution",
+        "="
+    ]
+
+    mots_entrainement = [
+        "donne-moi un exercice",
+        "donne moi un exercice",
+        "propose un exercice",
+        "je veux m'exercer",
+        "exercice pour pratiquer",
+        "entraîne-moi",
+        "entraine-moi",
+        "entrainement",
+        "pratiquer"
+    ]
+
+    if any(mot in texte for mot in mots_explication):
+        return "explication_lecon"
+
+    if any(mot in texte for mot in mots_entrainement):
+        return "entrainement"
+
+    if any(mot in texte for mot in mots_resolution):
+        return "resolution"
+
+    return "conversation"
+
+
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
-    """Route pour l'enseignant virtuel Naima - Version avec IA + diagnostic bayésien + vérification mathématique"""
+    """
+    Route pour l'enseignant virtuel Naima.
+
+    Version avec :
+    - IA conversationnelle ;
+    - diagnostic bayésien ;
+    - vérification mathématique locale ;
+    - mémoire de l'objectif pédagogique ;
+    - recentrage général sur la demande initiale ;
+    - analyse pédagogique intelligente ;
+    - enregistrement admin sans doublon.
+    """
+
     from datetime import datetime
     from services.bayesian_diagnostic import diagnostiquer_difficulte
-    from services.math_verification import verifier_expression_fractionnaire
+    from services.math_verification import (
+        verifier_expression_fractionnaire,
+        verifier_solution_equation_fractionnaire
+    )
 
-    # Vérifier l'authentification
+    # ============================================================
+    # AUTHENTIFICATION
+    # ============================================================
+
     if "user_id" not in session:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Non authentifié'}), 401
@@ -2423,24 +2763,41 @@ def enseignant_virtuel():
 
     utilisateur = User.query.get(session["user_id"])
 
-    if not utilisateur or utilisateur.role != "eleve":
+    if not utilisateur or utilisateur.role not in ["eleve", "élève"]:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Accès non autorisé'}), 403
         return redirect(url_for("login_eleve"))
 
-    # Variables locales
+    # ============================================================
+    # VARIABLES LOCALES
+    # ============================================================
+
     eleve = utilisateur
     current_lang = session.get("lang", "fr")
     conversation = session.get("conversation", [])
     matiere = session.get("matiere", "mathématiques")
-    niveau_eleve = eleve.niveau.nom if eleve.niveau else ("6th grade" if current_lang == "en" else "6ème")
+
+    niveau_eleve = (
+        eleve.niveau.nom
+        if eleve.niveau
+        else ("6th grade" if current_lang == "en" else "6ème")
+    )
+
+    # ============================================================
+    # OUTILS INTERNES
+    # ============================================================
 
     def format_messages(msgs, time_str):
         html = []
 
         for msg in msgs[-10:]:
             if "👤" in msg:
-                content = msg.replace("👤 Élève:", "").replace("👤 Student:", "").strip()
+                content = (
+                    msg.replace("👤 Élève:", "")
+                    .replace("👤 Student:", "")
+                    .strip()
+                )
+
                 html.append(
                     f'<div class="message user">'
                     f'<div class="message-avatar"><i class="fas fa-user-graduate"></i></div>'
@@ -2451,6 +2808,7 @@ def enseignant_virtuel():
 
             elif "🤖" in msg:
                 content = msg.replace("🤖 Naima:", "").strip()
+
                 html.append(
                     f'<div class="message naima">'
                     f'<div class="message-avatar"><i class="fas fa-robot"></i></div>'
@@ -2461,19 +2819,95 @@ def enseignant_virtuel():
 
         return html
 
+    def detecter_mode_pedagogique(question):
+        """
+        Détecte le type général de demande de l'élève.
+
+        Modes possibles :
+        - explication_lecon
+        - resolution
+        - entrainement
+        - conversation
+        """
+
+        texte = (question or "").lower().strip()
+
+        mots_explication = [
+            "explique",
+            "explique-moi",
+            "explique moi",
+            "je veux comprendre",
+            "je ne comprends pas la leçon",
+            "je ne comprends pas la lecon",
+            "aide-moi à comprendre",
+            "aide moi à comprendre",
+            "c'est quoi",
+            "c’est quoi",
+            "qu'est-ce que",
+            "qu’est-ce que",
+            "peux-tu m'expliquer",
+            "peux tu m'expliquer",
+            "cours sur",
+            "leçon sur",
+            "lecon sur",
+            "notion de",
+            "définition",
+            "definition"
+        ]
+
+        mots_resolution = [
+            "résous",
+            "resous",
+            "résoudre",
+            "resoudre",
+            "calcule",
+            "calculer",
+            "trouve",
+            "trouver",
+            "détermine",
+            "determine",
+            "factorise",
+            "factoriser",
+            "simplifie",
+            "simplifier",
+            "résolution",
+            "resolution",
+            "équation",
+            "equation",
+            "="
+        ]
+
+        mots_entrainement = [
+            "donne-moi un exercice",
+            "donne moi un exercice",
+            "propose un exercice",
+            "je veux m'exercer",
+            "je veux m’exercer",
+            "exercice pour pratiquer",
+            "entraîne-moi",
+            "entraine-moi",
+            "entrainement",
+            "entraînement",
+            "pratiquer",
+            "m'exercer",
+            "m’exercer"
+        ]
+
+        if any(mot in texte for mot in mots_explication):
+            return "explication_lecon"
+
+        if any(mot in texte for mot in mots_entrainement):
+            return "entrainement"
+
+        if any(mot in texte for mot in mots_resolution):
+            return "resolution"
+
+        return "conversation"
+
     def estimer_signaux_pedagogiques(question_eleve, derniere_question_ia=None):
         """
-        Convertit une réponse d'élève en signaux simples pour le diagnostic bayésien.
-
-        Cette version ne contient pas de cas particulier comme 13/3 ou 13/6.
-        Elle estime plutôt l'état pédagogique à partir de signaux généraux :
-        - blocage explicite ;
-        - frustration ;
-        - réponse très courte ;
-        - présence d'un raisonnement ;
-        - contexte de calcul ;
-        - tentative de correction ;
-        - affirmation de réponse finale.
+        Convertit une réponse d'élève en signaux simples
+        pour le diagnostic bayésien.
         """
 
         texte = (question_eleve or "").lower().strip()
@@ -2485,8 +2919,11 @@ def enseignant_virtuel():
         mots_blocage = [
             "je ne comprends pas",
             "je comprends pas",
+            "je ne comprend pas",
+            "je comprend pas",
             "je ne sais pas",
             "je sais pas",
+            "je sais pas quoi faire",
             "aide-moi",
             "aide moi",
             "bloqué",
@@ -2498,13 +2935,18 @@ def enseignant_virtuel():
             "je suis perdu",
             "je suis perdue",
             "pas compris",
+            "comprend pas",
+            "comprends pas",
             "explique",
             "explique-moi",
             "explique moi",
             "je n'arrive pas",
             "j'arrive pas",
             "je n’y arrive pas",
-            "je n'y arrive pas"
+            "je n'y arrive pas",
+            "je suis coincé",
+            "je suis coince",
+            "je suis coincée"
         ]
 
         mots_frustration = [
@@ -2548,7 +2990,10 @@ def enseignant_virtuel():
             "des deux cotes",
             "aux deux membres",
             "je simplifie",
-            "je remplace"
+            "je remplace",
+            "si je remplace",
+            "je vérifie",
+            "je verifie"
         ]
 
         mots_correction = [
@@ -2593,7 +3038,9 @@ def enseignant_virtuel():
             "soustraction",
             "fraction",
             "simplifie",
-            "simplifier"
+            "simplifier",
+            "factorise",
+            "factoriser"
         ]
 
         blocage = any(mot in texte for mot in mots_blocage)
@@ -2618,7 +3065,11 @@ def enseignant_virtuel():
             "addition",
             "soustraction",
             "multiplier",
-            "diviser"
+            "diviser",
+            "factoriser",
+            "factorise",
+            "racine",
+            "solution"
         ])
 
         if blocage:
@@ -2652,10 +3103,10 @@ def enseignant_virtuel():
 
     def construire_instruction_bayesienne(diagnostic):
         """
-        Transforme le diagnostic bayésien en consigne pédagogique pour Naima.
-        Cette consigne est ajoutée au contexte de l'IA.
+        Transforme le diagnostic bayésien en consigne pédagogique interne.
         """
 
+        diagnostic = diagnostic or {}
         niveau_risque = diagnostic.get("niveau_risque", "inconnu")
         pourcentage = diagnostic.get("pourcentage_difficulte", 0)
 
@@ -2664,79 +3115,159 @@ def enseignant_virtuel():
                 return (
                     f"\n\nDiagnostic pédagogique interne : risque de difficulté élevé "
                     f"({pourcentage}%). "
-                    f"Réponds comme une enseignante socratique très guidante. "
-                    f"Ne donne pas directement toute la solution. "
-                    f"Pose une question simple à la fois. "
-                    f"Reviens à l'étape précédente si nécessaire. "
-                    f"Encourage l'élève et vérifie sa compréhension. "
-                    f"Très important : avant de dire que l'élève s'est trompé, "
-                    f"vérifie soigneusement le calcul mathématique. "
-                    f"Si l'élève a raison, reconnais-le clairement et continue à partir de sa bonne réponse. "
-                    f"Si l'élève se trompe, explique l'erreur avec douceur, sans le décourager."
+                    "Réponds comme une enseignante socratique très guidante. "
+                    "Ne donne pas directement toute la solution. "
+                    "Pose une question simple à la fois. "
+                    "Reviens à l'étape précédente si nécessaire. "
+                    "Encourage l'élève et vérifie sa compréhension. "
+                    "Avant de dire que l'élève s'est trompé, vérifie soigneusement le calcul. "
+                    "Si l'élève a raison, reconnais-le clairement et continue à partir de sa bonne réponse. "
+                    "Si l'élève se trompe, explique l'erreur avec douceur."
                 )
 
             if niveau_risque == "moyen":
                 return (
                     f"\n\nDiagnostic pédagogique interne : risque de difficulté moyen "
                     f"({pourcentage}%). "
-                    f"Réponds de façon socratique. "
-                    f"Pose une question de clarification. "
-                    f"Aide l'élève à justifier son raisonnement sans donner directement toute la réponse. "
-                    f"Très important : avant de dire que l'élève s'est trompé, "
-                    f"vérifie toi-même le calcul mathématique. "
-                    f"Si l'élève a raison, reconnais-le clairement. "
-                    f"Si une étape est incomplète, demande-lui de la préciser."
+                    "Réponds de façon socratique. "
+                    "Pose une question de clarification. "
+                    "Aide l'élève à justifier son raisonnement sans donner directement toute la réponse. "
+                    "Avant de dire que l'élève s'est trompé, vérifie toi-même le calcul. "
+                    "Si l'élève a raison, reconnais-le clairement. "
+                    "Si une étape est incomplète, demande-lui de la préciser."
                 )
 
             return (
                 f"\n\nDiagnostic pédagogique interne : risque de difficulté faible "
                 f"({pourcentage}%). "
-                f"Tu peux proposer une question un peu plus exigeante, "
-                f"demander une justification ou encourager l'élève à généraliser sa méthode. "
-                f"Très important : avant de dire que l'élève s'est trompé, "
-                f"vérifie toi-même le calcul mathématique. "
-                f"Si l'élève a raison, reconnais-le clairement et valorise son raisonnement. "
-                f"Ne force pas l'élève à changer une réponse correcte."
+                "Tu peux proposer une question un peu plus exigeante, "
+                "demander une justification ou encourager l'élève à généraliser sa méthode. "
+                "Avant de dire que l'élève s'est trompé, vérifie toi-même le calcul. "
+                "Si l'élève a raison, reconnais-le clairement. "
+                "Ne force pas l'élève à changer une réponse correcte."
             )
 
-        else:
-            if niveau_risque == "élevé":
-                return (
-                    f"\n\nInternal pedagogical diagnosis: high difficulty risk "
-                    f"({pourcentage}%). "
-                    f"Answer like a very guided Socratic teacher. "
-                    f"Do not give the full solution directly. "
-                    f"Ask one simple question at a time. "
-                    f"Go back to the previous step if needed. "
-                    f"Encourage the student and check understanding. "
-                    f"Very important: before saying the student is wrong, "
-                    f"carefully verify the mathematical calculation yourself. "
-                    f"If the student is correct, clearly acknowledge it and continue from their correct answer. "
-                    f"If the student is wrong, explain the mistake gently without discouraging them."
-                )
-
-            if niveau_risque == "moyen":
-                return (
-                    f"\n\nInternal pedagogical diagnosis: medium difficulty risk "
-                    f"({pourcentage}%). "
-                    f"Use a Socratic approach. "
-                    f"Ask a clarifying question and help the student justify their reasoning. "
-                    f"Very important: before saying the student is wrong, "
-                    f"verify the mathematical calculation yourself. "
-                    f"If the student is correct, clearly acknowledge it. "
-                    f"If one step is incomplete, ask the student to clarify it."
-                )
-
+        if niveau_risque == "élevé":
             return (
-                f"\n\nInternal pedagogical diagnosis: low difficulty risk "
+                f"\n\nInternal pedagogical diagnosis: high difficulty risk "
                 f"({pourcentage}%). "
-                f"You may ask a more challenging question, request justification, "
-                f"or encourage the student to generalize the method. "
-                f"Very important: before saying the student is wrong, "
-                f"verify the mathematical calculation yourself. "
-                f"If the student is correct, clearly acknowledge it and value their reasoning. "
-                f"Do not force the student to change a correct answer."
+                "Answer like a very guided Socratic teacher. "
+                "Do not give the full solution directly. "
+                "Ask one simple question at a time. "
+                "Go back to the previous step if needed. "
+                "Encourage the student and check understanding. "
+                "Before saying the student is wrong, carefully verify the calculation. "
+                "If the student is correct, clearly acknowledge it and continue from their correct answer."
             )
+
+        if niveau_risque == "moyen":
+            return (
+                f"\n\nInternal pedagogical diagnosis: medium difficulty risk "
+                f"({pourcentage}%). "
+                "Use a Socratic approach. "
+                "Ask a clarifying question and help the student justify their reasoning. "
+                "Before saying the student is wrong, verify the calculation yourself. "
+                "If the student is correct, clearly acknowledge it."
+            )
+
+        return (
+            f"\n\nInternal pedagogical diagnosis: low difficulty risk "
+            f"({pourcentage}%). "
+            "You may ask a more challenging question, request justification, "
+            "or encourage the student to generalize the method. "
+            "Before saying the student is wrong, verify the calculation yourself. "
+            "If the student is correct, clearly acknowledge it."
+        )
+
+    def construire_instruction_recentrage(question_actuelle=""):
+        """
+        Instruction générale pour garder Naima centrée sur l'objectif pédagogique
+        et l'obliger à traiter la réponse actuelle de l'élève avant de poser
+        une nouvelle question.
+        """
+
+        objectif_initial = session.get("objectif_initial_naima", "").strip()
+        mode_pedagogique = session.get("mode_pedagogique_naima", "conversation")
+        lecon_courante = session.get("lecon_courante_naima", "").strip()
+        derniere_question_ia = session.get("derniere_q_ia", "").strip()
+        question_actuelle = (question_actuelle or "").strip()
+
+        if not objectif_initial:
+            return ""
+
+        if current_lang == "fr":
+            return (
+                "\n\nInstruction pédagogique prioritaire : "
+                f"L'objectif principal de la conversation est : « {objectif_initial} ». "
+                f"Le mode pédagogique actuel est : « {mode_pedagogique} ». "
+                f"La leçon ou notion courante est : « {lecon_courante} ». "
+                f"La dernière question posée par Naima était : « {derniere_question_ia} ». "
+                f"La réponse actuelle de l'élève est : « {question_actuelle} ». "
+
+                "Avant de poser une nouvelle question, tu dois d'abord analyser la réponse actuelle de l'élève. "
+                "Si la réponse de l'élève répond correctement à ta dernière question, reconnais-le clairement, puis passe à l'étape suivante. "
+                "Si la réponse est partiellement correcte, dis ce qui est correct, puis demande uniquement la petite correction nécessaire. "
+                "Si la réponse est incorrecte, explique brièvement l'erreur et donne un indice. "
+                "Ne répète jamais exactement la même question si l'élève vient d'y répondre correctement. "
+
+                "Tu dois garder l'objectif initial comme fil conducteur. "
+                "Si le mode est « resolution », accompagne l'élève vers la résolution de l'exercice initial. "
+                "Tu peux poser des questions intermédiaires, mais elles doivent aider directement à résoudre l'exercice. "
+                "Ne remplace pas l'exercice initial par un autre, sauf si l'élève le demande clairement. "
+
+                "Si le mode est « explication_lecon », commence par expliquer la notion clairement avec des mots simples, "
+                "puis propose une petite question ou un court exercice pour vérifier la compréhension. "
+                "Après chaque réponse de l'élève, relie ton feedback à la leçon courante. "
+
+                "Si le mode est « entrainement », propose un exercice adapté au niveau de l'élève, "
+                "puis accompagne-le étape par étape jusqu'à la correction. "
+
+                "Si l'élève dit qu'il ne comprend pas, ne change pas de sujet. "
+                "Reformule plus simplement, donne un indice, puis reviens à l'objectif principal. "
+
+                "Tout détour doit être court, utile et suivi d'un retour explicite à l'objectif initial. "
+                "Ne pose pas une longue série de questions générales sans lien direct avec l'objectif. "
+                "À chaque réponse, demande-toi : est-ce que cela aide l'élève à comprendre ou résoudre l'objectif principal ? "
+                "Si non, recentre-toi."
+            )
+
+        return (
+            "\n\nPriority pedagogical instruction: "
+            f"The main goal of the conversation is: « {objectif_initial} ». "
+            f"The current pedagogical mode is: « {mode_pedagogique} ». "
+            f"The current lesson or concept is: « {lecon_courante} ». "
+            f"Naima's last question was: « {derniere_question_ia} ». "
+            f"The student's current answer is: « {question_actuelle} ». "
+
+            "Before asking a new question, first analyze the student's current answer. "
+            "If the student's answer correctly answers your previous question, clearly acknowledge it, then move to the next step. "
+            "If the answer is partially correct, say what is correct, then ask only for the small correction needed. "
+            "If the answer is incorrect, briefly explain the mistake and give a hint. "
+            "Never repeat exactly the same question if the student has just answered it correctly. "
+
+            "Keep the initial goal as the main thread. "
+            "If the mode is « resolution », guide the student toward solving the initial exercise. "
+            "Any intermediate question must directly help solve the exercise. "
+            "Do not replace the initial exercise with another one unless the student clearly asks for it. "
+
+            "If the mode is « explication_lecon », first explain the concept clearly with simple words, "
+            "then propose a short question or exercise to check understanding. "
+            "After each student answer, connect your feedback to the current lesson. "
+
+            "If the mode is « entrainement », propose a suitable exercise and guide the student step by step. "
+
+            "If the student says they do not understand, do not change topic. "
+            "Rephrase more simply, give a hint, then return to the main goal. "
+
+            "Any detour must be short, useful, and followed by an explicit return to the initial goal. "
+            "Do not ask a long sequence of general questions unrelated to the goal. "
+            "Before each answer, ask yourself whether it helps the student understand or solve the main goal. "
+            "If not, refocus."
+        )
+
+    # ============================================================
+    # POST : MESSAGE DE L'ÉLÈVE
+    # ============================================================
 
     if request.method == 'POST':
         question = request.form.get("question", "").strip()
@@ -2751,7 +3282,24 @@ def enseignant_virtuel():
             eleve_label = "👤 Élève:" if current_lang == "fr" else "👤 Student:"
             conversation.append(f"{eleve_label} {question}")
 
-            # Vérification : exercice déjà terminé
+            # ------------------------------------------------------------
+            # MÉMOIRE DE L'OBJECTIF PÉDAGOGIQUE
+            # ------------------------------------------------------------
+            if not session.get("objectif_initial_naima"):
+                mode_detecte = detecter_mode_pedagogique(question)
+
+                session["objectif_initial_naima"] = question
+                session["mode_pedagogique_naima"] = mode_detecte
+                session["sujet_courant_naima"] = matiere
+                session["lecon_courante_naima"] = matiere
+                session.modified = True
+
+                print("🎯 Objectif initial Naima:", session["objectif_initial_naima"])
+                print("🧭 Mode pédagogique Naima:", session["mode_pedagogique_naima"])
+
+            # ------------------------------------------------------------
+            # VÉRIFICATION : EXERCICE DÉJÀ TERMINÉ
+            # ------------------------------------------------------------
             if session.get('exercice_termine'):
                 msg_fin = (
                     "🎉 L'exercice est terminé ! Clique sur 'Nouvel exercice' pour continuer."
@@ -2771,7 +3319,9 @@ def enseignant_virtuel():
 
                 return redirect(url_for("enseignant_virtuel"))
 
-            # Diagnostic bayésien
+            # ------------------------------------------------------------
+            # DIAGNOSTIC BAYÉSIEN
+            # ------------------------------------------------------------
             diagnostic_bayesien = None
 
             try:
@@ -2803,7 +3353,9 @@ def enseignant_virtuel():
                 print(f"⚠️ Erreur diagnostic bayésien: {e}")
                 diagnostic_bayesien = None
 
-            # Utilisation réelle de l'IA
+            # ------------------------------------------------------------
+            # UTILISATION RÉELLE DE L'IA
+            # ------------------------------------------------------------
             try:
                 print(f"🤖 Appel à OpenAI pour la matière: {matiere}")
 
@@ -2811,7 +3363,9 @@ def enseignant_virtuel():
 
                 instruction_bayesienne = ""
                 if diagnostic_bayesien:
-                    instruction_bayesienne = construire_instruction_bayesienne(diagnostic_bayesien)
+                    instruction_bayesienne = construire_instruction_bayesienne(
+                        diagnostic_bayesien
+                    )
 
                 # Vérification mathématique locale avant l'appel IA
                 verification_calcul = verifier_expression_fractionnaire(question)
@@ -2835,8 +3389,17 @@ def enseignant_virtuel():
                 else:
                     session.pop("verification_calcul", None)
 
-                instruction_interne_complete = instruction_bayesienne + instruction_calcul
+                instruction_recentrage = construire_instruction_recentrage(question)
 
+                instruction_interne_complete = (
+                    instruction_recentrage
+                    + instruction_bayesienne
+                    + instruction_calcul
+                )
+
+                # --------------------------------------------------------
+                # APPEL IA
+                # --------------------------------------------------------
                 if derniere_q_ia:
                     reponse_ia = generer_suite_conversation(
                         derniere_q=derniere_q_ia,
@@ -2869,6 +3432,55 @@ def enseignant_virtuel():
 
                 conversation.append(f"🤖 Naima: {reponse_ia}")
 
+                # --------------------------------------------------------
+                # ANALYSE PÉDAGOGIQUE + ENREGISTREMENT ADMIN
+                # --------------------------------------------------------
+                # On enregistre ici, après la réponse de Naima.
+                # Cela évite les doublons et permet d'analyser :
+                # objectif initial, réponse élève, réponse Naima, diagnostic.
+
+                try:
+                    from services.analyse_pedagogique_service import (
+                        analyser_tentative_pedagogique
+                    )
+                    from services.diagnostic_history_service import (
+                        enregistrer_diagnostic_bayesien
+                    )
+
+                    analyse_pedagogique = analyser_tentative_pedagogique(
+                        objectif_initial=session.get("objectif_initial_naima"),
+                        derniere_question_ia=derniere_q_ia,
+                        reponse_eleve=question,
+                        reponse_naima=reponse_ia,
+                        matiere=matiere,
+                        niveau=niveau_eleve,
+                        diagnostic_bayesien=diagnostic_bayesien,
+                        signaux_bayesiens=session.get("signaux_bayesiens"),
+                        verification_calcul=session.get("verification_calcul")
+                    )
+
+                    if diagnostic_bayesien:
+                        enregistrer_diagnostic_bayesien(
+                            user_id=utilisateur.id,
+                            diagnostic=diagnostic_bayesien,
+                            signaux=session.get("signaux_bayesiens"),
+                            matiere=matiere,
+                            exercice_id=None,
+                            lecon_id=None,
+                            verification_calcul=session.get("verification_calcul"),
+                            source="naima",
+                            analyse_pedagogique=analyse_pedagogique
+                        )
+
+                        print("✅ Analyse pédagogique et diagnostic enregistrés.")
+
+                except Exception as e:
+                    print(f"⚠️ Analyse pédagogique non enregistrée: {e}")
+                    db.session.rollback()
+
+                # --------------------------------------------------------
+                # EXTRACTION DE LA NOUVELLE QUESTION DE NAIMA
+                # ------------------------------------------------------------
                 nouvelle_q = extraire_question(reponse_ia, current_lang)
 
                 if nouvelle_q and len(nouvelle_q) > 5:
@@ -2900,7 +3512,9 @@ def enseignant_virtuel():
                 session["conversation"] = conversation
                 session.modified = True
 
-        # Réponse AJAX dans tous les cas de POST
+        # ========================================================
+        # RÉPONSE AJAX
+        # ========================================================
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             messages_html = format_messages(
                 conversation,
@@ -2915,12 +3529,19 @@ def enseignant_virtuel():
                 'termine': session.get('exercice_termine', False),
                 'diagnostic_bayesien': session.get("diagnostic_bayesien"),
                 'signaux_bayesiens': session.get("signaux_bayesiens"),
-                'verification_calcul': session.get("verification_calcul")
+                'verification_calcul': session.get("verification_calcul"),
+                'objectif_initial_naima': session.get("objectif_initial_naima"),
+                'mode_pedagogique_naima': session.get("mode_pedagogique_naima"),
+                'lecon_courante_naima': session.get("lecon_courante_naima"),
+                'exercice_en_cours': session.get("exercice_en_cours")
             })
 
         return redirect(url_for("enseignant_virtuel"))
 
-    # Réponse GET
+    # ============================================================
+    # GET : AFFICHAGE
+    # ============================================================
+
     return render_template(
         "enseignant_virtuel.html",
         lang=current_lang,
@@ -2932,9 +3553,14 @@ def enseignant_virtuel():
         date_du_jour=datetime.utcnow(),
         matiere=matiere,
         theme="général",
-        datetime=datetime
+        datetime=datetime,
+        diagnostic_bayesien=session.get("diagnostic_bayesien"),
+        signaux_bayesiens=session.get("signaux_bayesiens"),
+        verification_calcul=session.get("verification_calcul"),
+        objectif_initial_naima=session.get("objectif_initial_naima"),
+        mode_pedagogique_naima=session.get("mode_pedagogique_naima"),
+        lecon_courante_naima=session.get("lecon_courante_naima")
     )
-
 
 @app.route("/demander-exercice", methods=["POST"])
 def demander_exercice():

@@ -708,6 +708,17 @@
                   </small>
                 </div>
               </a>
+
+              <a href="{{ url_for('admin_diagnostics_bayesiens') }}" class="btn action-btn">
+                <i class="fas fa-brain"></i>
+                <div>
+                  <strong>{% if lang == 'en' %}Bayesian Diagnostics{% else %}Diagnostics bayésiens{% endif %}</strong>
+                  <br>
+                  <small class="text-muted">
+                    {% if lang == 'en' %}View all student risk analyses and pedagogical recommendations{% else %}Voir les analyses de risque et recommandations pédagogiques pour tous les élèves{% endif %}
+                  </small>
+                </div>
+              </a>
             </div>
           </div>
         </div>
