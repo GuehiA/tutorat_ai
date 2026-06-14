@@ -636,9 +636,10 @@
                 <label>Source</label>
                 <select name="source">
                     <option value="">Toutes</option>
-                    <option value="naima" {% if filtre_source == "naima" %}selected{% endif %}>Naima</option>
+                    <option value="naima" {% if filtre_source == "naima" %}selected{% endif %}>Naima / Chatbot</option>
+                    <option value="exercice" {% if filtre_source == "exercice" %}selected{% endif %}>Exercice IA</option>
+                    <option value="exercice_sequentiel" {% if filtre_source == "exercice_sequentiel" %}selected{% endif %}>Exercice séquentiel</option>
                     <option value="test" {% if filtre_source == "test" %}selected{% endif %}>Test</option>
-                    <option value="exercice" {% if filtre_source == "exercice" %}selected{% endif %}>Exercice</option>
                 </select>
             </div>
 
@@ -969,7 +970,19 @@
                                 </div>
 
                                 <div class="tech-box">
-                                    <strong>Source :</strong> {{ d.source or "naima" }}<br>
+                                    <strong>Source :</strong>
+                                    {% if d.source == "naima" %}
+                                        Naima / Chatbot
+                                    {% elif d.source == "exercice" %}
+                                        Exercice IA
+                                    {% elif d.source == "exercice_sequentiel" %}
+                                        Exercice séquentiel
+                                    {% elif d.source == "test" %}
+                                        Test
+                                    {% else %}
+                                        {{ d.source or "naima" }}
+                                    {% endif %}
+                                    <br>
                                     <strong>Diagnostic :</strong>
                                     {% if d.pourcentage_difficulte is not none %}
                                         {{ d.pourcentage_difficulte }} %

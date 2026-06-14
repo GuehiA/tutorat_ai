@@ -583,6 +583,26 @@
       color: white;
     }
 
+    .mode-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn-ia-mode {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+
+    .btn-paper-mode {
+      background: linear-gradient(135deg, var(--warning), #e68a17);
+      box-shadow: 0 6px 20px rgba(248, 150, 30, 0.3);
+    }
+
+    .btn-paper-mode:hover {
+      box-shadow: 0 12px 30px rgba(248, 150, 30, 0.4);
+    }
+
     .btn-test {
       background: linear-gradient(135deg, var(--warning), #e68a17);
       color: white;
@@ -722,7 +742,7 @@
         {{ "Learning Sequences" if lang == "en" else "Parcours d'Apprentissage" }}
       </h2>
       <p class="mb-0 opacity-90" style="font-size: 1.1rem;">
-        {{ "Progress at your own pace with structured learning paths" if lang == "en" else "Progressez à votre rythme avec des parcours d'apprentissage structurés" }}
+        {{ "Choose an AI-guided adaptive path or a paper-and-pencil practice mode" if lang == "en" else "Choisissez un parcours adaptatif accompagné par IA ou un mode papier-crayon" }}
       </p>
     </div>
   </div>
@@ -911,11 +931,19 @@
                               </div>
                             </div>
                             
-                            <div>
+                            <div class="mode-buttons">
                               <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lecon_id={{ lecon.id }}&lang={{ lang }}&index=0" 
-                                 class="btn-start">
-                                <i class="fas fa-rocket me-1"></i>
-                                {{ "Start" if lang == "en" else "Commencer" }}
+                                 class="btn-start btn-ia-mode"
+                                 title="{{ 'AI-guided mode with feedback and adaptive progression' if lang == 'en' else 'Mode accompagné par IA avec correction et progression adaptative' }}">
+                                <i class="fas fa-robot me-1"></i>
+                                {{ "AI-guided" if lang == "en" else "Mode IA" }}
+                              </a>
+
+                              <a href="/exercices-papier-crayon?username={{ eleve.username }}&lecon_id={{ lecon.id }}&lang={{ lang }}&index=0" 
+                                 class="btn-start btn-paper-mode"
+                                 title="{{ 'Paper-and-pencil mode with free exercise navigation' if lang == 'en' else 'Mode papier-crayon avec navigation libre' }}">
+                                <i class="fas fa-pencil-alt me-1"></i>
+                                {{ "Paper mode" if lang == "en" else "Papier-crayon" }}
                               </a>
                             </div>
                           </div>

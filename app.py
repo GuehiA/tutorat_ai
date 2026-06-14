@@ -783,11 +783,11 @@ def admin_diagnostics_bayesiens():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 10, type=int)
 
-    # Sécurité : éviter qu'on charge 200 éléments d'un coup
+    # Sécurité : éviter de charger trop d'éléments
     if per_page not in [5, 10, 20]:
         per_page = 10
 
-    # La page doit rester vide au départ.
+    # La page reste vide au départ.
     # On affiche les diagnostics seulement si au moins un filtre est utilisé.
     afficher_resultats = bool(risque or user_id or matiere or source)
 
@@ -809,14 +809,13 @@ def admin_diagnostics_bayesiens():
         niveau_risque="faible"
     ).count()
 
-    # Nombre d'élèves ayant au moins un diagnostic
     eleves_avec_diagnostics = (
         db.session.query(DiagnosticBayesien.user_id)
+        .filter(DiagnosticBayesien.user_id.isnot(None))
         .distinct()
         .count()
     )
 
-    # Liste des élèves pour le filtre
     eleves = (
         User.query
         .filter(User.role.in_(["élève", "eleve"]))
@@ -856,8 +855,25 @@ def admin_diagnostics_bayesiens():
         if matiere:
             query = query.filter(DiagnosticBayesien.matiere.ilike(f"%{matiere}%"))
 
+        # ========================================================
+        # CORRECTION IMPORTANTE DU FILTRE SOURCE
+        # ========================================================
+        # Dans la route /soumettre-sequentiel, certains diagnostics
+        # peuvent avoir été enregistrés avec source="exercice_sequentiel".
+        # Mais dans l'admin, l'utilisateur choisit "Exercice".
+        # Donc on accepte les deux valeurs.
+        # ========================================================
+
         if source:
-            query = query.filter(DiagnosticBayesien.source == source)
+            if source == "exercice":
+                query = query.filter(
+                    DiagnosticBayesien.source.in_([
+                        "exercice",
+                        "exercice_sequentiel"
+                    ])
+                )
+            else:
+                query = query.filter(DiagnosticBayesien.source == source)
 
         total_filtre = query.count()
 
@@ -881,7 +897,7 @@ def admin_diagnostics_bayesiens():
         try:
             user_id_int = int(user_id)
 
-            eleve_selectionne = User.query.get(user_id_int)
+            eleve_selectionne = db.session.get(User, user_id_int)
 
             derniers_diagnostics_eleve = (
                 DiagnosticBayesien.query
@@ -917,17 +933,14 @@ def admin_diagnostics_bayesiens():
                 if d.notion_cible:
                     notions_ciblees.append(d.notion_cible)
 
-                if d.notions_maitrisees:
-                    if isinstance(d.notions_maitrisees, list):
-                        notions_maitrisees.extend(d.notions_maitrisees)
+                if d.notions_maitrisees and isinstance(d.notions_maitrisees, list):
+                    notions_maitrisees.extend(d.notions_maitrisees)
 
-                if d.notions_non_maitrisees:
-                    if isinstance(d.notions_non_maitrisees, list):
-                        notions_non_maitrisees.extend(d.notions_non_maitrisees)
+                if d.notions_non_maitrisees and isinstance(d.notions_non_maitrisees, list):
+                    notions_non_maitrisees.extend(d.notions_non_maitrisees)
 
-                if d.erreurs_probables:
-                    if isinstance(d.erreurs_probables, list):
-                        erreurs_probables.extend(d.erreurs_probables)
+                if d.erreurs_probables and isinstance(d.erreurs_probables, list):
+                    erreurs_probables.extend(d.erreurs_probables)
 
             def top_items(items, limite=5):
                 compteur = {}
@@ -951,7 +964,11 @@ def admin_diagnostics_bayesiens():
 
             risque_dominant = "non déterminé"
 
-            if nb_risque_eleve >= nb_risque_moyen and nb_risque_eleve >= nb_risque_faible and nb_risque_eleve > 0:
+            if (
+                nb_risque_eleve >= nb_risque_moyen
+                and nb_risque_eleve >= nb_risque_faible
+                and nb_risque_eleve > 0
+            ):
                 risque_dominant = "élevé"
             elif nb_risque_moyen >= nb_risque_faible and nb_risque_moyen > 0:
                 risque_dominant = "moyen"
@@ -982,16 +999,13 @@ def admin_diagnostics_bayesiens():
     return render_template(
         "admin/admin_diagnostics_bayesiens.html",
 
-        # Résultats
         diagnostics=diagnostics,
         pagination=pagination,
         afficher_resultats=afficher_resultats,
         total_filtre=total_filtre,
 
-        # Synthèse élève
         synthese_eleve=synthese_eleve,
 
-        # Filtres
         eleves=eleves,
         filtre_risque=risque,
         filtre_user_id=user_id,
@@ -999,7 +1013,6 @@ def admin_diagnostics_bayesiens():
         filtre_source=source,
         per_page=per_page,
 
-        # Statistiques globales
         total=total,
         risques_eleves=risques_eleves,
         risques_moyens=risques_moyens,
@@ -11058,114 +11071,293 @@ def parent_dashboard_pdf():
 
 @app.route("/choisir-sequence")
 def choisir_sequence():
+    from sqlalchemy import func
+    from sqlalchemy.orm import joinedload, selectinload
     from models import EleveMatiere
-    
+
     username = request.args.get("username")
     lang = request.args.get("lang", "fr")
 
-    # 1. Récupérer l'élève
-    eleve = User.query.options(
-        joinedload(User.niveau)
-    ).filter_by(username=username).first_or_404()
+    # ============================================================
+    # 1. RÉCUPÉRER L'ÉLÈVE
+    # ============================================================
 
-    # ✅ CORRECTION : Récupérer uniquement les matières sélectionnées par l'élève
-    matieres_eleve = db.session.query(Matiere).join(
-        EleveMatiere, EleveMatiere.matiere_id == Matiere.id
-    ).filter(
-        EleveMatiere.eleve_id == eleve.id
-    ).options(
-        joinedload(Matiere.unites)
-        .joinedload(Unite.lecons)
-        .joinedload(Lecon.exercices),
-        joinedload(Matiere.unites)
-        .joinedload(Unite.tests)
-    ).all()
+    eleve = (
+        User.query
+        .options(joinedload(User.niveau))
+        .filter_by(username=username)
+        .first_or_404()
+    )
 
-    # 2. Récupérer les exercices complétés par l'élève (UNE SEULE REQUÊTE)
-    completed_exercises = StudentResponse.query.filter_by(user_id=eleve.id)\
-        .with_entities(StudentResponse.exercice_id).all()
-    completed_exercise_ids = {ex[0] for ex in completed_exercises if ex[0]}
-    
-    # 3. Récupérer les tests complétés
-    completed_tests = TestResponse.query.filter_by(user_id=eleve.id)\
-        .with_entities(TestResponse.test_id).all()
+    # Sécurité minimale
+    if not eleve.niveau_id:
+        print("⚠️ Élève sans niveau associé.")
+        return render_template(
+            "choisir_sequence.html",
+            eleve=eleve,
+            unites=[],
+            lecons=[],
+            matiere_data={},
+            completed_exercise_ids=set(),
+            completed_test_ids=set(),
+            lang=lang
+        )
+
+    # ============================================================
+    # 2. CHARGER LES MATIÈRES DE L'ÉLÈVE
+    # ============================================================
+    # On ne charge PAS Lecon.exercices ici.
+    # Sinon la page peut devenir très lente avec plusieurs milliers d'exercices.
+
+    matieres_eleve = (
+        db.session.query(Matiere)
+        .join(EleveMatiere, EleveMatiere.matiere_id == Matiere.id)
+        .filter(EleveMatiere.eleve_id == eleve.id)
+        .options(
+            selectinload(Matiere.unites).selectinload(Unite.lecons),
+            selectinload(Matiere.unites).selectinload(Unite.tests)
+        )
+        .order_by(Matiere.nom.asc())
+        .all()
+    )
+
+    source_matieres = "matieres_choisies"
+
+    # ============================================================
+    # 3. FALLBACK IMPORTANT
+    # ============================================================
+    # Si aucune matière n'a été choisie pour cet élève,
+    # on affiche les matières de son niveau.
+    # C'est ce qui correspond à ton cas actuel.
+
+    if not matieres_eleve:
+        print("⚠️ Aucune matière choisie pour cet élève.")
+        print("➡️ Fallback : affichage des matières du niveau de l'élève.")
+
+        matieres_eleve = (
+            Matiere.query
+            .filter(Matiere.niveau_id == eleve.niveau_id)
+            .options(
+                selectinload(Matiere.unites).selectinload(Unite.lecons),
+                selectinload(Matiere.unites).selectinload(Unite.tests)
+            )
+            .order_by(Matiere.nom.asc())
+            .all()
+        )
+
+        source_matieres = "niveau_eleve"
+
+    # ============================================================
+    # 4. RÉCUPÉRER LES IDS DES LEÇONS ET UNITÉS VISIBLES
+    # ============================================================
+
+    lecon_ids = []
+    unite_ids = []
+
+    for matiere in matieres_eleve:
+        for unite in matiere.unites:
+            unite_ids.append(unite.id)
+
+            for lecon in unite.lecons:
+                lecon_ids.append(lecon.id)
+
+    # ============================================================
+    # 5. COMPTER LES EXERCICES PAR LEÇON
+    # ============================================================
+    # Une seule requête groupée au lieu de charger tous les exercices.
+
+    exercices_par_lecon = {}
+
+    if lecon_ids:
+        exercices_par_lecon = dict(
+            db.session.query(
+                Exercice.lecon_id,
+                func.count(Exercice.id)
+            )
+            .filter(Exercice.lecon_id.in_(lecon_ids))
+            .group_by(Exercice.lecon_id)
+            .all()
+        )
+
+    # ============================================================
+    # 6. COMPTER LES EXERCICES TERMINÉS PAR LEÇON
+    # ============================================================
+    # On compte les exercices distincts pour éviter les doublons
+    # si un élève répond plusieurs fois au même exercice.
+
+    completed_par_lecon = {}
+
+    if lecon_ids:
+        completed_par_lecon = dict(
+            db.session.query(
+                Exercice.lecon_id,
+                func.count(func.distinct(StudentResponse.exercice_id))
+            )
+            .join(StudentResponse, StudentResponse.exercice_id == Exercice.id)
+            .filter(StudentResponse.user_id == eleve.id)
+            .filter(Exercice.lecon_id.in_(lecon_ids))
+            .group_by(Exercice.lecon_id)
+            .all()
+        )
+
+    # ============================================================
+    # 7. RÉCUPÉRER LES EXERCICES TERMINÉS
+    # ============================================================
+    # Ton template actuel ne semble pas utiliser directement cette variable,
+    # mais je la garde pour compatibilité avec le reste du projet.
+
+    completed_exercise_ids = set()
+
+    if lecon_ids:
+        completed_exercise_ids = {
+            row[0]
+            for row in (
+                db.session.query(StudentResponse.exercice_id)
+                .join(Exercice, StudentResponse.exercice_id == Exercice.id)
+                .filter(StudentResponse.user_id == eleve.id)
+                .filter(Exercice.lecon_id.in_(lecon_ids))
+                .filter(StudentResponse.exercice_id.isnot(None))
+                .distinct()
+                .all()
+            )
+            if row[0]
+        }
+
+    # ============================================================
+    # 8. RÉCUPÉRER LES TESTS TERMINÉS
+    # ============================================================
+
+    completed_tests = (
+        TestResponse.query
+        .filter_by(user_id=eleve.id)
+        .with_entities(TestResponse.test_id)
+        .all()
+    )
+
     completed_test_ids = {test[0] for test in completed_tests if test[0]}
 
-    # 4. Organiser les données par matière (UNIQUEMENT CELLES DE L'ÉLÈVE)
+    # ============================================================
+    # 9. ORGANISER LES DONNÉES POUR LE TEMPLATE
+    # ============================================================
+
     matiere_data = {}
     unites_list = []
     lecons_filtrees = []
 
-    for matiere in matieres_eleve:  # ✅ Utilise les matières de l'élève, pas toutes du niveau
-        matiere_nom = matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom
-        
-        if matiere_nom not in matiere_data:
-            matiere_data[matiere_nom] = {
-                'matiere_obj': matiere,
-                'unites': [],
-                'stats': {
-                    'total_unites': 0,
-                    'total_lecons': 0,
-                    'total_exercises': 0,
-                    'completed_exercises': 0
-                }
+    for matiere in matieres_eleve:
+        matiere_nom = (
+            matiere.nom_en
+            if lang == "en" and getattr(matiere, "nom_en", None)
+            else matiere.nom
+        )
+
+        matiere_data[matiere_nom] = {
+            "matiere_obj": matiere,
+            "unites": [],
+            "stats": {
+                "total_unites": 0,
+                "total_lecons": 0,
+                "total_exercises": 0,
+                "completed_exercises": 0
             }
-        
+        }
+
         for unite in matiere.unites:
             unites_list.append(unite)
-            
-            # Statistiques pour cette unité
+
             unit_stats = {
-                'unite': unite,
-                'total_lecons': len(unite.lecons),
-                'total_exercises': 0,
-                'completed_exercises': 0,
-                'tests': [],
-                'lecons': []
+                "unite": unite,
+                "total_lecons": 0,
+                "total_exercises": 0,
+                "completed_exercises": 0,
+                "tests": [],
+                "lecons": []
             }
-            
-            # Marquer les tests comme complétés ou non
+
+            # ------------------------------------------------------------
+            # Tests de l'unité
+            # ------------------------------------------------------------
+
             for test in unite.tests:
                 test.completed = test.id in completed_test_ids
-                unit_stats['tests'].append(test)
-            
+
+                # Compatibilité avec ton template actuel :
+                # choisir_sequence.html utilise test.nom_fr et test.nom_en,
+                # mais ton modèle TestSommatif ne les définit pas toujours.
+                if not hasattr(test, "nom_fr"):
+                    test.nom_fr = f"Test sommatif - {unite.nom}"
+
+                if not hasattr(test, "nom_en"):
+                    test.nom_en = f"Final assessment - {unite.nom_en or unite.nom}"
+
+                unit_stats["tests"].append(test)
+
+            # ------------------------------------------------------------
+            # Leçons de l'unité
+            # ------------------------------------------------------------
+
             for lecon in unite.lecons:
-                total_exos = len(lecon.exercices)
-                
-                # Calculer les exercices complétés pour cette leçon
-                completed_count = 0
-                for exercice in lecon.exercices:
-                    if exercice.id in completed_exercise_ids:
-                        completed_count += 1
-                
-                # Ajouter aux statistiques
+                total_exos = exercices_par_lecon.get(lecon.id, 0)
+                completed_count = completed_par_lecon.get(lecon.id, 0)
+
+                # On n'affiche pas les leçons sans exercice
+                if total_exos <= 0:
+                    continue
+
+                progress = (
+                    completed_count / total_exos * 100
+                    if total_exos > 0
+                    else 0
+                )
+
                 lecon_stats = {
-                    'lecon': lecon,
-                    'total_exercises': total_exos,
-                    'completed_exercises': completed_count,
-                    'progress': (completed_count / total_exos * 100) if total_exos > 0 else 0
+                    "lecon": lecon,
+                    "total_exercises": total_exos,
+                    "completed_exercises": completed_count,
+                    "progress": progress
                 }
-                
-                unit_stats['lecons'].append(lecon_stats)
-                unit_stats['total_exercises'] += total_exos
-                unit_stats['completed_exercises'] += completed_count
-                
-                # Filtrer les leçons avec exercices
-                if total_exos > 0:
-                    lecons_filtrees.append(lecon)
-            
-            # Ajouter l'unité à la matière
-            matiere_data[matiere_nom]['unites'].append(unit_stats)
-            
-            # Mettre à jour les totaux de la matière
-            matiere_data[matiere_nom]['stats']['total_unites'] += 1
-            matiere_data[matiere_nom]['stats']['total_lecons'] += unit_stats['total_lecons']
-            matiere_data[matiere_nom]['stats']['total_exercises'] += unit_stats['total_exercises']
-            matiere_data[matiere_nom]['stats']['completed_exercises'] += unit_stats['completed_exercises']
-    
-    print(f"✅ {len(unites_list)} unités trouvées")
-    print(f"✅ {len(lecons_filtrees)} leçons avec exercices")
-    print(f"✅ {len(matiere_data)} matières organisées (uniquement celles sélectionnées par l'élève)")
+
+                unit_stats["lecons"].append(lecon_stats)
+                unit_stats["total_lecons"] += 1
+                unit_stats["total_exercises"] += total_exos
+                unit_stats["completed_exercises"] += completed_count
+
+                lecons_filtrees.append(lecon)
+
+            # ------------------------------------------------------------
+            # Ajouter l'unité seulement si elle contient quelque chose
+            # ------------------------------------------------------------
+
+            if unit_stats["lecons"] or unit_stats["tests"]:
+                matiere_data[matiere_nom]["unites"].append(unit_stats)
+
+                matiere_data[matiere_nom]["stats"]["total_unites"] += 1
+                matiere_data[matiere_nom]["stats"]["total_lecons"] += unit_stats["total_lecons"]
+                matiere_data[matiere_nom]["stats"]["total_exercises"] += unit_stats["total_exercises"]
+                matiere_data[matiere_nom]["stats"]["completed_exercises"] += unit_stats["completed_exercises"]
+
+        # Si la matière n'a aucun contenu visible, on la retire
+        if not matiere_data[matiere_nom]["unites"]:
+            matiere_data.pop(matiere_nom)
+
+    # ============================================================
+    # 10. LOGS POUR DIAGNOSTIC
+    # ============================================================
+
+    print("========== CHOISIR SÉQUENCE ==========")
+    print(f"👤 Élève : {eleve.username} | ID : {eleve.id}")
+    print(f"🎓 Niveau ID : {eleve.niveau_id}")
+    print(f"📚 Source matières : {source_matieres}")
+    print(f"✅ Matières chargées : {len(matieres_eleve)}")
+    print(f"✅ Unités trouvées : {len(unites_list)}")
+    print(f"✅ Leçons analysées : {len(lecon_ids)}")
+    print(f"✅ Leçons avec exercices : {len(lecons_filtrees)}")
+    print(f"✅ Matières affichées : {len(matiere_data)}")
+    print("=======================================")
+
+    # ============================================================
+    # 11. RENDU TEMPLATE
+    # ============================================================
 
     return render_template(
         "choisir_sequence.html",
@@ -11177,40 +11369,6 @@ def choisir_sequence():
         completed_test_ids=completed_test_ids,
         lang=lang
     )
-
-
-from functools import wraps
-
-def eleve_required(f):
-    """Décorateur pour vérifier qu'un élève est connecté ET a accès"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Vérifier la session
-        if "user_id" not in session:
-            return redirect(url_for("login_eleve"))
-        
-        if session.get("role") != "eleve":
-            flash("Accès réservé aux élèves", "error")
-            return redirect("/")
-        
-        # Vérifier si l'élève existe
-        eleve = User.query.get(session["user_id"])
-        if not eleve or eleve.role != "eleve":
-            flash("Session invalide", "error")
-            session.clear()
-            return redirect(url_for("login_eleve"))
-        
-        # ✅ VÉRIFIER SI L'ÉLÈVE A ENCORE ACCÈS
-        if not eleve.a_acces_plateforme():
-            if hasattr(eleve, 'est_en_essai_gratuit') and eleve.essai_est_expire():
-                flash("Votre essai gratuit a expiré. Veuillez souscrire à un abonnement.", "warning")
-                return redirect(url_for("upgrade_options"))
-            else:
-                flash("Votre compte n'est pas actif. Contactez l'administrateur.", "error")
-                return redirect(url_for("login_eleve"))
-        
-        return f(*args, **kwargs)
-    return decorated_function
 
 
 from datetime import datetime, timedelta
@@ -12356,276 +12514,724 @@ def create_profile():
        
 @app.route("/exercice-sequentiel-progressif")
 def exercice_sequentiel_progressif():
-    print("=" * 80)
-    print("🚨🚨🚨 EXERCICE SÉQUENTIEL - DÉBUT DE LA ROUTE")
-    print(f"URL: {request.url}")
-    print(f"GET params: {dict(request.args)}")
-    print(f"Session: {dict(session)}")
-    print(f"Session ID: {session.get('_id', 'no-id')}")
-    print("=" * 80)
-    
-    # --------------------------------------------------
-    # 1️⃣ Extraction des paramètres
-    # --------------------------------------------------
+    import json
+    from sqlalchemy import func
+    from sqlalchemy.orm import joinedload
+
     username = request.args.get("username")
     lecon_id = request.args.get("lecon_id")
     lang = request.args.get("lang", "fr")
-    index = int(request.args.get("index", 0))
     show_feedback = request.args.get("show_feedback", "false").lower() == "true"
 
-    print(f"🔍 Paramètres extraits:")
-    print(f"  username: {username}")
-    print(f"  lecon_id: {lecon_id}")
-    print(f"  lang: {lang}")
-    print(f"  index: {index}")
-    print(f"  show_feedback: {show_feedback}")
-    
-    # Vérification des paramètres requis
-    if not username or not lecon_id:
-        print("❌ Paramètres manquants, redirection dashboard")
-        flash("Paramètres manquants pour accéder à l'exercice.", "danger")
-        return redirect(url_for("index", lang=lang))
+    exercice_id_param = request.args.get("exercice_id")
+    index_param = request.args.get("index", "0")
 
-    # --------------------------------------------------
-    # 2️⃣ Récupération des données
-    # --------------------------------------------------
-    eleve = User.query.filter_by(username=username).first()
-    if not eleve:
-        print(f"❌ Élève non trouvé: {username}")
-        flash("Élève non trouvé.", "danger")
-        return redirect(url_for("index", lang=lang))
-    
-    print(f"✅ Élève trouvé: {eleve.nom_complet} (ID: {eleve.id})")
-    print(f"  - Role: {eleve.role}")
-    print(f"  - Statut: {eleve.statut}")
-    print(f"  - Statut paiement: {eleve.statut_paiement}")
-
-    # Vérifier l'accès
-    print(f"🔐 Vérification accès plateforme...")
-    if not eleve.a_acces_plateforme():
-        print(f"⛔ Élève SANS accès plateforme!")
-        print(f"  - est_actif(): {eleve.est_actif()}")
-        print(f"  - est_en_essai_gratuit(): {eleve.est_en_essai_gratuit()}")
-        flash("Accès refusé (abonnement ou essai expiré).", "danger")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
-    
-    print(f"✅ Accès plateforme autorisé")
-
-    lecon = db.session.get(Lecon, lecon_id)
-    if not lecon:
-        print(f"❌ Leçon non trouvée: {lecon_id}")
-        flash("Leçon non trouvée.", "danger")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
-    
-    print(f"✅ Leçon trouvée: {lecon.titre_fr} (ID: {lecon.id})")
-    print(f"  - Unité: {lecon.unite.nom if lecon.unite else 'N/A'}")
-    print(f"  - Matière: {lecon.unite.matiere.nom if lecon.unite and lecon.unite.matiere else 'N/A'}")
-
-    # --------------------------------------------------
-    # 3️⃣ Gestion de la progression
-    # --------------------------------------------------
-    # Récupérer tous les exercices de la leçon
-    exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()
-    
-    print(f"🔍 Recherche exercices pour leçon {lecon.id}...")
-    print(f"  - Nombre d'exercices trouvés: {len(exercices)}")
-    
-    if not exercices:
-        print(f"⚠️ Aucun exercice pour la leçon: {lecon_id}")
-        flash("Aucun exercice disponible pour cette leçon.", "info")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
-
-    # Ajuster l'index si hors limites
-    if index >= len(exercices):
-        print(f"⚠️ Index {index} hors limites, ajustement à 0")
+    try:
+        index = int(index_param)
+    except (ValueError, TypeError):
         index = 0
-    
-    exercice_actuel = exercices[index]
-    print(f"✅ Exercice actuel: ID {exercice_actuel.id}")
-    
-    # --------------------------------------------------
-    # 4️⃣ Récupération de la réponse précédente (si existante)
-    # --------------------------------------------------
-    reponse_existante = None
-    feedback_data = None
-    
+
+    # ============================================================
+    # MESSAGES BILINGUES
+    # ============================================================
+
+    msg_param_manquant = (
+        "Missing parameters to access the exercise."
+        if lang == "en"
+        else "Paramètres manquants pour accéder à l'exercice."
+    )
+
+    msg_eleve_introuvable = (
+        "Student not found."
+        if lang == "en"
+        else "Élève non trouvé."
+    )
+
+    msg_acces_refuse = (
+        "Access denied. Your subscription or trial may have expired."
+        if lang == "en"
+        else "Accès refusé. Votre abonnement ou essai a peut-être expiré."
+    )
+
+    msg_lecon_introuvable = (
+        "Lesson not found."
+        if lang == "en"
+        else "Leçon non trouvée."
+    )
+
+    msg_aucun_exercice = (
+        "No exercise is available for this lesson."
+        if lang == "en"
+        else "Aucun exercice disponible pour cette leçon."
+    )
+
+    libelle_bouton_continuer = (
+        "Continue with the recommended exercise"
+        if lang == "en"
+        else "Continuer avec l’exercice recommandé"
+    )
+
+    libelle_mode = (
+        "AI-guided mode"
+        if lang == "en"
+        else "Mode accompagné par IA"
+    )
+
+    # ============================================================
+    # 1. VALIDATION DES PARAMÈTRES
+    # ============================================================
+
+    if not username or not lecon_id:
+        flash(msg_param_manquant, "danger")
+        return redirect(url_for("index", lang=lang))
+
+    eleve = (
+        User.query
+        .options(joinedload(User.niveau))
+        .filter_by(username=username)
+        .first()
+    )
+
+    if not eleve:
+        flash(msg_eleve_introuvable, "danger")
+        return redirect(url_for("index", lang=lang))
+
+    if not eleve.a_acces_plateforme():
+        flash(msg_acces_refuse, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    try:
+        lecon_id_int = int(lecon_id)
+    except (ValueError, TypeError):
+        flash(msg_lecon_introuvable, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    lecon = (
+        Lecon.query
+        .options(
+            joinedload(Lecon.unite).joinedload(Unite.matiere)
+        )
+        .filter(Lecon.id == lecon_id_int)
+        .first()
+    )
+
+    if not lecon:
+        flash(msg_lecon_introuvable, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    # ============================================================
+    # 2. LISTE LÉGÈRE DES IDS DES EXERCICES
+    # ============================================================
+    # On ne charge pas tous les exercices complets.
+
+    exercice_ids = [
+        row[0]
+        for row in (
+            db.session.query(Exercice.id)
+            .filter(Exercice.lecon_id == lecon.id)
+            .order_by(
+                func.coalesce(Exercice.ordre_progression, 999999).asc(),
+                Exercice.id.asc()
+            )
+            .all()
+        )
+    ]
+
+    total_exercices = len(exercice_ids)
+
+    if total_exercices == 0:
+        flash(msg_aucun_exercice, "info")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    # ============================================================
+    # 3. DÉTERMINER L’EXERCICE ACTUEL
+    # ============================================================
+    # En mode IA, exercice_id est utilisé surtout après recommandation adaptative.
+    # index sert seulement à démarrer le parcours depuis choisir_sequence.
+
+    exercice_actuel = None
+
+    if exercice_id_param:
+        try:
+            exercice_id_int = int(exercice_id_param)
+        except (ValueError, TypeError):
+            exercice_id_int = None
+
+        if exercice_id_int and exercice_id_int in exercice_ids:
+            exercice_actuel = (
+                Exercice.query
+                .filter(
+                    Exercice.id == exercice_id_int,
+                    Exercice.lecon_id == lecon.id
+                )
+                .first()
+            )
+
+            index = exercice_ids.index(exercice_id_int)
+
+    if not exercice_actuel:
+        if index < 0:
+            index = 0
+
+        if index >= total_exercices:
+            index = total_exercices - 1
+
+        exercice_actuel = db.session.get(Exercice, exercice_ids[index])
+
+    if not exercice_actuel:
+        flash(msg_aucun_exercice, "info")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    # ============================================================
+    # 4. RÉPONSES DÉJÀ COMPLÉTÉES EN UNE SEULE REQUÊTE
+    # ============================================================
+
+    completed_exercise_ids = {
+        row[0]
+        for row in (
+            db.session.query(StudentResponse.exercice_id)
+            .filter(StudentResponse.user_id == eleve.id)
+            .filter(StudentResponse.exercice_id.in_(exercice_ids))
+            .filter(StudentResponse.exercice_id.isnot(None))
+            .distinct()
+            .all()
+        )
+        if row[0]
+    }
+
+    exercices_completes = len(completed_exercise_ids)
+
+    progression_pourcentage = (
+        int((exercices_completes / total_exercices) * 100)
+        if total_exercices > 0
+        else 0
+    )
+
+    reponses_status = [
+        "completed" if ex_id in completed_exercise_ids else "not_started"
+        for ex_id in exercice_ids
+    ]
+
+    # ============================================================
+    # 5. RÉPONSE EXISTANTE POUR L’EXERCICE ACTUEL
+    # ============================================================
+
     reponse = StudentResponse.query.filter_by(
         user_id=eleve.id,
         exercice_id=exercice_actuel.id
     ).first()
-    
-    if reponse:
-        print(f"📝 Réponse existante trouvée pour exercice {exercice_actuel.id}")
-        print(f"  - ID réponse: {reponse.id}")
-        print(f"  - Étoiles: {reponse.etoiles}")
-        reponse_existante = reponse.reponse_eleve
-        
-        # Parser le feedback JSON
-        try:
-            if reponse.analyse_ia and reponse.analyse_ia.startswith("{"):
-                feedback_data = json.loads(reponse.analyse_ia)
-                print(f"📊 Feedback chargé: {feedback_data.get('current_stars', 0)}/5 étoiles")
-        except Exception as e:
-            print(f"⚠️ Erreur parsing feedback: {e}")
-            feedback_data = None
-    else:
-        print(f"📝 Aucune réponse existante pour cet exercice")
 
-    # --------------------------------------------------
-    # 5️⃣ Calcul de la progression
-    # --------------------------------------------------
-    total_exercices = len(exercices)
-    exercices_completes = 0
-    
-    for ex in exercices:
-        rep = StudentResponse.query.filter_by(
-            user_id=eleve.id,
-            exercice_id=ex.id
-        ).first()
-        if rep:
-            exercices_completes += 1
-    
-    progression_pourcentage = int((exercices_completes / total_exercices) * 100) if total_exercices > 0 else 0
-    
-    print(f"📊 Progression: {exercices_completes}/{total_exercices} ({progression_pourcentage}%)")
-    
-    # --------------------------------------------------
-    # 6️⃣ Préparation des données pour le template
-    # --------------------------------------------------
-    # Texte de l'exercice selon la langue
-    question = exercice_actuel.question_en if lang == "en" else exercice_actuel.question_fr
-    
-    # Vérifier s'il y a un corrigé
-    corrige_disponible = bool(exercice_actuel.reponse_en if lang == "en" else exercice_actuel.reponse_fr)
-    
-    # Données de feedback à afficher (si demandé)
+    reponse_existante = None
+    feedback_data = None
+
+    if reponse:
+        reponse_existante = reponse.reponse_eleve
+
+        try:
+            if reponse.analyse_ia and reponse.analyse_ia.strip().startswith("{"):
+                feedback_data = json.loads(reponse.analyse_ia)
+        except Exception as e:
+            print(f"⚠️ Erreur parsing feedback exercice {exercice_actuel.id}: {e}")
+            feedback_data = None
+
     feedback_a_afficher = None
+
     if show_feedback and feedback_data:
         feedback_a_afficher = {
             "analyse": feedback_data.get("current_feedback", ""),
             "etoiles": feedback_data.get("current_stars", 0),
-            "symbolic": feedback_data.get("symbolic_verification", {})
+            "symbolic": feedback_data.get("symbolic_verification", {}),
+            "adaptive": feedback_data.get("adaptive_next", {})
         }
-        print(f"🎯 Feedback à afficher: {feedback_a_afficher['etoiles']}/5")
 
-    # --------------------------------------------------
-    # 7️⃣ Préparation des boutons navigation
-    # --------------------------------------------------
+    # ============================================================
+    # 6. NAVIGATION ADAPTATIVE UNIQUEMENT
+    # ============================================================
+    # En mode IA, on ne donne pas accès libre à précédent/suivant.
+    # Le bouton suivant existe seulement après feedback,
+    # et il pointe vers l’exercice recommandé par le moteur adaptatif.
+
     bouton_precedent = None
     bouton_suivant = None
-    
-    if index > 0:
-        bouton_precedent = url_for(
-            "exercice_sequentiel_progressif",
-            username=username,
-            lecon_id=lecon_id,
-            lang=lang,
-            index=index-1
-        )
-    
-    if index < total_exercices - 1:
+
+    prochain_adaptatif = session.get("prochain_exercice_adaptatif")
+
+    if (
+        show_feedback
+        and prochain_adaptatif
+        and prochain_adaptatif.get("lecon_id") == lecon.id
+        and prochain_adaptatif.get("exercice_source_id") == exercice_actuel.id
+        and prochain_adaptatif.get("prochain_exercice_id")
+    ):
         bouton_suivant = url_for(
             "exercice_sequentiel_progressif",
             username=username,
-            lecon_id=lecon_id,
+            lecon_id=lecon.id,
             lang=lang,
-            index=index+1
+            exercice_id=prochain_adaptatif.get("prochain_exercice_id")
         )
-    
-    # Bouton terminer/retour au dashboard
+
     bouton_terminer = url_for("dashboard_eleve", username=username, lang=lang)
 
-    # --------------------------------------------------
-    # 8️⃣ Préparer les réponses status pour la navigation
-    # --------------------------------------------------
-    reponses_status = []
-    for ex in exercices:
-        rep = StudentResponse.query.filter_by(
-            user_id=eleve.id,
-            exercice_id=ex.id
-        ).first()
-        if rep:
-            reponses_status.append('completed')
-        else:
-            reponses_status.append('not_started')
-    
-    print(f"📋 Status des réponses: {reponses_status}")
+    # ============================================================
+    # 7. INFORMATIONS BILINGUES
+    # ============================================================
 
-    # --------------------------------------------------
-    # 9️⃣ DEBUG CRITIQUE - VÉRIFICATION DES VARIABLES
-    # --------------------------------------------------
-    print("=" * 80)
-    print("🔍 DEBUG CRITIQUE - VARIABLES À PASSER AU TEMPLATE:")
-    print(f"  eleve: {'✅ DÉFINI' if eleve else '❌ NON DÉFINI'}")
-    print(f"     - username: {eleve.username if eleve else 'N/A'}")
-    print(f"     - nom_complet: {eleve.nom_complet if eleve else 'N/A'}")
-    print(f"  lecon: {'✅ DÉFINI' if lecon else '❌ NON DÉFINI'}")
-    print(f"     - id: {lecon.id if lecon else 'N/A'}")
-    print(f"     - titre: {lecon.titre_fr if lecon else 'N/A'}")
-    print(f"  exercice: {'✅ DÉFINI' if exercice_actuel else '❌ NON DÉFINI'}")
-    print(f"  total_exercices: {total_exercices}")
-    print(f"  total (alias): {total_exercices}")
-    print(f"  reponse: {'✅ DÉFINI' if reponse else '❌ NON DÉFINI'}")
-    print(f"  reponses_status: {len(reponses_status)} éléments")
-    print(f"  lang: {lang}")
-    print("=" * 80)
+    question = (
+        exercice_actuel.question_en
+        if lang == "en" and exercice_actuel.question_en
+        else exercice_actuel.question_fr
+    )
 
-    # --------------------------------------------------
-    # 🔟 Affichage du template - TOUTES LES VARIABLES
-    # --------------------------------------------------
-    print(f"=== ✅ PRÊT POUR AFFICHAGE ===")
-    print(f"Exercice {index+1}/{total_exercices}, Progression: {progression_pourcentage}%")
-    print(f"Envoi du template exercice_sequentiel_progressif.html...")
-    
-    try:
-        result = render_template(
-            "exercice_sequentiel_progressif.html",
-            # VARIABLES ESSENTIELLES POUR LE TEMPLATE :
-            eleve=eleve,                    # ✅ L'objet User complet
-            username=username,              # ✅ Le username aussi
-            lecon=lecon,                    # ✅ L'objet Lecon complet
-            exercice=exercice_actuel,       # ✅ L'exercice actuel
-            index=index,                    # ✅ Index courant
-            total=total_exercices,          # ✅ Pour range(total) dans le template
-            total_exercices=total_exercices, # ✅ Pour compatibilité
-            progression_pourcentage=progression_pourcentage,
-            exercices_completes=exercices_completes,
-            reponse_existante=reponse_existante,
-            reponse=reponse,                # ✅ L'objet StudentResponse complet (peut être None)
-            reponses_status=reponses_status, # ✅ Liste des status pour navigation rapide
-            corrige_disponible=corrige_disponible,
-            feedback=feedback_a_afficher,
-            show_feedback=show_feedback,
-            lang=lang,
-            bouton_precedent=bouton_precedent,
-            bouton_suivant=bouton_suivant,
-            bouton_terminer=bouton_terminer
+    corrige_disponible = bool(
+        exercice_actuel.reponse_en
+        if lang == "en" and exercice_actuel.reponse_en
+        else exercice_actuel.reponse_fr
+    )
+
+    titre_lecon = (
+        lecon.titre_en
+        if lang == "en" and lecon.titre_en
+        else lecon.titre_fr
+    )
+
+    nom_matiere = None
+
+    if lecon.unite and lecon.unite.matiere:
+        nom_matiere = (
+            lecon.unite.matiere.nom_en
+            if lang == "en" and lecon.unite.matiere.nom_en
+            else lecon.unite.matiere.nom
         )
-        print("✅ Template rendu avec succès!")
-        return result
-        
+
+    # ============================================================
+    # 8. LOGS
+    # ============================================================
+
+    print("========== EXERCICE SÉQUENTIEL ADAPTATIF ==========")
+    print(f"👤 Élève : {eleve.username} | ID : {eleve.id}")
+    print(f"📘 Leçon : {lecon.id} - {titre_lecon}")
+    print(f"📚 Matière : {nom_matiere}")
+    print(f"🧩 Exercice actuel : {exercice_actuel.id}")
+    print(f"📊 Position : {index + 1}/{total_exercices}")
+    print(f"✅ Complétés : {exercices_completes}/{total_exercices}")
+    print(f"🧠 Prochain adaptatif : {prochain_adaptatif}")
+    print("===================================================")
+
+    # ============================================================
+    # 9. RENDU TEMPLATE
+    # ============================================================
+
+    return render_template(
+        "exercice_sequentiel_progressif.html",
+        eleve=eleve,
+        username=username,
+        lecon=lecon,
+        titre_lecon=titre_lecon,
+        nom_matiere=nom_matiere,
+        exercice=exercice_actuel,
+        question=question,
+        index=index,
+        total=total_exercices,
+        total_exercices=total_exercices,
+        progression_pourcentage=progression_pourcentage,
+        exercices_completes=exercices_completes,
+        reponse_existante=reponse_existante,
+        reponse=reponse,
+        reponses_status=reponses_status,
+        corrige_disponible=corrige_disponible,
+        feedback=feedback_a_afficher,
+        show_feedback=show_feedback,
+        lang=lang,
+        bouton_precedent=bouton_precedent,
+        bouton_suivant=bouton_suivant,
+        bouton_terminer=bouton_terminer,
+
+        # Nouveaux paramètres pour le template
+        mode_parcours="ia_guided",
+        navigation_libre=False,
+        libelle_mode=libelle_mode,
+        libelle_bouton_continuer=libelle_bouton_continuer
+    )
+
+@app.route("/exercices-papier-crayon")
+def exercices_papier_crayon():
+    from sqlalchemy import func
+    from sqlalchemy.orm import joinedload
+
+    username = request.args.get("username")
+    lecon_id = request.args.get("lecon_id")
+    lang = request.args.get("lang", "fr")
+    exercice_id_param = request.args.get("exercice_id")
+    index_param = request.args.get("index", "0")
+    show_corrige = request.args.get("show_corrige", "false").lower() == "true"
+
+    try:
+        index = int(index_param)
+    except (ValueError, TypeError):
+        index = 0
+
+    msg_param_manquant = (
+        "Missing parameters."
+        if lang == "en"
+        else "Paramètres manquants."
+    )
+
+    msg_eleve_introuvable = (
+        "Student not found."
+        if lang == "en"
+        else "Élève non trouvé."
+    )
+
+    msg_acces_refuse = (
+        "Access denied. Your subscription or trial may have expired."
+        if lang == "en"
+        else "Accès refusé. Votre abonnement ou essai a peut-être expiré."
+    )
+
+    msg_lecon_introuvable = (
+        "Lesson not found."
+        if lang == "en"
+        else "Leçon non trouvée."
+    )
+
+    msg_aucun_exercice = (
+        "No exercise is available for this lesson."
+        if lang == "en"
+        else "Aucun exercice disponible pour cette leçon."
+    )
+
+    if not username or not lecon_id:
+        flash(msg_param_manquant, "danger")
+        return redirect(url_for("index", lang=lang))
+
+    eleve = (
+        User.query
+        .options(joinedload(User.niveau))
+        .filter_by(username=username)
+        .first()
+    )
+
+    if not eleve:
+        flash(msg_eleve_introuvable, "danger")
+        return redirect(url_for("index", lang=lang))
+
+    if not eleve.a_acces_plateforme():
+        flash(msg_acces_refuse, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    try:
+        lecon_id_int = int(lecon_id)
+    except (ValueError, TypeError):
+        flash(msg_lecon_introuvable, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    lecon = (
+        Lecon.query
+        .options(joinedload(Lecon.unite).joinedload(Unite.matiere))
+        .filter(Lecon.id == lecon_id_int)
+        .first()
+    )
+
+    if not lecon:
+        flash(msg_lecon_introuvable, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    exercice_ids = [
+        row[0]
+        for row in (
+            db.session.query(Exercice.id)
+            .filter(Exercice.lecon_id == lecon.id)
+            .order_by(
+                func.coalesce(Exercice.ordre_progression, 999999).asc(),
+                Exercice.id.asc()
+            )
+            .all()
+        )
+    ]
+
+    total_exercices = len(exercice_ids)
+
+    if total_exercices == 0:
+        flash(msg_aucun_exercice, "info")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    exercice_actuel = None
+
+    if exercice_id_param:
+        try:
+            exercice_id_int = int(exercice_id_param)
+        except (ValueError, TypeError):
+            exercice_id_int = None
+
+        if exercice_id_int and exercice_id_int in exercice_ids:
+            exercice_actuel = (
+                Exercice.query
+                .filter(
+                    Exercice.id == exercice_id_int,
+                    Exercice.lecon_id == lecon.id
+                )
+                .first()
+            )
+            index = exercice_ids.index(exercice_id_int)
+
+    if not exercice_actuel:
+        if index < 0:
+            index = 0
+
+        if index >= total_exercices:
+            index = total_exercices - 1
+
+        exercice_actuel = db.session.get(Exercice, exercice_ids[index])
+
+    if not exercice_actuel:
+        flash(msg_aucun_exercice, "info")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    question = (
+        exercice_actuel.question_en
+        if lang == "en" and exercice_actuel.question_en
+        else exercice_actuel.question_fr
+    )
+
+    reponse_attendue = (
+        exercice_actuel.reponse_en
+        if lang == "en" and exercice_actuel.reponse_en
+        else exercice_actuel.reponse_fr
+    )
+
+    corrige = (
+        exercice_actuel.explication_en
+        if lang == "en" and exercice_actuel.explication_en
+        else exercice_actuel.explication_fr
+    )
+
+    corrige_disponible = bool(corrige)
+
+    bouton_precedent = None
+    bouton_suivant = None
+
+    if index > 0:
+        bouton_precedent = url_for(
+            "exercices_papier_crayon",
+            username=username,
+            lecon_id=lecon.id,
+            lang=lang,
+            index=index - 1
+        )
+
+    if index < total_exercices - 1:
+        bouton_suivant = url_for(
+            "exercices_papier_crayon",
+            username=username,
+            lecon_id=lecon.id,
+            lang=lang,
+            index=index + 1
+        )
+
+    bouton_terminer = url_for("dashboard_eleve", username=username, lang=lang)
+
+    titre_lecon = (
+        lecon.titre_en
+        if lang == "en" and lecon.titre_en
+        else lecon.titre_fr
+    )
+
+    nom_matiere = None
+
+    if lecon.unite and lecon.unite.matiere:
+        nom_matiere = (
+            lecon.unite.matiere.nom_en
+            if lang == "en" and lecon.unite.matiere.nom_en
+            else lecon.unite.matiere.nom
+        )
+
+    print("========== MODE PAPIER-CRAYON ==========")
+    print(f"👤 Élève : {eleve.username} | ID : {eleve.id}")
+    print(f"📘 Leçon : {lecon.id} - {titre_lecon}")
+    print(f"🧩 Exercice actuel : {exercice_actuel.id}")
+    print(f"📊 Position : {index + 1}/{total_exercices}")
+    print(f"📝 Corrigé disponible : {corrige_disponible}")
+    print("========================================")
+
+    return render_template(
+        "exercices_papier_crayon.html",
+        eleve=eleve,
+        username=username,
+        lecon=lecon,
+        titre_lecon=titre_lecon,
+        nom_matiere=nom_matiere,
+        exercice=exercice_actuel,
+        question=question,
+        reponse_attendue=reponse_attendue,
+        corrige=corrige,
+        corrige_disponible=corrige_disponible,
+        show_corrige=show_corrige,
+        index=index,
+        total=total_exercices,
+        total_exercices=total_exercices,
+        exercice_ids=exercice_ids,
+        lang=lang,
+        bouton_precedent=bouton_precedent,
+        bouton_suivant=bouton_suivant,
+        bouton_terminer=bouton_terminer,
+        mode_parcours="papier_crayon",
+        navigation_libre=True
+    )
+
+
+@app.route("/generer-corrige-papier-crayon", methods=["POST"])
+def generer_corrige_papier_crayon():
+    username = request.form.get("username")
+    lecon_id = request.form.get("lecon_id")
+    exercice_id = request.form.get("exercice_id")
+    lang = request.form.get("lang", "fr")
+    index = request.form.get("index", "0")
+
+    msg_erreur = (
+        "Unable to generate the correction."
+        if lang == "en"
+        else "Impossible de générer le corrigé."
+    )
+
+    msg_succes = (
+        "Correction generated and saved."
+        if lang == "en"
+        else "Corrigé généré et enregistré."
+    )
+
+    eleve = User.query.filter_by(username=username).first()
+
+    if not eleve:
+        flash("Élève non trouvé." if lang == "fr" else "Student not found.", "danger")
+        return redirect(url_for("index", lang=lang))
+
+    if not eleve.a_acces_plateforme():
+        flash(
+            "Accès refusé." if lang == "fr" else "Access denied.",
+            "danger"
+        )
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    try:
+        lecon_id_int = int(lecon_id)
+        exercice_id_int = int(exercice_id)
+    except (ValueError, TypeError):
+        flash(msg_erreur, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    lecon = db.session.get(Lecon, lecon_id_int)
+    exercice = db.session.get(Exercice, exercice_id_int)
+
+    if not lecon or not exercice or exercice.lecon_id != lecon.id:
+        flash(msg_erreur, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    corrige_existant = (
+        exercice.explication_en
+        if lang == "en" and exercice.explication_en
+        else exercice.explication_fr
+    )
+
+    if corrige_existant:
+        return redirect(url_for(
+            "exercices_papier_crayon",
+            username=username,
+            lecon_id=lecon.id,
+            lang=lang,
+            exercice_id=exercice.id,
+            index=index,
+            show_corrige=True
+        ))
+
+    question = (
+        exercice.question_en
+        if lang == "en" and exercice.question_en
+        else exercice.question_fr
+    )
+
+    reponse_attendue = (
+        exercice.reponse_en
+        if lang == "en" and exercice.reponse_en
+        else exercice.reponse_fr
+    )
+
+    if lang == "en":
+        prompt = f"""
+You are a math teacher preparing a clear correction for a student who worked on paper.
+
+Exercise:
+{question}
+
+Expected answer, if available:
+{reponse_attendue or "Not provided"}
+
+Write a complete correction in English.
+
+Requirements:
+- Explain the method step by step.
+- Use simple language.
+- Show the final answer clearly.
+- If the exercise involves calculations, show the important calculations.
+- Do not mention that you are an AI.
+- Do not ask the student a question.
+""".strip()
+    else:
+        prompt = f"""
+Tu es un enseignant de mathématiques qui prépare un corrigé clair pour un élève qui a travaillé sur papier.
+
+Exercice :
+{question}
+
+Réponse attendue, si disponible :
+{reponse_attendue or "Non fournie"}
+
+Rédige un corrigé complet en français.
+
+Exigences :
+- Explique la méthode étape par étape.
+- Utilise un langage simple.
+- Donne clairement la réponse finale.
+- Si l’exercice contient des calculs, montre les calculs importants.
+- Ne dis pas que tu es une IA.
+- Ne pose pas de question à l’élève.
+""".strip()
+
+    try:
+        completion = client.chat.completions.create(
+            model=os.getenv("OPENAI_SIMPLE_MODEL", "gpt-4o-mini"),
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            max_tokens=1200
+        )
+
+        corrige_genere = completion.choices[0].message.content.strip()
+
+        if lang == "en":
+            exercice.explication_en = corrige_genere
+        else:
+            exercice.explication_fr = corrige_genere
+
+        db.session.commit()
+
+        flash(msg_succes, "success")
+
     except Exception as e:
-        print(f"🔥 ERREUR LORS DU RENDER TEMPLATE: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        
-        # Fallback: retourner une page d'erreur simple
-        return f"""
-        <html>
-        <head><title>Erreur Template</title></head>
-        <body style="padding: 20px; font-family: Arial;">
-            <h1>Erreur lors du chargement de l'exercice</h1>
-            <p>Erreur: {str(e)}</p>
-            <p>Variables disponibles:</p>
-            <ul>
-                <li>eleve: {eleve.username if eleve else 'Non défini'}</li>
-                <li>lecon: {lecon.titre_fr if lecon else 'Non défini'}</li>
-                <li>total_exercices: {total_exercices}</li>
-            </ul>
-            <p><a href="/dashboard-eleve?username={username}&lang={lang}">Retour au tableau de bord</a></p>
-        </body>
-        </html>
-        """
+        db.session.rollback()
+        print(f"❌ Erreur génération corrigé papier-crayon : {e}")
+        flash(msg_erreur, "danger")
+
+    return redirect(url_for(
+        "exercices_papier_crayon",
+        username=username,
+        lecon_id=lecon.id,
+        lang=lang,
+        exercice_id=exercice.id,
+        index=index,
+        show_corrige=True
+    ))
 
 
 @app.route("/retour-exercices")
@@ -13677,127 +14283,197 @@ def reset_contest(reponse_id):
 
 @app.route("/soumettre-sequentiel", methods=["POST"])
 def soumettre_sequentiel():
-    print("=== 📝 SOUMISSION SÉQUENTIELLE AVEC SYMPY ===")
-    print(f"🔍 DEBUG - Données du formulaire reçues: {dict(request.form)}")
+    import json
+    import re
+    from datetime import datetime, timezone
 
-    # --------------------------------------------------
-    # 1️⃣ Données du formulaire avec validation
-    # --------------------------------------------------
+    print("=== 📝 SOUMISSION SÉQUENTIELLE ADAPTATIVE ===")
+    print(f"🔍 Données formulaire: {dict(request.form)}")
+
     username = request.form.get("username")
     lang = request.form.get("lang", "fr")
     lecon_id = request.form.get("lecon_id")
     exercice_id = request.form.get("exercice_id")
     reponse_eleve = request.form.get("reponse_eleve", "").strip()
     index_str = request.form.get("index", "0")
-    
-    # Validation et conversion de l'index
+
     try:
         index = int(index_str)
     except (ValueError, TypeError):
-        print(f"⚠️ DEBUG - Index invalide '{index_str}', utilisation de 0")
         index = 0
-    
-    print(f"🔍 DEBUG - Paramètres extraits: username={username}, lang={lang}, lecon_id={lecon_id}, exercice_id={exercice_id}, index={index}")
-    print(f"🔍 DEBUG - Réponse élève (premiers 100 chars): {reponse_eleve[:100]}...")
 
-    # --------------------------------------------------
-    # 2️⃣ Sécurité & accès (VERSION CORRIGÉE SANS first_or_404)
-    # --------------------------------------------------
+    msg_user_not_found = (
+        "User not found."
+        if lang == "en"
+        else "Utilisateur non trouvé."
+    )
+
+    msg_access_denied = (
+        "Access denied. Your subscription or trial may have expired."
+        if lang == "en"
+        else "Accès refusé. Votre abonnement ou essai a peut-être expiré."
+    )
+
+    msg_missing = (
+        "Lesson or exercise not found."
+        if lang == "en"
+        else "Leçon ou exercice introuvable."
+    )
+
+    msg_empty_answer = (
+        "Please provide an answer."
+        if lang == "en"
+        else "Veuillez fournir une réponse."
+    )
+
+    msg_save_error = (
+        "An error occurred while saving your answer."
+        if lang == "en"
+        else "Erreur lors de la sauvegarde de votre réponse."
+    )
+
     eleve = User.query.filter_by(username=username).first()
+
     if not eleve:
-        print(f"❌ DEBUG - Utilisateur non trouvé: {username}")
-        flash("Utilisateur non trouvé.", "danger")
+        flash(msg_user_not_found, "danger")
         return redirect(url_for("index", lang=lang))
-    
-    print(f"✅ DEBUG - Élève trouvé: {eleve.nom_complet} (ID: {eleve.id})")
 
-    # Vérifier l'accès à la plateforme
     if not eleve.a_acces_plateforme():
-        print(f"⛔ DEBUG - Élève sans accès: {username}")
-        flash("Accès refusé (abonnement ou essai expiré).", "danger")
+        flash(msg_access_denied, "danger")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
 
-    # Récupérer leçon et exercice
-    lecon = db.session.get(Lecon, lecon_id)
-    exercice = db.session.get(Exercice, exercice_id)
-
-    if not lecon or not exercice:
-        print(f"❌ DEBUG - Leçon ou exercice introuvable: leçon_id={lecon_id}, exercice_id={exercice_id}")
-        flash("Leçon ou exercice introuvable.", "danger")
+    try:
+        lecon_id_int = int(lecon_id)
+        exercice_id_int = int(exercice_id)
+    except (ValueError, TypeError):
+        flash(msg_missing, "danger")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
-    
-    print(f"✅ DEBUG - Leçon trouvée: {lecon.titre_fr}")
-    print(f"✅ DEBUG - Exercice trouvé: {exercice.id}")
 
-    # Validation de la réponse
+    lecon = db.session.get(Lecon, lecon_id_int)
+    exercice = db.session.get(Exercice, exercice_id_int)
+
+    if not lecon or not exercice or exercice.lecon_id != lecon.id:
+        flash(msg_missing, "danger")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
     if not reponse_eleve:
-        print(f"⚠️ DEBUG - Réponse vide fournie")
-        flash("Veuillez fournir une réponse.", "warning")
+        flash(msg_empty_answer, "warning")
         return redirect(url_for(
             "exercice_sequentiel_progressif",
             username=username,
-            lecon_id=lecon_id,
+            lecon_id=lecon.id,
             lang=lang,
             index=index
         ))
 
-    # --------------------------------------------------
-    # 3️⃣ Récupération / création réponse
-    # --------------------------------------------------
-    reponse = StudentResponse.query.filter_by(
-        user_id=eleve.id,
-        exercice_id=exercice.id
-    ).first()
+    question = (
+        exercice.question_en
+        if lang == "en" and exercice.question_en
+        else exercice.question_fr
+    )
 
-    if reponse:
-        print(f"📝 DEBUG - Réponse existante trouvée, mise à jour")
-    else:
-        print(f"📝 DEBUG - Nouvelle réponse à créer")
+    reponse_attendue = (
+        exercice.reponse_en
+        if lang == "en" and exercice.reponse_en
+        else exercice.reponse_fr
+    )
 
-    question = exercice.question_en if lang == "en" else exercice.question_fr
-    reponse_attendue = exercice.reponse_en if lang == "en" else exercice.reponse_fr
-
-    # --------------------------------------------------
-    # 4️⃣ VÉRIFICATION SYMBOLIQUE AVEC SYMPY (NOUVEAU)
-    # --------------------------------------------------
+    # ============================================================
+    # 1. Vérification symbolique locale
+    # ============================================================
     symbolic_result = None
     symbolic_correct = None
     symbolic_feedback = ""
-    
+
     try:
-        # Importe le vérificateur
         from sympy_engine import math_verifier
-        
-        # Effectue la vérification
+
         symbolic_result = math_verifier.verify_answer(
             student_answer=reponse_eleve,
             expected_answer=reponse_attendue,
             question=question
         )
-        
-        symbolic_correct = symbolic_result.get('is_correct', None)
+
+        symbolic_correct = symbolic_result.get("is_correct", None)
         symbolic_feedback = math_verifier.get_symbolic_feedback(symbolic_result)
-        
+
         print(f"✅ Vérification SymPy : {symbolic_result}")
-        
+
     except Exception as e:
         print(f"⚠️ Erreur vérification SymPy : {e}")
-        symbolic_result = {'verified': False, 'error': str(e)}
-        symbolic_feedback = f"⚠️ Vérification SymPy non disponible : {str(e)[:100]}"
+        symbolic_result = {
+            "verified": False,
+            "error": str(e)
+        }
+        symbolic_feedback = (
+            f"Symbolic verification unavailable: {str(e)[:100]}"
+            if lang == "en"
+            else f"Vérification symbolique non disponible : {str(e)[:100]}"
+        )
 
-    # --------------------------------------------------
-    # 5️⃣ PROMPT GPT — avec information SymPy
-    # --------------------------------------------------
-    symbolic_info = ""
-    if symbolic_correct is not None:
-        symbolic_info = f"""
-🔬 **VÉRIFICATION MATHÉMATIQUE AUTOMATIQUE (SymPy) :** 
+    # ============================================================
+    # 2. Prompt de correction bilingue
+    # ============================================================
+    if lang == "en":
+        symbolic_info = ""
+
+        if symbolic_correct is not None:
+            symbolic_info = f"""
+🔬 AUTOMATIC MATHEMATICAL VERIFICATION:
 {symbolic_feedback}
 
 ---
 """
-    
-    prompt = f"""
+
+        prompt = f"""
+Correct a student's answer to a school exercise.
+
+📘 Exercise:
+{question}
+
+📜 Student answer:
+{reponse_eleve}
+
+{symbolic_info}
+
+⭐ SMART 5-POINT SCALE:
+5: Mathematically correct answer and excellent reasoning
+4: Correct answer with almost perfect reasoning
+3: Correct answer but incomplete reasoning
+2: Incorrect answer but some steps are correct
+1: Attempt made but incorrect answer
+0: Off-topic or empty
+
+IMPORTANT RULES:
+1. Use the automatic mathematical verification above when available.
+2. If the answer is mathematically correct, the score must not be below 3/5.
+3. If the answer is mathematically incorrect, do not give more than 2/5.
+4. Explain the error clearly and give the correct method.
+
+RESPONSE FORMAT:
+Analysis:
+[Detailed analysis]
+
+Score: X/5
+
+Correction:
+- Complete solution: [Step-by-step method]
+- Improvement points: [Specific advice]
+- Final answer: [Exact answer]
+""".strip()
+
+    else:
+        symbolic_info = ""
+
+        if symbolic_correct is not None:
+            symbolic_info = f"""
+🔬 VÉRIFICATION MATHÉMATIQUE AUTOMATIQUE :
+{symbolic_feedback}
+
+---
+"""
+
+        prompt = f"""
 Corrige la réponse d'un élève à un exercice scolaire.
 
 📘 Énoncé :
@@ -13808,206 +14484,368 @@ Corrige la réponse d'un élève à un exercice scolaire.
 
 {symbolic_info}
 
-⭐ BARÈME SUR 5 (INTELLIGENT) :
+⭐ BARÈME INTELLIGENT SUR 5 :
 5 : Réponse mathématiquement correcte ET raisonnement excellent
 4 : Réponse correcte avec raisonnement presque parfait
 3 : Réponse correcte mais raisonnement incomplet
 2 : Réponse incorrecte mais certaines étapes sont justes
 1 : Tentative mais réponse incorrecte
-0 : Hors sujet / vide
+0 : Hors sujet ou vide
 
-🎯 CONSIGNES IMPORTANTES :
-1. La vérification mathématique (SymPy) ci-dessus vous indique si la réponse est correcte
-2. Même si la réponse est mathématiquement fausse, récompensez les bonnes étapes
-3. Si la réponse est mathématiquement correcte, la note ne doit pas être inférieure à 3/5
-4. Expliquez clairement les erreurs et donnez la méthode correcte
+CONSIGNES IMPORTANTES :
+1. Utilise la vérification mathématique automatique ci-dessus lorsqu'elle est disponible.
+2. Si la réponse est mathématiquement correcte, la note ne doit pas être inférieure à 3/5.
+3. Si la réponse est mathématiquement incorrecte, ne donne pas plus de 2/5.
+4. Explique clairement l'erreur et donne la méthode correcte.
 
-📤 Format de réponse :
+FORMAT DE RÉPONSE :
 Analyse :
-[Analyse détaillée du raisonnement]
+[Analyse détaillée]
+
 Note : X/5
+
 Correction :
 - Résolution complète : [Méthode pas à pas]
 - Points d'amélioration : [Conseils spécifiques]
 - Résultat final : [Réponse exacte]
 """.strip()
 
-    print(f"🤖 DEBUG - Envoi du prompt à GPT-4...")
     try:
         completion = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
-        analyse_ia = completion.choices[0].message.content.strip()
-        print(f"✅ DEBUG - Réponse GPT-4 reçue ({len(analyse_ia)} caractères)")
-    except Exception as e:
-        analyse_ia = f"Erreur IA : {str(e)[:200]}"
-        print(f"❌ DEBUG - Erreur GPT-4: {e}")
 
-    # --------------------------------------------------
-    # 6️⃣ Extraction de la note + ajustement intelligent
-    # --------------------------------------------------
+        analyse_ia = completion.choices[0].message.content.strip()
+
+    except Exception as e:
+        print(f"❌ Erreur IA correction: {e}")
+        analyse_ia = (
+            f"AI correction error: {str(e)[:200]}"
+            if lang == "en"
+            else f"Erreur IA : {str(e)[:200]}"
+        )
+
+    # ============================================================
+    # 3. Extraction de la note
+    # ============================================================
     etoiles_gpt = 0
+
     match = re.search(r"(Note|Score)\s*:\s*(\d)", analyse_ia, re.IGNORECASE)
+
     if match:
         etoiles_gpt = min(int(match.group(2)), 5)
 
-    # 🎯 LOGIQUE D'AJUSTEMENT INTELLIGENT
     if symbolic_correct is not None:
-        if symbolic_correct:  # Mathématiquement correct
-            # Garantir un minimum de 3/5 pour une réponse correcte
+        if symbolic_correct:
             etoiles_finales = max(etoiles_gpt, 3)
-            print(f"✅ Ajustement : {etoiles_gpt} → {etoiles_finales} (réponse correcte)")
-        else:  # Mathématiquement incorrect
-            # Limiter à maximum 2/5 si réponse incorrecte
+        else:
             etoiles_finales = min(etoiles_gpt, 2)
-            print(f"⚠️ Ajustement : {etoiles_gpt} → {etoiles_finales} (réponse incorrecte)")
     else:
-        etoiles_finales = etoiles_gpt  # Garder la note GPT
-    
-    print(f"⭐ DEBUG - Note finale: {etoiles_finales}/5")
+        etoiles_finales = etoiles_gpt
 
-    # --------------------------------------------------
-    # 7️⃣ Structuration JSON COMPLÈTE
-    # --------------------------------------------------
+    score_final = etoiles_finales * 20
+
+    print(f"⭐ Note finale : {etoiles_finales}/5")
+    print(f"📊 Score final : {score_final}/100")
+
+    # ============================================================
+    # 4. Diagnostic bayésien simple lié à l'exercice
+    # ============================================================
+    if symbolic_correct is False or etoiles_finales <= 1:
+        niveau_risque = "élevé"
+        probabilite_difficulte = 0.85
+    elif etoiles_finales <= 3:
+        niveau_risque = "moyen"
+        probabilite_difficulte = 0.55
+    else:
+        niveau_risque = "faible"
+        probabilite_difficulte = 0.20
+
+    diagnostic_bayesien = {
+        "niveau_risque": niveau_risque,
+        "probabilite_difficulte": probabilite_difficulte,
+        "pourcentage_difficulte": round(probabilite_difficulte * 100, 1),
+        "notion_cible": exercice.notion_cible,
+        "competence_cible": exercice.competence_cible,
+        "niveau_difficulte": exercice.niveau_difficulte,
+        "type_exercice": exercice.type_exercice,
+        "source": "exercice"
+    }
+
+    # ============================================================
+    # 5. Sauvegarde réponse élève
+    # ============================================================
+    reponse = StudentResponse.query.filter_by(
+        user_id=eleve.id,
+        exercice_id=exercice.id
+    ).first()
+
     now = datetime.now(timezone.utc).isoformat()
 
     feedback_json = {
         "current_feedback": analyse_ia,
         "current_stars": etoiles_finales,
         "symbolic_verification": {
-            "was_verified": symbolic_result.get('verified', False) if symbolic_result else False,
+            "was_verified": symbolic_result.get("verified", False) if symbolic_result else False,
             "is_correct": symbolic_correct,
             "result": symbolic_result,
             "feedback": symbolic_feedback
         },
+        "bayesian_diagnostic": diagnostic_bayesien,
         "metadata": {
             "exercise_id": exercice.id,
             "student_id": eleve.id,
+            "lesson_id": lecon.id,
             "language": lang,
             "gpt_score": etoiles_gpt,
             "final_score": etoiles_finales,
+            "score_100": score_final,
             "updated_at": now,
-            "correction_method": "hybrid_gpt_sympy",
-            "exercise_type": symbolic_result.get('type', 'unknown') if symbolic_result else 'unknown'
+            "correction_method": "hybrid_gpt_sympy_adaptive",
+            "notion_cible": exercice.notion_cible,
+            "competence_cible": exercice.competence_cible,
+            "niveau_difficulte": exercice.niveau_difficulte,
+            "type_exercice": exercice.type_exercice
         },
+        "adaptive_next": {},
         "history": []
     }
 
-    # Historique des contestations
-    if reponse and reponse.analyse_ia and reponse.analyse_ia.startswith("{"):
-        ancien = json.loads(reponse.analyse_ia)
-        feedback_json["history"] = ancien.get("history", [])
-        feedback_json["history"].append({
-            "feedback": ancien.get("current_feedback", ""),
-            "stars": ancien.get("current_stars", 0),
-            "date": ancien.get("metadata", {}).get("updated_at", now)
-        })
-        print(f"📜 DEBUG - Historique des contestations ajouté")
-
-    # --------------------------------------------------
-    # 8️⃣ Sauvegarde DB
-    # --------------------------------------------------
-    feedback_str = json.dumps(feedback_json, ensure_ascii=False, indent=2)
+    if reponse and reponse.analyse_ia and reponse.analyse_ia.strip().startswith("{"):
+        try:
+            ancien = json.loads(reponse.analyse_ia)
+            feedback_json["history"] = ancien.get("history", [])
+            feedback_json["history"].append({
+                "feedback": ancien.get("current_feedback", ""),
+                "stars": ancien.get("current_stars", 0),
+                "date": ancien.get("metadata", {}).get("updated_at", now)
+            })
+        except Exception:
+            pass
 
     if reponse:
         reponse.reponse_eleve = reponse_eleve
-        reponse.analyse_ia = feedback_str
+        reponse.analyse_ia = json.dumps(feedback_json, ensure_ascii=False, indent=2)
         reponse.etoiles = etoiles_finales
+        reponse.score = score_final
+        reponse.niveau_difficulte = exercice.niveau_difficulte
+        reponse.feedback_ia_structure = feedback_json
         reponse.timestamp = datetime.now(timezone.utc)
-        print(f"💾 DEBUG - Mise à jour de la réponse existante")
+
     else:
         reponse = StudentResponse(
             user_id=eleve.id,
             exercice_id=exercice.id,
             reponse_eleve=reponse_eleve,
-            analyse_ia=feedback_str,
+            analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),
             etoiles=etoiles_finales,
+            score=score_final,
+            niveau_difficulte=exercice.niveau_difficulte,
+            feedback_ia_structure=feedback_json,
             timestamp=datetime.now(timezone.utc)
         )
+
         db.session.add(reponse)
-        print(f"💾 DEBUG - Création d'une nouvelle réponse")
 
     try:
         db.session.commit()
-        print(f"✅ DEBUG - Base de données sauvegardée avec succès")
+        print("✅ Réponse sauvegardée.")
+
     except Exception as e:
         db.session.rollback()
-        print(f"❌ DEBUG - Erreur base de données: {e}")
-        flash("Erreur lors de la sauvegarde de votre réponse.", "danger")
+        print(f"❌ Erreur sauvegarde réponse: {e}")
+        flash(msg_save_error, "danger")
         return redirect(url_for(
             "exercice_sequentiel_progressif",
             username=username,
-            lecon_id=lecon_id,
+            lecon_id=lecon.id,
             lang=lang,
-            index=index
+            exercice_id=exercice.id
         ))
 
-    # --------------------------------------------------
-    # 9️⃣ Remédiation automatique intelligente
-    # --------------------------------------------------
-    if etoiles_finales < 3:
-        # Message contextuel selon le type d'erreur
-        if symbolic_correct is False:
-            message = f"Erreur mathématique détectée ({etoiles_finales}/5). Réponse incorrecte."
-        elif symbolic_correct is True and etoiles_finales < 3:
-            message = f"Réponse correcte mais raisonnement incomplet ({etoiles_finales}/5)."
-        elif etoiles_finales == 0:
-            message = f"Réponse hors sujet ou vide ({etoiles_finales}/5)."
-        else:
-            message = f"Difficulté détectée ({etoiles_finales}/5)."
-        
-        suggestion = RemediationSuggestion(
-            user_id=eleve.id,
-            theme=exercice.theme,
-            lecon=lecon.titre_fr,
-            message=message,
-            exercice_suggere=None,
-            statut="en_attente",
-            timestamp=datetime.now(timezone.utc)
-        )
-        db.session.add(suggestion)
-        db.session.commit()
-        print(f"📚 Remédiation proposée (note: {etoiles_finales}/5)")
-
-    # --------------------------------------------------
-    # 🔟 DEBUG ET REDIRECTION
-    # --------------------------------------------------
-    print(f"=== 🐛 DEBUG AVANT REDIRECTION ===")
-    print(f"📌 Paramètres pour la redirection:")
-    print(f"  - username: {username}")
-    print(f"  - lecon_id: {lecon_id}")
-    print(f"  - lang: {lang}")
-    print(f"  - index: {index}")
-    print(f"  - show_feedback: True")
-    
-    # Générer l'URL manuellement pour vérifier
+    # ============================================================
+    # 6. Enregistrement diagnostic bayésien
+    # ============================================================
     try:
-        redirect_url = url_for(
-            "exercice_sequentiel_progressif",
-            username=username,
-            lecon_id=lecon_id,
-            lang=lang,
-            index=index,
-            show_feedback=True
+        matiere_nom = None
+
+        if lecon.unite and lecon.unite.matiere:
+            matiere_nom = (
+                lecon.unite.matiere.nom_en
+                if lang == "en" and lecon.unite.matiere.nom_en
+                else lecon.unite.matiere.nom
+            )
+
+        diagnostic_record = DiagnosticBayesien(
+            user_id=eleve.id,
+            exercice_id=exercice.id,
+            lecon_id=lecon.id,
+            matiere=matiere_nom,
+            probabilite_difficulte=probabilite_difficulte,
+            pourcentage_difficulte=round(probabilite_difficulte * 100, 1),
+            niveau_risque=niveau_risque,
+            maitrise_cours=(
+                "faible" if niveau_risque == "élevé"
+                else "moyenne" if niveau_risque == "moyen"
+                else "bonne"
+            ),
+            erreurs=(
+                "oui" if symbolic_correct is False or etoiles_finales < 3
+                else "non"
+            ),
+            temps_reponse="normal",
+            verification_calcul=symbolic_result,
+            recommandation=(
+                "Remediation recommended."
+                if lang == "en" and niveau_risque == "élevé"
+                else "Consolidation recommended."
+                if lang == "en" and niveau_risque == "moyen"
+                else "Progression recommended."
+                if lang == "en"
+                else "Remédiation recommandée."
+                if niveau_risque == "élevé"
+                else "Consolidation recommandée."
+                if niveau_risque == "moyen"
+                else "Progression recommandée."
+            ),
+            notion_cible=exercice.notion_cible,
+            notions_non_maitrisees=[exercice.notion_cible] if niveau_risque in ["élevé", "moyen"] and exercice.notion_cible else [],
+            notions_maitrisees=[exercice.notion_cible] if niveau_risque == "faible" and exercice.notion_cible else [],
+            erreurs_probables=[exercice.competence_cible] if niveau_risque in ["élevé", "moyen"] and exercice.competence_cible else [],
+            niveau_intervention=(
+                "remediation" if niveau_risque == "élevé"
+                else "consolidation" if niveau_risque == "moyen"
+                else "progression"
+            ),
+            diagnostic_complet=diagnostic_bayesien,
+            source="exercice",
+            created_at=datetime.utcnow()
         )
-        print(f"🔗 URL générée: {redirect_url}")
+
+        db.session.add(diagnostic_record)
+        db.session.commit()
+
+        print("✅ Diagnostic bayésien enregistré.")
+
     except Exception as e:
-        print(f"❌ ERREUR lors de la génération de l'URL: {e}")
-        # URL de secours
-        redirect_url = f"/exercice-sequentiel-progressif?username={username}&lecon_id={lecon_id}&lang={lang}&index={index}&show_feedback=true"
-        print(f"🔗 URL de secours: {redirect_url}")
-    
-    print(f"=== ✅ RÉPONSE SAUVEGARDÉE : {etoiles_finales}/5 ===")
-    print(f"=== 📊 VÉRIFICATION SYMPY : {symbolic_correct} ===")
-    
-    # Vérifier que l'URL est valide
-    if not redirect_url or 'error' in redirect_url.lower():
-        print(f"⚠️ URL invalide détectée, redirection vers le dashboard")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
-    
-    return redirect(redirect_url)
+        db.session.rollback()
+        print(f"⚠️ Diagnostic bayésien non enregistré: {e}")
+
+    # ============================================================
+    # 7. Choix du prochain exercice adaptatif
+    # ============================================================
+    prochain_exercice = None
+    resultat_adaptatif = None
+
+    try:
+        from services.adaptive_exercise_service import choisir_prochain_exercice_adaptatif
+
+        verification_calcul_adaptative = {
+            "is_correct": symbolic_correct,
+            "verified": symbolic_result.get("verified", False) if symbolic_result else False
+        }
+
+        resultat_adaptatif = choisir_prochain_exercice_adaptatif(
+            db=db,
+            Exercice=Exercice,
+            StudentResponse=StudentResponse,
+            eleve_id=eleve.id,
+            lecon_id=lecon.id,
+            exercice_actuel=exercice,
+            etoiles=etoiles_finales,
+            score=score_final,
+            diagnostic_bayesien=diagnostic_bayesien,
+            verification_calcul=verification_calcul_adaptative
+        )
+
+        prochain_exercice = resultat_adaptatif.get("exercice")
+
+        if prochain_exercice:
+            session["prochain_exercice_adaptatif"] = {
+                "lecon_id": lecon.id,
+                "exercice_source_id": exercice.id,
+                "prochain_exercice_id": prochain_exercice.id,
+                "strategie": resultat_adaptatif.get("strategie"),
+                "raison": resultat_adaptatif.get("raison"),
+                "niveau_cible": resultat_adaptatif.get("niveau_cible"),
+                "notion_cible": resultat_adaptatif.get("notion_cible")
+            }
+
+            feedback_json["adaptive_next"] = session["prochain_exercice_adaptatif"]
+
+            reponse.analyse_ia = json.dumps(feedback_json, ensure_ascii=False, indent=2)
+            reponse.feedback_ia_structure = feedback_json
+            db.session.commit()
+
+            print(f"🧠 Prochain exercice adaptatif : {prochain_exercice.id}")
+            print(f"🧭 Stratégie : {resultat_adaptatif.get('strategie')}")
+
+        else:
+            session["prochain_exercice_adaptatif"] = {
+                "lecon_id": lecon.id,
+                "exercice_source_id": exercice.id,
+                "prochain_exercice_id": None,
+                "strategie": resultat_adaptatif.get("strategie") if resultat_adaptatif else "fin_sequence",
+                "raison": resultat_adaptatif.get("raison") if resultat_adaptatif else "Aucun exercice disponible.",
+                "niveau_cible": None,
+                "notion_cible": exercice.notion_cible
+            }
+
+        session.modified = True
+
+    except Exception as e:
+        print(f"⚠️ Sélection adaptative non disponible: {e}")
+        session.pop("prochain_exercice_adaptatif", None)
+        session.modified = True
+
+    # ============================================================
+    # 8. Remédiation si difficulté
+    # ============================================================
+    if etoiles_finales < 3:
+        try:
+            if lang == "en":
+                if symbolic_correct is False:
+                    message = f"Mathematical error detected ({etoiles_finales}/5)."
+                else:
+                    message = f"Difficulty detected ({etoiles_finales}/5)."
+            else:
+                if symbolic_correct is False:
+                    message = f"Erreur mathématique détectée ({etoiles_finales}/5)."
+                else:
+                    message = f"Difficulté détectée ({etoiles_finales}/5)."
+
+            suggestion = RemediationSuggestion(
+                user_id=eleve.id,
+                theme=exercice.theme,
+                lecon=lecon.titre_fr,
+                message=message,
+                exercice_suggere=None,
+                statut="en_attente",
+                timestamp=datetime.now(timezone.utc)
+            )
+
+            db.session.add(suggestion)
+            db.session.commit()
+
+            print("📚 Remédiation proposée.")
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"⚠️ Remédiation non enregistrée: {e}")
+
+    # ============================================================
+    # 9. Retour sur le même exercice avec feedback
+    # ============================================================
+    return redirect(url_for(
+        "exercice_sequentiel_progressif",
+        username=username,
+        lecon_id=lecon.id,
+        lang=lang,
+        exercice_id=exercice.id,
+        show_feedback=True
+    ))
 
 from datetime import datetime, timezone
 

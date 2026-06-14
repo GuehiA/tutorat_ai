@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>
+    {% if lang == "en" %}
+      Paper-and-pencil exercise {{ index + 1 }} of {{ total_exercices }}
+    {% else %}
+      Exercice papier-crayon {{ index + 1 }} sur {{ total_exercices }}
+    {% endif %}
+  </title>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
+
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3346c8;
+      --secondary: #2ecc71;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --dark: #2c3e50;
+      --muted: #7f8c8d;
+      --light: #f4f6fb;
+      --white: #ffffff;
+      --border: #e5e7eb;
+      --shadow: 0 10px 30px rgba(0,0,0,0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
+      color: var(--dark);
+      padding: 20px;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .topbar {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      color: var(--primary);
+      font-size: 1.25rem;
+    }
+
+    .brand i {
+      font-size: 1.7rem;
+    }
+
+    .student {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #7209b7);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    .mode-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+    }
+
+    .exercise-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 18px;
+      margin-bottom: 24px;
+    }
+
+    .exercise-title {
+      font-size: 1.8rem;
+      margin: 0 0 12px 0;
+      color: var(--dark);
+    }
+
+    .meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .question-label,
+    .corrige-label {
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .question-box {
+      background: var(--light);
+      border-left: 5px solid var(--primary);
+      border-radius: 14px;
+      padding: 24px;
+      line-height: 1.7;
+      font-size: 1.08rem;
+      margin-bottom: 24px;
+    }
+
+    .image-box {
+      text-align: center;
+      margin: 22px 0;
+    }
+
+    .image-box img {
+      max-width: 100%;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    }
+
+    .instruction-box {
+      background: #ecfdf5;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 12px 18px;
+      border-radius: 10px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 0.95rem;
+      transition: 0.25s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: var(--secondary);
+      color: white;
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-outline {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+
+    .btn-muted {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .corrige-box {
+      margin-top: 28px;
+      background: #f8fafc;
+      border-left: 5px solid var(--secondary);
+      border-radius: 14px;
+      padding: 24px;
+      line-height: 1.7;
+      font-size: 1.02rem;
+    }
+
+    .corrige-empty {
+      margin-top: 28px;
+      background: #fff7ed;
+      border-left: 5px solid var(--warning);
+      border-radius: 14px;
+      padding: 22px;
+      color: #9a3412;
+      line-height: 1.6;
+    }
+
+    .side-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+    }
+
+    .side-title {
+      font-weight: 900;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-text {
+      color: var(--muted);
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+    }
+
+    .progress-bar {
+      height: 9px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: 999px;
+      width: {{ ((index + 1) / total_exercices * 100) | round | int }}%;
+    }
+
+    .exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+      gap: 8px;
+    }
+
+    .exercise-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      background: var(--light);
+      color: var(--dark);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      transition: 0.2s ease;
+      border: 1px solid var(--border);
+    }
+
+    .exercise-dot:hover {
+      background: #dbeafe;
+      color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .exercise-dot.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67,97,238,0.18);
+    }
+
+    .bottom-nav {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .generating-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+
+    .generating-overlay.active {
+      display: flex;
+    }
+
+    .generating-card {
+      background: white;
+      border-radius: 22px;
+      padding: 35px;
+      max-width: 480px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    }
+
+    .spinner {
+      font-size: 3rem;
+      color: var(--primary);
+      margin-bottom: 18px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .side-card {
+        position: static;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .exercise-title {
+        font-size: 1.45rem;
+      }
+
+      .actions,
+      .bottom-nav {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="generating-overlay" id="generatingOverlay">
+  <div class="generating-card">
+    <div class="spinner">
+      <i class="fas fa-circle-notch"></i>
+    </div>
+    <h2>
+      {% if lang == "en" %}
+        Preparing the correction...
+      {% else %}
+        Préparation du corrigé...
+      {% endif %}
+    </h2>
+    <p>
+      {% if lang == "en" %}
+        Naima is generating a clear correction. This correction will be saved for future use.
+      {% else %}
+        Naima génère un corrigé clair. Ce corrigé sera enregistré pour les prochaines consultations.
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="page">
+
+  <div class="topbar">
+    <div class="brand">
+      <i class="fas fa-pencil-ruler"></i>
+      <span>
+        {% if lang == "en" %}
+          Paper-and-pencil practice
+        {% else %}
+          Entraînement papier-crayon
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="mode-badge">
+      <i class="fas fa-book-open"></i>
+      {% if lang == "en" %}
+        Free exercise navigation
+      {% else %}
+        Navigation libre des exercices
+      {% endif %}
+    </div>
+
+    <div class="student">
+      <div class="avatar">
+        {{ eleve.nom_complet.split(' ')[0][0] }}{{ eleve.nom_complet.split(' ')[1][0] if eleve.nom_complet.split(' ')|length > 1 else '' }}
+      </div>
+      <div>
+        <strong>{{ eleve.nom_complet }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <main class="card">
+      <div class="exercise-header">
+        <h1 class="exercise-title">
+          {% if lang == "en" %}
+            Exercise {{ index + 1 }} of {{ total_exercices }}
+          {% else %}
+            Exercice {{ index + 1 }} sur {{ total_exercices }}
+          {% endif %}
+        </h1>
+
+        <div class="meta">
+          {% if nom_matiere %}
+          <span>
+            <i class="fas fa-layer-group"></i>
+            {{ nom_matiere }}
+          </span>
+          {% endif %}
+
+          {% if lecon.unite %}
+          <span>
+            <i class="fas fa-cube"></i>
+            {% if lang == "en" and lecon.unite.nom_en %}
+              {{ lecon.unite.nom_en }}
+            {% else %}
+              {{ lecon.unite.nom }}
+            {% endif %}
+          </span>
+          {% endif %}
+
+          <span>
+            <i class="fas fa-file-alt"></i>
+            {{ titre_lecon }}
+          </span>
+        </div>
+      </div>
+
+      <div class="instruction-box">
+        <strong>
+          <i class="fas fa-info-circle"></i>
+          {% if lang == "en" %}
+            How to use this mode:
+          {% else %}
+            Comment utiliser ce mode :
+          {% endif %}
+        </strong>
+        <br>
+        {% if lang == "en" %}
+          Read the exercise, work on paper, then view the correction when you are ready. You may choose any exercise freely.
+        {% else %}
+          Lis l’exercice, travaille sur ta copie, puis consulte le corrigé quand tu es prêt. Tu peux choisir librement les exercices.
+        {% endif %}
+      </div>
+
+      <section>
+        <div class="question-label">
+          <i class="fas fa-question-circle"></i>
+          {% if lang == "en" %}Prompt{% else %}Énoncé{% endif %}
+        </div>
+
+        <div class="question-box math-content">
+          {{ question|safe }}
+        </div>
+
+        {% if exercice.chemin_image %}
+        <div class="image-box">
+          <img src="{{ url_for('static', filename=exercice.chemin_image) }}" alt="Illustration">
+        </div>
+        {% endif %}
+      </section>
+
+      <div class="actions">
+        {% if corrige_disponible %}
+          {% if show_corrige %}
+            <a class="btn btn-outline" href="{{ url_for('exercices_papier_crayon', username=eleve.username, lecon_id=lecon.id, lang=lang, exercice_id=exercice.id, index=index) }}">
+              <i class="fas fa-eye-slash"></i>
+              {% if lang == "en" %}Hide correction{% else %}Masquer le corrigé{% endif %}
+            </a>
+          {% else %}
+            <a class="btn btn-secondary" href="{{ url_for('exercices_papier_crayon', username=eleve.username, lecon_id=lecon.id, lang=lang, exercice_id=exercice.id, index=index, show_corrige='true') }}">
+              <i class="fas fa-eye"></i>
+              {% if lang == "en" %}View correction{% else %}Voir le corrigé{% endif %}
+            </a>
+          {% endif %}
+        {% else %}
+          <form method="POST" action="{{ url_for('generer_corrige_papier_crayon') }}" onsubmit="showGeneratingOverlay()">
+            <input type="hidden" name="username" value="{{ eleve.username }}">
+            <input type="hidden" name="lecon_id" value="{{ lecon.id }}">
+            <input type="hidden" name="exercice_id" value="{{ exercice.id }}">
+            <input type="hidden" name="lang" value="{{ lang }}">
+            <input type="hidden" name="index" value="{{ index }}">
+
+            <button type="submit" class="btn btn-warning">
+              <i class="fas fa-wand-magic-sparkles"></i>
+              {% if lang == "en" %}
+                Generate correction
+              {% else %}
+                Générer le corrigé
+              {% endif %}
+            </button>
+          </form>
+        {% endif %}
+
+        <a class="btn btn-outline" href="{{ url_for('exercice_sequentiel_progressif', username=eleve.username, lecon_id=lecon.id, lang=lang, exercice_id=exercice.id) }}">
+          <i class="fas fa-robot"></i>
+          {% if lang == "en" %}
+            Switch to AI-guided mode
+          {% else %}
+            Passer au mode accompagné par IA
+          {% endif %}
+        </a>
+      </div>
+
+      {% if show_corrige and corrige_disponible %}
+      <section class="corrige-box math-content">
+        <div class="corrige-label">
+          <i class="fas fa-check-circle"></i>
+          {% if lang == "en" %}Correction{% else %}Corrigé{% endif %}
+        </div>
+
+        {{ corrige
+          |replace('\n\n', '<br><br>')
+          |replace('\n', '<br>')
+          |safe
+        }}
+
+        {% if reponse_attendue %}
+        <hr style="margin: 22px 0; border: none; border-top: 1px solid #d1d5db;">
+        <strong>
+          {% if lang == "en" %}Expected answer:{% else %}Réponse attendue :{% endif %}
+        </strong>
+        <div style="margin-top: 8px;">
+          {{ reponse_attendue|safe }}
+        </div>
+        {% endif %}
+      </section>
+      {% elif show_corrige and not corrige_disponible %}
+      <div class="corrige-empty">
+        <i class="fas fa-info-circle"></i>
+        {% if lang == "en" %}
+          The correction is not available yet. Click “Generate correction” to create and save it.
+        {% else %}
+          Le corrigé n’est pas encore disponible. Clique sur “Générer le corrigé” pour le créer et l’enregistrer.
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="bottom-nav">
+        {% if bouton_precedent %}
+        <a class="btn btn-muted" href="{{ bouton_precedent }}">
+          <i class="fas fa-arrow-left"></i>
+          {% if lang == "en" %}Previous exercise{% else %}Exercice précédent{% endif %}
+        </a>
+        {% else %}
+        <span></span>
+        {% endif %}
+
+        {% if bouton_suivant %}
+        <a class="btn btn-primary" href="{{ bouton_suivant }}">
+          {% if lang == "en" %}Next exercise{% else %}Exercice suivant{% endif %}
+          <i class="fas fa-arrow-right"></i>
+        </a>
+        {% endif %}
+      </div>
+    </main>
+
+    <aside class="side-card">
+      <div class="side-title">
+        <i class="fas fa-list-ol"></i>
+        {% if lang == "en" %}Choose an exercise{% else %}Choisir un exercice{% endif %}
+      </div>
+
+      <div class="progress-text">
+        {% if lang == "en" %}
+          Exercise {{ index + 1 }} of {{ total_exercices }}
+        {% else %}
+          Exercice {{ index + 1 }} sur {{ total_exercices }}
+        {% endif %}
+      </div>
+
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+
+      <div class="exercise-grid">
+        {% for i in range(total_exercices) %}
+          <a class="exercise-dot {% if i == index %}active{% endif %}"
+             href="{{ url_for('exercices_papier_crayon', username=eleve.username, lecon_id=lecon.id, lang=lang, index=i) }}"
+             title="{{ 'Exercise' if lang == 'en' else 'Exercice' }} {{ i + 1 }}">
+            {{ i + 1 }}
+          </a>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top: 22px; display: grid; gap: 10px;">
+        <a class="btn btn-outline" href="{{ url_for('dashboard_eleve', username=eleve.username, lang=lang) }}">
+          <i class="fas fa-home"></i>
+          {% if lang == "en" %}Dashboard{% else %}Tableau de bord{% endif %}
+        </a>
+
+        <a class="btn btn-outline" href="{{ url_for('choisir_sequence', username=eleve.username, lang=lang) }}">
+          <i class="fas fa-road"></i>
+          {% if lang == "en" %}Learning sequences{% else %}Parcours d’apprentissage{% endif %}
+        </a>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<script>
+  function showGeneratingOverlay() {
+    const overlay = document.getElementById('generatingOverlay');
+    if (overlay) {
+      overlay.classList.add('active');
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.MathJax) {
+      setTimeout(function () {
+        MathJax.typesetPromise().catch(function (err) {
+          console.warn("MathJax warning:", err);
+        });
+      }, 500);
+    }
+  });
+</script>
+
+</body>
+</html>
