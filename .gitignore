@@ -26,3 +26,10 @@ MANIFEST
 "fix_dependencies.py" 
 "__pycache__/" 
 "*.pyc" 
+instance/*.db
+instance/*.db-journal
+test_*.py
+init_local_db.py
+seed_local_subjects.py
+create_subject_tables.py
+ajouter_table_profils_apprenants.py

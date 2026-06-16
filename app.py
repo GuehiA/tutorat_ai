@@ -16334,94 +16334,180 @@ def progression_eleve():
 
 @app.route("/historique")
 def historique_eleve():
-    from models import EleveMatiere, Matiere, Unite, Lecon, Exercice, StudentResponse
-    
+    """
+    Historique optimisé d'un élève.
+
+    Version rapide :
+    - charge l'élève une seule fois ;
+    - charge les réponses de l'élève une seule fois ;
+    - charge les exercices avec la structure Matière → Unité → Leçon en une requête ;
+    - évite les requêtes répétées dans les boucles.
+    """
+
+    from sqlalchemy.orm import joinedload
+    from models import (
+        db,
+        User,
+        Matiere,
+        Unite,
+        Lecon,
+        Exercice,
+        StudentResponse,
+        EleveMatiere
+    )
+
+    # ============================================================
+    # LANGUE
+    # ============================================================
+
+    lang = request.args.get("lang") or session.get("lang", "fr")
+
+    if lang not in ["fr", "en"]:
+        lang = "fr"
+
+    session["lang"] = lang
+    session.modified = True
+
+    # ============================================================
+    # UTILISATEUR CONNECTÉ
+    # ============================================================
+
+    current_user = None
+
+    if session.get("user_id"):
+        current_user = db.session.get(User, session["user_id"])
+
+    # ============================================================
+    # IDENTIFIER L'ÉLÈVE
+    # ============================================================
+
     username = request.args.get("username")
-    
-    # Si pas de username dans les paramètres, vérifier la session
-    if not username:
-        username = session.get("username")
-    
-    if not username:
-        if lang == "fr":
-            flash("Veuillez vous connecter pour accéder à l'historique", "warning")
-        else:
-            flash("Please log in to access history", "warning")
-        return redirect(url_for("connexion_eleve"))
-    
-    exercice_id = request.args.get("exercice_id")
-    lang = request.args.get("lang", "fr")
+    eleve_id_param = request.args.get("eleve_id", type=int)
 
-    eleve = User.query.filter_by(username=username).first()
-    if not eleve:
-        if lang == "fr":
-            flash(f"Élève {username} introuvable", "danger")
-        else:
-            flash(f"Student {username} not found", "danger")
-        return redirect(url_for("dashboard_parent" if session.get("parent_email") else "dashboard_eleve"))
+    eleve_query = User.query.options(joinedload(User.niveau)).filter(
+        User.role.in_(["eleve", "élève"])
+    )
 
-    # DÉTECTION DU CONTEXTE
-    user_id = session.get("user_id")
-    parent_email = session.get("parent_email")
-    enseignant_id = session.get("enseignant_id")
-    
-    print(f"SESSION - user_id: {user_id}")
-    print(f"SESSION - parent_email: {parent_email}")
-    print(f"SESSION - enseignant_id: {enseignant_id}")
-    print(f"ÉLÈVE TROUVÉ - {eleve.nom_complet} (username: {username})")
-    
-    # VÉRIFIER SI L'UTILISATEUR CONNECTÉ EST UN ENSEIGNANT
-    if user_id:
-        utilisateur = User.query.get(user_id)
-        if utilisateur and utilisateur.role == "enseignant":
-            is_enseignant_access = True
-            is_parent_access = False
-            is_eleve_direct_access = False
-            print(f"ACCÈS - ENSEIGNANT (ID: {user_id}, rôle: {utilisateur.role})")
-        elif parent_email:
-            is_parent_access = True
-            is_enseignant_access = False
-            is_eleve_direct_access = False
-            print(f"ACCÈS - PARENT (email: {parent_email})")
-        else:
-            eleve_session_username = session.get("username")
-            is_eleve_direct_access = eleve_session_username == username
-            is_parent_access = False
-            is_enseignant_access = False
-            print(f"ACCÈS - ÉLÈVE (session: {eleve_session_username}, requested: {username})")
+    if eleve_id_param:
+        eleve = eleve_query.filter(User.id == eleve_id_param).first()
+    elif username:
+        eleve = eleve_query.filter(User.username == username).first()
+    elif current_user and current_user.role in ["eleve", "élève"]:
+        eleve = eleve_query.filter(User.id == current_user.id).first()
+    elif session.get("eleve_id"):
+        eleve = eleve_query.filter(User.id == session.get("eleve_id")).first()
     else:
-        if parent_email:
-            is_parent_access = True
-            is_enseignant_access = False
-            is_eleve_direct_access = False
+        session_username = session.get("eleve_username") or session.get("username")
+        if session_username:
+            eleve = eleve_query.filter(User.username == session_username).first()
         else:
-            is_eleve_direct_access = False
-            is_parent_access = False
-            is_enseignant_access = False
+            eleve = None
 
-    # Récupérer l'ID de l'élève et son niveau
-    eleve_id = eleve.id
-    niveau_eleve = eleve.niveau
-    
-    if not niveau_eleve:
-        if lang == "fr":
-            flash("Niveau de l'élève non défini", "warning")
+    if not eleve:
+        flash(
+            "Élève introuvable." if lang == "fr" else "Student not found.",
+            "danger"
+        )
+
+        if current_user and current_user.role == "enseignant":
+            return redirect(url_for("dashboard_enseignant"))
+
+        return redirect(url_for("dashboard_eleve"))
+
+    # ============================================================
+    # CONTRÔLE D'ACCÈS
+    # ============================================================
+
+    is_parent_access = False
+    is_enseignant_access = False
+    is_eleve_direct_access = False
+
+    if session.get("parent_email"):
+        is_parent_access = True
+
+    if current_user and current_user.role in ["eleve", "élève"]:
+        if current_user.id == eleve.id:
+            is_eleve_direct_access = True
+
+    if session.get("eleve_id") == eleve.id:
+        is_eleve_direct_access = True
+
+    if session.get("username") == eleve.username:
+        is_eleve_direct_access = True
+
+    if session.get("eleve_username") == eleve.username:
+        is_eleve_direct_access = True
+
+    if current_user and current_user.role == "enseignant":
+        if getattr(eleve, "enseignant_referent_id", None) == current_user.id:
+            is_enseignant_access = True
         else:
-            flash("Student level not defined", "warning")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
-    
-    # ✅ CORRECTION : Récupérer UNIQUEMENT les matières sélectionnées par l'élève
-    matieres_eleve = db.session.query(Matiere).join(
-        EleveMatiere, EleveMatiere.matiere_id == Matiere.id
-    ).filter(
-        EleveMatiere.eleve_id == eleve_id
-    ).all()
-    
-    matiere_ids = [m.id for m in matieres_eleve]
-    
-    print(f"📚 Matières sélectionnées par l'élève: {[m.nom for m in matieres_eleve]}")
-    
-    # Si l'élève n'a pas de matières sélectionnées, afficher un message
+            flash(
+                "Vous n'avez pas accès à l'historique de cet élève."
+                if lang == "fr"
+                else "You do not have access to this student's history.",
+                "danger"
+            )
+            return redirect(url_for("dashboard_enseignant"))
+
+    if not is_eleve_direct_access and not is_enseignant_access and not is_parent_access:
+        flash(
+            "Accès non autorisé à cet historique."
+            if lang == "fr"
+            else "Unauthorized access to this history.",
+            "danger"
+        )
+
+        if current_user and current_user.role == "enseignant":
+            return redirect(url_for("dashboard_enseignant"))
+
+        return redirect(url_for("dashboard_eleve"))
+
+    # ============================================================
+    # NIVEAU
+    # ============================================================
+
+    niveau_eleve = eleve.niveau
+
+    if not niveau_eleve:
+        flash(
+            "Le niveau de l'élève n'est pas défini."
+            if lang == "fr"
+            else "The student's level is not defined.",
+            "warning"
+        )
+
+        if is_enseignant_access:
+            return redirect(url_for("dashboard_enseignant"))
+
+        return redirect(url_for("dashboard_eleve"))
+
+    # ============================================================
+    # MATIÈRES DE L'ÉLÈVE
+    # 1. Matières choisies par l'élève.
+    # 2. Sinon toutes les matières de son niveau.
+    # ============================================================
+
+    try:
+        matiere_ids_selectionnees = [
+            row[0]
+            for row in db.session.query(EleveMatiere.matiere_id)
+            .filter(EleveMatiere.eleve_id == eleve.id)
+            .all()
+        ]
+    except Exception:
+        matiere_ids_selectionnees = []
+
+    if matiere_ids_selectionnees:
+        matiere_ids = matiere_ids_selectionnees
+    else:
+        matiere_ids = [
+            row[0]
+            for row in db.session.query(Matiere.id)
+            .filter(Matiere.niveau_id == niveau_eleve.id)
+            .all()
+        ]
+
     if not matiere_ids:
         return render_template(
             "historique_eleve.html",
@@ -16431,438 +16517,206 @@ def historique_eleve():
             total_exercices=0,
             completed_exercices=0,
             pourcentage_global=0,
+            tests=[],
             is_parent_access=is_parent_access,
             is_enseignant_access=is_enseignant_access,
             is_eleve_direct_access=is_eleve_direct_access,
             lang=lang
         )
-    
-    # ✅ CORRECTION 2 : Récupérer TOUS les exercices pour l'élève
-    # Même ceux qu'il n'a pas encore complétés pour afficher les matières
-    
-    # D'abord, récupérer les exercices complétés
-    completed_exercises = StudentResponse.query.filter_by(user_id=eleve_id)\
-        .with_entities(StudentResponse.exercice_id).all()
-    completed_exercise_ids = {ex[0] for ex in completed_exercises if ex[0]}
-    
-    # Calculer les statistiques globales
-    total_exercices_eleve = 0
-    completed_exercices_eleve = len(completed_exercise_ids)
-    
-    # Préparer les données détaillées pour le template
-    matieres_stats = []
-    
-    for matiere in matieres_eleve:
-        # Récupérer toutes les unités de cette matière
-        unites = Unite.query.filter_by(matiere_id=matiere.id).all()
-        
-        total_matiere = 0
-        completed_matiere = 0
-        details_matiere = {}
-        
-        for unite in unites:
-            unite_nom = unite.nom_en if lang == 'en' and unite.nom_en else unite.nom
-            details_matiere[unite_nom] = {
-                'total': 0,
-                'completed': 0,
-                'lecons': {}
+
+    # ============================================================
+    # RÉPONSES DE L'ÉLÈVE
+    # Une seule requête.
+    # On garde la réponse la plus récente par exercice.
+    # ============================================================
+
+    reponses = (
+        StudentResponse.query
+        .filter(
+            StudentResponse.user_id == eleve.id,
+            StudentResponse.exercice_id.isnot(None)
+        )
+        .order_by(StudentResponse.timestamp.desc())
+        .all()
+    )
+
+    reponse_par_exercice = {}
+
+    for r in reponses:
+        if r.exercice_id and r.exercice_id not in reponse_par_exercice:
+            reponse_par_exercice[r.exercice_id] = r
+
+    # ============================================================
+    # EXERCICES + STRUCTURE
+    # Une seule grande requête au lieu de requêtes dans les boucles.
+    # ============================================================
+
+    exercices = (
+        Exercice.query
+        .options(
+            joinedload(Exercice.lecon)
+            .joinedload(Lecon.unite)
+            .joinedload(Unite.matiere)
+        )
+        .join(Lecon, Lecon.id == Exercice.lecon_id)
+        .join(Unite, Unite.id == Lecon.unite_id)
+        .join(Matiere, Matiere.id == Unite.matiere_id)
+        .filter(Matiere.id.in_(matiere_ids))
+        .order_by(Matiere.id.asc(), Unite.id.asc(), Lecon.id.asc(), Exercice.id.asc())
+        .all()
+    )
+
+    # ============================================================
+    # CONSTRUCTION DES DONNÉES POUR LE TEMPLATE
+    # ============================================================
+
+    matieres_map = {}
+    total_exercices = 0
+    completed_exercices = 0
+
+    for exercice in exercices:
+        if not exercice.lecon or not exercice.lecon.unite or not exercice.lecon.unite.matiere:
+            continue
+
+        lecon = exercice.lecon
+        unite = lecon.unite
+        matiere = unite.matiere
+
+        total_exercices += 1
+
+        matiere_nom = (
+            matiere.nom_en
+            if lang == "en" and getattr(matiere, "nom_en", None)
+            else matiere.nom
+        )
+
+        unite_nom = (
+            unite.nom_en
+            if lang == "en" and getattr(unite, "nom_en", None)
+            else unite.nom
+        )
+
+        lecon_nom = (
+            lecon.titre_en
+            if lang == "en" and lecon.titre_en
+            else lecon.titre_fr
+        )
+
+        if matiere.id not in matieres_map:
+            matieres_map[matiere.id] = {
+                "id": matiere.id,
+                "nom": matiere_nom,
+                "total_exercices": 0,
+                "completed_exercices": 0,
+                "details": {}
             }
-            
-            # Récupérer les leçons de cette unité
-            lecons = Lecon.query.filter_by(unite_id=unite.id).all()
-            
-            for lecon in lecons:
-                lecon_nom = lecon.titre_en if lang == 'en' and lecon.titre_en else lecon.titre_fr
-                details_matiere[unite_nom]['lecons'][lecon_nom] = {
-                    'total': 0,
-                    'completed': 0,
-                    'exercices': []
-                }
-                
-                # Récupérer les exercices de cette leçon
-                exercices = Exercice.query.filter_by(lecon_id=lecon.id).all()
-                
-                for exercice in exercices:
-                    details_matiere[unite_nom]['lecons'][lecon_nom]['total'] += 1
-                    details_matiere[unite_nom]['total'] += 1
-                    total_matiere += 1
-                    total_exercices_eleve += 1
-                    
-                    if exercice.id in completed_exercise_ids:
-                        details_matiere[unite_nom]['lecons'][lecon_nom]['completed'] += 1
-                        details_matiere[unite_nom]['completed'] += 1
-                        completed_matiere += 1
-                        
-                        # Récupérer la réponse pour cet exercice
-                        reponse = StudentResponse.query.filter_by(
-                            user_id=eleve_id,
-                            exercice_id=exercice.id
-                        ).first()
-                        
-                        exercice_data = {
-                            'id': exercice.id,
-                            'enonce': exercice.enonce,
-                            'reponse_eleve': reponse.reponse if reponse else None,
-                            'etoiles': reponse.score if reponse else 0,
-                            'date': reponse.date_soumission.strftime('%d/%m/%Y %H:%M') if reponse else None
-                        }
-                        details_matiere[unite_nom]['lecons'][lecon_nom]['exercices'].append(exercice_data)
-                    else:
-                        # Même sans réponse, on ajoute un exercice sans détails
-                        exercice_data = {
-                            'id': exercice.id,
-                            'enonce': exercice.enonce,
-                            'reponse_eleve': None,
-                            'etoiles': 0,
-                            'date': None
-                        }
-                        details_matiere[unite_nom]['lecons'][lecon_nom]['exercices'].append(exercice_data)
-        
-        pourcentage = (completed_matiere / total_matiere * 100) if total_matiere > 0 else 0
-        
-        matieres_stats.append({
-            'id': matiere.id,
-            'nom': matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom,
-            'total_exercices': total_matiere,
-            'completed_exercices': completed_matiere,
-            'pourcentage': pourcentage,
-            'details': details_matiere
-        })
-    
-    # Calculer le pourcentage global
-    pourcentage_global = (completed_exercices_eleve / total_exercices_eleve * 100) if total_exercices_eleve > 0 else 0
-    
-    print(f"📊 Total exercices: {total_exercices_eleve}, Complétés: {completed_exercices_eleve}, %: {pourcentage_global}")
-    
+
+        matiere_data = matieres_map[matiere.id]
+        matiere_data["total_exercices"] += 1
+
+        if unite_nom not in matiere_data["details"]:
+            matiere_data["details"][unite_nom] = {
+                "total": 0,
+                "completed": 0,
+                "lecons": {}
+            }
+
+        unite_data = matiere_data["details"][unite_nom]
+        unite_data["total"] += 1
+
+        if lecon_nom not in unite_data["lecons"]:
+            unite_data["lecons"][lecon_nom] = {
+                "total": 0,
+                "completed": 0,
+                "exercices": []
+            }
+
+        lecon_data = unite_data["lecons"][lecon_nom]
+        lecon_data["total"] += 1
+
+        reponse = reponse_par_exercice.get(exercice.id)
+
+        enonce = (
+            exercice.question_en
+            if lang == "en" and exercice.question_en
+            else exercice.question_fr
+        )
+
+        if reponse:
+            fait = True
+            completed_exercices += 1
+            matiere_data["completed_exercices"] += 1
+            unite_data["completed"] += 1
+            lecon_data["completed"] += 1
+
+            exercice_data = {
+                "id": exercice.id,
+                "fait": True,
+                "enonce": enonce or "",
+                "reponse_eleve": reponse.reponse_eleve or "",
+                "analyse_ia": reponse.analyse_ia or "",
+                "etoiles": reponse.etoiles if reponse.etoiles is not None else 0,
+                "date": reponse.timestamp.strftime("%d/%m/%Y %H:%M") if reponse.timestamp else ""
+            }
+        else:
+            fait = False
+
+            exercice_data = {
+                "id": exercice.id,
+                "fait": False,
+                "enonce": enonce or "",
+                "reponse_eleve": "",
+                "analyse_ia": "",
+                "etoiles": 0,
+                "date": ""
+            }
+
+        lecon_data["exercices"].append(exercice_data)
+
+    stats_matiere = []
+
+    for matiere_data in matieres_map.values():
+        total_matiere = matiere_data["total_exercices"]
+        completed_matiere = matiere_data["completed_exercices"]
+
+        matiere_data["pourcentage"] = (
+            completed_matiere / total_matiere * 100
+            if total_matiere > 0
+            else 0
+        )
+
+        stats_matiere.append(matiere_data)
+
+    pourcentage_global = (
+        completed_exercices / total_exercices * 100
+        if total_exercices > 0
+        else 0
+    )
+
+    tests = []
+
+    print("========== HISTORIQUE OPTIMISÉ ==========")
+    print("Élève :", eleve.id, eleve.username, eleve.nom_complet)
+    print("Niveau :", niveau_eleve.nom if niveau_eleve else None)
+    print("Matières IDs :", matiere_ids)
+    print("Total exercices :", total_exercices)
+    print("Exercices complétés :", completed_exercices)
+    print("Nombre matières affichées :", len(stats_matiere))
+    print("=========================================")
+
     return render_template(
         "historique_eleve.html",
         eleve=eleve,
         niveau_eleve=niveau_eleve,
-        stats_matiere=matieres_stats,
-        total_exercices=total_exercices_eleve,
-        completed_exercices=completed_exercices_eleve,
+        stats_matiere=stats_matiere,
+        total_exercices=total_exercices,
+        completed_exercices=completed_exercices,
         pourcentage_global=pourcentage_global,
+        tests=tests,
         is_parent_access=is_parent_access,
         is_enseignant_access=is_enseignant_access,
         is_eleve_direct_access=is_eleve_direct_access,
         lang=lang
-    )
-
-    
-    # ============================================
-    # FONCTION UTILITAIRE POUR OBTENIR LE NOM TRADUIT
-    # ============================================
-    def get_translated_name(obj, field_prefix="nom"):
-        """Retourne le nom traduit d'un objet selon la langue"""
-        if not obj:
-            return "Inconnu"
-        
-        # Si l'objet a un attribut 'nom' (pour Niveau, Matiere, Unite)
-        if hasattr(obj, 'nom'):
-            if lang == "fr":
-                return obj.nom  # Nom français
-            else:
-                # Vérifier si l'objet a un champ nom_en
-                if hasattr(obj, 'nom_en') and obj.nom_en:
-                    return obj.nom_en  # Nom anglais
-                else:
-                    return obj.nom  # Fallback sur le français
-        
-        # Si l'objet a un attribut 'titre' (pour Lecon)
-        elif hasattr(obj, 'titre_fr'):
-            if lang == "fr":
-                return obj.titre_fr  # Titre français
-            else:
-                if hasattr(obj, 'titre_en') and obj.titre_en:
-                    return obj.titre_en  # Titre anglais
-                else:
-                    return obj.titre_fr  # Fallback sur le français
-        
-        # Pour d'autres objets
-        elif hasattr(obj, field_prefix):
-            base_name = getattr(obj, field_prefix)
-            if lang == "fr":
-                return base_name
-            else:
-                # Essayer de trouver le champ avec _en
-                en_field = f"{field_prefix}_en"
-                if hasattr(obj, en_field):
-                    en_name = getattr(obj, en_field)
-                    if en_name:
-                        return en_name
-                return base_name  # Fallback sur la base
-        
-        return f"{field_prefix} inconnu"
-
-    # Utiliser la fonction de traduction pour obtenir le nom du niveau
-    niveau_eleve_nom = get_translated_name(niveau_eleve)
-    niveau_eleve_id = niveau_eleve.id
-    
-    print(f"ÉLÈVE - {eleve.nom_complet} - Niveau: {niveau_eleve_nom} (ID: {niveau_eleve_id})")
-
-    # Récupérer toutes les réponses de l'élève
-    reponses_exos = StudentResponse.query.filter_by(user_id=eleve_id).all()
-    
-    # Créer un dictionnaire pour suivre quels exercices ont été faits par ID
-    exercices_faits_par_id = {r.exercice_id for r in reponses_exos if r.exercice_id}
-    
-    # Récupérer UNIQUEMENT le niveau de l'élève
-    niveau_eleve_obj = Niveau.query.get(niveau_eleve_id)
-    
-    if not niveau_eleve_obj:
-        if lang == "fr":
-            flash("Niveau de l'élève introuvable", "danger")
-        else:
-            flash("Student level not found", "danger")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
-    
-    # Structure pour organiser les données (UNIQUEMENT pour le niveau de l'élève)
-    data_structure = {
-        "niveaux": {}
-    }
-    
-    # Compteurs globaux (UNIQUEMENT pour le niveau de l'élève)
-    total_exercices_effectues = 0
-    total_exercices_restants = 0
-    total_exercices_totaux = 0
-    
-    # Initialiser le niveau de l'élève dans la structure
-    data_structure["niveaux"][niveau_eleve_nom] = {
-        "matieres": {},
-        "total_effectues": 0,
-        "total_restants": 0,
-        "total_exercices": 0,
-        "original_id": niveau_eleve_id
-    }
-    
-    # Parcourir les matières du niveau de l'élève
-    for matiere in niveau_eleve_obj.matieres:
-        matiere_nom = get_translated_name(matiere)
-        
-        # Initialiser la matière
-        data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom] = {
-            "unites": {},
-            "total_effectues": 0,
-            "total_restants": 0,
-            "total_exercices": 0,
-            "original_id": matiere.id
-        }
-        
-        # Parcourir les unités de cette matière
-        for unite in matiere.unites:
-            unite_nom = get_translated_name(unite)
-            
-            # Initialiser l'unité
-            data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom]["unites"][unite_nom] = {
-                "lecons": {},
-                "total_effectues": 0,
-                "total_restants": 0,
-                "total_exercices": 0,
-                "original_id": unite.id
-            }
-            
-            # Parcourir les leçons de cette unité
-            for lecon in unite.lecons:
-                lecon_nom = get_translated_name(lecon, "titre")
-                
-                # Initialiser la leçon
-                data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom] = {
-                    "exercices": [],
-                    "exercices_effectues": 0,
-                    "exercices_restants": 0,
-                    "exercices_totaux": 0,
-                    "lecon_id": lecon.id
-                }
-                
-                # Récupérer tous les exercices de cette leçon
-                exercices_lecon = Exercice.query.filter_by(lecon_id=lecon.id).all()
-                total_exercices_lecon = len(exercices_lecon)
-                data_structure["niveaux"][niveau_eleve_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_totaux"] = total_exercices_lecon
-                
-                # Mettre à jour les totaux du niveau
-                total_exercices_totaux += total_exercices_lecon
-    
-    print(f"TOTAL EXERCICES DISPONIBLES pour {niveau_eleve_nom}: {total_exercices_totaux}")
-    
-    # Maintenant, traiter les exercices effectués par l'élève (uniquement ceux de son niveau)
-    for r in reponses_exos:
-        ex = Exercice.query.get(r.exercice_id) if r.exercice_id else None
-        if not ex:
-            continue
-            
-        # Naviguer dans la hiérarchie pour vérifier le niveau
-        lecon = ex.lecon
-        if not lecon:
-            continue
-            
-        unite = lecon.unite if lecon else None
-        if not unite:
-            continue
-            
-        matiere = unite.matiere if unite else None
-        if not matiere:
-            continue
-            
-        niveau = matiere.niveau if matiere else None
-        if not niveau:
-            continue
-        
-        # VÉRIFIER SI L'EXERCICE EST DU NIVEAU DE L'ÉLÈVE
-        if niveau.id != niveau_eleve_id:
-            print(f"EXERCICE {ex.id} ignoré - Niveau: {get_translated_name(niveau)} (pas le niveau de l'élève)")
-            continue
-        
-        # Récupérer les noms traduits
-        niveau_nom = get_translated_name(niveau)
-        matiere_nom = get_translated_name(matiere)
-        unite_nom = get_translated_name(unite)
-        lecon_nom = get_translated_name(lecon, "titre")
-        
-        # Vérifier que la structure existe
-        if (niveau_nom in data_structure["niveaux"] and 
-            matiere_nom in data_structure["niveaux"][niveau_nom]["matieres"] and
-            unite_nom in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"] and
-            lecon_nom in data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"]):
-            
-            # Obtenir l'énoncé dans la bonne langue
-            enonce = ex.question_fr if lang == "fr" else (ex.question_en if ex.question_en else ex.question_fr)
-            
-            exercice_data = {
-                "id": r.id,
-                "theme": unite_nom if unite else "—",
-                "enonce": enonce,
-                "reponse_eleve": r.reponse_eleve,
-                "analyse_ia": r.analyse_ia or "—",
-                "etoiles": r.etoiles if r.etoiles is not None else 0,
-                "date": r.timestamp.strftime("%d/%m/%Y") if r.timestamp else "",
-                "original_names": {
-                    "niveau": niveau.nom,
-                    "matiere": matiere.nom,
-                    "unite": unite.nom,
-                    "lecon": lecon.titre_fr
-                }
-            }
-            
-            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices"].append(exercice_data)
-            
-            # Mettre à jour les compteurs
-            data_structure["niveaux"][niveau_nom]["matieres"][matiere_nom]["unites"][unite_nom]["lecons"][lecon_nom]["exercices_effectues"] += 1
-            total_exercices_effectues += 1
-    
-    print(f"EXERCICES EFFECTUÉS dans le niveau {niveau_eleve_nom}: {total_exercices_effectues}")
-    
-    # Calculer les exercices restants et totaux pour chaque niveau de la hiérarchie
-    for niveau_nom, niveau_data in data_structure["niveaux"].items():
-        niveau_total_effectues = 0
-        niveau_total_restants = 0
-        niveau_total_exercices = 0
-        
-        for matiere_nom, matiere_data in niveau_data["matieres"].items():
-            matiere_total_effectues = 0
-            matiere_total_restants = 0
-            matiere_total_exercices = 0
-            
-            for unite_nom, unite_data in matiere_data["unites"].items():
-                unite_total_effectues = 0
-                unite_total_restants = 0
-                unite_total_exercices = 0
-                
-                for lecon_nom, lecon_data in unite_data["lecons"].items():
-                    # Calculer les exercices restants pour cette leçon
-                    exercices_restants = lecon_data["exercices_totaux"] - lecon_data["exercices_effectues"]
-                    lecon_data["exercices_restants"] = max(0, exercices_restants)
-                    
-                    unite_total_effectues += lecon_data["exercices_effectues"]
-                    unite_total_restants += lecon_data["exercices_restants"]
-                    unite_total_exercices += lecon_data["exercices_totaux"]
-                
-                unite_data["total_effectues"] = unite_total_effectues
-                unite_data["total_restants"] = unite_total_restants
-                unite_data["total_exercices"] = unite_total_exercices
-                
-                matiere_total_effectues += unite_total_effectues
-                matiere_total_restants += unite_total_restants
-                matiere_total_exercices += unite_total_exercices
-            
-            matiere_data["total_effectues"] = matiere_total_effectues
-            matiere_data["total_restants"] = matiere_total_restants
-            matiere_data["total_exercices"] = matiere_total_exercices
-            
-            niveau_total_effectues += matiere_total_effectues
-            niveau_total_restants += matiere_total_restants
-            niveau_total_exercices += matiere_total_exercices
-        
-        niveau_data["total_effectues"] = niveau_total_effectues
-        niveau_data["total_restants"] = niveau_total_restants
-        niveau_data["total_exercices"] = niveau_total_exercices
-        
-        total_exercices_restants = niveau_total_restants
-    
-    # Calculer le total général des exercices disponibles dans le niveau
-    total_exercices_disponibles = total_exercices_totaux
-    
-    print(f"RÉSUMÉ FINAL - Niveau: {niveau_eleve_nom}")
-    print(f"  Exercices effectués: {total_exercices_effectues}")
-    print(f"  Exercices restants: {total_exercices_restants}")
-    print(f"  Exercices totaux: {total_exercices_disponibles}")
-    
-    # Réponses aux tests sommatifs (uniquement ceux du niveau de l'élève)
-    reponses_tests = TestResponse.query.filter_by(user_id=eleve_id).all()
-    donnees_tests = []
-    for t in reponses_tests:
-        test = t.test
-        if not test:
-            continue
-            
-        # Vérifier si le test est du niveau de l'élève
-        if test.unite and test.unite.matiere and test.unite.matiere.niveau:
-            if test.unite.matiere.niveau.id != niveau_eleve_id:
-                continue  # Ignorer les tests qui ne sont pas du niveau de l'élève
-        
-        if test and test.unite:
-            unite_nom_test = get_translated_name(test.unite)
-        else:
-            unite_nom_test = "—"
-            
-        # Obtenir la question dans la bonne langue
-        if test and lang == "fr":
-            enonce_test = test.question_fr if test.question_fr else "—"
-        elif test:
-            enonce_test = test.question_en if test.question_en else (test.question_fr if test.question_fr else "—")
-        else:
-            enonce_test = "—"
-
-        reponses_ordonnees = ""
-        if isinstance(t.reponses_exercices, dict):
-            try:
-                reponses_ordonnees = "\n\n".join(
-                    t.reponses_exercices[str(i + 1)] for i in range(len(t.reponses_exercices))
-                )
-            except Exception:
-                reponses_ordonnees = "\n".join(t.reponses_exercices.values())
-
-        donnees_tests.append({
-            "unite": unite_nom_test,
-            "question": enonce_test,
-            "reponse_eleve": reponses_ordonnees or "—",
-            "analyse_ia": t.analyse_ia or "—",
-            "etoiles": t.etoiles if t.etoiles is not None else 0,
-            "date": t.timestamp.strftime("%d/%m/%Y") if t.timestamp else ""
-        })
-
-    return render_template(
-        "historique_eleve.html",
-        eleve=eleve,
-        niveau_eleve=niveau_eleve_nom,  # Utilise le nom traduit
-        lang=lang,
-        data_structure=data_structure,
-        total_exercices_effectues=total_exercices_effectues,
-        total_exercices_restants=total_exercices_restants,
-        total_exercices_disponibles=total_exercices_disponibles,
-        tests=donnees_tests,
-        is_parent_access=is_parent_access,
-        is_enseignant_access=is_enseignant_access,
-        is_eleve_direct_access=is_eleve_direct_access
     )
 
 @app.route('/admin/lecon/supprimer/<int:id>', methods=['POST'])
