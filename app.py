@@ -5147,11 +5147,14 @@ def soumettre_reponse():
     import re
 
     print("=== 📝 SOUMISSION RÉPONSE SIMPLE ===")
-    
+
     # DEBUG: Afficher tous les champs reçus
     print("📦 Données reçues:", dict(request.form))
-    
-    # Récupération des données
+
+    # ============================================================
+    # RÉCUPÉRATION DES DONNÉES
+    # ============================================================
+
     student_id = request.form.get("student_id")
     exercice_id = request.form.get("exercice_id")
     reponse_eleve = request.form.get("reponse_eleve", "").strip()
@@ -5161,15 +5164,21 @@ def soumettre_reponse():
     print(f"Exercice ID: {exercice_id}")
     print(f"Réponse: {reponse_eleve}")
 
-    # Validation détaillée
+    # ============================================================
+    # VALIDATION
+    # ============================================================
+
     missing_fields = []
+
     if not student_id:
         missing_fields.append("student_id")
+
     if not exercice_id:
         missing_fields.append("exercice_id")
+
     if not reponse_eleve:
         missing_fields.append("reponse_eleve")
-    
+
     if missing_fields:
         print(f"❌ Champs manquants: {missing_fields}")
         return f"Données manquantes: {', '.join(missing_fields)}", 400
@@ -5180,91 +5189,162 @@ def soumettre_reponse():
     if not eleve:
         print("❌ Élève non trouvé")
         return "Élève non trouvé", 404
-        
+
     if not exercice:
         print("❌ Exercice non trouvé")
         return "Exercice non trouvé", 404
 
+    # ============================================================
+    # LANGUE DE L'ÉLÈVE
+    # ============================================================
+
     lang = eleve.langue if hasattr(eleve, "langue") and eleve.langue == "en" else "fr"
-    question = exercice.question_en if lang == "en" else exercice.question_fr
+
+    question = (
+        exercice.question_en
+        if lang == "en" and exercice.question_en
+        else exercice.question_fr
+    )
 
     # ============================================================
-    # 🎯 ROUTAGE INTELLIGENT SELON LA MATIÈRE (CONFIG ADMIN)
+    # CONTEXTE PÉDAGOGIQUE
     # ============================================================
-    
+
+    lecon = None
+    unite = None
+    matiere = None
+    niveau = None
+
+    try:
+        lecon = exercice.lecon
+        unite = lecon.unite if lecon else None
+        matiere = unite.matiere if unite else None
+        niveau = matiere.niveau if matiere else eleve.niveau
+    except Exception as e:
+        print(f"⚠️ Impossible de récupérer le contexte pédagogique: {e}")
+        niveau = eleve.niveau
+
+    matiere_nom_fr = matiere.nom if matiere else "Mathématiques"
+    matiere_nom_en = matiere.nom_en if matiere and matiere.nom_en else matiere_nom_fr
+
+    unite_nom_fr = unite.nom if unite else None
+    unite_nom_en = unite.nom_en if unite and unite.nom_en else unite_nom_fr
+
+    lecon_nom_fr = lecon.titre_fr if lecon else "Général"
+    lecon_nom_en = lecon.titre_en if lecon and lecon.titre_en else lecon_nom_fr
+
+    # ============================================================
+    # ROUTAGE INTELLIGENT SELON LA MATIÈRE
+    # ============================================================
+
     def get_correction_model_from_exercice(exercice):
         """
-        Récupère la configuration IA pour la matière de l'exercice
-        L'admin peut tout configurer via /admin/ai-config
+        Récupère la configuration IA pour la matière de l'exercice.
+        L'admin peut tout configurer via /admin/ai-config.
         """
-        # Déterminer la matière de l'exercice
+
         matiere_nom = None
+
         try:
             if exercice.lecon and exercice.lecon.unite and exercice.lecon.unite.matiere:
                 matiere_nom = exercice.lecon.unite.matiere.nom
-        except:
+        except Exception:
             pass
-        
+
         # Si pas de matière, essayer de détecter depuis la question
         if not matiere_nom and exercice:
             question_text = (exercice.question_fr or exercice.question_en or "").lower()
-            
-            # Mapping des mots-clés vers les noms de matières
+
             keyword_mapping = {
-                "Mathématiques": ["equation", "calcul", "x=", "fraction", "geometrie", "algebre", "fonction", "trigonométrie"],
-                "MCR3U": ["mcr3u", "fonction", "quadratique", "exponentiel"],
-                "MHF4U": ["mhf4u", "advanced function", "polynôme", "logarithme"],
-                "MCV4U": ["mcv4u", "calculus", "derivée", "integrale", "vecteur"],
-                "Français": ["grammaire", "conjugaison", "verbe", "phrase", "texte", "littérature", "poème"],
-                "English": ["grammar", "conjugation", "verb", "sentence", "literature", "poem"],
-                "Histoire": ["date", "guerre", "revolution", "siecle", "roi", "bataille"],
-                "Sciences": ["atome", "cellule", "force", "energie", "vitesse", "masse"],
-                "Physique": ["physique", "force", "vitesse", "acceleration", "energie"],
-                "Chimie": ["chimie", "atome", "molecule", "reaction", "acide"],
-                "Biologie": ["biologie", "cellule", "organe", "adn", "genetique"]
+                "Mathématiques": [
+                    "equation", "équation", "calcul", "x=", "fraction",
+                    "geometrie", "géométrie", "algebre", "algèbre",
+                    "fonction", "trigonométrie", "trigonometrie"
+                ],
+                "MCR3U": [
+                    "mcr3u", "fonction", "quadratique", "exponentiel"
+                ],
+                "MHF4U": [
+                    "mhf4u", "advanced function", "polynôme",
+                    "polynome", "logarithme"
+                ],
+                "MCV4U": [
+                    "mcv4u", "calculus", "dérivée", "derivee",
+                    "intégrale", "integrale", "vecteur"
+                ],
+                "Français": [
+                    "grammaire", "conjugaison", "verbe", "phrase",
+                    "texte", "littérature", "litterature", "poème", "poeme"
+                ],
+                "English": [
+                    "grammar", "conjugation", "verb", "sentence",
+                    "literature", "poem"
+                ],
+                "Histoire": [
+                    "date", "guerre", "révolution", "revolution",
+                    "siècle", "siecle", "roi", "bataille"
+                ],
+                "Sciences": [
+                    "atome", "cellule", "force", "énergie", "energie",
+                    "vitesse", "masse"
+                ],
+                "Physique": [
+                    "physique", "force", "vitesse", "accélération",
+                    "acceleration", "énergie", "energie"
+                ],
+                "Chimie": [
+                    "chimie", "atome", "molécule", "molecule",
+                    "réaction", "reaction", "acide"
+                ],
+                "Biologie": [
+                    "biologie", "cellule", "organe", "adn", "génétique",
+                    "genetique"
+                ]
             }
-            
+
             for mat, keywords in keyword_mapping.items():
                 if any(kw in question_text for kw in keywords):
                     matiere_nom = mat
                     break
-        
+
         if not matiere_nom:
-            matiere_nom = "Mathématiques"  # Par défaut
-        
+            matiere_nom = "Mathématiques"
+
         print(f"🔍 Matière détectée pour correction: {matiere_nom}")
-        
-        # Chercher la configuration dans la base de données
+
         try:
             from models import MatiereAIConfig
-            config = MatiereAIConfig.query.filter_by(matiere_nom=matiere_nom, actif=True).first()
-            
+
+            config = MatiereAIConfig.query.filter_by(
+                matiere_nom=matiere_nom,
+                actif=True
+            ).first()
+
             if config:
-                print(f"⚙️ Configuration trouvée: {config.matiere_nom} → {config.api_choice}/{config.modele_ia}")
-                
-                # Choisir le client
+                print(
+                    f"⚙️ Configuration trouvée: "
+                    f"{config.matiere_nom} → {config.api_choice}/{config.modele_ia}"
+                )
+
                 if config.api_choice == "deepseek":
                     return client_deepseek, config.modele_ia, f"DeepSeek/{config.modele_ia}"
-                else:
-                    return client_openai, config.modele_ia, f"OpenAI/{config.modele_ia}"
+
+                return client_openai, config.modele_ia, f"OpenAI/{config.modele_ia}"
+
         except Exception as e:
             print(f"⚠️ Erreur lecture config: {e}")
-        
-        # Fallback sur le routage par défaut
-        fallback_client = client_deepseek
-        fallback_model = "deepseek-v4-flash"
-        print(f"⚠️ Fallback config: DeepSeek Flash")
-        
-        return fallback_client, fallback_model, "DeepSeek/fallback"
-    
-    # Récupérer le client et modèle pour cet exercice
+
+        print("⚠️ Fallback config: DeepSeek Flash")
+        return client_deepseek, "deepseek-v4-flash", "DeepSeek/fallback"
+
     correction_client, correction_model, correction_source = get_correction_model_from_exercice(exercice)
+
     print(f"🔀 Correction avec: {correction_source}")
 
     # ============================================================
-    # PROMPT SIMPLIFIÉ ET BILINGUE (compatible avec les deux API)
+    # PROMPT DE CORRECTION BILINGUE
     # ============================================================
-    
+
     if lang == "en":
         prompt = f"""Correct the student's answer.
 
@@ -5282,9 +5362,15 @@ def soumettre_reponse():
 1: Attempt but major error
 0: Off-topic or empty
 
+Also identify, if possible:
+- the target concept;
+- the main error type;
+- whether the student needs remediation.
+
 Format:
 Analysis: ...
 Score: X/5
+Main error: ...
 Correct answer: ..."""
     else:
         prompt = f"""Corrige la réponse de l'élève.
@@ -5303,34 +5389,43 @@ Correct answer: ..."""
 1: Tentative mais erreur majeure
 0: Hors sujet ou vide
 
+Identifie aussi, si possible :
+- la notion ciblée ;
+- le principal type d'erreur ;
+- si l'élève a besoin d'une remédiation.
+
 Format:
 Analyse: ...
 Note: X/5
+Erreur principale: ...
 Réponse correcte: ..."""
 
     # ============================================================
-    # APPEL À L'API CHOISIE (avec fallback)
+    # APPEL À L'API CHOISIE
     # ============================================================
-    
+
     analyse_ia = ""
     etoiles = 0
-    
+
     try:
         print(f"🤖 Appel API pour correction ({correction_source})...")
+
         chat_completion = correction_client.chat.completions.create(
             model=correction_model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=500
+            max_tokens=700
         )
+
         analyse_ia = chat_completion.choices[0].message.content.strip()
         print(f"✅ Correction reçue de {correction_source}")
+
     except Exception as e:
         print(f"❌ Erreur avec {correction_source}: {e}")
-        
-        # Fallback sur l'autre API
+
         try:
             print("🔄 Fallback sur l'autre API...")
+
             if correction_client == client_deepseek:
                 fallback_client = client_openai
                 fallback_model = "gpt-4o-mini"
@@ -5339,50 +5434,98 @@ Réponse correcte: ..."""
                 fallback_client = client_deepseek
                 fallback_model = "deepseek-v4-flash"
                 fallback_source = "DeepSeek Flash (fallback)"
-            
+
             chat_completion = fallback_client.chat.completions.create(
                 model=fallback_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=500
+                max_tokens=700
             )
+
             analyse_ia = chat_completion.choices[0].message.content.strip()
+            correction_source = fallback_source
+
             print(f"✅ Fallback réussi avec {fallback_source}")
+
         except Exception as e2:
             analyse_ia = f"Erreur IA : {e2}"
             print(f"❌ Erreur fallback: {e2}")
 
     # ============================================================
-    # EXTRACTION DE LA NOTE (bilingue)
+    # EXTRACTION DE LA NOTE
     # ============================================================
-    
+
     if analyse_ia:
-        # Pattern pour "Note: X/5" ou "Score: X/5"
-        match = re.search(r"(Note|Score)\s*:\s*(\d)/?5?", analyse_ia, re.IGNORECASE)
+        match = re.search(
+            r"(Note|Score)\s*:\s*([0-5])\s*/?\s*5?",
+            analyse_ia,
+            re.IGNORECASE
+        )
+
         if match:
             etoiles = min(int(match.group(2)), 5)
             print(f"⭐ Note extraite: {etoiles}/5")
         else:
-            # Fallback: chercher juste un nombre entre 0 et 5
-            match = re.search(r"\b([0-5])\b", analyse_ia)
+            match = re.search(r"\b([0-5])\s*/\s*5\b", analyse_ia)
+
             if match:
-                etoiles = int(match.group(1))
-                print(f"⭐ Note extraite (fallback): {etoiles}/5")
+                etoiles = min(int(match.group(1)), 5)
+                print(f"⭐ Note extraite fallback /5: {etoiles}/5")
             else:
                 print("⚠️ Impossible d'extraire la note de l'analyse IA")
 
+    score_pourcentage = int(etoiles * 20)
+
     # ============================================================
-    # GÉNÉRATION DE REMÉDIATION si note < 3/5
+    # EXTRACTION SIMPLE DU TYPE D'ERREUR
     # ============================================================
-    
+
+    type_erreur = None
+
+    if analyse_ia:
+        match_erreur_fr = re.search(
+            r"Erreur principale\s*:\s*(.+)",
+            analyse_ia,
+            re.IGNORECASE
+        )
+
+        match_erreur_en = re.search(
+            r"Main error\s*:\s*(.+)",
+            analyse_ia,
+            re.IGNORECASE
+        )
+
+        if match_erreur_fr:
+            type_erreur = match_erreur_fr.group(1).strip()[:100]
+        elif match_erreur_en:
+            type_erreur = match_erreur_en.group(1).strip()[:100]
+
+    # ============================================================
+    # RISQUE SIMPLE SELON LA NOTE
+    # ============================================================
+
+    if etoiles >= 4:
+        niveau_risque = "faible"
+    elif etoiles >= 3:
+        niveau_risque = "moyen"
+    else:
+        niveau_risque = "élevé"
+
+    # ============================================================
+    # GÉNÉRATION DE REMÉDIATION SI NOTE < 3/5
+    # ============================================================
+
     if etoiles < 3:
         print(f"🔄 Génération remédiation (note: {etoiles}/5)")
-        
+
         if lang == "en":
             remediation_prompt = f"""Generate a short remediation exercise for a student who scored {etoiles}/5.
 
-Original question: {question}
-Student's answer: {reponse_eleve}
+Original question:
+{question}
+
+Student's answer:
+{reponse_eleve}
 
 Output:
 Question: ...
@@ -5391,8 +5534,11 @@ Hint: ..."""
         else:
             remediation_prompt = f"""Génère un court exercice de remédiation pour un élève qui a obtenu {etoiles}/5.
 
-Question originale: {question}
-Réponse de l'élève: {reponse_eleve}
+Question originale:
+{question}
+
+Réponse de l'élève:
+{reponse_eleve}
 
 Format:
 Question: ...
@@ -5400,67 +5546,165 @@ Réponse attendue: ...
 Indice: ..."""
 
         try:
-            # Utiliser DeepSeek Flash pour la remédiation (économique)
             remediation_completion = client_deepseek.chat.completions.create(
                 model="deepseek-v4-flash",
                 messages=[{"role": "user", "content": remediation_prompt}],
                 temperature=0.7,
-                max_tokens=300
+                max_tokens=350
             )
+
             remediation_content = remediation_completion.choices[0].message.content.strip()
+
             print("✅ Remédiation générée avec DeepSeek Flash")
-            
-            # Création de la suggestion de remédiation
+
+            remediation_message = (
+                f"Exercice de remédiation proposé après une note de {etoiles}/5."
+                if lang == "fr"
+                else f"Remediation exercise suggested after a score of {etoiles}/5."
+            )
+
             nouvelle_suggestion = RemediationSuggestion(
                 user_id=eleve.id,
-                theme=exercice.theme if hasattr(exercice, 'theme') else "Général",
-                lecon=exercice.lecon.titre_fr if exercice.lecon else "Général",
-                message=f"Exercice de remédiation (note: {etoiles}/5).",
+                theme=matiere_nom_fr if lang == "fr" else matiere_nom_en,
+                lecon=lecon_nom_fr if lang == "fr" else lecon_nom_en,
+                message=remediation_message,
                 exercice_suggere=remediation_content,
                 statut="en_attente",
                 timestamp=datetime.utcnow()
             )
+
             db.session.add(nouvelle_suggestion)
+
             print("✅ Suggestion de remédiation sauvegardée")
-            
-            # Autoriser l'accès à l'enseignant virtuel
-            session['remediation_access'] = {
-                'exercice_id': exercice.id,
-                'note': etoiles,
-                'access_count': 0,
-                'first_access': datetime.utcnow().isoformat()
+
+            session["remediation_access"] = {
+                "exercice_id": exercice.id,
+                "note": etoiles,
+                "score_pourcentage": score_pourcentage,
+                "access_count": 0,
+                "first_access": datetime.utcnow().isoformat(),
+                "lang": lang
             }
+
             print(f"✅ Accès enseignant virtuel autorisé (note: {etoiles}/5)")
-            
+
         except Exception as e:
             print(f"❌ Erreur génération remédiation: {e}")
 
     # ============================================================
-    # SAUVEGARDE DE LA RÉPONSE
+    # SAUVEGARDE DE LA RÉPONSE + TRACE D'APPRENTISSAGE
     # ============================================================
-    
+
     try:
+        from models import TraceApprentissage
+
         nouvelle = StudentResponse(
             user_id=eleve.id,
             exercice_id=exercice.id,
             reponse_eleve=reponse_eleve,
             analyse_ia=analyse_ia,
             etoiles=etoiles,
+            score=score_pourcentage,
+            type_erreur=type_erreur,
+            niveau_difficulte=getattr(exercice, "niveau_difficulte", None),
+            aide_utilisee=bool(session.get("remediation_access")),
+            feedback_ia_structure={
+                "lang": lang,
+                "score_sur_5": etoiles,
+                "score_pourcentage": score_pourcentage,
+                "niveau_risque": niveau_risque,
+                "type_erreur": type_erreur,
+                "notion_cible": getattr(exercice, "notion_cible", None),
+                "competence_cible": getattr(exercice, "competence_cible", None),
+                "correction_source": correction_source,
+                "matiere_fr": matiere_nom_fr,
+                "matiere_en": matiere_nom_en,
+                "unite_fr": unite_nom_fr,
+                "unite_en": unite_nom_en,
+                "lecon_fr": lecon_nom_fr,
+                "lecon_en": lecon_nom_en
+            },
             timestamp=datetime.utcnow()
         )
+
         db.session.add(nouvelle)
+
+        # Permet d'obtenir nouvelle.id avant le commit
+        db.session.flush()
+
+        trace = TraceApprentissage(
+            user_id=eleve.id,
+
+            niveau_id=niveau.id if niveau else eleve.niveau_id,
+            matiere_id=matiere.id if matiere else None,
+            unite_id=unite.id if unite else None,
+            lecon_id=lecon.id if lecon else None,
+            exercice_id=exercice.id,
+
+            type_action="exercice",
+            source="soumettre_reponse",
+
+            reponse_eleve=reponse_eleve,
+            analyse_ia=analyse_ia,
+            score=score_pourcentage,
+
+            niveau_risque=niveau_risque,
+            difficulte_estimee=getattr(exercice, "niveau_difficulte", None),
+            notion_cible=getattr(exercice, "notion_cible", None),
+            type_erreur=type_erreur,
+
+            meta_json={
+                "lang": lang,
+                "score_sur_5": etoiles,
+                "score_pourcentage": score_pourcentage,
+                "student_response_id": nouvelle.id,
+                "correction_source": correction_source,
+
+                "question_fr": exercice.question_fr,
+                "question_en": exercice.question_en,
+
+                "matiere_fr": matiere_nom_fr,
+                "matiere_en": matiere_nom_en,
+
+                "unite_fr": unite_nom_fr,
+                "unite_en": unite_nom_en,
+
+                "lecon_fr": lecon_nom_fr,
+                "lecon_en": lecon_nom_en,
+
+                "competence_cible": getattr(exercice, "competence_cible", None),
+                "type_exercice": getattr(exercice, "type_exercice", None),
+                "classification_validee": getattr(exercice, "classification_validee", None),
+
+                "aide_utilisee": bool(session.get("remediation_access")),
+                "remediation_declenchee": etoiles < 3
+            },
+            created_at=datetime.utcnow()
+        )
+
+        db.session.add(trace)
         db.session.commit()
+
         print("✅ Réponse sauvegardée en base de données")
+        print("✅ Trace d'apprentissage créée")
+        print(
+            f"🧠 Trace: élève={eleve.id}, "
+            f"exercice={exercice.id}, "
+            f"score={score_pourcentage}, "
+            f"risque={niveau_risque}"
+        )
+
     except Exception as e:
-        print(f"❌ Erreur lors de la sauvegarde: {e}")
+        db.session.rollback()
+        print(f"❌ Erreur lors de la sauvegarde réponse/trace: {e}")
         return f"Erreur base de données: {e}", 500
 
-    print("=== ✅ RÉPONSE SAUVEGARDÉE ===")
+    print("=== ✅ RÉPONSE + TRACE SAUVEGARDÉES ===")
 
     # ============================================================
     # AFFICHAGE DE LA RÉTROACTION
     # ============================================================
-    
+
     return render_template(
         "exercice_detail.html",
         exercice=exercice,
@@ -15500,12 +15744,28 @@ def soumettre_sequentiel():
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
 
     # ============================================================
+    # CONTEXTE PÉDAGOGIQUE BILINGUE
+    # ============================================================
+
+    unite = lecon.unite if lecon and lecon.unite else None
+    matiere = unite.matiere if unite and unite.matiere else None
+    niveau = matiere.niveau if matiere and matiere.niveau else eleve.niveau
+
+    matiere_fr = matiere.nom if matiere else None
+    matiere_en = matiere.nom_en if matiere and matiere.nom_en else matiere_fr
+
+    unite_fr = unite.nom if unite else None
+    unite_en = unite.nom_en if unite and unite.nom_en else unite_fr
+
+    lecon_fr = lecon.titre_fr if lecon else None
+    lecon_en = lecon.titre_en if lecon and lecon.titre_en else lecon_fr
+
+    matiere_affichee = matiere_en if lang == "en" and matiere_en else matiere_fr
+    lecon_affichee = lecon_en if lang == "en" and lecon_en else lecon_fr
+
+    # ============================================================
     # 0. SÉCURITÉ ANTI-RESOUMISSION
     # ============================================================
-    # Si l'exercice a déjà été fait, on ne relance pas GPT.
-    # On renvoie simplement l'élève vers sa réponse et sa rétroaction.
-    # Cela évite de gaspiller les tokens et empêche l'élève de refaire
-    # le même exercice en mode IA.
 
     reponse_existante = StudentResponse.query.filter_by(
         user_id=eleve.id,
@@ -15778,7 +16038,13 @@ Correction :
             "notion_cible": exercice.notion_cible,
             "competence_cible": exercice.competence_cible,
             "niveau_difficulte": exercice.niveau_difficulte,
-            "type_exercice": exercice.type_exercice
+            "type_exercice": exercice.type_exercice,
+            "matiere_fr": matiere_fr,
+            "matiere_en": matiere_en,
+            "unite_fr": unite_fr,
+            "unite_en": unite_en,
+            "lecon_fr": lecon_fr,
+            "lecon_en": lecon_en
         },
         "adaptive_next": {},
         "history": []
@@ -15791,7 +16057,13 @@ Correction :
         analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),
         etoiles=etoiles_finales,
         score=score_final,
+        type_erreur=(
+            "erreur_mathématique"
+            if symbolic_correct is False
+            else None
+        ),
         niveau_difficulte=exercice.niveau_difficulte,
+        aide_utilisee=False,
         feedback_ia_structure=feedback_json,
         timestamp=datetime.now(timezone.utc)
     )
@@ -15818,15 +16090,10 @@ Correction :
     # 6. ENREGISTREMENT DIAGNOSTIC BAYÉSIEN
     # ============================================================
 
-    try:
-        matiere_nom = None
+    diagnostic_record = None
 
-        if lecon.unite and lecon.unite.matiere:
-            matiere_nom = (
-                lecon.unite.matiere.nom_en
-                if lang == "en" and lecon.unite.matiere.nom_en
-                else lecon.unite.matiere.nom
-            )
+    try:
+        matiere_nom = matiere_affichee
 
         diagnostic_record = DiagnosticBayesien(
             user_id=eleve.id,
@@ -15861,9 +16128,15 @@ Correction :
                 else "Progression recommandée."
             ),
             notion_cible=exercice.notion_cible,
-            notions_non_maitrisees=[exercice.notion_cible] if niveau_risque in ["élevé", "moyen"] and exercice.notion_cible else [],
-            notions_maitrisees=[exercice.notion_cible] if niveau_risque == "faible" and exercice.notion_cible else [],
-            erreurs_probables=[exercice.competence_cible] if niveau_risque in ["élevé", "moyen"] and exercice.competence_cible else [],
+            notions_non_maitrisees=[
+                exercice.notion_cible
+            ] if niveau_risque in ["élevé", "moyen"] and exercice.notion_cible else [],
+            notions_maitrisees=[
+                exercice.notion_cible
+            ] if niveau_risque == "faible" and exercice.notion_cible else [],
+            erreurs_probables=[
+                exercice.competence_cible
+            ] if niveau_risque in ["élevé", "moyen"] and exercice.competence_cible else [],
             niveau_intervention=(
                 "remediation" if niveau_risque == "élevé"
                 else "consolidation" if niveau_risque == "moyen"
@@ -15886,6 +16159,8 @@ Correction :
     # ============================================================
     # 7. MISE À JOUR DU PROFIL APPRENANT
     # ============================================================
+
+    profil_apprenant = None
 
     try:
         from services.profil_apprenant_service import mettre_a_jour_profil_apprenant
@@ -15985,7 +16260,101 @@ Correction :
         session.modified = True
 
     # ============================================================
-    # 9. REMÉDIATION SI DIFFICULTÉ
+    # 9. TRACE D'APPRENTISSAGE UNIFIÉE
+    # ============================================================
+
+    try:
+        from models import TraceApprentissage
+
+        adaptive_next = session.get("prochain_exercice_adaptatif", {})
+
+        trace = TraceApprentissage(
+            user_id=eleve.id,
+
+            niveau_id=niveau.id if niveau else eleve.niveau_id,
+            matiere_id=matiere.id if matiere else None,
+            unite_id=unite.id if unite else None,
+            lecon_id=lecon.id if lecon else None,
+            exercice_id=exercice.id,
+
+            type_action="exercice_sequentiel",
+            source="soumettre_sequentiel",
+
+            reponse_eleve=reponse_eleve,
+            analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),
+            score=score_final,
+
+            niveau_risque=niveau_risque,
+            difficulte_estimee=exercice.niveau_difficulte,
+            notion_cible=exercice.notion_cible,
+            type_erreur=(
+                "erreur_mathématique"
+                if symbolic_correct is False
+                else None
+            ),
+
+            meta_json={
+                "lang": lang,
+
+                "student_response_id": reponse.id,
+                "diagnostic_bayesien_id": diagnostic_record.id if diagnostic_record else None,
+                "profil_apprenant_id": profil_apprenant.id if profil_apprenant else None,
+
+                "username": eleve.username,
+                "eleve_nom": eleve.nom_complet,
+
+                "score_sur_5": etoiles_finales,
+                "score_pourcentage": score_final,
+                "niveau_risque": niveau_risque,
+                "probabilite_difficulte": probabilite_difficulte,
+                "pourcentage_difficulte": round(probabilite_difficulte * 100, 1),
+
+                "question_fr": exercice.question_fr,
+                "question_en": exercice.question_en,
+                "reponse_attendue_fr": exercice.reponse_fr,
+                "reponse_attendue_en": exercice.reponse_en,
+
+                "matiere_fr": matiere_fr,
+                "matiere_en": matiere_en,
+                "unite_fr": unite_fr,
+                "unite_en": unite_en,
+                "lecon_fr": lecon_fr,
+                "lecon_en": lecon_en,
+
+                "notion_cible": exercice.notion_cible,
+                "competence_cible": exercice.competence_cible,
+                "niveau_difficulte": exercice.niveau_difficulte,
+                "type_exercice": exercice.type_exercice,
+                "classification_validee": exercice.classification_validee,
+
+                "symbolic_correct": symbolic_correct,
+                "symbolic_result": symbolic_result,
+                "symbolic_feedback": symbolic_feedback,
+
+                "correction_method": "hybrid_gpt_sympy_adaptive",
+                "adaptive_next": adaptive_next,
+                "remediation_declenchee": etoiles_finales < 3
+            },
+
+            created_at=datetime.utcnow()
+        )
+
+        db.session.add(trace)
+        db.session.commit()
+
+        print("✅ Trace d'apprentissage créée.")
+        print(
+            f"🧠 TraceApprentissage : "
+            f"élève={eleve.id}, exercice={exercice.id}, "
+            f"score={score_final}, risque={niveau_risque}"
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"⚠️ Trace d'apprentissage non enregistrée : {e}")
+
+    # ============================================================
+    # 10. REMÉDIATION SI DIFFICULTÉ
     # ============================================================
 
     if etoiles_finales < 3:
@@ -16003,8 +16372,8 @@ Correction :
 
             suggestion = RemediationSuggestion(
                 user_id=eleve.id,
-                theme=exercice.theme,
-                lecon=lecon.titre_fr,
+                theme=matiere_affichee or exercice.theme,
+                lecon=lecon_affichee or lecon.titre_fr,
                 message=message,
                 exercice_suggere=None,
                 statut="en_attente",
@@ -16021,7 +16390,7 @@ Correction :
             print(f"⚠️ Remédiation non enregistrée: {e}")
 
     # ============================================================
-    # 10. RETOUR SUR LE MÊME EXERCICE AVEC FEEDBACK
+    # 11. RETOUR SUR LE MÊME EXERCICE AVEC FEEDBACK
     # ============================================================
 
     return redirect(url_for(
