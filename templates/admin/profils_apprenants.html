@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Profils apprenants</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --green: #16a34a;
+      --orange: #f59e0b;
+      --red: #dc2626;
+      --purple: #7c3aed;
+      --gray: #6b7280;
+      --light: #f3f4f6;
+      --white: #ffffff;
+      --dark: #111827;
+      --border: #e5e7eb;
+      --shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: #f8fafc;
+      color: var(--dark);
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: white;
+      padding: 28px;
+      border-radius: 18px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .page-header h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-header p {
+      opacity: 0.95;
+      line-height: 1.5;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      border-left: 5px solid var(--primary);
+    }
+
+    .stat-card.green {
+      border-left-color: var(--green);
+    }
+
+    .stat-card.orange {
+      border-left-color: var(--orange);
+    }
+
+    .stat-card.red {
+      border-left-color: var(--red);
+    }
+
+    .stat-card.purple {
+      border-left-color: var(--purple);
+    }
+
+    .stat-label {
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+    }
+
+    .filters {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .filters h2 {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+      color: #374151;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: white;
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 0.95rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-light {
+      background: var(--light);
+      color: var(--dark);
+    }
+
+    .table-card {
+      background: var(--white);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .table-header h2 {
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    th {
+      background: #f9fafb;
+      padding: 13px 12px;
+      text-align: left;
+      font-size: 0.85rem;
+      color: #374151;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 13px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    tr:hover {
+      background: #f9fafb;
+    }
+
+    .student-name {
+      font-weight: 800;
+      color: var(--dark);
+    }
+
+    .small {
+      color: var(--gray);
+      font-size: 0.82rem;
+      margin-top: 3px;
+    }
+
+    .notion {
+      font-weight: 800;
+      color: var(--primary-dark);
+    }
+
+    .competence {
+      color: var(--gray);
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    .progress-box {
+      min-width: 130px;
+    }
+
+    .progress-label {
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 20px;
+    }
+
+    .fill-low {
+      background: var(--red);
+    }
+
+    .fill-mid {
+      background: var(--orange);
+    }
+
+    .fill-high {
+      background: var(--green);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .badge-risk-low {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-risk-mid {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-risk-high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-blue {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-purple {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    .badge-gray {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .numbers {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .num-pill {
+      background: #f3f4f6;
+      padding: 5px 8px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    .empty {
+      padding: 40px;
+      text-align: center;
+      color: var(--gray);
+    }
+
+    .pagination {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+    }
+
+    .pagination-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .page-link {
+      padding: 8px 11px;
+      border-radius: 8px;
+      background: var(--light);
+      color: var(--dark);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .page-link.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .top-actions {
+      margin-bottom: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .page-header h1 {
+        font-size: 1.5rem;
+      }
+
+      .stat-value {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="page-header">
+    <h1>
+      <i class="fas fa-brain"></i>
+      Profils apprenants
+    </h1>
+    <p>
+      Cette page résume la maîtrise estimée des élèves par notion, à partir des réponses, des diagnostics bayésiens et du modèle apprenant.
+    </p>
+  </div>
+
+  <div class="top-actions">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-light">
+      <i class="fas fa-arrow-left"></i>
+      Retour admin
+    </a>
+    <a href="{{ url_for('admin_profils_apprenants') }}" class="btn btn-light">
+      <i class="fas fa-rotate-right"></i>
+      Réinitialiser les filtres
+    </a>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card purple">
+      <div class="stat-label">Profils suivis</div>
+      <div class="stat-value">{{ stats.total_profils }}</div>
+    </div>
+
+    <div class="stat-card green">
+      <div class="stat-label">Risque faible</div>
+      <div class="stat-value">{{ stats.total_risque_faible }}</div>
+    </div>
+
+    <div class="stat-card orange">
+      <div class="stat-label">Risque moyen</div>
+      <div class="stat-value">{{ stats.total_risque_moyen }}</div>
+    </div>
+
+    <div class="stat-card red">
+      <div class="stat-label">Risque élevé</div>
+      <div class="stat-value">{{ stats.total_risque_eleve }}</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Maîtrise moyenne</div>
+      <div class="stat-value">{{ stats.moyenne_maitrise }}%</div>
+    </div>
+  </div>
+
+  <form class="filters" method="GET" action="{{ url_for('admin_profils_apprenants') }}">
+    <h2>
+      <i class="fas fa-filter"></i>
+      Filtres
+    </h2>
+
+    <div class="filter-grid">
+      <div>
+        <label for="user_id">Élève</label>
+        <select name="user_id" id="user_id">
+          <option value="">Tous les élèves</option>
+          {% for eleve in eleves %}
+            <option value="{{ eleve.id }}" {% if filtres.user_id|string == eleve.id|string %}selected{% endif %}>
+              {{ eleve.nom_complet }} — {{ eleve.username }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="lecon_id">Leçon</label>
+        <select name="lecon_id" id="lecon_id">
+          <option value="">Toutes les leçons</option>
+          {% for lecon in lecons %}
+            <option value="{{ lecon.id }}" {% if filtres.lecon_id|string == lecon.id|string %}selected{% endif %}>
+              {% if lecon.unite and lecon.unite.matiere %}
+                {{ lecon.unite.matiere.nom }} —
+              {% endif %}
+              {{ lecon.titre_fr }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="risque">Risque</label>
+        <select name="risque" id="risque">
+          <option value="">Tous</option>
+          <option value="faible" {% if filtres.risque == 'faible' %}selected{% endif %}>Faible</option>
+          <option value="moyen" {% if filtres.risque == 'moyen' %}selected{% endif %}>Moyen</option>
+          <option value="élevé" {% if filtres.risque == 'élevé' %}selected{% endif %}>Élevé</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="recommandation">Recommandation</label>
+        <select name="recommandation" id="recommandation">
+          <option value="">Toutes</option>
+          <option value="remediation" {% if filtres.recommandation == 'remediation' %}selected{% endif %}>Remédiation</option>
+          <option value="consolidation" {% if filtres.recommandation == 'consolidation' %}selected{% endif %}>Consolidation</option>
+          <option value="progression" {% if filtres.recommandation == 'progression' %}selected{% endif %}>Progression</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="tendance">Tendance</label>
+        <select name="tendance" id="tendance">
+          <option value="">Toutes</option>
+          <option value="amélioration" {% if filtres.tendance == 'amélioration' %}selected{% endif %}>Amélioration</option>
+          <option value="stable" {% if filtres.tendance == 'stable' %}selected{% endif %}>Stable</option>
+          <option value="régression" {% if filtres.tendance == 'régression' %}selected{% endif %}>Régression</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="per_page">Par page</label>
+        <select name="per_page" id="per_page">
+          {% for n in [10, 20, 50, 100] %}
+            <option value="{{ n }}" {% if filtres.per_page == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="q">Recherche</label>
+        <input type="text" name="q" id="q" value="{{ filtres.q }}" placeholder="Notion, compétence, élève...">
+      </div>
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-search"></i>
+        Appliquer
+      </button>
+
+      <a href="{{ url_for('admin_profils_apprenants') }}" class="btn btn-light">
+        <i class="fas fa-times"></i>
+        Effacer
+      </a>
+    </div>
+  </form>
+
+  <div class="table-card">
+    <div class="table-header">
+      <h2>
+        <i class="fas fa-table"></i>
+        Résultats
+      </h2>
+      <div class="small">
+        {{ pagination.total }} profil(s) trouvé(s)
+      </div>
+    </div>
+
+    {% if profils %}
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Élève</th>
+              <th>Contexte</th>
+              <th>Notion / compétence</th>
+              <th>Maîtrise</th>
+              <th>Risque</th>
+              <th>Activité</th>
+              <th>Tendance</th>
+              <th>Recommandation</th>
+              <th>Dernière trace</th>
+            </tr>
+          </thead>
+
+          <tbody>
+          {% for profil in profils %}
+            {% set maitrise = profil.maitrise_estimee or 0 %}
+
+            <tr>
+              <td>
+                {% if profil.user %}
+                  <div class="student-name">{{ profil.user.nom_complet }}</div>
+                  <div class="small">@{{ profil.user.username }}</div>
+                  <div class="small">ID : {{ profil.user_id }}</div>
+                {% else %}
+                  <span class="small">Élève supprimé</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if profil.lecon %}
+                  <strong>{{ profil.lecon.titre_fr }}</strong>
+                  {% if profil.lecon.unite %}
+                    <div class="small">
+                      Unité : {{ profil.lecon.unite.nom }}
+                    </div>
+                  {% endif %}
+                  {% if profil.lecon.unite and profil.lecon.unite.matiere %}
+                    <div class="small">
+                      Matière : {{ profil.lecon.unite.matiere.nom }}
+                    </div>
+                  {% endif %}
+                {% else %}
+                  <span class="small">Leçon non disponible</span>
+                {% endif %}
+              </td>
+
+              <td>
+                <div class="notion">{{ profil.notion_cible }}</div>
+                {% if profil.competence_cible %}
+                  <div class="competence">{{ profil.competence_cible }}</div>
+                {% endif %}
+              </td>
+
+              <td>
+                <div class="progress-box">
+                  <div class="progress-label">{{ maitrise|round(1) }}%</div>
+                  <div class="progress-bar">
+                    <div
+                      class="progress-fill {% if maitrise < 50 %}fill-low{% elif maitrise < 80 %}fill-mid{% else %}fill-high{% endif %}"
+                      style="width: {{ maitrise }}%;">
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <td>
+                {% if profil.niveau_risque == "faible" %}
+                  <span class="badge badge-risk-low">
+                    <i class="fas fa-check-circle"></i>
+                    Faible
+                  </span>
+                {% elif profil.niveau_risque == "moyen" %}
+                  <span class="badge badge-risk-mid">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    Moyen
+                  </span>
+                {% elif profil.niveau_risque == "élevé" %}
+                  <span class="badge badge-risk-high">
+                    <i class="fas fa-circle-exclamation"></i>
+                    Élevé
+                  </span>
+                {% else %}
+                  <span class="badge badge-gray">Non défini</span>
+                {% endif %}
+
+                {% if profil.probabilite_difficulte is not none %}
+                  <div class="small">
+                    Difficulté : {{ (profil.probabilite_difficulte * 100)|round(1) }}%
+                  </div>
+                {% endif %}
+              </td>
+
+              <td>
+                <div class="numbers">
+                  <span class="num-pill">Faits : {{ profil.nombre_exercices_faits or 0 }}</span>
+                  <span class="num-pill">Réussites : {{ profil.nombre_reussites or 0 }}</span>
+                  <span class="num-pill">Erreurs : {{ profil.nombre_erreurs or 0 }}</span>
+                </div>
+              </td>
+
+              <td>
+                {% if profil.tendance == "amélioration" %}
+                  <span class="badge badge-risk-low">
+                    <i class="fas fa-arrow-trend-up"></i>
+                    Amélioration
+                  </span>
+                {% elif profil.tendance == "régression" %}
+                  <span class="badge badge-risk-high">
+                    <i class="fas fa-arrow-trend-down"></i>
+                    Régression
+                  </span>
+                {% else %}
+                  <span class="badge badge-gray">
+                    <i class="fas fa-minus"></i>
+                    Stable
+                  </span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if profil.recommandation == "progression" %}
+                  <span class="badge badge-risk-low">
+                    <i class="fas fa-arrow-up"></i>
+                    Progression
+                  </span>
+                {% elif profil.recommandation == "consolidation" %}
+                  <span class="badge badge-blue">
+                    <i class="fas fa-layer-group"></i>
+                    Consolidation
+                  </span>
+                {% elif profil.recommandation == "remediation" %}
+                  <span class="badge badge-risk-high">
+                    <i class="fas fa-life-ring"></i>
+                    Remédiation
+                  </span>
+                {% else %}
+                  <span class="badge badge-gray">Non définie</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if profil.dernier_score is not none %}
+                  <strong>{{ profil.dernier_score|round(1) }}%</strong>
+                {% else %}
+                  <span class="small">Aucun score</span>
+                {% endif %}
+
+                {% if profil.dernier_type_exercice %}
+                  <div class="small">Type : {{ profil.dernier_type_exercice }}</div>
+                {% endif %}
+
+                {% if profil.derniere_difficulte %}
+                  <div class="small">Difficulté : {{ profil.derniere_difficulte }}</div>
+                {% endif %}
+
+                {% if profil.updated_at %}
+                  <div class="small">
+                    MAJ : {{ profil.updated_at.strftime("%Y-%m-%d %H:%M") }}
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <div class="small">
+          Page {{ pagination.page }} sur {{ pagination.pages }}
+        </div>
+
+        <div class="pagination-links">
+          {% if pagination.has_prev %}
+            <a class="page-link" href="{{ url_for('admin_profils_apprenants', page=pagination.prev_num, user_id=filtres.user_id, lecon_id=filtres.lecon_id, risque=filtres.risque, recommandation=filtres.recommandation, tendance=filtres.tendance, q=filtres.q, per_page=filtres.per_page) }}">
+              Précédent
+            </a>
+          {% endif %}
+
+          {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              <a class="page-link {% if p == pagination.page %}active{% endif %}"
+                 href="{{ url_for('admin_profils_apprenants', page=p, user_id=filtres.user_id, lecon_id=filtres.lecon_id, risque=filtres.risque, recommandation=filtres.recommandation, tendance=filtres.tendance, q=filtres.q, per_page=filtres.per_page) }}">
+                {{ p }}
+              </a>
+            {% else %}
+              <span class="page-link">...</span>
+            {% endif %}
+          {% endfor %}
+
+          {% if pagination.has_next %}
+            <a class="page-link" href="{{ url_for('admin_profils_apprenants', page=pagination.next_num, user_id=filtres.user_id, lecon_id=filtres.lecon_id, risque=filtres.risque, recommandation=filtres.recommandation, tendance=filtres.tendance, q=filtres.q, per_page=filtres.per_page) }}">
+              Suivant
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+    {% else %}
+      <div class="empty">
+        <i class="fas fa-brain" style="font-size: 2.5rem; margin-bottom: 12px;"></i>
+        <h3>Aucun profil apprenant trouvé</h3>
+        <p>Les profils apparaîtront après les premières soumissions d’exercices en mode IA.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

@@ -917,6 +917,89 @@ class DiagnosticBayesien(db.Model):
 
 ### --- MODÈLES DE COMMISSIONS --- ###
 
+class ProfilApprenant(db.Model):
+    __tablename__ = "profils_apprenants"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Élève concerné
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Leçon concernée
+    lecon_id = db.Column(
+        db.Integer,
+        db.ForeignKey("lecons.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
+    # Notion suivie
+    notion_cible = db.Column(db.String(255), nullable=False, index=True)
+    competence_cible = db.Column(db.String(255), nullable=True)
+
+    # État estimé de l'élève
+    maitrise_estimee = db.Column(db.Float, default=0.0)
+    probabilite_difficulte = db.Column(db.Float, default=0.5)
+    niveau_risque = db.Column(db.String(50), default="moyen")
+
+    # Historique résumé
+    nombre_exercices_faits = db.Column(db.Integer, default=0)
+    nombre_reussites = db.Column(db.Integer, default=0)
+    nombre_erreurs = db.Column(db.Integer, default=0)
+
+    dernier_score = db.Column(db.Float, nullable=True)
+    dernier_type_exercice = db.Column(db.String(100), nullable=True)
+    derniere_difficulte = db.Column(db.String(50), nullable=True)
+
+    # Évolution
+    tendance = db.Column(db.String(50), default="stable")
+    recommandation = db.Column(db.String(100), default="consolidation")
+
+    # Petit historique structuré, sans stocker tout le détail
+    historique_resume = db.Column(db.JSON, default=list)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+    # Relations
+    user = db.relationship(
+        "User",
+        backref=db.backref("profils_apprenants", cascade="all, delete-orphan")
+    )
+
+    lecon = db.relationship(
+        "Lecon",
+        backref=db.backref("profils_apprenants")
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id",
+            "lecon_id",
+            "notion_cible",
+            name="uq_profil_apprenant_user_lecon_notion"
+        ),
+    )
+
+    def __repr__(self):
+        return (
+            f"<ProfilApprenant user_id={self.user_id} "
+            f"lecon_id={self.lecon_id} "
+            f"notion={self.notion_cible} "
+            f"maitrise={self.maitrise_estimee}>"
+        )
+    
+
+
 class Commission(db.Model):
     __tablename__ = "commissions"
     

@@ -38,7 +38,7 @@ from services.math_verification import (
     verifier_expression_fractionnaire,
     verifier_solution_equation_fractionnaire
 )
-from models import DiagnosticBayesien
+from models import DiagnosticBayesien, ProfilApprenant
 # Après les imports existants, ajouter :
 from naima_router import (
     appel_ia, 
@@ -1161,6 +1161,159 @@ def replace_latex_filter(text):
     result = result.replace('<', '&lt;').replace('>', '&gt;')
     
     return Markup(result)
+
+
+@app.template_filter("json_lisible")
+def json_lisible(value):
+    """
+    Affiche proprement un contenu JSON ou texte.
+    Utile pour options_fr/options_en, réponses ou contenus structurés.
+    """
+    import json
+    from markupsafe import Markup, escape
+
+    if value is None:
+        return ""
+
+    # Si c'est déjà une liste Python
+    if isinstance(value, list):
+        html = "<ul class='mb-0'>"
+        for item in value:
+            html += f"<li>{escape(str(item))}</li>"
+        html += "</ul>"
+        return Markup(html)
+
+    # Si c'est déjà un dictionnaire Python
+    if isinstance(value, dict):
+        html = "<div class='json-list'>"
+        for key, item in value.items():
+            html += (
+                "<div class='mb-2'>"
+                f"<strong>{escape(str(key))} :</strong> {escape(str(item))}"
+                "</div>"
+            )
+        html += "</div>"
+        return Markup(html)
+
+    # Si c'est une chaîne
+    if isinstance(value, str):
+        texte = value.strip()
+
+        if not texte:
+            return ""
+
+        # Essayer de parser si la chaîne ressemble à du JSON
+        if texte.startswith("[") or texte.startswith("{"):
+            try:
+                data = json.loads(texte)
+
+                if isinstance(data, list):
+                    html = "<ul class='mb-0'>"
+                    for item in data:
+                        html += f"<li>{escape(str(item))}</li>"
+                    html += "</ul>"
+                    return Markup(html)
+
+                if isinstance(data, dict):
+                    html = "<div class='json-list'>"
+                    for key, item in data.items():
+                        html += (
+                            "<div class='mb-2'>"
+                            f"<strong>{escape(str(key))} :</strong> {escape(str(item))}"
+                            "</div>"
+                        )
+                    html += "</div>"
+                    return Markup(html)
+
+            except Exception:
+                pass
+
+        # Sinon, texte normal
+        return Markup(texte)
+
+    return Markup(escape(str(value)))
+
+@app.template_filter("affichage_exercice")
+def affichage_exercice(value):
+    """
+    Affiche proprement une question, une réponse, une explication ou des options.
+    - Respecte les retours à la ligne.
+    - Transforme les JSON en affichage lisible.
+    - Ajoute des retours à la ligne avant a), b), c), d) si tout est sur une seule ligne.
+    """
+    import json
+    import re
+    from markupsafe import Markup, escape
+
+    if value is None:
+        return ""
+
+    def format_texte(texte):
+        texte = str(texte).strip()
+
+        if not texte:
+            return ""
+
+        # Ajoute des retours à la ligne avant a), b), c), d), etc.
+        texte = re.sub(r"\s+([a-h]\))", r"\n\1", texte)
+
+        # Ajoute aussi des retours à la ligne avant 1), 2), 3), etc.
+        texte = re.sub(r"\s+([0-9]+[\)\.])", r"\n\1", texte)
+
+        texte = escape(texte)
+
+        # Convertit les vrais retours à la ligne en <br>
+        texte = str(texte).replace("\n", "<br>")
+
+        return Markup(f'<div class="contenu-exercice">{texte}</div>')
+
+    # Si c'est déjà une liste Python
+    if isinstance(value, list):
+        html = "<div class='options-exercice'>"
+        for i, item in enumerate(value):
+            html += f"<div class='option-item'><strong>{chr(65+i)}.</strong> {escape(str(item))}</div>"
+        html += "</div>"
+        return Markup(html)
+
+    # Si c'est déjà un dictionnaire Python
+    if isinstance(value, dict):
+        html = "<div class='options-exercice'>"
+        for key, item in value.items():
+            html += f"<div class='option-item'><strong>{escape(str(key))}.</strong> {escape(str(item))}</div>"
+        html += "</div>"
+        return Markup(html)
+
+    # Si c'est une chaîne qui contient peut-être du JSON
+    if isinstance(value, str):
+        texte = value.strip()
+
+        if not texte:
+            return ""
+
+        if texte.startswith("[") or texte.startswith("{"):
+            try:
+                data = json.loads(texte)
+
+                if isinstance(data, list):
+                    html = "<div class='options-exercice'>"
+                    for i, item in enumerate(data):
+                        html += f"<div class='option-item'><strong>{chr(65+i)}.</strong> {escape(str(item))}</div>"
+                    html += "</div>"
+                    return Markup(html)
+
+                if isinstance(data, dict):
+                    html = "<div class='options-exercice'>"
+                    for key, item in data.items():
+                        html += f"<div class='option-item'><strong>{escape(str(key))}.</strong> {escape(str(item))}</div>"
+                    html += "</div>"
+                    return Markup(html)
+
+            except Exception:
+                pass
+
+        return format_texte(texte)
+
+    return format_texte(value)
 
 
 @app.route("/api/matieres-par-niveau/<int:niveau_id>")
@@ -6830,96 +6983,117 @@ def changer_langue():
 @app.route("/enseignant/changer-mot-de-passe", methods=["GET", "POST"])
 def changer_mot_de_passe_enseignant():
     """Permettre à un enseignant de changer son mot de passe"""
-    # Vérifier si l'utilisateur est connecté comme enseignant
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Système actuel : session["user_id"] + session["role"]
+    # ============================================================
+
     if "user_id" not in session:
-        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ
-    
+        flash("Veuillez vous connecter", "error")
+        return redirect(url_for("login_enseignant"))
+
     if session.get("role") != "enseignant":
         flash("Accès réservé aux enseignants", "error")
-        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ
-    
+        return redirect(url_for("login_enseignant"))
+
     try:
         UserModel = get_user_model()
-        
-        # Récupérer l'enseignant
-        enseignant = UserModel.query.filter_by(
-            id=session["user_id"],
-            role="enseignant"
-        ).first()
-        
-        if not enseignant:
-            flash("Enseignant non trouvé", "error")
-            return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ
-        
-        if request.method == "POST":
-            ancien = request.form.get("ancien_mdp", "").strip()
-            nouveau = request.form.get("nouveau_mdp", "").strip()
-            confirmation = request.form.get("confirmation_mdp", "").strip()
 
-            # Validation
+        enseignant = (
+            UserModel.query
+            .filter_by(
+                id=session["user_id"],
+                role="enseignant"
+            )
+            .first()
+        )
+
+        if not enseignant:
+            session.clear()
+            flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+            return redirect(url_for("login_enseignant"))
+
+        lang = session.get("lang", "fr")
+
+        # ============================================================
+        # POST : CHANGEMENT DU MOT DE PASSE
+        # ============================================================
+
+        if request.method == "POST":
+            ancien = (request.form.get("ancien_mdp") or "").strip()
+            nouveau = (request.form.get("nouveau_mdp") or "").strip()
+            confirmation = (request.form.get("confirmation_mdp") or "").strip()
+
             if not ancien:
                 flash("Veuillez entrer votre mot de passe actuel", "error")
                 return render_template(
-                    "changer_mot_de_passe.html", 
+                    "changer_mot_de_passe.html",
                     enseignant=enseignant,
-                    lang=session.get('lang', 'fr')
+                    lang=lang
                 )
-            
+
             if not nouveau:
                 flash("Veuillez entrer un nouveau mot de passe", "error")
                 return render_template(
-                    "changer_mot_de_passe.html", 
+                    "changer_mot_de_passe.html",
                     enseignant=enseignant,
-                    lang=session.get('lang', 'fr')
-                )
-            
-            if len(nouveau) < 6:
-                flash("Le mot de passe doit contenir au moins 6 caractères", "error")
-                return render_template(
-                    "changer_mot_de_passe.html", 
-                    enseignant=enseignant,
-                    lang=session.get('lang', 'fr')
-                )
-            
-            # Vérifier l'ancien mot de passe
-            if not enseignant.verifier_mot_de_passe(ancien):
-                flash("Mot de passe actuel incorrect", "error")
-                return render_template(
-                    "changer_mot_de_passe.html", 
-                    enseignant=enseignant,
-                    lang=session.get('lang', 'fr')
+                    lang=lang
                 )
 
-            # Vérifier la confirmation
+            if len(nouveau) < 8:
+                flash("Le mot de passe doit contenir au moins 8 caractères", "error")
+                return render_template(
+                    "changer_mot_de_passe.html",
+                    enseignant=enseignant,
+                    lang=lang
+                )
+
             if nouveau != confirmation:
                 flash("Les nouveaux mots de passe ne correspondent pas", "error")
                 return render_template(
-                    "changer_mot_de_passe.html", 
+                    "changer_mot_de_passe.html",
                     enseignant=enseignant,
-                    lang=session.get('lang', 'fr')
+                    lang=lang
                 )
 
-            # Changer le mot de passe
-            enseignant.mot_de_passe = nouveau
-            db.session.commit()
-            
-            flash("✅ Mot de passe mis à jour avec succès !", "success")
-            
-            # ✅ REDIRECTION CORRIGÉE VERS LE BON ENDPOINT
-            return redirect(url_for('dashboard_enseignant'))  # ← C'EST ÇA LA CORRECTION !
+            if not enseignant.verifier_mot_de_passe(ancien):
+                flash("Mot de passe actuel incorrect", "error")
+                return render_template(
+                    "changer_mot_de_passe.html",
+                    enseignant=enseignant,
+                    lang=lang
+                )
 
-        # GET: Afficher le formulaire
+            # ============================================================
+            # SAUVEGARDE SÉCURISÉE DU MOT DE PASSE
+            # ============================================================
+
+            if hasattr(enseignant, "definir_mot_de_passe"):
+                enseignant.definir_mot_de_passe(nouveau)
+            else:
+                enseignant.mot_de_passe = generate_password_hash(nouveau)
+
+            db.session.commit()
+
+            flash("✅ Mot de passe mis à jour avec succès !", "success")
+            return redirect(url_for("dashboard_enseignant"))
+
+        # ============================================================
+        # GET : AFFICHAGE DU FORMULAIRE
+        # ============================================================
+
         return render_template(
-            "changer_mot_de_passe.html", 
+            "changer_mot_de_passe.html",
             enseignant=enseignant,
-            lang=session.get('lang', 'fr')
+            lang=lang
         )
-        
+
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Erreur changement mot de passe enseignant: {e}")
         flash("Erreur lors du changement de mot de passe", "error")
-        # ✅ REDIRECTION CORRIGÉE ICI AUSSI
-        return redirect(url_for('dashboard_enseignant'))  # ← CORRIGÉ
+        return redirect(url_for("dashboard_enseignant"))
     
 
 @app.route("/login-parent", methods=["GET", "POST"])
@@ -8464,99 +8638,185 @@ def admin_inscrire_eleve():
 
 @app.route("/changer-mot-de-passe", methods=["GET", "POST"])
 def changer_mot_de_passe():
-    """Route pour changer le mot de passe - Adaptée au nouveau système User"""
-    # Vérifier si l'utilisateur est connecté
+    """Route pour changer le mot de passe enseignant"""
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Système actuel : session["user_id"] + session["role"]
+    # ============================================================
+
     if "user_id" not in session:
-        return redirect(url_for("login"))
-    
-    # Vérifier si c'est un enseignant
+        flash("Veuillez vous connecter", "error")
+        return redirect(url_for("login_enseignant"))
+
     if session.get("role") != "enseignant":
         flash("Accès réservé aux enseignants", "error")
-        return redirect("/")
-    
-    UserModel = get_user_model()
-    enseignant = UserModel.query.get(session["user_id"])
-    
-    if not enseignant or enseignant.role != "enseignant":
-        flash("Enseignant non trouvé", "error")
-        return redirect(url_for("login"))
+        return redirect(url_for("login_enseignant"))
 
-    if request.method == "POST":
-        ancien = request.form.get("ancien_mdp")
-        nouveau = request.form.get("nouveau_mdp")
-        confirmation = request.form.get("confirmation_mdp")
+    try:
+        UserModel = get_user_model()
 
-        if not enseignant.verifier_mot_de_passe(ancien):
-            flash("Mot de passe actuel incorrect.", "error")
-        elif nouveau != confirmation:
-            flash("Les nouveaux mots de passe ne correspondent pas.", "error")
-        elif len(nouveau) < 6:
-            flash("Le mot de passe doit contenir au moins 6 caractères.", "error")
-        else:
-            # Utiliser la méthode de hachage appropriée
-            enseignant.mot_de_passe = generate_password_hash(nouveau)
-            db.session.commit()
-            flash("Mot de passe mis à jour avec succès.", "success")
-            return redirect(url_for("dashboard_enseignant"))
+        enseignant = (
+            UserModel.query
+            .filter_by(
+                id=session["user_id"],
+                role="enseignant"
+            )
+            .first()
+        )
 
-    return render_template("changer_mot_de_passe.html", 
-                         enseignant=enseignant,
-                         lang=session.get("lang", "fr"))
+        if not enseignant:
+            session.clear()
+            flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+            return redirect(url_for("login_enseignant"))
+
+        lang = session.get("lang", "fr")
+
+        if request.method == "POST":
+            ancien = (request.form.get("ancien_mdp") or "").strip()
+            nouveau = (request.form.get("nouveau_mdp") or "").strip()
+            confirmation = (request.form.get("confirmation_mdp") or "").strip()
+
+            if not ancien:
+                flash("Veuillez entrer votre mot de passe actuel.", "error")
+
+            elif not nouveau:
+                flash("Veuillez entrer un nouveau mot de passe.", "error")
+
+            elif len(nouveau) < 8:
+                flash("Le mot de passe doit contenir au moins 8 caractères.", "error")
+
+            elif nouveau != confirmation:
+                flash("Les nouveaux mots de passe ne correspondent pas.", "error")
+
+            elif not enseignant.verifier_mot_de_passe(ancien):
+                flash("Mot de passe actuel incorrect.", "error")
+
+            else:
+                if hasattr(enseignant, "definir_mot_de_passe"):
+                    enseignant.definir_mot_de_passe(nouveau)
+                else:
+                    enseignant.mot_de_passe = generate_password_hash(nouveau)
+
+                db.session.commit()
+
+                flash("✅ Mot de passe mis à jour avec succès.", "success")
+                return redirect(url_for("dashboard_enseignant"))
+
+        return render_template(
+            "changer_mot_de_passe.html",
+            enseignant=enseignant,
+            lang=lang
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur changement mot de passe: {e}")
+        flash("Erreur lors du changement de mot de passe.", "error")
+        return redirect(url_for("dashboard_enseignant"))
 
 @app.route("/enseignant/modifier-profil", methods=["GET", "POST"])
 def modifier_profil_enseignant():
     """Modifier le profil enseignant"""
-    # Vérifier si l'utilisateur est connecté
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Système actuel : session["user_id"] + session["role"]
+    # ============================================================
+
     if "user_id" not in session:
-        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ (au lieu de "login")
-    
-    # Vérifier si c'est un enseignant
+        flash("Veuillez vous connecter", "error")
+        return redirect(url_for("login_enseignant"))
+
     if session.get("role") != "enseignant":
         flash("Accès réservé aux enseignants", "error")
-        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ (au lieu de "/")
-    
-    UserModel = get_user_model()
-    enseignant = UserModel.query.get(session["user_id"])
-    
-    if not enseignant or enseignant.role != "enseignant":
-        flash("Enseignant non trouvé", "error")
-        return redirect(url_for("login_enseignant"))  # ✅ CORRIGÉ (au lieu de "login")
+        return redirect(url_for("login_enseignant"))
 
-    if request.method == "POST":
-        nom = request.form.get("nom")
-        email = request.form.get("email")
-        
-        # Vérification des champs obligatoires
-        if not nom or not email:
-            flash("Le nom et l'email sont obligatoires", "error")
-            return redirect(url_for("modifier_profil_enseignant"))
+    try:
+        UserModel = get_user_model()
 
-        # Vérifier si l'email est déjà utilisé par un autre utilisateur
-        existant = UserModel.query.filter(
-            UserModel.email == email,
-            UserModel.id != enseignant.id
-        ).first()
-        
-        if existant:
-            flash("Cet email est déjà utilisé par un autre compte", "error")
-            return redirect(url_for("modifier_profil_enseignant"))
+        enseignant = (
+            UserModel.query
+            .filter_by(
+                id=session["user_id"],
+                role="enseignant"
+            )
+            .first()
+        )
 
-        # Mettre à jour les informations
-        enseignant.nom_complet = nom
-        enseignant.email = email
-        
-        # Téléphone optionnel
-        telephone = request.form.get("telephone")
-        if telephone:
-            enseignant.telephone = telephone
-        
-        db.session.commit()
-        flash("✅ Profil mis à jour avec succès", "success")
-        return redirect(url_for("dashboard_enseignant"))  # ✅ DÉJÀ BON !
+        if not enseignant:
+            session.clear()
+            flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+            return redirect(url_for("login_enseignant"))
 
-    return render_template("modifier_profil_enseignant.html", 
-                         enseignant=enseignant, 
-                         lang=session.get("lang", "fr"))
+        lang = session.get("lang", "fr")
+
+        # ============================================================
+        # POST : MISE À JOUR DU PROFIL
+        # ============================================================
+
+        if request.method == "POST":
+            nom = (request.form.get("nom") or "").strip()
+            email = (request.form.get("email") or "").strip().lower()
+            telephone = (request.form.get("telephone") or "").strip()
+
+            if not nom or not email:
+                flash("Le nom et l'email sont obligatoires", "error")
+                return render_template(
+                    "modifier_profil_enseignant.html",
+                    enseignant=enseignant,
+                    lang=lang
+                )
+
+            # Vérifier si l'email est déjà utilisé par un autre utilisateur
+            existant = (
+                UserModel.query
+                .filter(
+                    UserModel.email == email,
+                    UserModel.id != enseignant.id
+                )
+                .first()
+            )
+
+            if existant:
+                flash("Cet email est déjà utilisé par un autre compte", "error")
+                return render_template(
+                    "modifier_profil_enseignant.html",
+                    enseignant=enseignant,
+                    lang=lang
+                )
+
+            enseignant.nom_complet = nom
+            enseignant.email = email
+
+            if hasattr(enseignant, "telephone"):
+                enseignant.telephone = telephone if telephone else None
+
+            db.session.commit()
+
+            # Mettre à jour la session si ton dashboard affiche ces infos
+            session["username"] = enseignant.username
+            session["role"] = enseignant.role
+            session.modified = True
+
+            flash("✅ Profil mis à jour avec succès", "success")
+            return redirect(url_for("dashboard_enseignant"))
+
+        # ============================================================
+        # GET : AFFICHAGE DU FORMULAIRE
+        # ============================================================
+
+        return render_template(
+            "modifier_profil_enseignant.html",
+            enseignant=enseignant,
+            lang=lang
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur modification profil enseignant: {e}")
+        flash("Erreur lors de la modification du profil", "error")
+        return redirect(url_for("dashboard_enseignant"))
 
 
 @app.route("/enseignant/creer-contenu")
@@ -8916,78 +9176,157 @@ def restore_teacher_student_relations():
 @app.route("/enseignant/remediations-en-attente")
 def remediations_en_attente():
     """Afficher les remédiations en attente pour l'enseignant connecté"""
-    # Vérifier que l'enseignant est connecté
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Système actuel : session["user_id"] + session["role"]
+    # ============================================================
+
     if "user_id" not in session:
         flash("Veuillez vous connecter", "error")
         return redirect(url_for("login_enseignant"))
-    
+
     if session.get("role") != "enseignant":
         flash("Accès réservé aux enseignants", "error")
         return redirect(url_for("login_enseignant"))
-    
+
+    enseignant = User.query.get(session["user_id"])
+
+    if not enseignant or enseignant.role != "enseignant":
+        session.clear()
+        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+        return redirect(url_for("login_enseignant"))
+
     try:
-        # Récupérer l'ID de l'utilisateur connecté
-        user_id = session["user_id"]
-        
-        # Récupérer toutes les remédiations en attente
-        suggestions = RemediationSuggestion.query \
-            .join(User, User.id == RemediationSuggestion.user_id) \
-            .filter(RemediationSuggestion.statut == "en_attente") \
-            .filter(User.enseignant_referent_id == user_id) \
-            .order_by(RemediationSuggestion.timestamp.desc()) \
-            .all()
-        
-        total_en_attente = len(suggestions)
         lang = session.get("lang", "fr")
-        
+
+        # ============================================================
+        # REMÉDIATIONS DES ÉLÈVES DE CET ENSEIGNANT
+        # On utilise enseignant_referent_id, qui correspond au système récent
+        # ============================================================
+
+        suggestions = (
+            RemediationSuggestion.query
+            .join(User, User.id == RemediationSuggestion.user_id)
+            .filter(RemediationSuggestion.statut == "en_attente")
+            .filter(User.enseignant_referent_id == enseignant.id)
+            .order_by(RemediationSuggestion.timestamp.desc())
+            .all()
+        )
+
+        total_en_attente = len(suggestions)
+
         return render_template(
             "remediations_en_attente.html",
             suggestions=suggestions,
             total_en_attente=total_en_attente,
-            lang=lang
+            lang=lang,
+            enseignant=enseignant
         )
-        
+
     except Exception as e:
         print(f"Erreur dans remediations_en_attente: {e}")
+        db.session.rollback()
         flash("Une erreur est survenue", "error")
         return redirect(url_for("dashboard_enseignant"))
 
 
 @app.route("/enseignant/valider-remediation/<int:remediation_id>", methods=["GET", "POST"])
 def valider_remediation(remediation_id):
-    # ✅ CORRECTION : utiliser "user_id"
-    if "user_id" not in session or session.get("role") != "enseignant":
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Système actuel : session["user_id"] + session["role"]
+    # ============================================================
+
+    if "user_id" not in session:
+        flash("Veuillez vous connecter", "error")
+        return redirect(url_for("login_enseignant"))
+
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect(url_for("login_enseignant"))
+
+    enseignant = User.query.get(session["user_id"])
+
+    if not enseignant or enseignant.role != "enseignant":
+        session.clear()
+        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
         return redirect(url_for("login_enseignant"))
 
     lang = session.get("lang", "fr")
+
+    # ============================================================
+    # RÉCUPÉRER LA REMÉDIATION
+    # ============================================================
+
     suggestion = RemediationSuggestion.query.get_or_404(remediation_id)
-    
-    # ✅ Vérifier que l'élève appartient bien à cet enseignant
-    if suggestion.user.enseignant_referent_id != session["user_id"]:
+
+    # ============================================================
+    # SÉCURITÉ : vérifier que l'élève appartient à cet enseignant
+    # ============================================================
+
+    if not suggestion.user:
+        flash("Élève introuvable pour cette remédiation.", "error")
+        return redirect(url_for("remediations_a_valider"))
+
+    if suggestion.user.enseignant_referent_id != enseignant.id:
         flash("Accès non autorisé", "error")
         return redirect(url_for("remediations_a_valider"))
 
+    # ============================================================
+    # POST : VALIDATION DE LA REMÉDIATION
+    # ============================================================
+
     if request.method == "POST":
-        message = request.form.get("message")
-        question = request.form.get("question")
-        reponse = request.form.get("reponse")
-        explication = request.form.get("explication")
+        message = (request.form.get("message") or "").strip()
+        question = (request.form.get("question") or "").strip()
+        reponse = (request.form.get("reponse") or "").strip()
+        explication = (request.form.get("explication") or "").strip()
+
+        if not question or not reponse:
+            flash("La question et la réponse attendue sont obligatoires.", "error")
+            return render_template(
+                "valider_remediation.html",
+                suggestion=suggestion,
+                lang=lang,
+                question=question,
+                reponse=reponse,
+                explication=explication
+            )
 
         if lang == "en":
-            bloc = f"""Remediation:\n- Question: {question}\n- Expected answer: {reponse}\n- Explanation: {explication}"""
+            bloc = f"""Remediation:
+- Question: {question}
+- Expected answer: {reponse}
+- Explanation: {explication}"""
         else:
-            bloc = f"""Remédiation :\n- Question : {question}\n- Réponse attendue : {reponse}\n- Explication : {explication}"""
+            bloc = f"""Remédiation :
+- Question : {question}
+- Réponse attendue : {reponse}
+- Explication : {explication}"""
 
-        suggestion.message = message
-        suggestion.exercice_suggere = bloc
-        suggestion.statut = "valide"
-        db.session.commit()
+        try:
+            suggestion.message = message
+            suggestion.exercice_suggere = bloc
+            suggestion.statut = "valide"
 
-        flash("✅ Remédiation validée avec succès", "success")
-        return redirect(url_for("remediations_a_valider"))
+            db.session.commit()
 
-    # Parser l'existant
+            flash("✅ Remédiation validée avec succès", "success")
+            return redirect(url_for("remediations_a_valider"))
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erreur validation remédiation : {e}")
+            flash("Une erreur est survenue lors de la validation.", "error")
+            return redirect(url_for("remediations_a_valider"))
+
+    # ============================================================
+    # GET : PRÉREMPLIR LE FORMULAIRE
+    # ============================================================
+
     import re
+
     exercice_suggere = suggestion.exercice_suggere or ""
 
     if lang == "en":
@@ -9009,47 +9348,108 @@ def valider_remediation(remediation_id):
         lang=lang,
         question=question_text,
         reponse=reponse_text,
-        explication=explication_text
+        explication=explication_text,
+        enseignant=enseignant
     )
 
 
 @app.route("/enseignant/remediations-a-valider", methods=["GET"])
 def remediations_a_valider():
-    # ✅ CORRECTION : utiliser "user_id"
-    if "user_id" not in session or session.get("role") != "enseignant":
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Système actuel : session["user_id"] + session["role"]
+    # ============================================================
+
+    if "user_id" not in session:
+        flash("Veuillez vous connecter", "error")
         return redirect(url_for("login_enseignant"))
 
-    enseignant_id = session["user_id"]  # ✅ CORRIGÉ
-    niveau_filtre = request.args.get("niveau")
-    statut_filtre = request.args.get("statut", "en_attente")
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect(url_for("login_enseignant"))
 
-    query = RemediationSuggestion.query \
-        .join(User, RemediationSuggestion.user_id == User.id) \
-        .options(joinedload(RemediationSuggestion.user).joinedload(User.niveau)) \
-        .filter(User.enseignant_referent_id == enseignant_id)  # ✅ CORRIGÉ
+    enseignant = User.query.get(session["user_id"])
 
-    if niveau_filtre:
-        query = query.filter(User.niveau.has(nom=niveau_filtre))
-    
-    if statut_filtre != "tous":
-        query = query.filter(RemediationSuggestion.statut == statut_filtre)
-    else:
-        query = query.filter(RemediationSuggestion.statut != "supprime")
+    if not enseignant or enseignant.role != "enseignant":
+        session.clear()
+        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+        return redirect(url_for("login_enseignant"))
 
-    suggestions = query.order_by(RemediationSuggestion.timestamp.desc()).all()
+    # ============================================================
+    # FILTRES
+    # ============================================================
 
-    niveaux = db.session.query(Niveau.nom).distinct().all()
-    statuts = ["en_attente", "valide", "tous"]
+    niveau_filtre = request.args.get("niveau", "").strip()
+    statut_filtre = request.args.get("statut", "en_attente").strip()
+    lang = session.get("lang", "fr")
 
-    return render_template(
-        "enseignant_remediations_validation.html",
-        suggestions=suggestions,
-        niveaux=[n[0] for n in niveaux],
-        niveau_filtre=niveau_filtre,
-        statut_filtre=statut_filtre,
-        statuts=statuts,
-        lang=session.get("lang", "fr")
-    )
+    if statut_filtre not in ["en_attente", "valide", "tous"]:
+        statut_filtre = "en_attente"
+
+    try:
+        # ============================================================
+        # REQUÊTE PRINCIPALE
+        # L'enseignant voit uniquement les remédiations de ses élèves
+        # ============================================================
+
+        query = (
+            RemediationSuggestion.query
+            .join(User, RemediationSuggestion.user_id == User.id)
+            .options(
+                joinedload(RemediationSuggestion.user)
+                .joinedload(User.niveau)
+            )
+            .filter(User.enseignant_referent_id == enseignant.id)
+        )
+
+        # Filtre niveau
+        if niveau_filtre:
+            query = query.filter(User.niveau.has(nom=niveau_filtre))
+
+        # Filtre statut
+        if statut_filtre != "tous":
+            query = query.filter(RemediationSuggestion.statut == statut_filtre)
+        else:
+            query = query.filter(RemediationSuggestion.statut != "supprime")
+
+        suggestions = (
+            query
+            .order_by(RemediationSuggestion.timestamp.desc())
+            .all()
+        )
+
+        # ============================================================
+        # NIVEAUX DISPONIBLES POUR LES ÉLÈVES DE CET ENSEIGNANT
+        # ============================================================
+
+        niveaux = (
+            db.session.query(Niveau.nom)
+            .join(User, User.niveau_id == Niveau.id)
+            .filter(User.enseignant_referent_id == enseignant.id)
+            .filter(User.role.in_(["eleve", "élève"]))
+            .distinct()
+            .order_by(Niveau.nom.asc())
+            .all()
+        )
+
+        statuts = ["en_attente", "valide", "tous"]
+
+        return render_template(
+            "enseignant_remediations_validation.html",
+            suggestions=suggestions,
+            niveaux=[n[0] for n in niveaux],
+            niveau_filtre=niveau_filtre,
+            statut_filtre=statut_filtre,
+            statuts=statuts,
+            lang=lang,
+            enseignant=enseignant
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erreur dans remediations_a_valider: {e}")
+        flash("Une erreur est survenue lors du chargement des remédiations.", "error")
+        return redirect(url_for("dashboard_enseignant"))
 
 
 @app.route("/enseignant/remediation/<int:remediation_id>")
@@ -9174,160 +9574,253 @@ def login_enseignant():
 
 @app.route("/dashboard-enseignant", methods=["GET", "POST"])
 def dashboard_enseignant():
-    """Dashboard enseignant - version complète"""
+    """Dashboard enseignant - version légère sans chargement des matières/exercices"""
+
     try:
-        # Vérifier connexion et rôle
+        # ============================================================
+        # AUTHENTIFICATION ENSEIGNANT
+        # ============================================================
+
         if "user_id" not in session:
             return redirect(url_for("login_enseignant"))
 
         if session.get("role") != "enseignant":
             flash("Accès réservé aux enseignants", "error")
-            return redirect("/")
-
-        enseignant = User.query.get(session["user_id"])
-        if not enseignant or not enseignant.est_enseignant():
-            flash("Enseignant non trouvé", "error")
             return redirect(url_for("login_enseignant"))
 
-        # Gestion langue
+        enseignant = db.session.get(User, session["user_id"])
+
+        if not enseignant or not enseignant.est_enseignant():
+            session.clear()
+            flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+            return redirect(url_for("login_enseignant"))
+
+        # ============================================================
+        # GESTION DE LA LANGUE
+        # ============================================================
+
         if request.method == "POST":
             selected_lang = request.form.get("lang")
+
             if selected_lang in ["fr", "en"]:
                 session["lang"] = selected_lang
+                session.modified = True
+
             return redirect(url_for("dashboard_enseignant"))
 
-        lang = session.get("lang", "fr")
+        lang = session.get("lang", getattr(enseignant, "langue", None) or "fr")
 
-        # ✅ NOUVEAU : Récupérer les matières et niveaux de l'enseignant
-        from models import EnseignantMatiere, Matiere, Niveau
-        
-        enseignant_matieres = db.session.query(
-            Matiere.id,
-            Matiere.nom,
-            Matiere.nom_en,
-            Niveau.id.label('niveau_id'),
-            Niveau.nom.label('niveau_nom'),
-            Niveau.nom_en.label('niveau_nom_en')
-        ).join(
-            EnseignantMatiere, EnseignantMatiere.matiere_id == Matiere.id
-        ).join(
-            Niveau, Matiere.niveau_id == Niveau.id
-        ).filter(
-            EnseignantMatiere.enseignant_id == enseignant.id
-        ).all()
-        
-        # Organiser par niveau
-        niveaux_enseignant = {}
-        for item in enseignant_matieres:
-            niveau_id = item.niveau_id
-            niveau_nom = item.niveau_nom_en if lang == 'en' and item.niveau_nom_en else item.niveau_nom
-            
-            if niveau_id not in niveaux_enseignant:
-                niveaux_enseignant[niveau_id] = {
-                    'id': niveau_id,
-                    'nom': niveau_nom,
-                    'matieres': []
-                }
-            
-            matiere_nom = item.nom_en if lang == 'en' and item.nom_en else item.nom
-            niveaux_enseignant[niveau_id]['matieres'].append({
-                'id': item.id,
-                'nom': matiere_nom
-            })
-        
-        niveaux_enseignant_list = list(niveaux_enseignant.values())
+        # ============================================================
+        # RÉCUPÉRER LES ÉLÈVES DE L'ENSEIGNANT
+        # Système actuel : enseignant_referent_id
+        # ============================================================
 
-        # -----------------------------
-        # Récupérer élèves
-        # -----------------------------
-        eleves = enseignant.get_eleves_encadres()
+        eleves = (
+            User.query
+            .filter(
+                User.role.in_(["eleve", "élève"]),
+                User.enseignant_referent_id == enseignant.id
+            )
+            .all()
+        )
+
         total_students = len(eleves)
+        eleves_ids = [e.id for e in eleves]
 
-        # -----------------------------
-        # Statistiques élèves
-        # -----------------------------
+        # ============================================================
+        # STATISTIQUES ÉLÈVES
+        # Version optimisée : on ne charge pas toutes les réponses
+        # ============================================================
+
+        stats = []
+        noms_eleves = []
+        moyennes = []
+        niveau_counts = {}
         all_stars = []
-        stats, noms_eleves, moyennes, niveau_counts = [], [], [], {}
 
-        for e in eleves:
-            try:
-                reponses = StudentResponse.query.filter_by(user_id=e.id).all()
-                etoiles_vals = [r.etoiles for r in reponses if r.etoiles is not None]
-                moyenne = round(sum(etoiles_vals) / len(etoiles_vals), 2) if etoiles_vals else 0
-                if etoiles_vals:
-                    all_stars.append(moyenne)
+        if eleves_ids:
+            from sqlalchemy import func
 
-                niveau_nom = e.niveau.nom if e.niveau else "Non défini"
+            moyennes_par_eleve = dict(
+                db.session.query(
+                    StudentResponse.user_id,
+                    func.avg(StudentResponse.etoiles)
+                )
+                .filter(
+                    StudentResponse.user_id.in_(eleves_ids),
+                    StudentResponse.etoiles.isnot(None)
+                )
+                .group_by(StudentResponse.user_id)
+                .all()
+            )
 
-                stats.append({
-                    "nom": e.nom_complet,
-                    "username": e.username,
-                    "niveau": niveau_nom,
-                    "moyenne": moyenne,
-                    "total": len(etoiles_vals)
-                })
+            total_reponses_par_eleve = dict(
+                db.session.query(
+                    StudentResponse.user_id,
+                    func.count(StudentResponse.id)
+                )
+                .filter(
+                    StudentResponse.user_id.in_(eleves_ids),
+                    StudentResponse.etoiles.isnot(None)
+                )
+                .group_by(StudentResponse.user_id)
+                .all()
+            )
+        else:
+            moyennes_par_eleve = {}
+            total_reponses_par_eleve = {}
 
-                noms_eleves.append(e.nom_complet[:15])
-                moyennes.append(moyenne if moyenne <= 3 else 3)
-                niveau_counts[niveau_nom] = niveau_counts.get(niveau_nom, 0) + 1
-            except Exception as ex:
-                print(f"Erreur stats élève {e.id}: {ex}")
-                continue
+        for eleve in eleves:
+            moyenne = moyennes_par_eleve.get(eleve.id, 0)
+            moyenne = round(float(moyenne or 0), 2)
+
+            if moyenne > 0:
+                all_stars.append(moyenne)
+
+            niveau_nom = eleve.niveau.nom if eleve.niveau else "Non défini"
+
+            stats.append({
+                "nom": eleve.nom_complet,
+                "username": eleve.username,
+                "niveau": niveau_nom,
+                "moyenne": moyenne,
+                "total": total_reponses_par_eleve.get(eleve.id, 0)
+            })
+
+            noms_eleves.append((eleve.nom_complet or eleve.username or "Élève")[:15])
+            moyennes.append(moyenne if moyenne <= 3 else 3)
+
+            niveau_counts[niveau_nom] = niveau_counts.get(niveau_nom, 0) + 1
 
         avg_stars = round(sum(all_stars) / len(all_stars), 1) if all_stars else 0
+
         niveaux = list(niveau_counts.keys())
         counts = list(niveau_counts.values())
 
-        # -----------------------------
-        # Remédiations en attente
-        # -----------------------------
+        # ============================================================
+        # REMÉDIATIONS EN ATTENTE
+        # ============================================================
+
         nv_count = 0
+
         try:
-            eleves_ids = [e.id for e in eleves]
             if eleves_ids:
-                nv_count = RemediationSuggestion.query \
-                    .filter(RemediationSuggestion.user_id.in_(eleves_ids),
-                            RemediationSuggestion.statut == "en_attente") \
+                nv_count = (
+                    RemediationSuggestion.query
+                    .filter(
+                        RemediationSuggestion.user_id.in_(eleves_ids),
+                        RemediationSuggestion.statut == "en_attente"
+                    )
                     .count()
-        except:
+                )
+        except Exception as ex:
+            print(f"Erreur comptage remédiations dashboard enseignant : {ex}")
             nv_count = 0
 
-        # -----------------------------
-        # Commissions
-        # -----------------------------
+        # ============================================================
+        # COMMISSIONS
+        # Version optimisée avec agrégats SQL
+        # ============================================================
+
+        total_commissions = 0
+        commissions_pending = 0
+        commissions_paid = 0
+        commissions_available = 0
+        interac_configure = False
+
         try:
-            commissions = Commission.query.filter_by(enseignant_id=enseignant.id).all()
-            total_commissions = sum(c.montant_commission for c in commissions if c.statut != 'cancelled')
-            commissions_pending = sum(1 for c in commissions if c.statut == 'pending')
-            commissions_paid = sum(c.montant_commission for c in commissions if c.statut == 'paid')
-            commissions_available = sum(c.montant_commission for c in commissions if c.statut == 'pending')
-            info_versement = InfoVersementEnseignant.query.filter_by(enseignant_id=enseignant.id).first()
+            from sqlalchemy import func, case
+
+            commission_stats = (
+                db.session.query(
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (Commission.statut != "cancelled", Commission.montant_commission),
+                                else_=0
+                            )
+                        ),
+                        0
+                    ).label("total_commissions"),
+
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (Commission.statut == "pending", 1),
+                                else_=0
+                            )
+                        ),
+                        0
+                    ).label("commissions_pending"),
+
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (Commission.statut == "paid", Commission.montant_commission),
+                                else_=0
+                            )
+                        ),
+                        0
+                    ).label("commissions_paid"),
+
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (Commission.statut == "pending", Commission.montant_commission),
+                                else_=0
+                            )
+                        ),
+                        0
+                    ).label("commissions_available")
+                )
+                .filter(Commission.enseignant_id == enseignant.id)
+                .first()
+            )
+
+            if commission_stats:
+                total_commissions = float(commission_stats.total_commissions or 0)
+                commissions_pending = int(commission_stats.commissions_pending or 0)
+                commissions_paid = float(commission_stats.commissions_paid or 0)
+                commissions_available = float(commission_stats.commissions_available or 0)
+
+            info_versement = (
+                InfoVersementEnseignant.query
+                .filter_by(enseignant_id=enseignant.id)
+                .first()
+            )
+
             interac_configure = bool(info_versement and info_versement.email_interac)
-        except:
-            total_commissions = commissions_pending = commissions_paid = commissions_available = 0
+
+        except Exception as ex:
+            print(f"Erreur commissions dashboard enseignant : {ex}")
+            total_commissions = 0
+            commissions_pending = 0
+            commissions_paid = 0
+            commissions_available = 0
             interac_configure = False
 
-        # -----------------------------
-        # Élèves payants / essai
-        # -----------------------------
-        eleves_payants = eleves_essai = 0
-        for e in eleves:
-            statut = getattr(e, "statut_paiement", "")
-            if statut == "paye":
-                eleves_payants += 1
-            elif statut == "essai_gratuit":
+        # ============================================================
+        # ÉLÈVES PAYANTS / ESSAI
+        # ============================================================
+
+        eleves_payants = 0
+        eleves_essai = 0
+
+        for eleve in eleves:
+            statut = getattr(eleve, "statut_paiement", "")
+
+            if statut == "essai_gratuit":
                 eleves_essai += 1
             else:
                 eleves_payants += 1
 
-        # -----------------------------
-        # Exercices par matière/leçon
-        # -----------------------------
-        matieres = get_exercices_par_enseignant_for_template(enseignant, lang)
+        # ============================================================
+        # RENDU FINAL
+        # IMPORTANT :
+        # On ne transmet plus matieres ni niveaux_enseignant.
+        # Le dashboard ne charge plus les exercices.
+        # ============================================================
 
-        # -----------------------------
-        # Rendu final (AJOUT DE niveaux_enseignant)
-        # -----------------------------
         return render_template(
             "dashboard_enseignant.html",
             enseignant=enseignant,
@@ -9347,77 +9840,123 @@ def dashboard_enseignant():
             interac_configure=interac_configure,
             eleves_payants=eleves_payants,
             eleves_essai=eleves_essai,
-            commissions_implemented=True,
-            matieres=matieres,
-            niveaux_enseignant=niveaux_enseignant_list  # ✅ NOUVEAU : à ajouter
+            commissions_implemented=True
         )
 
     except Exception as e:
+        db.session.rollback()
         print(f"Erreur dashboard_enseignant: {e}")
         flash("Une erreur est survenue sur le dashboard.", "error")
-        return redirect("/")
+        return redirect(url_for("login_enseignant"))
 
 @app.route("/enseignant/matiere/<int:matiere_id>")
 def enseignant_matiere_detail(matiere_id):
-    """Voir les détails d'une matière - chargement progressif"""
-    from models import EnseignantMatiere, Matiere, User
-    
-    if "user_id" not in session or session.get("role") != "enseignant":
+    """Voir les détails d'une matière pour les élèves de l'enseignant connecté"""
+
+    from models import EnseignantMatiere, Matiere, User, Unite, EleveMatiere
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Système actuel : session["user_id"] + session["role"]
+    # ============================================================
+
+    if "user_id" not in session:
+        flash("Veuillez vous connecter", "error")
         return redirect(url_for("login_enseignant"))
-    
+
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect(url_for("login_enseignant"))
+
     enseignant = User.query.get(session["user_id"])
-    if not enseignant:
+
+    if not enseignant or enseignant.role != "enseignant":
+        session.clear()
+        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
         return redirect(url_for("login_enseignant"))
-    
-    # Vérifier que cette matière est bien assignée à l'enseignant
-    enseignant_matiere = EnseignantMatiere.query.filter_by(
-        enseignant_id=enseignant.id,
-        matiere_id=matiere_id
-    ).first()
-    
-    if not enseignant_matiere:
-        flash("Vous n'avez pas accès à cette matière", "error")
-        return redirect(url_for("dashboard_enseignant"))
-    
+
+    lang = session.get("lang", "fr")
+
+    # ============================================================
+    # MATIÈRE
+    # ============================================================
+
     matiere = Matiere.query.get(matiere_id)
+
     if not matiere:
         flash("Matière non trouvée", "error")
         return redirect(url_for("dashboard_enseignant"))
-    
-    lang = session.get("lang", "fr")
+
     niveau = matiere.niveau
-    
-    # Charger UNIQUEMENT les unités (pas les leçons ni exercices)
-    unites = Unite.query.filter_by(matiere_id=matiere_id).all()
-    
-    unites_data = []
-    for unite in unites:
-        unite_nom = unite.nom_en if lang == 'en' and unite.nom_en else unite.nom
-        unites_data.append({
-            'id': unite.id,
-            'nom': unite_nom
-        })
-    
-    # Compter le total d'unités
-    total_unites = len(unites_data)
-    
-    # Récupérer les élèves (sans leurs exercices pour l'instant)
-    eleves = enseignant.get_eleves_encadres()
-    
+
+    # ============================================================
+    # VÉRIFIER QUE L'ENSEIGNANT ENSEIGNE CETTE MATIÈRE
+    # ============================================================
+
+    enseignant_matiere = (
+        EnseignantMatiere.query
+        .filter(
+            EnseignantMatiere.enseignant_id == enseignant.id,
+            EnseignantMatiere.matiere_id == matiere.id
+        )
+        .first()
+    )
+
+    if not enseignant_matiere:
+        flash("Vous n'avez pas accès à cette matière.", "error")
+        return redirect(url_for("dashboard_enseignant"))
+
+    # ============================================================
+    # ÉLÈVES DE CET ENSEIGNANT QUI ONT CETTE MATIÈRE
+    # ============================================================
+
+    eleves = (
+        User.query
+        .join(EleveMatiere, EleveMatiere.eleve_id == User.id)
+        .filter(
+            User.role.in_(["eleve", "élève"]),
+            User.enseignant_referent_id == enseignant.id,
+            EleveMatiere.matiere_id == matiere.id
+        )
+        .order_by(User.nom_complet.asc())
+        .all()
+    )
+
     eleves_data = []
+
     for eleve in eleves:
-        # Vérifier si l'élève a cette matière
-        eleve_matiere = EleveMatiere.query.filter_by(
-            eleve_id=eleve.id,
-            matiere_id=matiere_id
-        ).first()
-        
-        if eleve_matiere:
-            eleves_data.append({
-                'id': eleve.id,
-                'nom': eleve.nom_complet
-            })
-    
+        eleves_data.append({
+            "id": eleve.id,
+            "nom": eleve.nom_complet,
+            "email": eleve.email,
+            "niveau": eleve.niveau.nom if eleve.niveau else ""
+        })
+
+    # ============================================================
+    # UNITÉS DE CETTE MATIÈRE
+    # On garde les unités de la matière, mais la page reste limitée
+    # aux élèves de l'enseignant qui ont cette matière.
+    # ============================================================
+
+    unites = (
+        Unite.query
+        .filter_by(matiere_id=matiere.id)
+        .order_by(Unite.nom.asc())
+        .all()
+    )
+
+    unites_data = []
+
+    for unite in unites:
+        unite_nom = unite.nom_en if lang == "en" and unite.nom_en else unite.nom
+
+        unites_data.append({
+            "id": unite.id,
+            "nom": unite_nom
+        })
+
+    total_unites = len(unites_data)
+
     return render_template(
         "enseignant_matiere_detail.html",
         matiere=matiere,
@@ -9425,6 +9964,8 @@ def enseignant_matiere_detail(matiere_id):
         unites=unites_data,
         total_unites=total_unites,
         eleves=eleves_data,
+        total_eleves=len(eleves_data),
+        enseignant=enseignant,
         lang=lang
     )
 
@@ -9605,37 +10146,92 @@ def enseignant_matieres():
 
 @app.route("/enseignant/matieres/ajouter", methods=["POST"])
 def enseignant_matieres_ajouter():
-    """Ajouter une matière à l'enseignant"""
-    from models import EnseignantMatiere
-    
-    if "user_id" not in session or session.get("role") != "enseignant":
+    """Ajouter ou mettre à jour les matières enseignées par l'enseignant"""
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Système actuel : session["user_id"] + session["role"]
+    # ============================================================
+
+    if "user_id" not in session:
+        flash("Veuillez vous connecter", "error")
         return redirect(url_for("login_enseignant"))
-    
+
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect(url_for("login_enseignant"))
+
     enseignant = User.query.get(session["user_id"])
-    if not enseignant:
+
+    if not enseignant or enseignant.role != "enseignant":
+        session.clear()
+        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
         return redirect(url_for("login_enseignant"))
-    
-    matiere_ids = request.form.getlist("matieres")
-    lang = session.get("lang", "fr")
-    
-    for matiere_id in matiere_ids:
-        # Vérifier si l'association n'existe pas déjà
-        existing = EnseignantMatiere.query.filter_by(
-            enseignant_id=enseignant.id,
-            matiere_id=matiere_id
-        ).first()
-        
-        if not existing:
-            nouvelle_matiere = EnseignantMatiere(
+
+    try:
+        # Les cases cochées dans le formulaire
+        matiere_ids = request.form.getlist("matieres")
+
+        if not matiere_ids:
+            flash("Veuillez sélectionner au moins une matière.", "error")
+            return redirect(url_for("enseignant_matieres"))
+
+        # Nettoyer les valeurs reçues
+        matiere_ids_int = []
+
+        for matiere_id in matiere_ids:
+            try:
+                matiere_ids_int.append(int(matiere_id))
+            except ValueError:
+                pass
+
+        if not matiere_ids_int:
+            flash("Aucune matière valide sélectionnée.", "error")
+            return redirect(url_for("enseignant_matieres"))
+
+        # ============================================================
+        # SUPPRIMER LES ANCIENNES MATIÈRES DE CET ENSEIGNANT
+        # Puis recréer proprement avec niveau_id
+        # ============================================================
+
+        EnseignantMatiere.query.filter_by(
+            enseignant_id=enseignant.id
+        ).delete()
+
+        # ============================================================
+        # AJOUTER LES NOUVELLES MATIÈRES
+        # niveau_id vient directement de la matière
+        # ============================================================
+
+        matieres = (
+            Matiere.query
+            .filter(Matiere.id.in_(matiere_ids_int))
+            .all()
+        )
+
+        for matiere in matieres:
+            if not matiere.niveau_id:
+                print(f"⚠️ Matière sans niveau_id ignorée : {matiere.id} - {matiere.nom}")
+                continue
+
+            lien = EnseignantMatiere(
                 enseignant_id=enseignant.id,
-                matiere_id=matiere_id
+                niveau_id=matiere.niveau_id,
+                matiere_id=matiere.id
             )
-            db.session.add(nouvelle_matiere)
-    
-    db.session.commit()
-    
-    flash("Matières mises à jour avec succès", "success")
-    return redirect(url_for("enseignant_matieres"))
+
+            db.session.add(lien)
+
+        db.session.commit()
+
+        flash("✅ Matières mises à jour avec succès.", "success")
+        return redirect(url_for("enseignant_matieres"))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erreur ajout matières enseignant : {e}")
+        flash("Une erreur est survenue lors de la mise à jour des matières.", "error")
+        return redirect(url_for("enseignant_matieres"))
 
 
 @app.route("/enseignant/matieres/supprimer/<int:matiere_id>")
@@ -11098,7 +11694,6 @@ def choisir_sequence():
             unites=[],
             lecons=[],
             matiere_data={},
-            completed_exercise_ids=set(),
             completed_test_ids=set(),
             lang=lang
         )
@@ -11128,7 +11723,6 @@ def choisir_sequence():
     # ============================================================
     # Si aucune matière n'a été choisie pour cet élève,
     # on affiche les matières de son niveau.
-    # C'est ce qui correspond à ton cas actuel.
 
     if not matieres_eleve:
         print("⚠️ Aucune matière choisie pour cet élève.")
@@ -11196,35 +11790,13 @@ def choisir_sequence():
             .join(StudentResponse, StudentResponse.exercice_id == Exercice.id)
             .filter(StudentResponse.user_id == eleve.id)
             .filter(Exercice.lecon_id.in_(lecon_ids))
+            .filter(StudentResponse.exercice_id.isnot(None))
             .group_by(Exercice.lecon_id)
             .all()
         )
 
     # ============================================================
-    # 7. RÉCUPÉRER LES EXERCICES TERMINÉS
-    # ============================================================
-    # Ton template actuel ne semble pas utiliser directement cette variable,
-    # mais je la garde pour compatibilité avec le reste du projet.
-
-    completed_exercise_ids = set()
-
-    if lecon_ids:
-        completed_exercise_ids = {
-            row[0]
-            for row in (
-                db.session.query(StudentResponse.exercice_id)
-                .join(Exercice, StudentResponse.exercice_id == Exercice.id)
-                .filter(StudentResponse.user_id == eleve.id)
-                .filter(Exercice.lecon_id.in_(lecon_ids))
-                .filter(StudentResponse.exercice_id.isnot(None))
-                .distinct()
-                .all()
-            )
-            if row[0]
-        }
-
-    # ============================================================
-    # 8. RÉCUPÉRER LES TESTS TERMINÉS
+    # 7. RÉCUPÉRER LES TESTS TERMINÉS
     # ============================================================
 
     completed_tests = (
@@ -11237,7 +11809,7 @@ def choisir_sequence():
     completed_test_ids = {test[0] for test in completed_tests if test[0]}
 
     # ============================================================
-    # 9. ORGANISER LES DONNÉES POUR LE TEMPLATE
+    # 8. ORGANISER LES DONNÉES POUR LE TEMPLATE
     # ============================================================
 
     matiere_data = {}
@@ -11341,7 +11913,7 @@ def choisir_sequence():
             matiere_data.pop(matiere_nom)
 
     # ============================================================
-    # 10. LOGS POUR DIAGNOSTIC
+    # 9. LOGS POUR DIAGNOSTIC
     # ============================================================
 
     print("========== CHOISIR SÉQUENCE ==========")
@@ -11356,7 +11928,7 @@ def choisir_sequence():
     print("=======================================")
 
     # ============================================================
-    # 11. RENDU TEMPLATE
+    # 10. RENDU TEMPLATE
     # ============================================================
 
     return render_template(
@@ -11365,11 +11937,180 @@ def choisir_sequence():
         unites=unites_list,
         lecons=lecons_filtrees,
         matiere_data=matiere_data,
-        completed_exercise_ids=completed_exercise_ids,
         completed_test_ids=completed_test_ids,
         lang=lang
     )
 
+@app.route("/admin/profils-apprenants")
+@admin_required
+def admin_profils_apprenants():
+    from sqlalchemy import desc, or_
+    from sqlalchemy.orm import joinedload
+
+    # ============================================================
+    # PARAMÈTRES DE FILTRE
+    # ============================================================
+
+    user_id = request.args.get("user_id", "").strip()
+    lecon_id = request.args.get("lecon_id", "").strip()
+    risque = request.args.get("risque", "").strip()
+    recommandation = request.args.get("recommandation", "").strip()
+    tendance = request.args.get("tendance", "").strip()
+    recherche = request.args.get("q", "").strip()
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 20
+
+    # ============================================================
+    # REQUÊTE PRINCIPALE
+    # ============================================================
+
+    query = (
+        ProfilApprenant.query
+        .options(
+            joinedload(ProfilApprenant.user),
+            joinedload(ProfilApprenant.lecon)
+                .joinedload(Lecon.unite)
+                .joinedload(Unite.matiere)
+        )
+    )
+
+    # Élève
+    if user_id:
+        try:
+            user_id_int = int(user_id)
+            query = query.filter(ProfilApprenant.user_id == user_id_int)
+        except ValueError:
+            pass
+
+    # Leçon
+    if lecon_id:
+        try:
+            lecon_id_int = int(lecon_id)
+            query = query.filter(ProfilApprenant.lecon_id == lecon_id_int)
+        except ValueError:
+            pass
+
+    # Risque
+    if risque:
+        query = query.filter(ProfilApprenant.niveau_risque == risque)
+
+    # Recommandation
+    if recommandation:
+        query = query.filter(ProfilApprenant.recommandation == recommandation)
+
+    # Tendance
+    if tendance:
+        query = query.filter(ProfilApprenant.tendance == tendance)
+
+    # Recherche notion / compétence / élève
+    if recherche:
+        like = f"%{recherche}%"
+        query = (
+            query
+            .join(User, ProfilApprenant.user_id == User.id)
+            .filter(
+                or_(
+                    ProfilApprenant.notion_cible.ilike(like),
+                    ProfilApprenant.competence_cible.ilike(like),
+                    User.username.ilike(like),
+                    User.nom_complet.ilike(like),
+                    User.email.ilike(like)
+                )
+            )
+        )
+
+    query = query.order_by(
+        desc(ProfilApprenant.updated_at),
+        ProfilApprenant.niveau_risque.desc(),
+        ProfilApprenant.notion_cible.asc()
+    )
+
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
+    profils = pagination.items
+
+    # ============================================================
+    # LISTES POUR LES FILTRES
+    # ============================================================
+
+    eleves = (
+        User.query
+        .filter_by(role="eleve")
+        .order_by(User.nom_complet.asc())
+        .all()
+    )
+
+    lecons = (
+        Lecon.query
+        .options(joinedload(Lecon.unite).joinedload(Unite.matiere))
+        .order_by(Lecon.titre_fr.asc())
+        .all()
+    )
+
+    # ============================================================
+    # STATISTIQUES GLOBALES
+    # ============================================================
+
+    total_profils = ProfilApprenant.query.count()
+
+    total_risque_eleve = (
+        ProfilApprenant.query
+        .filter(ProfilApprenant.niveau_risque == "élevé")
+        .count()
+    )
+
+    total_risque_moyen = (
+        ProfilApprenant.query
+        .filter(ProfilApprenant.niveau_risque == "moyen")
+        .count()
+    )
+
+    total_risque_faible = (
+        ProfilApprenant.query
+        .filter(ProfilApprenant.niveau_risque == "faible")
+        .count()
+    )
+
+    moyenne_maitrise = (
+        db.session.query(db.func.avg(ProfilApprenant.maitrise_estimee))
+        .scalar()
+    )
+
+    moyenne_maitrise = round(float(moyenne_maitrise or 0), 1)
+
+    stats = {
+        "total_profils": total_profils,
+        "total_risque_eleve": total_risque_eleve,
+        "total_risque_moyen": total_risque_moyen,
+        "total_risque_faible": total_risque_faible,
+        "moyenne_maitrise": moyenne_maitrise
+    }
+
+    return render_template(
+        "admin/profils_apprenants.html",
+        profils=profils,
+        pagination=pagination,
+        eleves=eleves,
+        lecons=lecons,
+        stats=stats,
+        filtres={
+            "user_id": user_id,
+            "lecon_id": lecon_id,
+            "risque": risque,
+            "recommandation": recommandation,
+            "tendance": tendance,
+            "q": recherche,
+            "per_page": per_page
+        }
+    )
 
 from datetime import datetime, timedelta
 import matplotlib
@@ -12608,9 +13349,7 @@ def exercice_sequentiel_progressif():
 
     lecon = (
         Lecon.query
-        .options(
-            joinedload(Lecon.unite).joinedload(Unite.matiere)
-        )
+        .options(joinedload(Lecon.unite).joinedload(Unite.matiere))
         .filter(Lecon.id == lecon_id_int)
         .first()
     )
@@ -12622,7 +13361,6 @@ def exercice_sequentiel_progressif():
     # ============================================================
     # 2. LISTE LÉGÈRE DES IDS DES EXERCICES
     # ============================================================
-    # On ne charge pas tous les exercices complets.
 
     exercice_ids = [
         row[0]
@@ -12644,46 +13382,7 @@ def exercice_sequentiel_progressif():
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
 
     # ============================================================
-    # 3. DÉTERMINER L’EXERCICE ACTUEL
-    # ============================================================
-    # En mode IA, exercice_id est utilisé surtout après recommandation adaptative.
-    # index sert seulement à démarrer le parcours depuis choisir_sequence.
-
-    exercice_actuel = None
-
-    if exercice_id_param:
-        try:
-            exercice_id_int = int(exercice_id_param)
-        except (ValueError, TypeError):
-            exercice_id_int = None
-
-        if exercice_id_int and exercice_id_int in exercice_ids:
-            exercice_actuel = (
-                Exercice.query
-                .filter(
-                    Exercice.id == exercice_id_int,
-                    Exercice.lecon_id == lecon.id
-                )
-                .first()
-            )
-
-            index = exercice_ids.index(exercice_id_int)
-
-    if not exercice_actuel:
-        if index < 0:
-            index = 0
-
-        if index >= total_exercices:
-            index = total_exercices - 1
-
-        exercice_actuel = db.session.get(Exercice, exercice_ids[index])
-
-    if not exercice_actuel:
-        flash(msg_aucun_exercice, "info")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
-
-    # ============================================================
-    # 4. RÉPONSES DÉJÀ COMPLÉTÉES EN UNE SEULE REQUÊTE
+    # 3. RÉPONSES DÉJÀ COMPLÉTÉES EN UNE SEULE REQUÊTE
     # ============================================================
 
     completed_exercise_ids = {
@@ -12713,7 +13412,61 @@ def exercice_sequentiel_progressif():
     ]
 
     # ============================================================
-    # 5. RÉPONSE EXISTANTE POUR L’EXERCICE ACTUEL
+    # 4. DÉTERMINER L’EXERCICE ACTUEL
+    # ============================================================
+    # Règles :
+    # - Si exercice_id est fourni, on affiche cet exercice.
+    # - S’il est déjà fait, on affiche sa réponse et sa rétroaction.
+    # - Si aucun exercice_id n’est fourni, on reprend au premier exercice non fait.
+    # - Si tous les exercices sont faits, on affiche le dernier exercice fait avec rétroaction.
+
+    exercice_actuel = None
+    reprise_automatique = False
+
+    if exercice_id_param:
+        try:
+            exercice_id_int = int(exercice_id_param)
+        except (ValueError, TypeError):
+            exercice_id_int = None
+
+        if exercice_id_int and exercice_id_int in exercice_ids:
+            exercice_actuel = (
+                Exercice.query
+                .filter(
+                    Exercice.id == exercice_id_int,
+                    Exercice.lecon_id == lecon.id
+                )
+                .first()
+            )
+            index = exercice_ids.index(exercice_id_int)
+
+    if not exercice_actuel:
+        premier_non_fait_id = None
+
+        for ex_id in exercice_ids:
+            if ex_id not in completed_exercise_ids:
+                premier_non_fait_id = ex_id
+                break
+
+        if premier_non_fait_id:
+            exercice_actuel = db.session.get(Exercice, premier_non_fait_id)
+            index = exercice_ids.index(premier_non_fait_id)
+            reprise_automatique = True
+        else:
+            if index < 0:
+                index = 0
+
+            if index >= total_exercices:
+                index = total_exercices - 1
+
+            exercice_actuel = db.session.get(Exercice, exercice_ids[index])
+
+    if not exercice_actuel:
+        flash(msg_aucun_exercice, "info")
+        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+    # ============================================================
+    # 5. RÉPONSE EXISTANTE ET RÉTROACTION PROPRE
     # ============================================================
 
     reponse = StudentResponse.query.filter_by(
@@ -12721,8 +13474,16 @@ def exercice_sequentiel_progressif():
         exercice_id=exercice_actuel.id
     ).first()
 
+    exercice_deja_fait = reponse is not None
+
+    # Anti-gaspillage de tokens : un exercice déjà fait n’est jamais resoumis.
+    # On force l’affichage direct de la réponse et de la rétroaction.
+    if exercice_deja_fait:
+        show_feedback = True
+
     reponse_existante = None
     feedback_data = None
+    feedback_a_afficher = None
 
     if reponse:
         reponse_existante = reponse.reponse_eleve
@@ -12730,32 +13491,67 @@ def exercice_sequentiel_progressif():
         try:
             if reponse.analyse_ia and reponse.analyse_ia.strip().startswith("{"):
                 feedback_data = json.loads(reponse.analyse_ia)
+            elif reponse.analyse_ia:
+                feedback_data = {
+                    "current_feedback": reponse.analyse_ia,
+                    "current_stars": reponse.etoiles or 0,
+                    "symbolic_verification": {},
+                    "adaptive_next": {},
+                    "bayesian_diagnostic": {},
+                    "metadata": {}
+                }
         except Exception as e:
             print(f"⚠️ Erreur parsing feedback exercice {exercice_actuel.id}: {e}")
-            feedback_data = None
+            feedback_data = {
+                "current_feedback": (
+                    "La rétroaction existe, mais elle n’a pas pu être lue correctement."
+                    if lang == "fr"
+                    else "Feedback exists, but it could not be read correctly."
+                ),
+                "current_stars": reponse.etoiles or 0,
+                "symbolic_verification": {},
+                "adaptive_next": {},
+                "bayesian_diagnostic": {},
+                "metadata": {}
+            }
 
-    feedback_a_afficher = None
-
-    if show_feedback and feedback_data:
+    if feedback_data:
         feedback_a_afficher = {
             "analyse": feedback_data.get("current_feedback", ""),
             "etoiles": feedback_data.get("current_stars", 0),
             "symbolic": feedback_data.get("symbolic_verification", {}),
-            "adaptive": feedback_data.get("adaptive_next", {})
+            "adaptive": feedback_data.get("adaptive_next", {}),
+            "bayesian": feedback_data.get("bayesian_diagnostic", {}),
+            "metadata": feedback_data.get("metadata", {})
+        }
+
+    if exercice_deja_fait and not feedback_a_afficher:
+        feedback_a_afficher = {
+            "analyse": (
+                "La réponse a déjà été enregistrée. La rétroaction détaillée n’est pas disponible pour le moment, mais aucun nouveau calcul ne sera lancé."
+                if lang == "fr"
+                else "This answer has already been saved. Detailed feedback is not available right now, but no new calculation will be launched."
+            ),
+            "etoiles": reponse.etoiles if reponse else 0,
+            "symbolic": {},
+            "adaptive": {},
+            "bayesian": {},
+            "metadata": {}
         }
 
     # ============================================================
-    # 6. NAVIGATION ADAPTATIVE UNIQUEMENT
+    # 6. NAVIGATION ADAPTATIVE AVEC SÉCURITÉ
     # ============================================================
-    # En mode IA, on ne donne pas accès libre à précédent/suivant.
-    # Le bouton suivant existe seulement après feedback,
-    # et il pointe vers l’exercice recommandé par le moteur adaptatif.
+    # Les exercices déjà faits peuvent être revus depuis la progression,
+    # mais les exercices non faits restent verrouillés en mode IA.
 
     bouton_precedent = None
     bouton_suivant = None
+    prochain_non_fait_id = None
 
     prochain_adaptatif = session.get("prochain_exercice_adaptatif")
 
+    # 1. Prochain exercice recommandé par le moteur adaptatif
     if (
         show_feedback
         and prochain_adaptatif
@@ -12763,13 +13559,66 @@ def exercice_sequentiel_progressif():
         and prochain_adaptatif.get("exercice_source_id") == exercice_actuel.id
         and prochain_adaptatif.get("prochain_exercice_id")
     ):
-        bouton_suivant = url_for(
-            "exercice_sequentiel_progressif",
-            username=username,
-            lecon_id=lecon.id,
-            lang=lang,
-            exercice_id=prochain_adaptatif.get("prochain_exercice_id")
-        )
+        prochain_exercice_id = prochain_adaptatif.get("prochain_exercice_id")
+
+        try:
+            prochain_exercice_id = int(prochain_exercice_id)
+        except (ValueError, TypeError):
+            prochain_exercice_id = None
+
+        if (
+            prochain_exercice_id
+            and prochain_exercice_id in exercice_ids
+            and prochain_exercice_id not in completed_exercise_ids
+        ):
+            bouton_suivant = url_for(
+                "exercice_sequentiel_progressif",
+                username=username,
+                lecon_id=lecon.id,
+                lang=lang,
+                exercice_id=prochain_exercice_id
+            )
+
+    # 2. Sécurité : si aucun prochain adaptatif n'est disponible,
+    # proposer le premier exercice non encore fait.
+    if show_feedback and not bouton_suivant:
+        for ex_id in exercice_ids:
+            if ex_id != exercice_actuel.id and ex_id not in completed_exercise_ids:
+                prochain_non_fait_id = ex_id
+                break
+
+        if prochain_non_fait_id:
+            bouton_suivant = url_for(
+                "exercice_sequentiel_progressif",
+                username=username,
+                lecon_id=lecon.id,
+                lang=lang,
+                exercice_id=prochain_non_fait_id
+            )
+
+            session["prochain_exercice_adaptatif"] = {
+                "lecon_id": lecon.id,
+                "exercice_source_id": exercice_actuel.id,
+                "prochain_exercice_id": prochain_non_fait_id,
+                "strategie": "fallback",
+                "raison": (
+                    "Prochain exercice non encore fait, utilisé car aucune recommandation adaptative n'était disponible."
+                    if lang == "fr"
+                    else "Next unfinished exercise used because no adaptive recommendation was available."
+                )
+            }
+            session.modified = True
+
+            if feedback_a_afficher is not None:
+                feedback_a_afficher["adaptive"] = {
+                    "strategie": "fallback",
+                    "raison": (
+                        "Le système propose maintenant le prochain exercice non encore fait."
+                        if lang == "fr"
+                        else "The system now suggests the next unfinished exercise."
+                    ),
+                    "prochain_exercice_id": prochain_non_fait_id
+                }
 
     bouton_terminer = url_for("dashboard_eleve", username=username, lang=lang)
 
@@ -12815,7 +13664,10 @@ def exercice_sequentiel_progressif():
     print(f"🧩 Exercice actuel : {exercice_actuel.id}")
     print(f"📊 Position : {index + 1}/{total_exercices}")
     print(f"✅ Complétés : {exercices_completes}/{total_exercices}")
-    print(f"🧠 Prochain adaptatif : {prochain_adaptatif}")
+    print(f"🔒 Exercice déjà fait : {exercice_deja_fait}")
+    print(f"🔁 Reprise automatique : {reprise_automatique}")
+    print(f"🧠 Prochain adaptatif : {session.get('prochain_exercice_adaptatif')}")
+    print(f"➡️ Bouton suivant : {bouton_suivant}")
     print("===================================================")
 
     # ============================================================
@@ -12834,6 +13686,7 @@ def exercice_sequentiel_progressif():
         index=index,
         total=total_exercices,
         total_exercices=total_exercices,
+        exercice_ids=exercice_ids,
         progression_pourcentage=progression_pourcentage,
         exercices_completes=exercices_completes,
         reponse_existante=reponse_existante,
@@ -12846,13 +13699,13 @@ def exercice_sequentiel_progressif():
         bouton_precedent=bouton_precedent,
         bouton_suivant=bouton_suivant,
         bouton_terminer=bouton_terminer,
-
-        # Nouveaux paramètres pour le template
         mode_parcours="ia_guided",
         navigation_libre=False,
         libelle_mode=libelle_mode,
-        libelle_bouton_continuer=libelle_bouton_continuer
+        libelle_bouton_continuer=libelle_bouton_continuer,
+        exercice_deja_fait=exercice_deja_fait
     )
+
 
 @app.route("/exercices-papier-crayon")
 def exercices_papier_crayon():
@@ -13484,6 +14337,296 @@ Correction :
         derniere_moyenne=derniere_moyenne  # Passer la moyenne au template
     )
 
+
+@app.route("/enseignant/profils-apprenants")
+def enseignant_profils_apprenants():
+    from sqlalchemy import desc, or_
+    from sqlalchemy.orm import joinedload
+    from models import db, ProfilApprenant, User, Lecon, Unite
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # Même logique que le dashboard_enseignant récent :
+    # session["user_id"] + session["role"] == "enseignant"
+    # ============================================================
+
+    if "user_id" not in session:
+        print("❌ Pas de user_id dans la session :", dict(session))
+        return redirect(url_for("login_enseignant"))
+
+    if session.get("role") != "enseignant":
+        print("❌ Rôle incorrect pour profils apprenants :", dict(session))
+        flash("Accès réservé aux enseignants", "error")
+        return redirect("/")
+
+    enseignant = User.query.get(session["user_id"])
+
+    if not enseignant or not enseignant.est_enseignant():
+        print("❌ Enseignant introuvable ou rôle invalide :", session.get("user_id"))
+        flash("Enseignant non trouvé", "error")
+        return redirect(url_for("login_enseignant"))
+
+    print("✅ Enseignant connecté profils apprenants :", enseignant.id, enseignant.email)
+
+    # ============================================================
+    # ÉLÈVES DE CET ENSEIGNANT
+    # On utilise la même logique que enseignant_eleves :
+    # nouveau système : enseignant_referent_id
+    # fallback ancien système : enseignant_id si le champ existe
+    # ============================================================
+
+    eleves = (
+        User.query
+        .options(joinedload(User.niveau))
+        .filter(
+            User.role.in_(["eleve", "élève"]),
+            User.enseignant_referent_id == enseignant.id
+        )
+        .order_by(User.nom_complet.asc())
+        .all()
+    )
+
+    if not eleves and hasattr(User, "enseignant_id"):
+        eleves = (
+            User.query
+            .options(joinedload(User.niveau))
+            .filter(
+                User.role.in_(["eleve", "élève"]),
+                User.enseignant_id == enseignant.id
+            )
+            .order_by(User.nom_complet.asc())
+            .all()
+        )
+
+    eleves_ids = [eleve.id for eleve in eleves]
+
+    print("👥 Élèves trouvés pour profils apprenants :", eleves_ids)
+
+    # ============================================================
+    # PARAMÈTRES DE FILTRE
+    # ============================================================
+
+    user_id = request.args.get("user_id", "").strip()
+    lecon_id = request.args.get("lecon_id", "").strip()
+    risque = request.args.get("risque", "").strip()
+    recommandation = request.args.get("recommandation", "").strip()
+    tendance = request.args.get("tendance", "").strip()
+    recherche = request.args.get("q", "").strip()
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 20
+
+    # ============================================================
+    # CAS : AUCUN ÉLÈVE RATTACHÉ À CET ENSEIGNANT
+    # ============================================================
+
+    if not eleves_ids:
+        pagination = (
+            ProfilApprenant.query
+            .filter(False)
+            .paginate(
+                page=page,
+                per_page=per_page,
+                error_out=False
+            )
+        )
+
+        stats = {
+            "total_profils": 0,
+            "total_risque_eleve": 0,
+            "total_risque_moyen": 0,
+            "total_risque_faible": 0,
+            "moyenne_maitrise": 0
+        }
+
+        return render_template(
+            "enseignant/profils_apprenants.html",
+            profils=[],
+            pagination=pagination,
+            eleves=eleves,
+            lecons=[],
+            stats=stats,
+            filtres={
+                "user_id": user_id,
+                "lecon_id": lecon_id,
+                "risque": risque,
+                "recommandation": recommandation,
+                "tendance": tendance,
+                "q": recherche,
+                "per_page": per_page
+            }
+        )
+
+    # ============================================================
+    # REQUÊTE PRINCIPALE
+    # Sécurité : l'enseignant ne voit que les profils de ses élèves
+    # ============================================================
+
+    query = (
+        ProfilApprenant.query
+        .options(
+            joinedload(ProfilApprenant.user),
+            joinedload(ProfilApprenant.lecon)
+                .joinedload(Lecon.unite)
+                .joinedload(Unite.matiere)
+        )
+        .filter(ProfilApprenant.user_id.in_(eleves_ids))
+    )
+
+    # Filtre élève
+    if user_id:
+        try:
+            user_id_int = int(user_id)
+
+            if user_id_int in eleves_ids:
+                query = query.filter(ProfilApprenant.user_id == user_id_int)
+
+        except ValueError:
+            pass
+
+    # Filtre leçon
+    if lecon_id:
+        try:
+            lecon_id_int = int(lecon_id)
+            query = query.filter(ProfilApprenant.lecon_id == lecon_id_int)
+        except ValueError:
+            pass
+
+    # Filtre risque
+    if risque:
+        query = query.filter(ProfilApprenant.niveau_risque == risque)
+
+    # Filtre recommandation
+    if recommandation:
+        query = query.filter(ProfilApprenant.recommandation == recommandation)
+
+    # Filtre tendance
+    if tendance:
+        query = query.filter(ProfilApprenant.tendance == tendance)
+
+    # Recherche texte
+    if recherche:
+        like = f"%{recherche}%"
+
+        query = (
+            query
+            .join(User, ProfilApprenant.user_id == User.id)
+            .filter(
+                or_(
+                    ProfilApprenant.notion_cible.ilike(like),
+                    ProfilApprenant.competence_cible.ilike(like),
+                    User.username.ilike(like),
+                    User.nom_complet.ilike(like),
+                    User.email.ilike(like)
+                )
+            )
+        )
+
+    query = query.order_by(
+        desc(ProfilApprenant.updated_at),
+        ProfilApprenant.notion_cible.asc()
+    )
+
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
+    profils = pagination.items
+
+    # ============================================================
+    # LEÇONS DES PROFILS DES ÉLÈVES DE CET ENSEIGNANT
+    # ============================================================
+
+    lecons = (
+        Lecon.query
+        .options(
+            joinedload(Lecon.unite)
+                .joinedload(Unite.matiere)
+        )
+        .join(ProfilApprenant, ProfilApprenant.lecon_id == Lecon.id)
+        .filter(ProfilApprenant.user_id.in_(eleves_ids))
+        .distinct()
+        .order_by(Lecon.titre_fr.asc())
+        .all()
+    )
+
+    # ============================================================
+    # STATISTIQUES
+    # ============================================================
+
+    total_profils = (
+        ProfilApprenant.query
+        .filter(ProfilApprenant.user_id.in_(eleves_ids))
+        .count()
+    )
+
+    total_risque_eleve = (
+        ProfilApprenant.query
+        .filter(
+            ProfilApprenant.user_id.in_(eleves_ids),
+            ProfilApprenant.niveau_risque == "élevé"
+        )
+        .count()
+    )
+
+    total_risque_moyen = (
+        ProfilApprenant.query
+        .filter(
+            ProfilApprenant.user_id.in_(eleves_ids),
+            ProfilApprenant.niveau_risque == "moyen"
+        )
+        .count()
+    )
+
+    total_risque_faible = (
+        ProfilApprenant.query
+        .filter(
+            ProfilApprenant.user_id.in_(eleves_ids),
+            ProfilApprenant.niveau_risque == "faible"
+        )
+        .count()
+    )
+
+    moyenne_maitrise = (
+        db.session.query(db.func.avg(ProfilApprenant.maitrise_estimee))
+        .filter(ProfilApprenant.user_id.in_(eleves_ids))
+        .scalar()
+    )
+
+    moyenne_maitrise = round(float(moyenne_maitrise or 0), 1)
+
+    stats = {
+        "total_profils": total_profils,
+        "total_risque_eleve": total_risque_eleve,
+        "total_risque_moyen": total_risque_moyen,
+        "total_risque_faible": total_risque_faible,
+        "moyenne_maitrise": moyenne_maitrise
+    }
+
+    print("✅ Profils apprenants trouvés :", total_profils)
+
+    return render_template(
+        "enseignant/profils_apprenants.html",
+        profils=profils,
+        pagination=pagination,
+        eleves=eleves,
+        lecons=lecons,
+        stats=stats,
+        filtres={
+            "user_id": user_id,
+            "lecon_id": lecon_id,
+            "risque": risque,
+            "recommandation": recommandation,
+            "tendance": tendance,
+            "q": recherche,
+            "per_page": per_page
+        }
+    )
 
 @app.route("/remediations/export-pdf")
 def export_remediations_pdf():
@@ -14356,6 +15499,34 @@ def soumettre_sequentiel():
         flash(msg_missing, "danger")
         return redirect(url_for("dashboard_eleve", username=username, lang=lang))
 
+    # ============================================================
+    # 0. SÉCURITÉ ANTI-RESOUMISSION
+    # ============================================================
+    # Si l'exercice a déjà été fait, on ne relance pas GPT.
+    # On renvoie simplement l'élève vers sa réponse et sa rétroaction.
+    # Cela évite de gaspiller les tokens et empêche l'élève de refaire
+    # le même exercice en mode IA.
+
+    reponse_existante = StudentResponse.query.filter_by(
+        user_id=eleve.id,
+        exercice_id=exercice.id
+    ).first()
+
+    if reponse_existante:
+        print(
+            f"🔒 Exercice déjà fait. Aucune nouvelle correction IA. "
+            f"Élève={eleve.id}, exercice={exercice.id}"
+        )
+
+        return redirect(url_for(
+            "exercice_sequentiel_progressif",
+            username=username,
+            lecon_id=lecon.id,
+            lang=lang,
+            exercice_id=exercice.id,
+            show_feedback=True
+        ))
+
     if not reponse_eleve:
         flash(msg_empty_answer, "warning")
         return redirect(url_for(
@@ -14363,7 +15534,7 @@ def soumettre_sequentiel():
             username=username,
             lecon_id=lecon.id,
             lang=lang,
-            index=index
+            exercice_id=exercice.id
         ))
 
     question = (
@@ -14379,8 +15550,9 @@ def soumettre_sequentiel():
     )
 
     # ============================================================
-    # 1. Vérification symbolique locale
+    # 1. VÉRIFICATION SYMBOLIQUE LOCALE
     # ============================================================
+
     symbolic_result = None
     symbolic_correct = None
     symbolic_feedback = ""
@@ -14412,8 +15584,9 @@ def soumettre_sequentiel():
         )
 
     # ============================================================
-    # 2. Prompt de correction bilingue
+    # 2. PROMPT DE CORRECTION BILINGUE
     # ============================================================
+
     if lang == "en":
         symbolic_info = ""
 
@@ -14528,8 +15701,9 @@ Correction :
         )
 
     # ============================================================
-    # 3. Extraction de la note
+    # 3. EXTRACTION DE LA NOTE
     # ============================================================
+
     etoiles_gpt = 0
 
     match = re.search(r"(Note|Score)\s*:\s*(\d)", analyse_ia, re.IGNORECASE)
@@ -14551,8 +15725,9 @@ Correction :
     print(f"📊 Score final : {score_final}/100")
 
     # ============================================================
-    # 4. Diagnostic bayésien simple lié à l'exercice
+    # 4. DIAGNOSTIC BAYÉSIEN SIMPLE LIÉ À L'EXERCICE
     # ============================================================
+
     if symbolic_correct is False or etoiles_finales <= 1:
         niveau_risque = "élevé"
         probabilite_difficulte = 0.85
@@ -14575,12 +15750,8 @@ Correction :
     }
 
     # ============================================================
-    # 5. Sauvegarde réponse élève
+    # 5. SAUVEGARDE RÉPONSE ÉLÈVE
     # ============================================================
-    reponse = StudentResponse.query.filter_by(
-        user_id=eleve.id,
-        exercice_id=exercice.id
-    ).first()
 
     now = datetime.now(timezone.utc).isoformat()
 
@@ -14613,41 +15784,19 @@ Correction :
         "history": []
     }
 
-    if reponse and reponse.analyse_ia and reponse.analyse_ia.strip().startswith("{"):
-        try:
-            ancien = json.loads(reponse.analyse_ia)
-            feedback_json["history"] = ancien.get("history", [])
-            feedback_json["history"].append({
-                "feedback": ancien.get("current_feedback", ""),
-                "stars": ancien.get("current_stars", 0),
-                "date": ancien.get("metadata", {}).get("updated_at", now)
-            })
-        except Exception:
-            pass
+    reponse = StudentResponse(
+        user_id=eleve.id,
+        exercice_id=exercice.id,
+        reponse_eleve=reponse_eleve,
+        analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),
+        etoiles=etoiles_finales,
+        score=score_final,
+        niveau_difficulte=exercice.niveau_difficulte,
+        feedback_ia_structure=feedback_json,
+        timestamp=datetime.now(timezone.utc)
+    )
 
-    if reponse:
-        reponse.reponse_eleve = reponse_eleve
-        reponse.analyse_ia = json.dumps(feedback_json, ensure_ascii=False, indent=2)
-        reponse.etoiles = etoiles_finales
-        reponse.score = score_final
-        reponse.niveau_difficulte = exercice.niveau_difficulte
-        reponse.feedback_ia_structure = feedback_json
-        reponse.timestamp = datetime.now(timezone.utc)
-
-    else:
-        reponse = StudentResponse(
-            user_id=eleve.id,
-            exercice_id=exercice.id,
-            reponse_eleve=reponse_eleve,
-            analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),
-            etoiles=etoiles_finales,
-            score=score_final,
-            niveau_difficulte=exercice.niveau_difficulte,
-            feedback_ia_structure=feedback_json,
-            timestamp=datetime.now(timezone.utc)
-        )
-
-        db.session.add(reponse)
+    db.session.add(reponse)
 
     try:
         db.session.commit()
@@ -14666,8 +15815,9 @@ Correction :
         ))
 
     # ============================================================
-    # 6. Enregistrement diagnostic bayésien
+    # 6. ENREGISTREMENT DIAGNOSTIC BAYÉSIEN
     # ============================================================
+
     try:
         matiere_nom = None
 
@@ -14734,8 +15884,41 @@ Correction :
         print(f"⚠️ Diagnostic bayésien non enregistré: {e}")
 
     # ============================================================
-    # 7. Choix du prochain exercice adaptatif
+    # 7. MISE À JOUR DU PROFIL APPRENANT
     # ============================================================
+
+    try:
+        from services.profil_apprenant_service import mettre_a_jour_profil_apprenant
+
+        profil_apprenant = mettre_a_jour_profil_apprenant(
+            user_id=eleve.id,
+            lecon_id=lecon.id,
+            notion_cible=exercice.notion_cible or "notion non précisée",
+            competence_cible=exercice.competence_cible,
+            score=score_final,
+            etoiles=etoiles_finales,
+            diagnostic_bayesien=diagnostic_bayesien,
+            type_exercice=exercice.type_exercice,
+            niveau_difficulte=exercice.niveau_difficulte
+        )
+
+        if profil_apprenant:
+            print(
+                f"✅ Profil apprenant mis à jour : "
+                f"{profil_apprenant.notion_cible} | "
+                f"maîtrise={profil_apprenant.maitrise_estimee}% | "
+                f"risque={profil_apprenant.niveau_risque} | "
+                f"recommandation={profil_apprenant.recommandation}"
+            )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"⚠️ Profil apprenant non mis à jour : {e}")
+
+    # ============================================================
+    # 8. CHOIX DU PROCHAIN EXERCICE ADAPTATIF
+    # ============================================================
+
     prochain_exercice = None
     resultat_adaptatif = None
 
@@ -14760,7 +15943,7 @@ Correction :
             verification_calcul=verification_calcul_adaptative
         )
 
-        prochain_exercice = resultat_adaptatif.get("exercice")
+        prochain_exercice = resultat_adaptatif.get("exercice") if resultat_adaptatif else None
 
         if prochain_exercice:
             session["prochain_exercice_adaptatif"] = {
@@ -14777,6 +15960,7 @@ Correction :
 
             reponse.analyse_ia = json.dumps(feedback_json, ensure_ascii=False, indent=2)
             reponse.feedback_ia_structure = feedback_json
+
             db.session.commit()
 
             print(f"🧠 Prochain exercice adaptatif : {prochain_exercice.id}")
@@ -14801,8 +15985,9 @@ Correction :
         session.modified = True
 
     # ============================================================
-    # 8. Remédiation si difficulté
+    # 9. REMÉDIATION SI DIFFICULTÉ
     # ============================================================
+
     if etoiles_finales < 3:
         try:
             if lang == "en":
@@ -14836,8 +16021,9 @@ Correction :
             print(f"⚠️ Remédiation non enregistrée: {e}")
 
     # ============================================================
-    # 9. Retour sur le même exercice avec feedback
+    # 10. RETOUR SUR LE MÊME EXERCICE AVEC FEEDBACK
     # ============================================================
+
     return redirect(url_for(
         "exercice_sequentiel_progressif",
         username=username,
@@ -17061,69 +18247,182 @@ def get_exercices_par_lecon_pour_enseignant(self):
                     }
     return result
 
-from flask import render_template, session, redirect
-from models import User, Matiere, Lecon, Exercice
 
-@app.route('/enseignant/exercices')
-def voir_exercices():
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/login')
+@app.route("/enseignant/exercices")
+def enseignant_exercices():
+    """
+    Page enseignant des exercices.
+    Version légère :
+    - récupère les élèves rattachés à l'enseignant ;
+    - récupère les niveaux de ces élèves ;
+    - affiche Matière → Unité → Leçon ;
+    - ne charge pas tous les exercices ;
+    - transmet seulement le nombre d'exercices et le premier exercice de chaque leçon.
+    """
 
-    enseignant = User.query.get(user_id)
+    from sqlalchemy.orm import selectinload
+    from sqlalchemy import func
+    from models import User, Niveau, Matiere, Unite, Lecon, Exercice, db
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # ============================================================
+
+    if "user_id" not in session:
+        return redirect(url_for("login_enseignant"))
+
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants", "error")
+        return redirect(url_for("login_enseignant"))
+
+    enseignant = db.session.get(User, session["user_id"])
+
     if not enseignant or not enseignant.est_enseignant():
-        return "Accès refusé", 403
+        session.clear()
+        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+        return redirect(url_for("login_enseignant"))
 
-    lang = session.get('lang', enseignant.langue or 'fr')
+    lang = session.get("lang", getattr(enseignant, "langue", None) or "fr")
 
-    eleves = enseignant.get_eleves_encadres()
-    niveaux_ids = list({e.niveau_id for e in eleves if e.niveau_id})
+    # ============================================================
+    # ÉLÈVES DE CET ENSEIGNANT
+    # ============================================================
+
+    eleves = (
+        User.query
+        .filter(
+            User.role == "eleve",
+            User.enseignant_referent_id == enseignant.id
+        )
+        .order_by(User.nom_complet.asc())
+        .all()
+    )
+
+    niveaux_ids = list({eleve.niveau_id for eleve in eleves if eleve.niveau_id})
+
+    print("👨‍🏫 Enseignant :", enseignant.id, enseignant.email)
+    print("👥 Élèves :", [(e.id, e.nom_complet, e.niveau_id) for e in eleves])
+    print("🎓 Niveaux trouvés :", niveaux_ids)
+
     if not niveaux_ids:
-        return render_template('enseignant_exercices.html', matieres=[], lang=lang, enseignant=enseignant)
+        flash("Aucun niveau trouvé pour les élèves rattachés à cet enseignant.", "warning")
+        return render_template(
+            "enseignant_exercices.html",
+            matieres=[],
+            lang=lang,
+            enseignant=enseignant
+        )
 
-    niveaux = Niveau.query.filter(Niveau.id.in_(niveaux_ids)).all()
+    # ============================================================
+    # COMPTER LES EXERCICES PAR LEÇON
+    # ET RÉCUPÉRER LE PREMIER EXERCICE DE CHAQUE LEÇON
+    # ============================================================
 
-    # Construction de matieres_data
+    exercices_infos = (
+        db.session.query(
+            Exercice.lecon_id.label("lecon_id"),
+            func.count(Exercice.id).label("total"),
+            func.min(Exercice.id).label("premier_exercice_id")
+        )
+        .join(Lecon, Lecon.id == Exercice.lecon_id)
+        .join(Unite, Unite.id == Lecon.unite_id)
+        .join(Matiere, Matiere.id == Unite.matiere_id)
+        .filter(Matiere.niveau_id.in_(niveaux_ids))
+        .group_by(Exercice.lecon_id)
+        .all()
+    )
+
+    exercices_par_lecon = {
+        row.lecon_id: {
+            "total": int(row.total or 0),
+            "premier_exercice_id": row.premier_exercice_id
+        }
+        for row in exercices_infos
+    }
+
+    print("📘 Leçons avec exercices :", len(exercices_par_lecon))
+    print("📊 Total exercices accessibles :", sum(v["total"] for v in exercices_par_lecon.values()))
+
+    # ============================================================
+    # CHARGER LA STRUCTURE SANS CHARGER LES EXERCICES
+    # Niveau → Matière → Unité → Leçon
+    # ============================================================
+
+    niveaux = (
+        Niveau.query
+        .options(
+            selectinload(Niveau.matieres)
+            .selectinload(Matiere.unites)
+            .selectinload(Unite.lecons)
+        )
+        .filter(Niveau.id.in_(niveaux_ids))
+        .order_by(Niveau.nom.asc())
+        .all()
+    )
+
     matieres_data = []
+
     for niveau in niveaux:
-        eleves_niveau = [e.nom_complet for e in eleves if e.niveau_id == niveau.id]
+        niveau_nom = niveau.nom_en if lang == "en" and niveau.nom_en else niveau.nom
+
+        eleves_niveau = [
+            eleve.nom_complet or eleve.username or eleve.email
+            for eleve in eleves
+            if eleve.niveau_id == niveau.id
+        ]
 
         for matiere in niveau.matieres:
+            matiere_nom = matiere.nom_en if lang == "en" and matiere.nom_en else matiere.nom
+
             unites_list = []
+
             for unite in matiere.unites:
+                unite_nom = unite.nom_en if lang == "en" and unite.nom_en else unite.nom
+
                 lecons_list = []
+
                 for lecon in unite.lecons:
+                    info_exercices = exercices_par_lecon.get(lecon.id)
+
+                    # On ignore les leçons qui n'ont aucun exercice
+                    if not info_exercices or info_exercices["total"] == 0:
+                        continue
+
+                    titre = lecon.titre_en if lang == "en" and lecon.titre_en else lecon.titre_fr
+
                     lecons_list.append({
-                        'id': lecon.id,
-                        'titre': lecon.titre_fr if lang == 'fr' else lecon.titre_en,
-                        'exercices': [
-                            {
-                                'id': ex.id,
-                                'question': ex.question_fr if lang == 'fr' else ex.question_en,
-                                'options': ex.options_fr if lang == 'fr' else ex.options_en,
-                                'reponse': ex.reponse_fr if lang == 'fr' else ex.reponse_en,
-                                'explication': ex.explication_fr if lang == 'fr' else ex.explication_en,
-                                'image_context': ex.get_image_context(lang=lang)
-                            }
-                            for ex in lecon.exercices
-                        ]
+                        "id": lecon.id,
+                        "titre": titre or f"Leçon {lecon.id}",
+                        "total_exercices": info_exercices["total"],
+                        "premier_exercice_id": info_exercices["premier_exercice_id"]
                     })
+
+                # On ignore les unités sans leçon avec exercices
+                if not lecons_list:
+                    continue
+
                 unites_list.append({
-                    'id': unite.id,
-                    'nom': unite.nom if lang == 'fr' else unite.nom_en,
-                    'lecons': lecons_list
+                    "id": unite.id,
+                    "nom": unite_nom or f"Unité {unite.id}",
+                    "lecons": lecons_list
                 })
 
+            # On ignore les matières sans unité/leçon avec exercices
+            if not unites_list:
+                continue
+
             matieres_data.append({
-                'id': matiere.id,
-                'nom': matiere.nom if lang == 'fr' else matiere.nom_en,
-                'niveau': niveau.nom if lang == 'fr' else niveau.nom_en,
-                'eleves': eleves_niveau,
-                'unites': unites_list
+                "id": matiere.id,
+                "nom": matiere_nom or f"Matière {matiere.id}",
+                "niveau": niveau_nom or f"Niveau {niveau.id}",
+                "eleves": eleves_niveau,
+                "unites": unites_list
             })
 
+    print("📚 Matières affichées :", len(matieres_data))
+
     return render_template(
-        'enseignant_exercices.html',
+        "enseignant_exercices.html",
         matieres=matieres_data,
         lang=lang,
         enseignant=enseignant
@@ -17131,57 +18430,278 @@ def voir_exercices():
 
 
 
-@app.route("/enseignant/exercices")
-def enseignant_exercices():
+
+@app.route("/enseignant/lecon/<int:lecon_id>/exercices-json")
+def enseignant_lecon_exercices_json(lecon_id):
+    """
+    Charger les exercices d'une leçon à la demande.
+    Pagination pour éviter de retourner trop d'exercices en une fois.
+    """
+
+    from models import User, Niveau, Matiere, Unite, Lecon, Exercice
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # ============================================================
+
+    if "user_id" not in session or session.get("role") != "enseignant":
+        return jsonify({
+            "success": False,
+            "message": "Non autorisé"
+        }), 401
+
+    enseignant = User.query.get(session["user_id"])
+
+    if not enseignant or not enseignant.est_enseignant():
+        return jsonify({
+            "success": False,
+            "message": "Accès refusé"
+        }), 403
+
+    lang = session.get("lang", getattr(enseignant, "langue", None) or "fr")
+
+    # ============================================================
+    # SÉCURITÉ
+    # Vérifier que la leçon appartient à une matière du niveau
+    # d'au moins un élève rattaché à cet enseignant.
+    # ============================================================
+
+    lecon = (
+        Lecon.query
+        .join(Unite, Unite.id == Lecon.unite_id)
+        .join(Matiere, Matiere.id == Unite.matiere_id)
+        .join(Niveau, Niveau.id == Matiere.niveau_id)
+        .filter(Lecon.id == lecon_id)
+        .first()
+    )
+
+    if not lecon:
+        return jsonify({
+            "success": False,
+            "message": "Leçon introuvable"
+        }), 404
+
+    eleves_niveau_count = (
+        User.query
+        .filter(
+            User.role.in_(["eleve", "élève"]),
+            User.enseignant_referent_id == enseignant.id,
+            User.niveau_id == lecon.unite.matiere.niveau_id
+        )
+        .count()
+    )
+
+    if eleves_niveau_count == 0:
+        return jsonify({
+            "success": False,
+            "message": "Vous n'avez pas accès aux exercices de cette leçon."
+        }), 403
+
+    # ============================================================
+    # PAGINATION
+    # ============================================================
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+
+    if per_page not in [10, 20, 50]:
+        per_page = 20
+
+    pagination = (
+        Exercice.query
+        .filter(Exercice.lecon_id == lecon_id)
+        .order_by(Exercice.id.asc())
+        .paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+    )
+
+    exercices_data = []
+
+    for ex in pagination.items:
+        question = ex.question_fr if lang == "fr" else ex.question_en
+        reponse = ex.reponse_fr if lang == "fr" else ex.reponse_en
+        explication = ex.explication_fr if lang == "fr" else ex.explication_en
+        options = ex.options_fr if lang == "fr" else ex.options_en
+
+        exercices_data.append({
+            "id": ex.id,
+            "question": question or "",
+            "options": options or "",
+            "reponse": reponse or "",
+            "explication": explication or "",
+            "image_context": ex.get_image_context(lang=lang) if hasattr(ex, "get_image_context") else None
+        })
+
+    return jsonify({
+        "success": True,
+        "exercices": exercices_data,
+        "page": pagination.page,
+        "pages": pagination.pages,
+        "total": pagination.total,
+        "has_next": pagination.has_next,
+        "has_prev": pagination.has_prev,
+        "next_page": pagination.next_num if pagination.has_next else None,
+        "prev_page": pagination.prev_num if pagination.has_prev else None
+    })
+
+
+@app.route("/enseignant/exercice/<int:exercice_id>/visualisation")
+def enseignant_exercice_visualisation(exercice_id):
+    """
+    Visualisation d'un exercice par l'enseignant.
+    L'enseignant peut voir l'exercice seulement si l'exercice appartient
+    au niveau d'au moins un de ses élèves rattachés.
+    """
+
+    from models import User, Exercice, Lecon, Unite, Matiere, Niveau
+    from sqlalchemy.orm import joinedload
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # ============================================================
+
     if "user_id" not in session:
         return redirect(url_for("login_enseignant"))
 
-    enseignant = User.query.get(session["user_id"])
-    if not enseignant or not enseignant.est_enseignant():
+    if session.get("role") != "enseignant":
         flash("Accès réservé aux enseignants", "error")
-        return redirect("/")
+        return redirect(url_for("login_enseignant"))
 
-    lang = session.get("lang", "fr")
+    enseignant = db.session.get(User, session["user_id"])
 
-    # Récupère les exercices structurés
-    matieres = get_exercices_par_enseignant_for_template(enseignant, lang)
+    if not enseignant or not enseignant.est_enseignant():
+        session.clear()
+        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+        return redirect(url_for("login_enseignant"))
 
-    return render_template(
-        "enseignant_exercices.html",
-        enseignant=enseignant,
-        matieres=matieres,
-        lang=lang
+    lang = request.args.get("lang") or session.get("lang", getattr(enseignant, "langue", None) or "fr")
+
+    if lang not in ["fr", "en"]:
+        lang = "fr"
+
+    session["lang"] = lang
+    session.modified = True
+
+    # ============================================================
+    # RÉCUPÉRER L'EXERCICE AVEC SA LEÇON / UNITÉ / MATIÈRE / NIVEAU
+    # ============================================================
+
+    exercice = (
+        Exercice.query
+        .options(
+            joinedload(Exercice.lecon)
+            .joinedload(Lecon.unite)
+            .joinedload(Unite.matiere)
+            .joinedload(Matiere.niveau)
+        )
+        .filter(Exercice.id == exercice_id)
+        .first()
     )
 
+    if not exercice:
+        flash("Exercice introuvable.", "error")
+        return redirect(url_for("enseignant_exercices"))
 
-@app.route('/enseignant/exercice-visualisation', methods=['GET'])
-def enseignant_exercice_visualisation():
-    exercice_id = request.args.get('exercice_id', type=int)
-    index = request.args.get('index', 0, type=int)
-    lang = request.args.get('lang', 'fr')
-
-    exercice = Exercice.query.get_or_404(exercice_id)
     lecon = exercice.lecon
+
+    if not lecon or not lecon.unite or not lecon.unite.matiere:
+        flash("Structure de l'exercice incomplète.", "error")
+        return redirect(url_for("enseignant_exercices"))
+
+    matiere = lecon.unite.matiere
+    niveau_id = matiere.niveau_id
+
+    # ============================================================
+    # SÉCURITÉ
+    # Vérifier que l'enseignant a au moins un élève dans ce niveau.
+    # ============================================================
+
+    eleves_niveau_count = (
+        User.query
+        .filter(
+            User.role.in_(["eleve", "élève"]),
+            User.enseignant_referent_id == enseignant.id,
+            User.niveau_id == niveau_id
+        )
+        .count()
+    )
+
+    if eleves_niveau_count == 0:
+        flash("Vous n'avez pas accès à cet exercice.", "error")
+        return redirect(url_for("enseignant_exercices"))
+
+    # ============================================================
+    # RÉCUPÉRER TOUS LES EXERCICES DE LA MÊME LEÇON
+    # Pour permettre précédent / suivant / palette.
+    # On charge seulement les exercices de cette leçon, pas tous.
+    # ============================================================
 
     exercices = (
         Exercice.query
-        .filter_by(lecon_id=lecon.id)
-        .order_by(Exercice.id)
+        .filter(Exercice.lecon_id == lecon.id)
+        .order_by(Exercice.id.asc())
         .all()
     )
 
     total_exercices = len(exercices)
-    index = max(0, min(index, total_exercices - 1))
+
+    if total_exercices == 0:
+        flash("Aucun exercice trouvé pour cette leçon.", "warning")
+        return redirect(url_for("enseignant_exercices"))
+
+    # ============================================================
+    # INDEX COURANT
+    # ============================================================
+
+    index = request.args.get("index", type=int)
+
+    if index is None:
+        index = 0
+        for i, ex in enumerate(exercices):
+            if ex.id == exercice.id:
+                index = i
+                break
+
+    if index < 0:
+        index = 0
+
+    if index >= total_exercices:
+        index = total_exercices - 1
+
     exercice = exercices[index]
 
+    # ============================================================
+    # TITRE DE LA LEÇON SELON LA LANGUE
+    # Ton template utilise lecon.titre
+    # On ajoute donc dynamiquement un attribut titre.
+    # ============================================================
+
+    titre_lecon = lecon.titre_en if lang == "en" and lecon.titre_en else lecon.titre_fr
+    lecon.titre = titre_lecon or f"Leçon {lecon.id}"
+
+    # ============================================================
+    # IMAGE / CONTEXTE
+    # Ton template utilise exercice.image_context.
+    # On le prépare ici.
+    # ============================================================
+
+    if hasattr(exercice, "get_image_context"):
+        exercice.image_context = exercice.get_image_context(lang=lang)
+    else:
+        exercice.image_context = None
+
     return render_template(
-        'enseignant_exercice_visualisation.html',
+        "enseignant_exercice_visualisation.html",
         exercice=exercice,
-        lecon=lecon,
         exercices=exercices,
+        lecon=lecon,
         index=index,
         total_exercices=total_exercices,
-        lang=lang
+        lang=lang,
+        enseignant=enseignant
     )
 
 

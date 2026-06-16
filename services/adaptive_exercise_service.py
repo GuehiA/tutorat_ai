@@ -3,11 +3,16 @@
 from sqlalchemy import and_, not_
 
 
+# ============================================================
+# 1. OUTILS DE NORMALISATION
+# ============================================================
+
 def normaliser_niveau_difficulte(niveau):
     """
     Normalise les valeurs de difficulté.
     Valeurs attendues : facile, moyen, difficile
     """
+
     if not niveau:
         return "moyen"
 
@@ -29,6 +34,8 @@ def normaliser_niveau_difficulte(niveau):
         "avancé": "difficile",
         "complexe": "difficile",
         "expert": "difficile",
+        "defi": "difficile",
+        "défi": "difficile",
     }
 
     return correspondances.get(niveau, "moyen")
@@ -58,14 +65,102 @@ def niveau_plus_difficile(niveau):
     return "difficile"
 
 
-def determiner_strategie_adaptative(
+def normaliser_score(score):
+    """
+    Convertit un score en pourcentage.
+    Accepte :
+    - score sur 5 ;
+    - score sur 100.
+    """
+
+    if score is None:
+        return None
+
+    try:
+        score = float(score)
+    except Exception:
+        return None
+
+    if score <= 5:
+        return max(0.0, min((score / 5) * 100, 100.0))
+
+    return max(0.0, min(score, 100.0))
+
+
+# ============================================================
+# 2. LECTURE DU PROFIL APPRENANT
+# ============================================================
+
+def charger_profil_apprenant(eleve_id, lecon_id, notion_cible):
+    """
+    Charge le ProfilApprenant si la table et la classe existent.
+    Retourne None si le profil n'existe pas encore ou si le modèle
+    n'est pas disponible.
+    """
+
+    if not eleve_id or not notion_cible:
+        return None
+
+    try:
+        from models import ProfilApprenant
+
+        profil = ProfilApprenant.query.filter_by(
+            user_id=eleve_id,
+            lecon_id=lecon_id,
+            notion_cible=notion_cible
+        ).first()
+
+        return profil
+
+    except Exception as e:
+        print(f"⚠️ ProfilApprenant non disponible dans adaptive_exercise_service : {e}")
+        return None
+
+
+def extraire_infos_profil(profil):
+    """
+    Transforme un ProfilApprenant en dictionnaire simple.
+    """
+
+    if not profil:
+        return {
+            "existe": False,
+            "maitrise_estimee": None,
+            "probabilite_difficulte": None,
+            "niveau_risque": None,
+            "nombre_exercices_faits": 0,
+            "nombre_reussites": 0,
+            "nombre_erreurs": 0,
+            "tendance": None,
+            "recommandation": None,
+        }
+
+    return {
+        "existe": True,
+        "maitrise_estimee": profil.maitrise_estimee,
+        "probabilite_difficulte": profil.probabilite_difficulte,
+        "niveau_risque": profil.niveau_risque,
+        "nombre_exercices_faits": profil.nombre_exercices_faits or 0,
+        "nombre_reussites": profil.nombre_reussites or 0,
+        "nombre_erreurs": profil.nombre_erreurs or 0,
+        "tendance": profil.tendance,
+        "recommandation": profil.recommandation,
+    }
+
+
+# ============================================================
+# 3. STRATÉGIE ADAPTATIVE
+# ============================================================
+
+def determiner_strategie_de_base(
     etoiles=None,
     score=None,
     diagnostic_bayesien=None,
     verification_calcul=None
 ):
     """
-    Détermine la stratégie pédagogique après une réponse.
+    Détermine la stratégie pédagogique uniquement à partir
+    de la dernière réponse.
 
     Retourne :
     - remediation
@@ -84,20 +179,16 @@ def determiner_strategie_adaptative(
             return "remediation"
 
     # 2. Utiliser le score si disponible
-    if score is not None:
-        try:
-            score = float(score)
+    score_normalise = normaliser_score(score)
 
-            if score >= 80:
-                return "progression"
+    if score_normalise is not None:
+        if score_normalise >= 80:
+            return "progression"
 
-            if score >= 50:
-                return "consolidation"
+        if score_normalise >= 50:
+            return "consolidation"
 
-            return "remediation"
-
-        except Exception:
-            pass
+        return "remediation"
 
     # 3. Utiliser les étoiles si disponibles
     if etoiles is not None:
@@ -128,9 +219,147 @@ def determiner_strategie_adaptative(
         if niveau_risque == "faible":
             return "progression"
 
-    # Stratégie par défaut
     return "consolidation"
 
+
+def ajuster_strategie_avec_profil(
+    strategie_base,
+    profil=None,
+    score=None,
+    diagnostic_bayesien=None,
+    verification_calcul=None
+):
+    """
+    Ajuste la stratégie à partir du ProfilApprenant.
+
+    Idée :
+    - Si l'élève réussit aujourd'hui mais a encore une faible maîtrise globale,
+      on consolide au lieu d'aller trop vite.
+    - Si l'élève est en régression, on évite d'augmenter la difficulté trop vite.
+    - Si l'élève a une bonne maîtrise globale, on peut progresser.
+    """
+
+    infos = extraire_infos_profil(profil)
+
+    if not infos["existe"]:
+        return strategie_base, "Stratégie basée sur la dernière réponse, aucun profil apprenant disponible."
+
+    maitrise = infos["maitrise_estimee"]
+    proba = infos["probabilite_difficulte"]
+    risque = infos["niveau_risque"]
+    erreurs = infos["nombre_erreurs"]
+    tendance = infos["tendance"]
+    recommandation_profil = infos["recommandation"]
+
+    score_normalise = normaliser_score(score)
+
+    try:
+        maitrise = float(maitrise) if maitrise is not None else None
+    except Exception:
+        maitrise = None
+
+    try:
+        proba = float(proba) if proba is not None else None
+    except Exception:
+        proba = None
+
+    # Si erreur mathématique confirmée, on garde remédiation.
+    if isinstance(verification_calcul, dict):
+        if verification_calcul.get("is_correct") is False:
+            return "remediation", "Erreur mathématique détectée : remédiation prioritaire."
+
+    # Profil très fragile : on ne progresse pas trop vite.
+    if maitrise is not None and maitrise < 45:
+        return "remediation", "Profil apprenant fragile : maîtrise estimée inférieure à 45 %."
+
+    # Risque élevé dans le profil : remédiation ou consolidation.
+    if risque == "élevé":
+        if strategie_base == "progression":
+            return "consolidation", "Le profil indique un risque élevé : progression transformée en consolidation."
+        return "remediation", "Le profil indique un risque élevé sur cette notion."
+
+    # Probabilité de difficulté élevée.
+    if proba is not None and proba >= 0.70:
+        if strategie_base == "progression":
+            return "consolidation", "Probabilité de difficulté élevée : on consolide avant de progresser."
+        return "remediation", "Probabilité de difficulté élevée : remédiation recommandée."
+
+    # Régression : ne pas augmenter la difficulté immédiatement.
+    if tendance == "régression":
+        if strategie_base == "progression":
+            return "consolidation", "Tendance en régression : consolidation avant progression."
+        return strategie_base, "Tendance en régression prise en compte."
+
+    # Beaucoup d'erreurs sur la notion.
+    if erreurs is not None and erreurs >= 3:
+        if strategie_base == "progression":
+            return "consolidation", "Plusieurs erreurs antérieures : consolidation avant progression."
+        if strategie_base == "consolidation":
+            return "consolidation", "Plusieurs erreurs antérieures : consolidation maintenue."
+        return "remediation", "Plusieurs erreurs antérieures : remédiation maintenue."
+
+    # Bonne maîtrise + bonne réponse récente : progression.
+    if (
+        maitrise is not None
+        and maitrise >= 80
+        and strategie_base == "progression"
+    ):
+        return "progression", "Bonne maîtrise globale et bonne réponse récente : progression."
+
+    # Maîtrise moyenne : consolidation.
+    if maitrise is not None and 50 <= maitrise < 80:
+        if strategie_base == "progression":
+            return "consolidation", "Maîtrise moyenne : consolidation avant progression."
+        return strategie_base, "Maîtrise moyenne : stratégie de base conservée."
+
+    # Recommandation du profil si disponible
+    if recommandation_profil in ["remediation", "consolidation", "progression"]:
+        if strategie_base == "progression" and recommandation_profil == "consolidation":
+            return "consolidation", "Profil apprenant recommande la consolidation."
+        if strategie_base == "consolidation" and recommandation_profil == "remediation":
+            return "remediation", "Profil apprenant recommande la remédiation."
+
+    return strategie_base, "Profil apprenant consulté : stratégie de base conservée."
+
+
+def determiner_strategie_adaptative(
+    etoiles=None,
+    score=None,
+    diagnostic_bayesien=None,
+    verification_calcul=None,
+    profil_apprenant=None
+):
+    """
+    Détermine la stratégie pédagogique finale.
+
+    Elle combine :
+    - dernière réponse ;
+    - vérification mathématique ;
+    - diagnostic bayésien ;
+    - ProfilApprenant.
+    """
+
+    strategie_base = determiner_strategie_de_base(
+        etoiles=etoiles,
+        score=score,
+        diagnostic_bayesien=diagnostic_bayesien,
+        verification_calcul=verification_calcul
+    )
+
+    strategie_finale, raison_profil = ajuster_strategie_avec_profil(
+        strategie_base=strategie_base,
+        profil=profil_apprenant,
+        score=score,
+        diagnostic_bayesien=diagnostic_bayesien,
+        verification_calcul=verification_calcul
+    )
+
+    return strategie_finale, raison_profil
+
+
+# ============================================================
+# 4. REQUÊTES EXERCICES
+# ============================================================
 
 def construire_requete_base(
     db,
@@ -168,6 +397,7 @@ def construire_requete_base(
 
 def chercher_exercice(
     query,
+    Exercice,
     notion_cible=None,
     niveau_difficulte=None,
     types_exercice=None
@@ -179,22 +409,51 @@ def chercher_exercice(
     q = query
 
     if notion_cible:
-        q = q.filter_by(notion_cible=notion_cible)
+        q = q.filter(Exercice.notion_cible == notion_cible)
 
     if niveau_difficulte:
-        q = q.filter_by(niveau_difficulte=niveau_difficulte)
+        q = q.filter(Exercice.niveau_difficulte == niveau_difficulte)
 
     if types_exercice:
-        q = q.filter(q.model.type_exercice.in_(types_exercice))
+        q = q.filter(Exercice.type_exercice.in_(types_exercice))
 
     return (
         q.order_by(
-            q.model.ordre_progression.asc(),
-            q.model.id.asc()
+            Exercice.ordre_progression.asc(),
+            Exercice.id.asc()
         )
         .first()
     )
 
+
+def definir_cibles_pedagogiques(strategie, niveau_actuel):
+    """
+    Détermine le niveau et les types d'exercices ciblés.
+    """
+
+    niveau_actuel = normaliser_niveau_difficulte(niveau_actuel)
+
+    if strategie == "progression":
+        return {
+            "niveau_cible": niveau_plus_difficile(niveau_actuel),
+            "types_cibles": ["application", "consolidation", "defi", "défi"]
+        }
+
+    if strategie == "remediation":
+        return {
+            "niveau_cible": niveau_plus_facile(niveau_actuel),
+            "types_cibles": ["remediation", "rappel", "application"]
+        }
+
+    return {
+        "niveau_cible": niveau_actuel,
+        "types_cibles": ["consolidation", "application", "rappel"]
+    }
+
+
+# ============================================================
+# 5. CHOIX DU PROCHAIN EXERCICE
+# ============================================================
 
 def choisir_prochain_exercice_adaptatif(
     db,
@@ -217,7 +476,8 @@ def choisir_prochain_exercice_adaptatif(
         "strategie": "...",
         "raison": "...",
         "niveau_cible": "...",
-        "notion_cible": "..."
+        "notion_cible": "...",
+        "profil_apprenant": {...}
     }
     """
 
@@ -227,30 +487,36 @@ def choisir_prochain_exercice_adaptatif(
             "strategie": "erreur",
             "raison": "Aucun exercice actuel fourni.",
             "niveau_cible": None,
-            "notion_cible": None
+            "notion_cible": None,
+            "profil_apprenant": {}
         }
-
-    strategie = determiner_strategie_adaptative(
-        etoiles=etoiles,
-        score=score,
-        diagnostic_bayesien=diagnostic_bayesien,
-        verification_calcul=verification_calcul
-    )
 
     notion_cible = exercice_actuel.notion_cible
     niveau_actuel = normaliser_niveau_difficulte(exercice_actuel.niveau_difficulte)
 
-    if strategie == "progression":
-        niveau_cible = niveau_plus_difficile(niveau_actuel)
-        types_cibles = ["application", "consolidation", "defi"]
+    profil = charger_profil_apprenant(
+        eleve_id=eleve_id,
+        lecon_id=lecon_id,
+        notion_cible=notion_cible
+    )
 
-    elif strategie == "remediation":
-        niveau_cible = niveau_plus_facile(niveau_actuel)
-        types_cibles = ["remediation", "rappel", "application"]
+    infos_profil = extraire_infos_profil(profil)
 
-    else:
-        niveau_cible = niveau_actuel
-        types_cibles = ["consolidation", "application", "rappel"]
+    strategie, raison_profil = determiner_strategie_adaptative(
+        etoiles=etoiles,
+        score=score,
+        diagnostic_bayesien=diagnostic_bayesien,
+        verification_calcul=verification_calcul,
+        profil_apprenant=profil
+    )
+
+    cibles = definir_cibles_pedagogiques(
+        strategie=strategie,
+        niveau_actuel=niveau_actuel
+    )
+
+    niveau_cible = cibles["niveau_cible"]
+    types_cibles = cibles["types_cibles"]
 
     query_base = construire_requete_base(
         db=db,
@@ -261,9 +527,13 @@ def choisir_prochain_exercice_adaptatif(
         exclure_exercice_id=exercice_actuel.id
     )
 
-    # 1. Chercher même notion + niveau cible + types ciblés
+    # ------------------------------------------------------------
+    # 1. Même notion + niveau cible + type ciblé
+    # ------------------------------------------------------------
+
     exercice = chercher_exercice(
         query=query_base,
+        Exercice=Exercice,
         notion_cible=notion_cible,
         niveau_difficulte=niveau_cible,
         types_exercice=types_cibles
@@ -273,14 +543,19 @@ def choisir_prochain_exercice_adaptatif(
         return {
             "exercice": exercice,
             "strategie": strategie,
-            "raison": "Même notion, niveau adapté et type pédagogique ciblé.",
+            "raison": f"{raison_profil} Même notion, niveau adapté et type pédagogique ciblé.",
             "niveau_cible": niveau_cible,
-            "notion_cible": notion_cible
+            "notion_cible": notion_cible,
+            "profil_apprenant": infos_profil
         }
 
-    # 2. Chercher même notion + niveau cible, peu importe le type
+    # ------------------------------------------------------------
+    # 2. Même notion + niveau cible, peu importe le type
+    # ------------------------------------------------------------
+
     exercice = chercher_exercice(
         query=query_base,
+        Exercice=Exercice,
         notion_cible=notion_cible,
         niveau_difficulte=niveau_cible,
         types_exercice=None
@@ -290,14 +565,19 @@ def choisir_prochain_exercice_adaptatif(
         return {
             "exercice": exercice,
             "strategie": strategie,
-            "raison": "Même notion et niveau adapté.",
+            "raison": f"{raison_profil} Même notion et niveau adapté.",
             "niveau_cible": niveau_cible,
-            "notion_cible": notion_cible
+            "notion_cible": notion_cible,
+            "profil_apprenant": infos_profil
         }
 
-    # 3. Chercher même notion, peu importe niveau/type
+    # ------------------------------------------------------------
+    # 3. Même notion, peu importe niveau/type
+    # ------------------------------------------------------------
+
     exercice = chercher_exercice(
         query=query_base,
+        Exercice=Exercice,
         notion_cible=notion_cible,
         niveau_difficulte=None,
         types_exercice=None
@@ -307,14 +587,19 @@ def choisir_prochain_exercice_adaptatif(
         return {
             "exercice": exercice,
             "strategie": strategie,
-            "raison": "Même notion, autre niveau disponible.",
+            "raison": f"{raison_profil} Même notion, autre niveau disponible.",
             "niveau_cible": niveau_cible,
-            "notion_cible": notion_cible
+            "notion_cible": notion_cible,
+            "profil_apprenant": infos_profil
         }
 
-    # 4. Chercher même niveau cible, autre notion
+    # ------------------------------------------------------------
+    # 4. Même niveau cible + type ciblé, autre notion
+    # ------------------------------------------------------------
+
     exercice = chercher_exercice(
         query=query_base,
+        Exercice=Exercice,
         notion_cible=None,
         niveau_difficulte=niveau_cible,
         types_exercice=types_cibles
@@ -324,12 +609,16 @@ def choisir_prochain_exercice_adaptatif(
         return {
             "exercice": exercice,
             "strategie": strategie,
-            "raison": "Autre notion, mais niveau et type adaptés.",
+            "raison": f"{raison_profil} Autre notion, mais niveau et type adaptés.",
             "niveau_cible": niveau_cible,
-            "notion_cible": notion_cible
+            "notion_cible": notion_cible,
+            "profil_apprenant": infos_profil
         }
 
-    # 5. Dernier fallback : prochain exercice non fait dans la leçon
+    # ------------------------------------------------------------
+    # 5. Prochain exercice non fait dans la leçon
+    # ------------------------------------------------------------
+
     exercice = (
         query_base
         .order_by(
@@ -343,20 +632,29 @@ def choisir_prochain_exercice_adaptatif(
         return {
             "exercice": exercice,
             "strategie": strategie,
-            "raison": "Fallback : prochain exercice non fait dans la leçon.",
+            "raison": f"{raison_profil} Fallback : prochain exercice non fait dans la leçon.",
             "niveau_cible": niveau_cible,
-            "notion_cible": notion_cible
+            "notion_cible": notion_cible,
+            "profil_apprenant": infos_profil
         }
 
+    # ------------------------------------------------------------
     # 6. Aucun exercice disponible
+    # ------------------------------------------------------------
+
     return {
         "exercice": None,
         "strategie": "fin_sequence",
         "raison": "Aucun autre exercice disponible pour cette leçon.",
         "niveau_cible": niveau_cible,
-        "notion_cible": notion_cible
+        "notion_cible": notion_cible,
+        "profil_apprenant": infos_profil
     }
 
+
+# ============================================================
+# 6. PREMIER EXERCICE
+# ============================================================
 
 def choisir_premier_exercice_adaptatif(Exercice, lecon_id):
     """

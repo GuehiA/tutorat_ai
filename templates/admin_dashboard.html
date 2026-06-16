@@ -719,6 +719,17 @@
                   </small>
                 </div>
               </a>
+
+              <a href="{{ url_for('admin_profils_apprenants') }}" class="btn action-btn">
+                <i class="fas fa-user-graduate"></i>
+                <div>
+                  <strong>{% if lang == 'en' %}Learner Profiles{% else %}Profils apprenants{% endif %}</strong>
+                  <br>
+                  <small class="text-muted">
+                    {% if lang == 'en' %}View estimated mastery, risk, trends and recommendations by student and concept{% else %}Voir la maîtrise estimée, le risque, les tendances et recommandations par élève et par notion{% endif %}
+                  </small>
+                </div>
+              </a>
             </div>
           </div>
         </div>

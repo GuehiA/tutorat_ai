@@ -942,15 +942,31 @@
       <div class="exercise-grid">
         {% for i in range(total_exercices) %}
           {% set status = reponses_status[i] if reponses_status and i < reponses_status|length else 'not_started' %}
+          {% set ex_id = exercice_ids[i] if exercice_ids is defined and exercice_ids and i < exercice_ids|length else None %}
+
           {% if navigation_libre %}
-            <a href="/exercice-sequentiel-progressif?username={{ eleve.username }}&lang={{ lang }}&lecon_id={{ lecon.id }}&index={{ i }}"
+            <a href="{{ url_for('exercice_sequentiel_progressif', username=eleve.username, lecon_id=lecon.id, lang=lang, index=i) }}"
                class="exercise-dot {% if i == index %}active{% endif %} {% if status == 'completed' %}completed{% endif %}"
                title="{{ 'Exercice' if lang == 'fr' else 'Exercise' }} {{ i + 1 }}">
               {{ i + 1 }}
             </a>
+
+          {% elif i == index %}
+            <span class="exercise-dot locked active {% if status == 'completed' %}completed{% endif %}"
+                  title="{{ 'Exercice actuel' if lang == 'fr' else 'Current exercise' }}">
+              {{ i + 1 }}
+            </span>
+
+          {% elif status == 'completed' and ex_id %}
+            <a href="{{ url_for('exercice_sequentiel_progressif', username=eleve.username, lecon_id=lecon.id, lang=lang, exercice_id=ex_id, show_feedback='true') }}"
+               class="exercise-dot completed"
+               title="{{ 'Revoir ma réponse et la rétroaction' if lang == 'fr' else 'Review my answer and feedback' }}">
+              {{ i + 1 }}
+            </a>
+
           {% else %}
-            <span class="exercise-dot locked {% if i == index %}active{% endif %} {% if status == 'completed' %}completed{% endif %}"
-                  title="{{ 'Progression seulement : le parcours IA choisit le prochain exercice.' if lang == 'fr' else 'Progress only: AI-guided mode chooses the next exercise.' }}">
+            <span class="exercise-dot locked"
+                  title="{{ 'Exercice verrouillé : le mode IA proposera la suite.' if lang == 'fr' else 'Locked exercise: AI-guided mode will suggest what comes next.' }}">
               {{ i + 1 }}
             </span>
           {% endif %}
@@ -964,7 +980,7 @@
         {% if navigation_libre %}
           {{ 'Navigation libre activée.' if lang == 'fr' else 'Free navigation enabled.' }}
         {% else %}
-          {{ 'En mode IA, la navigation est une vue de progression. Le prochain exercice est recommandé automatiquement.' if lang == 'fr' else 'In AI-guided mode, navigation is a progress view. The next exercise is recommended automatically.' }}
+          {{ 'En mode IA, vous pouvez revoir les exercices déjà faits. Les exercices non faits restent verrouillés et seront proposés par Naima.' if lang == 'fr' else 'In AI-guided mode, you can review completed exercises. Unfinished exercises stay locked and will be suggested by Naima.' }}
         {% endif %}
       </div>
       <div class="status-legend">
@@ -1154,7 +1170,7 @@
         {% endif %}
       </div>
 
-      <form method="POST" action="/soumettre-sequentiel" id="answerForm" {% if reponse and show_feedback %}style="display: none;"{% endif %}>
+      <form method="POST" action="/soumettre-sequentiel" id="answerForm" {% if exercice_deja_fait or (reponse and show_feedback) %}style="display: none;"{% endif %}>
         <input type="hidden" name="username" value="{{ eleve.username }}">
         <input type="hidden" name="lang" value="{{ lang }}">
         <input type="hidden" name="lecon_id" value="{{ lecon.id }}">
@@ -1251,18 +1267,12 @@
               {{ 'Voir ma progression' if lang == 'fr' else 'View my progress' }}
             </button>
 
-            {% if reponse and not show_feedback %}
-            <button type="button" class="btn btn-outline" onclick="showFeedback()">
-              <i class="fas fa-eye"></i>
-              {% if lang == 'fr' %}Voir la rétroaction{% else %}View feedback{% endif %}
-            </button>
-            {% endif %}
           </div>
         </div>
       </form>
 
       {% if reponse %}
-      <div class="feedback-section" id="feedbackSection" {% if not show_feedback %}style="display:none;"{% endif %}>
+      <div class="feedback-section" id="feedbackSection">
         <div class="feedback-header">
           <div class="feedback-icon {% if reponse.etoiles is not none and reponse.etoiles < 3 %}warning{% endif %}" id="feedbackIcon">
             <i class="fas fa-{% if reponse.etoiles is not none and reponse.etoiles >= 4 %}check-circle{% elif reponse.etoiles is not none and reponse.etoiles >= 2 %}lightbulb{% else %}exclamation-circle{% endif %}"></i>
@@ -1332,19 +1342,58 @@
                 |replace('\\(', '$')
                 |replace('\\)', '$')
                 |replace('\\"', '"')
-                |replace('\\\\', '\\')
                 |replace('\\n\\n\\n', '<br><br>')
                 |replace('\\n\\n', '<br><br>')
                 |replace('\\n', '<br>')
+                |replace('\n\n\n', '<br><br>')
+                |replace('\n\n', '<br><br>')
+                |replace('\n', '<br>')
               %}
               {{ clean_text|safe }}
-            {% elif reponse.analyse_ia %}
-              {{ reponse.analyse_ia|safe }}
             {% else %}
-              {{ 'Aucune correction disponible pour le moment.' if lang == 'fr' else 'No correction available at the moment.' }}
+              <div style="color: var(--gray); font-style: italic;">
+                <i class="fas fa-info-circle"></i>
+                {% if lang == 'fr' %}
+                  La rétroaction est disponible, mais elle ne peut pas être affichée correctement pour le moment. Aucun nouveau calcul ne sera lancé.
+                {% else %}
+                  Feedback is available, but it cannot be displayed correctly right now. No new calculation will be launched.
+                {% endif %}
+              </div>
             {% endif %}
           </div>
         </div>
+
+
+        {% if feedback_obj.bayesian is defined and feedback_obj.bayesian %}
+          <div class="adaptive-box">
+            <div class="section-label">
+              <i class="fas fa-brain"></i>
+              {{ 'Diagnostic pédagogique' if lang == 'fr' else 'Pedagogical diagnosis' }}
+            </div>
+
+            <p>
+              {{ 'Risque de difficulté :' if lang == 'fr' else 'Difficulty risk:' }}
+              <strong>{{ feedback_obj.bayesian.niveau_risque or '-' }}</strong>
+              {% if feedback_obj.bayesian.pourcentage_difficulte %}
+                — {{ feedback_obj.bayesian.pourcentage_difficulte }} %
+              {% endif %}
+            </p>
+
+            {% if feedback_obj.bayesian.notion_cible %}
+              <p>
+                {{ 'Notion ciblée :' if lang == 'fr' else 'Target concept:' }}
+                <strong>{{ feedback_obj.bayesian.notion_cible }}</strong>
+              </p>
+            {% endif %}
+
+            {% if feedback_obj.bayesian.competence_cible %}
+              <p>
+                {{ 'Compétence travaillée :' if lang == 'fr' else 'Target skill:' }}
+                {{ feedback_obj.bayesian.competence_cible }}
+              </p>
+            {% endif %}
+          </div>
+        {% endif %}
 
         {% if feedback_obj.adaptive is defined and feedback_obj.adaptive %}
           <div class="adaptive-box">
@@ -1377,10 +1426,17 @@
             </a>
           {% endif %}
 
+          {% if not exercice_deja_fait %}
           <button type="button" class="action-btn" onclick="showForm()">
             <i class="fas fa-edit"></i>
             {{ 'Modifier ma réponse' if lang == 'fr' else 'Edit my answer' }}
           </button>
+          {% else %}
+          <span class="action-btn gray" style="cursor: default; opacity: 0.9;">
+            <i class="fas fa-lock"></i>
+            {{ 'Réponse déjà envoyée' if lang == 'fr' else 'Answer already submitted' }}
+          </span>
+          {% endif %}
 
           <button type="button" class="action-btn" onclick="openQuickNavigation()">
             <i class="fas fa-map"></i>
@@ -1406,6 +1462,7 @@
     let currentAnswer = '';
     let calcDisplay = null;
     let currentCalcValue = '0';
+    const EXERCICE_DEJA_FAIT = {{ 'true' if exercice_deja_fait else 'false' }};
 
     function processMathContent() {
       if (window.MathJax) {
@@ -1534,6 +1591,7 @@
       const quickNav = document.getElementById('quickNavigation');
       if (!quickNav) return;
 
+      quickNav.style.display = 'flex';
       quickNav.classList.add('active');
 
       if (window.innerWidth <= 768) {
@@ -1553,10 +1611,22 @@
       if (!quickNav) return;
 
       quickNav.classList.remove('active');
-      document.body.style.overflow = '';
+
+      if (window.innerWidth <= 768) {
+        quickNav.style.display = 'none';
+        document.body.style.overflow = '';
+      }
     }
 
     function showForm() {
+      if (EXERCICE_DEJA_FAIT) {
+        showNotification(
+          '{% if lang == "fr" %}Cet exercice a déjà été soumis. Pour éviter de relancer une correction IA, votre réponse et la rétroaction restent affichées.{% else %}This exercise has already been submitted. To avoid launching another AI correction, your answer and feedback remain displayed.{% endif %}',
+          'warning'
+        );
+        return;
+      }
+
       const feedback = document.getElementById('feedbackSection');
       const form = document.getElementById('answerForm');
 

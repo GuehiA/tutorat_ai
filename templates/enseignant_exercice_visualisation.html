@@ -12,8 +12,11 @@
   <!-- MathJax -->
   <script>
     window.MathJax = {
-      tex: {inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$','$$'], ['\\[','\\]']]},
-      svg: {fontCache: 'global'}
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$','$$'], ['\\[','\\]']]
+      },
+      svg: { fontCache: 'global' }
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
@@ -26,6 +29,7 @@
       min-height: 100vh;
       padding: 20px;
     }
+
     .main-container {
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
@@ -35,20 +39,99 @@
       margin: 0 auto;
       padding: 30px;
     }
-    h1,h2,h3 { font-family: 'Poppins', sans-serif; font-weight: 600; }
-    .exercise-section { margin-bottom: 20px; }
-    .exercise-image { margin-top: 15px; border-radius: 8px; }
+
+    h1, h2, h3, h4, h5 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+    }
+
+    .exercise-section {
+      margin-bottom: 22px;
+      background: #f8f9ff;
+      border: 1px solid rgba(67, 97, 238, 0.12);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .exercise-section h3 {
+      color: #4361ee;
+      font-size: 1.25rem;
+      margin-bottom: 15px;
+    }
+
+    .contenu-exercice {
+      line-height: 1.85;
+      font-size: 1.02rem;
+      color: #2d3748;
+      white-space: normal;
+    }
+
+    .options-exercice {
+      background: #ffffff;
+      border: 1px solid #dbe4ff;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 10px;
+    }
+
+    .option-item {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      line-height: 1.6;
+    }
+
+    .option-item:last-child {
+      border-bottom: none;
+    }
+
+    .correction-box {
+      display: none;
+      margin-top: 20px;
+      border-top: 1px solid rgba(0,0,0,0.1);
+      padding-top: 20px;
+    }
+
+    .correction-box.show {
+      display: block;
+    }
+
+    .answer-box {
+      background: #ecfdf5;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 15px;
+    }
+
+    .explanation-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 12px;
+      padding: 18px;
+    }
+
+    .exercise-image {
+      margin-top: 15px;
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 15px;
+    }
+
     .exercise-nav {
       display: flex;
       justify-content: space-between;
       margin: 25px 0;
+      gap: 10px;
     }
+
     .palette-container {
       overflow-x: auto;
       white-space: nowrap;
       margin: 20px 0;
       text-align: center;
     }
+
     .palette a {
       display: inline-block;
       width: 36px;
@@ -63,11 +146,11 @@
       color: white;
       background-color: #6c757d;
     }
+
     .palette a.active {
       background-color: #0d6efd;
     }
-    
-    /* Sélecteur de langue simplifié */
+
     .lang-switcher {
       position: fixed;
       top: 20px;
@@ -81,31 +164,60 @@
       box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
       border: 1px solid rgba(255, 255, 255, 0.3);
     }
-    
+
     .lang-switcher .btn {
       padding: 5px 15px;
       font-size: 0.9rem;
       border-radius: 20px;
     }
-    
+
+    .top-info {
+      color: #718096;
+      font-size: 0.95rem;
+    }
+
+    .correction-note {
+      font-size: 0.9rem;
+      color: #718096;
+      margin-top: 8px;
+    }
+
     @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .main-container {
+        padding: 20px;
+      }
+
       .lang-switcher {
         position: static;
         margin: 0 auto 20px;
         width: fit-content;
       }
+
+      .exercise-nav {
+        flex-direction: column;
+      }
+
+      .exercise-nav a {
+        width: 100%;
+      }
     }
   </style>
 </head>
+
 <body>
 
-<!-- Sélecteur de langue SIMPLE avec liens -->
+<!-- Sélecteur de langue -->
 <div class="lang-switcher">
-  <a href="{{ url_for('enseignant_exercice_visualisation', exercice_id=exercice.id, index=index, lang='fr') }}" 
+  <a href="{{ url_for('enseignant_exercice_visualisation', exercice_id=exercice.id, index=index, lang='fr') }}"
      class="btn {% if lang == 'fr' %}btn-primary{% else %}btn-outline-primary{% endif %}">
     🇫🇷 Français
   </a>
-  <a href="{{ url_for('enseignant_exercice_visualisation', exercice_id=exercice.id, index=index, lang='en') }}" 
+
+  <a href="{{ url_for('enseignant_exercice_visualisation', exercice_id=exercice.id, index=index, lang='en') }}"
      class="btn {% if lang == 'en' %}btn-primary{% else %}btn-outline-primary{% endif %}">
     🇬🇧 English
   </a>
@@ -115,54 +227,133 @@
 
   <!-- Header -->
   <div class="text-center mb-4">
-    <h1>{% if lang == 'en' %}Exercise Preview{% else %}Aperçu de l'exercice{% endif %}</h1>
-    <p>
+    <h1>
+      {% if lang == 'en' %}
+        Exercise Preview
+      {% else %}
+        Aperçu de l'exercice
+      {% endif %}
+    </h1>
+
+    <p class="mb-1">
       <strong>{% if lang == 'en' %}Lesson:{% else %}Leçon :{% endif %}</strong>
       {{ lecon.titre }}
     </p>
-    <p class="text-muted">
-      <i class="fas fa-language me-1"></i>
-      {% if lang == 'en' %}Viewing in English - Switch to French below{% else %}Affichage en Français - Basculer en Anglais ci-dessus{% endif %}
+
+    <p class="top-info mb-0">
+      {% if lang == 'en' %}
+        Exercise {{ index + 1 }} of {{ total_exercices }}
+      {% else %}
+        Exercice {{ index + 1 }} sur {{ total_exercices }}
+      {% endif %}
     </p>
   </div>
 
   <!-- Question -->
   <div class="exercise-section">
-    <h3>{% if lang == 'en' %}Question{% else %}Question{% endif %}</h3>
+    <h3>
+      <i class="fas fa-question-circle me-1"></i>
+      {% if lang == 'en' %}Question{% else %}Question{% endif %}
+    </h3>
+
     <div>
-      {{ exercice.question_fr|safe if lang == 'fr' else exercice.question_en|safe }}
+      {{ (exercice.question_fr if lang == 'fr' else exercice.question_en)|affichage_exercice }}
+    </div>
+
+    <!-- Options -->
+    {% set options = exercice.options_fr if lang == 'fr' else exercice.options_en %}
+
+    {% if options %}
+      <div class="mt-3">
+        <h5>
+          <i class="fas fa-list-ul me-1"></i>
+          {% if lang == 'en' %}Options{% else %}Choix de réponse{% endif %}
+        </h5>
+
+        {{ options|affichage_exercice }}
+      </div>
+    {% endif %}
+
+    <!-- Image / Contexte -->
+    {% if exercice.image_context %}
+    <div class="mt-3">
+      <h5>
+        <i class="fas fa-image me-1"></i>
+        {% if lang == 'en' %}Image / Context{% else %}Image / Contexte{% endif %}
+      </h5>
+
+      <div class="exercise-image">
+        {{ exercice.image_context|affichage_exercice }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Bouton afficher / masquer corrigé -->
+  <div class="text-center mb-4">
+    <button type="button" class="btn btn-success" onclick="toggleCorrection()">
+      <i class="fas fa-eye me-1" id="correctionIcon"></i>
+      <span id="correctionButtonText">
+        {% if lang == 'en' %}
+          Show correction
+        {% else %}
+          Voir le corrigé
+        {% endif %}
+      </span>
+    </button>
+
+    <div class="correction-note">
+      {% if lang == 'en' %}
+        The correction is hidden by default.
+      {% else %}
+        Le corrigé est masqué par défaut.
+      {% endif %}
     </div>
   </div>
 
-  <!-- Réponse -->
-  {% if exercice.reponse_fr or exercice.reponse_en %}
-  <div class="exercise-section">
-    <h3>{% if lang == 'en' %}Correct Answer{% else %}Réponse corrigée{% endif %}</h3>
-    <div>
-      {{ exercice.reponse_fr|safe if lang == 'fr' else exercice.reponse_en|safe }}
-    </div>
-  </div>
-  {% endif %}
+  <!-- Corrigé masqué par défaut -->
+  <div id="correctionBox" class="correction-box">
 
-  <!-- Explication -->
-  {% if exercice.explication_fr or exercice.explication_en %}
-  <div class="exercise-section">
-    <h3>{% if lang == 'en' %}Explanation{% else %}Explication{% endif %}</h3>
-    <div>
-      {{ exercice.explication_fr|safe if lang == 'fr' else exercice.explication_en|safe }}
-    </div>
-  </div>
-  {% endif %}
+    {% set reponse = exercice.reponse_fr if lang == 'fr' else exercice.reponse_en %}
+    {% set explication = exercice.explication_fr if lang == 'fr' else exercice.explication_en %}
 
-  <!-- Image / Contexte -->
-  {% if exercice.image_context %}
-  <div class="exercise-section">
-    <h3>{% if lang == 'en' %}Image / Context{% else %}Image / Contexte{% endif %}</h3>
-    <div class="exercise-image">
-      {{ exercice.image_context|safe }}
+    {% if reponse %}
+    <div class="answer-box">
+      <h3>
+        <i class="fas fa-check-circle me-1 text-success"></i>
+        {% if lang == 'en' %}Correct Answer{% else %}Réponse corrigée{% endif %}
+      </h3>
+
+      <div>
+        {{ reponse|affichage_exercice }}
+      </div>
     </div>
+    {% endif %}
+
+    {% if explication %}
+    <div class="explanation-box">
+      <h3>
+        <i class="fas fa-lightbulb me-1 text-warning"></i>
+        {% if lang == 'en' %}Explanation{% else %}Explication{% endif %}
+      </h3>
+
+      <div>
+        {{ explication|affichage_exercice }}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not reponse and not explication %}
+    <div class="alert alert-info">
+      {% if lang == 'en' %}
+        No correction is available for this exercise.
+      {% else %}
+        Aucun corrigé n’est disponible pour cet exercice.
+      {% endif %}
+    </div>
+    {% endif %}
+
   </div>
-  {% endif %}
 
   <!-- Navigation Précédent / Suivant -->
   <div class="exercise-nav">
@@ -226,12 +417,36 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  // Réinitialiser MathJax après le chargement
-  document.addEventListener('DOMContentLoaded', function() {
+  function toggleCorrection() {
+    const correctionBox = document.getElementById("correctionBox");
+    const buttonText = document.getElementById("correctionButtonText");
+    const icon = document.getElementById("correctionIcon");
+
+    correctionBox.classList.toggle("show");
+
+    const isVisible = correctionBox.classList.contains("show");
+
+    if (isVisible) {
+      buttonText.textContent = "{{ 'Hide correction' if lang == 'en' else 'Masquer le corrigé' }}";
+      icon.classList.remove("fa-eye");
+      icon.classList.add("fa-eye-slash");
+    } else {
+      buttonText.textContent = "{{ 'Show correction' if lang == 'en' else 'Voir le corrigé' }}";
+      icon.classList.remove("fa-eye-slash");
+      icon.classList.add("fa-eye");
+    }
+
+    if (window.MathJax) {
+      window.MathJax.typesetPromise();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
     if (window.MathJax) {
       window.MathJax.typesetPromise();
     }
   });
 </script>
+
 </body>
 </html>
