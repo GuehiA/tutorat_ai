@@ -811,6 +811,53 @@ class StudentResponse(db.Model):
     # Relations utiles
     test_exercice = db.relationship("TestExercice")
 
+class TraceApprentissage(db.Model):
+    __tablename__ = "traces_apprentissage"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Élève concerné
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    # Structure pédagogique
+    niveau_id = db.Column(db.Integer, db.ForeignKey("niveaux.id"), nullable=True)
+    matiere_id = db.Column(db.Integer, db.ForeignKey("matieres.id"), nullable=True)
+    unite_id = db.Column(db.Integer, db.ForeignKey("unites.id"), nullable=True)
+    lecon_id = db.Column(db.Integer, db.ForeignKey("lecons.id"), nullable=True)
+    exercice_id = db.Column(db.Integer, db.ForeignKey("exercices.id"), nullable=True)
+
+    # Type d’action
+    type_action = db.Column(db.String(80), nullable=False, default="exercice")
+    source = db.Column(db.String(80), nullable=True)
+
+    # Données de réponse
+    reponse_eleve = db.Column(db.Text, nullable=True)
+    analyse_ia = db.Column(db.Text, nullable=True)
+    score = db.Column(db.Float, nullable=True)
+
+    # Diagnostic / profil
+    niveau_risque = db.Column(db.String(50), nullable=True)
+    difficulte_estimee = db.Column(db.String(50), nullable=True)
+    notion_cible = db.Column(db.String(255), nullable=True)
+    type_erreur = db.Column(db.String(255), nullable=True)
+
+    # Données supplémentaires
+    meta_json = db.Column(db.JSON, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relations
+    user = db.relationship("User", backref="traces_apprentissage")
+    niveau = db.relationship("Niveau")
+    matiere = db.relationship("Matiere")
+    unite = db.relationship("Unite")
+    lecon = db.relationship("Lecon")
+    exercice = db.relationship("Exercice")
+
+    def __repr__(self):
+        return f"<TraceApprentissage user_id={self.user_id} action={self.type_action} score={self.score}>"
+
+
 class MatiereAIConfig(db.Model):
     """Configuration IA par matière - gérable par l'admin"""
     __tablename__ = "matiere_ai_config"
@@ -1099,18 +1146,31 @@ class InfoVersementEnseignant(db.Model):
     __tablename__ = "info_versement_enseignant"
     
     id = db.Column(db.Integer, primary_key=True)
-    enseignant_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+
+    enseignant_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id'),
+        nullable=False,
+        unique=True
+    )
+
     methode_versement = db.Column(db.String(50), default='interac')
     email_interac = db.Column(db.String(255))
     nom_complet_interac = db.Column(db.String(255))
     email_paypal = db.Column(db.String(255))
     frequence_versement = db.Column(db.String(20), default='mensuel')
     seuil_minimum = db.Column(db.Float, default=25.00)
-    date_mise_a_jour = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    date_mise_a_jour = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
     
-    enseignant = db.relationship('User', 
-                               foreign_keys=[enseignant_id],
-                               backref=db.backref('info_versement', uselist=False))
+    enseignant = db.relationship(
+        'User',
+        foreign_keys=[enseignant_id],
+        backref=db.backref('info_versement', uselist=False)
+    )
     
     def to_dict(self):
         return {
@@ -1123,14 +1183,5 @@ class InfoVersementEnseignant(db.Model):
             'date_mise_a_jour': self.date_mise_a_jour.isoformat() if self.date_mise_a_jour else None
         }
 
-# ⚠️ CORRECTION IMPORTANTE: Ajouter la relation remediations à la classe User
-# Nous devons le faire après la définition de RemediationSuggestion
-User.remediations = db.relationship(
-    "RemediationSuggestion", 
-    back_populates="user",
-    lazy='dynamic',
-    foreign_keys='RemediationSuggestion.user_id',
-    cascade="all, delete-orphan"
-)
 
 print("✅ Tous les modèles définis avec succès")
