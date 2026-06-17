@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>
+    {% if lang == 'en' %}
+      My Progress and Advice
+    {% else %}
+      Mes progrès et conseils
+    {% endif %}
+  </title>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-soft: #eff6ff;
+
+      --success: #16a34a;
+      --success-soft: #ecfdf5;
+
+      --warning: #d97706;
+      --warning-soft: #fffbeb;
+
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+
+      --secondary: #64748b;
+      --secondary-soft: #f1f5f9;
+
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
+
+      --dark: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.10), transparent 34%),
+        linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+      color: var(--dark);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 11px 18px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: all 0.25s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.25);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .btn-light {
+      background: white;
+      color: var(--dark);
+      border: 1px solid var(--border);
+    }
+
+    .btn-light:hover {
+      background: #f8fafc;
+      transform: translateY(-2px);
+    }
+
+    .hero {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-radius: 28px;
+      padding: 30px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -70px;
+      top: -70px;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.12), transparent 68%);
+      border-radius: 50%;
+    }
+
+    .hero-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 3vw, 2.7rem);
+      line-height: 1.12;
+      font-weight: 900;
+      color: #0f172a;
+      max-width: 850px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+      max-width: 900px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .summary-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      height: 5px;
+      background: var(--primary);
+    }
+
+    .summary-card.success::before {
+      background: var(--success);
+    }
+
+    .summary-card.warning::before {
+      background: var(--warning);
+    }
+
+    .summary-card.danger::before {
+      background: var(--danger);
+    }
+
+    .summary-number {
+      font-size: 2.2rem;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .summary-label {
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
+    .info-box {
+      background: white;
+      border: 1px solid var(--border);
+      border-left: 6px solid var(--primary);
+      border-radius: 20px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    .feedback-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.075);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feedback-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 7px;
+      background: var(--secondary);
+    }
+
+    .feedback-card.risk-success::before {
+      background: var(--success);
+    }
+
+    .feedback-card.risk-warning::before {
+      background: var(--warning);
+    }
+
+    .feedback-card.risk-danger::before {
+      background: var(--danger);
+    }
+
+    .feedback-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .feedback-title {
+      font-size: 1.25rem;
+      font-weight: 900;
+      margin-bottom: 6px;
+      color: #0f172a;
+    }
+
+    .feedback-subtitle {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .risk-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 9px 15px;
+      font-weight: 900;
+      font-size: 0.86rem;
+      white-space: nowrap;
+    }
+
+    .risk-success {
+      background: var(--success-soft);
+      color: #166534;
+    }
+
+    .risk-warning {
+      background: var(--warning-soft);
+      color: #92400e;
+    }
+
+    .risk-danger {
+      background: var(--danger-soft);
+      color: #991b1b;
+    }
+
+    .risk-secondary {
+      background: var(--secondary-soft);
+      color: #475569;
+    }
+
+    .progress-row {
+      margin: 14px 0 16px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .progress {
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--secondary);
+      width: 0;
+    }
+
+    .progress-bar.success {
+      background: var(--success);
+    }
+
+    .progress-bar.warning {
+      background: var(--warning);
+    }
+
+    .progress-bar.danger {
+      background: var(--danger);
+    }
+
+    .message-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      margin-top: 14px;
+      color: #334155;
+      line-height: 1.65;
+    }
+
+    .recommendation-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      border-radius: 18px;
+      padding: 16px;
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+
+    .recommendation-box strong,
+    .message-box strong {
+      display: block;
+      margin-bottom: 6px;
+      color: inherit;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .detail-item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .detail-label {
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    .detail-value {
+      color: #0f172a;
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .process-box {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .process-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+
+    .process-chip.ok {
+      background: #ecfdf5;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .empty-state {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 46px 24px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .empty-state i {
+      font-size: 3.2rem;
+      color: var(--primary);
+      margin-bottom: 16px;
+    }
+
+    .empty-state h2 {
+      margin: 0 0 10px;
+      font-size: 1.6rem;
+    }
+
+    .empty-state p {
+      color: var(--muted);
+      max-width: 620px;
+      margin: 0 auto 20px;
+      line-height: 1.6;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 22px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px;
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding: 24px;
+      }
+
+      .feedback-card {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="topbar">
+      <a href="{{ url_for('dashboard_eleve', lang=lang) }}" class="btn btn-light">
+        <i class="fa-solid fa-arrow-left"></i>
+        {% if lang == 'en' %}
+          Back to dashboard
+        {% else %}
+          Retour au tableau de bord
+        {% endif %}
+      </a>
+
+      <a href="{{ url_for('enseignant_virtuel') }}" class="btn btn-primary">
+        <i class="fa-solid fa-robot"></i>
+        {% if lang == 'en' %}
+          Ask Naima
+        {% else %}
+          Demander à Naima
+        {% endif %}
+      </a>
+    </div>
+
+    <section class="hero">
+      <div class="hero-label">
+        <i class="fa-solid fa-lightbulb"></i>
+        {% if lang == 'en' %}
+          Personalized advice
+        {% else %}
+          Conseils personnalisés
+        {% endif %}
+      </div>
+
+      <h1>
+        {% if lang == 'en' %}
+          My progress and advice
+        {% else %}
+          Mes progrès et conseils
+        {% endif %}
+      </h1>
+
+      <p>
+        {% if lang == 'en' %}
+          Here you can see what you are doing well, what needs more practice, and what you can do next to improve.
+        {% else %}
+          Ici, tu peux voir ce que tu réussis bien, ce que tu dois encore travailler et les prochaines actions qui peuvent t’aider à progresser.
+        {% endif %}
+      </p>
+    </section>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-number">{{ resume.total }}</div>
+        <div class="summary-label">
+          {% if lang == 'en' %}Feedback items{% else %}Conseils disponibles{% endif %}
+        </div>
+      </div>
+
+      <div class="summary-card success">
+        <div class="summary-number" style="color: var(--success);">{{ resume.faible }}</div>
+        <div class="summary-label">
+          {% if lang == 'en' %}Going well{% else %}Ça va bien{% endif %}
+        </div>
+      </div>
+
+      <div class="summary-card warning">
+        <div class="summary-number" style="color: var(--warning);">{{ resume.moyen }}</div>
+        <div class="summary-label">
+          {% if lang == 'en' %}Needs review{% else %}À revoir{% endif %}
+        </div>
+      </div>
+
+      <div class="summary-card danger">
+        <div class="summary-number" style="color: var(--danger);">{{ resume.eleve }}</div>
+        <div class="summary-label">
+          {% if lang == 'en' %}Needs support{% else %}Besoin d’aide{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>
+        <i class="fa-solid fa-circle-info"></i>
+        {% if lang == 'en' %}
+          Good to know
+        {% else %}
+          À savoir
+        {% endif %}
+      </strong>
+      <br>
+      {% if lang == 'en' %}
+        These suggestions are based on your recent work. They help you decide what to practice next, but they do not replace your teacher’s guidance.
+      {% else %}
+        Ces conseils sont basés sur ton travail récent. Ils t’aident à savoir quoi pratiquer ensuite, mais ils ne remplacent pas l’accompagnement de ton enseignant.
+      {% endif %}
+    </div>
+
+    {% if retroactions and retroactions|length > 0 %}
+
+      {% for r in retroactions %}
+        <article class="feedback-card risk-{{ r.badge }}">
+          <div class="feedback-header">
+            <div>
+              <div class="feedback-title">
+                <i class="fa-solid fa-book-open"></i>
+                {{ r.notion_cible }}
+              </div>
+
+              <div class="feedback-subtitle">
+                <i class="fa-regular fa-clock"></i>
+                {{ r.date }}
+                {% if r.source %}
+                  · {{ r.source }}
+                {% endif %}
+              </div>
+            </div>
+
+            <span class="risk-badge risk-{{ r.badge }}">
+              {% if r.badge == "danger" %}
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                {% if lang == 'en' %}Needs support{% else %}Besoin d’aide{% endif %}
+              {% elif r.badge == "warning" %}
+                <i class="fa-solid fa-circle-exclamation"></i>
+                {% if lang == 'en' %}Needs review{% else %}À revoir{% endif %}
+              {% elif r.badge == "success" %}
+                <i class="fa-solid fa-circle-check"></i>
+                {% if lang == 'en' %}Going well{% else %}Ça va bien{% endif %}
+              {% else %}
+                <i class="fa-solid fa-circle-info"></i>
+                {% if lang == 'en' %}Not enough information{% else %}À observer{% endif %}
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="progress-row">
+            <div class="progress-meta">
+              <span>
+                {% if lang == 'en' %}
+                  Need for practice
+                {% else %}
+                  Besoin de pratique
+                {% endif %}
+              </span>
+              <span>{{ r.pourcentage }}%</span>
+            </div>
+
+            <div class="progress">
+              <div class="progress-bar {{ r.badge }}" style="width: {{ r.pourcentage }}%;"></div>
+            </div>
+          </div>
+
+          <div class="message-box">
+            {{ r.message }}
+          </div>
+
+          <div class="message-box">
+            <strong>
+              <i class="fa-solid fa-chart-simple"></i>
+              {% if lang == 'en' %}
+                What we noticed
+              {% else %}
+                Ce qu’on remarque
+              {% endif %}
+            </strong>
+            {{ r.bilan_simple }}
+          </div>
+
+          <div class="recommendation-box">
+            <strong>
+              <i class="fa-solid fa-lightbulb"></i>
+              {% if lang == 'en' %}
+                What to do next
+              {% else %}
+                Quoi faire maintenant
+              {% endif %}
+            </strong>
+            {{ r.conseil }}
+          </div>
+
+          {% if r.exercice_remediation_suggere %}
+            <div class="message-box">
+              <strong>
+                <i class="fa-solid fa-tools"></i>
+                {% if lang == 'en' %}
+                  Practice suggestion
+                {% else %}
+                  Suggestion de pratique
+                {% endif %}
+              </strong>
+              {{ r.exercice_remediation_suggere }}
+            </div>
+          {% endif %}
+
+          {% if r.verification_calcul and r.verification_calcul.get("calcul_verifie") %}
+            <div class="message-box">
+              <strong>
+                <i class="fa-solid fa-calculator"></i>
+                {% if lang == 'en' %}
+                  Calculation check
+                {% else %}
+                  Vérification du calcul
+                {% endif %}
+              </strong>
+
+              {% if r.verification_calcul.get("est_correct") %}
+                {% if lang == 'en' %}
+                  Your calculation seems correct.
+                {% else %}
+                  Ton calcul semble correct.
+                {% endif %}
+              {% else %}
+                {% if lang == 'en' %}
+                  A possible calculation mistake was detected. Review your steps carefully.
+                {% else %}
+                  Une erreur de calcul possible a été détectée. Revois bien tes étapes.
+                {% endif %}
+              {% endif %}
+            </div>
+          {% endif %}
+
+        </article>
+      {% endfor %}
+
+    {% else %}
+
+      <div class="empty-state">
+        <i class="fa-solid fa-lightbulb"></i>
+
+        <h2>
+          {% if lang == 'en' %}
+            No advice yet
+          {% else %}
+            Aucun conseil pour le moment
+          {% endif %}
+        </h2>
+
+        <p>
+          {% if lang == 'en' %}
+            Complete exercises or ask Naima for help. Your personalized advice will appear here after your work is analyzed.
+          {% else %}
+            Fais des exercices ou demande de l’aide à Naima. Tes conseils personnalisés apparaîtront ici après l’analyse de ton travail.
+          {% endif %}
+        </p>
+
+        <a href="{{ url_for('enseignant_virtuel') }}" class="btn btn-primary">
+          <i class="fa-solid fa-robot"></i>
+          {% if lang == 'en' %}
+            Start with Naima
+          {% else %}
+            Commencer avec Naima
+          {% endif %}
+        </a>
+      </div>
+
+    {% endif %}
+
+    <p class="footer-note">
+      {% if lang == 'en' %}
+        Note: these suggestions are generated from learning traces and should help you practice better. Your teacher can still guide you further.
+      {% else %}
+        Note : ces conseils sont générés à partir de tes traces d’apprentissage pour t’aider à mieux pratiquer. Ton enseignant peut toujours t’accompagner davantage.
+      {% endif %}
+    </p>
+
+  </div>
+</body>
+</html>

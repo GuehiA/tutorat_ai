@@ -250,6 +250,35 @@
       color: var(--naima-purple);
     }
     
+
+
+    /* CARTE PROGRÈS ET CONSEILS */
+    .progress-advice-card {
+      border-left: 5px solid #2563eb;
+      background: linear-gradient(135deg, #ffffff 0%, #eef2ff 100%);
+    }
+
+    .progress-advice-card:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      color: var(--white);
+      border-color: #2563eb;
+    }
+
+    .progress-advice-icon {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+    }
+
+    .progress-advice-card:hover .progress-advice-icon {
+      background: var(--white);
+      color: #2563eb;
+    }
+
+    .badge-progress-advice {
+      background: #2563eb;
+      color: white;
+      animation: naimaGlow 2s infinite alternate;
+    }
+
     /* BADGE DE RECOMMANDATION */
     .recommendation-badge {
       position: absolute;
@@ -1206,6 +1235,32 @@
             <i class="fas fa-lightbulb"></i> {{ naima_recommendations_count }}
           </span>
           {% endif %}
+        </a>
+
+
+        <!-- PROGRÈS ET CONSEILS -->
+        <a href="{{ url_for('eleve_retroactions_bayesiennes', lang=lang) }}" class="main-action-card animated-card progress-advice-card">
+          <div class="main-action-icon progress-advice-icon">
+            <i class="fas fa-brain"></i>
+          </div>
+          <h4>
+            {% if lang == 'en' %}
+              My Progress and Advice
+            {% else %}
+              Mes progrès et conseils
+            {% endif %}
+          </h4>
+          <p>
+            {% if lang == 'en' %}
+              See what you are doing well and what you can work on next.
+            {% else %}
+              Vois ce que tu réussis bien et ce que tu peux travailler ensuite.
+            {% endif %}
+          </p>
+          <span class="badge badge-progress-advice">
+            <i class="fas fa-lightbulb"></i>
+            {% if lang == 'en' %}Personalized{% else %}Personnalisé{% endif %}
+          </span>
         </a>
         
         <!-- DÉBUTER LES EXERCICES PAR LEÇON -->

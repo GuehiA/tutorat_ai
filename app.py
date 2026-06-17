@@ -17008,6 +17008,619 @@ Correction :
         derniere_moyenne=derniere_moyenne  # Passer la moyenne au template
     )
 
+@app.route("/eleve/retroactions-bayesiennes")
+def eleve_retroactions_bayesiennes():
+    """
+    Page élève : progrès et conseils.
+
+    Cette page transforme les données internes en messages simples pour l'élève.
+    On évite les mots techniques comme :
+    - bayésien ;
+    - réseau bayésien ;
+    - diagnostic ;
+    - probabilité.
+
+    L'élève doit simplement comprendre :
+    - ce qu'il réussit ;
+    - ce qu'il doit encore travailler ;
+    - quoi faire ensuite.
+    """
+
+    from datetime import datetime
+    import json
+
+    # ------------------------------------------------------------
+    # AUTHENTIFICATION ÉLÈVE
+    # ------------------------------------------------------------
+
+    if "user_id" not in session and "eleve_id" not in session:
+        return redirect(url_for("login_eleve"))
+
+    user_id = session.get("user_id") or session.get("eleve_id")
+
+    lang = request.args.get("lang") or session.get("lang", "fr")
+    session["lang"] = lang
+
+    eleve = db.session.get(User, user_id)
+
+    if not eleve or eleve.role not in ["eleve", "élève"]:
+        flash("Accès réservé aux élèves.", "error")
+        return redirect(url_for("login_eleve"))
+
+    # ------------------------------------------------------------
+    # RÉCUPÉRATION DU MODÈLE INTERNE
+    # ------------------------------------------------------------
+
+    DiagnosticBayesienModel = None
+
+    try:
+        DiagnosticBayesienModel = get_model("DiagnosticBayesien")
+    except Exception:
+        DiagnosticBayesienModel = None
+
+    if DiagnosticBayesienModel is None:
+        try:
+            from models import DiagnosticBayesien as DiagnosticBayesienModel
+        except Exception as e:
+            print(f"⚠️ Modèle DiagnosticBayesien introuvable : {e}")
+            flash("Les conseils de progression ne sont pas encore disponibles.", "warning")
+            return redirect(url_for("dashboard_eleve", lang=lang))
+
+    # ------------------------------------------------------------
+    # CHARGEMENT DES DONNÉES RÉCENTES
+    # ------------------------------------------------------------
+
+    diagnostics = []
+
+    try:
+        query = DiagnosticBayesienModel.query.filter_by(user_id=eleve.id)
+
+        if hasattr(DiagnosticBayesienModel, "created_at"):
+            diagnostics = (
+                query
+                .order_by(DiagnosticBayesienModel.created_at.desc())
+                .limit(30)
+                .all()
+            )
+        elif hasattr(DiagnosticBayesienModel, "timestamp"):
+            diagnostics = (
+                query
+                .order_by(DiagnosticBayesienModel.timestamp.desc())
+                .limit(30)
+                .all()
+            )
+        else:
+            diagnostics = (
+                query
+                .order_by(DiagnosticBayesienModel.id.desc())
+                .limit(30)
+                .all()
+            )
+
+    except Exception as e:
+        print(f"⚠️ Erreur chargement des conseils élève : {e}")
+        diagnostics = []
+
+    # ------------------------------------------------------------
+    # OUTILS INTERNES
+    # ------------------------------------------------------------
+
+    def convertir_en_dict(valeur):
+        """
+        Convertit une valeur JSON ou un texte JSON en dictionnaire.
+        """
+
+        if not valeur:
+            return {}
+
+        if isinstance(valeur, dict):
+            return valeur
+
+        if isinstance(valeur, str):
+            try:
+                return json.loads(valeur)
+            except Exception:
+                return {}
+
+        return {}
+
+    def normaliser_risque(niveau):
+        """
+        Garde une valeur interne stable pour le traitement.
+        """
+
+        niveau = (niveau or "").lower().strip()
+
+        if niveau in ["élevé", "eleve", "elevé", "high", "haut"]:
+            return "élevé"
+
+        if niveau in ["moyen", "moyenne", "medium", "modéré", "modere", "moderate"]:
+            return "moyen"
+
+        if niveau in ["faible", "low", "bas"]:
+            return "faible"
+
+        return "inconnu"
+
+    def traduire_valeur_signal(valeur):
+        """
+        Traduit les petites valeurs venant du backend.
+        Exemple :
+        - moyenne -> medium en anglais
+        - rapide -> fast en anglais
+        - peu -> few en anglais
+        """
+
+        if valeur is None:
+            return "—"
+
+        texte_original = str(valeur).strip()
+        texte = texte_original.lower()
+
+        traductions = {
+            "fr": {
+                "faible": "faible",
+                "low": "faible",
+
+                "moyen": "moyen",
+                "moyenne": "moyen",
+                "medium": "moyen",
+                "moderate": "moyen",
+                "modéré": "moyen",
+                "modere": "moyen",
+
+                "élevé": "élevé",
+                "eleve": "élevé",
+                "elevé": "élevé",
+                "high": "élevé",
+                "haut": "élevé",
+
+                "rapide": "rapide",
+                "fast": "rapide",
+
+                "lent": "lent",
+                "lente": "lent",
+                "slow": "lent",
+
+                "peu": "peu",
+                "few": "peu",
+                "low errors": "peu",
+
+                "beaucoup": "beaucoup",
+                "many": "beaucoup",
+                "high errors": "beaucoup",
+
+                "aucune": "aucune",
+                "aucun": "aucune",
+                "none": "aucune",
+
+                "correct": "correct",
+                "incorrect": "incorrect",
+                "partiel": "partiel",
+                "partial": "partiel",
+            },
+            "en": {
+                "faible": "low",
+                "low": "low",
+
+                "moyen": "medium",
+                "moyenne": "medium",
+                "medium": "medium",
+                "moderate": "medium",
+                "modéré": "medium",
+                "modere": "medium",
+
+                "élevé": "high",
+                "eleve": "high",
+                "elevé": "high",
+                "high": "high",
+                "haut": "high",
+
+                "rapide": "fast",
+                "fast": "fast",
+
+                "lent": "slow",
+                "lente": "slow",
+                "slow": "slow",
+
+                "peu": "few",
+                "few": "few",
+                "low errors": "few",
+
+                "beaucoup": "many",
+                "many": "many",
+                "high errors": "many",
+
+                "aucune": "none",
+                "aucun": "none",
+                "none": "none",
+
+                "correct": "correct",
+                "incorrect": "incorrect",
+                "partiel": "partial",
+                "partial": "partial",
+            }
+        }
+
+        langue = "en" if lang == "en" else "fr"
+        return traductions.get(langue, {}).get(texte, texte_original)
+
+    def badge_risque(niveau):
+        """
+        Sert seulement au style visuel.
+        """
+
+        niveau = normaliser_risque(niveau)
+
+        if niveau == "élevé":
+            return "danger"
+
+        if niveau == "moyen":
+            return "warning"
+
+        if niveau == "faible":
+            return "success"
+
+        return "secondary"
+
+    def titre_risque(niveau):
+        """
+        Titre simple pour l'élève.
+        """
+
+        niveau = normaliser_risque(niveau)
+
+        if lang == "en":
+            if niveau == "élevé":
+                return "Needs more practice"
+            if niveau == "moyen":
+                return "Almost there"
+            if niveau == "faible":
+                return "Good progress"
+            return "Keep practicing"
+
+        if niveau == "élevé":
+            return "À retravailler"
+        if niveau == "moyen":
+            return "Presque acquis"
+        if niveau == "faible":
+            return "Bonne progression"
+        return "Continue à pratiquer"
+
+    def message_eleve(niveau):
+        """
+        Message court et simple.
+        On évite de répéter le conseil ici.
+        """
+
+        niveau = normaliser_risque(niveau)
+
+        if lang == "en":
+            if niveau == "élevé":
+                return "This part is still difficult for you."
+            if niveau == "moyen":
+                return "You are starting to understand this part."
+            if niveau == "faible":
+                return "You seem to understand this part well."
+            return "Keep practicing so we can give you better advice."
+
+        if niveau == "élevé":
+            return "Cette partie est encore difficile pour toi."
+
+        if niveau == "moyen":
+            return "Tu commences à comprendre cette partie."
+
+        if niveau == "faible":
+            return "Tu sembles bien comprendre cette partie."
+
+        return "Continue à pratiquer pour recevoir de meilleurs conseils."
+
+    def conseil_eleve(niveau):
+        """
+        Une seule action claire pour l'élève.
+        """
+
+        niveau = normaliser_risque(niveau)
+
+        if lang == "en":
+            if niveau == "élevé":
+                return "Ask Naima to explain it step by step, then try an easier exercise."
+            if niveau == "moyen":
+                return "Review your steps, explain your reasoning, then try a similar exercise."
+            if niveau == "faible":
+                return "Try to explain your answer, then move to a slightly harder exercise."
+            return "Do a few more exercises so we can better guide you."
+
+        if niveau == "élevé":
+            return (
+                "Demande à Naima de reprendre étape par étape, "
+                "puis commence par un exercice plus simple."
+            )
+
+        if niveau == "moyen":
+            return (
+                "Revois tes étapes, explique ton raisonnement, "
+                "puis essaie un exercice semblable."
+            )
+
+        if niveau == "faible":
+            return (
+                "Essaie d’expliquer ta réponse, puis passe à un exercice un peu plus difficile."
+            )
+
+        return (
+            "Fais encore quelques exercices pour recevoir des conseils plus précis."
+        )
+
+    def phrase_bilan_eleve(niveau, maitrise, erreurs, rythme):
+        """
+        Résume les trois signaux en une seule phrase.
+        Cela remplace l'affichage séparé :
+        - Compréhension ;
+        - Erreurs ;
+        - Rythme de travail.
+        """
+
+        niveau = normaliser_risque(niveau)
+
+        maitrise = traduire_valeur_signal(maitrise)
+        erreurs = traduire_valeur_signal(erreurs)
+        rythme = traduire_valeur_signal(rythme)
+
+        if lang == "en":
+            if niveau == "faible":
+                return (
+                    f"Overall, you are doing well: your understanding is {maitrise}, "
+                    f"you made {erreurs} mistakes, and your work rhythm is {rythme}."
+                )
+
+            if niveau == "moyen":
+                return (
+                    f"You are making progress: your understanding is {maitrise}, "
+                    f"you made {erreurs} mistakes, and your work rhythm is {rythme}."
+                )
+
+            if niveau == "élevé":
+                return (
+                    f"This part needs more attention: your understanding is {maitrise}, "
+                    f"you made {erreurs} mistakes, and your work rhythm is {rythme}."
+                )
+
+            return "Keep practicing so we can better understand what helps you learn."
+
+        if niveau == "faible":
+            return (
+                f"Dans l’ensemble, tu avances bien : ta compréhension est {maitrise}, "
+                f"tu fais {erreurs} d’erreurs et ton rythme de travail est {rythme}."
+            )
+
+        if niveau == "moyen":
+            return (
+                f"Tu progresses : ta compréhension est {maitrise}, "
+                f"tu fais {erreurs} d’erreurs et ton rythme de travail est {rythme}."
+            )
+
+        if niveau == "élevé":
+            return (
+                f"Cette partie demande plus d’attention : ta compréhension est {maitrise}, "
+                f"tu fais {erreurs} d’erreurs et ton rythme de travail est {rythme}."
+            )
+
+        return "Continue à pratiquer pour que les conseils soient plus précis."
+
+    def format_date(valeur):
+        if not valeur:
+            return "—"
+
+        try:
+            return valeur.strftime("%d/%m/%Y %H:%M")
+        except Exception:
+            return str(valeur)
+
+    def extraire_date(diagnostic):
+        for champ in ["created_at", "timestamp", "date_creation", "date"]:
+            valeur = getattr(diagnostic, champ, None)
+            if valeur:
+                return valeur
+
+        return None
+
+    def nettoyer_pourcentage(pourcentage, probabilite):
+        try:
+            if pourcentage is not None:
+                valeur = float(pourcentage)
+            elif probabilite is not None:
+                valeur = float(probabilite) * 100
+            else:
+                valeur = 0
+
+            if valeur < 0:
+                valeur = 0
+
+            if valeur > 100:
+                valeur = 100
+
+            return round(valeur, 1)
+
+        except Exception:
+            return 0
+
+    def traduire_notion(notion):
+        """
+        Pour l'instant, on garde la notion telle qu'elle vient du backend.
+        Plus tard, on pourra ajouter une vraie table de traduction des notions.
+        """
+
+        if not notion:
+            return "Learning topic" if lang == "en" else "Notion à travailler"
+
+        return notion
+
+    def traduire_source(source):
+        """
+        Rend la source plus simple pour l'élève.
+        """
+
+        if not source:
+            return "Practice" if lang == "en" else "Exercice"
+
+        source_texte = str(source).lower().strip()
+
+        if lang == "en":
+            if source_texte in ["naima", "enseignant_virtuel"]:
+                return "Naima"
+            if source_texte in ["exercice", "exercice_sequentiel", "sequence"]:
+                return "Exercise"
+            if source_texte in ["diagnostic"]:
+                return "Practice"
+            return source
+
+        if source_texte in ["naima", "enseignant_virtuel"]:
+            return "Naima"
+        if source_texte in ["exercice", "exercice_sequentiel", "sequence"]:
+            return "Exercice"
+        if source_texte in ["diagnostic"]:
+            return "Pratique"
+
+        return source
+
+    # ------------------------------------------------------------
+    # CONSTRUCTION DES RÉTROACTIONS LISIBLES
+    # ------------------------------------------------------------
+
+    retroactions = []
+
+    for diagnostic in diagnostics:
+        diagnostic_complet = convertir_en_dict(
+            getattr(diagnostic, "diagnostic_complet", None)
+        )
+
+        analyse_pedagogique = convertir_en_dict(
+            getattr(diagnostic, "analyse_pedagogique_ia", None)
+        )
+
+        signaux = {}
+
+        if isinstance(diagnostic_complet, dict):
+            signaux = diagnostic_complet.get("signaux", {}) or {}
+
+        verification_calcul = (
+            convertir_en_dict(getattr(diagnostic, "verification_calcul", None))
+            or diagnostic_complet.get("verification_calcul", {})
+            or {}
+        )
+
+        processus_naima = {}
+
+        if isinstance(diagnostic_complet, dict):
+            processus_naima = (
+                diagnostic_complet.get("processus_naima", {})
+                or diagnostic_complet.get("processus", {})
+                or {}
+            )
+
+        niveau_risque_interne = normaliser_risque(
+            getattr(diagnostic, "niveau_risque", None)
+        )
+
+        probabilite = getattr(diagnostic, "probabilite_difficulte", None)
+        pourcentage = getattr(diagnostic, "pourcentage_difficulte", None)
+
+        notion_cible = (
+            getattr(diagnostic, "notion_cible", None)
+            or analyse_pedagogique.get("notion_cible")
+            or getattr(diagnostic, "matiere", None)
+            or None
+        )
+
+        # Valeurs qui peuvent venir en français ou en anglais depuis le backend
+        valeur_maitrise = (
+            getattr(diagnostic, "maitrise_cours", None)
+            or signaux.get("maitrise_cours")
+            or signaux.get("understanding")
+            or "—"
+        )
+
+        valeur_erreurs = (
+            getattr(diagnostic, "erreurs", None)
+            or signaux.get("erreurs")
+            or signaux.get("mistakes")
+            or "—"
+        )
+
+        valeur_temps = (
+            getattr(diagnostic, "temps_reponse", None)
+            or signaux.get("temps_reponse")
+            or signaux.get("work_rhythm")
+            or signaux.get("rythme")
+            or "—"
+        )
+
+        bilan_simple = phrase_bilan_eleve(
+            niveau_risque_interne,
+            valeur_maitrise,
+            valeur_erreurs,
+            valeur_temps
+        )
+
+        retroactions.append({
+            "id": getattr(diagnostic, "id", None),
+            "date": format_date(extraire_date(diagnostic)),
+
+            # Titre simple
+            "titre": titre_risque(niveau_risque_interne),
+
+            # Valeur affichée à l'élève
+            "niveau_risque": traduire_valeur_signal(niveau_risque_interne),
+
+            # Valeur utile pour le style
+            "badge": badge_risque(niveau_risque_interne),
+
+            "pourcentage": nettoyer_pourcentage(pourcentage, probabilite),
+
+            "notion_cible": traduire_notion(notion_cible),
+
+            # Messages simples
+            "message": message_eleve(niveau_risque_interne),
+            "bilan_simple": bilan_simple,
+            "conseil": conseil_eleve(niveau_risque_interne),
+
+            # Valeurs gardées au cas où tu veux encore les afficher ailleurs
+            "maitrise_cours": traduire_valeur_signal(valeur_maitrise),
+            "erreurs": traduire_valeur_signal(valeur_erreurs),
+            "temps_reponse": traduire_valeur_signal(valeur_temps),
+
+            # On les garde pour l'enseignant/admin, mais on ne les affiche pas forcément à l'élève
+            "recommandation": getattr(diagnostic, "recommandation", None),
+            "recommandation_enseignant": getattr(diagnostic, "recommandation_enseignant", None),
+            "niveau_intervention": getattr(diagnostic, "niveau_intervention", None),
+            "exercice_remediation_suggere": getattr(diagnostic, "exercice_remediation_suggere", None),
+
+            "verification_calcul": verification_calcul,
+            "processus_naima": processus_naima,
+            "source": traduire_source(getattr(diagnostic, "source", None))
+        })
+
+    # ------------------------------------------------------------
+    # RÉSUMÉ GLOBAL
+    # ------------------------------------------------------------
+
+    resume = {
+        "total": len(retroactions),
+        "faible": sum(1 for r in retroactions if r["badge"] == "success"),
+        "moyen": sum(1 for r in retroactions if r["badge"] == "warning"),
+        "eleve": sum(1 for r in retroactions if r["badge"] == "danger"),
+    }
+
+    return render_template(
+        "eleve_retroactions_bayesiennes.html",
+        eleve=eleve,
+        lang=lang,
+        retroactions=retroactions,
+        resume=resume,
+        date_du_jour=datetime.utcnow()
+    )
+
 
 @app.route("/enseignant/profils-apprenants")
 def enseignant_profils_apprenants():
