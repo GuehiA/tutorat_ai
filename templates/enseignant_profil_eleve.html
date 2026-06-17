@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'fr' }}">
+<head>
+  <meta charset="UTF-8">
+
+  <title>
+    {% if lang == "en" %}
+      Student Learning Profile
+    {% else %}
+      Profil d’apprentissage de l’élève
+    {% endif %}
+  </title>
+
+  <style>
+    :root {
+      --primary: #1f2937;
+      --secondary: #2563eb;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --light: #f3f4f6;
+      --lighter: #f9fafb;
+      --white: #ffffff;
+      --gray: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 8px 24px rgba(0,0,0,0.08);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--lighter);
+      color: var(--primary);
+      padding: 24px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      background: var(--white);
+      padding: 32px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+      padding-bottom: 22px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 0.96rem;
+    }
+
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      color: white;
+      background: var(--secondary);
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: bold;
+      transition: 0.2s ease;
+      margin-left: 8px;
+      margin-bottom: 8px;
+    }
+
+    .btn:hover {
+      opacity: 0.88;
+      transform: translateY(-1px);
+    }
+
+    .btn-dark {
+      background: var(--primary);
+    }
+
+    .btn-light {
+      background: #e5e7eb;
+      color: var(--primary);
+    }
+
+    .student-header {
+      background: linear-gradient(135deg, #eff6ff, #eef2ff);
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 28px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--secondary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: bold;
+    }
+
+    .student-name {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .student-meta {
+      color: var(--gray);
+      margin-top: 4px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--lighter);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .stat-label {
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: bold;
+      font-size: 0.88rem;
+      white-space: nowrap;
+    }
+
+    .badge-success,
+    .faible {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-warning,
+    .moyen {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-danger,
+    .élevé {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-gray {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+
+    .panel h2 {
+      font-size: 1.2rem;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .list-item:last-child {
+      border-bottom: none;
+    }
+
+    .small {
+      color: var(--gray);
+      font-size: 0.86rem;
+    }
+
+    .recommendation {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 28px;
+    }
+
+    .recommendation strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #7c2d12;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    thead {
+      background: var(--primary);
+      color: white;
+    }
+
+    th, td {
+      padding: 13px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--secondary);
+      font-weight: bold;
+    }
+
+    .detail-box {
+      margin-top: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      white-space: pre-wrap;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 50px 20px;
+      background: var(--lighter);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      color: var(--gray);
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .container {
+        padding: 20px;
+      }
+
+      .student-header {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .avatar {
+        margin: 0 auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="top-bar">
+      <div>
+        <h1>
+          {% if lang == "en" %}
+            🧠 Student Learning Profile
+          {% else %}
+            🧠 Profil d’apprentissage de l’élève
+          {% endif %}
+        </h1>
+        <p class="subtitle">
+          {% if lang == "en" %}
+            Summary of traces, scores, risks, frequent concepts and recent answers.
+          {% else %}
+            Synthèse des traces, scores, risques, notions fréquentes et réponses récentes.
+          {% endif %}
+        </p>
+      </div>
+
+      <div>
+        <a class="btn btn-light" href="{{ url_for('dashboard_enseignant') }}">
+          {% if lang == "en" %}Dashboard{% else %}Dashboard{% endif %}
+        </a>
+
+        <a class="btn btn-dark" href="{{ url_for('enseignant_traces_apprentissage') }}">
+          {% if lang == "en" %}All traces{% else %}Toutes les traces{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <div class="student-header">
+      <div class="avatar">
+        {{ (eleve.nom_complet or eleve.username or "E")[:1]|upper }}
+      </div>
+
+      <div>
+        <div class="student-name">{{ eleve.nom_complet }}</div>
+        <div class="student-meta">
+          @{{ eleve.username }}
+          {% if eleve.niveau %}
+            · {{ eleve.niveau.nom }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">
+          {% if lang == "en" %}Learning traces{% else %}Traces d’apprentissage{% endif %}
+        </div>
+        <div class="stat-value">{{ total_traces }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          {% if lang == "en" %}Average score{% else %}Score moyen{% endif %}
+        </div>
+        <div class="stat-value">{{ score_moyen }}%</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          {% if lang == "en" %}Dominant risk{% else %}Risque dominant{% endif %}
+        </div>
+        <div class="stat-value">
+          {% if risque_dominant == "faible" %}
+            <span class="badge badge-success">Faible</span>
+          {% elif risque_dominant == "moyen" %}
+            <span class="badge badge-warning">Moyen</span>
+          {% elif risque_dominant == "élevé" %}
+            <span class="badge badge-danger">Élevé</span>
+          {% else %}
+            <span class="badge badge-gray">{{ risque_dominant }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          {% if lang == "en" %}Last activity{% else %}Dernière activité{% endif %}
+        </div>
+        <div class="stat-value" style="font-size: 1rem;">
+          {% if derniere_trace and derniere_trace.created_at %}
+            {{ derniere_trace.created_at.strftime("%Y-%m-%d %H:%M") }}
+          {% else %}
+            —
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="recommendation">
+      <strong>
+        {% if lang == "en" %}
+          Teacher recommendation
+        {% else %}
+          Recommandation pour l’enseignant
+        {% endif %}
+      </strong>
+      {{ recommandation_enseignant }}
+    </div>
+
+    <div class="section-grid">
+      <div class="panel">
+        <h2>📌 {% if lang == "en" %}Risk distribution{% else %}Répartition des risques{% endif %}</h2>
+
+        <div class="list-item">
+          <span>Faible</span>
+          <strong>{{ risques.get("faible", 0) }}</strong>
+        </div>
+
+        <div class="list-item">
+          <span>Moyen</span>
+          <strong>{{ risques.get("moyen", 0) }}</strong>
+        </div>
+
+        <div class="list-item">
+          <span>Élevé</span>
+          <strong>{{ risques.get("élevé", 0) }}</strong>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>🎯 {% if lang == "en" %}Frequent concepts{% else %}Notions fréquentes{% endif %}</h2>
+
+        {% if notions_frequentes %}
+          {% for notion, nb in notions_frequentes %}
+            <div class="list-item">
+              <span>{{ notion }}</span>
+              <strong>{{ nb }}</strong>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="small">Aucune notion relevée.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>⚠️ {% if lang == "en" %}Frequent errors{% else %}Erreurs fréquentes{% endif %}</h2>
+
+        {% if erreurs_frequentes %}
+          {% for erreur, nb in erreurs_frequentes %}
+            <div class="list-item">
+              <span>{{ erreur }}</span>
+              <strong>{{ nb }}</strong>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="small">Aucune erreur fréquente relevée.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>📚 {% if lang == "en" %}Activity by subject{% else %}Activité par matière{% endif %}</h2>
+
+        {% if matieres_frequentes %}
+          {% for matiere, nb in matieres_frequentes %}
+            <div class="list-item">
+              <span>{{ matiere }}</span>
+              <strong>{{ nb }}</strong>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="small">Aucune activité par matière.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <h2 style="margin-bottom: 16px;">
+      {% if lang == "en" %}
+        Recent learning history
+      {% else %}
+        Historique récent des apprentissages
+      {% endif %}
+    </h2>
+
+    {% if traces %}
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Contexte</th>
+              <th>Score</th>
+              <th>Risque</th>
+              <th>Notion</th>
+              <th>Réponse</th>
+              <th>Analyse</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for trace in traces %}
+              {% set meta = trace.meta_json or {} %}
+
+              <tr>
+                <td>
+                  {% if trace.created_at %}
+                    {{ trace.created_at.strftime("%Y-%m-%d %H:%M") }}
+                  {% else %}
+                    —
+                  {% endif %}
+                  <br>
+                  <span class="small">{{ trace.type_action or "action" }}</span>
+                </td>
+
+                <td>
+                  <strong>
+                    {{ meta.get("matiere_fr") or (trace.matiere.nom if trace.matiere else "—") }}
+                  </strong>
+                  <br>
+                  <span class="small">
+                    {{ meta.get("lecon_fr") or (trace.lecon.titre_fr if trace.lecon else "—") }}
+                  </span>
+                </td>
+
+                <td>
+                  <strong>{{ trace.score or 0 }}%</strong>
+                  <br>
+                  <span class="small">
+                    {{ trace.score_sur_5 or meta.get("score_sur_5", "—") }}/5
+                  </span>
+                </td>
+
+                <td>
+                  {% if trace.niveau_risque == "faible" %}
+                    <span class="badge badge-success">Faible</span>
+                  {% elif trace.niveau_risque == "moyen" %}
+                    <span class="badge badge-warning">Moyen</span>
+                  {% elif trace.niveau_risque == "élevé" %}
+                    <span class="badge badge-danger">Élevé</span>
+                  {% else %}
+                    <span class="badge badge-gray">{{ trace.niveau_risque or "—" }}</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {{ trace.notion_cible or "—" }}
+                  <br>
+                  <span class="small">
+                    {{ meta.get("competence_cible") or "" }}
+                  </span>
+                </td>
+
+                <td>
+                  <details>
+                    <summary>Voir</summary>
+                    <div class="detail-box">
+                      {{ trace.reponse_eleve or "Aucune réponse enregistrée." }}
+                    </div>
+                  </details>
+                </td>
+
+                <td>
+                  <details>
+                    <summary>Voir</summary>
+                    <div class="detail-box">
+                      <strong>Question :</strong><br>
+                      {{ trace.question_lisible or "Question non disponible." }}
+
+                      <br><br>
+                      <strong>Réponse attendue :</strong><br>
+                      {{ trace.reponse_attendue_lisible or "Réponse attendue non disponible." }}
+
+                      <br><br>
+                      <strong>Analyse :</strong><br>
+                      {{ trace.feedback_lisible or "Analyse non disponible." }}
+                    </div>
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        {% if lang == "en" %}
+          No learning trace has been recorded for this student yet.
+        {% else %}
+          Aucune trace d’apprentissage n’a encore été enregistrée pour cet élève.
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </div>
+</body>
+</html>

@@ -43,30 +43,31 @@ def construire_recommandation_diagnostic(niveau_risque, verification_calcul=None
 def enregistrer_diagnostic_bayesien(
     user_id,
     diagnostic,
-    signaux,
+    signaux=None,
     matiere=None,
     exercice_id=None,
     lecon_id=None,
     verification_calcul=None,
     source="naima",
-    analyse_pedagogique=None
+    analyse_pedagogique=None,
+    meta_processus_naima=None
 ):
     """
     Enregistre un diagnostic bayésien dans la table diagnostics_bayesiens.
 
-    Cette version enregistre aussi l'analyse pédagogique intelligente :
-    - notion ciblée ;
-    - notions maîtrisées ;
-    - notions non maîtrisées ;
-    - erreurs probables ;
-    - recommandation enseignant ;
-    - exercice de remédiation suggéré.
+    Cette version enregistre aussi :
+    - le diagnostic bayésien ;
+    - les signaux pédagogiques ;
+    - la vérification mathématique éventuelle ;
+    - l'analyse pédagogique intelligente ;
+    - la preuve que Naima est connectée au processus pédagogique.
     """
 
     diagnostic = diagnostic or {}
     signaux = signaux or {}
     verification_calcul = verification_calcul or {}
     analyse_pedagogique = analyse_pedagogique or {}
+    meta_processus_naima = meta_processus_naima or {}
 
     niveau_risque = diagnostic.get("niveau_risque")
 
@@ -74,6 +75,16 @@ def enregistrer_diagnostic_bayesien(
         niveau_risque=niveau_risque,
         verification_calcul=verification_calcul
     )
+
+    diagnostic_complet = {
+        "diagnostic": diagnostic,
+        "signaux": signaux,
+        "verification_calcul": verification_calcul,
+        "analyse_pedagogique": analyse_pedagogique,
+
+        # Preuve technique et pédagogique que Naima est connectée au processus
+        "processus_naima": meta_processus_naima
+    }
 
     ligne = DiagnosticBayesien(
         user_id=user_id,
@@ -108,17 +119,15 @@ def enregistrer_diagnostic_bayesien(
         analyse_pedagogique_ia=analyse_pedagogique if analyse_pedagogique else None,
 
         # Données complètes pour consultation admin
-        diagnostic_complet={
-            "diagnostic": diagnostic,
-            "signaux": signaux,
-            "verification_calcul": verification_calcul,
-            "analyse_pedagogique": analyse_pedagogique
-        },
+        diagnostic_complet=diagnostic_complet,
 
         source=source
     )
 
     db.session.add(ligne)
     db.session.commit()
+
+    print("✅ Diagnostic bayésien enregistré avec processus Naima.")
+    print("🔎 Processus Naima sauvegardé :", meta_processus_naima)
 
     return ligne

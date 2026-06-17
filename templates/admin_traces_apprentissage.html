@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Traces d’apprentissage</title>
+
+  <style>
+    :root {
+      --primary: #1f2937;
+      --secondary: #2563eb;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --light: #f3f4f6;
+      --lighter: #f9fafb;
+      --white: #ffffff;
+      --gray: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--lighter);
+      color: var(--primary);
+      padding: 24px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1500px;
+      margin: 0 auto;
+      background: var(--white);
+      padding: 32px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      margin-top: 6px;
+      font-size: 0.98rem;
+    }
+
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      background: var(--secondary);
+      color: white;
+      padding: 11px 18px;
+      border-radius: 999px;
+      font-weight: bold;
+      transition: 0.2s ease;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .btn:hover {
+      opacity: 0.88;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--primary);
+    }
+
+    .btn-light {
+      background: #e5e7eb;
+      color: var(--primary);
+    }
+
+    .filters {
+      margin-bottom: 28px;
+      background: var(--lighter);
+      border: 1px solid var(--border);
+      padding: 20px;
+      border-radius: var(--radius);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+
+    .filter-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: var(--primary);
+      font-size: 0.9rem;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: white;
+      color: var(--primary);
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .active-filters {
+      margin-top: -12px;
+      margin-bottom: 24px;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--lighter);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .stat-label {
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1200px;
+      background: white;
+    }
+
+    thead {
+      background: var(--primary);
+      color: white;
+    }
+
+    th,
+    td {
+      padding: 14px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    th {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .badge-success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-danger {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-gray {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .badge-blue {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .badge-purple {
+      background: #ede9fe;
+      color: #6d28d9;
+    }
+
+    .score {
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    .score-good {
+      color: var(--success);
+    }
+
+    .score-mid {
+      color: var(--warning);
+    }
+
+    .score-low {
+      color: var(--danger);
+    }
+
+    .small {
+      color: var(--gray);
+      font-size: 0.82rem;
+    }
+
+    .details {
+      margin-top: 8px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--secondary);
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    .student-detail-card {
+      margin-top: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      min-width: 520px;
+    }
+
+    .detail-section {
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .detail-title {
+      font-weight: bold;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .detail-box {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      white-space: pre-wrap;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .mini-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .mini-label {
+      color: var(--gray);
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+
+    .mini-value {
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .processus-naima {
+      background: #f8fafc;
+      border: 1px solid #dbeafe;
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .processus-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      margin-bottom: 12px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray);
+      background: var(--lighter);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      margin-top: 20px;
+    }
+
+    .empty-state h2 {
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .footer-actions {
+      margin-top: 30px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .top-bar {
+        align-items: flex-start;
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .student-detail-card {
+        min-width: 420px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="top-bar">
+      <div>
+        <h1>🧠 Traces d’apprentissage</h1>
+        <p class="subtitle">
+          Vue lisible des réponses élèves, des diagnostics, des scores et de l’adaptation pédagogique.
+        </p>
+      </div>
+
+      <div>
+        <a class="btn btn-secondary" href="{{ request.referrer or '/' }}">
+          Retour
+        </a>
+      </div>
+    </div>
+
+    <form method="GET" class="filters">
+      <div class="filter-group">
+        <label for="q">Recherche</label>
+        <input
+          id="q"
+          type="text"
+          name="q"
+          value="{{ q or '' }}"
+          placeholder="Élève, notion, source..."
+        >
+      </div>
+
+      <div class="filter-group">
+        <label for="risque">Risque</label>
+        <select id="risque" name="risque">
+          <option value="tous" {% if risque == "tous" %}selected{% endif %}>Tous</option>
+          <option value="faible" {% if risque == "faible" %}selected{% endif %}>Faible</option>
+          <option value="moyen" {% if risque == "moyen" %}selected{% endif %}>Moyen</option>
+          <option value="élevé" {% if risque == "élevé" %}selected{% endif %}>Élevé</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="action">Action</label>
+        <select id="action" name="action">
+          <option value="tous" {% if action == "tous" %}selected{% endif %}>Toutes</option>
+          <option value="conversation_naima" {% if action == "conversation_naima" %}selected{% endif %}>
+            Conversation Naima
+          </option>
+          <option value="exercice_sequentiel" {% if action == "exercice_sequentiel" %}selected{% endif %}>
+            Exercice séquentiel
+          </option>
+          <option value="exercice" {% if action == "exercice" %}selected{% endif %}>
+            Exercice simple
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="sort">Trier par</label>
+        <select id="sort" name="sort">
+          <option value="date_desc" {% if sort == "date_desc" %}selected{% endif %}>Date récente</option>
+          <option value="date_asc" {% if sort == "date_asc" %}selected{% endif %}>Date ancienne</option>
+          <option value="score_desc" {% if sort == "score_desc" %}selected{% endif %}>Score élevé</option>
+          <option value="score_asc" {% if sort == "score_asc" %}selected{% endif %}>Score faible</option>
+          <option value="risque" {% if sort == "risque" %}selected{% endif %}>Risque</option>
+          <option value="eleve" {% if sort == "eleve" %}selected{% endif %}>Élève</option>
+          <option value="notion" {% if sort == "notion" %}selected{% endif %}>Notion</option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn">
+          Appliquer
+        </button>
+
+        <a href="{{ url_for('admin_traces_apprentissage') }}" class="btn btn-light">
+          Réinitialiser
+        </a>
+      </div>
+    </form>
+
+    <div class="active-filters">
+      Affichage des 100 dernières traces correspondant aux critères.
+      {% if q %}
+        Recherche : <strong>{{ q }}</strong>.
+      {% endif %}
+      {% if risque and risque != "tous" %}
+        Risque : <strong>{{ risque }}</strong>.
+      {% endif %}
+      {% if action and action != "tous" %}
+        Action : <strong>{{ action }}</strong>.
+      {% endif %}
+    </div>
+
+    {% set total_traces = traces|length %}
+    {% set traces_faible = traces|selectattr("niveau_risque", "equalto", "faible")|list|length %}
+    {% set traces_moyen = traces|selectattr("niveau_risque", "equalto", "moyen")|list|length %}
+    {% set traces_eleve = traces|selectattr("niveau_risque", "equalto", "élevé")|list|length %}
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Traces affichées</div>
+        <div class="stat-value">{{ total_traces }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Risque faible</div>
+        <div class="stat-value">{{ traces_faible }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Risque moyen</div>
+        <div class="stat-value">{{ traces_moyen }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Risque élevé</div>
+        <div class="stat-value">{{ traces_eleve }}</div>
+      </div>
+    </div>
+
+    {% if traces %}
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Élève</th>
+              <th>Contexte</th>
+              <th>Score</th>
+              <th>Risque</th>
+              <th>Notion</th>
+              <th>Détails lisibles</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for trace in traces %}
+              {% set meta = trace.meta_json or {} %}
+              {% set adaptive = trace.prochain_adaptatif or {} %}
+              {% set processus_naima = meta.get("processus_naima", {}) %}
+              {% set diagnostic_naima = meta.get("diagnostic_bayesien", {}) %}
+              {% set analyse_naima = meta.get("analyse_pedagogique", {}) %}
+
+              <tr>
+                <td>
+                  {% if trace.created_at %}
+                    {{ trace.created_at.strftime("%Y-%m-%d %H:%M") }}
+                  {% else %}
+                    <span class="small">Date inconnue</span>
+                  {% endif %}
+                  <br>
+
+                  {% if trace.type_action == "conversation_naima" %}
+                    <span class="badge badge-purple">conversation_naima</span>
+                  {% else %}
+                    <span class="small">
+                      {{ trace.type_action or "action" }}
+                    </span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <strong>
+                    {% if trace.user %}
+                      {{ trace.user.nom_complet }}
+                    {% else %}
+                      {{ meta.get("eleve_nom") or "Élève inconnu" }}
+                    {% endif %}
+                  </strong>
+                  <br>
+                  <span class="small">
+                    ID : {{ trace.user_id }}
+                    {% if meta.get("username") %}
+                      | {{ meta.get("username") }}
+                    {% endif %}
+                  </span>
+                </td>
+
+                <td>
+                  <strong>
+                    {% if trace.type_action == "conversation_naima" %}
+                      {{ meta.get("lecon_courante_naima") or processus_naima.get("lecon_courante_naima") or meta.get("matiere_fr") or "Mathématiques" }}
+                    {% else %}
+                      {{ meta.get("matiere_fr") or (trace.matiere.nom if trace.matiere else "Matière non liée") }}
+                    {% endif %}
+                  </strong>
+                  <br>
+
+                  <span class="small">
+                    Unité :
+                    {{ meta.get("unite_fr") or (trace.unite.nom if trace.unite else "—") }}
+                  </span>
+                  <br>
+
+                  <span class="small">
+                    Leçon :
+                    {% if trace.lecon %}
+                      {{ trace.lecon.titre_fr or trace.lecon.titre_en or "—" }}
+                    {% elif meta.get("lecon_fr") %}
+                      {{ meta.get("lecon_fr") }}
+                    {% elif trace.type_action == "conversation_naima" %}
+                      Conversation avec Naima
+                    {% else %}
+                      —
+                    {% endif %}
+                  </span>
+
+                  {% if trace.type_action == "conversation_naima" %}
+                    <br>
+                    <span class="small">
+                      Objectif :
+                      {{ processus_naima.get("objectif_initial_naima") or meta.get("objectif_initial_naima") or "—" }}
+                    </span>
+                  {% endif %}
+                  <br>
+
+                  <span class="small">
+                    Exercice ID : {{ trace.exercice_id or "—" }}
+                  </span>
+                </td>
+
+                <td>
+                  {% if trace.score is not none %}
+                    {% if trace.score >= 80 %}
+                      <span class="score score-good">{{ trace.score }}%</span>
+                    {% elif trace.score >= 50 %}
+                      <span class="score score-mid">{{ trace.score }}%</span>
+                    {% else %}
+                      <span class="score score-low">{{ trace.score }}%</span>
+                    {% endif %}
+                    <br>
+                    <span class="small">
+                      {{ trace.score_sur_5 or meta.get("score_sur_5", "—") }}/5
+                    </span>
+                  {% else %}
+                    <span class="small">Non noté</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {% if trace.niveau_risque == "faible" %}
+                    <span class="badge badge-success">Faible</span>
+                  {% elif trace.niveau_risque == "moyen" %}
+                    <span class="badge badge-warning">Moyen</span>
+                  {% elif trace.niveau_risque == "élevé" %}
+                    <span class="badge badge-danger">Élevé</span>
+                  {% else %}
+                    <span class="badge badge-gray">
+                      {{ trace.niveau_risque or "Non défini" }}
+                    </span>
+                  {% endif %}
+                  <br>
+                  <span class="small">
+                    Difficulté :
+                    {{ trace.difficulte_estimee or meta.get("niveau_difficulte") or "—" }}
+                  </span>
+                </td>
+
+                <td>
+                  <strong>
+                    {{ trace.notion_cible or meta.get("notion_cible") or analyse_naima.get("notion_cible") or "—" }}
+                  </strong>
+                  <br>
+
+                  <span class="small">
+                    Compétence :
+                    {{ meta.get("competence_cible") or analyse_naima.get("competence_cible") or "—" }}
+                  </span>
+                  <br>
+
+                  <span class="small">
+                    Erreur :
+                    {{ trace.type_erreur or "—" }}
+                  </span>
+
+                  {% if trace.type_action == "conversation_naima" and processus_naima %}
+                    <br>
+                    <span class="badge badge-blue" style="margin-top: 6px;">
+                      Naima avec processus
+                    </span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <details class="details">
+                    <summary>Voir le détail de l’élève</summary>
+
+                    <div class="student-detail-card">
+
+                      <div class="detail-section">
+                        <div class="detail-title">👤 Élève</div>
+                        <div class="detail-grid">
+                          <div class="mini-card">
+                            <div class="mini-label">Nom</div>
+                            <div class="mini-value">
+                              {% if trace.user %}
+                                {{ trace.user.nom_complet }}
+                              {% else %}
+                                {{ meta.get("eleve_nom") or "Élève inconnu" }}
+                              {% endif %}
+                            </div>
+                          </div>
+
+                          <div class="mini-card">
+                            <div class="mini-label">Identifiant</div>
+                            <div class="mini-value">
+                              {{ meta.get("username") or trace.user_id }}
+                            </div>
+                          </div>
+
+                          <div class="mini-card">
+                            <div class="mini-label">Score</div>
+                            <div class="mini-value">
+                              {% if trace.score is not none %}
+                                {{ trace.score }}%
+                                {% if trace.score_sur_5 or meta.get("score_sur_5") %}
+                                  — {{ trace.score_sur_5 or meta.get("score_sur_5") }}/5
+                                {% endif %}
+                              {% else %}
+                                Non noté
+                              {% endif %}
+                            </div>
+                          </div>
+
+                          <div class="mini-card">
+                            <div class="mini-label">Risque</div>
+                            <div class="mini-value">
+                              {{ trace.niveau_risque or "Non défini" }}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="detail-section">
+                        <div class="detail-title">📘 Question posée</div>
+                        <div class="detail-box">
+                          {% if trace.type_action == "conversation_naima" %}
+                            {{ meta.get("objectif_initial_naima") or processus_naima.get("objectif_initial_naima") or "Question Naima non disponible." }}
+                          {% else %}
+                            {{ trace.question_lisible or "Question non disponible." }}
+                          {% endif %}
+                        </div>
+                      </div>
+
+                      <div class="detail-section">
+                        <div class="detail-title">✍️ Réponse de l’élève</div>
+                        <div class="detail-box">
+                          {{ trace.reponse_eleve or "Aucune réponse enregistrée." }}
+                        </div>
+                      </div>
+
+                      <div class="detail-section">
+                        <div class="detail-title">✅ Réponse attendue</div>
+                        <div class="detail-box">
+                          {% if trace.type_action == "conversation_naima" %}
+                            Réponse attendue non applicable : interaction guidée avec Naima.
+                          {% else %}
+                            {{ trace.reponse_attendue_lisible or "Réponse attendue non disponible." }}
+                          {% endif %}
+                        </div>
+                      </div>
+
+                      {% if trace.type_action == "conversation_naima" %}
+                        <div class="detail-section">
+                          <div class="detail-title">🤖 Réponse de Naima</div>
+                          <div class="detail-box">
+                            {{ trace.analyse_ia or "Réponse de Naima non disponible." }}
+                          </div>
+                        </div>
+                      {% endif %}
+
+                      {% if trace.type_action == "conversation_naima" and processus_naima %}
+                        <div class="detail-section">
+                          <div class="detail-title">🤖 Processus Naima utilisé</div>
+
+                          <div class="processus-naima">
+                            <div class="processus-badges">
+                              {% if processus_naima.get("naima_connectee_aux_traces") %}
+                                <span class="badge badge-success">✓ Traces d’apprentissage</span>
+                              {% else %}
+                                <span class="badge badge-gray">— Traces d’apprentissage</span>
+                              {% endif %}
+
+                              {% if processus_naima.get("contexte_personnalise_utilise") %}
+                                <span class="badge badge-success">✓ Contexte personnalisé</span>
+                              {% else %}
+                                <span class="badge badge-gray">— Contexte personnalisé</span>
+                              {% endif %}
+
+                              {% if processus_naima.get("diagnostic_bayesien_utilise") %}
+                                <span class="badge badge-success">✓ Diagnostic bayésien</span>
+                              {% else %}
+                                <span class="badge badge-gray">— Diagnostic bayésien</span>
+                              {% endif %}
+
+                              {% if processus_naima.get("recentrage_pedagogique_utilise") %}
+                                <span class="badge badge-success">✓ Recentrage pédagogique</span>
+                              {% else %}
+                                <span class="badge badge-gray">— Recentrage pédagogique</span>
+                              {% endif %}
+
+                              {% if processus_naima.get("analyse_pedagogique_effectuee") %}
+                                <span class="badge badge-success">✓ Analyse pédagogique</span>
+                              {% else %}
+                                <span class="badge badge-gray">— Analyse pédagogique</span>
+                              {% endif %}
+
+                              {% if processus_naima.get("verification_math_locale_utilisee") %}
+                                <span class="badge badge-success">✓ Vérification mathématique</span>
+                              {% else %}
+                                <span class="badge badge-gray">— Vérification mathématique</span>
+                              {% endif %}
+                            </div>
+
+                            <div class="detail-grid">
+                              <div class="mini-card">
+                                <div class="mini-label">Objectif initial</div>
+                                <div class="mini-value">
+                                  {{ processus_naima.get("objectif_initial_naima") or meta.get("objectif_initial_naima") or "—" }}
+                                </div>
+                              </div>
+
+                              <div class="mini-card">
+                                <div class="mini-label">Mode pédagogique</div>
+                                <div class="mini-value">
+                                  {{ processus_naima.get("mode_pedagogique_naima") or meta.get("mode_pedagogique_naima") or "—" }}
+                                </div>
+                              </div>
+
+                              <div class="mini-card">
+                                <div class="mini-label">Leçon courante</div>
+                                <div class="mini-value">
+                                  {{ processus_naima.get("lecon_courante_naima") or meta.get("lecon_courante_naima") or "—" }}
+                                </div>
+                              </div>
+
+                              <div class="mini-card">
+                                <div class="mini-label">Source</div>
+                                <div class="mini-value">
+                                  {{ processus_naima.get("source_accompagnement") or "naima" }}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      {% endif %}
+
+                      <div class="detail-section">
+                        <div class="detail-title">🧠 Analyse pédagogique</div>
+                        <div class="detail-box">
+                          {% if trace.type_action == "conversation_naima" %}
+                            {% if analyse_naima %}
+                              Notion ciblée : {{ analyse_naima.get("notion_cible", "—") }}
+
+                              Notions maîtrisées :
+                              {{ analyse_naima.get("notions_maitrisees", "—") }}
+
+                              Notions non maîtrisées :
+                              {{ analyse_naima.get("notions_non_maitrisees", "—") }}
+
+                              Erreurs probables :
+                              {{ analyse_naima.get("erreurs_probables", "—") }}
+
+                              Recommandation enseignant :
+                              {{ analyse_naima.get("recommandation_enseignant", "—") }}
+
+                              Exercice de remédiation suggéré :
+                              {{ analyse_naima.get("exercice_remediation_suggere", "—") }}
+                            {% else %}
+                              {{ trace.feedback_lisible or "Analyse pédagogique Naima non disponible." }}
+                            {% endif %}
+                          {% else %}
+                            {{ trace.feedback_lisible or "Analyse IA non disponible." }}
+                          {% endif %}
+                        </div>
+                      </div>
+
+                      <div class="detail-section">
+                        <div class="detail-title">🔬 Vérification mathématique</div>
+                        <div class="detail-grid">
+                          <div class="mini-card">
+                            <div class="mini-label">Résultat</div>
+                            <div class="mini-value">
+                              {% if trace.type_action == "conversation_naima" %}
+                                {% if meta.get("verification_calcul") %}
+                                  {% if meta.get("verification_calcul").get("est_correct") == true %}
+                                    Correct
+                                  {% elif meta.get("verification_calcul").get("est_correct") == false %}
+                                    Incorrect
+                                  {% else %}
+                                    Non vérifié
+                                  {% endif %}
+                                {% else %}
+                                  Non vérifié
+                                {% endif %}
+                              {% else %}
+                                {% if meta.get("symbolic_correct") == true %}
+                                  Correct
+                                {% elif meta.get("symbolic_correct") == false %}
+                                  Incorrect
+                                {% else %}
+                                  Non vérifié
+                                {% endif %}
+                              {% endif %}
+                            </div>
+                          </div>
+
+                          <div class="mini-card">
+                            <div class="mini-label">Commentaire</div>
+                            <div class="mini-value">
+                              {% if trace.type_action == "conversation_naima" %}
+                                {% if meta.get("verification_calcul") %}
+                                  {{ meta.get("verification_calcul") }}
+                                {% else %}
+                                  Aucune vérification mathématique locale nécessaire pour cette interaction.
+                                {% endif %}
+                              {% else %}
+                                {{ trace.correction_symbolique or "Aucun commentaire symbolique." }}
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="detail-section">
+                        <div class="detail-title">📊 Diagnostic</div>
+                        <div class="detail-grid">
+                          <div class="mini-card">
+                            <div class="mini-label">Notion ciblée</div>
+                            <div class="mini-value">
+                              {{ trace.notion_cible or meta.get("notion_cible") or analyse_naima.get("notion_cible") or "—" }}
+                            </div>
+                          </div>
+
+                          <div class="mini-card">
+                            <div class="mini-label">Compétence</div>
+                            <div class="mini-value">
+                              {{ meta.get("competence_cible") or analyse_naima.get("competence_cible") or "—" }}
+                            </div>
+                          </div>
+
+                          <div class="mini-card">
+                            <div class="mini-label">Niveau de difficulté</div>
+                            <div class="mini-value">
+                              {{ trace.difficulte_estimee or meta.get("niveau_difficulte") or "—" }}
+                            </div>
+                          </div>
+
+                          <div class="mini-card">
+                            <div class="mini-label">Probabilité de difficulté</div>
+                            <div class="mini-value">
+                              {% if trace.type_action == "conversation_naima" and diagnostic_naima %}
+                                {{ diagnostic_naima.get("pourcentage_difficulte", "—") }}%
+                              {% else %}
+                                {{ meta.get("pourcentage_difficulte", "—") }}%
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="detail-section">
+                        <div class="detail-title">➡️ Adaptation proposée</div>
+
+                        {% if trace.type_action == "conversation_naima" %}
+                          <div class="detail-box">
+                            {% if analyse_naima and analyse_naima.get("recommandation_enseignant") %}
+                              {{ analyse_naima.get("recommandation_enseignant") }}
+                            {% else %}
+                              Aucune adaptation automatique spécifique enregistrée pour cette interaction Naima.
+                            {% endif %}
+                          </div>
+                        {% elif adaptive and adaptive.get("prochain_exercice_id") %}
+                          <div class="detail-grid">
+                            <div class="mini-card">
+                              <div class="mini-label">Prochain exercice</div>
+                              <div class="mini-value">
+                                {{ adaptive.get("prochain_exercice_id") }}
+                              </div>
+                            </div>
+
+                            <div class="mini-card">
+                              <div class="mini-label">Stratégie</div>
+                              <div class="mini-value">
+                                {{ adaptive.get("strategie") or "—" }}
+                              </div>
+                            </div>
+
+                            <div class="mini-card">
+                              <div class="mini-label">Niveau ciblé</div>
+                              <div class="mini-value">
+                                {{ adaptive.get("niveau_cible") or "—" }}
+                              </div>
+                            </div>
+
+                            <div class="mini-card">
+                              <div class="mini-label">Notion ciblée</div>
+                              <div class="mini-value">
+                                {{ adaptive.get("notion_cible") or "—" }}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="detail-box" style="margin-top: 12px;">
+                            {{ adaptive.get("raison") or "Aucune justification disponible." }}
+                          </div>
+                        {% else %}
+                          <div class="detail-box">
+                            Aucun prochain exercice adaptatif enregistré pour cette trace.
+                          </div>
+                        {% endif %}
+                      </div>
+
+                    </div>
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <h2>Aucune trace trouvée</h2>
+        <p>
+          Soumets un exercice en mode séquentiel adaptatif ou échange avec Naima pour générer une trace d’apprentissage.
+        </p>
+      </div>
+    {% endif %}
+
+    <div class="footer-actions">
+      <a class="btn btn-secondary" href="{{ request.referrer or '/' }}">
+        Retour
+      </a>
+    </div>
+
+  </div>
+</body>
+</html>

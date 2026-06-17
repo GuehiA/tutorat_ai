@@ -695,7 +695,7 @@
           <div class="dashboard-card ai-config">
             <div class="card-header">
               <i class="fas fa-robot card-icon"></i>
-              {% if lang == 'en' %}AI Configuration{% else %}Configuration IA{% endif %}
+              {% if lang == 'en' %}AI & Learning Monitoring{% else %}Pilotage IA & apprentissages{% endif %}
             </div>
             <div class="card-body">
               <a href="/admin/ai-config" class="btn action-btn">
@@ -712,10 +712,10 @@
               <a href="{{ url_for('admin_diagnostics_bayesiens') }}" class="btn action-btn">
                 <i class="fas fa-brain"></i>
                 <div>
-                  <strong>{% if lang == 'en' %}Bayesian Diagnostics{% else %}Diagnostics bayésiens{% endif %}</strong>
+                  <strong>{% if lang == 'en' %}AI Pedagogical Alerts{% else %}Alertes pédagogiques IA{% endif %}</strong>
                   <br>
                   <small class="text-muted">
-                    {% if lang == 'en' %}View all student risk analyses and pedagogical recommendations{% else %}Voir les analyses de risque et recommandations pédagogiques pour tous les élèves{% endif %}
+                    {% if lang == 'en' %}Identify students at risk now using Bayesian diagnostics and learning signals{% else %}Repérer les élèves à risque maintenant à partir des diagnostics bayésiens et des signaux d’apprentissage{% endif %}
                   </small>
                 </div>
               </a>
@@ -723,10 +723,21 @@
               <a href="{{ url_for('admin_profils_apprenants') }}" class="btn action-btn">
                 <i class="fas fa-user-graduate"></i>
                 <div>
-                  <strong>{% if lang == 'en' %}Learner Profiles{% else %}Profils apprenants{% endif %}</strong>
+                  <strong>{% if lang == 'en' %}Student Profiles{% else %}Profils des élèves{% endif %}</strong>
                   <br>
                   <small class="text-muted">
-                    {% if lang == 'en' %}View estimated mastery, risk, trends and recommendations by student and concept{% else %}Voir la maîtrise estimée, le risque, les tendances et recommandations par élève et par notion{% endif %}
+                    {% if lang == 'en' %}Consult each student’s learning portrait: strengths, gaps, progress and needs{% else %}Consulter le portrait d’apprentissage de chaque élève : forces, fragilités, progression et besoins{% endif %}
+                  </small>
+                </div>
+              </a>
+
+              <a href="{{ url_for('admin_traces_apprentissage') }}" class="btn action-btn">
+                <i class="fas fa-book-open"></i>
+                <div>
+                  <strong>{% if lang == 'en' %}Learning Journal{% else %}Journal des apprentissages{% endif %}</strong>
+                  <br>
+                  <small class="text-muted">
+                    {% if lang == 'en' %}Review the detailed history of exercises, answers, Naima interactions and AI analyses{% else %}Consulter l’historique détaillé des exercices, réponses, interactions Naima et analyses générées{% endif %}
                   </small>
                 </div>
               </a>
@@ -872,6 +883,38 @@
       <div class="content-section mt-4">
         <h4 class="mb-3">{% if lang == 'en' %}Content Hierarchy{% else %}Hiérarchie du Contenu{% endif %}</h4>
 
+        {% if not load_content %}
+          <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+              <strong>
+                {% if lang == 'en' %}
+                  Content structure not loaded yet.
+                {% else %}
+                  La structure complète du contenu n’est pas encore chargée.
+                {% endif %}
+              </strong>
+              <br>
+              <small>
+                {% if lang == 'en' %}
+                  Load it only when needed to keep the admin dashboard fast.
+                {% else %}
+                  Chargez-la seulement au besoin pour garder le tableau de bord rapide.
+                {% endif %}
+              </small>
+            </div>
+
+            <a href="{{ url_for('admin_dashboard', lang=lang, load_content=1) }}" class="btn btn-primary">
+              <i class="fas fa-sitemap me-2"></i>
+              {% if lang == 'en' %}
+                Load content structure
+              {% else %}
+                Charger la structure du contenu
+              {% endif %}
+            </a>
+          </div>
+        {% endif %}
+
+        {% if load_content %}
         <!-- Accordéon principal pour les niveaux -->
         <div class="accordion" id="contentAccordion">
           {% for niveau in niveaux %}
@@ -1060,6 +1103,7 @@
             </div>
           {% endfor %}
         </div>
+        {% endif %}
       </div>
     </div>
     

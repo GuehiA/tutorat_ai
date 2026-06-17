@@ -569,185 +569,427 @@ def debug_routing():
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
+    """
+    Tableau de bord administrateur optimisé.
+
+    Version améliorée :
+    - ne charge plus toute la hiérarchie pédagogique par défaut ;
+    - charge niveaux/matières/unités/leçons/exercices seulement avec ?load_content=1 ;
+    - réduit les requêtes répétées de monétisation ;
+    - supprime les requêtes N+1 sur les enseignants ;
+    - conserve les variables attendues par admin_dashboard.html.
+    """
+
+    from datetime import datetime
+    from sqlalchemy import func, case
+    from sqlalchemy.orm import joinedload
+
     lang = request.args.get("lang") or session.get("lang", "fr")
-    
+    session["lang"] = lang
+
+    # Mettre load_content=1 uniquement quand on veut charger la structure complète
+    load_content = request.args.get("load_content") == "1"
+
     try:
-        # Import des modèles nécessaires
+        # ============================================================
+        # IMPORT DES MODÈLES
+        # ============================================================
+
         UserModel = get_user_model()
-        NiveauModel = get_model('Niveau') or Niveau
-        MatiereModel = get_model('Matiere')
-        UniteModel = get_model('Unite')
-        LeconModel = get_model('Lecon')
-        ExerciceModel = get_model('Exercice')
-        TestSommatifModel = get_model('TestSommatif')
-        CommissionModel = get_model('Commission')
-        VersementManuelModel = get_model('VersementManuel')
-        
-        # Charger les niveaux avec leurs relations
+        NiveauModel = get_model("Niveau") or Niveau
+        MatiereModel = get_model("Matiere")
+        UniteModel = get_model("Unite")
+        LeconModel = get_model("Lecon")
+        ExerciceModel = get_model("Exercice")
+        TestSommatifModel = get_model("TestSommatif")
+        CommissionModel = get_model("Commission")
+        VersementManuelModel = get_model("VersementManuel")
+
+        # ============================================================
+        # CHARGEMENT LÉGER DE LA STRUCTURE DE CONTENU
+        # ============================================================
+
         niveaux = []
+
+        if load_content and NiveauModel:
+            try:
+                niveaux = (
+                    NiveauModel.query
+                    .options(
+                        joinedload(NiveauModel.matieres)
+                        .joinedload(MatiereModel.unites)
+                        .joinedload(UniteModel.lecons)
+                        .joinedload(LeconModel.exercices),
+
+                        joinedload(NiveauModel.matieres)
+                        .joinedload(MatiereModel.unites)
+                        .joinedload(UniteModel.tests)
+                    )
+                    .order_by(NiveauModel.id)
+                    .all()
+                )
+
+                print(f"✅ Structure contenu chargée : {len(niveaux)} niveau(x).")
+
+            except Exception as e:
+                print(f"⚠️ Erreur chargement structure complète: {e}")
+
+                try:
+                    niveaux = NiveauModel.query.order_by(NiveauModel.id).all()
+                except Exception as e2:
+                    print(f"⚠️ Erreur chargement niveaux simples: {e2}")
+                    niveaux = []
+
+        else:
+            print("ℹ️ Structure contenu non chargée par défaut. Utiliser ?load_content=1.")
+
+        # ============================================================
+        # STATISTIQUES PRINCIPALES
+        # ============================================================
+
+        stats = {
+            "enseignants_count": 0,
+            "eleves_count": 0,
+            "lecons_count": 0,
+            "exercices_count": 0,
+            "total_tests": 0,
+        }
+
+        try:
+            enseignants_count, eleves_count = db.session.query(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (UserModel.role == "enseignant", 1),
+                            else_=0
+                        )
+                    ),
+                    0
+                ),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (UserModel.role.in_(["eleve", "élève"]), 1),
+                            else_=0
+                        )
+                    ),
+                    0
+                )
+            ).one()
+
+            stats["enseignants_count"] = int(enseignants_count or 0)
+            stats["eleves_count"] = int(eleves_count or 0)
+
+        except Exception as e:
+            print(f"⚠️ Erreur stats utilisateurs admin: {e}")
+
+        try:
+            stats["lecons_count"] = (
+                db.session.query(func.count(LeconModel.id)).scalar()
+                if LeconModel else 0
+            )
+        except Exception as e:
+            print(f"⚠️ Erreur count leçons: {e}")
+            stats["lecons_count"] = 0
+
+        try:
+            stats["exercices_count"] = (
+                db.session.query(func.count(ExerciceModel.id)).scalar()
+                if ExerciceModel else 0
+            )
+        except Exception as e:
+            print(f"⚠️ Erreur count exercices: {e}")
+            stats["exercices_count"] = 0
+
+        try:
+            stats["total_tests"] = (
+                db.session.query(func.count(TestSomatifModel.id)).scalar()
+                if False else 0
+            )
+        except Exception:
+            stats["total_tests"] = 0
+
+        try:
+            if TestSommatifModel:
+                stats["total_tests"] = db.session.query(
+                    func.count(TestSommatifModel.id)
+                ).scalar() or 0
+        except Exception as e:
+            print(f"⚠️ Erreur count tests: {e}")
+            stats["total_tests"] = 0
+
+        # ============================================================
+        # RÉPARTITION DES ÉLÈVES PAR NIVEAU
+        # ============================================================
+
+        eleves_par_niveau = []
+
         if NiveauModel:
             try:
-                niveaux = NiveauModel.query.options(
-                    joinedload(NiveauModel.matieres).joinedload(MatiereModel.unites).joinedload(UniteModel.lecons).joinedload(LeconModel.exercices),
-                    joinedload(NiveauModel.matieres).joinedload(MatiereModel.unites).joinedload(UniteModel.tests)
-                ).order_by(NiveauModel.id).all()
+                eleves_par_niveau = (
+                    db.session.query(
+                        NiveauModel.nom,
+                        func.count(UserModel.id)
+                    )
+                    .join(UserModel, NiveauModel.id == UserModel.niveau_id)
+                    .filter(UserModel.role.in_(["eleve", "élève"]))
+                    .group_by(NiveauModel.id, NiveauModel.nom)
+                    .order_by(NiveauModel.id)
+                    .all()
+                )
             except Exception as e:
-                print(f"Erreur chargement niveaux: {e}")
-                niveaux = NiveauModel.query.order_by(NiveauModel.id).all()
-        
-        # Statistiques principales
-        stats = {
-            "enseignants_count": UserModel.query.filter_by(role="enseignant").count(),
-            "eleves_count": UserModel.query.filter_by(role="eleve").count(),
-            "lecons_count": LeconModel.query.count() if LeconModel else 0,
-            "exercices_count": ExerciceModel.query.count() if ExerciceModel else 0,
-            "total_tests": TestSommatifModel.query.count() if TestSommatifModel else 0,
+                print(f"⚠️ Erreur répartition élèves par niveau: {e}")
+                eleves_par_niveau = []
+
+        # ============================================================
+        # DONNÉES DE MONÉTISATION
+        # ============================================================
+
+        monetization_stats = {
+            "total_commissions": 0,
+            "pending_payments": 0,
+            "payments_count": 0,
+            "active_teachers": 0
         }
-        
-        # Répartition des élèves par niveau
-        eleves_par_niveau = []
-        if NiveauModel:
-            eleves_par_niveau = db.session.query(
-                NiveauModel.nom, db.func.count(UserModel.id)
-            ).join(UserModel, NiveauModel.id == UserModel.niveau_id)\
-             .filter(UserModel.role == "eleve")\
-             .group_by(NiveauModel.id).all()
-        
-        # === DONNÉES DE MONÉTISATION ===
-        monetization_stats = {}
+
         recent_payments = []
         teacher_commissions = []
-        
+
         if CommissionModel and VersementManuelModel:
             try:
-                # Calcul des statistiques globales
-                total_com = db.session.query(db.func.sum(CommissionModel.montant_commission)).scalar() or 0
-                total_pending = db.session.query(db.func.sum(CommissionModel.montant_commission))\
-                                 .filter(CommissionModel.statut.in_(['pending', 'paiement_manuel'])).scalar() or 0
-                payments_count = VersementManuelModel.query.count()
-                
-                # Compter les enseignants avec commissions actives
-                active_teachers = db.session.query(CommissionModel.enseignant_id)\
-                    .filter(CommissionModel.montant_commission > 0)\
-                    .distinct()\
-                    .count()
-                
+                # --------------------------------------------------------
+                # Statistiques globales monétisation
+                # --------------------------------------------------------
+
+                total_com, total_pending, active_teachers = db.session.query(
+                    func.coalesce(func.sum(CommissionModel.montant_commission), 0),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    CommissionModel.statut.in_(
+                                        ["pending", "paiement_manuel"]
+                                    ),
+                                    CommissionModel.montant_commission
+                                ),
+                                else_=0
+                            )
+                        ),
+                        0
+                    ),
+                    func.count(func.distinct(CommissionModel.enseignant_id))
+                ).filter(
+                    CommissionModel.montant_commission > 0
+                ).one()
+
+                payments_count = (
+                    db.session.query(func.count(VersementManuelModel.id)).scalar()
+                    or 0
+                )
+
                 monetization_stats = {
-                    'total_commissions': float(total_com),
-                    'pending_payments': float(total_pending),
-                    'payments_count': payments_count,
-                    'active_teachers': active_teachers
+                    "total_commissions": float(total_com or 0),
+                    "pending_payments": float(total_pending or 0),
+                    "payments_count": int(payments_count or 0),
+                    "active_teachers": int(active_teachers or 0)
                 }
-                
-                # Paiements récents (les 10 derniers)
-                recent_payments_data = VersementManuelModel.query\
-                    .join(UserModel, VersementManuelModel.enseignant_id == UserModel.id)\
-                    .filter(UserModel.role == "enseignant")\
-                    .order_by(VersementManuelModel.date_demande.desc())\
-                    .limit(10)\
+
+                # --------------------------------------------------------
+                # Paiements récents
+                # --------------------------------------------------------
+
+                recent_payments_data = (
+                    VersementManuelModel.query
+                    .join(UserModel, VersementManuelModel.enseignant_id == UserModel.id)
+                    .filter(UserModel.role == "enseignant")
+                    .order_by(VersementManuelModel.date_demande.desc())
+                    .limit(10)
                     .all()
-                
+                )
+
                 for payment in recent_payments_data:
                     recent_payments.append({
-                        'id': payment.id,
-                        'enseignant_nom': payment.enseignant.nom_complet if payment.enseignant else 'N/A',
-                        'email': payment.email_interac or (payment.enseignant.email if payment.enseignant else ''),
-                        'montant_total': float(payment.montant_total or 0),
-                        'montant_net': float(payment.montant_net) if payment.montant_net else float(payment.montant_total or 0),
-                        'statut': payment.statut or 'demande',
-                        'date_demande': payment.date_demande,
-                        'date': payment.date_demande.strftime('%Y-%m-%d') if payment.date_demande else 'N/A',
-                        'email_interac': payment.email_interac or '',
-                        'reference_interac': payment.reference_interac or ''
+                        "id": payment.id,
+                        "enseignant_nom": (
+                            payment.enseignant.nom_complet
+                            if getattr(payment, "enseignant", None)
+                            else "N/A"
+                        ),
+                        "email": (
+                            payment.email_interac
+                            or (
+                                payment.enseignant.email
+                                if getattr(payment, "enseignant", None)
+                                else ""
+                            )
+                        ),
+                        "montant_total": float(payment.montant_total or 0),
+                        "montant_net": (
+                            float(payment.montant_net)
+                            if payment.montant_net
+                            else float(payment.montant_total or 0)
+                        ),
+                        "statut": payment.statut or "demande",
+                        "date_demande": payment.date_demande,
+                        "date": (
+                            payment.date_demande.strftime("%Y-%m-%d")
+                            if payment.date_demande
+                            else "N/A"
+                        ),
+                        "email_interac": payment.email_interac or "",
+                        "reference_interac": payment.reference_interac or ""
                     })
-                
+
+                # --------------------------------------------------------
                 # Enseignants avec commissions
-                teacher_commissions_data = db.session.query(
-                    UserModel.id,
-                    UserModel.nom_complet,
-                    UserModel.email,
-                    db.func.sum(CommissionModel.montant_commission).label('total_commissions'),
-                    db.func.sum(db.case(
-                        (CommissionModel.statut.in_(['pending', 'paiement_manuel']), CommissionModel.montant_commission),
-                        else_=0
-                    )).label('pending'),
-                    db.func.sum(db.case(
-                        (CommissionModel.statut.in_(['approved', 'paid', 'complete']), CommissionModel.montant_commission),
-                        else_=0
-                    )).label('paid')
-                ).outerjoin(CommissionModel, UserModel.id == CommissionModel.enseignant_id)\
-                 .filter(UserModel.role == "enseignant")\
-                 .group_by(UserModel.id, UserModel.nom_complet, UserModel.email)\
-                 .order_by(db.desc('total_commissions'))\
-                 .all()
-                
+                # --------------------------------------------------------
+
+                teacher_commissions_data = (
+                    db.session.query(
+                        UserModel.id,
+                        UserModel.nom_complet,
+                        UserModel.email,
+                        func.coalesce(
+                            func.sum(CommissionModel.montant_commission),
+                            0
+                        ).label("total_commissions"),
+                        func.coalesce(
+                            func.sum(
+                                case(
+                                    (
+                                        CommissionModel.statut.in_(
+                                            ["pending", "paiement_manuel"]
+                                        ),
+                                        CommissionModel.montant_commission
+                                    ),
+                                    else_=0
+                                )
+                            ),
+                            0
+                        ).label("pending"),
+                        func.coalesce(
+                            func.sum(
+                                case(
+                                    (
+                                        CommissionModel.statut.in_(
+                                            ["approved", "paid", "complete"]
+                                        ),
+                                        CommissionModel.montant_commission
+                                    ),
+                                    else_=0
+                                )
+                            ),
+                            0
+                        ).label("paid")
+                    )
+                    .outerjoin(
+                        CommissionModel,
+                        UserModel.id == CommissionModel.enseignant_id
+                    )
+                    .filter(UserModel.role == "enseignant")
+                    .group_by(UserModel.id, UserModel.nom_complet, UserModel.email)
+                    .order_by(db.desc("total_commissions"))
+                    .limit(50)
+                    .all()
+                )
+
+                teacher_ids = [teacher.id for teacher in teacher_commissions_data]
+
+                # --------------------------------------------------------
+                # Nombre d'élèves par enseignant en une seule requête
+                # --------------------------------------------------------
+
+                students_count_map = {}
+
+                if teacher_ids:
+                    try:
+                        students_count_rows = (
+                            db.session.query(
+                                UserModel.enseignant_referent_id,
+                                func.count(UserModel.id)
+                            )
+                            .filter(
+                                UserModel.role.in_(["eleve", "élève"]),
+                                UserModel.enseignant_referent_id.in_(teacher_ids)
+                            )
+                            .group_by(UserModel.enseignant_referent_id)
+                            .all()
+                        )
+
+                        students_count_map = {
+                            row[0]: int(row[1] or 0)
+                            for row in students_count_rows
+                        }
+
+                    except Exception as e:
+                        print(f"⚠️ Erreur count élèves par enseignant: {e}")
+                        students_count_map = {}
+
+                # --------------------------------------------------------
+                # Dernier paiement par enseignant sans requête dans la boucle
+                # --------------------------------------------------------
+
+                last_payment_map = {}
+
+                if teacher_ids:
+                    try:
+                        last_payments = (
+                            VersementManuelModel.query
+                            .filter(
+                                VersementManuelModel.enseignant_id.in_(teacher_ids),
+                                VersementManuelModel.statut == "complete"
+                            )
+                            .order_by(
+                                VersementManuelModel.enseignant_id.asc(),
+                                VersementManuelModel.date_versement.desc()
+                            )
+                            .all()
+                        )
+
+                        for payment in last_payments:
+                            if payment.enseignant_id not in last_payment_map:
+                                last_payment_map[payment.enseignant_id] = (
+                                    payment.date_versement.strftime("%Y-%m-%d")
+                                    if payment.date_versement
+                                    else None
+                                )
+
+                    except Exception as e:
+                        print(f"⚠️ Erreur derniers paiements enseignants: {e}")
+                        last_payment_map = {}
+
                 for teacher in teacher_commissions_data:
-                    students_count = UserModel.query.filter_by(
-                        enseignant_referent_id=teacher.id, 
-                        role="eleve"
-                    ).count()
-                    
-                    last_payment = VersementManuelModel.query\
-                        .filter_by(enseignant_id=teacher.id, statut='complete')\
-                        .order_by(VersementManuelModel.date_versement.desc())\
-                        .first()
-                    
                     teacher_commissions.append({
-                        'id': teacher.id,
-                        'nom_complet': teacher.nom_complet or 'N/A',
-                        'email': teacher.email or '',
-                        'total_commissions': float(teacher.total_commissions or 0),
-                        'pending': float(teacher.pending or 0),
-                        'paid': float(teacher.paid or 0),
-                        'students_count': students_count,
-                        'last_payment': last_payment.date_versement.strftime('%Y-%m-%d') 
-                                       if last_payment and last_payment.date_versement 
-                                       else ('Never' if lang == 'en' else 'Jamais')
+                        "id": teacher.id,
+                        "nom_complet": teacher.nom_complet or "N/A",
+                        "email": teacher.email or "",
+                        "total_commissions": float(teacher.total_commissions or 0),
+                        "pending": float(teacher.pending or 0),
+                        "paid": float(teacher.paid or 0),
+                        "students_count": students_count_map.get(teacher.id, 0),
+                        "last_payment": (
+                            last_payment_map.get(teacher.id)
+                            or ("Never" if lang == "en" else "Jamais")
+                        )
                     })
-                    
+
             except Exception as e:
-                print(f"Erreur chargement monétisation: {e}")
+                print(f"⚠️ Erreur chargement monétisation admin: {e}")
+
                 monetization_stats = {
-                    'total_commissions': 1250.50,
-                    'pending_payments': 350.75,
-                    'payments_count': 15,
-                    'active_teachers': 3
+                    "total_commissions": 0,
+                    "pending_payments": 0,
+                    "payments_count": 0,
+                    "active_teachers": 0
                 }
-                
-                recent_payments = [
-                    {
-                        'id': 1, 
-                        'enseignant_nom': 'Jean Dupont', 
-                        'email': 'jean@exemple.com', 
-                        'montant_total': 125.50,
-                        'montant_net': 124.50,
-                        'statut': 'complete', 
-                        'date_demande': datetime.utcnow(),
-                        'date': '2024-01-20',
-                        'email_interac': 'jean@exemple.com'
-                    },
-                ]
-                
-                teacher_commissions = [
-                    {
-                        'id': 1, 
-                        'nom_complet': 'Jean Dupont',
-                        'email': 'jean@exemple.com', 
-                        'total_commissions': 450.25, 
-                        'pending': 125.50, 
-                        'paid': 324.75, 
-                        'students_count': 12, 
-                        'last_payment': '2024-01-15'
-                    },
-                ]
-        else:
-            monetization_stats = {
-                'total_commissions': 0,
-                'pending_payments': 0,
-                'payments_count': 0,
-                'active_teachers': 0
-            }
-        
+
+                recent_payments = []
+                teacher_commissions = []
+
+        # ============================================================
+        # RENDU
+        # ============================================================
+
         return render_template(
             "admin_dashboard.html",
             niveaux=niveaux,
@@ -756,9 +998,10 @@ def admin_dashboard():
             recent_payments=recent_payments,
             teacher_commissions=teacher_commissions,
             eleves_par_niveau=eleves_par_niveau,
-            lang=lang
+            lang=lang,
+            load_content=load_content
         )
-        
+
     except Exception as e:
         logger.error(f"Erreur dans admin_dashboard: {e}")
         flash("Erreur lors du chargement du tableau de bord", "error")
@@ -2662,57 +2905,164 @@ def get_message(key, lang="fr"):
 # ============ ROUTE ADAPTÉE ============
 @app.route("/api/eleve/stats", methods=["GET"])
 def api_eleve_stats():
-    """API pour récupérer les statistiques de l'élève"""
+    """
+    API pour récupérer les statistiques de l'élève.
+
+    Version optimisée :
+    - compatible SQLAlchemy 2 ;
+    - évite User.query.get ;
+    - réduit les requêtes ;
+    - ajoute un petit cache session pour éviter de recalculer trop souvent ;
+    - accepte eleve et élève.
+    """
+
+    from datetime import datetime, date
+    from sqlalchemy import func, case
+
     if "user_id" not in session:
         return jsonify({"error": "Non authentifié"}), 401
-    
-    eleve = User.query.get(session["user_id"])
-    if not eleve or eleve.role != "eleve":
+
+    user_id = session.get("user_id")
+
+    # Petit cache de 30 secondes pour éviter les recalculs répétés
+    cache = session.get("api_eleve_stats_cache")
+
+    if cache:
+        cache_user_id = cache.get("user_id")
+        cache_time = cache.get("timestamp")
+        maintenant = datetime.utcnow().timestamp()
+
+        if cache_user_id == user_id and cache_time and maintenant - cache_time < 30:
+            data = cache.get("data", {})
+            data["cached"] = True
+            return jsonify(data)
+
+    eleve = db.session.get(User, user_id)
+
+    if not eleve or eleve.role not in ["eleve", "élève"]:
         return jsonify({"error": "Accès non autorisé"}), 403
-    
+
     from models import StudentResponse
-    from sqlalchemy import func
-    from datetime import datetime
-    
-    total = StudentResponse.query.filter_by(user_id=eleve.id).count()
-    reussis = StudentResponse.query.filter(
-        StudentResponse.user_id == eleve.id,
-        StudentResponse.etoiles >= 3
-    ).count() if hasattr(StudentResponse, 'etoiles') else 0
-    
-    # Calcul de la série
-    serie = 0
+
+    # ============================================================
+    # TOTAL + RÉUSSITES EN UNE SEULE REQUÊTE
+    # ============================================================
+
     try:
-        dates = db.session.query(
+        if hasattr(StudentResponse, "etoiles"):
+            total, reussis = db.session.query(
+                func.count(StudentResponse.id),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (StudentResponse.etoiles >= 3, 1),
+                            else_=0
+                        )
+                    ),
+                    0
+                )
+            ).filter(
+                StudentResponse.user_id == eleve.id
+            ).one()
+        else:
+            total = db.session.query(
+                func.count(StudentResponse.id)
+            ).filter(
+                StudentResponse.user_id == eleve.id
+            ).scalar() or 0
+
+            reussis = 0
+
+    except Exception as e:
+        print(f"⚠️ Erreur statistiques élève: {e}")
+        total = 0
+        reussis = 0
+
+    total = int(total or 0)
+    reussis = int(reussis or 0)
+
+    # ============================================================
+    # CALCUL DE LA SÉRIE
+    # ============================================================
+
+    serie = 0
+
+    def normaliser_date(valeur):
+        """
+        Convertit une valeur date venant de SQLite/PostgreSQL en objet date Python.
+        """
+
+        if not valeur:
+            return None
+
+        if isinstance(valeur, datetime):
+            return valeur.date()
+
+        if isinstance(valeur, date):
+            return valeur
+
+        if isinstance(valeur, str):
+            try:
+                return datetime.strptime(valeur[:10], "%Y-%m-%d").date()
+            except Exception:
+                return None
+
+        return None
+
+    try:
+        dates_brutes = db.session.query(
             func.date(StudentResponse.timestamp)
         ).filter(
-            StudentResponse.user_id == eleve.id
+            StudentResponse.user_id == eleve.id,
+            StudentResponse.timestamp.isnot(None)
         ).distinct().order_by(
             func.date(StudentResponse.timestamp).desc()
-        ).all()
-        
-        if dates:
-            dates_list = [d[0] for d in dates]
+        ).limit(60).all()
+
+        dates_list = []
+
+        for ligne in dates_brutes:
+            d = normaliser_date(ligne[0])
+            if d:
+                dates_list.append(d)
+
+        if dates_list:
             today = datetime.utcnow().date()
-            
-            if dates_list and dates_list[0] == today:
+
+            if dates_list[0] == today:
                 serie = 1
+
                 for i in range(len(dates_list) - 1):
-                    if (dates_list[i] - dates_list[i+1]).days == 1:
+                    if (dates_list[i] - dates_list[i + 1]).days == 1:
                         serie += 1
                     else:
                         break
+
     except Exception as e:
-        print(f"Erreur calcul série: {e}")
-    
-    return jsonify({
+        print(f"⚠️ Erreur calcul série élève: {e}")
+        serie = 0
+
+    taux_reussite = round((reussis / total * 100) if total > 0 else 0)
+
+    data = {
         "success": True,
         "total_exercices": total,
         "exercices_reussis": reussis,
-        "taux_reussite": round((reussis / total * 100) if total > 0 else 0),
+        "taux_reussite": taux_reussite,
         "serie": serie,
-        "temps_apprentissage": 0  # À implémenter si besoin
-    })
+        "temps_apprentissage": 0,
+        "cached": False
+    }
+
+    # Sauvegarde cache session
+    session["api_eleve_stats_cache"] = {
+        "user_id": user_id,
+        "timestamp": datetime.utcnow().timestamp(),
+        "data": data
+    }
+    session.modified = True
+
+    return jsonify(data)
 
 @app.route("/admin/ai-config", methods=["GET"])
 @admin_required
@@ -2895,6 +3245,209 @@ def detecter_mode_pedagogique(question):
 
     return "conversation"
 
+def construire_contexte_apprentissage_eleve(user_id, limite=25, lang="fr"):
+    """
+    Construit un résumé pédagogique court à partir des dernières traces d'apprentissage
+    d'un élève.
+
+    Ce résumé est destiné à être injecté dans les prompts de Naima pour personnaliser
+    l'accompagnement sans surcharger l'élève.
+    """
+
+    try:
+        from models import TraceApprentissage
+        from collections import Counter
+
+        traces = (
+            TraceApprentissage.query
+            .filter(TraceApprentissage.user_id == user_id)
+            .order_by(TraceApprentissage.created_at.desc())
+            .limit(limite)
+            .all()
+        )
+
+        if not traces:
+            if lang == "en":
+                return (
+                    "\n\nStudent learning context:\n"
+                    "- No previous learning trace is available yet.\n"
+                    "- Adapt your guidance based only on the current answer.\n"
+                )
+
+            return (
+                "\n\nContexte d’apprentissage de l’élève :\n"
+                "- Aucune trace d’apprentissage précédente n’est encore disponible.\n"
+                "- Adapte ton guidage uniquement à partir de la réponse actuelle.\n"
+            )
+
+        scores = [
+            trace.score for trace in traces
+            if trace.score is not None
+        ]
+
+        score_moyen = round(sum(scores) / len(scores), 1) if scores else None
+
+        risques = Counter()
+        notions = Counter()
+        erreurs = Counter()
+        difficultes = Counter()
+
+        derniere_trace = traces[0] if traces else None
+
+        for trace in traces:
+            if trace.niveau_risque:
+                risques[trace.niveau_risque] += 1
+
+            if trace.notion_cible:
+                notions[trace.notion_cible] += 1
+
+            if trace.type_erreur:
+                erreurs[trace.type_erreur] += 1
+
+            if trace.difficulte_estimee:
+                difficultes[trace.difficulte_estimee] += 1
+
+        def top_items(counter, n=3):
+            return [item for item, count in counter.most_common(n) if item]
+
+        notions_principales = top_items(notions, 4)
+        erreurs_principales = top_items(erreurs, 4)
+        difficultes_principales = top_items(difficultes, 2)
+
+        if risques:
+            risque_dominant = risques.most_common(1)[0][0]
+        else:
+            risque_dominant = "non déterminé"
+
+        if risque_dominant == "élevé":
+            strategie_fr = (
+                "Procède très progressivement. Pose une seule question simple à la fois. "
+                "Reviens aux bases si nécessaire et évite de donner toute la solution directement."
+            )
+            strategie_en = (
+                "Proceed very gradually. Ask only one simple question at a time. "
+                "Go back to basics if needed and avoid giving the full solution directly."
+            )
+
+        elif risque_dominant == "moyen":
+            strategie_fr = (
+                "Guide l’élève avec des questions ciblées. Demande-lui de justifier sa démarche "
+                "et corrige les petites erreurs sans changer de sujet."
+            )
+            strategie_en = (
+                "Guide the student with targeted questions. Ask them to justify their reasoning "
+                "and correct small mistakes without changing topic."
+            )
+
+        elif risque_dominant == "faible":
+            strategie_fr = (
+                "L’élève semble relativement à l’aise. Tu peux demander une justification, "
+                "proposer un léger défi ou encourager la généralisation."
+            )
+            strategie_en = (
+                "The student seems relatively comfortable. You may ask for justification, "
+                "offer a small challenge, or encourage generalization."
+            )
+
+        else:
+            strategie_fr = (
+                "Le profil est encore peu documenté. Observe la réponse actuelle et adapte ton guidage."
+            )
+            strategie_en = (
+                "The profile is not well documented yet. Observe the current answer and adapt your guidance."
+            )
+
+        if lang == "en":
+            contexte = "\n\nStudent learning context from previous traces:\n"
+            contexte += f"- Recent traces analyzed: {len(traces)}.\n"
+
+            if score_moyen is not None:
+                contexte += f"- Recent average score: {score_moyen}%.\n"
+            else:
+                contexte += "- Recent average score: not available.\n"
+
+            contexte += f"- Dominant risk level: {risque_dominant}.\n"
+
+            if notions_principales:
+                contexte += "- Frequently targeted concepts: " + ", ".join(notions_principales) + ".\n"
+            else:
+                contexte += "- Frequently targeted concepts: not enough data.\n"
+
+            if erreurs_principales:
+                contexte += "- Frequent error types: " + ", ".join(erreurs_principales) + ".\n"
+            else:
+                contexte += "- Frequent error types: not enough data.\n"
+
+            if difficultes_principales:
+                contexte += "- Recent difficulty levels: " + ", ".join(difficultes_principales) + ".\n"
+
+            if derniere_trace and derniere_trace.score is not None:
+                contexte += f"- Last recorded score: {derniere_trace.score}%.\n"
+
+            contexte += f"- Recommended teaching strategy: {strategie_en}\n"
+
+            contexte += (
+                "\nUse this context silently to adapt your teaching. "
+                "Do not mention that you are reading database traces. "
+                "Do not overwhelm the student with diagnostics. "
+                "Use it only to choose the right level of guidance.\n"
+            )
+
+            return contexte
+
+        contexte = "\n\nContexte d’apprentissage de l’élève à partir des traces précédentes :\n"
+        contexte += f"- Nombre de traces récentes analysées : {len(traces)}.\n"
+
+        if score_moyen is not None:
+            contexte += f"- Score moyen récent : {score_moyen}%.\n"
+        else:
+            contexte += "- Score moyen récent : non disponible.\n"
+
+        contexte += f"- Niveau de risque dominant : {risque_dominant}.\n"
+
+        if notions_principales:
+            contexte += "- Notions fréquemment travaillées : " + ", ".join(notions_principales) + ".\n"
+        else:
+            contexte += "- Notions fréquemment travaillées : données insuffisantes.\n"
+
+        if erreurs_principales:
+            contexte += "- Types d’erreurs fréquents : " + ", ".join(erreurs_principales) + ".\n"
+        else:
+            contexte += "- Types d’erreurs fréquents : données insuffisantes.\n"
+
+        if difficultes_principales:
+            contexte += "- Difficultés récentes observées : " + ", ".join(difficultes_principales) + ".\n"
+
+        if derniere_trace and derniere_trace.score is not None:
+            contexte += f"- Dernier score enregistré : {derniere_trace.score}%.\n"
+
+        contexte += f"- Stratégie pédagogique recommandée : {strategie_fr}\n"
+
+        contexte += (
+            "\nUtilise ce contexte silencieusement pour adapter ton accompagnement. "
+            "Ne dis pas à l’élève que tu lis des traces de base de données. "
+            "Ne surcharge pas l’élève avec des diagnostics. "
+            "Utilise ces informations uniquement pour choisir le bon niveau de guidage.\n"
+        )
+
+        return contexte
+
+    except Exception as e:
+        print(f"⚠️ Contexte apprentissage non disponible pour l'élève {user_id} : {e}")
+
+        if lang == "en":
+            return (
+                "\n\nStudent learning context:\n"
+                "- Previous learning context could not be loaded.\n"
+                "- Adapt your guidance based on the current answer only.\n"
+            )
+
+        return (
+            "\n\nContexte d’apprentissage de l’élève :\n"
+            "- Le contexte d’apprentissage précédent n’a pas pu être chargé.\n"
+            "- Adapte ton guidage à partir de la réponse actuelle uniquement.\n"
+        )
+
 
 @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
 def enseignant_virtuel():
@@ -2904,14 +3457,20 @@ def enseignant_virtuel():
     Version avec :
     - IA conversationnelle ;
     - diagnostic bayésien ;
-    - vérification mathématique locale ;
+    - vérification mathématique locale sécurisée ;
     - mémoire de l'objectif pédagogique ;
     - recentrage général sur la demande initiale ;
+    - détection quand l'élève signale que la conversation tourne en rond ;
+    - contexte d'apprentissage personnalisé à partir des traces ;
+    - suivi back-end de la connexion de Naima au processus pédagogique ;
     - analyse pédagogique intelligente ;
-    - enregistrement admin sans doublon.
+    - enregistrement admin sans doublon ;
+    - trace d'apprentissage Naima avec rattachement simple et robuste.
     """
 
     from datetime import datetime
+    import re
+
     from services.bayesian_diagnostic import diagnostiquer_difficulte
     from services.math_verification import (
         verifier_expression_fractionnaire,
@@ -2927,7 +3486,7 @@ def enseignant_virtuel():
             return jsonify({'error': 'Non authentifié'}), 401
         return redirect(url_for("login_eleve"))
 
-    utilisateur = User.query.get(session["user_id"])
+    utilisateur = db.session.get(User, session["user_id"])
 
     if not utilisateur or utilisateur.role not in ["eleve", "élève"]:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -2948,6 +3507,36 @@ def enseignant_virtuel():
         if eleve.niveau
         else ("6th grade" if current_lang == "en" else "6ème")
     )
+
+    # ============================================================
+    # CONTEXTE D'APPRENTISSAGE PERSONNALISÉ POUR NAIMA
+    # ============================================================
+
+    contexte_apprentissage_eleve = construire_contexte_apprentissage_eleve(
+        user_id=eleve.id,
+        limite=25,
+        lang=current_lang
+    )
+
+    naima_processus_connecte = {
+        "traces_apprentissage": bool(contexte_apprentissage_eleve),
+        "diagnostic_bayesien": False,
+        "verification_math_locale": False,
+        "recentrage_pedagogique": False,
+        "analyse_pedagogique": False,
+        "profil_personnalise": True,
+        "contexte_injecte": True,
+        "source": "TraceApprentissage + DiagnosticBayesien + session pédagogique",
+        "derniere_mise_a_jour": datetime.utcnow().isoformat()
+    }
+
+    session["naima_processus_connecte"] = naima_processus_connecte
+    session.modified = True
+
+    print("🧠 Naima connectée au processus pédagogique.")
+    print("   - Traces apprentissage :", naima_processus_connecte["traces_apprentissage"])
+    print("   - Profil personnalisé :", naima_processus_connecte["profil_personnalise"])
+    print("   - Contexte injecté :", naima_processus_connecte["contexte_injecte"])
 
     # ============================================================
     # OUTILS INTERNES
@@ -3130,7 +3719,13 @@ def enseignant_virtuel():
             "tu te trompes",
             "tu fais erreur",
             "non",
-            "pas du tout"
+            "pas du tout",
+            "on tourne en rond",
+            "tu répètes",
+            "tu repetes",
+            "déjà fait",
+            "deja fait",
+            "pas la peine"
         ]
 
         mots_maitrise = [
@@ -3267,6 +3862,44 @@ def enseignant_virtuel():
 
         return "moyenne", "peu", "rapide"
 
+    def peut_verifier_calcul_localement(texte):
+        """
+        Autorise la vérification locale seulement pour des égalités numériques simples.
+        Évite les faux négatifs sur les phrases contenant des variables :
+        b² - 4ac, ax² + bx + c, x = ..., etc.
+        """
+
+        texte = (texte or "").strip()
+
+        if not texte:
+            return False
+
+        if "=" not in texte:
+            return False
+
+        # Si la réponse contient des lettres, on évite la vérification locale simple.
+        # Exemple à éviter : b² - 4ac = ...
+        if re.search(r"[a-zA-Z]", texte):
+            return False
+
+        caracteres_autorises = r"^[0-9\s\+\-\*\/\(\)\.,=×÷²³]+$"
+
+        if not re.match(caracteres_autorises, texte):
+            return False
+
+        return True
+
+    def mettre_a_jour_statut_naima(cle, valeur=True):
+        """
+        Met à jour le statut back-end de connexion de Naima au processus pédagogique.
+        """
+
+        statut = session.get("naima_processus_connecte") or naima_processus_connecte
+        statut[cle] = valeur
+        statut["derniere_mise_a_jour"] = datetime.utcnow().isoformat()
+        session["naima_processus_connecte"] = statut
+        session.modified = True
+
     def construire_instruction_bayesienne(diagnostic):
         """
         Transforme le diagnostic bayésien en consigne pédagogique interne.
@@ -3358,8 +3991,55 @@ def enseignant_virtuel():
         derniere_question_ia = session.get("derniere_q_ia", "").strip()
         question_actuelle = (question_actuelle or "").strip()
 
+        texte_actuel = question_actuelle.lower()
+
+        signaux_tourne_en_rond = [
+            "on tourne en rond",
+            "déjà fait",
+            "deja fait",
+            "déjà calculé",
+            "deja calculé",
+            "pas la peine",
+            "tu répètes",
+            "tu repetes",
+            "tu as déjà demandé",
+            "tu as deja demandé",
+            "on l'a déjà fait",
+            "on l'a deja fait",
+            "c'est déjà fait",
+            "c'est deja fait",
+            "tu me demandes la même chose",
+            "tu me demandes la meme chose"
+        ]
+
+        if any(signal in texte_actuel for signal in signaux_tourne_en_rond):
+            mettre_a_jour_statut_naima("recentrage_pedagogique", True)
+
+            if current_lang == "fr":
+                return (
+                    "\n\nInstruction pédagogique prioritaire : "
+                    "L'élève signale que la conversation tourne en rond ou que la tâche a déjà été faite. "
+                    "Ne répète pas la même question. "
+                    "Reconnais brièvement que l'étape précédente est terminée, puis passe à l'étape suivante. "
+                    "Si l'exercice est terminé, propose une conclusion courte ou un nouvel exercice. "
+                    "Ne recommence pas le calcul déjà validé. "
+                    "Réponds avec bienveillance, sans te défendre."
+                )
+
+            return (
+                "\n\nPriority pedagogical instruction: "
+                "The student indicates that the conversation is going in circles or that the task has already been done. "
+                "Do not repeat the same question. "
+                "Briefly acknowledge that the previous step is complete, then move to the next step. "
+                "If the exercise is complete, offer a short conclusion or a new exercise. "
+                "Do not restart a calculation that has already been validated. "
+                "Respond kindly and do not be defensive."
+            )
+
         if not objectif_initial:
             return ""
+
+        mettre_a_jour_statut_naima("recentrage_pedagogique", True)
 
         if current_lang == "fr":
             return (
@@ -3451,6 +4131,7 @@ def enseignant_virtuel():
             # ------------------------------------------------------------
             # MÉMOIRE DE L'OBJECTIF PÉDAGOGIQUE
             # ------------------------------------------------------------
+
             if not session.get("objectif_initial_naima"):
                 mode_detecte = detecter_mode_pedagogique(question)
 
@@ -3466,6 +4147,7 @@ def enseignant_virtuel():
             # ------------------------------------------------------------
             # VÉRIFICATION : EXERCICE DÉJÀ TERMINÉ
             # ------------------------------------------------------------
+
             if session.get('exercice_termine'):
                 msg_fin = (
                     "🎉 L'exercice est terminé ! Clique sur 'Nouvel exercice' pour continuer."
@@ -3488,6 +4170,7 @@ def enseignant_virtuel():
             # ------------------------------------------------------------
             # DIAGNOSTIC BAYÉSIEN
             # ------------------------------------------------------------
+
             diagnostic_bayesien = None
 
             try:
@@ -3512,6 +4195,8 @@ def enseignant_virtuel():
                     "difficulte_demandee": difficulte_form
                 }
 
+                mettre_a_jour_statut_naima("diagnostic_bayesien", True)
+
                 print("🧠 Diagnostic bayésien:", diagnostic_bayesien)
                 print("📊 Signaux bayésiens:", session["signaux_bayesiens"])
 
@@ -3522,6 +4207,7 @@ def enseignant_virtuel():
             # ------------------------------------------------------------
             # UTILISATION RÉELLE DE L'IA
             # ------------------------------------------------------------
+
             try:
                 print(f"🤖 Appel à OpenAI pour la matière: {matiere}")
 
@@ -3533,32 +4219,47 @@ def enseignant_virtuel():
                         diagnostic_bayesien
                     )
 
-                # Vérification mathématique locale avant l'appel IA
-                verification_calcul = verifier_expression_fractionnaire(question)
+                # --------------------------------------------------------
+                # VÉRIFICATION MATHÉMATIQUE LOCALE SÉCURISÉE
+                # --------------------------------------------------------
 
                 instruction_calcul = ""
-                if verification_calcul.get("calcul_verifie"):
-                    instruction_calcul = (
-                        "\n\nInstruction mathématique prioritaire : "
-                        + verification_calcul.get("message_interne", "")
-                    )
 
-                    session["verification_calcul"] = {
-                        "calcul_verifie": verification_calcul.get("calcul_verifie"),
-                        "est_correct": verification_calcul.get("est_correct"),
-                        "valeur_gauche": verification_calcul.get("valeur_gauche"),
-                        "valeur_droite": verification_calcul.get("valeur_droite"),
-                    }
+                if peut_verifier_calcul_localement(question):
+                    verification_calcul = verifier_expression_fractionnaire(question)
 
-                    print("🧮 Vérification calcul:", session["verification_calcul"])
+                    if verification_calcul.get("calcul_verifie"):
+                        instruction_calcul = (
+                            "\n\nInstruction mathématique prioritaire : "
+                            + verification_calcul.get("message_interne", "")
+                        )
+
+                        session["verification_calcul"] = {
+                            "calcul_verifie": verification_calcul.get("calcul_verifie"),
+                            "est_correct": verification_calcul.get("est_correct"),
+                            "valeur_gauche": verification_calcul.get("valeur_gauche"),
+                            "valeur_droite": verification_calcul.get("valeur_droite"),
+                        }
+
+                        mettre_a_jour_statut_naima("verification_math_locale", True)
+
+                        print("🧮 Vérification calcul:", session["verification_calcul"])
+
+                    else:
+                        session.pop("verification_calcul", None)
 
                 else:
                     session.pop("verification_calcul", None)
+                    print(
+                        "🧮 Vérification calcul ignorée : "
+                        "expression avec variables ou phrase non purement numérique."
+                    )
 
                 instruction_recentrage = construire_instruction_recentrage(question)
 
                 instruction_interne_complete = (
-                    instruction_recentrage
+                    contexte_apprentissage_eleve
+                    + instruction_recentrage
                     + instruction_bayesienne
                     + instruction_calcul
                 )
@@ -3566,6 +4267,7 @@ def enseignant_virtuel():
                 # --------------------------------------------------------
                 # APPEL IA
                 # --------------------------------------------------------
+
                 if derniere_q_ia:
                     reponse_ia = generer_suite_conversation(
                         derniere_q=derniere_q_ia,
@@ -3601,9 +4303,6 @@ def enseignant_virtuel():
                 # --------------------------------------------------------
                 # ANALYSE PÉDAGOGIQUE + ENREGISTREMENT ADMIN
                 # --------------------------------------------------------
-                # On enregistre ici, après la réponse de Naima.
-                # Cela évite les doublons et permet d'analyser :
-                # objectif initial, réponse élève, réponse Naima, diagnostic.
 
                 try:
                     from services.analyse_pedagogique_service import (
@@ -3625,6 +4324,8 @@ def enseignant_virtuel():
                         verification_calcul=session.get("verification_calcul")
                     )
 
+                    mettre_a_jour_statut_naima("analyse_pedagogique", True)
+
                     if diagnostic_bayesien:
                         enregistrer_diagnostic_bayesien(
                             user_id=utilisateur.id,
@@ -3635,10 +4336,130 @@ def enseignant_virtuel():
                             lecon_id=None,
                             verification_calcul=session.get("verification_calcul"),
                             source="naima",
-                            analyse_pedagogique=analyse_pedagogique
+                            analyse_pedagogique=analyse_pedagogique,
+                            meta_processus_naima={
+                                "naima_connectee_aux_traces": session.get("naima_processus_connecte", {}).get("traces_apprentissage", False),
+                                "contexte_personnalise_utilise": session.get("naima_processus_connecte", {}).get("contexte_injecte", False),
+                                "diagnostic_bayesien_utilise": session.get("naima_processus_connecte", {}).get("diagnostic_bayesien", False),
+                                "recentrage_pedagogique_utilise": session.get("naima_processus_connecte", {}).get("recentrage_pedagogique", False),
+                                "analyse_pedagogique_effectuee": session.get("naima_processus_connecte", {}).get("analyse_pedagogique", False),
+                                "verification_math_locale_utilisee": session.get("naima_processus_connecte", {}).get("verification_math_locale", False),
+                                "source_accompagnement": "naima",
+                                "objectif_initial_naima": session.get("objectif_initial_naima"),
+                                "mode_pedagogique_naima": session.get("mode_pedagogique_naima"),
+                                "lecon_courante_naima": session.get("lecon_courante_naima"),
+                                "derniere_mise_a_jour": session.get("naima_processus_connecte", {}).get("derniere_mise_a_jour")
+                            }
                         )
 
                         print("✅ Analyse pédagogique et diagnostic enregistrés.")
+
+                        # --------------------------------------------------------
+                        # TRACE D'APPRENTISSAGE NAIMA
+                        # --------------------------------------------------------
+
+                        try:
+                            from models import TraceApprentissage, Matiere
+
+                            processus_naima = session.get("naima_processus_connecte", {}) or {}
+
+                            # --------------------------------------------------------
+                            # RATTACHEMENT SIMPLE ET ROBUSTE POUR NAIMA
+                            # --------------------------------------------------------
+
+                            matiere_obj = None
+                            notion_cible_naima = analyse_pedagogique.get("notion_cible") or matiere
+
+                            try:
+                                matiere_obj = (
+                                    Matiere.query
+                                    .filter(
+                                        db.or_(
+                                            Matiere.nom.ilike("%math%"),
+                                            Matiere.nom.ilike("%mathématiques%"),
+                                            Matiere.nom.ilike("%mathematiques%")
+                                        )
+                                    )
+                                    .first()
+                                )
+                            except Exception as e:
+                                print(f"⚠️ Matière Naima non trouvée : {e}")
+                                matiere_obj = None
+
+                            trace_naima = TraceApprentissage(
+                                user_id=utilisateur.id,
+
+                                niveau_id=getattr(utilisateur, "niveau_id", None),
+                                matiere_id=matiere_obj.id if matiere_obj else None,
+                                unite_id=None,
+                                lecon_id=None,
+                                exercice_id=None,
+
+                                type_action="conversation_naima",
+                                source="naima",
+
+                                reponse_eleve=question,
+                                analyse_ia=reponse_ia,
+
+                                score=None,
+                                niveau_risque=diagnostic_bayesien.get("niveau_risque") if diagnostic_bayesien else None,
+                                difficulte_estimee=diagnostic_bayesien.get("niveau_risque") if diagnostic_bayesien else None,
+
+                                notion_cible=notion_cible_naima,
+                                type_erreur=(
+                                    analyse_pedagogique.get("erreurs_probables")[0]
+                                    if isinstance(analyse_pedagogique.get("erreurs_probables"), list)
+                                    and analyse_pedagogique.get("erreurs_probables")
+                                    else None
+                                ),
+
+                                meta_json={
+                                    "source": "naima",
+                                    "type_interaction": "conversation_pedagogique",
+
+                                    # Contexte lisible
+                                    "matiere_fr": matiere_obj.nom if matiere_obj else matiere,
+                                    "unite_fr": None,
+                                    "lecon_fr": "Conversation avec Naima",
+
+                                    # Objectif réel de la conversation
+                                    "objectif_initial_naima": session.get("objectif_initial_naima"),
+                                    "mode_pedagogique_naima": session.get("mode_pedagogique_naima"),
+                                    "lecon_courante_naima": session.get("lecon_courante_naima"),
+
+                                    # Données pédagogiques
+                                    "diagnostic_bayesien": diagnostic_bayesien,
+                                    "signaux_bayesiens": session.get("signaux_bayesiens"),
+                                    "verification_calcul": session.get("verification_calcul"),
+                                    "analyse_pedagogique": analyse_pedagogique,
+
+                                    # Preuve du processus Naima
+                                    "processus_naima": {
+                                        "naima_connectee_aux_traces": processus_naima.get("traces_apprentissage", False),
+                                        "contexte_personnalise_utilise": processus_naima.get("contexte_injecte", False),
+                                        "diagnostic_bayesien_utilise": processus_naima.get("diagnostic_bayesien", False),
+                                        "recentrage_pedagogique_utilise": processus_naima.get("recentrage_pedagogique", False),
+                                        "analyse_pedagogique_effectuee": processus_naima.get("analyse_pedagogique", False),
+                                        "verification_math_locale_utilisee": processus_naima.get("verification_math_locale", False),
+                                        "profil_personnalise": processus_naima.get("profil_personnalise", False),
+                                        "derniere_mise_a_jour": processus_naima.get("derniere_mise_a_jour")
+                                    }
+                                }
+                            )
+
+                            db.session.add(trace_naima)
+                            db.session.commit()
+
+                            print("✅ Trace d'apprentissage Naima créée.")
+                            print(
+                                f"🧠 Trace Naima : élève={utilisateur.id}, "
+                                f"risque={trace_naima.niveau_risque}, "
+                                f"notion={trace_naima.notion_cible}"
+                            )
+
+                        except Exception as e:
+                            print(f"⚠️ Trace d'apprentissage Naima non créée : {e}")
+                            db.session.rollback()
 
                 except Exception as e:
                     print(f"⚠️ Analyse pédagogique non enregistrée: {e}")
@@ -3646,7 +4467,8 @@ def enseignant_virtuel():
 
                 # --------------------------------------------------------
                 # EXTRACTION DE LA NOUVELLE QUESTION DE NAIMA
-                # ------------------------------------------------------------
+                # --------------------------------------------------------
+
                 nouvelle_q = extraire_question(reponse_ia, current_lang)
 
                 if nouvelle_q and len(nouvelle_q) > 5:
@@ -3659,6 +4481,7 @@ def enseignant_virtuel():
                 session.modified = True
 
                 print("✅ Réponse IA générée avec succès")
+                print("🔎 Statut Naima processus :", session.get("naima_processus_connecte"))
 
             except Exception as e:
                 print(f"❌ Erreur appel OpenAI: {e}")
@@ -3681,6 +4504,7 @@ def enseignant_virtuel():
         # ========================================================
         # RÉPONSE AJAX
         # ========================================================
+
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             messages_html = format_messages(
                 conversation,
@@ -3699,7 +4523,8 @@ def enseignant_virtuel():
                 'objectif_initial_naima': session.get("objectif_initial_naima"),
                 'mode_pedagogique_naima': session.get("mode_pedagogique_naima"),
                 'lecon_courante_naima': session.get("lecon_courante_naima"),
-                'exercice_en_cours': session.get("exercice_en_cours")
+                'exercice_en_cours': session.get("exercice_en_cours"),
+                'naima_processus_connecte': session.get("naima_processus_connecte")
             })
 
         return redirect(url_for("enseignant_virtuel"))
@@ -3725,8 +4550,37 @@ def enseignant_virtuel():
         verification_calcul=session.get("verification_calcul"),
         objectif_initial_naima=session.get("objectif_initial_naima"),
         mode_pedagogique_naima=session.get("mode_pedagogique_naima"),
-        lecon_courante_naima=session.get("lecon_courante_naima")
+        lecon_courante_naima=session.get("lecon_courante_naima"),
+        naima_processus_connecte=session.get("naima_processus_connecte")
     )
+
+
+@app.route("/debug/naima-processus")
+def debug_naima_processus():
+    if "user_id" not in session:
+        return jsonify({
+            "connecte": False,
+            "message": "Aucun utilisateur connecté"
+        })
+
+    # Sécurité : debug seulement en local ou en mode debug
+    if not app.debug:
+        return jsonify({
+            "error": "Route de debug désactivée en production"
+        }), 403
+
+    return jsonify({
+        "connecte": True,
+        "user_id": session.get("user_id"),
+        "role": session.get("role"),
+        "naima_processus_connecte": session.get("naima_processus_connecte"),
+        "diagnostic_bayesien": session.get("diagnostic_bayesien"),
+        "signaux_bayesiens": session.get("signaux_bayesiens"),
+        "verification_calcul": session.get("verification_calcul"),
+        "objectif_initial_naima": session.get("objectif_initial_naima"),
+        "mode_pedagogique_naima": session.get("mode_pedagogique_naima"),
+        "lecon_courante_naima": session.get("lecon_courante_naima")
+    })
 
 @app.route("/demander-exercice", methods=["POST"])
 def demander_exercice():
@@ -9815,10 +10669,314 @@ def login_enseignant():
         flash("Une erreur est survenue lors de la connexion", "error")
         return redirect(url_for("login_enseignant"))
 
+def calculer_alertes_pedagogiques_enseignant(enseignant_id, limite_traces=300):
+    """
+    Calcule les alertes pédagogiques pour le dashboard enseignant.
+
+    Objectif :
+    - repérer les élèves à risque ;
+    - repérer les notions problématiques ;
+    - repérer les élèves en progression ;
+    - donner des messages courts utilisables dans le dashboard.
+    """
+
+    from collections import defaultdict, Counter
+    from models import User, TraceApprentissage
+
+    alertes = {
+        "eleves_risque_eleve": [],
+        "eleves_risque_moyen": [],
+        "notions_problematiques": [],
+        "eleves_progression": [],
+        "messages": [],
+        "resume": {
+            "nb_eleves_risque_eleve": 0,
+            "nb_eleves_risque_moyen": 0,
+            "nb_notions_problematiques": 0,
+            "nb_eleves_progression": 0
+        }
+    }
+
+    try:
+        # ============================================================
+        # 1. RÉCUPÉRER LES ÉLÈVES DE L'ENSEIGNANT
+        # ============================================================
+
+        eleves = (
+            User.query
+            .filter(
+                User.role.in_(["eleve", "élève"]),
+                User.enseignant_referent_id == enseignant_id
+            )
+            .all()
+        )
+
+        if not eleves and hasattr(User, "enseignant_id"):
+            eleves = (
+                User.query
+                .filter(
+                    User.role.in_(["eleve", "élève"]),
+                    User.enseignant_id == enseignant_id
+                )
+                .all()
+            )
+
+        eleves_ids = [eleve.id for eleve in eleves]
+
+        if not eleves_ids:
+            return alertes
+
+        eleves_map = {
+            eleve.id: eleve for eleve in eleves
+        }
+
+        # ============================================================
+        # 2. RÉCUPÉRER LES TRACES RÉCENTES
+        # ============================================================
+
+        traces = (
+            TraceApprentissage.query
+            .filter(TraceApprentissage.user_id.in_(eleves_ids))
+            .order_by(TraceApprentissage.created_at.desc())
+            .limit(limite_traces)
+            .all()
+        )
+
+        if not traces:
+            return alertes
+
+        traces_par_eleve = defaultdict(list)
+        traces_par_notion = defaultdict(list)
+
+        for trace in traces:
+            traces_par_eleve[trace.user_id].append(trace)
+
+            notion = (
+                trace.notion_cible
+                or (trace.meta_json or {}).get("notion_cible")
+                or "Notion non précisée"
+            )
+
+            traces_par_notion[notion].append(trace)
+
+        # ============================================================
+        # 3. ALERTES ÉLÈVES À RISQUE
+        # ============================================================
+
+        for eleve_id, traces_eleve in traces_par_eleve.items():
+            eleve = eleves_map.get(eleve_id)
+
+            if not eleve:
+                continue
+
+            nb_risque_eleve = sum(
+                1 for trace in traces_eleve
+                if trace.niveau_risque == "élevé"
+            )
+
+            nb_risque_moyen = sum(
+                1 for trace in traces_eleve
+                if trace.niveau_risque == "moyen"
+            )
+
+            scores = [
+                trace.score for trace in traces_eleve
+                if trace.score is not None
+            ]
+
+            score_moyen = round(sum(scores) / len(scores), 1) if scores else None
+
+            notions = Counter(
+                trace.notion_cible
+                for trace in traces_eleve
+                if trace.notion_cible
+            )
+
+            notion_principale = notions.most_common(1)[0][0] if notions else "Notion non précisée"
+
+            if nb_risque_eleve >= 1:
+                alertes["eleves_risque_eleve"].append({
+                    "id": eleve.id,
+                    "nom": eleve.nom_complet or eleve.username,
+                    "username": eleve.username,
+                    "score_moyen": score_moyen,
+                    "nb_traces": len(traces_eleve),
+                    "nb_risque_eleve": nb_risque_eleve,
+                    "notion_principale": notion_principale
+                })
+
+            elif nb_risque_moyen >= 2:
+                alertes["eleves_risque_moyen"].append({
+                    "id": eleve.id,
+                    "nom": eleve.nom_complet or eleve.username,
+                    "username": eleve.username,
+                    "score_moyen": score_moyen,
+                    "nb_traces": len(traces_eleve),
+                    "nb_risque_moyen": nb_risque_moyen,
+                    "notion_principale": notion_principale
+                })
+
+        # ============================================================
+        # 4. ALERTES NOTIONS PROBLÉMATIQUES
+        # ============================================================
+
+        for notion, traces_notion in traces_par_notion.items():
+            eleves_concernes = set(trace.user_id for trace in traces_notion)
+
+            nb_risque_eleve = sum(
+                1 for trace in traces_notion
+                if trace.niveau_risque == "élevé"
+            )
+
+            nb_risque_moyen = sum(
+                1 for trace in traces_notion
+                if trace.niveau_risque == "moyen"
+            )
+
+            scores = [
+                trace.score for trace in traces_notion
+                if trace.score is not None
+            ]
+
+            score_moyen = round(sum(scores) / len(scores), 1) if scores else None
+
+            erreurs = Counter(
+                trace.type_erreur
+                for trace in traces_notion
+                if trace.type_erreur
+            )
+
+            erreur_principale = erreurs.most_common(1)[0][0] if erreurs else None
+
+            if len(eleves_concernes) >= 2 and (nb_risque_eleve >= 1 or nb_risque_moyen >= 2):
+                alertes["notions_problematiques"].append({
+                    "notion": notion,
+                    "nb_eleves": len(eleves_concernes),
+                    "nb_traces": len(traces_notion),
+                    "score_moyen": score_moyen,
+                    "nb_risque_eleve": nb_risque_eleve,
+                    "nb_risque_moyen": nb_risque_moyen,
+                    "erreur_principale": erreur_principale
+                })
+
+        # ============================================================
+        # 5. ALERTES PROGRESSION
+        # ============================================================
+
+        for eleve_id, traces_eleve in traces_par_eleve.items():
+            eleve = eleves_map.get(eleve_id)
+
+            if not eleve:
+                continue
+
+            traces_notees = [
+                trace for trace in traces_eleve
+                if trace.score is not None
+            ]
+
+            if len(traces_notees) < 4:
+                continue
+
+            # Les traces sont déjà triées du plus récent au plus ancien.
+            recentes = traces_notees[:2]
+            anciennes = traces_notees[-2:]
+
+            moyenne_recente = sum(t.score for t in recentes) / len(recentes)
+            moyenne_ancienne = sum(t.score for t in anciennes) / len(anciennes)
+
+            progression = round(moyenne_recente - moyenne_ancienne, 1)
+
+            if progression >= 15:
+                alertes["eleves_progression"].append({
+                    "id": eleve.id,
+                    "nom": eleve.nom_complet or eleve.username,
+                    "username": eleve.username,
+                    "progression": progression,
+                    "moyenne_recente": round(moyenne_recente, 1),
+                    "moyenne_ancienne": round(moyenne_ancienne, 1)
+                })
+
+        # ============================================================
+        # 6. LIMITER ET CLASSER
+        # ============================================================
+
+        alertes["eleves_risque_eleve"] = sorted(
+            alertes["eleves_risque_eleve"],
+            key=lambda x: (x["nb_risque_eleve"], -(x["score_moyen"] or 0)),
+            reverse=True
+        )[:5]
+
+        alertes["eleves_risque_moyen"] = sorted(
+            alertes["eleves_risque_moyen"],
+            key=lambda x: x["nb_risque_moyen"],
+            reverse=True
+        )[:5]
+
+        alertes["notions_problematiques"] = sorted(
+            alertes["notions_problematiques"],
+            key=lambda x: (x["nb_risque_eleve"], x["nb_eleves"], x["nb_traces"]),
+            reverse=True
+        )[:5]
+
+        alertes["eleves_progression"] = sorted(
+            alertes["eleves_progression"],
+            key=lambda x: x["progression"],
+            reverse=True
+        )[:5]
+
+        # ============================================================
+        # 7. RÉSUMÉ
+        # ============================================================
+
+        alertes["resume"] = {
+            "nb_eleves_risque_eleve": len(alertes["eleves_risque_eleve"]),
+            "nb_eleves_risque_moyen": len(alertes["eleves_risque_moyen"]),
+            "nb_notions_problematiques": len(alertes["notions_problematiques"]),
+            "nb_eleves_progression": len(alertes["eleves_progression"])
+        }
+
+        # ============================================================
+        # 8. MESSAGES COURTS POUR DASHBOARD
+        # ============================================================
+
+        if alertes["eleves_risque_eleve"]:
+            alertes["messages"].append({
+                "type": "danger",
+                "titre": "Élèves à risque élevé",
+                "texte": f"{len(alertes['eleves_risque_eleve'])} élève(s) nécessitent une attention prioritaire."
+            })
+
+        if alertes["notions_problematiques"]:
+            alertes["messages"].append({
+                "type": "warning",
+                "titre": "Notions à reprendre",
+                "texte": f"{len(alertes['notions_problematiques'])} notion(s) semblent poser problème dans le groupe."
+            })
+
+        if alertes["eleves_progression"]:
+            alertes["messages"].append({
+                "type": "success",
+                "titre": "Progressions positives",
+                "texte": f"{len(alertes['eleves_progression'])} élève(s) montrent une progression notable."
+            })
+
+        if not alertes["messages"]:
+            alertes["messages"].append({
+                "type": "info",
+                "titre": "Aucune alerte critique",
+                "texte": "Les traces récentes ne montrent pas de signal pédagogique urgent."
+            })
+
+        return alertes
+
+    except Exception as e:
+        print(f"⚠️ Erreur calcul alertes pédagogiques enseignant : {e}")
+        return alertes
+
 
 @app.route("/dashboard-enseignant", methods=["GET", "POST"])
 def dashboard_enseignant():
-    """Dashboard enseignant - version légère sans chargement des matières/exercices"""
+    """Dashboard enseignant - version légère avec suivi pédagogique intelligent"""
 
     try:
         # ============================================================
@@ -9867,6 +11025,17 @@ def dashboard_enseignant():
             )
             .all()
         )
+
+        # Fallback si certains élèves utilisent encore enseignant_id
+        if not eleves and hasattr(User, "enseignant_id"):
+            eleves = (
+                User.query
+                .filter(
+                    User.role.in_(["eleve", "élève"]),
+                    User.enseignant_id == enseignant.id
+                )
+                .all()
+            )
 
         total_students = len(eleves)
         eleves_ids = [e.id for e in eleves]
@@ -9924,6 +11093,7 @@ def dashboard_enseignant():
             niveau_nom = eleve.niveau.nom if eleve.niveau else "Non défini"
 
             stats.append({
+                "id": eleve.id,
                 "nom": eleve.nom_complet,
                 "username": eleve.username,
                 "niveau": niveau_nom,
@@ -9960,6 +11130,114 @@ def dashboard_enseignant():
         except Exception as ex:
             print(f"Erreur comptage remédiations dashboard enseignant : {ex}")
             nv_count = 0
+
+        # ============================================================
+        # SUIVI PÉDAGOGIQUE INTELLIGENT : TRACES D'APPRENTISSAGE
+        # ============================================================
+
+        traces_total = 0
+        traces_risque_eleve = 0
+        traces_risque_moyen = 0
+        traces_risque_faible = 0
+        eleves_risque_dashboard = []
+        notions_a_surveiller_dashboard = []
+
+        try:
+            from models import TraceApprentissage
+            from sqlalchemy import func
+
+            if eleves_ids:
+                traces_total = (
+                    TraceApprentissage.query
+                    .filter(TraceApprentissage.user_id.in_(eleves_ids))
+                    .count()
+                )
+
+                traces_risque_eleve = (
+                    TraceApprentissage.query
+                    .filter(
+                        TraceApprentissage.user_id.in_(eleves_ids),
+                        TraceApprentissage.niveau_risque == "élevé"
+                    )
+                    .count()
+                )
+
+                traces_risque_moyen = (
+                    TraceApprentissage.query
+                    .filter(
+                        TraceApprentissage.user_id.in_(eleves_ids),
+                        TraceApprentissage.niveau_risque == "moyen"
+                    )
+                    .count()
+                )
+
+                traces_risque_faible = (
+                    TraceApprentissage.query
+                    .filter(
+                        TraceApprentissage.user_id.in_(eleves_ids),
+                        TraceApprentissage.niveau_risque == "faible"
+                    )
+                    .count()
+                )
+
+                # Dernières traces à risque pour affichage rapide dans le dashboard
+                traces_a_risque = (
+                    TraceApprentissage.query
+                    .join(User, TraceApprentissage.user_id == User.id)
+                    .filter(
+                        TraceApprentissage.user_id.in_(eleves_ids),
+                        TraceApprentissage.niveau_risque.in_(["élevé", "moyen"])
+                    )
+                    .order_by(TraceApprentissage.created_at.desc())
+                    .limit(5)
+                    .all()
+                )
+
+                for trace in traces_a_risque:
+                    eleves_risque_dashboard.append({
+                        "id": trace.user.id if trace.user else trace.user_id,
+                        "nom": trace.user.nom_complet if trace.user else "Élève",
+                        "username": trace.user.username if trace.user else "",
+                        "risque": trace.niveau_risque or "—",
+                        "notion": trace.notion_cible or "Notion non précisée",
+                        "score": trace.score if trace.score is not None else None,
+                        "date": trace.created_at
+                    })
+
+                # Notions les plus fréquentes dans les traces à risque
+                notions_query = (
+                    db.session.query(
+                        TraceApprentissage.notion_cible,
+                        func.count(TraceApprentissage.id)
+                    )
+                    .filter(
+                        TraceApprentissage.user_id.in_(eleves_ids),
+                        TraceApprentissage.niveau_risque.in_(["élevé", "moyen"]),
+                        TraceApprentissage.notion_cible.isnot(None),
+                        TraceApprentissage.notion_cible != ""
+                    )
+                    .group_by(TraceApprentissage.notion_cible)
+                    .order_by(func.count(TraceApprentissage.id).desc())
+                    .limit(5)
+                    .all()
+                )
+
+                notions_a_surveiller_dashboard = [
+                    {
+                        "notion": notion,
+                        "count": count
+                    }
+                    for notion, count in notions_query
+                ]
+
+        except Exception as ex:
+            print(f"⚠️ Erreur stats traces dashboard enseignant : {ex}")
+            traces_total = 0
+            traces_risque_eleve = 0
+            traces_risque_moyen = 0
+            traces_risque_faible = 0
+            eleves_risque_dashboard = []
+            notions_a_surveiller_dashboard = []
 
         # ============================================================
         # COMMISSIONS
@@ -10060,31 +11338,39 @@ def dashboard_enseignant():
 
         # ============================================================
         # RENDU FINAL
-        # IMPORTANT :
-        # On ne transmet plus matieres ni niveaux_enseignant.
-        # Le dashboard ne charge plus les exercices.
         # ============================================================
 
         return render_template(
             "dashboard_enseignant.html",
             enseignant=enseignant,
+
             stats=stats,
             noms_eleves=noms_eleves,
             moyennes=moyennes,
             niveaux=niveaux,
             counts=counts,
+
             lang=lang,
             nv_count=nv_count,
             total_students=total_students,
             avg_stars=avg_stars,
+
             total_commissions=total_commissions,
             commissions_pending=commissions_pending,
             commissions_paid=commissions_paid,
             commissions_available=commissions_available,
             interac_configure=interac_configure,
+
             eleves_payants=eleves_payants,
             eleves_essai=eleves_essai,
-            commissions_implemented=True
+            commissions_implemented=True,
+
+            traces_total=traces_total,
+            traces_risque_eleve=traces_risque_eleve,
+            traces_risque_moyen=traces_risque_moyen,
+            traces_risque_faible=traces_risque_faible,
+            eleves_risque_dashboard=eleves_risque_dashboard,
+            notions_a_surveiller_dashboard=notions_a_surveiller_dashboard
         )
 
     except Exception as e:
@@ -10092,6 +11378,936 @@ def dashboard_enseignant():
         print(f"Erreur dashboard_enseignant: {e}")
         flash("Une erreur est survenue sur le dashboard.", "error")
         return redirect(url_for("login_enseignant"))
+
+def calculer_alertes_pedagogiques_enseignant(enseignant_id, limite_traces=300):
+    """
+    Calcule les alertes pédagogiques pour le dashboard enseignant.
+
+    Objectif :
+    - repérer les élèves à risque ;
+    - repérer les notions problématiques ;
+    - repérer les élèves en progression ;
+    - donner des messages courts utilisables dans le dashboard.
+    """
+
+    from collections import defaultdict, Counter
+    from models import User, TraceApprentissage
+
+    alertes = {
+        "eleves_risque_eleve": [],
+        "eleves_risque_moyen": [],
+        "notions_problematiques": [],
+        "eleves_progression": [],
+        "messages": [],
+        "resume": {
+            "nb_eleves_risque_eleve": 0,
+            "nb_eleves_risque_moyen": 0,
+            "nb_notions_problematiques": 0,
+            "nb_eleves_progression": 0
+        }
+    }
+
+    try:
+        # ============================================================
+        # 1. RÉCUPÉRER LES ÉLÈVES DE L'ENSEIGNANT
+        # ============================================================
+
+        eleves = (
+            User.query
+            .filter(
+                User.role.in_(["eleve", "élève"]),
+                User.enseignant_referent_id == enseignant_id
+            )
+            .all()
+        )
+
+        if not eleves and hasattr(User, "enseignant_id"):
+            eleves = (
+                User.query
+                .filter(
+                    User.role.in_(["eleve", "élève"]),
+                    User.enseignant_id == enseignant_id
+                )
+                .all()
+            )
+
+        eleves_ids = [eleve.id for eleve in eleves]
+
+        if not eleves_ids:
+            return alertes
+
+        eleves_map = {
+            eleve.id: eleve for eleve in eleves
+        }
+
+        # ============================================================
+        # 2. RÉCUPÉRER LES TRACES RÉCENTES
+        # ============================================================
+
+        traces = (
+            TraceApprentissage.query
+            .filter(TraceApprentissage.user_id.in_(eleves_ids))
+            .order_by(TraceApprentissage.created_at.desc())
+            .limit(limite_traces)
+            .all()
+        )
+
+        if not traces:
+            return alertes
+
+        traces_par_eleve = defaultdict(list)
+        traces_par_notion = defaultdict(list)
+
+        for trace in traces:
+            traces_par_eleve[trace.user_id].append(trace)
+
+            notion = (
+                trace.notion_cible
+                or (trace.meta_json or {}).get("notion_cible")
+                or "Notion non précisée"
+            )
+
+            traces_par_notion[notion].append(trace)
+
+        # ============================================================
+        # 3. ALERTES ÉLÈVES À RISQUE
+        # ============================================================
+
+        for eleve_id, traces_eleve in traces_par_eleve.items():
+            eleve = eleves_map.get(eleve_id)
+
+            if not eleve:
+                continue
+
+            nb_risque_eleve = sum(
+                1 for trace in traces_eleve
+                if trace.niveau_risque == "élevé"
+            )
+
+            nb_risque_moyen = sum(
+                1 for trace in traces_eleve
+                if trace.niveau_risque == "moyen"
+            )
+
+            scores = [
+                trace.score for trace in traces_eleve
+                if trace.score is not None
+            ]
+
+            score_moyen = round(sum(scores) / len(scores), 1) if scores else None
+
+            notions = Counter(
+                trace.notion_cible
+                for trace in traces_eleve
+                if trace.notion_cible
+            )
+
+            notion_principale = notions.most_common(1)[0][0] if notions else "Notion non précisée"
+
+            if nb_risque_eleve >= 1:
+                alertes["eleves_risque_eleve"].append({
+                    "id": eleve.id,
+                    "nom": eleve.nom_complet or eleve.username,
+                    "username": eleve.username,
+                    "score_moyen": score_moyen,
+                    "nb_traces": len(traces_eleve),
+                    "nb_risque_eleve": nb_risque_eleve,
+                    "notion_principale": notion_principale
+                })
+
+            elif nb_risque_moyen >= 2:
+                alertes["eleves_risque_moyen"].append({
+                    "id": eleve.id,
+                    "nom": eleve.nom_complet or eleve.username,
+                    "username": eleve.username,
+                    "score_moyen": score_moyen,
+                    "nb_traces": len(traces_eleve),
+                    "nb_risque_moyen": nb_risque_moyen,
+                    "notion_principale": notion_principale
+                })
+
+        # ============================================================
+        # 4. ALERTES NOTIONS PROBLÉMATIQUES
+        # ============================================================
+
+        for notion, traces_notion in traces_par_notion.items():
+            eleves_concernes = set(trace.user_id for trace in traces_notion)
+
+            nb_risque_eleve = sum(
+                1 for trace in traces_notion
+                if trace.niveau_risque == "élevé"
+            )
+
+            nb_risque_moyen = sum(
+                1 for trace in traces_notion
+                if trace.niveau_risque == "moyen"
+            )
+
+            scores = [
+                trace.score for trace in traces_notion
+                if trace.score is not None
+            ]
+
+            score_moyen = round(sum(scores) / len(scores), 1) if scores else None
+
+            erreurs = Counter(
+                trace.type_erreur
+                for trace in traces_notion
+                if trace.type_erreur
+            )
+
+            erreur_principale = erreurs.most_common(1)[0][0] if erreurs else None
+
+            if len(eleves_concernes) >= 2 and (nb_risque_eleve >= 1 or nb_risque_moyen >= 2):
+                alertes["notions_problematiques"].append({
+                    "notion": notion,
+                    "nb_eleves": len(eleves_concernes),
+                    "nb_traces": len(traces_notion),
+                    "score_moyen": score_moyen,
+                    "nb_risque_eleve": nb_risque_eleve,
+                    "nb_risque_moyen": nb_risque_moyen,
+                    "erreur_principale": erreur_principale
+                })
+
+        # ============================================================
+        # 5. ALERTES PROGRESSION
+        # ============================================================
+
+        for eleve_id, traces_eleve in traces_par_eleve.items():
+            eleve = eleves_map.get(eleve_id)
+
+            if not eleve:
+                continue
+
+            traces_notees = [
+                trace for trace in traces_eleve
+                if trace.score is not None
+            ]
+
+            if len(traces_notees) < 4:
+                continue
+
+            # Les traces sont déjà triées du plus récent au plus ancien.
+            recentes = traces_notees[:2]
+            anciennes = traces_notees[-2:]
+
+            moyenne_recente = sum(t.score for t in recentes) / len(recentes)
+            moyenne_ancienne = sum(t.score for t in anciennes) / len(anciennes)
+
+            progression = round(moyenne_recente - moyenne_ancienne, 1)
+
+            if progression >= 15:
+                alertes["eleves_progression"].append({
+                    "id": eleve.id,
+                    "nom": eleve.nom_complet or eleve.username,
+                    "username": eleve.username,
+                    "progression": progression,
+                    "moyenne_recente": round(moyenne_recente, 1),
+                    "moyenne_ancienne": round(moyenne_ancienne, 1)
+                })
+
+        # ============================================================
+        # 6. LIMITER ET CLASSER
+        # ============================================================
+
+        alertes["eleves_risque_eleve"] = sorted(
+            alertes["eleves_risque_eleve"],
+            key=lambda x: (x["nb_risque_eleve"], -(x["score_moyen"] or 0)),
+            reverse=True
+        )[:5]
+
+        alertes["eleves_risque_moyen"] = sorted(
+            alertes["eleves_risque_moyen"],
+            key=lambda x: x["nb_risque_moyen"],
+            reverse=True
+        )[:5]
+
+        alertes["notions_problematiques"] = sorted(
+            alertes["notions_problematiques"],
+            key=lambda x: (x["nb_risque_eleve"], x["nb_eleves"], x["nb_traces"]),
+            reverse=True
+        )[:5]
+
+        alertes["eleves_progression"] = sorted(
+            alertes["eleves_progression"],
+            key=lambda x: x["progression"],
+            reverse=True
+        )[:5]
+
+        # ============================================================
+        # 7. RÉSUMÉ
+        # ============================================================
+
+        alertes["resume"] = {
+            "nb_eleves_risque_eleve": len(alertes["eleves_risque_eleve"]),
+            "nb_eleves_risque_moyen": len(alertes["eleves_risque_moyen"]),
+            "nb_notions_problematiques": len(alertes["notions_problematiques"]),
+            "nb_eleves_progression": len(alertes["eleves_progression"])
+        }
+
+        # ============================================================
+        # 8. MESSAGES COURTS POUR DASHBOARD
+        # ============================================================
+
+        if alertes["eleves_risque_eleve"]:
+            alertes["messages"].append({
+                "type": "danger",
+                "titre": "Élèves à risque élevé",
+                "texte": f"{len(alertes['eleves_risque_eleve'])} élève(s) nécessitent une attention prioritaire."
+            })
+
+        if alertes["notions_problematiques"]:
+            alertes["messages"].append({
+                "type": "warning",
+                "titre": "Notions à reprendre",
+                "texte": f"{len(alertes['notions_problematiques'])} notion(s) semblent poser problème dans le groupe."
+            })
+
+        if alertes["eleves_progression"]:
+            alertes["messages"].append({
+                "type": "success",
+                "titre": "Progressions positives",
+                "texte": f"{len(alertes['eleves_progression'])} élève(s) montrent une progression notable."
+            })
+
+        if not alertes["messages"]:
+            alertes["messages"].append({
+                "type": "info",
+                "titre": "Aucune alerte critique",
+                "texte": "Les traces récentes ne montrent pas de signal pédagogique urgent."
+            })
+
+        return alertes
+
+    except Exception as e:
+        print(f"⚠️ Erreur calcul alertes pédagogiques enseignant : {e}")
+        return alertes
+
+@app.route("/enseignant/profil-eleve/<int:eleve_id>")
+def enseignant_profil_eleve(eleve_id):
+    import json
+    from models import TraceApprentissage, User
+    from sqlalchemy.orm import joinedload
+
+    # ============================================================
+    # 0. AUTHENTIFICATION ENSEIGNANT PAR SESSION
+    # ============================================================
+
+    if "user_id" not in session:
+        flash("Veuillez vous connecter comme enseignant.", "warning")
+        return redirect(url_for("login_enseignant"))
+
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants.", "danger")
+        return redirect(url_for("login_enseignant"))
+
+    enseignant = db.session.get(User, session["user_id"])
+
+    if not enseignant:
+        session.clear()
+        flash("Session invalide. Veuillez vous reconnecter.", "warning")
+        return redirect(url_for("login_enseignant"))
+
+    if getattr(enseignant, "role", None) != "enseignant":
+        session.clear()
+        flash("Accès réservé aux enseignants.", "danger")
+        return redirect(url_for("login_enseignant"))
+
+    lang = session.get("lang", getattr(enseignant, "langue", None) or "fr")
+
+    # ============================================================
+    # 1. VÉRIFIER QUE L'ÉLÈVE APPARTIENT À CET ENSEIGNANT
+    # ============================================================
+
+    eleve = (
+        User.query
+        .filter(
+            User.id == eleve_id,
+            User.role.in_(["eleve", "élève"]),
+            User.enseignant_referent_id == enseignant.id
+        )
+        .first()
+    )
+
+    # Fallback si certains élèves utilisent encore enseignant_id
+    if not eleve and hasattr(User, "enseignant_id"):
+        eleve = (
+            User.query
+            .filter(
+                User.id == eleve_id,
+                User.role.in_(["eleve", "élève"]),
+                User.enseignant_id == enseignant.id
+            )
+            .first()
+        )
+
+    if not eleve:
+        flash("Élève introuvable ou non rattaché à votre compte.", "danger")
+        return redirect(url_for("dashboard_enseignant"))
+
+    # ============================================================
+    # 2. CHARGER LES TRACES DE L'ÉLÈVE
+    # ============================================================
+
+    traces = (
+        TraceApprentissage.query
+        .options(
+            joinedload(TraceApprentissage.matiere),
+            joinedload(TraceApprentissage.unite),
+            joinedload(TraceApprentissage.lecon),
+            joinedload(TraceApprentissage.exercice)
+        )
+        .filter(TraceApprentissage.user_id == eleve.id)
+        .order_by(TraceApprentissage.created_at.desc())
+        .limit(100)
+        .all()
+    )
+
+    # ============================================================
+    # 3. PRÉPARER LES TRACES POUR AFFICHAGE LISIBLE
+    # ============================================================
+
+    for trace in traces:
+        detail = {}
+
+        try:
+            if trace.analyse_ia:
+                detail = json.loads(trace.analyse_ia)
+        except Exception:
+            detail = {}
+
+        meta = trace.meta_json or {}
+
+        trace.detail_ia = detail
+        trace.feedback_lisible = detail.get("current_feedback", trace.analyse_ia or "")
+        trace.score_sur_5 = detail.get("current_stars") or meta.get("score_sur_5")
+
+        metadata = detail.get("metadata", {})
+
+        trace.langue_trace = (
+            metadata.get("language")
+            or meta.get("lang")
+            or lang
+            or "fr"
+        )
+
+        trace.question_lisible = (
+            meta.get("question_en")
+            if trace.langue_trace == "en"
+            else meta.get("question_fr")
+        )
+
+        if not trace.question_lisible and trace.exercice:
+            trace.question_lisible = (
+                trace.exercice.question_en
+                if trace.langue_trace == "en" and trace.exercice.question_en
+                else trace.exercice.question_fr
+            )
+
+        trace.reponse_attendue_lisible = (
+            meta.get("reponse_attendue_en")
+            if trace.langue_trace == "en"
+            else meta.get("reponse_attendue_fr")
+        )
+
+        if not trace.reponse_attendue_lisible and trace.exercice:
+            trace.reponse_attendue_lisible = (
+                trace.exercice.reponse_en
+                if trace.langue_trace == "en" and trace.exercice.reponse_en
+                else trace.exercice.reponse_fr
+            )
+
+    # ============================================================
+    # 4. CALCULS DE SYNTHÈSE
+    # ============================================================
+
+    total_traces = len(traces)
+
+    scores = [
+        trace.score for trace in traces
+        if trace.score is not None
+    ]
+
+    score_moyen = round(sum(scores) / len(scores), 1) if scores else 0
+
+    risques = {
+        "faible": 0,
+        "moyen": 0,
+        "élevé": 0
+    }
+
+    notions = {}
+    erreurs = {}
+    activites_par_matiere = {}
+
+    derniere_trace = traces[0] if traces else None
+
+    for trace in traces:
+        if trace.niveau_risque in risques:
+            risques[trace.niveau_risque] += 1
+
+        if trace.notion_cible:
+            notions[trace.notion_cible] = notions.get(trace.notion_cible, 0) + 1
+
+        if trace.type_erreur:
+            erreurs[trace.type_erreur] = erreurs.get(trace.type_erreur, 0) + 1
+
+        meta = trace.meta_json or {}
+        matiere_nom = (
+            meta.get("matiere_fr")
+            or (trace.matiere.nom if trace.matiere else "Matière non précisée")
+        )
+
+        activites_par_matiere[matiere_nom] = activites_par_matiere.get(matiere_nom, 0) + 1
+
+    notions_frequentes = sorted(
+        notions.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:8]
+
+    erreurs_frequentes = sorted(
+        erreurs.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:8]
+
+    matieres_frequentes = sorted(
+        activites_par_matiere.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:5]
+
+    if risques["élevé"] > 0:
+        risque_dominant = "élevé"
+    elif risques["moyen"] > 0:
+        risque_dominant = "moyen"
+    elif risques["faible"] > 0:
+        risque_dominant = "faible"
+    else:
+        risque_dominant = "non défini"
+
+    # ============================================================
+    # 5. RECOMMANDATION SIMPLE POUR L'ENSEIGNANT
+    # ============================================================
+
+    if risque_dominant == "élevé":
+        recommandation_enseignant = (
+            "Prévoir une remédiation courte et guidée. Reprendre la notion avec un exemple simple avant de proposer un nouvel exercice."
+            if lang == "fr"
+            else "Plan a short guided remediation. Review the concept with a simple example before assigning a new exercise."
+        )
+    elif risque_dominant == "moyen":
+        recommandation_enseignant = (
+            "Vérifier la démarche de l’élève et proposer un exercice similaire avec une aide progressive."
+            if lang == "fr"
+            else "Check the student’s reasoning and assign a similar exercise with progressive support."
+        )
+    elif risque_dominant == "faible":
+        recommandation_enseignant = (
+            "L’élève semble progresser. Proposer un exercice de consolidation ou un défi légèrement plus avancé."
+            if lang == "fr"
+            else "The student seems to be progressing. Offer a consolidation exercise or a slightly more advanced challenge."
+        )
+    else:
+        recommandation_enseignant = (
+            "Pas encore assez de traces pour proposer une recommandation fiable."
+            if lang == "fr"
+            else "Not enough traces yet to provide a reliable recommendation."
+        )
+
+    # ============================================================
+    # 6. RENDU
+    # ============================================================
+
+    return render_template(
+        "enseignant_profil_eleve.html",
+        enseignant=enseignant,
+        eleve=eleve,
+        traces=traces,
+
+        total_traces=total_traces,
+        score_moyen=score_moyen,
+        risques=risques,
+        risque_dominant=risque_dominant,
+        notions_frequentes=notions_frequentes,
+        erreurs_frequentes=erreurs_frequentes,
+        matieres_frequentes=matieres_frequentes,
+        derniere_trace=derniere_trace,
+        recommandation_enseignant=recommandation_enseignant,
+
+        lang=lang
+    )
+
+
+@app.route("/enseignant/synthese-notions")
+def enseignant_synthese_notions():
+    import json
+    from models import TraceApprentissage, User
+    from sqlalchemy.orm import joinedload
+
+    # ============================================================
+    # 0. AUTHENTIFICATION ENSEIGNANT PAR SESSION
+    # ============================================================
+
+    if "user_id" not in session:
+        flash("Veuillez vous connecter comme enseignant.", "warning")
+        return redirect(url_for("login_enseignant"))
+
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants.", "danger")
+        return redirect(url_for("login_enseignant"))
+
+    enseignant = db.session.get(User, session["user_id"])
+
+    if not enseignant:
+        session.clear()
+        flash("Session invalide. Veuillez vous reconnecter.", "warning")
+        return redirect(url_for("login_enseignant"))
+
+    if getattr(enseignant, "role", None) != "enseignant":
+        session.clear()
+        flash("Accès réservé aux enseignants.", "danger")
+        return redirect(url_for("login_enseignant"))
+
+    lang = session.get("lang", getattr(enseignant, "langue", None) or "fr")
+
+    # ============================================================
+    # 1. PARAMÈTRES
+    # ============================================================
+
+    q = request.args.get("q", "").strip()
+    risque_filtre = request.args.get("risque", "tous")
+    sort = request.args.get("sort", "risque")
+
+    # ============================================================
+    # 2. RÉCUPÉRER LES ÉLÈVES RATTACHÉS À L'ENSEIGNANT
+    # ============================================================
+
+    eleves = (
+        User.query
+        .filter(
+            User.role.in_(["eleve", "élève"]),
+            User.enseignant_referent_id == enseignant.id
+        )
+        .all()
+    )
+
+    # Fallback si certains élèves utilisent encore enseignant_id
+    if not eleves and hasattr(User, "enseignant_id"):
+        eleves = (
+            User.query
+            .filter(
+                User.role.in_(["eleve", "élève"]),
+                User.enseignant_id == enseignant.id
+            )
+            .all()
+        )
+
+    eleves_ids = [eleve.id for eleve in eleves]
+
+    if not eleves_ids:
+        return render_template(
+            "enseignant_synthese_notions.html",
+            notions_synthese=[],
+            total_notions=0,
+            total_traces=0,
+            total_eleves=len(eleves),
+            q=q,
+            risque=risque_filtre,
+            sort=sort,
+            lang=lang
+        )
+
+    # ============================================================
+    # 3. CHARGER LES TRACES DES ÉLÈVES
+    # ============================================================
+
+    traces = (
+        TraceApprentissage.query
+        .options(
+            joinedload(TraceApprentissage.user),
+            joinedload(TraceApprentissage.matiere),
+            joinedload(TraceApprentissage.unite),
+            joinedload(TraceApprentissage.lecon),
+            joinedload(TraceApprentissage.exercice)
+        )
+        .filter(TraceApprentissage.user_id.in_(eleves_ids))
+        .order_by(TraceApprentissage.created_at.desc())
+        .limit(1500)
+        .all()
+    )
+
+    # ============================================================
+    # 4. OUTIL INTERNE : MÉTA JSON SÉCURISÉ
+    # ============================================================
+
+    def lire_meta_json(trace):
+        meta = trace.meta_json or {}
+
+        if isinstance(meta, dict):
+            return meta
+
+        if isinstance(meta, str):
+            try:
+                return json.loads(meta)
+            except Exception:
+                return {}
+
+        return {}
+
+    # ============================================================
+    # 5. AGRÉGER PAR NOTION
+    # ============================================================
+
+    notions = {}
+
+    for trace in traces:
+        meta = lire_meta_json(trace)
+
+        notion = (
+            trace.notion_cible
+            or meta.get("notion_cible")
+            or "Notion non précisée"
+        )
+
+        notion = str(notion).strip() or "Notion non précisée"
+
+        if notion not in notions:
+            notions[notion] = {
+                "notion": notion,
+                "traces_count": 0,
+                "eleves_ids": set(),
+                "eleves": {},
+                "scores": [],
+                "risques": {
+                    "faible": 0,
+                    "moyen": 0,
+                    "élevé": 0
+                },
+                "erreurs": {},
+                "matieres": {},
+                "lecons": {},
+                "dernieres_traces": [],
+                "derniere_date": None
+            }
+
+        bloc = notions[notion]
+
+        bloc["traces_count"] += 1
+        bloc["eleves_ids"].add(trace.user_id)
+
+        if trace.user:
+            bloc["eleves"][trace.user_id] = {
+                "id": trace.user_id,
+                "nom": trace.user.nom_complet,
+                "username": trace.user.username
+            }
+        else:
+            bloc["eleves"][trace.user_id] = {
+                "id": trace.user_id,
+                "nom": f"Élève {trace.user_id}",
+                "username": ""
+            }
+
+        if trace.score is not None:
+            bloc["scores"].append(trace.score)
+
+        if trace.niveau_risque in bloc["risques"]:
+            bloc["risques"][trace.niveau_risque] += 1
+
+        type_erreur = trace.type_erreur or meta.get("type_erreur")
+
+        if type_erreur:
+            type_erreur = str(type_erreur).strip()
+            bloc["erreurs"][type_erreur] = bloc["erreurs"].get(type_erreur, 0) + 1
+
+        matiere_nom = (
+            meta.get("matiere_fr")
+            or meta.get("matiere_en")
+            or (trace.matiere.nom if trace.matiere else None)
+            or "Matière non précisée"
+        )
+
+        bloc["matieres"][matiere_nom] = bloc["matieres"].get(matiere_nom, 0) + 1
+
+        lecon_nom = (
+            meta.get("lecon_fr")
+            or meta.get("lecon_en")
+            or (trace.lecon.titre_fr if trace.lecon else None)
+            or "Leçon non précisée"
+        )
+
+        bloc["lecons"][lecon_nom] = bloc["lecons"].get(lecon_nom, 0) + 1
+
+        if trace.created_at:
+            if not bloc["derniere_date"] or trace.created_at > bloc["derniere_date"]:
+                bloc["derniere_date"] = trace.created_at
+
+        if len(bloc["dernieres_traces"]) < 5:
+            bloc["dernieres_traces"].append(trace)
+
+    # ============================================================
+    # 6. TRANSFORMER EN LISTE LISIBLE
+    # ============================================================
+
+    notions_synthese = []
+
+    for notion, bloc in notions.items():
+        scores = bloc["scores"]
+
+        score_moyen = round(sum(scores) / len(scores), 1) if scores else 0
+
+        if bloc["risques"]["élevé"] > 0:
+            risque_dominant = "élevé"
+        elif bloc["risques"]["moyen"] > 0:
+            risque_dominant = "moyen"
+        elif bloc["risques"]["faible"] > 0:
+            risque_dominant = "faible"
+        else:
+            risque_dominant = "non défini"
+
+        erreurs_frequentes = sorted(
+            bloc["erreurs"].items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:3]
+
+        matieres_frequentes = sorted(
+            bloc["matieres"].items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:2]
+
+        lecons_frequentes = sorted(
+            bloc["lecons"].items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:2]
+
+        eleves_liste = list(bloc["eleves"].values())
+
+        if risque_dominant == "élevé":
+            recommandation = (
+                "Prévoir une remédiation de groupe ou un retour guidé sur cette notion."
+                if lang == "fr"
+                else "Plan a group remediation or a guided review on this concept."
+            )
+        elif risque_dominant == "moyen":
+            recommandation = (
+                "Proposer quelques exercices de consolidation et vérifier les démarches."
+                if lang == "fr"
+                else "Assign consolidation exercises and check students’ reasoning."
+            )
+        elif risque_dominant == "faible":
+            recommandation = (
+                "La notion semble globalement maîtrisée. Proposer un défi ou une consolidation légère."
+                if lang == "fr"
+                else "The concept seems mostly mastered. Offer a challenge or light consolidation."
+            )
+        else:
+            recommandation = (
+                "Données insuffisantes pour recommander une action."
+                if lang == "fr"
+                else "Not enough data to recommend an action."
+            )
+
+        item = {
+            "notion": notion,
+            "traces_count": bloc["traces_count"],
+            "eleves_count": len(bloc["eleves_ids"]),
+            "eleves": eleves_liste,
+            "score_moyen": score_moyen,
+            "risque_dominant": risque_dominant,
+            "risques": bloc["risques"],
+            "erreurs_frequentes": erreurs_frequentes,
+            "matieres_frequentes": matieres_frequentes,
+            "lecons_frequentes": lecons_frequentes,
+            "dernieres_traces": bloc["dernieres_traces"],
+            "derniere_date": bloc["derniere_date"],
+            "recommandation": recommandation
+        }
+
+        notions_synthese.append(item)
+
+    # ============================================================
+    # 7. FILTRES
+    # ============================================================
+
+    if q:
+        q_lower = q.lower()
+
+        notions_synthese = [
+            item for item in notions_synthese
+            if (
+                q_lower in item["notion"].lower()
+                or any(q_lower in matiere.lower() for matiere, _ in item["matieres_frequentes"])
+                or any(q_lower in erreur.lower() for erreur, _ in item["erreurs_frequentes"])
+            )
+        ]
+
+    if risque_filtre != "tous":
+        notions_synthese = [
+            item for item in notions_synthese
+            if item["risque_dominant"] == risque_filtre
+        ]
+
+    # ============================================================
+    # 8. TRI
+    # ============================================================
+
+    if sort == "score_asc":
+        notions_synthese.sort(key=lambda x: x["score_moyen"])
+
+    elif sort == "score_desc":
+        notions_synthese.sort(key=lambda x: x["score_moyen"], reverse=True)
+
+    elif sort == "traces":
+        notions_synthese.sort(key=lambda x: x["traces_count"], reverse=True)
+
+    elif sort == "eleves":
+        notions_synthese.sort(key=lambda x: x["eleves_count"], reverse=True)
+
+    elif sort == "date":
+        notions_synthese.sort(
+            key=lambda x: x["derniere_date"] or datetime.min,
+            reverse=True
+        )
+
+    else:
+        # Tri par urgence pédagogique
+        ordre_risque = {
+            "élevé": 3,
+            "moyen": 2,
+            "faible": 1,
+            "non défini": 0
+        }
+
+        notions_synthese.sort(
+            key=lambda x: (
+                ordre_risque.get(x["risque_dominant"], 0),
+                x["eleves_count"],
+                x["traces_count"]
+            ),
+            reverse=True
+        )
+
+    # ============================================================
+    # 9. RENDU
+    # ============================================================
+
+    return render_template(
+        "enseignant_synthese_notions.html",
+        notions_synthese=notions_synthese,
+        total_notions=len(notions_synthese),
+        total_traces=len(traces),
+        total_eleves=len(eleves),
+        q=q,
+        risque=risque_filtre,
+        sort=sort,
+        lang=lang
+    )
+
 
 @app.route("/enseignant/matiere/<int:matiere_id>")
 def enseignant_matiere_detail(matiere_id):
@@ -12368,65 +14584,125 @@ from sqlalchemy import and_
 
 @app.route("/dashboard-eleve")
 def dashboard_eleve():
-    """Dashboard élève avec recommandations personnalisées Naima"""
-    # Vérifier si l'utilisateur est connecté
+    """
+    Dashboard élève avec recommandations personnalisées Naima.
+
+    Version optimisée :
+    - compatible SQLAlchemy 2 ;
+    - évite User.query.get ;
+    - évite de charger toutes les réponses inutilement ;
+    - réduit le coût du graphique Matplotlib ;
+    - garde les mêmes variables envoyées au template.
+    """
+
+    from datetime import datetime
+    from sqlalchemy import func, case, and_, select
+    from sqlalchemy.orm import joinedload
+
+    # ============================================================
+    # AUTHENTIFICATION
+    # ============================================================
+
     if "user_id" not in session:
         return redirect(url_for("login_eleve"))
-    
-    # Vérifier si c'est un élève
+
     user_role = session.get("role")
+
     if user_role not in ["élève", "eleve"]:
         flash("Accès réservé aux élèves", "error")
         return redirect(url_for("login_eleve"))
-    
-    eleve = User.query.options(joinedload(User.niveau)).get(session["user_id"])
+
+    user_id = session.get("user_id")
+
+    eleve = db.session.execute(
+        select(User)
+        .options(joinedload(User.niveau))
+        .where(User.id == user_id)
+    ).scalar_one_or_none()
+
     if not eleve or eleve.role not in ["élève", "eleve"]:
         flash("Élève non trouvé", "error")
         return redirect(url_for("login_eleve"))
 
-    # 🚨 VÉRIFICATION ACCÈS - ESSAI GRATUIT EXPIRÉ
-    if hasattr(eleve, 'essai_est_expire') and eleve.essai_est_expire() and eleve.statut_paiement != "paye":
-        flash("Votre période d'essai gratuit de 48h est terminée. Veuillez choisir un abonnement pour continuer.", "warning")
-        return redirect(url_for('upgrade_options'))
+    # ============================================================
+    # VÉRIFICATION ACCÈS - ESSAI GRATUIT EXPIRÉ
+    # ============================================================
 
-    # ✅ Stocker pour l'enseignant virtuel
-    session['current_student'] = eleve.username
+    if (
+        hasattr(eleve, "essai_est_expire")
+        and eleve.essai_est_expire()
+        and eleve.statut_paiement != "paye"
+    ):
+        flash(
+            "Votre période d'essai gratuit de 48h est terminée. "
+            "Veuillez choisir un abonnement pour continuer.",
+            "warning"
+        )
+        return redirect(url_for("upgrade_options"))
+
+    session["current_student"] = eleve.username
 
     lang = request.args.get("lang") or session.get("lang", "fr")
     session["lang"] = lang
 
-    # 🔔 Remédiations non vues
+    # ============================================================
+    # REMÉDIATIONS NON LUES
+    # ============================================================
+
     remediations_non_lues = []
-    try:
-        remediations_non_lues = RemediationSuggestion.query.filter_by(
-            user_id=eleve.id,
-            statut="valide",
-            vue_par_eleve=False
-        ).order_by(RemediationSuggestion.timestamp.desc()).limit(1).all()
-    except:
-        pass
 
-    # 📊 Statistiques
-    from sqlalchemy.sql import func
-    from sqlalchemy import and_
-    import matplotlib.pyplot as plt
-    import io
-    import base64
-    from datetime import datetime, timedelta
-    
-    reponses_eleve = []
     try:
-        reponses_eleve = StudentResponse.query.filter_by(user_id=eleve.id).order_by(StudentResponse.timestamp).all()
-    except:
-        pass
-    
-    total_reponses = len(reponses_eleve)
+        remediations_non_lues = (
+            RemediationSuggestion.query
+            .filter_by(
+                user_id=eleve.id,
+                statut="valide",
+                vue_par_eleve=False
+            )
+            .order_by(RemediationSuggestion.timestamp.desc())
+            .limit(1)
+            .all()
+        )
+    except Exception as e:
+        print(f"⚠️ Erreur chargement remédiations non lues: {e}")
 
-    # 🔧 Corrige les valeurs None
-    etoiles_values = [r.etoiles or 0 for r in reponses_eleve if r.etoiles is not None]
-    moyenne_etoiles = sum(etoiles_values) / total_reponses if total_reponses else 0
-    bonnes_reponses = sum(1 for e in etoiles_values if e >= 3)
-    taux_reussite = round((bonnes_reponses / total_reponses) * 100, 1) if total_reponses else 0
+    # ============================================================
+    # STATISTIQUES OPTIMISÉES
+    # ============================================================
+
+    total_reponses = 0
+    moyenne_etoiles = 0
+    bonnes_reponses = 0
+    taux_reussite = 0
+
+    try:
+        total_reponses, moyenne_etoiles, bonnes_reponses = db.session.query(
+            func.count(StudentResponse.id),
+            func.coalesce(func.avg(StudentResponse.etoiles), 0),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (StudentResponse.etoiles >= 3, 1),
+                        else_=0
+                    )
+                ),
+                0
+            )
+        ).filter(
+            StudentResponse.user_id == eleve.id
+        ).one()
+
+        total_reponses = int(total_reponses or 0)
+        moyenne_etoiles = float(moyenne_etoiles or 0)
+        bonnes_reponses = int(bonnes_reponses or 0)
+
+        taux_reussite = round(
+            (bonnes_reponses / total_reponses) * 100,
+            1
+        ) if total_reponses else 0
+
+    except Exception as e:
+        print(f"⚠️ Erreur calcul statistiques dashboard élève: {e}")
 
     stats = {
         "total": total_reponses,
@@ -12434,150 +14710,234 @@ def dashboard_eleve():
         "success": taux_reussite
     }
 
-    # 📊 Statistiques par matière (optionnel - à adapter selon ta structure)
-    stats_par_matiere = []
-    try:
-        # Cette partie dépend de comment tu structures tes exercices
-        # Exemple simple - à adapter selon ton modèle
-        from sqlalchemy import func
-        # Grouper par matière (si tu as cette info)
-        # stats_par_matiere = [...] 
-        pass
-    except:
-        pass
-    
-    if stats_par_matiere:
-        stats['par_matiere'] = stats_par_matiere
+    # ============================================================
+    # RÉPONSES RÉCENTES SEULEMENT
+    # ============================================================
 
-    # 📈 Courbe progression - MOYENNE PAR JOUR
+    reponses_eleve = []
+
+    try:
+        reponses_eleve = (
+            StudentResponse.query
+            .filter_by(user_id=eleve.id)
+            .order_by(StudentResponse.timestamp.desc())
+            .limit(80)
+            .all()
+        )
+
+        reponses_eleve = list(reversed(reponses_eleve))
+
+    except Exception as e:
+        print(f"⚠️ Erreur chargement réponses récentes: {e}")
+        reponses_eleve = []
+
+    # ============================================================
+    # STATISTIQUES PAR MATIÈRE
+    # ============================================================
+
+    stats_par_matiere = []
+
+    try:
+        # À adapter plus tard si les réponses sont liées directement aux matières.
+        pass
+    except Exception as e:
+        print(f"⚠️ Erreur stats par matière: {e}")
+
+    if stats_par_matiere:
+        stats["par_matiere"] = stats_par_matiere
+
+    # ============================================================
+    # GRAPHIQUE DE PROGRESSION OPTIMISÉ
+    # ============================================================
+
     courbe_progression = None
+
     if reponses_eleve:
         try:
-            # Grouper les réponses par date et calculer la moyenne des étoiles par jour
+            import matplotlib
+            matplotlib.use("Agg")
+
+            import matplotlib.pyplot as plt
+            import io
+            import base64
+
             reponses_par_jour = {}
+
             for reponse in reponses_eleve:
+                if not reponse.timestamp:
+                    continue
+
                 date_str = reponse.timestamp.strftime("%Y-%m-%d")
+
                 if date_str not in reponses_par_jour:
                     reponses_par_jour[date_str] = []
+
                 reponses_par_jour[date_str].append(reponse.etoiles or 0)
-            
-            # Calculer la moyenne par jour
-            dates_ordonnees = sorted(reponses_par_jour.keys())
+
+            dates_ordonnees = sorted(reponses_par_jour.keys())[-30:]
             moyennes_journalieres = []
-            
+
             for date_str in dates_ordonnees:
                 etoiles_du_jour = reponses_par_jour[date_str]
                 moyenne_jour = sum(etoiles_du_jour) / len(etoiles_du_jour)
                 moyennes_journalieres.append(round(moyenne_jour, 2))
-            
-            # Formater les dates pour l'affichage
-            dates_formatees = [datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m") for date_str in dates_ordonnees]
 
-            # CRÉER LE GRAPHIQUE
-            plt.style.use('seaborn-v0_8-whitegrid')
-            
-            # Augmenter la taille et la résolution
-            fig = plt.figure(figsize=(8, 4), dpi=150)
-            ax = fig.add_subplot(111)
+            dates_formatees = [
+                datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m")
+                for date_str in dates_ordonnees
+            ]
 
-            # Couleurs modernes
-            primary_color = "#3498db"  # Bleu
-            secondary_color = "#2ecc71"  # Vert
-            text_color = "#2c3e50"
-            grid_color = "#ecf0f1"
+            if dates_formatees and moyennes_journalieres:
+                fig = plt.figure(figsize=(8, 4), dpi=120)
+                ax = fig.add_subplot(111)
 
-            titre = "Moyenne des Étoiles par Jour" if lang == "fr" else "Daily Average Stars"
-            label_y = "Étoiles" if lang == "fr" else "Stars"
+                x_values = list(range(len(dates_formatees)))
 
-            # Tracer la courbe avec des lignes plus fines
-            ax.plot(dates_formatees, moyennes_journalieres, 
-                    marker="o", 
-                    color=primary_color, 
-                    linewidth=2.5, 
-                    markersize=8,
-                    markerfacecolor='white',
+                primary_color = "#3498db"
+                secondary_color = "#2ecc71"
+                text_color = "#2c3e50"
+                grid_color = "#ecf0f1"
+
+                titre = (
+                    "Moyenne des étoiles par jour"
+                    if lang == "fr"
+                    else "Daily average stars"
+                )
+
+                label_y = "Étoiles" if lang == "fr" else "Stars"
+
+                ax.plot(
+                    x_values,
+                    moyennes_journalieres,
+                    marker="o",
+                    color=primary_color,
+                    linewidth=2.2,
+                    markersize=6,
+                    markerfacecolor="white",
                     markeredgecolor=primary_color,
-                    markeredgewidth=2,
-                    alpha=0.9)
-            
-            # Ajouter une zone ombrée sous la courbe
-            ax.fill_between(dates_formatees, moyennes_journalieres, 
-                           alpha=0.1, color=primary_color)
-            
-            # Définir les limites et le style des axes
-            ax.set_title(titre, fontsize=14, fontweight='bold', color=text_color, pad=15)
-            ax.set_ylabel(label_y, fontweight='bold', fontsize=12, color=text_color)
-            ax.set_ylim(0, 5.5)
-            
-            # Personnaliser les ticks
-            ax.tick_params(axis='both', which='major', labelsize=10, colors=text_color)
-            ax.tick_params(axis='x', rotation=45)
-            
-            # Améliorer la grille
-            ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5, color=grid_color)
-            
-            # Ajouter les valeurs sur les points avec un style amélioré
-            for i, (date, valeur) in enumerate(zip(dates_formatees, moyennes_journalieres)):
-                ax.annotate(f'{valeur:.1f}', 
-                           (date, valeur), 
-                           textcoords="offset points", 
-                           xytext=(0, 12), 
-                           ha='center', 
-                           fontsize=9,
-                           fontweight='bold',
-                           color=primary_color,
-                           bbox=dict(boxstyle="round,pad=0.3", 
-                                    facecolor='white', 
-                                    edgecolor=primary_color,
-                                    alpha=0.8))
-            
-            # Ajouter une ligne horizontale pour la moyenne générale
-            moyenne_generale = stats["average"]
-            ax.axhline(y=moyenne_generale, color=secondary_color, linestyle='--', 
-                      linewidth=1.5, alpha=0.7, label=f'Moyenne: {moyenne_generale:.1f}')
-            
-            # Ajouter la légende
-            ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
-            
-            # Ajuster les marges
-            fig.tight_layout(pad=3.0)
-            
-            # Sauvegarder avec une meilleure qualité
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", dpi=150, bbox_inches='tight', 
-                       facecolor=fig.get_facecolor(), edgecolor='none')
-            buf.seek(0)
-            courbe_progression = base64.b64encode(buf.read()).decode('utf-8')
-            buf.close()
-            plt.close(fig)
-            plt.style.use('default')  # Réinitialiser le style
+                    markeredgewidth=1.5,
+                    alpha=0.9
+                )
+
+                ax.fill_between(
+                    x_values,
+                    moyennes_journalieres,
+                    alpha=0.08,
+                    color=primary_color
+                )
+
+                ax.set_title(
+                    titre,
+                    fontsize=13,
+                    fontweight="bold",
+                    color=text_color,
+                    pad=12
+                )
+
+                ax.set_ylabel(
+                    label_y,
+                    fontweight="bold",
+                    fontsize=11,
+                    color=text_color
+                )
+
+                ax.set_ylim(0, 5.5)
+
+                ax.set_xticks(x_values)
+                ax.set_xticklabels(dates_formatees, rotation=45, ha="right")
+
+                ax.tick_params(axis="both", which="major", labelsize=9, colors=text_color)
+                ax.grid(True, alpha=0.25, linestyle="--", linewidth=0.5, color=grid_color)
+
+                for i, valeur in enumerate(moyennes_journalieres):
+                    ax.annotate(
+                        f"{valeur:.1f}",
+                        (i, valeur),
+                        textcoords="offset points",
+                        xytext=(0, 10),
+                        ha="center",
+                        fontsize=8,
+                        fontweight="bold",
+                        color=primary_color
+                    )
+
+                moyenne_generale = stats["average"]
+
+                ax.axhline(
+                    y=moyenne_generale,
+                    color=secondary_color,
+                    linestyle="--",
+                    linewidth=1.2,
+                    alpha=0.7,
+                    label=f"Moyenne: {moyenne_generale:.1f}"
+                )
+
+                ax.legend(loc="upper right", fontsize=9, framealpha=0.9)
+
+                fig.tight_layout(pad=2.0)
+
+                buf = io.BytesIO()
+                fig.savefig(
+                    buf,
+                    format="png",
+                    dpi=120,
+                    bbox_inches="tight",
+                    facecolor=fig.get_facecolor(),
+                    edgecolor="none"
+                )
+
+                buf.seek(0)
+                courbe_progression = base64.b64encode(buf.read()).decode("utf-8")
+                buf.close()
+                plt.close(fig)
+
         except Exception as e:
-            print(f"Erreur création graphique: {e}")
+            print(f"⚠️ Erreur création graphique dashboard élève: {e}")
             courbe_progression = None
 
-    # ⏰ CALCUL TEMPS RESTANT ESSAI GRATUIT
+    # ============================================================
+    # TEMPS RESTANT ESSAI GRATUIT
+    # ============================================================
+
     temps_restant = None
     pourcentage_temps_restant = 100
     total_seconds = 0
-    
-    if hasattr(eleve, 'est_en_essai_gratuit') and eleve.est_en_essai_gratuit() and hasattr(eleve, 'date_fin_essai') and eleve.date_fin_essai:
+
+    if (
+        hasattr(eleve, "est_en_essai_gratuit")
+        and eleve.est_en_essai_gratuit()
+        and hasattr(eleve, "date_fin_essai")
+        and eleve.date_fin_essai
+    ):
         maintenant = datetime.utcnow()
+
         if maintenant < eleve.date_fin_essai:
             temps_restant = eleve.date_fin_essai - maintenant
             total_seconds = int(temps_restant.total_seconds())
-            
-            # Calculer le pourcentage de temps restant
-            if hasattr(eleve, 'date_inscription'):
+
+            if hasattr(eleve, "date_inscription") and eleve.date_inscription:
                 duree_totale = eleve.date_fin_essai - eleve.date_inscription
                 temps_ecoule = maintenant - eleve.date_inscription
-                
-                if duree_totale.total_seconds() > 0:
-                    pourcentage_temps_restant = max(0, min(100, 
-                        100 - (temps_ecoule.total_seconds() / duree_totale.total_seconds() * 100)
-                    ))
 
-    # 🎯 OBJECTIFS DU JOUR
+                if duree_totale.total_seconds() > 0:
+                    pourcentage_temps_restant = max(
+                        0,
+                        min(
+                            100,
+                            100 - (
+                                temps_ecoule.total_seconds()
+                                / duree_totale.total_seconds()
+                                * 100
+                            )
+                        )
+                    )
+
+    # ============================================================
+    # OBJECTIFS DU JOUR
+    # ============================================================
+
     remediations_completees = 0
+
     try:
         remediations_completees = RemediationSuggestion.query.filter(
             and_(
@@ -12586,129 +14946,197 @@ def dashboard_eleve():
                 RemediationSuggestion.reponse_eleve.isnot(None)
             )
         ).count()
-    except:
-        pass
 
-    # Créer les objectifs du jour
+    except Exception as e:
+        print(f"⚠️ Erreur calcul remédiations complétées: {e}")
+        remediations_completees = 0
+
     objectifs_du_jour = []
 
-    # Objectif 1: Compléter au moins 1 exercice
     objectif1_completed = stats["total"] > 0
-    objectif1_progress = f"({stats['total']} complété(s))" if lang == "fr" else f"({stats['total']} completed)"
+    objectif1_progress = (
+        f"({stats['total']} complété(s))"
+        if lang == "fr"
+        else f"({stats['total']} completed)"
+    )
+
     objectifs_du_jour.append({
-        'text': "Compléter 1 exercice" if lang == "fr" else "Complete 1 exercise",
-        'completed': objectif1_completed,
-        'progress': objectif1_progress
+        "text": "Compléter 1 exercice" if lang == "fr" else "Complete 1 exercise",
+        "completed": objectif1_completed,
+        "progress": objectif1_progress
     })
 
-    # Objectif 2: Moyenne 3+ étoiles
     objectif2_completed = stats["average"] >= 3
-    objectif2_progress = f"(Actuel : {stats['average']}/5)" if lang == "fr" else f"(Current: {stats['average']}/5)"
+    objectif2_progress = (
+        f"(Actuel : {stats['average']}/5)"
+        if lang == "fr"
+        else f"(Current: {stats['average']}/5)"
+    )
+
     objectifs_du_jour.append({
-        'text': "Moyenne 3+ étoiles" if lang == "fr" else "3+ star average",
-        'completed': objectif2_completed,
-        'progress': objectif2_progress
+        "text": "Moyenne 3+ étoiles" if lang == "fr" else "3+ star average",
+        "completed": objectif2_completed,
+        "progress": objectif2_progress
     })
 
-    # Objectif 3: Compléter une remédiation
     objectif3_completed = remediations_completees > 0
-    objectif3_progress = f"({remediations_completees} complétée(s))" if lang == "fr" else f"({remediations_completees} completed)"
+    objectif3_progress = (
+        f"({remediations_completees} complétée(s))"
+        if lang == "fr"
+        else f"({remediations_completees} completed)"
+    )
+
     objectifs_du_jour.append({
-        'text': "Compléter 1 remédiation" if lang == "fr" else "Complete 1 remediation",
-        'completed': objectif3_completed,
-        'progress': objectif3_progress
+        "text": "Compléter 1 remédiation" if lang == "fr" else "Complete 1 remediation",
+        "completed": objectif3_completed,
+        "progress": objectif3_progress
     })
 
-    # Calculer la progression quotidienne
     total_objectifs = len(objectifs_du_jour)
-    objectifs_completes = sum(1 for obj in objectifs_du_jour if obj['completed'])
-    progression_percent = int((objectifs_completes / total_objectifs) * 100) if total_objectifs > 0 else 0
+    objectifs_completes = sum(1 for obj in objectifs_du_jour if obj["completed"])
+
+    progression_percent = (
+        int((objectifs_completes / total_objectifs) * 100)
+        if total_objectifs > 0
+        else 0
+    )
 
     progression_quotidienne = {
-        'completed': objectifs_completes,
-        'total': total_objectifs,
-        'percent': progression_percent
-    }
-    
-    # ✅ STATUT DE PAIEMENT
-    statut_paiement_info = {
-        'est_en_essai': hasattr(eleve, 'est_en_essai_gratuit') and eleve.est_en_essai_gratuit(),
-        'est_paye': eleve.statut_paiement == "paye",
-        'essai_expire': hasattr(eleve, 'essai_est_expire') and eleve.essai_est_expire(),
-        'jours_restants_abonnement': eleve.jours_restants_abonnement() if hasattr(eleve, 'jours_restants_abonnement') else 0
+        "completed": objectifs_completes,
+        "total": total_objectifs,
+        "percent": progression_percent
     }
 
-    # ===== RECOMMANDATIONS NAIMA PERSONNALISÉES =====
+    # ============================================================
+    # STATUT DE PAIEMENT
+    # ============================================================
+
+    statut_paiement_info = {
+        "est_en_essai": hasattr(eleve, "est_en_essai_gratuit") and eleve.est_en_essai_gratuit(),
+        "est_paye": eleve.statut_paiement == "paye",
+        "essai_expire": hasattr(eleve, "essai_est_expire") and eleve.essai_est_expire(),
+        "jours_restants_abonnement": (
+            eleve.jours_restants_abonnement()
+            if hasattr(eleve, "jours_restants_abonnement")
+            else 0
+        )
+    }
+
+    # ============================================================
+    # RECOMMANDATIONS NAIMA PERSONNALISÉES
+    # ============================================================
+
     naima_recommendations = []
     naima_recommendations_count = 0
 
     if stats["total"] == 0:
-        # Nouvel élève - pas encore d'exercices
         naima_recommendations.append({
-            'icon': 'fas fa-play-circle',
-            'titre': 'Commence ton premier exercice !' if lang == 'fr' else 'Start your first exercise!',
-            'description': 'Naima est là pour t\'aider à faire tes premiers pas. Pose-lui une question ou commence un exercice par leçon.' if lang == 'fr' else 'Naima is here to help you take your first steps. Ask her a question or start a lesson exercise.',
-            'theme': 'Débutant' if lang == 'fr' else 'Beginner',
-            'lien': '/enseignant-virtuel'
+            "icon": "fas fa-play-circle",
+            "titre": "Commence ton premier exercice !" if lang == "fr" else "Start your first exercise!",
+            "description": (
+                "Naima est là pour t'aider à faire tes premiers pas. "
+                "Pose-lui une question ou commence un exercice par leçon."
+                if lang == "fr"
+                else
+                "Naima is here to help you take your first steps. "
+                "Ask her a question or start a lesson exercise."
+            ),
+            "theme": "Débutant" if lang == "fr" else "Beginner",
+            "lien": "/enseignant-virtuel"
         })
+
         naima_recommendations_count = 1
-        
+
     elif stats["average"] < 3:
-        # Performances faibles - besoin de progression
         naima_recommendations.append({
-            'icon': 'fas fa-chart-line',
-            'titre': 'Progressons ensemble !' if lang == 'fr' else 'Let\'s improve together!',
-            'description': f'Ta moyenne est de {stats["average"]}/5. Naima peut t\'aider à comprendre tes erreurs et à t\'améliorer.' if lang == 'fr' else f'Your average is {stats["average"]}/5. Naima can help you understand your mistakes and improve.',
-            'theme': 'Progression' if lang == 'fr' else 'Improvement',
-            'lien': '/enseignant-virtuel'
+            "icon": "fas fa-chart-line",
+            "titre": "Progressons ensemble !" if lang == "fr" else "Let's improve together!",
+            "description": (
+                f"Ta moyenne est de {stats['average']}/5. "
+                "Naima peut t'aider à comprendre tes erreurs et à t'améliorer."
+                if lang == "fr"
+                else
+                f"Your average is {stats['average']}/5. "
+                "Naima can help you understand your mistakes and improve."
+            ),
+            "theme": "Progression" if lang == "fr" else "Improvement",
+            "lien": "/enseignant-virtuel"
         })
+
         naima_recommendations_count = 1
-        
-        # Si des remédiations non lues existent, ajouter une recommandation
+
         if remediations_non_lues:
             naima_recommendations.append({
-                'icon': 'fas fa-tools',
-                'titre': 'Remédiation disponible' if lang == 'fr' else 'Remediation available',
-                'description': 'Des exercices ciblés t\'attendent pour renforcer tes compétences sur les sujets difficiles.' if lang == 'fr' else 'Targeted exercises await to strengthen your skills on difficult topics.',
-                'theme': 'Remédiation' if lang == 'fr' else 'Remediation',
-                'lien': '/eleve/remediations'
+                "icon": "fas fa-tools",
+                "titre": "Remédiation disponible" if lang == "fr" else "Remediation available",
+                "description": (
+                    "Des exercices ciblés t'attendent pour renforcer tes compétences "
+                    "sur les sujets difficiles."
+                    if lang == "fr"
+                    else
+                    "Targeted exercises await to strengthen your skills on difficult topics."
+                ),
+                "theme": "Remédiation" if lang == "fr" else "Remediation",
+                "lien": "/eleve/remediations"
             })
-            naima_recommendations_count = 2
-            
-    elif stats["average"] >= 4:
-        # Excellent élève
-        naima_recommendations.append({
-            'icon': 'fas fa-trophy',
-            'titre': 'Excellent travail !' if lang == 'fr' else 'Excellent work!',
-            'description': 'Tu progresses très bien ! Naima peut te proposer des défis plus avancés pour continuer à te dépasser.' if lang == 'fr' else 'You\'re doing great! Naima can offer you more advanced challenges to keep pushing yourself.',
-            'theme': 'Défi' if lang == 'fr' else 'Challenge',
-            'lien': '/enseignant-virtuel'
-        })
-        naima_recommendations_count = 1
-        
-    else:
-        # Bon élève (moyenne entre 3 et 4)
-        naima_recommendations.append({
-            'icon': 'fas fa-star',
-            'titre': 'Bon travail !' if lang == 'fr' else 'Good work!',
-            'description': 'Tu fais du bon travail. Continue comme ça ! Naima est là si tu as des questions.' if lang == 'fr' else 'You\'re doing good work. Keep it up! Naima is here if you have questions.',
-            'theme': 'Encouragement' if lang == 'fr' else 'Encouragement',
-            'lien': '/enseignant-virtuel'
-        })
-        naima_recommendations_count = 1
-        
-        # Si des remédiations existent, les suggérer
-        if remediations_non_lues:
-            naima_recommendations.append({
-                'icon': 'fas fa-tools',
-                'titre': 'Remédiation disponible' if lang == 'fr' else 'Remediation available',
-                'description': 'Des exercices de renforcement t\'attendent pour consolider tes acquis.' if lang == 'fr' else 'Reinforcement exercises await to consolidate your knowledge.',
-                'theme': 'Renforcement' if lang == 'fr' else 'Reinforcement',
-                'lien': '/eleve/remediations'
-            })
+
             naima_recommendations_count = 2
 
-    # ===== FIN RECOMMANDATIONS NAIMA =====
+    elif stats["average"] >= 4:
+        naima_recommendations.append({
+            "icon": "fas fa-trophy",
+            "titre": "Excellent travail !" if lang == "fr" else "Excellent work!",
+            "description": (
+                "Tu progresses très bien ! Naima peut te proposer des défis plus avancés "
+                "pour continuer à te dépasser."
+                if lang == "fr"
+                else
+                "You're doing great! Naima can offer you more advanced challenges "
+                "to keep pushing yourself."
+            ),
+            "theme": "Défi" if lang == "fr" else "Challenge",
+            "lien": "/enseignant-virtuel"
+        })
+
+        naima_recommendations_count = 1
+
+    else:
+        naima_recommendations.append({
+            "icon": "fas fa-star",
+            "titre": "Bon travail !" if lang == "fr" else "Good work!",
+            "description": (
+                "Tu fais du bon travail. Continue comme ça ! "
+                "Naima est là si tu as des questions."
+                if lang == "fr"
+                else
+                "You're doing good work. Keep it up! "
+                "Naima is here if you have questions."
+            ),
+            "theme": "Encouragement" if lang == "fr" else "Encouragement",
+            "lien": "/enseignant-virtuel"
+        })
+
+        naima_recommendations_count = 1
+
+        if remediations_non_lues:
+            naima_recommendations.append({
+                "icon": "fas fa-tools",
+                "titre": "Remédiation disponible" if lang == "fr" else "Remediation available",
+                "description": (
+                    "Des exercices de renforcement t'attendent pour consolider tes acquis."
+                    if lang == "fr"
+                    else
+                    "Reinforcement exercises await to consolidate your knowledge."
+                ),
+                "theme": "Renforcement" if lang == "fr" else "Reinforcement",
+                "lien": "/eleve/remediations"
+            })
+
+            naima_recommendations_count = 2
+
+    # ============================================================
+    # RENDU TEMPLATE
+    # ============================================================
 
     return render_template(
         "dashboard_eleve.html",
@@ -12726,7 +15154,6 @@ def dashboard_eleve():
         remediations_completees=remediations_completees,
         date_du_jour=datetime.utcnow(),
         statut_paiement_info=statut_paiement_info,
-        # 👇 NOUVELLES VARIABLES POUR NAIMA
         naima_recommendations=naima_recommendations,
         naima_recommendations_count=naima_recommendations_count
     )
@@ -15667,6 +18094,727 @@ def reset_contest(reponse_id):
         db.session.rollback()
         print(f"❌ Erreur reset_contest: {str(e)}")
         return jsonify({'success': False, 'message': f'Erreur: {str(e)}'})
+
+@app.route("/admin/traces-apprentissage")
+def admin_traces_apprentissage():
+    import json
+    from models import TraceApprentissage, User
+    from sqlalchemy.orm import joinedload
+
+    sort = request.args.get("sort", "date_desc")
+    risque = request.args.get("risque", "tous")
+    action = request.args.get("action", "tous")
+    q = request.args.get("q", "").strip()
+
+    query = (
+        TraceApprentissage.query
+        .options(
+            joinedload(TraceApprentissage.user),
+            joinedload(TraceApprentissage.matiere),
+            joinedload(TraceApprentissage.unite),
+            joinedload(TraceApprentissage.lecon),
+            joinedload(TraceApprentissage.exercice)
+        )
+    )
+
+    if risque != "tous":
+        query = query.filter(TraceApprentissage.niveau_risque == risque)
+
+    if action != "tous":
+        query = query.filter(TraceApprentissage.type_action == action)
+
+    if q:
+        query = (
+            query
+            .outerjoin(User, TraceApprentissage.user_id == User.id)
+            .filter(
+                db.or_(
+                    User.nom_complet.ilike(f"%{q}%"),
+                    User.username.ilike(f"%{q}%"),
+                    TraceApprentissage.notion_cible.ilike(f"%{q}%"),
+                    TraceApprentissage.source.ilike(f"%{q}%"),
+                    TraceApprentissage.type_action.ilike(f"%{q}%")
+                )
+            )
+        )
+
+    if sort == "date_asc":
+        query = query.order_by(TraceApprentissage.created_at.asc())
+    elif sort == "score_desc":
+        query = query.order_by(TraceApprentissage.score.desc().nullslast())
+    elif sort == "score_asc":
+        query = query.order_by(TraceApprentissage.score.asc().nullsfirst())
+    elif sort == "risque":
+        query = query.order_by(TraceApprentissage.niveau_risque.asc())
+    elif sort == "eleve":
+        query = query.outerjoin(User, TraceApprentissage.user_id == User.id).order_by(User.nom_complet.asc())
+    elif sort == "notion":
+        query = query.order_by(TraceApprentissage.notion_cible.asc().nullslast())
+    else:
+        query = query.order_by(TraceApprentissage.created_at.desc())
+
+    traces = query.limit(100).all()
+
+    for trace in traces:
+        detail = {}
+
+        try:
+            if trace.analyse_ia:
+                detail = json.loads(trace.analyse_ia)
+        except Exception:
+            detail = {}
+
+        trace.detail_ia = detail
+        trace.feedback_lisible = detail.get("current_feedback", trace.analyse_ia or "")
+        trace.score_sur_5 = detail.get("current_stars")
+
+        metadata = detail.get("metadata", {})
+        trace.langue_trace = metadata.get("language") or (trace.meta_json or {}).get("lang") or "fr"
+
+        trace.question_lisible = (
+            (trace.meta_json or {}).get("question_en")
+            if trace.langue_trace == "en"
+            else (trace.meta_json or {}).get("question_fr")
+        )
+
+        trace.reponse_attendue_lisible = (
+            (trace.meta_json or {}).get("reponse_attendue_en")
+            if trace.langue_trace == "en"
+            else (trace.meta_json or {}).get("reponse_attendue_fr")
+        )
+
+        trace.correction_symbolique = (
+            detail.get("symbolic_verification", {}).get("feedback")
+            or (trace.meta_json or {}).get("symbolic_feedback")
+            or ""
+        )
+
+        trace.prochain_adaptatif = (
+            detail.get("adaptive_next")
+            or (trace.meta_json or {}).get("adaptive_next")
+            or {}
+        )
+
+    return render_template(
+        "admin_traces_apprentissage.html",
+        traces=traces,
+        sort=sort,
+        risque=risque,
+        action=action,
+        q=q
+    )
+
+@app.route("/admin/synthese-notions")
+@admin_required
+def admin_synthese_notions():
+    import json
+    from datetime import datetime
+    from models import TraceApprentissage, User
+    from sqlalchemy.orm import joinedload
+
+    # ============================================================
+    # 1. PARAMÈTRES
+    # ============================================================
+
+    q = request.args.get("q", "").strip()
+    risque_filtre = request.args.get("risque", "tous")
+    sort = request.args.get("sort", "risque")
+    lang = session.get("lang", "fr")
+
+    # ============================================================
+    # 2. CHARGER LES TRACES GLOBALES
+    # ============================================================
+
+    traces = (
+        TraceApprentissage.query
+        .options(
+            joinedload(TraceApprentissage.user),
+            joinedload(TraceApprentissage.matiere),
+            joinedload(TraceApprentissage.unite),
+            joinedload(TraceApprentissage.lecon),
+            joinedload(TraceApprentissage.exercice)
+        )
+        .order_by(TraceApprentissage.created_at.desc())
+        .limit(3000)
+        .all()
+    )
+
+    # ============================================================
+    # 3. OUTILS INTERNES
+    # ============================================================
+
+    def lire_meta_json(trace):
+        meta = trace.meta_json or {}
+
+        if isinstance(meta, dict):
+            return meta
+
+        if isinstance(meta, str):
+            try:
+                return json.loads(meta)
+            except Exception:
+                return {}
+
+        return {}
+
+    enseignants_cache = {}
+
+    def trouver_enseignant_pour_eleve(eleve):
+        if not eleve:
+            return None
+
+        enseignant_id = (
+            getattr(eleve, "enseignant_referent_id", None)
+            or getattr(eleve, "enseignant_id", None)
+        )
+
+        if not enseignant_id:
+            return None
+
+        if enseignant_id in enseignants_cache:
+            return enseignants_cache[enseignant_id]
+
+        enseignant = db.session.get(User, enseignant_id)
+        enseignants_cache[enseignant_id] = enseignant
+
+        return enseignant
+
+    # ============================================================
+    # 4. AGRÉGER PAR NOTION
+    # ============================================================
+
+    notions = {}
+
+    for trace in traces:
+        meta = lire_meta_json(trace)
+
+        notion = (
+            trace.notion_cible
+            or meta.get("notion_cible")
+            or "Notion non précisée"
+        )
+
+        notion = str(notion).strip() or "Notion non précisée"
+
+        if notion not in notions:
+            notions[notion] = {
+                "notion": notion,
+                "traces_count": 0,
+
+                "eleves_ids": set(),
+                "eleves": {},
+
+                "enseignants_ids": set(),
+                "enseignants": {},
+
+                "scores": [],
+                "risques": {
+                    "faible": 0,
+                    "moyen": 0,
+                    "élevé": 0
+                },
+                "erreurs": {},
+                "matieres": {},
+                "lecons": {},
+                "dernieres_traces": [],
+                "derniere_date": None
+            }
+
+        bloc = notions[notion]
+        bloc["traces_count"] += 1
+
+        # ------------------------------------------------------------
+        # Élève
+        # ------------------------------------------------------------
+
+        if trace.user_id:
+            bloc["eleves_ids"].add(trace.user_id)
+
+        if trace.user:
+            bloc["eleves"][trace.user_id] = {
+                "id": trace.user_id,
+                "nom": trace.user.nom_complet or trace.user.username or f"Élève {trace.user_id}",
+                "username": trace.user.username or "",
+                "email": getattr(trace.user, "email", "") or ""
+            }
+        elif trace.user_id:
+            bloc["eleves"][trace.user_id] = {
+                "id": trace.user_id,
+                "nom": f"Élève {trace.user_id}",
+                "username": "",
+                "email": ""
+            }
+
+        # ------------------------------------------------------------
+        # Enseignant associé à l'élève
+        # ------------------------------------------------------------
+
+        enseignant = trouver_enseignant_pour_eleve(trace.user)
+
+        if enseignant:
+            bloc["enseignants_ids"].add(enseignant.id)
+            bloc["enseignants"][enseignant.id] = {
+                "id": enseignant.id,
+                "nom": enseignant.nom_complet or enseignant.username or f"Enseignant {enseignant.id}",
+                "username": enseignant.username or "",
+                "email": enseignant.email or ""
+            }
+
+        # ------------------------------------------------------------
+        # Score
+        # ------------------------------------------------------------
+
+        if trace.score is not None:
+            bloc["scores"].append(trace.score)
+
+        # ------------------------------------------------------------
+        # Risque
+        # ------------------------------------------------------------
+
+        if trace.niveau_risque in bloc["risques"]:
+            bloc["risques"][trace.niveau_risque] += 1
+
+        # ------------------------------------------------------------
+        # Erreurs
+        # ------------------------------------------------------------
+
+        type_erreur = (
+            trace.type_erreur
+            or meta.get("type_erreur")
+        )
+
+        if type_erreur:
+            type_erreur = str(type_erreur).strip()
+            bloc["erreurs"][type_erreur] = bloc["erreurs"].get(type_erreur, 0) + 1
+
+        # ------------------------------------------------------------
+        # Matière
+        # ------------------------------------------------------------
+
+        matiere_nom = (
+            meta.get("matiere_fr")
+            or meta.get("matiere_en")
+            or (trace.matiere.nom if trace.matiere else None)
+            or "Matière non précisée"
+        )
+
+        bloc["matieres"][matiere_nom] = bloc["matieres"].get(matiere_nom, 0) + 1
+
+        # ------------------------------------------------------------
+        # Leçon
+        # ------------------------------------------------------------
+
+        lecon_nom = (
+            meta.get("lecon_fr")
+            or meta.get("lecon_en")
+            or (trace.lecon.titre_fr if trace.lecon else None)
+            or (trace.lecon.nom if trace.lecon and hasattr(trace.lecon, "nom") else None)
+            or "Leçon non précisée"
+        )
+
+        bloc["lecons"][lecon_nom] = bloc["lecons"].get(lecon_nom, 0) + 1
+
+        # ------------------------------------------------------------
+        # Date
+        # ------------------------------------------------------------
+
+        if trace.created_at:
+            if not bloc["derniere_date"] or trace.created_at > bloc["derniere_date"]:
+                bloc["derniere_date"] = trace.created_at
+
+        if len(bloc["dernieres_traces"]) < 5:
+            bloc["dernieres_traces"].append(trace)
+
+    # ============================================================
+    # 5. TRANSFORMER EN LISTE LISIBLE
+    # ============================================================
+
+    notions_synthese = []
+
+    for notion, bloc in notions.items():
+        scores = bloc["scores"]
+        score_moyen = round(sum(scores) / len(scores), 1) if scores else 0
+
+        if bloc["risques"]["élevé"] > 0:
+            risque_dominant = "élevé"
+        elif bloc["risques"]["moyen"] > 0:
+            risque_dominant = "moyen"
+        elif bloc["risques"]["faible"] > 0:
+            risque_dominant = "faible"
+        else:
+            risque_dominant = "non défini"
+
+        erreurs_frequentes = sorted(
+            bloc["erreurs"].items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+
+        matieres_frequentes = sorted(
+            bloc["matieres"].items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+
+        lecons_frequentes = sorted(
+            bloc["lecons"].items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+
+        eleves_liste = list(bloc["eleves"].values())
+        enseignants_liste = list(bloc["enseignants"].values())
+
+        if risque_dominant == "élevé":
+            recommandation = (
+                "Notion à surveiller fortement : plusieurs traces indiquent un risque élevé. Une analyse pédagogique ou une remédiation ciblée peut être nécessaire."
+                if lang == "fr"
+                else "High-priority concept: several traces indicate high risk. A pedagogical review or targeted remediation may be needed."
+            )
+        elif risque_dominant == "moyen":
+            recommandation = (
+                "Notion à suivre : des difficultés apparaissent. Il peut être utile d’observer les erreurs fréquentes et les enseignants concernés."
+                if lang == "fr"
+                else "Concept to monitor: difficulties are emerging. It may be useful to review frequent errors and concerned teachers."
+            )
+        elif risque_dominant == "faible":
+            recommandation = (
+                "Notion globalement maîtrisée selon les traces disponibles."
+                if lang == "fr"
+                else "Concept mostly mastered based on available traces."
+            )
+        else:
+            recommandation = (
+                "Données insuffisantes pour tirer une conclusion fiable."
+                if lang == "fr"
+                else "Not enough data to draw a reliable conclusion."
+            )
+
+        item = {
+            "notion": notion,
+            "traces_count": bloc["traces_count"],
+
+            "eleves_count": len(bloc["eleves_ids"]),
+            "eleves": eleves_liste,
+
+            "enseignants_count": len(bloc["enseignants_ids"]),
+            "enseignants": enseignants_liste,
+
+            "score_moyen": score_moyen,
+            "risque_dominant": risque_dominant,
+            "risques": bloc["risques"],
+
+            "erreurs_frequentes": erreurs_frequentes,
+            "matieres_frequentes": matieres_frequentes,
+            "lecons_frequentes": lecons_frequentes,
+
+            "dernieres_traces": bloc["dernieres_traces"],
+            "derniere_date": bloc["derniere_date"],
+
+            "recommandation": recommandation
+        }
+
+        notions_synthese.append(item)
+
+    # ============================================================
+    # 6. FILTRES
+    # ============================================================
+
+    if q:
+        q_lower = q.lower()
+
+        notions_synthese = [
+            item for item in notions_synthese
+            if (
+                q_lower in item["notion"].lower()
+                or any(q_lower in matiere.lower() for matiere, _ in item["matieres_frequentes"])
+                or any(q_lower in lecon.lower() for lecon, _ in item["lecons_frequentes"])
+                or any(q_lower in erreur.lower() for erreur, _ in item["erreurs_frequentes"])
+                or any(q_lower in (eleve.get("nom", "").lower()) for eleve in item["eleves"])
+                or any(q_lower in (eleve.get("username", "").lower()) for eleve in item["eleves"])
+                or any(q_lower in (enseignant.get("nom", "").lower()) for enseignant in item["enseignants"])
+                or any(q_lower in (enseignant.get("email", "").lower()) for enseignant in item["enseignants"])
+            )
+        ]
+
+    if risque_filtre != "tous":
+        notions_synthese = [
+            item for item in notions_synthese
+            if item["risque_dominant"] == risque_filtre
+        ]
+
+    # ============================================================
+    # 7. TRI
+    # ============================================================
+
+    if sort == "score_asc":
+        notions_synthese.sort(key=lambda x: x["score_moyen"])
+
+    elif sort == "score_desc":
+        notions_synthese.sort(key=lambda x: x["score_moyen"], reverse=True)
+
+    elif sort == "traces":
+        notions_synthese.sort(key=lambda x: x["traces_count"], reverse=True)
+
+    elif sort == "eleves":
+        notions_synthese.sort(key=lambda x: x["eleves_count"], reverse=True)
+
+    elif sort == "date":
+        notions_synthese.sort(
+            key=lambda x: x["derniere_date"] or datetime.min,
+            reverse=True
+        )
+
+    else:
+        ordre_risque = {
+            "élevé": 3,
+            "moyen": 2,
+            "faible": 1,
+            "non défini": 0
+        }
+
+        notions_synthese.sort(
+            key=lambda x: (
+                ordre_risque.get(x["risque_dominant"], 0),
+                x["eleves_count"],
+                x["traces_count"]
+            ),
+            reverse=True
+        )
+
+    # ============================================================
+    # 8. STATISTIQUES GLOBALES AFFICHÉES
+    # ============================================================
+
+    eleves_uniques = set()
+    enseignants_uniques = set()
+
+    for item in notions_synthese:
+        for eleve in item["eleves"]:
+            if eleve.get("id"):
+                eleves_uniques.add(eleve["id"])
+
+        for enseignant in item["enseignants"]:
+            if enseignant.get("id"):
+                enseignants_uniques.add(enseignant["id"])
+
+    # ============================================================
+    # 9. RENDU
+    # ============================================================
+
+    return render_template(
+        "admin_synthese_notions.html",
+        notions_synthese=notions_synthese,
+
+        total_notions=len(notions_synthese),
+        total_traces=sum(item["traces_count"] for item in notions_synthese),
+        total_eleves=len(eleves_uniques),
+        total_enseignants=len(enseignants_uniques),
+
+        q=q,
+        risque=risque_filtre,
+        sort=sort,
+        lang=lang
+    )
+
+@app.route("/enseignant/traces-apprentissage")
+def enseignant_traces_apprentissage():
+    import json
+    from models import TraceApprentissage, User
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy import or_
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT PAR SESSION
+    # ============================================================
+
+    if "user_id" not in session:
+        flash("Veuillez vous connecter comme enseignant.", "warning")
+        return redirect(url_for("login_enseignant"))
+
+    if session.get("role") != "enseignant":
+        flash("Accès réservé aux enseignants.", "danger")
+        return redirect(url_for("login_enseignant"))
+
+    enseignant = db.session.get(User, session["user_id"])
+
+    if not enseignant:
+        session.clear()
+        flash("Session invalide. Veuillez vous reconnecter.", "warning")
+        return redirect(url_for("login_enseignant"))
+
+    if getattr(enseignant, "role", None) != "enseignant":
+        session.clear()
+        flash("Accès réservé aux enseignants.", "danger")
+        return redirect(url_for("login_enseignant"))
+
+    # ============================================================
+    # PARAMÈTRES
+    # ============================================================
+
+    sort = request.args.get("sort", "date_desc")
+    risque = request.args.get("risque", "tous")
+    q = request.args.get("q", "").strip()
+    lang = session.get("lang", getattr(enseignant, "langue", None) or "fr")
+
+    # ============================================================
+    # ÉLÈVES RATTACHÉS À L'ENSEIGNANT
+    # ============================================================
+
+    eleves = User.query.filter(
+        User.role.in_(["eleve", "élève"]),
+        User.enseignant_referent_id == enseignant.id
+    ).all()
+
+    if not eleves and hasattr(User, "enseignant_id"):
+        eleves = User.query.filter(
+            User.role.in_(["eleve", "élève"]),
+            User.enseignant_id == enseignant.id
+        ).all()
+
+    eleves_ids = [eleve.id for eleve in eleves]
+
+    if not eleves_ids:
+        return render_template(
+            "enseignant_traces_apprentissage.html",
+            traces=[],
+            sort=sort,
+            risque=risque,
+            q=q,
+            lang=lang
+        )
+
+    # ============================================================
+    # REQUÊTE PRINCIPALE
+    # ============================================================
+
+    query = (
+        TraceApprentissage.query
+        .options(
+            joinedload(TraceApprentissage.user),
+            joinedload(TraceApprentissage.matiere),
+            joinedload(TraceApprentissage.unite),
+            joinedload(TraceApprentissage.lecon),
+            joinedload(TraceApprentissage.exercice)
+        )
+        .outerjoin(User, TraceApprentissage.user_id == User.id)
+        .filter(TraceApprentissage.user_id.in_(eleves_ids))
+    )
+
+    if risque != "tous":
+        query = query.filter(TraceApprentissage.niveau_risque == risque)
+
+    if q:
+        query = query.filter(
+            or_(
+                User.nom_complet.ilike(f"%{q}%"),
+                User.username.ilike(f"%{q}%"),
+                TraceApprentissage.notion_cible.ilike(f"%{q}%"),
+                TraceApprentissage.source.ilike(f"%{q}%"),
+                TraceApprentissage.type_action.ilike(f"%{q}%")
+            )
+        )
+
+    # ============================================================
+    # TRI
+    # ============================================================
+
+    if sort == "date_asc":
+        query = query.order_by(TraceApprentissage.created_at.asc())
+
+    elif sort == "score_desc":
+        query = query.order_by(TraceApprentissage.score.desc().nullslast())
+
+    elif sort == "score_asc":
+        query = query.order_by(TraceApprentissage.score.asc().nullsfirst())
+
+    elif sort == "risque":
+        query = query.order_by(TraceApprentissage.niveau_risque.asc())
+
+    elif sort == "eleve":
+        query = query.order_by(User.nom_complet.asc())
+
+    elif sort == "notion":
+        query = query.order_by(TraceApprentissage.notion_cible.asc().nullslast())
+
+    else:
+        query = query.order_by(TraceApprentissage.created_at.desc())
+
+    traces = query.limit(100).all()
+
+    # ============================================================
+    # PRÉPARATION DES DÉTAILS LISIBLES
+    # ============================================================
+
+    for trace in traces:
+        detail = {}
+
+        try:
+            if trace.analyse_ia:
+                detail = json.loads(trace.analyse_ia)
+        except Exception:
+            detail = {}
+
+        trace.detail_ia = detail
+        trace.feedback_lisible = detail.get("current_feedback", trace.analyse_ia or "")
+        trace.score_sur_5 = detail.get("current_stars")
+
+        metadata = detail.get("metadata", {})
+        meta = trace.meta_json or {}
+
+        trace.langue_trace = (
+            metadata.get("language")
+            or meta.get("lang")
+            or lang
+            or "fr"
+        )
+
+        trace.question_lisible = (
+            meta.get("question_en")
+            if trace.langue_trace == "en"
+            else meta.get("question_fr")
+        )
+
+        if not trace.question_lisible and trace.exercice:
+            trace.question_lisible = (
+                trace.exercice.question_en
+                if trace.langue_trace == "en" and trace.exercice.question_en
+                else trace.exercice.question_fr
+            )
+
+        trace.reponse_attendue_lisible = (
+            meta.get("reponse_attendue_en")
+            if trace.langue_trace == "en"
+            else meta.get("reponse_attendue_fr")
+        )
+
+        if not trace.reponse_attendue_lisible and trace.exercice:
+            trace.reponse_attendue_lisible = (
+                trace.exercice.reponse_en
+                if trace.langue_trace == "en" and trace.exercice.reponse_en
+                else trace.exercice.reponse_fr
+            )
+
+        trace.correction_symbolique = (
+            detail.get("symbolic_verification", {}).get("feedback")
+            or meta.get("symbolic_feedback")
+            or ""
+        )
+
+        trace.prochain_adaptatif = (
+            detail.get("adaptive_next")
+            or meta.get("adaptive_next")
+            or {}
+        )
+
+    return render_template(
+        "enseignant_traces_apprentissage.html",
+        traces=traces,
+        sort=sort,
+        risque=risque,
+        q=q,
+        lang=lang
+    )
 
 @app.route("/soumettre-sequentiel", methods=["POST"])
 def soumettre_sequentiel():

@@ -1537,7 +1537,19 @@
       }
     }
 
+    let isUpdatingStats = false;
+
     async function updateStats() {
+      if (isUpdatingStats) {
+        return;
+      }
+
+      if (document.hidden) {
+        return;
+      }
+
+      isUpdatingStats = true;
+
       try {
         const response = await fetch('/api/eleve/stats', {
           method: 'GET',
@@ -1565,6 +1577,8 @@
         }
       } catch (error) {
         console.error('Erreur mise à jour stats:', error);
+      } finally {
+        isUpdatingStats = false;
       }
     }
 
@@ -1791,7 +1805,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       normalizeCurrentUrl();
       scrollToBottom();
-      
+
       formatAllMessages();
 
       if (questionInput) {
@@ -1809,7 +1823,22 @@
         updateExerciseSidebar({{ session.get('exercice_en_cours')|tojson }});
       {% endif %}
 
-      setInterval(updateStats, 60000);
+      // Mise à jour initiale seulement si l’onglet est actif
+      if (!document.hidden) {
+        updateStats();
+      }
+
+      // Mise à jour automatique des statistiques toutes les 60 secondes,
+      // mais seulement si l’onglet est visible.
+      if (!window.statsUpdaterStarted) {
+        window.statsUpdaterStarted = true;
+
+        setInterval(function() {
+          if (!document.hidden) {
+            updateStats();
+          }
+        }, 60000);
+      }
     });
   </script>
 

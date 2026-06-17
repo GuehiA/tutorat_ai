@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'fr' }}">
+<head>
+  <meta charset="UTF-8">
+
+  <title>
+    {% if lang == "en" %}
+      Admin Concepts Summary
+    {% else %}
+      Synthèse admin des notions
+    {% endif %}
+  </title>
+
+  <style>
+    :root {
+      --primary: #111827;
+      --secondary: #7c3aed;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --info: #2563eb;
+      --lighter: #f9fafb;
+      --white: #ffffff;
+      --gray: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 8px 24px rgba(0,0,0,0.08);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #f9fafb, #eef2ff);
+      color: var(--primary);
+      padding: 24px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: auto;
+      background: var(--white);
+      padding: 32px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+      padding-bottom: 22px;
+      margin-bottom: 26px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 0.96rem;
+    }
+
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      background: var(--secondary);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      transition: 0.2s ease;
+      font-size: 0.95rem;
+      margin-left: 6px;
+      margin-bottom: 6px;
+    }
+
+    .btn:hover {
+      opacity: 0.88;
+      transform: translateY(-1px);
+    }
+
+    .btn-light {
+      background: #e5e7eb;
+      color: var(--primary);
+    }
+
+    .btn-dark {
+      background: var(--primary);
+    }
+
+    .btn-blue {
+      background: var(--info);
+    }
+
+    .notice {
+      background: #faf5ff;
+      border: 1px solid #ddd6fe;
+      color: #5b21b6;
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+
+    .filters {
+      background: var(--lighter);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 26px;
+    }
+
+    .filter-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: white;
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--lighter);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .stat-label {
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+
+    .notion-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin-bottom: 20px;
+      background: white;
+    }
+
+    .notion-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .notion-title {
+      font-size: 1.35rem;
+      font-weight: bold;
+    }
+
+    .notion-meta {
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .badge-success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-danger {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-gray {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .mini-card {
+      background: var(--lighter);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .mini-label {
+      color: var(--gray);
+      font-size: 0.82rem;
+      margin-bottom: 5px;
+    }
+
+    .mini-value {
+      font-weight: bold;
+      font-size: 1.05rem;
+    }
+
+    .recommendation {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .list-item:last-child {
+      border-bottom: none;
+    }
+
+    details {
+      margin-top: 12px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--secondary);
+      font-weight: bold;
+    }
+
+    .students-list,
+    .teachers-list {
+      margin-top: 12px;
+      background: var(--lighter);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .pill {
+      display: inline-block;
+      margin: 4px 8px 4px 0;
+      text-decoration: none;
+      color: var(--secondary);
+      font-weight: bold;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.86rem;
+    }
+
+    .pill-blue {
+      color: var(--info);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--lighter);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      color: var(--gray);
+    }
+
+    .small {
+      color: var(--gray);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="top-bar">
+      <div>
+        <h1>
+          {% if lang == "en" %}
+            🛠️ Admin Concepts Summary
+          {% else %}
+            🛠️ Synthèse admin des notions
+          {% endif %}
+        </h1>
+
+        <p class="subtitle">
+          {% if lang == "en" %}
+            Global view of concepts causing difficulties across students, teachers and traces.
+          {% else %}
+            Vue globale des notions qui posent problème à travers les élèves, enseignants et traces.
+          {% endif %}
+        </p>
+      </div>
+
+      <div>
+        <a class="btn btn-light" href="{{ request.referrer or '/' }}">
+          {% if lang == "en" %}Back{% else %}Retour{% endif %}
+        </a>
+
+        <a class="btn btn-blue" href="/admin/traces-apprentissage">
+          {% if lang == "en" %}Admin traces{% else %}Traces admin{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <div class="notice">
+      {% if lang == "en" %}
+        This admin page aggregates learning traces by concept. It helps detect recurring difficulties, weak concepts and pedagogical patterns across the platform.
+      {% else %}
+        Cette page admin agrège les traces d’apprentissage par notion. Elle aide à repérer les difficultés récurrentes, les notions faibles et les tendances pédagogiques de la plateforme.
+      {% endif %}
+    </div>
+
+    <form method="GET" class="filters">
+      <div class="filter-group">
+        <label for="q">
+          {% if lang == "en" %}Search{% else %}Recherche{% endif %}
+        </label>
+
+        <input
+          type="text"
+          id="q"
+          name="q"
+          value="{{ q or '' }}"
+          placeholder="{% if lang == 'en' %}Concept, subject, error, teacher...{% else %}Notion, matière, erreur, enseignant...{% endif %}"
+        >
+      </div>
+
+      <div class="filter-group">
+        <label for="risque">
+          {% if lang == "en" %}Dominant risk{% else %}Risque dominant{% endif %}
+        </label>
+
+        <select id="risque" name="risque">
+          <option value="tous" {% if risque == "tous" %}selected{% endif %}>
+            {% if lang == "en" %}All{% else %}Tous{% endif %}
+          </option>
+
+          <option value="faible" {% if risque == "faible" %}selected{% endif %}>
+            {% if lang == "en" %}Low{% else %}Faible{% endif %}
+          </option>
+
+          <option value="moyen" {% if risque == "moyen" %}selected{% endif %}>
+            {% if lang == "en" %}Medium{% else %}Moyen{% endif %}
+          </option>
+
+          <option value="élevé" {% if risque == "élevé" %}selected{% endif %}>
+            {% if lang == "en" %}High{% else %}Élevé{% endif %}
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="sort">
+          {% if lang == "en" %}Sort by{% else %}Trier par{% endif %}
+        </label>
+
+        <select id="sort" name="sort">
+          <option value="risque" {% if sort == "risque" %}selected{% endif %}>
+            {% if lang == "en" %}Pedagogical urgency{% else %}Urgence pédagogique{% endif %}
+          </option>
+
+          <option value="score_asc" {% if sort == "score_asc" %}selected{% endif %}>
+            {% if lang == "en" %}Lowest average score{% else %}Score moyen faible{% endif %}
+          </option>
+
+          <option value="score_desc" {% if sort == "score_desc" %}selected{% endif %}>
+            {% if lang == "en" %}Highest average score{% else %}Score moyen élevé{% endif %}
+          </option>
+
+          <option value="traces" {% if sort == "traces" %}selected{% endif %}>
+            {% if lang == "en" %}Most traces{% else %}Plus de traces{% endif %}
+          </option>
+
+          <option value="eleves" {% if sort == "eleves" %}selected{% endif %}>
+            {% if lang == "en" %}Most students{% else %}Plus d’élèves concernés{% endif %}
+          </option>
+
+          <option value="date" {% if sort == "date" %}selected{% endif %}>
+            {% if lang == "en" %}Most recent{% else %}Plus récent{% endif %}
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn">
+          {% if lang == "en" %}Apply{% else %}Appliquer{% endif %}
+        </button>
+
+        <a href="/admin/synthese-notions" class="btn btn-light">
+          {% if lang == "en" %}Reset{% else %}Réinitialiser{% endif %}
+        </a>
+      </div>
+    </form>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">
+          {% if lang == "en" %}Concepts displayed{% else %}Notions affichées{% endif %}
+        </div>
+        <div class="stat-value">{{ total_notions }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          {% if lang == "en" %}Learning traces analyzed{% else %}Traces analysées{% endif %}
+        </div>
+        <div class="stat-value">{{ total_traces }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          {% if lang == "en" %}Students concerned{% else %}Élèves concernés{% endif %}
+        </div>
+        <div class="stat-value">{{ total_eleves }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          {% if lang == "en" %}Teachers concerned{% else %}Enseignants concernés{% endif %}
+        </div>
+        <div class="stat-value">{{ total_enseignants if total_enseignants is defined else 0 }}</div>
+      </div>
+    </div>
+
+    {% if notions_synthese %}
+      {% for item in notions_synthese %}
+        <div class="notion-card">
+
+          <div class="notion-header">
+            <div>
+              <div class="notion-title">
+                {{ item.notion }}
+              </div>
+
+              <div class="notion-meta">
+                {{ item.traces_count }} trace(s)
+                ·
+                {{ item.eleves_count }} élève(s)
+
+                {% if item.enseignants_count is defined %}
+                  · {{ item.enseignants_count }} enseignant(s)
+                {% endif %}
+
+                {% if item.derniere_date %}
+                  · Dernière activité :
+                  {{ item.derniere_date.strftime("%Y-%m-%d %H:%M") }}
+                {% endif %}
+              </div>
+            </div>
+
+            <div>
+              {% if item.risque_dominant == "faible" %}
+                <span class="badge badge-success">
+                  {% if lang == "en" %}Low risk{% else %}Risque faible{% endif %}
+                </span>
+              {% elif item.risque_dominant == "moyen" %}
+                <span class="badge badge-warning">
+                  {% if lang == "en" %}Medium risk{% else %}Risque moyen{% endif %}
+                </span>
+              {% elif item.risque_dominant == "élevé" %}
+                <span class="badge badge-danger">
+                  {% if lang == "en" %}High risk{% else %}Risque élevé{% endif %}
+                </span>
+              {% else %}
+                <span class="badge badge-gray">
+                  {{ item.risque_dominant }}
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="mini-card">
+              <div class="mini-label">
+                {% if lang == "en" %}Average score{% else %}Score moyen{% endif %}
+              </div>
+
+              <div class="mini-value">
+                {{ item.score_moyen }}%
+              </div>
+            </div>
+
+            <div class="mini-card">
+              <div class="mini-label">
+                {% if lang == "en" %}Risk distribution{% else %}Répartition des risques{% endif %}
+              </div>
+
+              <div class="mini-value">
+                Faible : {{ item.risques.get("faible", 0) }} ·
+                Moyen : {{ item.risques.get("moyen", 0) }} ·
+                Élevé : {{ item.risques.get("élevé", 0) }}
+              </div>
+            </div>
+
+            <div class="mini-card">
+              <div class="mini-label">
+                {% if lang == "en" %}Main subject{% else %}Matière principale{% endif %}
+              </div>
+
+              <div class="mini-value">
+                {% if item.matieres_frequentes %}
+                  {{ item.matieres_frequentes[0][0] }}
+                {% else %}
+                  —
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="mini-card">
+              <div class="mini-label">
+                {% if lang == "en" %}Main lesson{% else %}Leçon principale{% endif %}
+              </div>
+
+              <div class="mini-value">
+                {% if item.lecons_frequentes %}
+                  {{ item.lecons_frequentes[0][0] }}
+                {% else %}
+                  —
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="recommendation">
+            <strong>
+              {% if lang == "en" %}
+                Admin observation:
+              {% else %}
+                Observation admin :
+              {% endif %}
+            </strong>
+            {{ item.recommandation }}
+          </div>
+
+          <details>
+            <summary>
+              {% if lang == "en" %}
+                View details
+              {% else %}
+                Voir les détails
+              {% endif %}
+            </summary>
+
+            <div class="grid" style="margin-top: 14px;">
+              <div class="mini-card">
+                <div class="mini-label">
+                  {% if lang == "en" %}Frequent errors{% else %}Erreurs fréquentes{% endif %}
+                </div>
+
+                {% if item.erreurs_frequentes %}
+                  {% for erreur, nb in item.erreurs_frequentes %}
+                    <div class="list-item">
+                      <span>{{ erreur }}</span>
+                      <strong>{{ nb }}</strong>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <p class="small">
+                    {% if lang == "en" %}
+                      No frequent error detected.
+                    {% else %}
+                      Aucune erreur fréquente détectée.
+                    {% endif %}
+                  </p>
+                {% endif %}
+              </div>
+
+              <div class="mini-card">
+                <div class="mini-label">
+                  {% if lang == "en" %}Subjects{% else %}Matières{% endif %}
+                </div>
+
+                {% if item.matieres_frequentes %}
+                  {% for matiere, nb in item.matieres_frequentes %}
+                    <div class="list-item">
+                      <span>{{ matiere }}</span>
+                      <strong>{{ nb }}</strong>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <p class="small">—</p>
+                {% endif %}
+              </div>
+
+              <div class="mini-card">
+                <div class="mini-label">
+                  {% if lang == "en" %}Lessons{% else %}Leçons{% endif %}
+                </div>
+
+                {% if item.lecons_frequentes %}
+                  {% for lecon, nb in item.lecons_frequentes %}
+                    <div class="list-item">
+                      <span>{{ lecon }}</span>
+                      <strong>{{ nb }}</strong>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <p class="small">—</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="students-list">
+              <strong>
+                {% if lang == "en" %}
+                  Concerned students:
+                {% else %}
+                  Élèves concernés :
+                {% endif %}
+              </strong>
+
+              <br><br>
+
+              {% if item.eleves %}
+                {% for eleve in item.eleves %}
+                  <span class="pill pill-blue">
+                    {{ eleve.nom }}{% if eleve.username %} · {{ eleve.username }}{% endif %}
+                  </span>
+                {% endfor %}
+              {% else %}
+                <span class="small">Aucun élève listé.</span>
+              {% endif %}
+            </div>
+
+            {% if item.enseignants is defined and item.enseignants %}
+              <div class="teachers-list">
+                <strong>
+                  {% if lang == "en" %}
+                    Concerned teachers:
+                  {% else %}
+                    Enseignants concernés :
+                  {% endif %}
+                </strong>
+
+                <br><br>
+
+                {% for enseignant in item.enseignants %}
+                  <span class="pill">
+                    {{ enseignant.nom }}{% if enseignant.email %} · {{ enseignant.email }}{% endif %}
+                  </span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </details>
+
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        {% if lang == "en" %}
+          No admin concept summary is available yet.
+        {% else %}
+          Aucune synthèse admin par notion n’est encore disponible.
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </div>
+</body>
+</html>
