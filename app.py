@@ -16780,6 +16780,7 @@ def exercice_sequentiel_progressif():
 
 @app.route("/exercices-papier-crayon")
 def exercices_papier_crayon():
+    import re
     from sqlalchemy import func
     from sqlalchemy.orm import joinedload
 
@@ -16918,6 +16919,65 @@ def exercices_papier_crayon():
         else exercice_actuel.question_fr
     )
 
+    # ============================================================
+    # OPTIONS QCM - MODE PAPIER-CRAYON
+    # ============================================================
+    #
+    # Même logique que le mode séquentiel :
+    # les options sont transformées en une liste structurée
+    # afin que le template les affiche proprement.
+    #
+    # Exemple attendu dans la base :
+    #   A) -4/3, B) 3/4, C) 4/3, D) -3/4
+    # ============================================================
+
+    options_brutes = (
+        exercice_actuel.options_en
+        if lang == "en" and exercice_actuel.options_en
+        else exercice_actuel.options_fr
+    )
+
+    options_affichees = []
+
+    if options_brutes:
+        motif_options = re.compile(
+            r"(?:^|,\s*)"
+            r"([A-H])\s*[\)\].:\-]\s*"
+            r"(.*?)"
+            r"(?=,\s*[A-H]\s*[\)\].:\-]\s*|$)",
+            re.IGNORECASE | re.DOTALL
+        )
+
+        for match in motif_options.finditer(str(options_brutes).strip()):
+            lettre = match.group(1).upper()
+            texte_option = match.group(2).strip()
+
+            if texte_option:
+                options_affichees.append({
+                    "label": lettre,
+                    "value": texte_option,
+                    "display": f"{lettre}) {texte_option}"
+                })
+
+        # Fallback prudent :
+        # si les lettres A), B), C)... ne sont pas présentes,
+        # on traite le contenu comme une liste séparée par virgules.
+        if not options_affichees:
+            morceaux = [
+                morceau.strip()
+                for morceau in str(options_brutes).split(",")
+                if morceau.strip()
+            ]
+
+            for position, morceau in enumerate(morceaux[:8]):
+                lettre = chr(ord("A") + position)
+
+                options_affichees.append({
+                    "label": lettre,
+                    "value": morceau,
+                    "display": f"{lettre}) {morceau}"
+                })
+
     reponse_attendue = (
         exercice_actuel.reponse_en
         if lang == "en" and exercice_actuel.reponse_en
@@ -16974,6 +17034,7 @@ def exercices_papier_crayon():
     print(f"👤 Élève : {eleve.username} | ID : {eleve.id}")
     print(f"📘 Leçon : {lecon.id} - {titre_lecon}")
     print(f"🧩 Exercice actuel : {exercice_actuel.id}")
+    print(f"🔘 Options QCM affichées : {len(options_affichees)}")
     print(f"📊 Position : {index + 1}/{total_exercices}")
     print(f"📝 Corrigé disponible : {corrige_disponible}")
     print("========================================")
@@ -16987,6 +17048,8 @@ def exercices_papier_crayon():
         nom_matiere=nom_matiere,
         exercice=exercice_actuel,
         question=question,
+        options_affichees=options_affichees,
+        options_brutes=options_brutes,
         reponse_attendue=reponse_attendue,
         corrige=corrige,
         corrige_disponible=corrige_disponible,
@@ -17002,6 +17065,7 @@ def exercices_papier_crayon():
         mode_parcours="papier_crayon",
         navigation_libre=True
     )
+
 
 
 @app.route("/generer-corrige-papier-crayon", methods=["POST"])

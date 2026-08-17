@@ -185,6 +185,48 @@
       margin-bottom: 24px;
     }
 
+    /* =========================================================
+       CHOIX MULTIPLES - MODE PAPIER-CRAYON
+       ========================================================= */
+
+    .paper-qcm-options {
+      margin: -6px 0 28px 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .paper-qcm-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 15px 17px;
+      background: #ffffff;
+      border: 1px solid #dbe3ee;
+      border-radius: 12px;
+      line-height: 1.55;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+
+    .paper-qcm-letter {
+      flex: 0 0 34px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #eef2ff;
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      border: 1px solid #c7d2fe;
+    }
+
+    .paper-qcm-text {
+      flex: 1;
+      padding-top: 5px;
+      min-width: 0;
+    }
+
     .image-box {
       text-align: center;
       margin: 22px 0;
@@ -553,6 +595,22 @@
         <div class="question-box math-content">
           {{ question|safe }}
         </div>
+
+        {% if options_affichees %}
+        <div class="paper-qcm-options" aria-label="{% if lang == 'en' %}Answer choices{% else %}Choix de réponse{% endif %}">
+          {% for option in options_affichees %}
+          <div class="paper-qcm-option">
+            <span class="paper-qcm-letter">
+              {{ option.label }}
+            </span>
+
+            <span class="paper-qcm-text math-content">
+              {{ option.value|safe }}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
 
         {% if exercice.chemin_image %}
         <div class="image-box">
