@@ -1,3 +1,5 @@
+# validation/llm.py
+
 import os
 from enum import Enum
 from typing import Optional
@@ -38,7 +40,10 @@ class LLMValidator:
         model: Optional[str] = None,
         acceptance_threshold: float = 0.95,
     ):
-        self.client = client or OpenAI(api_key=OPENAI_API_KEY)
+        self.client = client or OpenAI(
+            api_key=OPENAI_API_KEY
+        )
+
         self.normalizer = AnswerNormalizer()
 
         self.model = (
@@ -82,67 +87,43 @@ class LLMValidator:
                 normalized_expected_answer=normalized_expected,
             )
 
+        # Prompt volontairement court :
+        # moins de tokens, tout en conservant les règles de sécurité.
         system_prompt = """
-Tu es un validateur mathématique prudent pour une plateforme éducative.
+Tu valides uniquement la justesse mathématique d'une réponse d'élève.
 
-Ton rôle n'est PAS de produire une correction pédagogique complète.
-Ton rôle est uniquement d'évaluer si la réponse de l'élève est
-mathématiquement acceptable.
-
-RÈGLES FONDAMENTALES :
-
-1. Une formulation différente de la réponse de référence peut être correcte.
-
-2. Une expression mathématiquement équivalente doit être considérée
-   comme correcte.
-
-3. Une notation inhabituelle ne doit pas être considérée automatiquement
-   comme incorrecte.
-
-4. Distingue le résultat final du raisonnement.
-
-5. Un résultat peut être correct même si l'explication est incomplète.
-
-6. N'invente jamais une erreur simplement parce que la réponse diffère
-   textuellement de la réponse de référence.
-
-7. Si plusieurs interprétations raisonnables sont possibles,
-   utilise "uncertain".
-
-8. Si tu n'es pas suffisamment certain que la réponse est incorrecte,
-   utilise "uncertain".
-
-9. "incorrect" doit être réservé aux situations où une erreur
-   mathématique identifiable est présente.
-
-10. La confiance représente ta certitude dans le verdict,
-    et non la qualité générale du travail de l'élève.
-
-Sois particulièrement prudent afin d'éviter les faux rejets
-d'une réponse réellement correcte.
+Règles :
+- Une formulation différente ou une expression équivalente peut être correcte.
+- Distingue résultat final et raisonnement.
+- Une explication incomplète n'annule pas un résultat correct.
+- N'invente pas d'erreur parce que la formulation diffère de la référence.
+- Si plusieurs interprétations sont raisonnables, réponds uncertain.
+- Si tu n'es pas très certain d'un verdict négatif, réponds uncertain.
+- incorrect exige une erreur mathématique identifiable.
+- Évite en priorité les faux rejets.
 """.strip()
 
         user_prompt = f"""
-QUESTION :
+QUESTION:
 {question or "Non fournie"}
 
-RÉPONSE ATTENDUE :
+RÉFÉRENCE:
 {expected_answer}
 
-RÉPONSE DE L'ÉLÈVE :
+RÉPONSE ÉLÈVE:
 {student_answer}
 
-RÉPONSE NORMALISÉE DE L'ÉLÈVE :
+NORMALISÉE:
 {normalized_student}
 
-RÉPONSE ATTENDUE NORMALISÉE :
+RÉFÉRENCE NORMALISÉE:
 {normalized_expected}
-"""
+""".strip()
 
         if explanation:
             user_prompt += f"""
 
-EXPLICATION DE RÉFÉRENCE :
+EXPLICATION DE RÉFÉRENCE:
 {explanation}
 """
 
@@ -182,7 +163,10 @@ EXPLICATION DE RÉFÉRENCE :
         except Exception as exc:
             return ValidationResult.error(
                 method="llm_validation",
-                reason="Le validateur IA a rencontré une erreur technique.",
+                reason=(
+                    "Le validateur IA a rencontré "
+                    "une erreur technique."
+                ),
                 normalized_student_answer=normalized_student,
                 normalized_expected_answer=normalized_expected,
                 details={
@@ -203,18 +187,12 @@ EXPLICATION DE RÉFÉRENCE :
             "error_type": parsed.error_type,
         }
 
-        # -------------------------------------------------
-        # RÈGLE DE PROTECTION CONTRE LES FAUX REJETS
-        # -------------------------------------------------
-        #
-        # Même si le modèle dit "incorrect",
-        # nous ne l'acceptons automatiquement que si sa
-        # confiance atteint le seuil défini.
-        #
-        # Sinon : UNCERTAIN.
-        # -------------------------------------------------
+        # ============================================================
+        # CORRECT
+        # ============================================================
 
         if parsed.verdict == LLMVerdict.correct:
+
             if confidence >= self.acceptance_threshold:
                 return ValidationResult.correct(
                     confidence=confidence,
@@ -241,14 +219,21 @@ EXPLICATION DE RÉFÉRENCE :
                 details=details,
             )
 
+        # ============================================================
+        # INCORRECT
+        # ============================================================
+        #
+        # Aucun verdict négatif IA n'est accepté ici.
+        # Il doit passer par DoubleCheckValidator.
+        # ============================================================
+
         if parsed.verdict == LLMVerdict.incorrect:
             return ValidationResult.uncertain(
                 confidence=confidence,
                 method="llm_incorrect_requires_confirmation",
                 reason=(
                     "Le premier validateur IA considère la réponse incorrecte, "
-                    "mais un verdict négatif produit par l'IA doit être confirmé "
-                    "par une seconde validation avant de pénaliser l'élève."
+                    "mais ce verdict doit être confirmé avant toute pénalisation."
                 ),
                 normalized_student_answer=normalized_student,
                 normalized_expected_answer=normalized_expected,
@@ -256,6 +241,10 @@ EXPLICATION DE RÉFÉRENCE :
                 error_type=parsed.error_type,
                 details=details,
             )
+
+        # ============================================================
+        # UNCERTAIN
+        # ============================================================
 
         return ValidationResult.uncertain(
             confidence=confidence,

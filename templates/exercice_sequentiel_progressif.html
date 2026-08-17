@@ -24,8 +24,13 @@
   <script>
     window.MathJax = {
       tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']],
-        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        // IMPORTANT :
+        // On n'utilise PAS $...$ comme délimiteur inline, car les exercices
+        // financiers utilisent naturellement 10$, 200$, etc.
+        // Les formules inline utilisent \(...\) et les formules bloc
+        // utilisent \[...\] ou $$...$$.
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
         processEscapes: true,
         processEnvironments: true,
         tags: 'ams'
@@ -418,6 +423,90 @@
       border: 3px solid var(--white);
     }
 
+    .choices-section {
+      margin: 24px 0 28px;
+      padding: 20px;
+      background: #f8fbff;
+      border: 2px solid #dcecff;
+      border-radius: 14px;
+    }
+
+    .choices-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      margin-bottom: 14px;
+      color: var(--dark);
+    }
+
+    .choices-help {
+      color: #6c757d;
+      font-size: 0.92rem;
+      margin-bottom: 14px;
+      line-height: 1.45;
+    }
+
+    .choice-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .choice-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 2px solid #e3e8ee;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .choice-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(52, 152, 219, 0.10);
+    }
+
+    .choice-card.selected {
+      border-color: var(--primary);
+      background: #eef7ff;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.10);
+    }
+
+    .choice-card input[type="radio"] {
+      margin-top: 4px;
+      transform: scale(1.15);
+      accent-color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .choice-text {
+      line-height: 1.5;
+      font-size: 1.04rem;
+      flex: 1;
+    }
+
+    .free-answer-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 22px 0 14px;
+      color: var(--gray);
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
+    .free-answer-divider::before,
+    .free-answer-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #d9dee3;
+    }
+
     .unified-math-editor {
       background: var(--light);
       padding: 24px;
@@ -704,6 +793,19 @@
       border-left-color: var(--primary);
       max-height: 420px;
       overflow-y: auto;
+      overflow-x: hidden;
+      overflow-wrap: anywhere;
+      word-break: normal;
+    }
+
+    .analysis-content mjx-container {
+      max-width: 100%;
+    }
+
+    .analysis-content mjx-container[display="true"] {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 4px;
     }
 
     .adaptive-box {
@@ -1179,6 +1281,52 @@
         <input type="hidden" name="reponse_eleve" id="reponse_eleve" value="">
 
         <div class="answer-section">
+
+          {% if options_affichees is defined and options_affichees %}
+          <div class="choices-section">
+            <div class="choices-title">
+              <i class="fas fa-list-ul"></i>
+              {% if lang == 'fr' %}
+                Choix proposés
+              {% else %}
+                Suggested choices
+              {% endif %}
+            </div>
+
+            <div class="choices-help">
+              {% if lang == 'fr' %}
+                Vous pouvez sélectionner un choix, ou écrire une réponse équivalente avec votre propre démarche dans le champ libre ci-dessous.
+              {% else %}
+                You may select a choice, or write an equivalent answer with your own reasoning in the free-response field below.
+              {% endif %}
+            </div>
+
+            <div class="choice-list">
+              {% for option in options_affichees %}
+              <label class="choice-card" data-choice-label="{{ option.label }}">
+                <input
+                  type="radio"
+                  name="qcm_choice"
+                  value="{{ option.label }}"
+                  onclick="selectChoice('{{ option.label }}', this)"
+                >
+                <span class="choice-text math-content">
+                  <strong>{{ option.label }})</strong> {{ option.value|safe }}
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="free-answer-divider">
+            {% if lang == 'fr' %}
+              ou réponse libre
+            {% else %}
+              or free response
+            {% endif %}
+          </div>
+          {% endif %}
+
           <div class="answer-label">
             <i class="fas fa-edit"></i>
             {% if lang == 'fr' %}Votre réponse :{% else %}Your answer:{% endif %}
@@ -1337,10 +1485,6 @@
           <div class="analysis-content math-content" id="aiAnalysisContent">
             {% if feedback_obj.analyse is defined and feedback_obj.analyse %}
               {% set clean_text = feedback_obj.analyse
-                |replace('\\[', '$$')
-                |replace('\\]', '$$')
-                |replace('\\(', '$')
-                |replace('\\)', '$')
                 |replace('\\"', '"')
                 |replace('\\n\\n\\n', '<br><br>')
                 |replace('\\n\\n', '<br><br>')
@@ -1502,6 +1646,66 @@
       }
     }
 
+    function clearChoiceSelection() {
+      document.querySelectorAll('.choice-card').forEach((card) => {
+        card.classList.remove('selected');
+      });
+
+      document.querySelectorAll('input[name="qcm_choice"]').forEach((radio) => {
+        radio.checked = false;
+      });
+    }
+
+    function selectChoice(label, radio) {
+      const editor = document.getElementById('visualMathEditor');
+      const hidden = document.getElementById('reponse_eleve');
+
+      if (!editor || !hidden) return;
+
+      document.querySelectorAll('.choice-card').forEach((card) => {
+        card.classList.remove('selected');
+      });
+
+      if (radio) {
+        radio.checked = true;
+
+        const card = radio.closest('.choice-card');
+        if (card) {
+          card.classList.add('selected');
+        }
+      }
+
+      // Pour un QCM, on soumet la lettre choisie.
+      // L'élève peut ensuite modifier le champ libre pour envoyer
+      // une valeur équivalente ou une explication complète.
+      editor.textContent = label;
+      currentAnswer = label;
+      hidden.value = label;
+      editor.classList.add('has-content');
+
+      editor.focus();
+
+      if (window.MathJax) {
+        setTimeout(processMathContent, 50);
+      }
+    }
+
+    function syncChoiceSelectionWithFreeAnswer(content) {
+      const normalized = (content || '').trim().toUpperCase();
+
+      document.querySelectorAll('input[name="qcm_choice"]').forEach((radio) => {
+        const isSelected = normalized === radio.value.toUpperCase();
+
+        radio.checked = isSelected;
+
+        const card = radio.closest('.choice-card');
+
+        if (card) {
+          card.classList.toggle('selected', isSelected);
+        }
+      });
+    }
+
     function updateHiddenField() {
       const editor = document.getElementById('visualMathEditor');
       const hidden = document.getElementById('reponse_eleve');
@@ -1518,6 +1722,8 @@
 
       currentAnswer = content;
       hidden.value = content;
+
+      syncChoiceSelectionWithFreeAnswer(content);
 
       if (content) {
         editor.classList.add('has-content');
@@ -1747,6 +1953,12 @@
 
       if (editor) {
         editor.addEventListener('input', updateHiddenField);
+
+        {% if reponse_existante %}
+          editor.textContent = {{ reponse_existante|tojson }};
+          updateHiddenField();
+        {% endif %}
+
         setTimeout(() => editor.focus(), 350);
       }
 

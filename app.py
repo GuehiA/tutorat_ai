@@ -16635,6 +16635,71 @@ def exercice_sequentiel_progressif():
         else exercice_actuel.question_fr
     )
 
+    # ============================================================
+    # 7A. OPTIONS DE QCM POUR L'INTERFACE ÉLÈVE
+    # ============================================================
+    #
+    # Les options sont stockées dans options_fr / options_en sous
+    # une forme comme :
+    #
+    #   A) -4/3, B) 3/4, C) 4/3, D) -3/4
+    #
+    # On les transforme ici en une liste structurée afin que le
+    # template puisse les afficher comme de vrais choix cliquables.
+    #
+    # IMPORTANT :
+    # la réponse libre reste disponible. Un élève peut donc choisir
+    # "B" OU écrire "3/4", "0.75", etc.
+    # ============================================================
+
+    options_brutes = (
+        exercice_actuel.options_en
+        if lang == "en" and exercice_actuel.options_en
+        else exercice_actuel.options_fr
+    )
+
+    options_affichees = []
+
+    if options_brutes:
+        import re
+
+        motif_options = re.compile(
+            r"(?:^|,\s*)"
+            r"([A-H])\s*[\)\].:\-]\s*"
+            r"(.*?)"
+            r"(?=,\s*[A-H]\s*[\)\].:\-]\s*|$)",
+            re.IGNORECASE | re.DOTALL
+        )
+
+        for match in motif_options.finditer(options_brutes.strip()):
+            lettre = match.group(1).upper()
+            texte_option = match.group(2).strip()
+
+            if texte_option:
+                options_affichees.append({
+                    "label": lettre,
+                    "value": texte_option,
+                    "display": f"{lettre}) {texte_option}"
+                })
+
+        # Fallback prudent si le format ne contient pas explicitement
+        # A), B), C)... mais reste une liste séparée par des virgules.
+        if not options_affichees:
+            morceaux = [
+                morceau.strip()
+                for morceau in options_brutes.split(",")
+                if morceau.strip()
+            ]
+
+            for position, morceau in enumerate(morceaux[:8]):
+                lettre = chr(ord("A") + position)
+
+                options_affichees.append({
+                    "label": lettre,
+                    "value": morceau,
+                    "display": f"{lettre}) {morceau}"
+                })
+
     corrige_disponible = bool(
         exercice_actuel.reponse_en
         if lang == "en" and exercice_actuel.reponse_en
@@ -16665,6 +16730,7 @@ def exercice_sequentiel_progressif():
     print(f"📘 Leçon : {lecon.id} - {titre_lecon}")
     print(f"📚 Matière : {nom_matiere}")
     print(f"🧩 Exercice actuel : {exercice_actuel.id}")
+    print(f"🔘 Options QCM affichées : {len(options_affichees)}")
     print(f"📊 Position : {index + 1}/{total_exercices}")
     print(f"✅ Complétés : {exercices_completes}/{total_exercices}")
     print(f"🔒 Exercice déjà fait : {exercice_deja_fait}")
@@ -16686,6 +16752,8 @@ def exercice_sequentiel_progressif():
         nom_matiere=nom_matiere,
         exercice=exercice_actuel,
         question=question,
+        options_affichees=options_affichees,
+        options_brutes=options_brutes,
         index=index,
         total=total_exercices,
         total_exercices=total_exercices,
@@ -19896,46 +19964,543 @@ def soumettre_sequentiel():
         else exercice.question_fr
     )
 
+    options_exercice = (
+        exercice.options_en
+        if lang == "en" and exercice.options_en
+        else exercice.options_fr
+    )
+
     reponse_attendue = (
         exercice.reponse_en
         if lang == "en" and exercice.reponse_en
         else exercice.reponse_fr
     )
 
+    explication_existante = (
+        exercice.explication_en
+        if lang == "en" and exercice.explication_en
+        else exercice.explication_fr
+    )
+
     # ============================================================
-    # 1. NOUVEAU MOTEUR HYBRIDE DE VALIDATION
+    # 1A. GÉNÉRATION ET VALIDATION DE LA RÉPONSE ATTENDUE
+    #     SI ELLE EST ABSENTE DE LA BASE
+    # ============================================================
+    #
+    # RÈGLE :
+    # - réponse attendue déjà en base -> on la réutilise ;
+    # - réponse attendue absente -> génération UNE fois ;
+    # - un second contrôle indépendant doit confirmer la génération ;
+    # - seulement après confirmation, la réponse est enregistrée ;
+    # - si le corrigé est également absent, il est généré dans le même
+    #   appel et enregistré avec la réponse ;
+    # - en cas d'échec ou d'incertitude, aucune note négative n'est donnée.
+    # ============================================================
+
+    reference_answer_source = "database"
+    reference_answer_generated = False
+    reference_generation_failed = False
+    reference_generation_reason = None
+    reference_second_answer = None
+    reference_comparison_method = None
+
+    def _extract_json_object(raw_text):
+        if not raw_text:
+            return None
+
+        cleaned = raw_text.strip()
+
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(r"\s*```$", "", cleaned)
+
+        try:
+            return json.loads(cleaned)
+        except Exception:
+            match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+            if not match:
+                return None
+
+            try:
+                return json.loads(match.group(0))
+            except Exception:
+                return None
+
+    if not reponse_attendue or not str(reponse_attendue).strip():
+
+        reference_answer_source = "generated_first_use"
+
+        print(
+            f"🧩 Réponse attendue absente pour l'exercice {exercice.id} : "
+            "génération contrôlée en cours."
+        )
+
+        if lang == "en":
+            prompt_reference = f"""
+You are creating the canonical reusable reference answer for a mathematics exercise.
+
+EXERCISE:
+{question}
+
+MULTIPLE-CHOICE OPTIONS:
+{options_exercice or "None"}
+
+EXISTING OFFICIAL EXPLANATION:
+{explication_existante or "None"}
+
+Return ONLY valid JSON with exactly these fields:
+{{
+  "expected_answer": "...",
+  "correction": "...",
+  "confidence": 0.0,
+  "reason": "..."
+}}
+
+Rules:
+- Solve the exercise yourself.
+- If multiple-choice options are provided, expected_answer MUST be only the correct option letter (A, B, C, D, etc.).
+- If there are no options, expected_answer must be a concise canonical final answer, not a long explanation.
+- correction must be a reusable pedagogical correction independent of any student.
+- If an existing official explanation is provided, stay consistent with it.
+- confidence must reflect your confidence in the mathematical answer.
+""".strip()
+        else:
+            prompt_reference = f"""
+Tu dois créer la réponse de référence canonique et réutilisable d'un exercice de mathématiques.
+
+ÉNONCÉ :
+{question}
+
+CHOIX DE RÉPONSES :
+{options_exercice or "Aucun"}
+
+CORRIGÉ OFFICIEL DÉJÀ PRÉSENT :
+{explication_existante or "Aucun"}
+
+Retourne UNIQUEMENT un JSON valide avec exactement ces champs :
+{{
+  "expected_answer": "...",
+  "correction": "...",
+  "confidence": 0.0,
+  "reason": "..."
+}}
+
+Règles :
+- Résous toi-même l'exercice.
+- Si des choix sont fournis, expected_answer DOIT contenir uniquement la lettre correcte (A, B, C, D, etc.).
+- S'il n'y a pas de choix, expected_answer doit être une réponse finale canonique et concise, pas une longue explication.
+- correction doit être un corrigé pédagogique réutilisable et indépendant de tout élève.
+- Si un corrigé officiel existe déjà, reste cohérent avec lui.
+- confidence doit refléter ta confiance dans la réponse mathématique.
+""".strip()
+
+        try:
+            generation_completion = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt_reference
+                    }
+                ],
+                temperature=0.0
+            )
+
+            generation_raw = (
+                generation_completion.choices[0]
+                .message.content
+                .strip()
+            )
+
+            generation_data = _extract_json_object(generation_raw)
+
+            generated_answer = (
+                str(generation_data.get("expected_answer", "")).strip()
+                if isinstance(generation_data, dict)
+                else ""
+            )
+
+            generated_correction = (
+                str(generation_data.get("correction", "")).strip()
+                if isinstance(generation_data, dict)
+                else ""
+            )
+
+            try:
+                generation_confidence = float(
+                    generation_data.get("confidence", 0.0)
+                    if isinstance(generation_data, dict)
+                    else 0.0
+                )
+            except (TypeError, ValueError):
+                generation_confidence = 0.0
+
+            generation_reason = (
+                str(generation_data.get("reason", "")).strip()
+                if isinstance(generation_data, dict)
+                else ""
+            )
+
+            # ----------------------------------------------------
+            # Second contrôle indépendant avant toute persistance.
+            # ----------------------------------------------------
+
+            if generated_answer and generation_confidence >= 0.95:
+
+                # ----------------------------------------------------
+                # Deuxième résolution INDÉPENDANTE.
+                #
+                # On ne demande plus "la proposition est-elle valide ?".
+                # Le deuxième juge résout l'exercice lui-même, sans recevoir
+                # la réponse générée par le premier juge.
+                #
+                # Ensuite NOTRE code compare les deux réponses.
+                # ----------------------------------------------------
+
+                if lang == "en":
+                    prompt_verify_reference = f"""
+Solve this mathematics exercise independently.
+
+EXERCISE:
+{question}
+
+MULTIPLE-CHOICE OPTIONS:
+{options_exercice or "None"}
+
+Return ONLY valid JSON:
+{{
+  "expected_answer": "...",
+  "confidence": 0.0,
+  "reason": "..."
+}}
+
+Rules:
+- Solve the exercise yourself.
+- Do NOT assume any proposed answer.
+- If multiple-choice options are provided, expected_answer MUST contain only the correct option letter.
+- If there are no options, expected_answer must be a concise canonical final answer.
+- confidence must reflect your confidence in the mathematical result.
+""".strip()
+                else:
+                    prompt_verify_reference = f"""
+Résous indépendamment cet exercice de mathématiques.
+
+ÉNONCÉ :
+{question}
+
+CHOIX DE RÉPONSES :
+{options_exercice or "Aucun"}
+
+Retourne UNIQUEMENT un JSON valide :
+{{
+  "expected_answer": "...",
+  "confidence": 0.0,
+  "reason": "..."
+}}
+
+Règles :
+- Résous toi-même l'exercice.
+- Ne suppose aucune réponse proposée.
+- Si des choix sont fournis, expected_answer DOIT contenir uniquement la lettre correcte.
+- S'il n'y a pas de choix, expected_answer doit être une réponse finale canonique et concise.
+- confidence doit refléter ta confiance dans le résultat mathématique.
+""".strip()
+
+                verify_completion = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt_verify_reference
+                        }
+                    ],
+                    temperature=0.0
+                )
+
+                verify_raw = (
+                    verify_completion.choices[0]
+                    .message.content
+                    .strip()
+                )
+
+                verify_data = _extract_json_object(verify_raw)
+
+                verify_answer = (
+                    str(verify_data.get("expected_answer", "")).strip()
+                    if isinstance(verify_data, dict)
+                    else ""
+                )
+
+                try:
+                    verify_confidence = float(
+                        verify_data.get("confidence", 0.0)
+                        if isinstance(verify_data, dict)
+                        else 0.0
+                    )
+                except (TypeError, ValueError):
+                    verify_confidence = 0.0
+
+                verify_reason = (
+                    str(verify_data.get("reason", "")).strip()
+                    if isinstance(verify_data, dict)
+                    else ""
+                )
+
+                # ----------------------------------------------------
+                # Comparaison locale des DEUX références indépendantes.
+                # ----------------------------------------------------
+
+                def _normalize_reference_text(value):
+                    value = (value or "").strip()
+                    value = value.replace("\\$", "$")
+                    value = value.replace("\u00a0", " ")
+                    value = re.sub(r"\s+", " ", value)
+                    return value
+
+                def _parse_reference_number(value):
+                    """
+                    Retourne un float uniquement si toute la référence est
+                    essentiellement une valeur scalaire :
+                    60, 60 $, 0,5, 1/2, 5 %, etc.
+                    """
+                    raw = _normalize_reference_text(value)
+
+                    match = re.fullmatch(
+                        r"\s*([-+]?(?:\d+(?:[.,]\d+)?|\d*[.,]\d+)"
+                        r"(?:\s*/\s*[-+]?\d+(?:[.,]\d+)?)?\s*%?)"
+                        r"\s*(?:\$|€|£|cad|usd|dollars?|euros?)?\s*",
+                        raw,
+                        re.IGNORECASE,
+                    )
+
+                    if not match:
+                        return None
+
+                    token = match.group(1).replace(" ", "")
+                    is_percent = token.endswith("%")
+
+                    if is_percent:
+                        token = token[:-1]
+
+                    token = token.replace(",", ".")
+
+                    try:
+                        if "/" in token:
+                            numerator, denominator = token.split("/", 1)
+                            denominator_value = float(denominator)
+
+                            if denominator_value == 0:
+                                return None
+
+                            numeric_value = float(numerator) / denominator_value
+                        else:
+                            numeric_value = float(token)
+
+                        if is_percent:
+                            numeric_value = numeric_value / 100.0
+
+                        return numeric_value
+
+                    except (TypeError, ValueError, ZeroDivisionError):
+                        return None
+
+                def _references_equivalent(first_answer, second_answer, options_raw):
+                    first = _normalize_reference_text(first_answer)
+                    second = _normalize_reference_text(second_answer)
+
+                    # QCM : si des options existent et que les deux réponses
+                    # sont des lettres, comparaison stricte des lettres.
+                    if options_raw:
+                        first_label = first.upper().strip(" .):")
+                        second_label = second.upper().strip(" .):")
+
+                        if (
+                            re.fullmatch(r"[A-Z]", first_label)
+                            and re.fullmatch(r"[A-Z]", second_label)
+                        ):
+                            return (
+                                first_label == second_label,
+                                "mcq_label_comparison"
+                            )
+
+                    # Comparaison numérique déterministe.
+                    first_number = _parse_reference_number(first)
+                    second_number = _parse_reference_number(second)
+
+                    if first_number is not None and second_number is not None:
+                        tolerance = max(
+                            1e-9,
+                            1e-9 * max(
+                                abs(first_number),
+                                abs(second_number),
+                                1.0
+                            )
+                        )
+
+                        return (
+                            abs(first_number - second_number) <= tolerance,
+                            "numeric_reference_comparison"
+                        )
+
+                    # Comparaison textuelle normalisée seulement si les chaînes
+                    # sont exactement équivalentes après normalisation.
+                    first_text = first.casefold()
+                    second_text = second.casefold()
+
+                    return (
+                        first_text == second_text,
+                        "normalized_text_reference_comparison"
+                    )
+
+                references_match, reference_comparison_method = (
+                    _references_equivalent(
+                        generated_answer,
+                        verify_answer,
+                        options_exercice
+                    )
+                )
+
+                reference_second_answer = verify_answer
+
+                print(
+                    "🔎 Double résolution de référence : "
+                    f"réponse_1={generated_answer!r} | "
+                    f"réponse_2={verify_answer!r} | "
+                    f"méthode={reference_comparison_method} | "
+                    f"équivalentes={references_match}"
+                )
+
+                verify_valid = (
+                    bool(verify_answer)
+                    and verify_confidence >= 0.95
+                    and references_match
+                )
+
+                if verify_valid and verify_confidence >= 0.95:
+
+                    reponse_attendue = generated_answer
+                    reference_answer_generated = True
+
+                    if lang == "en":
+                        exercice.reponse_en = generated_answer
+                    else:
+                        exercice.reponse_fr = generated_answer
+
+                    # Si le corrigé n'existe pas encore, on réutilise celui
+                    # généré dans le même appel afin d'éviter un troisième
+                    # appel IA.
+                    if (
+                        generated_correction
+                        and (
+                            not explication_existante
+                            or not str(explication_existante).strip()
+                        )
+                    ):
+                        if lang == "en":
+                            exercice.explication_en = generated_correction
+                        else:
+                            exercice.explication_fr = generated_correction
+
+                        explication_existante = generated_correction
+
+                    try:
+                        db.session.commit()
+
+                        print(
+                            "💾 Réponse attendue générée, doublement vérifiée "
+                            f"et enregistrée pour l'exercice {exercice.id} : "
+                            f"{reponse_attendue}"
+                        )
+
+                    except Exception as e:
+                        db.session.rollback()
+                        reference_generation_failed = True
+                        reference_generation_reason = (
+                            f"Réponse générée mais impossible à enregistrer : {e}"
+                        )
+
+                else:
+                    reference_generation_failed = True
+                    reference_generation_reason = (
+                        "Les deux résolutions indépendantes n'ont pas produit "
+                        "une référence suffisamment concordante ou le second "
+                        "résultat n'a pas atteint le seuil de confiance requis. "
+                        f"Première réponse={generated_answer!r}; "
+                        f"deuxième réponse={verify_answer!r}; "
+                        f"méthode={reference_comparison_method}; "
+                        f"confiance_2={verify_confidence}. "
+                        f"{verify_reason}"
+                    )
+
+            else:
+                reference_generation_failed = True
+                reference_generation_reason = (
+                    "La génération initiale de la réponse attendue n'a pas atteint "
+                    f"le seuil de confiance requis. {generation_reason}"
+                )
+
+        except Exception as e:
+            reference_generation_failed = True
+            reference_generation_reason = (
+                f"Erreur pendant la génération contrôlée de la réponse attendue : {e}"
+            )
+
+    # ============================================================
+    # 1B. MOTEUR HYBRIDE DE VALIDATION
     # ============================================================
 
     from validation.engine import ValidationEngine
+    from validation.result import ValidationResult
 
     validation_engine = ValidationEngine()
 
-    try:
-        validation_result = validation_engine.validate(
-            student_answer=reponse_eleve,
-            expected_answer=reponse_attendue or "",
-            question=question or ""
-        )
-
-    except Exception as e:
-        print(f"⚠️ Erreur moteur hybride : {e}")
-
-        from validation.result import ValidationResult
+    if reference_generation_failed or not reponse_attendue:
 
         validation_result = ValidationResult.uncertain(
             confidence=0.0,
-            method="validation_engine_error",
+            method="reference_answer_generation_failed",
             reason=(
-                "Le moteur de validation a rencontré une erreur technique. "
-                "La réponse ne doit pas être pénalisée automatiquement."
+                reference_generation_reason
+                or "La réponse attendue est absente et n'a pas pu être générée avec suffisamment de fiabilité."
             ),
             normalized_student_answer=reponse_eleve,
             normalized_expected_answer=reponse_attendue
         )
 
+    else:
+
+        try:
+            validation_result = validation_engine.validate(
+                student_answer=reponse_eleve,
+                expected_answer=reponse_attendue,
+                question=question or "",
+                options=options_exercice
+            )
+
+        except Exception as e:
+            print(f"⚠️ Erreur moteur hybride : {e}")
+
+            validation_result = ValidationResult.uncertain(
+                confidence=0.0,
+                method="validation_engine_error",
+                reason=(
+                    "Le moteur de validation a rencontré une erreur technique. "
+                    "La réponse ne doit pas être pénalisée automatiquement."
+                ),
+                normalized_student_answer=reponse_eleve,
+                normalized_expected_answer=reponse_attendue
+            )
+
     validation_verdict = validation_result.verdict
     validation_confidence = validation_result.confidence
     validation_method = validation_result.method
+
+    # Tout verdict autre que correct/incorrect est NON PÉNALISANT.
+    # Cela couvre uncertain, unsupported, error et toute future
+    # catégorie technique non concluante.
+    validation_requires_review = (
+        validation_verdict not in {"correct", "incorrect"}
+    )
 
     print("==============================================")
     print("🧠 MOTEUR HYBRIDE")
@@ -20020,41 +20585,412 @@ def soumettre_sequentiel():
             )
 
     # ============================================================
-    # 2. PROMPT DE RÉTROACTION PÉDAGOGIQUE
+    # 2. CORRIGÉ PARTAGÉ + RÉTROACTION PÉDAGOGIQUE
     # ============================================================
-
-    # Le modèle IA n'a PLUS le droit de déterminer seul
-    # si la réponse est correcte ou incorrecte.
     #
-    # Le moteur hybride a déjà rendu le verdict.
+    # RÈGLE HISTORIQUE DE TUTORATAI :
+    #
+    # 1. Si le corrigé générique de l'exercice existe déjà dans
+    #    explication_fr / explication_en :
+    #       => on le réutilise.
+    #
+    # 2. S'il n'existe pas encore :
+    #       => il est généré UNE SEULE FOIS ;
+    #       => il est enregistré dans la table Exercice ;
+    #       => les élèves suivants réutilisent le même corrigé.
+    #
+    # 3. Le corrigé générique est distinct de la rétroaction
+    #    individuelle sur la réponse de l'élève.
+    #
+    # 4. QCM déterministe :
+    #       => pas d'IA supplémentaire pour la rétroaction individuelle.
+    #
+    # 5. Réponse libre :
+    #       => rétroaction individuelle IA conservée si nécessaire.
+    # ============================================================
 
     analyse_ia = ""
     etoiles_gpt = None
 
-    if validation_verdict == "uncertain":
+    explication_exercice = (
+        exercice.explication_en
+        if lang == "en" and exercice.explication_en
+        else exercice.explication_fr
+    )
+
+    options_exercice = (
+        exercice.options_en
+        if lang == "en" and exercice.options_en
+        else exercice.options_fr
+    )
+
+    correction_source = "database"
+
+    # ============================================================
+    # 2A. GÉNÉRATION PAresseuse DU CORRIGÉ GÉNÉRIQUE
+    # ============================================================
+
+    if not explication_exercice or not explication_exercice.strip():
+
+        correction_source = "generated_first_use"
+
+        if lang == "en":
+            prompt_corrige = f"""
+Create the reusable official correction for this mathematics exercise.
+
+EXERCISE:
+{question}
+
+POSSIBLE CHOICES:
+{options_exercice or "No multiple-choice options"}
+
+EXPECTED ANSWER:
+{reponse_attendue}
+
+Write a concise but pedagogically complete correction.
+Explain the mathematical reasoning and state the final answer.
+Do not mention any specific student.
+Do not score a student response.
+This correction will be stored and reused for future students.
+""".strip()
+        else:
+            prompt_corrige = f"""
+Crée le corrigé officiel réutilisable de cet exercice de mathématiques.
+
+ÉNONCÉ :
+{question}
+
+CHOIX ÉVENTUELS :
+{options_exercice or "Aucun choix multiple"}
+
+RÉPONSE ATTENDUE :
+{reponse_attendue}
+
+Rédige un corrigé concis mais pédagogiquement complet.
+Explique le raisonnement mathématique et donne clairement la réponse finale.
+Ne parle d'aucun élève en particulier.
+Ne donne aucune note à une réponse d'élève.
+Ce corrigé sera enregistré et réutilisé pour les prochains élèves.
+""".strip()
+
+        try:
+            correction_completion = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt_corrige
+                    }
+                ],
+                temperature=0.1
+            )
+
+            explication_exercice = (
+                correction_completion.choices[0]
+                .message.content
+                .strip()
+            )
+
+            if explication_exercice:
+
+                if lang == "en":
+                    exercice.explication_en = explication_exercice
+                else:
+                    exercice.explication_fr = explication_exercice
+
+                try:
+                    db.session.commit()
+
+                    print(
+                        "💾 Corrigé générique généré et enregistré "
+                        f"pour l'exercice {exercice.id}."
+                    )
+
+                except Exception as e:
+                    db.session.rollback()
+
+                    print(
+                        "⚠️ Corrigé généré mais non enregistré "
+                        f"dans Exercice : {e}"
+                    )
+
+        except Exception as e:
+
+            correction_source = "generation_failed"
+
+            print(
+                f"⚠️ Impossible de générer le corrigé générique : {e}"
+            )
+
+            explication_exercice = ""
+
+    else:
+
+        print(
+            f"♻️ Corrigé générique déjà présent : "
+            f"réutilisation pour l'exercice {exercice.id}."
+        )
+
+    # ============================================================
+    # 2B. DÉTERMINER SI LE CAS EST UN QCM DÉTERMINISTE
+    # ============================================================
+
+    methodes_qcm_deterministes = {
+        "normalized_exact_match",
+        "mcq_label_mismatch",
+        "mcq_resolved_exact_match",
+        "numeric_equivalence",
+        "numeric_match",
+        "equation_equivalence",
+        "symbolic_equivalence"
+    }
+
+    methodes_libres_deterministes = {
+        "free_numeric_verified_equality",
+        "free_numeric_verified_equality_mismatch",
+        "free_numeric_explicit_final",
+        "free_numeric_explicit_final_mismatch",
+        "free_numeric_single_value",
+        "free_numeric_single_value_mismatch"
+    }
+
+    feedback_qcm_local = (
+        bool(options_exercice)
+        and validation_method in methodes_qcm_deterministes
+        and validation_verdict in {"correct", "incorrect"}
+    )
+
+    feedback_libre_local = (
+        not bool(options_exercice)
+        and validation_method in methodes_libres_deterministes
+        and validation_verdict in {"correct", "incorrect"}
+    )
+
+    # ============================================================
+    # CAS A : VERDICT INCERTAIN
+    # ============================================================
+
+    if validation_requires_review:
 
         if lang == "en":
             analyse_ia = (
                 "Analysis:\n"
-                "The system could not validate this answer with sufficient certainty. "
-                "The answer has therefore not been automatically marked incorrect.\n\n"
+                "Your answer could not be validated with sufficient certainty. "
+                "It has not been marked incorrect and does not negatively affect "
+                "your learner profile.\n\n"
                 "Score: pending review\n\n"
                 "Correction:\n"
-                "- A mathematical or pedagogical review is recommended before this "
-                "answer affects the learner's diagnostic."
             )
+
+            if explication_exercice:
+                analyse_ia += explication_exercice
+            else:
+                analyse_ia += (
+                    "A mathematical or pedagogical review is recommended "
+                    "before this answer affects the learner diagnostic."
+                )
 
         else:
             analyse_ia = (
                 "Analyse :\n"
-                "Le système n'a pas pu valider cette réponse avec suffisamment "
-                "de certitude. Elle n'est donc pas automatiquement considérée "
-                "comme incorrecte.\n\n"
+                "Ta réponse n'a pas pu être validée avec suffisamment de certitude. "
+                "Elle n'est pas considérée comme fausse et n'affecte pas négativement "
+                "ton profil d'apprentissage.\n\n"
                 "Note : en attente de vérification\n\n"
                 "Correction :\n"
-                "- Une vérification mathématique ou pédagogique est recommandée "
-                "avant que cette réponse influence le diagnostic de l'élève."
             )
+
+            if explication_exercice:
+                analyse_ia += explication_exercice
+            else:
+                analyse_ia += (
+                    "Une vérification mathématique ou pédagogique est recommandée "
+                    "avant que cette réponse influence le diagnostic."
+                )
+
+    # ============================================================
+    # CAS B : QCM DÉTERMINISTE
+    # ============================================================
+
+    elif feedback_qcm_local:
+
+        if validation_verdict == "correct":
+
+            etoiles_gpt = 5
+
+            if lang == "en":
+                analyse_ia = (
+                    "Analysis:\n"
+                    "Your answer is correct.\n\n"
+                    "Score: 5/5\n\n"
+                    "Correction:\n"
+                    f"{explication_exercice or 'The selected answer matches the official answer key.'}"
+                )
+            else:
+                analyse_ia = (
+                    "Analyse :\n"
+                    "Ta réponse est correcte.\n\n"
+                    "Note : 5/5\n\n"
+                    "Correction :\n"
+                    f"{explication_exercice or 'Le choix sélectionné correspond à la réponse officielle.'}"
+                )
+
+        else:
+
+            etoiles_gpt = 0
+
+            if lang == "en":
+                analyse_ia = (
+                    "Analysis:\n"
+                    "Your selected answer is incorrect.\n\n"
+                    "Score: 0/5\n\n"
+                    "Correction:\n"
+                    f"{explication_exercice or 'Review the expected answer and the proposed choices.'}"
+                )
+            else:
+                analyse_ia = (
+                    "Analyse :\n"
+                    "La réponse choisie est incorrecte.\n\n"
+                    "Note : 0/5\n\n"
+                    "Correction :\n"
+                    f"{explication_exercice or 'Revois la réponse attendue et les choix proposés.'}"
+                )
+
+        print(
+            "⚡ Rétroaction locale QCM : "
+            f"méthode={validation_method}, "
+            f"verdict={validation_verdict}, "
+            "aucun appel IA individuel supplémentaire."
+        )
+
+    # ============================================================
+    # CAS C : RÉPONSE LIBRE NUMÉRIQUE VALIDÉE DÉTERMINISTEMENT
+    # ============================================================
+
+    elif feedback_libre_local:
+
+        if validation_verdict == "correct":
+
+            # 5/5 : calcul explicite et arithmétiquement vérifié.
+            # 4/5 : réponse finale correcte formulée clairement.
+            # 3/5 : valeur correcte seule, sans démarche observable.
+            if validation_method == "free_numeric_verified_equality":
+                etoiles_gpt = 5
+
+                if lang == "en":
+                    analyse_locale = (
+                        "Your numerical answer is correct and the calculation "
+                        "you wrote is arithmetically consistent."
+                    )
+                else:
+                    analyse_locale = (
+                        "Ta réponse numérique est correcte et le calcul que tu "
+                        "as écrit est arithmétiquement cohérent."
+                    )
+
+            elif validation_method == "free_numeric_explicit_final":
+                etoiles_gpt = 4
+
+                if lang == "en":
+                    analyse_locale = (
+                        "Your final numerical answer is correct and clearly stated. "
+                        "Showing the calculation would make your reasoning more complete."
+                    )
+                else:
+                    analyse_locale = (
+                        "Ta réponse finale est correcte et clairement formulée. "
+                        "Montrer le calcul rendrait ton raisonnement plus complet."
+                    )
+
+            else:
+                etoiles_gpt = 3
+
+                if lang == "en":
+                    analyse_locale = (
+                        "Your numerical answer is correct. "
+                        "Add the calculation or reasoning to make your work clearer."
+                    )
+                else:
+                    analyse_locale = (
+                        "Ta réponse numérique est correcte. "
+                        "Ajoute le calcul ou le raisonnement pour rendre ta démarche plus claire."
+                    )
+
+            if lang == "en":
+                analyse_ia = (
+                    "Analysis:\n"
+                    f"{analyse_locale}\n\n"
+                    f"Score: {etoiles_gpt}/5\n\n"
+                    "Correction:\n"
+                    f"{explication_exercice or 'The final numerical answer matches the official reference.'}"
+                )
+            else:
+                analyse_ia = (
+                    "Analyse :\n"
+                    f"{analyse_locale}\n\n"
+                    f"Note : {etoiles_gpt}/5\n\n"
+                    "Correction :\n"
+                    f"{explication_exercice or 'La réponse numérique finale correspond à la référence officielle.'}"
+                )
+
+        else:
+
+            # 2/5 : calcul cohérent mais résultat final non conforme à la référence.
+            # 1/5 : valeur finale explicite incorrecte.
+            if validation_method == "free_numeric_verified_equality_mismatch":
+                etoiles_gpt = 2
+
+                if lang == "en":
+                    analyse_locale = (
+                        "The calculation you wrote is internally consistent, "
+                        "but its final result does not answer the exercise correctly."
+                    )
+                else:
+                    analyse_locale = (
+                        "Le calcul que tu as écrit est cohérent en lui-même, "
+                        "mais son résultat final ne répond pas correctement à l'exercice."
+                    )
+
+            else:
+                etoiles_gpt = 1
+
+                if lang == "en":
+                    analyse_locale = (
+                        "Your final numerical answer does not match the expected answer."
+                    )
+                else:
+                    analyse_locale = (
+                        "Ta réponse numérique finale ne correspond pas à la réponse attendue."
+                    )
+
+            if lang == "en":
+                analyse_ia = (
+                    "Analysis:\n"
+                    f"{analyse_locale}\n\n"
+                    f"Score: {etoiles_gpt}/5\n\n"
+                    "Correction:\n"
+                    f"{explication_exercice or 'Review the official calculation and expected result.'}"
+                )
+            else:
+                analyse_ia = (
+                    "Analyse :\n"
+                    f"{analyse_locale}\n\n"
+                    f"Note : {etoiles_gpt}/5\n\n"
+                    "Correction :\n"
+                    f"{explication_exercice or 'Revois le calcul officiel et le résultat attendu.'}"
+                )
+
+        print(
+            "⚡ Rétroaction locale réponse libre numérique : "
+            f"méthode={validation_method}, "
+            f"verdict={validation_verdict}, "
+            f"note={etoiles_gpt}/5, "
+            "aucun appel IA individuel supplémentaire."
+        )
+
+    # ============================================================
+    # CAS D : RÉPONSE LIBRE / VALIDATION SÉMANTIQUE
+    # ============================================================
 
     else:
 
@@ -20067,11 +21003,14 @@ def soumettre_sequentiel():
             )
 
             prompt = f"""
-You are producing pedagogical feedback after a separate mathematical
-validation engine has already evaluated the student's answer.
+You are producing individualized pedagogical feedback after a separate
+mathematical validation engine has already evaluated the student's answer.
 
 EXERCISE:
 {question}
+
+OFFICIAL REUSABLE CORRECTION:
+{explication_exercice or "Not available"}
 
 EXPECTED ANSWER:
 {reponse_attendue}
@@ -20091,34 +21030,21 @@ VALIDATION CONFIDENCE:
 VALIDATION REASON:
 {validation_result.reason or "Not provided"}
 
-IMPORTANT RULES:
+Do not contradict the authoritative verdict.
+If CORRECT, score 3/5 to 5/5.
+If INCORRECT, score 0/5 to 2/5.
+Use the official reusable correction as the mathematical reference.
+Do not replace it with a contradictory solution.
 
-1. You MUST NOT contradict the authoritative mathematical verdict.
-
-2. If the verdict is CORRECT:
-   - explicitly acknowledge that the mathematical answer is correct;
-   - the score must be 3/5, 4/5, or 5/5;
-   - 3/5 is allowed only if reasoning is substantially incomplete;
-   - do not invent a mathematical error.
-
-3. If the verdict is INCORRECT:
-   - explain the actual mathematical error;
-   - recognize any correct partial reasoning;
-   - the score must be between 0/5 and 2/5.
-
-4. Separate correctness of the final result from quality of reasoning.
-
-RESPONSE FORMAT:
+FORMAT:
 
 Analysis:
-[Detailed pedagogical analysis]
+[Individualized analysis]
 
 Score: X/5
 
 Correction:
-- Complete solution: [...]
-- Improvement points: [...]
-- Final answer: [...]
+[Use or summarize the official correction]
 """.strip()
 
         else:
@@ -20130,11 +21056,14 @@ Correction:
             )
 
             prompt = f"""
-Tu produis une rétroaction pédagogique APRÈS qu'un moteur de validation
-mathématique séparé a déjà évalué la réponse de l'élève.
+Tu produis une rétroaction pédagogique individualisée APRÈS qu'un moteur
+de validation mathématique séparé a déjà évalué la réponse de l'élève.
 
 ÉNONCÉ :
 {question}
+
+CORRIGÉ OFFICIEL RÉUTILISABLE :
+{explication_exercice or "Non disponible"}
 
 RÉPONSE ATTENDUE :
 {reponse_attendue}
@@ -20154,34 +21083,21 @@ CONFIANCE :
 RAISON DE VALIDATION :
 {validation_result.reason or "Non fournie"}
 
-RÈGLES IMPÉRATIVES :
+Ne contredis jamais le verdict autoritaire.
+Si CORRECT, note de 3/5 à 5/5.
+Si INCORRECT, note de 0/5 à 2/5.
+Utilise le corrigé officiel réutilisable comme référence mathématique.
+Ne le remplace pas par une solution contradictoire.
 
-1. Tu NE DOIS PAS contredire le verdict mathématique autoritaire.
-
-2. Si le verdict est CORRECT :
-   - confirme explicitement que la réponse mathématique est correcte ;
-   - la note doit être 3/5, 4/5 ou 5/5 ;
-   - 3/5 est réservé à un raisonnement très incomplet ;
-   - n'invente aucune erreur mathématique.
-
-3. Si le verdict est INCORRECT :
-   - explique précisément l'erreur mathématique réelle ;
-   - reconnais les éléments de raisonnement corrects ;
-   - la note doit être comprise entre 0/5 et 2/5.
-
-4. Distingue la justesse du résultat final de la qualité du raisonnement.
-
-FORMAT DE RÉPONSE :
+FORMAT :
 
 Analyse :
-[Analyse pédagogique détaillée]
+[Analyse individualisée]
 
 Note : X/5
 
 Correction :
-- Résolution complète : [...]
-- Points d'amélioration : [...]
-- Résultat final : [...]
+[Utilise ou résume le corrigé officiel]
 """.strip()
 
         try:
@@ -20203,31 +21119,33 @@ Correction :
             )
 
         except Exception as e:
+
             print(f"❌ Erreur IA rétroaction : {e}")
 
             if validation_verdict == "correct":
-
                 analyse_ia = (
-                    "Analysis:\nAnswer mathematically validated as correct."
+                    "Analysis:\nAnswer mathematically validated as correct.\n\nCorrection:\n"
+                    + (explication_exercice or "")
                     if lang == "en"
                     else
-                    "Analyse :\nRéponse mathématiquement validée comme correcte."
+                    "Analyse :\nRéponse mathématiquement validée comme correcte.\n\nCorrection :\n"
+                    + (explication_exercice or "")
                 )
-
             else:
-
                 analyse_ia = (
-                    "Analysis:\nAnswer mathematically validated as incorrect."
+                    "Analysis:\nAnswer mathematically validated as incorrect.\n\nCorrection:\n"
+                    + (explication_exercice or "")
                     if lang == "en"
                     else
-                    "Analyse :\nRéponse mathématiquement validée comme incorrecte."
+                    "Analyse :\nRéponse mathématiquement validée comme incorrecte.\n\nCorrection :\n"
+                    + (explication_exercice or "")
                 )
 
     # ============================================================
     # 3. EXTRACTION ET CONTRAINTE DE LA NOTE
     # ============================================================
 
-    if validation_verdict != "uncertain":
+    if not validation_requires_review:
 
         match = re.search(
             r"(Note|Score)\s*:\s*(\d)",
@@ -20287,7 +21205,7 @@ Correction :
     # 4. DIAGNOSTIC DE DIFFICULTÉ PROTÉGÉ
     # ============================================================
 
-    if validation_verdict == "uncertain":
+    if validation_requires_review:
 
         # Ne pas dégrader le diagnostic de l'élève.
         niveau_risque = "à vérifier"
@@ -20343,7 +21261,7 @@ Correction :
         # Un cas incertain ne doit pas influencer négativement
         # les estimations de maîtrise.
         "excluded_from_negative_update": (
-            validation_verdict == "uncertain"
+            validation_requires_review
         )
     }
 
@@ -20384,7 +21302,7 @@ Correction :
             "method": validation_method,
 
             "requires_review": (
-                validation_verdict == "uncertain"
+                validation_requires_review
             )
         },
 
@@ -20428,14 +21346,40 @@ Correction :
                 validation_details
             ),
 
+            "reference_answer_source": reference_answer_source,
+            "reference_answer_generated": reference_answer_generated,
+            "reference_generation_failed": reference_generation_failed,
+            "reference_generation_reason": reference_generation_reason,
+            "reference_second_answer": reference_second_answer,
+            "reference_comparison_method": reference_comparison_method,
+
+            "correction_source": correction_source,
+            "correction_reused": correction_source == "database",
+            "feedback_source": (
+                "local_qcm"
+                if feedback_qcm_local
+                else "local_free_numeric"
+                if feedback_libre_local
+                else "review_required"
+                if validation_requires_review
+                else "openai_individual"
+            ),
+
             "requires_review": (
-                validation_verdict == "uncertain"
+                validation_requires_review
             ),
 
             "notion_cible": exercice.notion_cible,
             "competence_cible": exercice.competence_cible,
             "niveau_difficulte": exercice.niveau_difficulte,
             "type_exercice": exercice.type_exercice,
+
+            "options_source": (
+                "options_en"
+                if lang == "en" and exercice.options_en
+                else "options_fr"
+            ),
+            "options_presentes": bool(options_exercice),
 
             "matiere_fr": matiere_fr,
             "matiere_en": matiere_en,
@@ -20550,10 +21494,10 @@ Correction :
     # on ne doit surtout pas dégrader le diagnostic de l'élève.
     # ------------------------------------------------------------
 
-    if validation_verdict == "uncertain":
+    if validation_requires_review:
 
         print(
-            "⚠️ Verdict incertain : "
+            "⚠️ Verdict non concluant : "
             "aucune mise à jour bayésienne négative."
         )
 
@@ -20738,11 +21682,11 @@ Correction :
 
     # Un verdict incertain ne doit jamais diminuer artificiellement
     # la maîtrise estimée de l'élève.
-    if validation_verdict == "uncertain":
+    if validation_requires_review:
 
         print(
             "⚠️ Profil apprenant non modifié : "
-            "le verdict de validation est incertain."
+            "le verdict de validation nécessite une vérification."
         )
 
     else:
@@ -20783,7 +21727,7 @@ Correction :
     prochain_exercice = None
     resultat_adaptatif = None
 
-    adaptation_bloquee = validation_verdict == "uncertain"
+    adaptation_bloquee = validation_requires_review
 
     # ============================================================
     # CAS 1 : VERDICT INCERTAIN
@@ -20803,6 +21747,10 @@ Correction :
             "prochain_exercice_id": None,
 
             "strategie": "verification",
+
+            "validation_verdict": validation_verdict,
+            "validation_confidence": validation_confidence,
+            "validation_method": validation_method,
 
             "raison": (
                 "La réponse n'a pas pu être évaluée avec suffisamment "
@@ -21274,7 +22222,11 @@ Correction :
                 "validation_reasoning_correct": validation_result.reasoning_correct,
                 "validation_error_type": validation_result.error_type,
                 "validation_details": validation_details,
-                "requires_review": validation_verdict == "uncertain",
+                "requires_review": validation_requires_review,
+
+                "reference_answer_source": reference_answer_source,
+                "reference_answer_generated": reference_answer_generated,
+                "reference_generation_failed": reference_generation_failed,
 
                 "correction_method": "hybrid_validation_engine_adaptive",
                 "adaptive_next": adaptive_next,
@@ -21347,7 +22299,7 @@ Correction :
             db.session.rollback()
             print(f"⚠️ Remédiation non enregistrée : {e}")
 
-    elif validation_verdict == "uncertain":
+    elif validation_requires_review:
 
         print(
             "⚠️ Aucune remédiation créée : "
