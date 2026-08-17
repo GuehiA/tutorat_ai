@@ -122,7 +122,8 @@ def mettre_a_jour_profil_apprenant(
     etoiles=None,
     diagnostic_bayesien=None,
     type_exercice=None,
-    niveau_difficulte=None
+    niveau_difficulte=None,
+    commit_changes=True
 ):
     """
     Met à jour le profil apprenant d'un élève pour une notion donnée.
@@ -324,7 +325,14 @@ def mettre_a_jour_profil_apprenant(
     # ============================================================
     # SAUVEGARDE
     # ============================================================
+    # Le comportement historique reste le défaut.
+    # La route séquentielle peut différer le commit pour regrouper
+    # plusieurs écritures PostgreSQL.
+    # ============================================================
 
-    db.session.commit()
+    if commit_changes:
+        db.session.commit()
+    elif profil.id is None:
+        db.session.flush()
 
     return profil

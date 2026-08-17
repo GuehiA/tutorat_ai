@@ -19834,6 +19834,21 @@ def soumettre_sequentiel():
     import json
     import re
     from datetime import datetime, timezone
+    from time import perf_counter
+
+    _perf_t0 = perf_counter()
+    _perf_last = _perf_t0
+
+    def _perf_mark(label):
+        nonlocal _perf_last
+        now = perf_counter()
+        step = now - _perf_last
+        total = now - _perf_t0
+        print(
+            f"⏱️ PERF SOUMISSION | {label:<34} "
+            f"| étape={step:6.3f}s | total={total:6.3f}s"
+        )
+        _perf_last = now
 
     print("=== 📝 SOUMISSION SÉQUENTIELLE ADAPTATIVE ===")
     print(f"🔍 Données formulaire: {dict(request.form)}")
@@ -19981,6 +19996,8 @@ def soumettre_sequentiel():
         if lang == "en" and exercice.explication_en
         else exercice.explication_fr
     )
+
+    _perf_mark("chargement contexte + contrôles")
 
     # ============================================================
     # 1A. GÉNÉRATION ET VALIDATION DE LA RÉPONSE ATTENDUE
@@ -20445,6 +20462,8 @@ Règles :
                 f"Erreur pendant la génération contrôlée de la réponse attendue : {e}"
             )
 
+    _perf_mark("référence attendue prête")
+
     # ============================================================
     # 1B. MOTEUR HYBRIDE DE VALIDATION
     # ============================================================
@@ -20583,6 +20602,8 @@ Règles :
                 "⚠️ Vérification mathématique : INCERTAINE\n"
                 "La réponse n'est pas automatiquement considérée comme fausse."
             )
+
+    _perf_mark("validation hybride terminée")
 
     # ============================================================
     # 2. CORRIGÉ PARTAGÉ + RÉTROACTION PÉDAGOGIQUE
@@ -21200,6 +21221,7 @@ Correction :
 
     print(f"⭐ Note finale : {etoiles_finales}")
     print(f"📊 Score final : {score_final}")
+    _perf_mark("corrigé + rétroaction + note")
 
     # ============================================================
     # 4. DIAGNOSTIC DE DIFFICULTÉ PROTÉGÉ
@@ -21459,6 +21481,7 @@ Correction :
         db.session.commit()
 
         print("✅ Réponse sauvegardée.")
+        _perf_mark("commit StudentResponse")
 
     except Exception as e:
 
@@ -21655,9 +21678,12 @@ Correction :
             )
 
             db.session.add(diagnostic_record)
-            db.session.commit()
 
-            print("✅ Diagnostic bayésien enregistré.")
+            # Flush uniquement : attribue l'ID sans clôturer
+            # la transaction PostgreSQL.
+            db.session.flush()
+
+            print("✅ Diagnostic bayésien préparé.")
 
             print(
                 f"🧠 Diagnostic : "
@@ -21665,6 +21691,7 @@ Correction :
                 f"risque={niveau_risque}, "
                 f"probabilité={probabilite_difficulte}"
             )
+            _perf_mark("flush DiagnosticBayesien")
 
         except Exception as e:
 
@@ -21703,7 +21730,8 @@ Correction :
                 etoiles=etoiles_finales,
                 diagnostic_bayesien=diagnostic_bayesien,
                 type_exercice=exercice.type_exercice,
-                niveau_difficulte=exercice.niveau_difficulte
+                niveau_difficulte=exercice.niveau_difficulte,
+                commit_changes=False
             )
 
             if profil_apprenant:
@@ -21714,6 +21742,8 @@ Correction :
                     f"risque={profil_apprenant.niveau_risque} | "
                     f"recommandation={profil_apprenant.recommandation}"
                 )
+
+            _perf_mark("mise à jour profil apprenant")
 
         except Exception as e:
             db.session.rollback()
@@ -21784,27 +21814,16 @@ Correction :
 
         reponse.feedback_ia_structure = feedback_json
 
-        try:
-            db.session.commit()
+        # Sauvegarde différée jusqu'au commit final du pipeline.
+        print(
+            "⚠️ Adaptation suspendue : "
+            "verdict incertain."
+        )
 
-            print(
-                "⚠️ Adaptation suspendue : "
-                "verdict incertain."
-            )
-
-            print(
-                "✅ Aucune remédiation automatique "
-                "et aucune baisse de difficulté."
-            )
-
-        except Exception as e:
-
-            db.session.rollback()
-
-            print(
-                f"⚠️ Impossible de sauvegarder "
-                f"la protection adaptative : {e}"
-            )
+        print(
+            "✅ Aucune remédiation automatique "
+            "et aucune baisse de difficulté."
+        )
 
         session.modified = True
 
@@ -21870,7 +21889,8 @@ Correction :
 
                 diagnostic_bayesien=diagnostic_bayesien,
 
-                verification_calcul=verification_calcul_adaptative
+                verification_calcul=verification_calcul_adaptative,
+                profil_apprenant=profil_apprenant
             )
 
             prochain_exercice = (
@@ -21972,8 +21992,8 @@ Correction :
 
                 reponse.feedback_ia_structure = feedback_json
 
-                db.session.commit()
-
+                # Commit différé : profil + adaptive_next + trace
+                # seront enregistrés ensemble plus bas.
                 print(
                     f"🧠 Prochain exercice adaptatif : "
                     f"{prochain_exercice.id}"
@@ -22049,8 +22069,8 @@ Correction :
 
                 reponse.feedback_ia_structure = feedback_json
 
-                db.session.commit()
-
+                # Commit différé : profil + adaptive_next + trace
+                # seront enregistrés ensemble plus bas.
                 print(
                     "ℹ️ Aucun exercice adaptatif supplémentaire "
                     "n'est disponible."
@@ -22110,12 +22130,10 @@ Correction :
 
             reponse.feedback_ia_structure = feedback_json
 
-            try:
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-
+            # Sauvegarde différée jusqu'au commit final.
             session.modified = True
+
+    _perf_mark("sélection + sauvegarde adaptation")
 
     # ============================================================
     # 9. TRACE D'APPRENTISSAGE UNIFIÉE
@@ -22239,15 +22257,17 @@ Correction :
         )
 
         db.session.add(trace)
-        db.session.commit()
 
-        print("✅ Trace d'apprentissage créée.")
+        # La trace sera persistée avec le diagnostic, le profil,
+        # adaptive_next et la remédiation éventuelle au commit final.
+        print("✅ Trace d'apprentissage préparée.")
         print(
             f"🧠 TraceApprentissage : "
             f"élève={eleve.id}, exercice={exercice.id}, "
             f"verdict={validation_verdict}, "
             f"score={score_final}, risque={niveau_risque}"
         )
+        _perf_mark("préparation TraceApprentissage")
 
     except Exception as e:
         db.session.rollback()
@@ -22288,10 +22308,9 @@ Correction :
             )
 
             db.session.add(suggestion)
-            db.session.commit()
 
             print(
-                "📚 Remédiation proposée après "
+                "📚 Remédiation préparée après "
                 "un verdict incorrect confirmé."
             )
 
@@ -22311,6 +22330,41 @@ Correction :
         print(
             "✅ Aucune remédiation nécessaire : "
             f"verdict={validation_verdict}."
+        )
+
+    _perf_mark("remédiation éventuelle")
+    print(
+        f"⏱️ PERF SOUMISSION | TOTAL ROUTE                        "
+        f"| total={perf_counter() - _perf_t0:6.3f}s"
+    )
+
+    # ============================================================
+    # COMMIT FINAL PIPELINE PÉDAGOGIQUE
+    # ============================================================
+    #
+    # StudentResponse a déjà été sécurisé par son commit initial.
+    # Tout le pipeline secondaire est maintenant persisté ensemble :
+    # - DiagnosticBayesien
+    # - ProfilApprenant
+    # - adaptive_next dans StudentResponse
+    # - TraceApprentissage
+    # - RemediationSuggestion éventuelle
+    # ============================================================
+
+    try:
+        db.session.commit()
+        print("✅ Commit final du pipeline pédagogique effectué.")
+        _perf_mark("COMMIT FINAL pipeline pédagogique")
+
+    except Exception as e:
+        db.session.rollback()
+
+        print(
+            f"⚠️ Échec du commit final pédagogique : {e}"
+        )
+
+        print(
+            "✅ La réponse élève principale reste sauvegardée."
         )
 
     # ============================================================

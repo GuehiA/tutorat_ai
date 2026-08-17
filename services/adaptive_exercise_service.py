@@ -465,7 +465,8 @@ def choisir_prochain_exercice_adaptatif(
     etoiles=None,
     score=None,
     diagnostic_bayesien=None,
-    verification_calcul=None
+    verification_calcul=None,
+    profil_apprenant=None
 ):
     """
     Choisit le prochain exercice à proposer à l'élève.
@@ -494,11 +495,14 @@ def choisir_prochain_exercice_adaptatif(
     notion_cible = exercice_actuel.notion_cible
     niveau_actuel = normaliser_niveau_difficulte(exercice_actuel.niveau_difficulte)
 
-    profil = charger_profil_apprenant(
-        eleve_id=eleve_id,
-        lecon_id=lecon_id,
-        notion_cible=notion_cible
-    )
+    profil = profil_apprenant
+
+    if profil is None:
+        profil = charger_profil_apprenant(
+            eleve_id=eleve_id,
+            lecon_id=lecon_id,
+            notion_cible=notion_cible
+        )
 
     infos_profil = extraire_infos_profil(profil)
 
@@ -527,16 +531,37 @@ def choisir_prochain_exercice_adaptatif(
         exclure_exercice_id=exercice_actuel.id
     )
 
+    # Charger les exercices candidats une seule fois.
+    # no_autoflush évite une écriture prématurée du profil.
+    with db.session.no_autoflush:
+        candidats = (
+            query_base
+            .order_by(
+                Exercice.ordre_progression.asc(),
+                Exercice.id.asc()
+            )
+            .all()
+        )
+
+    def prendre_candidat(notion=None, niveau=None, types=None):
+        for candidat in candidats:
+            if notion is not None and candidat.notion_cible != notion:
+                continue
+            if niveau is not None and candidat.niveau_difficulte != niveau:
+                continue
+            if types and candidat.type_exercice not in types:
+                continue
+            return candidat
+        return None
+
     # ------------------------------------------------------------
     # 1. Même notion + niveau cible + type ciblé
     # ------------------------------------------------------------
 
-    exercice = chercher_exercice(
-        query=query_base,
-        Exercice=Exercice,
-        notion_cible=notion_cible,
-        niveau_difficulte=niveau_cible,
-        types_exercice=types_cibles
+    exercice = prendre_candidat(
+        notion=notion_cible,
+        niveau=niveau_cible,
+        types=types_cibles
     )
 
     if exercice:
@@ -553,12 +578,10 @@ def choisir_prochain_exercice_adaptatif(
     # 2. Même notion + niveau cible, peu importe le type
     # ------------------------------------------------------------
 
-    exercice = chercher_exercice(
-        query=query_base,
-        Exercice=Exercice,
-        notion_cible=notion_cible,
-        niveau_difficulte=niveau_cible,
-        types_exercice=None
+    exercice = prendre_candidat(
+        notion=notion_cible,
+        niveau=niveau_cible,
+        types=None
     )
 
     if exercice:
@@ -575,12 +598,10 @@ def choisir_prochain_exercice_adaptatif(
     # 3. Même notion, peu importe niveau/type
     # ------------------------------------------------------------
 
-    exercice = chercher_exercice(
-        query=query_base,
-        Exercice=Exercice,
-        notion_cible=notion_cible,
-        niveau_difficulte=None,
-        types_exercice=None
+    exercice = prendre_candidat(
+        notion=notion_cible,
+        niveau=None,
+        types=None
     )
 
     if exercice:
@@ -597,12 +618,10 @@ def choisir_prochain_exercice_adaptatif(
     # 4. Même niveau cible + type ciblé, autre notion
     # ------------------------------------------------------------
 
-    exercice = chercher_exercice(
-        query=query_base,
-        Exercice=Exercice,
-        notion_cible=None,
-        niveau_difficulte=niveau_cible,
-        types_exercice=types_cibles
+    exercice = prendre_candidat(
+        notion=None,
+        niveau=niveau_cible,
+        types=types_cibles
     )
 
     if exercice:
@@ -619,14 +638,7 @@ def choisir_prochain_exercice_adaptatif(
     # 5. Prochain exercice non fait dans la leçon
     # ------------------------------------------------------------
 
-    exercice = (
-        query_base
-        .order_by(
-            Exercice.ordre_progression.asc(),
-            Exercice.id.asc()
-        )
-        .first()
-    )
+    exercice = candidats[0] if candidats else None
 
     if exercice:
         return {
