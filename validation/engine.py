@@ -3,6 +3,7 @@ from validation.result import ValidationResult
 from validation.numeric import NumericValidator
 from validation.equation import EquationValidator
 from validation.symbolic import SymbolicValidator
+from validation.double_check import DoubleCheckValidator
 
 
 class ValidationEngine:
@@ -11,6 +12,7 @@ class ValidationEngine:
         self.numeric_validator = NumericValidator()
         self.equation_validator = EquationValidator()
         self.symbolic_validator = SymbolicValidator()
+        self.llm_validator = DoubleCheckValidator()
 
     def validate(
         self,
@@ -102,17 +104,36 @@ class ValidationEngine:
         if symbolic_result.verdict == "correct":
             return symbolic_result
 
-        # 7. Aucun validateur fiable n'a pu conclure
-        return ValidationResult.uncertain(
-            confidence=0.0,
-            method="fallback_required",
-            reason=(
-                "Les validateurs déterministes n'ont pas pu "
-                "établir une décision suffisamment fiable."
-            ),
-            normalized_student_answer=normalized_student,
-            normalized_expected_answer=normalized_expected,
-            details={
-                "validator_trace": validator_trace
-            },
-        )
+        # 7. Fallback IA uniquement si les validateurs
+        # déterministes n'ont pas réussi à conclure.
+        try:
+            llm_result = self.llm_validator.validate(
+                question=question or "",
+                student_answer=student_answer,
+                expected_answer=expected_answer,
+            )
+
+            if llm_result.details is None:
+                llm_result.details = {}
+
+            llm_result.details["deterministic_trace"] = validator_trace
+
+            return llm_result
+
+        except Exception as exc:
+            return ValidationResult.uncertain(
+                confidence=0.0,
+                method="llm_fallback_error",
+                reason=(
+                    "Les validateurs déterministes n'ont pas pu conclure "
+                    "et le fallback IA a rencontré une erreur. "
+                    "La réponse ne doit pas être pénalisée automatiquement."
+                ),
+                normalized_student_answer=normalized_student,
+                normalized_expected_answer=normalized_expected,
+                details={
+                    "validator_trace": validator_trace,
+                    "exception_type": type(exc).__name__,
+                    "exception_message": str(exc),
+                },
+            )
