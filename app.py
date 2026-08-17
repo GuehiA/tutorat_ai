@@ -38,6 +38,7 @@ from services.math_verification import (
     verifier_expression_fractionnaire,
     verifier_solution_equation_fractionnaire
 )
+from validation.engine import ValidationEngine
 from models import DiagnosticBayesien, ProfilApprenant
 # Après les imports existants, ajouter :
 from naima_router import (
@@ -305,7 +306,7 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 Mo par requête
 
 from config import OPENAI_API_KEY
 client = OpenAI(api_key=OPENAI_API_KEY)
-
+validation_engine = ValidationEngine()
 # ====================================================================
 # 🛠️ FONCTIONS UTILITAIRES
 # ====================================================================
@@ -6000,9 +6001,11 @@ def soumettre_reponse():
     from datetime import datetime
     import re
 
-    print("=== 📝 SOUMISSION RÉPONSE SIMPLE ===")
+    # Import local pour éviter de modifier immédiatement tous les imports globaux de app.py.
+    from validation.engine import ValidationEngine
 
-    # DEBUG: Afficher tous les champs reçus
+    print("=== 📝 SOUMISSION RÉPONSE — MOTEUR HYBRIDE ===")
+
     print("📦 Données reçues:", dict(request.form))
 
     # ============================================================
@@ -6019,7 +6022,7 @@ def soumettre_reponse():
     print(f"Réponse: {reponse_eleve}")
 
     # ============================================================
-    # VALIDATION
+    # VALIDATION DES CHAMPS
     # ============================================================
 
     missing_fields = []
@@ -6060,6 +6063,18 @@ def soumettre_reponse():
         else exercice.question_fr
     )
 
+    reponse_attendue = (
+        exercice.reponse_en
+        if lang == "en" and exercice.reponse_en
+        else exercice.reponse_fr
+    )
+
+    explication_reference = (
+        exercice.explication_en
+        if lang == "en" and exercice.explication_en
+        else exercice.explication_fr
+    )
+
     # ============================================================
     # CONTEXTE PÉDAGOGIQUE
     # ============================================================
@@ -6079,13 +6094,52 @@ def soumettre_reponse():
         niveau = eleve.niveau
 
     matiere_nom_fr = matiere.nom if matiere else "Mathématiques"
-    matiere_nom_en = matiere.nom_en if matiere and matiere.nom_en else matiere_nom_fr
+    matiere_nom_en = (
+        matiere.nom_en
+        if matiere and hasattr(matiere, "nom_en") and matiere.nom_en
+        else matiere_nom_fr
+    )
 
     unite_nom_fr = unite.nom if unite else None
-    unite_nom_en = unite.nom_en if unite and unite.nom_en else unite_nom_fr
+    unite_nom_en = (
+        unite.nom_en
+        if unite and hasattr(unite, "nom_en") and unite.nom_en
+        else unite_nom_fr
+    )
 
     lecon_nom_fr = lecon.titre_fr if lecon else "Général"
-    lecon_nom_en = lecon.titre_en if lecon and lecon.titre_en else lecon_nom_fr
+    lecon_nom_en = (
+        lecon.titre_en
+        if lecon and lecon.titre_en
+        else lecon_nom_fr
+    )
+
+    # ============================================================
+    # 1. MOTEUR HYBRIDE DE VALIDATION
+    # ============================================================
+
+    validation_engine = ValidationEngine()
+
+    validation_result = validation_engine.validate(
+        student_answer=reponse_eleve,
+        expected_answer=reponse_attendue or "",
+        question=question or "",
+    )
+
+    print(
+        "🧠 VALIDATION:",
+        f"verdict={validation_result.verdict}",
+        f"confidence={validation_result.confidence}",
+        f"method={validation_result.method}",
+    )
+
+    # Le verdict du moteur hybride devient l'autorité.
+    # L'IA pédagogique appelée plus bas n'a plus le droit
+    # de reclasser une réponse correcte en incorrecte.
+
+    verdict_validation = validation_result.verdict
+    confiance_validation = validation_result.confidence
+    methode_validation = validation_result.method
 
     # ============================================================
     # ROUTAGE INTELLIGENT SELON LA MATIÈRE
@@ -6195,148 +6249,241 @@ def soumettre_reponse():
 
     print(f"🔀 Correction avec: {correction_source}")
 
+
     # ============================================================
-    # PROMPT DE CORRECTION BILINGUE
+    # 2. RÉTROACTION PÉDAGOGIQUE
     # ============================================================
 
-    if lang == "en":
-        prompt = f"""Correct the student's answer.
+    analyse_ia = ""
+    etoiles = None
+    score_pourcentage = None
 
-📘 Problem:
+    # Cas incertain :
+    # on ne fabrique PAS une mauvaise note.
+    if verdict_validation == "uncertain":
+        if lang == "en":
+            analyse_ia = (
+                "I could not validate this answer with sufficient certainty. "
+                "Your answer has not been automatically marked incorrect. "
+                "It should be reviewed or re-evaluated before affecting your progress."
+            )
+        else:
+            analyse_ia = (
+                "Je n'ai pas pu valider cette réponse avec suffisamment de certitude. "
+                "Ta réponse n'est pas automatiquement considérée comme incorrecte. "
+                "Elle doit être vérifiée ou réévaluée avant d'influencer ta progression."
+            )
+
+        print("⚠️ Verdict incertain : aucune pénalisation automatique.")
+
+    else:
+        # Le moteur hybride a déjà décidé correct / incorrect.
+        # Le modèle appelé ici sert uniquement à expliquer et à noter
+        # la qualité pédagogique DANS LES LIMITES du verdict validé.
+
+        if lang == "en":
+            verdict_text = (
+                "CORRECT" if verdict_validation == "correct" else "INCORRECT"
+            )
+
+            prompt = f"""You are producing pedagogical feedback after a separate validation engine has already evaluated the student's answer.
+
+PROBLEM:
 {question}
 
-📜 Student's answer:
+EXPECTED ANSWER:
+{reponse_attendue}
+
+STUDENT ANSWER:
 {reponse_eleve}
 
-⭐ SCORING (5 points):
-5: Excellent reasoning, correct result
-4: Very good, minor error
-3: Good approach, incomplete
-2: Partial reasoning
-1: Attempt but major error
-0: Off-topic or empty
+AUTHORITATIVE VALIDATION VERDICT:
+{verdict_text}
 
-Also identify, if possible:
-- the target concept;
-- the main error type;
-- whether the student needs remediation.
+VALIDATION METHOD:
+{methode_validation}
+
+VALIDATION CONFIDENCE:
+{confiance_validation}
+
+VALIDATION REASON:
+{validation_result.reason or "Not provided"}
+
+REFERENCE EXPLANATION:
+{explication_reference or "Not provided"}
+
+IMPORTANT RULE:
+You MUST NOT contradict the authoritative validation verdict.
+
+If the verdict is CORRECT:
+- acknowledge that the answer/result is correct;
+- you may point out an incomplete explanation or reasoning issue;
+- score must be 4/5 or 5/5.
+
+If the verdict is INCORRECT:
+- explain the mathematical error precisely;
+- acknowledge any valid partial reasoning;
+- score must be between 0/5 and 4/5.
 
 Format:
 Analysis: ...
 Score: X/5
 Main error: ...
 Correct answer: ..."""
-    else:
-        prompt = f"""Corrige la réponse de l'élève.
+        else:
+            verdict_text = (
+                "CORRECT" if verdict_validation == "correct" else "INCORRECT"
+            )
 
-📘 Énoncé:
+            prompt = f"""Tu produis une rétroaction pédagogique APRÈS qu'un moteur de validation séparé a déjà évalué la réponse de l'élève.
+
+ÉNONCÉ :
 {question}
 
-📜 Réponse de l'élève:
+RÉPONSE ATTENDUE :
+{reponse_attendue}
+
+RÉPONSE DE L'ÉLÈVE :
 {reponse_eleve}
 
-⭐ BARÈME (5 points):
-5: Excellent raisonnement, résultat correct
-4: Très bon, erreur mineure
-3: Bonne approche, incomplet
-2: Raisonnement partiel
-1: Tentative mais erreur majeure
-0: Hors sujet ou vide
+VERDICT DE VALIDATION AUTORITAIRE :
+{verdict_text}
 
-Identifie aussi, si possible :
-- la notion ciblée ;
-- le principal type d'erreur ;
-- si l'élève a besoin d'une remédiation.
+MÉTHODE DE VALIDATION :
+{methode_validation}
 
-Format:
+CONFIANCE DE VALIDATION :
+{confiance_validation}
+
+RAISON DE VALIDATION :
+{validation_result.reason or "Non fournie"}
+
+EXPLICATION DE RÉFÉRENCE :
+{explication_reference or "Non fournie"}
+
+RÈGLE IMPÉRATIVE :
+Tu NE DOIS PAS contredire le verdict de validation autoritaire.
+
+Si le verdict est CORRECT :
+- confirme que la réponse ou le résultat est correct ;
+- tu peux signaler une explication incomplète ou une faiblesse de raisonnement ;
+- la note doit être 4/5 ou 5/5.
+
+Si le verdict est INCORRECT :
+- explique précisément l'erreur mathématique ;
+- reconnais les éléments de raisonnement valides s'il y en a ;
+- la note doit être comprise entre 0/5 et 4/5.
+
+Format :
 Analyse: ...
 Note: X/5
 Erreur principale: ...
 Réponse correcte: ..."""
 
-    # ============================================================
-    # APPEL À L'API CHOISIE
-    # ============================================================
-
-    analyse_ia = ""
-    etoiles = 0
-
-    try:
-        print(f"🤖 Appel API pour correction ({correction_source})...")
-
-        chat_completion = correction_client.chat.completions.create(
-            model=correction_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=700
-        )
-
-        analyse_ia = chat_completion.choices[0].message.content.strip()
-        print(f"✅ Correction reçue de {correction_source}")
-
-    except Exception as e:
-        print(f"❌ Erreur avec {correction_source}: {e}")
-
         try:
-            print("🔄 Fallback sur l'autre API...")
+            print(f"🤖 Génération rétroaction pédagogique ({correction_source})...")
 
-            if correction_client == client_deepseek:
-                fallback_client = client_openai
-                fallback_model = "gpt-4o-mini"
-                fallback_source = "OpenAI/gpt-4o-mini (fallback)"
-            else:
-                fallback_client = client_deepseek
-                fallback_model = "deepseek-v4-flash"
-                fallback_source = "DeepSeek Flash (fallback)"
-
-            chat_completion = fallback_client.chat.completions.create(
-                model=fallback_model,
+            chat_completion = correction_client.chat.completions.create(
+                model=correction_model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
+                temperature=0.2,
                 max_tokens=700
             )
 
             analyse_ia = chat_completion.choices[0].message.content.strip()
-            correction_source = fallback_source
+            print(f"✅ Rétroaction reçue de {correction_source}")
 
-            print(f"✅ Fallback réussi avec {fallback_source}")
+        except Exception as e:
+            print(f"❌ Erreur avec {correction_source}: {e}")
 
-        except Exception as e2:
-            analyse_ia = f"Erreur IA : {e2}"
-            print(f"❌ Erreur fallback: {e2}")
+            try:
+                print("🔄 Fallback rétroaction sur l'autre API...")
 
-    # ============================================================
-    # EXTRACTION DE LA NOTE
-    # ============================================================
+                if correction_client == client_deepseek:
+                    fallback_client = client_openai
+                    fallback_model = "gpt-4o-mini"
+                    fallback_source = "OpenAI/gpt-4o-mini (fallback)"
+                else:
+                    fallback_client = client_deepseek
+                    fallback_model = "deepseek-v4-flash"
+                    fallback_source = "DeepSeek Flash (fallback)"
 
-    if analyse_ia:
-        match = re.search(
-            r"(Note|Score)\s*:\s*([0-5])\s*/?\s*5?",
-            analyse_ia,
-            re.IGNORECASE
-        )
+                chat_completion = fallback_client.chat.completions.create(
+                    model=fallback_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.2,
+                    max_tokens=700
+                )
 
-        if match:
-            etoiles = min(int(match.group(2)), 5)
-            print(f"⭐ Note extraite: {etoiles}/5")
-        else:
-            match = re.search(r"\b([0-5])\s*/\s*5\b", analyse_ia)
+                analyse_ia = chat_completion.choices[0].message.content.strip()
+                correction_source = fallback_source
+
+                print(f"✅ Fallback rétroaction réussi avec {fallback_source}")
+
+            except Exception as e2:
+                print(f"❌ Erreur fallback rétroaction: {e2}")
+
+                # Même si la rétroaction IA tombe,
+                # le verdict de validation reste utilisable.
+                if verdict_validation == "correct":
+                    analyse_ia = (
+                        "Réponse validée comme correcte."
+                        if lang == "fr"
+                        else "Answer validated as correct."
+                    )
+                else:
+                    analyse_ia = (
+                        "Réponse validée comme incorrecte. Une explication détaillée "
+                        "n'est temporairement pas disponible."
+                        if lang == "fr"
+                        else
+                        "Answer validated as incorrect. A detailed explanation "
+                        "is temporarily unavailable."
+                    )
+
+        # ========================================================
+        # SCORE PÉDAGOGIQUE CONTRAINT PAR LE VERDICT
+        # ========================================================
+
+        note_ia = None
+
+        if analyse_ia:
+            match = re.search(
+                r"(Note|Score)\s*:\s*([0-5])\s*/?\s*5?",
+                analyse_ia,
+                re.IGNORECASE
+            )
 
             if match:
-                etoiles = min(int(match.group(1)), 5)
-                print(f"⭐ Note extraite fallback /5: {etoiles}/5")
+                note_ia = min(int(match.group(2)), 5)
             else:
-                print("⚠️ Impossible d'extraire la note de l'analyse IA")
+                match = re.search(r"\b([0-5])\s*/\s*5\b", analyse_ia)
+                if match:
+                    note_ia = min(int(match.group(1)), 5)
 
-    score_pourcentage = int(etoiles * 20)
+        if verdict_validation == "correct":
+            # Une réponse validée correcte ne peut plus recevoir 0,1,2 ou 3.
+            etoiles = max(note_ia if note_ia is not None else 5, 4)
+
+        elif verdict_validation == "incorrect":
+            # Une réponse validée incorrecte peut garder du crédit
+            # pour un bon raisonnement, mais pas 5/5.
+            etoiles = min(note_ia if note_ia is not None else 2, 4)
+
+        score_pourcentage = int(etoiles * 20)
+
+        print(
+            f"⭐ Score final contraint par validation: "
+            f"{etoiles}/5 ({score_pourcentage}%)"
+        )
 
     # ============================================================
-    # EXTRACTION SIMPLE DU TYPE D'ERREUR
+    # 3. TYPE D'ERREUR
     # ============================================================
 
-    type_erreur = None
+    type_erreur = validation_result.error_type
 
-    if analyse_ia:
+    if not type_erreur and analyse_ia:
         match_erreur_fr = re.search(
             r"Erreur principale\s*:\s*(.+)",
             analyse_ia,
@@ -6354,26 +6501,44 @@ Réponse correcte: ..."""
         elif match_erreur_en:
             type_erreur = match_erreur_en.group(1).strip()[:100]
 
+    # Une réponse correcte ne doit pas conserver artificiellement
+    # un type d'erreur comme si le résultat était faux.
+    if verdict_validation == "correct" and not validation_result.reasoning_correct is False:
+        type_erreur = None
+
     # ============================================================
-    # RISQUE SIMPLE SELON LA NOTE
+    # 4. NIVEAU DE RISQUE
     # ============================================================
 
-    if etoiles >= 4:
+    if verdict_validation == "uncertain":
+        niveau_risque = "a_verifier"
+    elif etoiles is not None and etoiles >= 4:
         niveau_risque = "faible"
-    elif etoiles >= 3:
+    elif etoiles is not None and etoiles >= 3:
         niveau_risque = "moyen"
     else:
         niveau_risque = "élevé"
 
     # ============================================================
-    # GÉNÉRATION DE REMÉDIATION SI NOTE < 3/5
+    # 5. REMÉDIATION
     # ============================================================
 
-    if etoiles < 3:
+    # Important :
+    # - pas de remédiation automatique sur un verdict incertain ;
+    # - pas de remédiation sur une réponse validée correcte ;
+    # - remédiation seulement après un verdict incorrect confirmé
+    #   et une note réellement faible.
+    remediation_declenchee = (
+        verdict_validation == "incorrect"
+        and etoiles is not None
+        and etoiles < 3
+    )
+
+    if remediation_declenchee:
         print(f"🔄 Génération remédiation (note: {etoiles}/5)")
 
         if lang == "en":
-            remediation_prompt = f"""Generate a short remediation exercise for a student who scored {etoiles}/5.
+            remediation_prompt = f"""Generate a short remediation exercise for a student whose answer was confirmed incorrect.
 
 Original question:
 {question}
@@ -6381,18 +6546,24 @@ Original question:
 Student's answer:
 {reponse_eleve}
 
+Validated error:
+{type_erreur or validation_result.reason or "Not specified"}
+
 Output:
 Question: ...
 Expected answer: ...
 Hint: ..."""
         else:
-            remediation_prompt = f"""Génère un court exercice de remédiation pour un élève qui a obtenu {etoiles}/5.
+            remediation_prompt = f"""Génère un court exercice de remédiation pour un élève dont la réponse a été confirmée incorrecte.
 
 Question originale:
 {question}
 
 Réponse de l'élève:
 {reponse_eleve}
+
+Erreur validée:
+{type_erreur or validation_result.reason or "Non précisée"}
 
 Format:
 Question: ...
@@ -6446,11 +6617,13 @@ Indice: ..."""
             print(f"❌ Erreur génération remédiation: {e}")
 
     # ============================================================
-    # SAUVEGARDE DE LA RÉPONSE + TRACE D'APPRENTISSAGE
+    # 6. SAUVEGARDE DE LA RÉPONSE + TRACE D'APPRENTISSAGE
     # ============================================================
 
     try:
         from models import TraceApprentissage
+
+        validation_details = validation_result.details or {}
 
         nouvelle = StudentResponse(
             user_id=eleve.id,
@@ -6476,14 +6649,23 @@ Indice: ..."""
                 "unite_fr": unite_nom_fr,
                 "unite_en": unite_nom_en,
                 "lecon_fr": lecon_nom_fr,
-                "lecon_en": lecon_nom_en
+                "lecon_en": lecon_nom_en,
+
+                # Nouvelle traçabilité du moteur hybride
+                "validation_verdict": verdict_validation,
+                "validation_confidence": confiance_validation,
+                "validation_method": methode_validation,
+                "validation_reason": validation_result.reason,
+                "validation_result_correct": validation_result.result_correct,
+                "validation_reasoning_correct": validation_result.reasoning_correct,
+                "validation_error_type": validation_result.error_type,
+                "validation_details": validation_details,
+                "requires_review": verdict_validation == "uncertain",
             },
             timestamp=datetime.utcnow()
         )
 
         db.session.add(nouvelle)
-
-        # Permet d'obtenir nouvelle.id avant le commit
         db.session.flush()
 
         trace = TraceApprentissage(
@@ -6531,7 +6713,18 @@ Indice: ..."""
                 "classification_validee": getattr(exercice, "classification_validee", None),
 
                 "aide_utilisee": bool(session.get("remediation_access")),
-                "remediation_declenchee": etoiles < 3
+                "remediation_declenchee": remediation_declenchee,
+
+                # Nouvelle trace de validation
+                "validation_verdict": verdict_validation,
+                "validation_confidence": confiance_validation,
+                "validation_method": methode_validation,
+                "validation_reason": validation_result.reason,
+                "validation_result_correct": validation_result.result_correct,
+                "validation_reasoning_correct": validation_result.reasoning_correct,
+                "validation_error_type": validation_result.error_type,
+                "validation_details": validation_details,
+                "requires_review": verdict_validation == "uncertain",
             },
             created_at=datetime.utcnow()
         )
@@ -6544,6 +6737,7 @@ Indice: ..."""
         print(
             f"🧠 Trace: élève={eleve.id}, "
             f"exercice={exercice.id}, "
+            f"verdict={verdict_validation}, "
             f"score={score_pourcentage}, "
             f"risque={niveau_risque}"
         )
@@ -6556,8 +6750,13 @@ Indice: ..."""
     print("=== ✅ RÉPONSE + TRACE SAUVEGARDÉES ===")
 
     # ============================================================
-    # AFFICHAGE DE LA RÉTROACTION
+    # 7. AFFICHAGE DE LA RÉTROACTION
     # ============================================================
+
+    show_teacher_button = (
+        verdict_validation == "uncertain"
+        or remediation_declenchee
+    )
 
     return render_template(
         "exercice_detail.html",
@@ -6567,8 +6766,9 @@ Indice: ..."""
         reponse=nouvelle,
         show_feedback=True,
         already_completed=True,
-        show_teacher_button=(etoiles < 3)
+        show_teacher_button=show_teacher_button
     )
+
 
 # ====================================================================
 # ROUTES DE MONÉTISATION ADMIN
@@ -16250,15 +16450,38 @@ def exercice_sequentiel_progressif():
                 exercice_id=prochain_exercice_id
             )
 
-    # 2. Sécurité : si aucun prochain adaptatif n'est disponible,
+    # 2. Sécurité : si aucun prochain exercice adaptatif n'est disponible,
     # proposer le premier exercice non encore fait.
+    #
+    # IMPORTANT :
+    # si la stratégie actuelle est "verification", on peut permettre à
+    # l'élève de continuer, mais on NE DOIT PAS remplacer cette stratégie
+    # par "fallback", car cela ferait perdre l'information qu'une réponse
+    # précédente nécessite une vérification.
+
     if show_feedback and not bouton_suivant:
+
+        prochain_non_fait_id = None
+
+        strategie_actuelle = None
+        requires_review = False
+
+        if isinstance(prochain_adaptatif, dict):
+            strategie_actuelle = prochain_adaptatif.get("strategie")
+            requires_review = bool(
+                prochain_adaptatif.get("requires_review", False)
+            )
+
         for ex_id in exercice_ids:
-            if ex_id != exercice_actuel.id and ex_id not in completed_exercise_ids:
+            if (
+                ex_id != exercice_actuel.id
+                and ex_id not in completed_exercise_ids
+            ):
                 prochain_non_fait_id = ex_id
                 break
 
         if prochain_non_fait_id:
+
             bouton_suivant = url_for(
                 "exercice_sequentiel_progressif",
                 username=username,
@@ -16267,29 +16490,138 @@ def exercice_sequentiel_progressif():
                 exercice_id=prochain_non_fait_id
             )
 
-            session["prochain_exercice_adaptatif"] = {
-                "lecon_id": lecon.id,
-                "exercice_source_id": exercice_actuel.id,
-                "prochain_exercice_id": prochain_non_fait_id,
-                "strategie": "fallback",
-                "raison": (
-                    "Prochain exercice non encore fait, utilisé car aucune recommandation adaptative n'était disponible."
-                    if lang == "fr"
-                    else "Next unfinished exercise used because no adaptive recommendation was available."
-                )
-            }
-            session.modified = True
+            # ====================================================
+            # CAS 1 : LA RÉPONSE PRÉCÉDENTE EST À VÉRIFIER
+            # ====================================================
 
-            if feedback_a_afficher is not None:
-                feedback_a_afficher["adaptive"] = {
-                    "strategie": "fallback",
+            if (
+                strategie_actuelle == "verification"
+                or requires_review
+            ):
+
+                session["prochain_exercice_adaptatif"] = {
+                    "lecon_id": lecon.id,
+                    "exercice_source_id": exercice_actuel.id,
+                    "prochain_exercice_id": prochain_non_fait_id,
+
+                    "strategie": "verification",
+
                     "raison": (
-                        "Le système propose maintenant le prochain exercice non encore fait."
+                        "La réponse précédente nécessite une vérification. "
+                        "L'élève peut néanmoins continuer avec un exercice "
+                        "non encore fait, sans remédiation ni baisse de difficulté."
                         if lang == "fr"
-                        else "The system now suggests the next unfinished exercise."
+                        else
+                        "The previous answer requires review. "
+                        "The student may continue with an unfinished exercise "
+                        "without remediation or a reduction in difficulty."
                     ),
-                    "prochain_exercice_id": prochain_non_fait_id
+
+                    "niveau_cible": (
+                        prochain_adaptatif.get("niveau_cible")
+                        if isinstance(prochain_adaptatif, dict)
+                        else exercice_actuel.niveau_difficulte
+                    ),
+
+                    "notion_cible": (
+                        prochain_adaptatif.get("notion_cible")
+                        if isinstance(prochain_adaptatif, dict)
+                        else exercice_actuel.notion_cible
+                    ),
+
+                    "requires_review": True,
+                    "adaptation_bloquee": True,
+
+                    "validation_verdict": (
+                        prochain_adaptatif.get("validation_verdict", "uncertain")
+                        if isinstance(prochain_adaptatif, dict)
+                        else "uncertain"
+                    ),
+
+                    "validation_confidence": (
+                        prochain_adaptatif.get("validation_confidence")
+                        if isinstance(prochain_adaptatif, dict)
+                        else None
+                    ),
+
+                    "validation_method": (
+                        prochain_adaptatif.get("validation_method")
+                        if isinstance(prochain_adaptatif, dict)
+                        else None
+                    )
                 }
+
+                if feedback_a_afficher is not None:
+
+                    feedback_a_afficher["adaptive"] = {
+                        "strategie": "verification",
+
+                        "raison": (
+                            "Cette réponse nécessite une vérification. "
+                            "Elle n'a pas été considérée comme fausse et "
+                            "n'a déclenché aucune remédiation."
+                            if lang == "fr"
+                            else
+                            "This answer requires review. "
+                            "It was not marked incorrect and did not trigger remediation."
+                        ),
+
+                        "prochain_exercice_id": prochain_non_fait_id,
+
+                        "requires_review": True
+                    }
+
+                print(
+                    f"⚠️ Réponse à vérifier : "
+                    f"poursuite autorisée vers l'exercice "
+                    f"{prochain_non_fait_id}, sans remédiation."
+                )
+
+            # ====================================================
+            # CAS 2 : AUCUNE RECOMMANDATION ADAPTATIVE
+            # ====================================================
+
+            else:
+
+                session["prochain_exercice_adaptatif"] = {
+                    "lecon_id": lecon.id,
+                    "exercice_source_id": exercice_actuel.id,
+                    "prochain_exercice_id": prochain_non_fait_id,
+
+                    "strategie": "fallback",
+
+                    "raison": (
+                        "Prochain exercice non encore fait, utilisé car "
+                        "aucune recommandation adaptative n'était disponible."
+                        if lang == "fr"
+                        else
+                        "Next unfinished exercise used because no adaptive "
+                        "recommendation was available."
+                    ),
+
+                    "requires_review": False,
+                    "adaptation_bloquee": False
+                }
+
+                if feedback_a_afficher is not None:
+
+                    feedback_a_afficher["adaptive"] = {
+                        "strategie": "fallback",
+
+                        "raison": (
+                            "Le système propose maintenant le prochain "
+                            "exercice non encore fait."
+                            if lang == "fr"
+                            else
+                            "The system now suggests the next unfinished exercise."
+                        ),
+
+                        "prochain_exercice_id": prochain_non_fait_id,
+
+                        "requires_review": False
+                    }
+
+            session.modified = True
 
     bouton_terminer = url_for("dashboard_eleve", username=username, lang=lang)
 
@@ -19571,203 +19903,448 @@ def soumettre_sequentiel():
     )
 
     # ============================================================
-    # 1. VÉRIFICATION SYMBOLIQUE LOCALE
+    # 1. NOUVEAU MOTEUR HYBRIDE DE VALIDATION
     # ============================================================
 
-    symbolic_result = None
-    symbolic_correct = None
-    symbolic_feedback = ""
+    from validation.engine import ValidationEngine
+
+    validation_engine = ValidationEngine()
 
     try:
-        from sympy_engine import math_verifier
-
-        symbolic_result = math_verifier.verify_answer(
+        validation_result = validation_engine.validate(
             student_answer=reponse_eleve,
-            expected_answer=reponse_attendue,
-            question=question
+            expected_answer=reponse_attendue or "",
+            question=question or ""
         )
-
-        symbolic_correct = symbolic_result.get("is_correct", None)
-        symbolic_feedback = math_verifier.get_symbolic_feedback(symbolic_result)
-
-        print(f"✅ Vérification SymPy : {symbolic_result}")
 
     except Exception as e:
-        print(f"⚠️ Erreur vérification SymPy : {e}")
-        symbolic_result = {
-            "verified": False,
-            "error": str(e)
-        }
-        symbolic_feedback = (
-            f"Symbolic verification unavailable: {str(e)[:100]}"
-            if lang == "en"
-            else f"Vérification symbolique non disponible : {str(e)[:100]}"
+        print(f"⚠️ Erreur moteur hybride : {e}")
+
+        from validation.result import ValidationResult
+
+        validation_result = ValidationResult.uncertain(
+            confidence=0.0,
+            method="validation_engine_error",
+            reason=(
+                "Le moteur de validation a rencontré une erreur technique. "
+                "La réponse ne doit pas être pénalisée automatiquement."
+            ),
+            normalized_student_answer=reponse_eleve,
+            normalized_expected_answer=reponse_attendue
         )
 
-    # ============================================================
-    # 2. PROMPT DE CORRECTION BILINGUE
-    # ============================================================
+    validation_verdict = validation_result.verdict
+    validation_confidence = validation_result.confidence
+    validation_method = validation_result.method
+
+    print("==============================================")
+    print("🧠 MOTEUR HYBRIDE")
+    print(f"Verdict     : {validation_verdict}")
+    print(f"Confiance   : {validation_confidence}")
+    print(f"Méthode     : {validation_method}")
+    print(f"Raison      : {validation_result.reason}")
+    print("==============================================")
+
+    # ----------------------------------------------------------------
+    # Compatibilité temporaire avec le reste de l'interface existante.
+    #
+    # IMPORTANT :
+    # symbolic_correct n'est plus produit directement par SymPy.
+    # Il représente maintenant le verdict FINAL du moteur hybride.
+    # ----------------------------------------------------------------
+
+    if validation_verdict == "correct":
+        symbolic_correct = True
+
+    elif validation_verdict == "incorrect":
+        symbolic_correct = False
+
+    else:
+        symbolic_correct = None
+
+    validation_details = validation_result.details or {}
+
+    symbolic_result = {
+        "verified": validation_verdict in {"correct", "incorrect"},
+        "is_correct": symbolic_correct,
+        "verdict": validation_verdict,
+        "confidence": validation_confidence,
+        "method": validation_method,
+        "reason": validation_result.reason,
+        "result_correct": validation_result.result_correct,
+        "reasoning_correct": validation_result.reasoning_correct,
+        "error_type": validation_result.error_type,
+        "details": validation_details
+    }
 
     if lang == "en":
-        symbolic_info = ""
+        if validation_verdict == "correct":
+            symbolic_feedback = (
+                "✅ Mathematical validation: CORRECT\n"
+                f"Method: {validation_method}\n"
+                f"Confidence: {validation_confidence:.2f}"
+            )
 
-        if symbolic_correct is not None:
-            symbolic_info = f"""
-🔬 AUTOMATIC MATHEMATICAL VERIFICATION:
-{symbolic_feedback}
+        elif validation_verdict == "incorrect":
+            symbolic_feedback = (
+                "❌ Mathematical validation: INCORRECT\n"
+                f"Method: {validation_method}\n"
+                f"Confidence: {validation_confidence:.2f}"
+            )
 
----
-"""
+        else:
+            symbolic_feedback = (
+                "⚠️ Mathematical validation: UNCERTAIN\n"
+                "The answer has not been automatically marked incorrect."
+            )
 
-        prompt = f"""
-Correct a student's answer to a school exercise.
+    else:
+        if validation_verdict == "correct":
+            symbolic_feedback = (
+                "✅ Vérification mathématique : CORRECTE\n"
+                f"Méthode : {validation_method}\n"
+                f"Confiance : {validation_confidence:.2f}"
+            )
 
-📘 Exercise:
+        elif validation_verdict == "incorrect":
+            symbolic_feedback = (
+                "❌ Vérification mathématique : INCORRECTE\n"
+                f"Méthode : {validation_method}\n"
+                f"Confiance : {validation_confidence:.2f}"
+            )
+
+        else:
+            symbolic_feedback = (
+                "⚠️ Vérification mathématique : INCERTAINE\n"
+                "La réponse n'est pas automatiquement considérée comme fausse."
+            )
+
+    # ============================================================
+    # 2. PROMPT DE RÉTROACTION PÉDAGOGIQUE
+    # ============================================================
+
+    # Le modèle IA n'a PLUS le droit de déterminer seul
+    # si la réponse est correcte ou incorrecte.
+    #
+    # Le moteur hybride a déjà rendu le verdict.
+
+    analyse_ia = ""
+    etoiles_gpt = None
+
+    if validation_verdict == "uncertain":
+
+        if lang == "en":
+            analyse_ia = (
+                "Analysis:\n"
+                "The system could not validate this answer with sufficient certainty. "
+                "The answer has therefore not been automatically marked incorrect.\n\n"
+                "Score: pending review\n\n"
+                "Correction:\n"
+                "- A mathematical or pedagogical review is recommended before this "
+                "answer affects the learner's diagnostic."
+            )
+
+        else:
+            analyse_ia = (
+                "Analyse :\n"
+                "Le système n'a pas pu valider cette réponse avec suffisamment "
+                "de certitude. Elle n'est donc pas automatiquement considérée "
+                "comme incorrecte.\n\n"
+                "Note : en attente de vérification\n\n"
+                "Correction :\n"
+                "- Une vérification mathématique ou pédagogique est recommandée "
+                "avant que cette réponse influence le diagnostic de l'élève."
+            )
+
+    else:
+
+        if lang == "en":
+
+            verdict_text = (
+                "CORRECT"
+                if validation_verdict == "correct"
+                else "INCORRECT"
+            )
+
+            prompt = f"""
+You are producing pedagogical feedback after a separate mathematical
+validation engine has already evaluated the student's answer.
+
+EXERCISE:
 {question}
 
-📜 Student answer:
+EXPECTED ANSWER:
+{reponse_attendue}
+
+STUDENT ANSWER:
 {reponse_eleve}
 
-{symbolic_info}
+AUTHORITATIVE MATHEMATICAL VERDICT:
+{verdict_text}
 
-⭐ SMART 5-POINT SCALE:
-5: Mathematically correct answer and excellent reasoning
-4: Correct answer with almost perfect reasoning
-3: Correct answer but incomplete reasoning
-2: Incorrect answer but some steps are correct
-1: Attempt made but incorrect answer
-0: Off-topic or empty
+VALIDATION METHOD:
+{validation_method}
+
+VALIDATION CONFIDENCE:
+{validation_confidence}
+
+VALIDATION REASON:
+{validation_result.reason or "Not provided"}
 
 IMPORTANT RULES:
-1. Use the automatic mathematical verification above when available.
-2. If the answer is mathematically correct, the score must not be below 3/5.
-3. If the answer is mathematically incorrect, do not give more than 2/5.
-4. Explain the error clearly and give the correct method.
+
+1. You MUST NOT contradict the authoritative mathematical verdict.
+
+2. If the verdict is CORRECT:
+   - explicitly acknowledge that the mathematical answer is correct;
+   - the score must be 3/5, 4/5, or 5/5;
+   - 3/5 is allowed only if reasoning is substantially incomplete;
+   - do not invent a mathematical error.
+
+3. If the verdict is INCORRECT:
+   - explain the actual mathematical error;
+   - recognize any correct partial reasoning;
+   - the score must be between 0/5 and 2/5.
+
+4. Separate correctness of the final result from quality of reasoning.
 
 RESPONSE FORMAT:
+
 Analysis:
-[Detailed analysis]
+[Detailed pedagogical analysis]
 
 Score: X/5
 
 Correction:
-- Complete solution: [Step-by-step method]
-- Improvement points: [Specific advice]
-- Final answer: [Exact answer]
+- Complete solution: [...]
+- Improvement points: [...]
+- Final answer: [...]
 """.strip()
 
-    else:
-        symbolic_info = ""
+        else:
 
-        if symbolic_correct is not None:
-            symbolic_info = f"""
-🔬 VÉRIFICATION MATHÉMATIQUE AUTOMATIQUE :
-{symbolic_feedback}
+            verdict_text = (
+                "CORRECT"
+                if validation_verdict == "correct"
+                else "INCORRECT"
+            )
 
----
-"""
+            prompt = f"""
+Tu produis une rétroaction pédagogique APRÈS qu'un moteur de validation
+mathématique séparé a déjà évalué la réponse de l'élève.
 
-        prompt = f"""
-Corrige la réponse d'un élève à un exercice scolaire.
-
-📘 Énoncé :
+ÉNONCÉ :
 {question}
 
-📜 Réponse de l'élève :
+RÉPONSE ATTENDUE :
+{reponse_attendue}
+
+RÉPONSE DE L'ÉLÈVE :
 {reponse_eleve}
 
-{symbolic_info}
+VERDICT MATHÉMATIQUE AUTORITAIRE :
+{verdict_text}
 
-⭐ BARÈME INTELLIGENT SUR 5 :
-5 : Réponse mathématiquement correcte ET raisonnement excellent
-4 : Réponse correcte avec raisonnement presque parfait
-3 : Réponse correcte mais raisonnement incomplet
-2 : Réponse incorrecte mais certaines étapes sont justes
-1 : Tentative mais réponse incorrecte
-0 : Hors sujet ou vide
+MÉTHODE DE VALIDATION :
+{validation_method}
 
-CONSIGNES IMPORTANTES :
-1. Utilise la vérification mathématique automatique ci-dessus lorsqu'elle est disponible.
-2. Si la réponse est mathématiquement correcte, la note ne doit pas être inférieure à 3/5.
-3. Si la réponse est mathématiquement incorrecte, ne donne pas plus de 2/5.
-4. Explique clairement l'erreur et donne la méthode correcte.
+CONFIANCE :
+{validation_confidence}
+
+RAISON DE VALIDATION :
+{validation_result.reason or "Non fournie"}
+
+RÈGLES IMPÉRATIVES :
+
+1. Tu NE DOIS PAS contredire le verdict mathématique autoritaire.
+
+2. Si le verdict est CORRECT :
+   - confirme explicitement que la réponse mathématique est correcte ;
+   - la note doit être 3/5, 4/5 ou 5/5 ;
+   - 3/5 est réservé à un raisonnement très incomplet ;
+   - n'invente aucune erreur mathématique.
+
+3. Si le verdict est INCORRECT :
+   - explique précisément l'erreur mathématique réelle ;
+   - reconnais les éléments de raisonnement corrects ;
+   - la note doit être comprise entre 0/5 et 2/5.
+
+4. Distingue la justesse du résultat final de la qualité du raisonnement.
 
 FORMAT DE RÉPONSE :
+
 Analyse :
-[Analyse détaillée]
+[Analyse pédagogique détaillée]
 
 Note : X/5
 
 Correction :
-- Résolution complète : [Méthode pas à pas]
-- Points d'amélioration : [Conseils spécifiques]
-- Résultat final : [Réponse exacte]
+- Résolution complète : [...]
+- Points d'amélioration : [...]
+- Résultat final : [...]
 """.strip()
 
-    try:
-        completion = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
-        )
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.2
+            )
 
-        analyse_ia = completion.choices[0].message.content.strip()
+            analyse_ia = (
+                completion.choices[0]
+                .message.content
+                .strip()
+            )
 
-    except Exception as e:
-        print(f"❌ Erreur IA correction: {e}")
-        analyse_ia = (
-            f"AI correction error: {str(e)[:200]}"
-            if lang == "en"
-            else f"Erreur IA : {str(e)[:200]}"
-        )
+        except Exception as e:
+            print(f"❌ Erreur IA rétroaction : {e}")
+
+            if validation_verdict == "correct":
+
+                analyse_ia = (
+                    "Analysis:\nAnswer mathematically validated as correct."
+                    if lang == "en"
+                    else
+                    "Analyse :\nRéponse mathématiquement validée comme correcte."
+                )
+
+            else:
+
+                analyse_ia = (
+                    "Analysis:\nAnswer mathematically validated as incorrect."
+                    if lang == "en"
+                    else
+                    "Analyse :\nRéponse mathématiquement validée comme incorrecte."
+                )
 
     # ============================================================
-    # 3. EXTRACTION DE LA NOTE
+    # 3. EXTRACTION ET CONTRAINTE DE LA NOTE
     # ============================================================
 
-    etoiles_gpt = 0
+    if validation_verdict != "uncertain":
 
-    match = re.search(r"(Note|Score)\s*:\s*(\d)", analyse_ia, re.IGNORECASE)
+        match = re.search(
+            r"(Note|Score)\s*:\s*(\d)",
+            analyse_ia,
+            re.IGNORECASE
+        )
 
-    if match:
-        etoiles_gpt = min(int(match.group(2)), 5)
+        if match:
+            etoiles_gpt = min(
+                int(match.group(2)),
+                5
+            )
 
-    if symbolic_correct is not None:
-        if symbolic_correct:
-            etoiles_finales = max(etoiles_gpt, 3)
+        # --------------------------------------------------------
+        # Le score généré par l'IA est SECONDAIRE.
+        # Le verdict mathématique est prioritaire.
+        # --------------------------------------------------------
+
+        if validation_verdict == "correct":
+
+            if etoiles_gpt is None:
+                etoiles_finales = 5
+            else:
+                etoiles_finales = max(
+                    etoiles_gpt,
+                    3
+                )
+
         else:
-            etoiles_finales = min(etoiles_gpt, 2)
+
+            if etoiles_gpt is None:
+                etoiles_finales = 1
+            else:
+                etoiles_finales = min(
+                    etoiles_gpt,
+                    2
+                )
+
+        score_final = etoiles_finales * 20
+
     else:
-        etoiles_finales = etoiles_gpt
 
-    score_final = etoiles_finales * 20
+        # --------------------------------------------------------
+        # CAS CRITIQUE :
+        #
+        # Un verdict incertain ne doit PAS créer artificiellement
+        # une mauvaise note.
+        # --------------------------------------------------------
 
-    print(f"⭐ Note finale : {etoiles_finales}/5")
-    print(f"📊 Score final : {score_final}/100")
+        etoiles_finales = None
+        score_final = None
+
+    print(f"⭐ Note finale : {etoiles_finales}")
+    print(f"📊 Score final : {score_final}")
 
     # ============================================================
-    # 4. DIAGNOSTIC BAYÉSIEN SIMPLE LIÉ À L'EXERCICE
+    # 4. DIAGNOSTIC DE DIFFICULTÉ PROTÉGÉ
     # ============================================================
 
-    if symbolic_correct is False or etoiles_finales <= 1:
-        niveau_risque = "élevé"
-        probabilite_difficulte = 0.85
-    elif etoiles_finales <= 3:
-        niveau_risque = "moyen"
-        probabilite_difficulte = 0.55
+    if validation_verdict == "uncertain":
+
+        # Ne pas dégrader le diagnostic de l'élève.
+        niveau_risque = "à vérifier"
+        probabilite_difficulte = None
+
+    elif validation_verdict == "incorrect":
+
+        if etoiles_finales is not None and etoiles_finales <= 1:
+            niveau_risque = "élevé"
+            probabilite_difficulte = 0.85
+        else:
+            niveau_risque = "moyen"
+            probabilite_difficulte = 0.55
+
     else:
-        niveau_risque = "faible"
-        probabilite_difficulte = 0.20
+
+        # Réponse validée correcte.
+        if etoiles_finales is not None and etoiles_finales >= 4:
+            niveau_risque = "faible"
+            probabilite_difficulte = 0.20
+        else:
+            # Résultat correct mais raisonnement éventuellement incomplet.
+            niveau_risque = "moyen"
+            probabilite_difficulte = 0.40
 
     diagnostic_bayesien = {
         "niveau_risque": niveau_risque,
-        "probabilite_difficulte": probabilite_difficulte,
-        "pourcentage_difficulte": round(probabilite_difficulte * 100, 1),
+
+        "probabilite_difficulte": (
+            probabilite_difficulte
+            if probabilite_difficulte is not None
+            else None
+        ),
+
+        "pourcentage_difficulte": (
+            round(probabilite_difficulte * 100, 1)
+            if probabilite_difficulte is not None
+            else None
+        ),
+
         "notion_cible": exercice.notion_cible,
         "competence_cible": exercice.competence_cible,
         "niveau_difficulte": exercice.niveau_difficulte,
         "type_exercice": exercice.type_exercice,
-        "source": "exercice"
+
+        "source": "exercice",
+
+        # Nouvelle information essentielle
+        "validation_verdict": validation_verdict,
+        "validation_confidence": validation_confidence,
+        "validation_method": validation_method,
+
+        # Un cas incertain ne doit pas influencer négativement
+        # les estimations de maîtrise.
+        "excluded_from_negative_update": (
+            validation_verdict == "uncertain"
+        )
     }
 
     # ============================================================
@@ -19777,29 +20354,89 @@ Correction :
     now = datetime.now(timezone.utc).isoformat()
 
     feedback_json = {
+
         "current_feedback": analyse_ia,
+
         "current_stars": etoiles_finales,
+
+        # --------------------------------------------------------
+        # On conserve ce nom pour ne pas casser le template actuel,
+        # mais il contient désormais le moteur HYBRIDE complet.
+        # --------------------------------------------------------
+
         "symbolic_verification": {
-            "was_verified": symbolic_result.get("verified", False) if symbolic_result else False,
+
+            "was_verified": (
+                validation_verdict
+                in {"correct", "incorrect"}
+            ),
+
             "is_correct": symbolic_correct,
+
             "result": symbolic_result,
-            "feedback": symbolic_feedback
+
+            "feedback": symbolic_feedback,
+
+            "verdict": validation_verdict,
+
+            "confidence": validation_confidence,
+
+            "method": validation_method,
+
+            "requires_review": (
+                validation_verdict == "uncertain"
+            )
         },
+
         "bayesian_diagnostic": diagnostic_bayesien,
+
         "metadata": {
+
             "exercise_id": exercice.id,
             "student_id": eleve.id,
             "lesson_id": lecon.id,
             "language": lang,
+
             "gpt_score": etoiles_gpt,
             "final_score": etoiles_finales,
             "score_100": score_final,
+
             "updated_at": now,
-            "correction_method": "hybrid_gpt_sympy_adaptive",
+
+            "correction_method": (
+                "hybrid_validation_engine_adaptive"
+            ),
+
+            "validation_verdict": validation_verdict,
+            "validation_confidence": validation_confidence,
+            "validation_method": validation_method,
+            "validation_reason": validation_result.reason,
+
+            "validation_result_correct": (
+                validation_result.result_correct
+            ),
+
+            "validation_reasoning_correct": (
+                validation_result.reasoning_correct
+            ),
+
+            "validation_error_type": (
+                validation_result.error_type
+            ),
+
+            "validation_details": (
+                validation_details
+            ),
+
+            "requires_review": (
+                validation_verdict == "uncertain"
+            ),
+
             "notion_cible": exercice.notion_cible,
             "competence_cible": exercice.competence_cible,
             "niveau_difficulte": exercice.niveau_difficulte,
             "type_exercice": exercice.type_exercice,
+
             "matiere_fr": matiere_fr,
             "matiere_en": matiere_en,
             "unite_fr": unite_fr,
@@ -19807,45 +20444,100 @@ Correction :
             "lecon_fr": lecon_fr,
             "lecon_en": lecon_en
         },
+
         "adaptive_next": {},
+
         "history": []
     }
 
+    # ============================================================
+    # TYPE D'ERREUR
+    # ============================================================
+
+    if validation_verdict == "incorrect":
+
+        type_erreur_final = (
+            validation_result.error_type
+            or "erreur_mathématique"
+        )
+
+    elif (
+        validation_verdict == "correct"
+        and validation_result.reasoning_correct is False
+    ):
+
+        type_erreur_final = (
+            validation_result.error_type
+            or "raisonnement_à_améliorer"
+        )
+
+    else:
+
+        type_erreur_final = None
+
+    # ============================================================
+    # CRÉATION STUDENT RESPONSE
+    # ============================================================
+
     reponse = StudentResponse(
+
         user_id=eleve.id,
+
         exercice_id=exercice.id,
+
         reponse_eleve=reponse_eleve,
-        analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),
-        etoiles=etoiles_finales,
-        score=score_final,
-        type_erreur=(
-            "erreur_mathématique"
-            if symbolic_correct is False
-            else None
+
+        analyse_ia=json.dumps(
+            feedback_json,
+            ensure_ascii=False,
+            indent=2
         ),
+
+        etoiles=etoiles_finales,
+
+        score=score_final,
+
+        type_erreur=type_erreur_final,
+
         niveau_difficulte=exercice.niveau_difficulte,
+
         aide_utilisee=False,
+
         feedback_ia_structure=feedback_json,
+
         timestamp=datetime.now(timezone.utc)
     )
 
     db.session.add(reponse)
 
     try:
+
         db.session.commit()
+
         print("✅ Réponse sauvegardée.")
 
     except Exception as e:
+
         db.session.rollback()
-        print(f"❌ Erreur sauvegarde réponse: {e}")
-        flash(msg_save_error, "danger")
-        return redirect(url_for(
-            "exercice_sequentiel_progressif",
-            username=username,
-            lecon_id=lecon.id,
-            lang=lang,
-            exercice_id=exercice.id
-        ))
+
+        print(
+            f"❌ Erreur sauvegarde réponse : {e}"
+        )
+
+        flash(
+            msg_save_error,
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "exercice_sequentiel_progressif",
+                username=username,
+                lecon_id=lecon.id,
+                lang=lang,
+                exercice_id=exercice.id
+            )
+        )
 
     # ============================================================
     # 6. ENREGISTREMENT DIAGNOSTIC BAYÉSIEN
@@ -19853,69 +20545,190 @@ Correction :
 
     diagnostic_record = None
 
-    try:
-        matiere_nom = matiere_affichee
+    # ------------------------------------------------------------
+    # CAS INCERTAIN :
+    # on ne doit surtout pas dégrader le diagnostic de l'élève.
+    # ------------------------------------------------------------
 
-        diagnostic_record = DiagnosticBayesien(
-            user_id=eleve.id,
-            exercice_id=exercice.id,
-            lecon_id=lecon.id,
-            matiere=matiere_nom,
-            probabilite_difficulte=probabilite_difficulte,
-            pourcentage_difficulte=round(probabilite_difficulte * 100, 1),
-            niveau_risque=niveau_risque,
-            maitrise_cours=(
-                "faible" if niveau_risque == "élevé"
-                else "moyenne" if niveau_risque == "moyen"
-                else "bonne"
-            ),
-            erreurs=(
-                "oui" if symbolic_correct is False or etoiles_finales < 3
-                else "non"
-            ),
-            temps_reponse="normal",
-            verification_calcul=symbolic_result,
-            recommandation=(
-                "Remediation recommended."
-                if lang == "en" and niveau_risque == "élevé"
-                else "Consolidation recommended."
-                if lang == "en" and niveau_risque == "moyen"
-                else "Progression recommended."
-                if lang == "en"
-                else "Remédiation recommandée."
-                if niveau_risque == "élevé"
-                else "Consolidation recommandée."
-                if niveau_risque == "moyen"
-                else "Progression recommandée."
-            ),
-            notion_cible=exercice.notion_cible,
-            notions_non_maitrisees=[
-                exercice.notion_cible
-            ] if niveau_risque in ["élevé", "moyen"] and exercice.notion_cible else [],
-            notions_maitrisees=[
-                exercice.notion_cible
-            ] if niveau_risque == "faible" and exercice.notion_cible else [],
-            erreurs_probables=[
-                exercice.competence_cible
-            ] if niveau_risque in ["élevé", "moyen"] and exercice.competence_cible else [],
-            niveau_intervention=(
-                "remediation" if niveau_risque == "élevé"
-                else "consolidation" if niveau_risque == "moyen"
-                else "progression"
-            ),
-            diagnostic_complet=diagnostic_bayesien,
-            source="exercice",
-            created_at=datetime.utcnow()
+    if validation_verdict == "uncertain":
+
+        print(
+            "⚠️ Verdict incertain : "
+            "aucune mise à jour bayésienne négative."
         )
 
-        db.session.add(diagnostic_record)
-        db.session.commit()
+        diagnostic_record = None
 
-        print("✅ Diagnostic bayésien enregistré.")
+    else:
 
-    except Exception as e:
-        db.session.rollback()
-        print(f"⚠️ Diagnostic bayésien non enregistré: {e}")
+        try:
+            matiere_nom = matiere_affichee
+
+            diagnostic_record = DiagnosticBayesien(
+                user_id=eleve.id,
+                exercice_id=exercice.id,
+                lecon_id=lecon.id,
+                matiere=matiere_nom,
+
+                # ------------------------------------------------
+                # Probabilité de difficulté calculée uniquement
+                # lorsque le verdict est suffisamment fiable.
+                # ------------------------------------------------
+                probabilite_difficulte=probabilite_difficulte,
+
+                pourcentage_difficulte=(
+                    round(probabilite_difficulte * 100, 1)
+                    if probabilite_difficulte is not None
+                    else None
+                ),
+
+                niveau_risque=niveau_risque,
+
+                maitrise_cours=(
+                    "faible"
+                    if niveau_risque == "élevé"
+
+                    else "moyenne"
+                    if niveau_risque == "moyen"
+
+                    else "bonne"
+                ),
+
+                # ------------------------------------------------
+                # IMPORTANT :
+                # on ne déduit plus l'erreur à partir de SymPy
+                # ou simplement de la note.
+                #
+                # Seul un verdict FINAL "incorrect" du moteur
+                # hybride signifie qu'une erreur est confirmée.
+                # ------------------------------------------------
+                erreurs=(
+                    "oui"
+                    if validation_verdict == "incorrect"
+                    else "non"
+                ),
+
+                temps_reponse="normal",
+
+                # ------------------------------------------------
+                # On conserve le champ existant pour compatibilité,
+                # mais il contient maintenant le résultat complet
+                # du moteur hybride.
+                # ------------------------------------------------
+                verification_calcul=symbolic_result,
+
+                recommandation=(
+                    "Remediation recommended."
+                    if lang == "en"
+                    and niveau_risque == "élevé"
+
+                    else "Consolidation recommended."
+                    if lang == "en"
+                    and niveau_risque == "moyen"
+
+                    else "Progression recommended."
+                    if lang == "en"
+
+                    else "Remédiation recommandée."
+                    if niveau_risque == "élevé"
+
+                    else "Consolidation recommandée."
+                    if niveau_risque == "moyen"
+
+                    else "Progression recommandée."
+                ),
+
+                notion_cible=exercice.notion_cible,
+
+                # ------------------------------------------------
+                # Une notion n'est considérée non maîtrisée
+                # que si le moteur a réellement confirmé
+                # un problème.
+                # ------------------------------------------------
+                notions_non_maitrisees=(
+                    [exercice.notion_cible]
+                    if (
+                        validation_verdict == "incorrect"
+                        and niveau_risque in ["élevé", "moyen"]
+                        and exercice.notion_cible
+                    )
+                    else []
+                ),
+
+                # ------------------------------------------------
+                # Une notion est considérée maîtrisée seulement
+                # lorsque la réponse est validée correcte
+                # avec un risque faible.
+                # ------------------------------------------------
+                notions_maitrisees=(
+                    [exercice.notion_cible]
+                    if (
+                        validation_verdict == "correct"
+                        and niveau_risque == "faible"
+                        and exercice.notion_cible
+                    )
+                    else []
+                ),
+
+                # ------------------------------------------------
+                # Une erreur probable ne doit être enregistrée
+                # que sur verdict incorrect confirmé.
+                # ------------------------------------------------
+                erreurs_probables=(
+                    [exercice.competence_cible]
+                    if (
+                        validation_verdict == "incorrect"
+                        and niveau_risque in ["élevé", "moyen"]
+                        and exercice.competence_cible
+                    )
+                    else []
+                ),
+
+                niveau_intervention=(
+                    "remediation"
+                    if (
+                        validation_verdict == "incorrect"
+                        and niveau_risque == "élevé"
+                    )
+
+                    else "consolidation"
+                    if (
+                        niveau_risque == "moyen"
+                    )
+
+                    else "progression"
+                ),
+
+                # ------------------------------------------------
+                # Le diagnostic complet contient désormais
+                # les informations du nouveau moteur hybride.
+                # ------------------------------------------------
+                diagnostic_complet=diagnostic_bayesien,
+
+                source="exercice",
+
+                created_at=datetime.utcnow()
+            )
+
+            db.session.add(diagnostic_record)
+            db.session.commit()
+
+            print("✅ Diagnostic bayésien enregistré.")
+
+            print(
+                f"🧠 Diagnostic : "
+                f"verdict={validation_verdict}, "
+                f"risque={niveau_risque}, "
+                f"probabilité={probabilite_difficulte}"
+            )
+
+        except Exception as e:
+
+            db.session.rollback()
+
+            print(
+                f"⚠️ Diagnostic bayésien non enregistré: {e}"
+            )
 
     # ============================================================
     # 7. MISE À JOUR DU PROFIL APPRENANT
@@ -19923,102 +20736,438 @@ Correction :
 
     profil_apprenant = None
 
-    try:
-        from services.profil_apprenant_service import mettre_a_jour_profil_apprenant
+    # Un verdict incertain ne doit jamais diminuer artificiellement
+    # la maîtrise estimée de l'élève.
+    if validation_verdict == "uncertain":
 
-        profil_apprenant = mettre_a_jour_profil_apprenant(
-            user_id=eleve.id,
-            lecon_id=lecon.id,
-            notion_cible=exercice.notion_cible or "notion non précisée",
-            competence_cible=exercice.competence_cible,
-            score=score_final,
-            etoiles=etoiles_finales,
-            diagnostic_bayesien=diagnostic_bayesien,
-            type_exercice=exercice.type_exercice,
-            niveau_difficulte=exercice.niveau_difficulte
+        print(
+            "⚠️ Profil apprenant non modifié : "
+            "le verdict de validation est incertain."
         )
 
-        if profil_apprenant:
-            print(
-                f"✅ Profil apprenant mis à jour : "
-                f"{profil_apprenant.notion_cible} | "
-                f"maîtrise={profil_apprenant.maitrise_estimee}% | "
-                f"risque={profil_apprenant.niveau_risque} | "
-                f"recommandation={profil_apprenant.recommandation}"
+    else:
+
+        try:
+            from services.profil_apprenant_service import mettre_a_jour_profil_apprenant
+
+            profil_apprenant = mettre_a_jour_profil_apprenant(
+                user_id=eleve.id,
+                lecon_id=lecon.id,
+                notion_cible=exercice.notion_cible or "notion non précisée",
+                competence_cible=exercice.competence_cible,
+                score=score_final,
+                etoiles=etoiles_finales,
+                diagnostic_bayesien=diagnostic_bayesien,
+                type_exercice=exercice.type_exercice,
+                niveau_difficulte=exercice.niveau_difficulte
             )
 
-    except Exception as e:
-        db.session.rollback()
-        print(f"⚠️ Profil apprenant non mis à jour : {e}")
+            if profil_apprenant:
+                print(
+                    f"✅ Profil apprenant mis à jour : "
+                    f"{profil_apprenant.notion_cible} | "
+                    f"maîtrise={profil_apprenant.maitrise_estimee}% | "
+                    f"risque={profil_apprenant.niveau_risque} | "
+                    f"recommandation={profil_apprenant.recommandation}"
+                )
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"⚠️ Profil apprenant non mis à jour : {e}")
+
 
     # ============================================================
-    # 8. CHOIX DU PROCHAIN EXERCICE ADAPTATIF
+    # 7. PROTECTION + CHOIX DU PROCHAIN EXERCICE ADAPTATIF
     # ============================================================
 
     prochain_exercice = None
     resultat_adaptatif = None
 
-    try:
-        from services.adaptive_exercise_service import choisir_prochain_exercice_adaptatif
+    adaptation_bloquee = validation_verdict == "uncertain"
 
-        verification_calcul_adaptative = {
-            "is_correct": symbolic_correct,
-            "verified": symbolic_result.get("verified", False) if symbolic_result else False
+    # ============================================================
+    # CAS 1 : VERDICT INCERTAIN
+    # ============================================================
+    # IMPORTANT :
+    # On ne lance PAS le moteur adaptatif.
+    # On ne déclenche PAS de remédiation.
+    # On ne baisse PAS la difficulté.
+    # On ne marque PAS la notion comme non maîtrisée.
+    # ============================================================
+
+    if adaptation_bloquee:
+
+        adaptive_next = {
+            "lecon_id": lecon.id,
+            "exercice_source_id": exercice.id,
+            "prochain_exercice_id": None,
+
+            "strategie": "verification",
+
+            "raison": (
+                "La réponse n'a pas pu être évaluée avec suffisamment "
+                "de certitude. Aucune remédiation ni baisse de difficulté "
+                "n'est déclenchée automatiquement."
+            ),
+
+            "niveau_cible": exercice.niveau_difficulte,
+            "notion_cible": exercice.notion_cible,
+
+            "requires_review": True,
+            "adaptation_bloquee": True
         }
 
-        resultat_adaptatif = choisir_prochain_exercice_adaptatif(
-            db=db,
-            Exercice=Exercice,
-            StudentResponse=StudentResponse,
-            eleve_id=eleve.id,
-            lecon_id=lecon.id,
-            exercice_actuel=exercice,
-            etoiles=etoiles_finales,
-            score=score_final,
-            diagnostic_bayesien=diagnostic_bayesien,
-            verification_calcul=verification_calcul_adaptative
+        session["prochain_exercice_adaptatif"] = adaptive_next
+
+        feedback_json["adaptive_next"] = adaptive_next
+
+        if "metadata" not in feedback_json:
+            feedback_json["metadata"] = {}
+
+        feedback_json["metadata"]["requires_review"] = True
+        feedback_json["metadata"]["adaptation_bloquee"] = True
+
+        # On resynchronise la réponse déjà enregistrée.
+        reponse.analyse_ia = json.dumps(
+            feedback_json,
+            ensure_ascii=False,
+            indent=2
         )
 
-        prochain_exercice = resultat_adaptatif.get("exercice") if resultat_adaptatif else None
+        reponse.feedback_ia_structure = feedback_json
 
-        if prochain_exercice:
-            session["prochain_exercice_adaptatif"] = {
-                "lecon_id": lecon.id,
-                "exercice_source_id": exercice.id,
-                "prochain_exercice_id": prochain_exercice.id,
-                "strategie": resultat_adaptatif.get("strategie"),
-                "raison": resultat_adaptatif.get("raison"),
-                "niveau_cible": resultat_adaptatif.get("niveau_cible"),
-                "notion_cible": resultat_adaptatif.get("notion_cible")
-            }
-
-            feedback_json["adaptive_next"] = session["prochain_exercice_adaptatif"]
-
-            reponse.analyse_ia = json.dumps(feedback_json, ensure_ascii=False, indent=2)
-            reponse.feedback_ia_structure = feedback_json
-
+        try:
             db.session.commit()
 
-            print(f"🧠 Prochain exercice adaptatif : {prochain_exercice.id}")
-            print(f"🧭 Stratégie : {resultat_adaptatif.get('strategie')}")
+            print(
+                "⚠️ Adaptation suspendue : "
+                "verdict incertain."
+            )
 
-        else:
-            session["prochain_exercice_adaptatif"] = {
-                "lecon_id": lecon.id,
-                "exercice_source_id": exercice.id,
-                "prochain_exercice_id": None,
-                "strategie": resultat_adaptatif.get("strategie") if resultat_adaptatif else "fin_sequence",
-                "raison": resultat_adaptatif.get("raison") if resultat_adaptatif else "Aucun exercice disponible.",
-                "niveau_cible": None,
-                "notion_cible": exercice.notion_cible
+            print(
+                "✅ Aucune remédiation automatique "
+                "et aucune baisse de difficulté."
+            )
+
+        except Exception as e:
+
+            db.session.rollback()
+
+            print(
+                f"⚠️ Impossible de sauvegarder "
+                f"la protection adaptative : {e}"
+            )
+
+        session.modified = True
+
+    # ============================================================
+    # CAS 2 : VERDICT CORRECT OU INCORRECT CONFIRMÉ
+    # ============================================================
+
+    else:
+
+        print(
+            f"✅ Adaptation autorisée : "
+            f"verdict={validation_verdict}"
+        )
+
+        try:
+            from services.adaptive_exercise_service import (
+                choisir_prochain_exercice_adaptatif
+            )
+
+            # ----------------------------------------------------
+            # Compatibilité avec le service adaptatif existant.
+            #
+            # Cette information ne vient plus directement de SymPy.
+            # Elle représente maintenant le verdict FINAL
+            # du moteur hybride.
+            # ----------------------------------------------------
+
+            verification_calcul_adaptative = {
+                "is_correct": (
+                    True
+                    if validation_verdict == "correct"
+                    else False
+                ),
+
+                "verified": True,
+
+                "verdict": validation_verdict,
+
+                "confidence": validation_confidence,
+
+                "method": validation_method,
+
+                "reason": validation_result.reason
             }
 
-        session.modified = True
+            # ----------------------------------------------------
+            # Appel du moteur adaptatif uniquement lorsque
+            # le verdict est suffisamment fiable.
+            # ----------------------------------------------------
 
-    except Exception as e:
-        print(f"⚠️ Sélection adaptative non disponible: {e}")
-        session.pop("prochain_exercice_adaptatif", None)
-        session.modified = True
+            resultat_adaptatif = choisir_prochain_exercice_adaptatif(
+                db=db,
+                Exercice=Exercice,
+                StudentResponse=StudentResponse,
+
+                eleve_id=eleve.id,
+                lecon_id=lecon.id,
+
+                exercice_actuel=exercice,
+
+                etoiles=etoiles_finales,
+                score=score_final,
+
+                diagnostic_bayesien=diagnostic_bayesien,
+
+                verification_calcul=verification_calcul_adaptative
+            )
+
+            prochain_exercice = (
+                resultat_adaptatif.get("exercice")
+                if resultat_adaptatif
+                else None
+            )
+
+            # ====================================================
+            # SÉCURITÉ SUPPLÉMENTAIRE :
+            #
+            # Une stratégie "remediation" n'est autorisée
+            # que lorsque le verdict final est INCORRECT.
+            # ====================================================
+
+            if resultat_adaptatif:
+
+                strategie_adaptative = resultat_adaptatif.get(
+                    "strategie"
+                )
+
+                if (
+                    strategie_adaptative == "remediation"
+                    and validation_verdict != "incorrect"
+                ):
+
+                    print(
+                        "⚠️ Remédiation refusée : "
+                        "le verdict final n'est pas incorrect."
+                    )
+
+                    # Pour une réponse correcte,
+                    # on remplace la remédiation par consolidation.
+                    resultat_adaptatif["strategie"] = "consolidation"
+
+                    resultat_adaptatif["raison"] = (
+                        "La réponse a été validée comme correcte. "
+                        "La remédiation automatique a donc été annulée. "
+                        "Une consolidation ou une progression est privilégiée."
+                    )
+
+            # ====================================================
+            # UN PROCHAIN EXERCICE A ÉTÉ TROUVÉ
+            # ====================================================
+
+            if prochain_exercice:
+
+                session["prochain_exercice_adaptatif"] = {
+                    "lecon_id": lecon.id,
+
+                    "exercice_source_id": exercice.id,
+
+                    "prochain_exercice_id": prochain_exercice.id,
+
+                    "strategie": (
+                        resultat_adaptatif.get("strategie")
+                        if resultat_adaptatif
+                        else "progression"
+                    ),
+
+                    "raison": (
+                        resultat_adaptatif.get("raison")
+                        if resultat_adaptatif
+                        else "Progression normale."
+                    ),
+
+                    "niveau_cible": (
+                        resultat_adaptatif.get("niveau_cible")
+                        if resultat_adaptatif
+                        else exercice.niveau_difficulte
+                    ),
+
+                    "notion_cible": (
+                        resultat_adaptatif.get("notion_cible")
+                        if resultat_adaptatif
+                        else exercice.notion_cible
+                    ),
+
+                    "validation_verdict": validation_verdict,
+
+                    "validation_confidence": validation_confidence,
+
+                    "validation_method": validation_method,
+
+                    "requires_review": False,
+
+                    "adaptation_bloquee": False
+                }
+
+                feedback_json["adaptive_next"] = (
+                    session["prochain_exercice_adaptatif"]
+                )
+
+                reponse.analyse_ia = json.dumps(
+                    feedback_json,
+                    ensure_ascii=False,
+                    indent=2
+                )
+
+                reponse.feedback_ia_structure = feedback_json
+
+                db.session.commit()
+
+                print(
+                    f"🧠 Prochain exercice adaptatif : "
+                    f"{prochain_exercice.id}"
+                )
+
+                print(
+                    f"🧭 Stratégie : "
+                    f"{resultat_adaptatif.get('strategie')}"
+                )
+
+                print(
+                    f"✅ Verdict ayant autorisé l'adaptation : "
+                    f"{validation_verdict}"
+                )
+
+            # ====================================================
+            # AUCUN PROCHAIN EXERCICE DISPONIBLE
+            # ====================================================
+
+            else:
+
+                session["prochain_exercice_adaptatif"] = {
+                    "lecon_id": lecon.id,
+
+                    "exercice_source_id": exercice.id,
+
+                    "prochain_exercice_id": None,
+
+                    "strategie": (
+                        resultat_adaptatif.get("strategie")
+                        if resultat_adaptatif
+                        else "fin_sequence"
+                    ),
+
+                    "raison": (
+                        resultat_adaptatif.get("raison")
+                        if resultat_adaptatif
+                        else "Aucun exercice disponible."
+                    ),
+
+                    "niveau_cible": (
+                        resultat_adaptatif.get("niveau_cible")
+                        if resultat_adaptatif
+                        else None
+                    ),
+
+                    "notion_cible": (
+                        resultat_adaptatif.get("notion_cible")
+                        if resultat_adaptatif
+                        else exercice.notion_cible
+                    ),
+
+                    "validation_verdict": validation_verdict,
+
+                    "validation_confidence": validation_confidence,
+
+                    "validation_method": validation_method,
+
+                    "requires_review": False,
+
+                    "adaptation_bloquee": False
+                }
+
+                feedback_json["adaptive_next"] = (
+                    session["prochain_exercice_adaptatif"]
+                )
+
+                reponse.analyse_ia = json.dumps(
+                    feedback_json,
+                    ensure_ascii=False,
+                    indent=2
+                )
+
+                reponse.feedback_ia_structure = feedback_json
+
+                db.session.commit()
+
+                print(
+                    "ℹ️ Aucun exercice adaptatif supplémentaire "
+                    "n'est disponible."
+                )
+
+            session.modified = True
+
+        except Exception as e:
+
+            print(
+                f"⚠️ Sélection adaptative non disponible : {e}"
+            )
+
+            # ----------------------------------------------------
+            # Si le moteur adaptatif plante, cela ne doit PAS
+            # transformer la réponse en erreur.
+            # ----------------------------------------------------
+
+            session["prochain_exercice_adaptatif"] = {
+                "lecon_id": lecon.id,
+
+                "exercice_source_id": exercice.id,
+
+                "prochain_exercice_id": None,
+
+                "strategie": "fallback",
+
+                "raison": (
+                    "La sélection automatique du prochain exercice "
+                    "n'est temporairement pas disponible."
+                ),
+
+                "niveau_cible": exercice.niveau_difficulte,
+
+                "notion_cible": exercice.notion_cible,
+
+                "validation_verdict": validation_verdict,
+
+                "validation_confidence": validation_confidence,
+
+                "validation_method": validation_method,
+
+                "requires_review": False,
+
+                "adaptation_bloquee": False
+            }
+
+            feedback_json["adaptive_next"] = (
+                session["prochain_exercice_adaptatif"]
+            )
+
+            reponse.analyse_ia = json.dumps(
+                feedback_json,
+                ensure_ascii=False,
+                indent=2
+            )
+
+            reponse.feedback_ia_structure = feedback_json
+
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+            session.modified = True
 
     # ============================================================
     # 9. TRACE D'APPRENTISSAGE UNIFIÉE
@@ -20028,6 +21177,18 @@ Correction :
         from models import TraceApprentissage
 
         adaptive_next = session.get("prochain_exercice_adaptatif", {})
+
+        pourcentage_difficulte_trace = (
+            round(probabilite_difficulte * 100, 1)
+            if probabilite_difficulte is not None
+            else None
+        )
+
+        remediation_declenchee = (
+            validation_verdict == "incorrect"
+            and etoiles_finales is not None
+            and etoiles_finales < 3
+        )
 
         trace = TraceApprentissage(
             user_id=eleve.id,
@@ -20042,33 +21203,44 @@ Correction :
             source="soumettre_sequentiel",
 
             reponse_eleve=reponse_eleve,
-            analyse_ia=json.dumps(feedback_json, ensure_ascii=False, indent=2),
+            analyse_ia=json.dumps(
+                feedback_json,
+                ensure_ascii=False,
+                indent=2
+            ),
             score=score_final,
 
             niveau_risque=niveau_risque,
             difficulte_estimee=exercice.niveau_difficulte,
             notion_cible=exercice.notion_cible,
-            type_erreur=(
-                "erreur_mathématique"
-                if symbolic_correct is False
-                else None
-            ),
+
+            # Utiliser le type calculé à partir du verdict final hybride.
+            type_erreur=type_erreur_final,
 
             meta_json={
                 "lang": lang,
 
                 "student_response_id": reponse.id,
-                "diagnostic_bayesien_id": diagnostic_record.id if diagnostic_record else None,
-                "profil_apprenant_id": profil_apprenant.id if profil_apprenant else None,
+                "diagnostic_bayesien_id": (
+                    diagnostic_record.id
+                    if diagnostic_record
+                    else None
+                ),
+                "profil_apprenant_id": (
+                    profil_apprenant.id
+                    if profil_apprenant
+                    else None
+                ),
 
                 "username": eleve.username,
                 "eleve_nom": eleve.nom_complet,
 
                 "score_sur_5": etoiles_finales,
                 "score_pourcentage": score_final,
+
                 "niveau_risque": niveau_risque,
                 "probabilite_difficulte": probabilite_difficulte,
-                "pourcentage_difficulte": round(probabilite_difficulte * 100, 1),
+                "pourcentage_difficulte": pourcentage_difficulte_trace,
 
                 "question_fr": exercice.question_fr,
                 "question_en": exercice.question_en,
@@ -20088,13 +21260,27 @@ Correction :
                 "type_exercice": exercice.type_exercice,
                 "classification_validee": exercice.classification_validee,
 
+                # Compatibilité avec les vues historiques existantes.
                 "symbolic_correct": symbolic_correct,
                 "symbolic_result": symbolic_result,
                 "symbolic_feedback": symbolic_feedback,
 
-                "correction_method": "hybrid_gpt_sympy_adaptive",
+                # Nouvelle traçabilité du moteur hybride.
+                "validation_verdict": validation_verdict,
+                "validation_confidence": validation_confidence,
+                "validation_method": validation_method,
+                "validation_reason": validation_result.reason,
+                "validation_result_correct": validation_result.result_correct,
+                "validation_reasoning_correct": validation_result.reasoning_correct,
+                "validation_error_type": validation_result.error_type,
+                "validation_details": validation_details,
+                "requires_review": validation_verdict == "uncertain",
+
+                "correction_method": "hybrid_validation_engine_adaptive",
                 "adaptive_next": adaptive_next,
-                "remediation_declenchee": etoiles_finales < 3
+
+                # Une remédiation n'est vraie que sur erreur confirmée.
+                "remediation_declenchee": remediation_declenchee
             },
 
             created_at=datetime.utcnow()
@@ -20107,6 +21293,7 @@ Correction :
         print(
             f"🧠 TraceApprentissage : "
             f"élève={eleve.id}, exercice={exercice.id}, "
+            f"verdict={validation_verdict}, "
             f"score={score_final}, risque={niveau_risque}"
         )
 
@@ -20115,21 +21302,28 @@ Correction :
         print(f"⚠️ Trace d'apprentissage non enregistrée : {e}")
 
     # ============================================================
-    # 10. REMÉDIATION SI DIFFICULTÉ
+    # 10. REMÉDIATION UNIQUEMENT SI ERREUR CONFIRMÉE
     # ============================================================
 
-    if etoiles_finales < 3:
+    remediation_declenchee = (
+        validation_verdict == "incorrect"
+        and etoiles_finales is not None
+        and etoiles_finales < 3
+    )
+
+    if remediation_declenchee:
+
         try:
             if lang == "en":
-                if symbolic_correct is False:
-                    message = f"Mathematical error detected ({etoiles_finales}/5)."
-                else:
-                    message = f"Difficulty detected ({etoiles_finales}/5)."
+                message = (
+                    f"Confirmed mathematical difficulty "
+                    f"({etoiles_finales}/5)."
+                )
             else:
-                if symbolic_correct is False:
-                    message = f"Erreur mathématique détectée ({etoiles_finales}/5)."
-                else:
-                    message = f"Difficulté détectée ({etoiles_finales}/5)."
+                message = (
+                    f"Difficulté mathématique confirmée "
+                    f"({etoiles_finales}/5)."
+                )
 
             suggestion = RemediationSuggestion(
                 user_id=eleve.id,
@@ -20144,11 +21338,28 @@ Correction :
             db.session.add(suggestion)
             db.session.commit()
 
-            print("📚 Remédiation proposée.")
+            print(
+                "📚 Remédiation proposée après "
+                "un verdict incorrect confirmé."
+            )
 
         except Exception as e:
             db.session.rollback()
-            print(f"⚠️ Remédiation non enregistrée: {e}")
+            print(f"⚠️ Remédiation non enregistrée : {e}")
+
+    elif validation_verdict == "uncertain":
+
+        print(
+            "⚠️ Aucune remédiation créée : "
+            "la réponse nécessite une vérification."
+        )
+
+    else:
+
+        print(
+            "✅ Aucune remédiation nécessaire : "
+            f"verdict={validation_verdict}."
+        )
 
     # ============================================================
     # 11. RETOUR SUR LE MÊME EXERCICE AVEC FEEDBACK

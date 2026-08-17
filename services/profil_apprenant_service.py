@@ -5,6 +5,13 @@ from models import db, ProfilApprenant
 
 
 def normaliser_score(score):
+    """
+    Convertit un score en pourcentage sur 100.
+
+    - Si le score est sur 5, il est converti sur 100.
+    - Si le score est déjà sur 100, il est conservé.
+    - Toute valeur invalide retourne 0.
+    """
     try:
         score = float(score)
     except Exception:
@@ -17,6 +24,10 @@ def normaliser_score(score):
 
 
 def determiner_risque(probabilite_difficulte):
+    """
+    Détermine le niveau de risque à partir de la probabilité
+    de difficulté estimée.
+    """
     try:
         p = float(probabilite_difficulte)
     except Exception:
@@ -32,6 +43,18 @@ def determiner_risque(probabilite_difficulte):
 
 
 def determiner_recommandation(maitrise_estimee, probabilite_difficulte):
+    """
+    Détermine la recommandation pédagogique.
+
+    Règle prioritaire :
+    - difficulté élevée  -> remediation
+    - difficulté moyenne -> consolidation
+    - difficulté faible  -> décision selon la maîtrise
+
+    La probabilité de difficulté est prioritaire afin qu'un risque élevé
+    ne soit jamais masqué par une maîtrise historique encore relativement
+    élevée.
+    """
     try:
         maitrise = float(maitrise_estimee)
     except Exception:
@@ -42,7 +65,25 @@ def determiner_recommandation(maitrise_estimee, probabilite_difficulte):
     except Exception:
         difficulte = 0.5
 
-    if maitrise >= 80 and difficulte < 0.35:
+    # ============================================================
+    # 1. RISQUE ÉLEVÉ : REMÉDIATION PRIORITAIRE
+    # ============================================================
+
+    if difficulte >= 0.70:
+        return "remediation"
+
+    # ============================================================
+    # 2. RISQUE MOYEN : CONSOLIDATION
+    # ============================================================
+
+    if difficulte >= 0.40:
+        return "consolidation"
+
+    # ============================================================
+    # 3. RISQUE FAIBLE : ON UTILISE LA MAÎTRISE
+    # ============================================================
+
+    if maitrise >= 80:
         return "progression"
 
     if maitrise >= 55:
@@ -52,6 +93,9 @@ def determiner_recommandation(maitrise_estimee, probabilite_difficulte):
 
 
 def determiner_tendance(ancienne_maitrise, nouvelle_maitrise):
+    """
+    Compare l'ancienne maîtrise et la nouvelle maîtrise.
+    """
     try:
         ancienne = float(ancienne_maitrise)
         nouvelle = float(nouvelle_maitrise)
@@ -85,12 +129,18 @@ def mettre_a_jour_profil_apprenant(
 
     Cette fonction est appelée après chaque exercice corrigé.
     Elle ne consomme aucun token.
+
+    IMPORTANT :
+    la route appelante doit exclure les verdicts "uncertain"
+    afin qu'une réponse non validée ne modifie pas le profil.
     """
 
     if not user_id or not notion_cible:
         return None
 
-    score_normalise = normaliser_score(score if score is not None else etoiles)
+    score_normalise = normaliser_score(
+        score if score is not None else etoiles
+    )
 
     diagnostic_bayesien = diagnostic_bayesien or {}
 
@@ -101,10 +151,18 @@ def mettre_a_jour_profil_apprenant(
 
     try:
         probabilite_difficulte = float(probabilite_difficulte)
+
         if probabilite_difficulte > 1:
-            probabilite_difficulte = probabilite_difficulte / 100
+            probabilite_difficulte = (
+                probabilite_difficulte / 100
+            )
+
     except Exception:
         probabilite_difficulte = 0.5
+
+    # ============================================================
+    # RECHERCHE DU PROFIL EXISTANT
+    # ============================================================
 
     profil = ProfilApprenant.query.filter_by(
         user_id=user_id,
@@ -112,7 +170,12 @@ def mettre_a_jour_profil_apprenant(
         notion_cible=notion_cible
     ).first()
 
+    # ============================================================
+    # CRÉATION DU PROFIL SI NÉCESSAIRE
+    # ============================================================
+
     if not profil:
+
         profil = ProfilApprenant(
             user_id=user_id,
             lecon_id=lecon_id,
@@ -120,48 +183,126 @@ def mettre_a_jour_profil_apprenant(
             competence_cible=competence_cible,
             maitrise_estimee=score_normalise,
             probabilite_difficulte=probabilite_difficulte,
-            niveau_risque=determiner_risque(probabilite_difficulte),
+            niveau_risque=determiner_risque(
+                probabilite_difficulte
+            ),
             nombre_exercices_faits=0,
             nombre_reussites=0,
             nombre_erreurs=0,
             historique_resume=[]
         )
+
         db.session.add(profil)
 
-    ancienne_maitrise = profil.maitrise_estimee or 0.0
+    ancienne_maitrise = (
+        profil.maitrise_estimee
+        or 0.0
+    )
 
-    # Mise à jour progressive : 70 % ancien profil, 30 % nouvelle performance
-    nouvelle_maitrise = (ancienne_maitrise * 0.70) + (score_normalise * 0.30)
+    # ============================================================
+    # MISE À JOUR PROGRESSIVE DE LA MAÎTRISE
+    # ============================================================
+    #
+    # 70 % du profil historique
+    # 30 % de la nouvelle performance
+    # ============================================================
 
-    profil.maitrise_estimee = round(nouvelle_maitrise, 2)
-    profil.probabilite_difficulte = round(probabilite_difficulte, 3)
-    profil.niveau_risque = determiner_risque(probabilite_difficulte)
+    nouvelle_maitrise = (
+        ancienne_maitrise * 0.70
+    ) + (
+        score_normalise * 0.30
+    )
 
-    profil.nombre_exercices_faits = (profil.nombre_exercices_faits or 0) + 1
+    profil.maitrise_estimee = round(
+        nouvelle_maitrise,
+        2
+    )
+
+    profil.probabilite_difficulte = round(
+        probabilite_difficulte,
+        3
+    )
+
+    profil.niveau_risque = determiner_risque(
+        probabilite_difficulte
+    )
+
+    # ============================================================
+    # COMPTEURS
+    # ============================================================
+
+    profil.nombre_exercices_faits = (
+        profil.nombre_exercices_faits
+        or 0
+    ) + 1
 
     if score_normalise >= 60:
-        profil.nombre_reussites = (profil.nombre_reussites or 0) + 1
-    else:
-        profil.nombre_erreurs = (profil.nombre_erreurs or 0) + 1
 
-    profil.dernier_score = round(score_normalise, 2)
-    profil.dernier_type_exercice = type_exercice
-    profil.derniere_difficulte = niveau_difficulte
+        profil.nombre_reussites = (
+            profil.nombre_reussites
+            or 0
+        ) + 1
+
+    else:
+
+        profil.nombre_erreurs = (
+            profil.nombre_erreurs
+            or 0
+        ) + 1
+
+    # ============================================================
+    # DERNIÈRE PERFORMANCE
+    # ============================================================
+
+    profil.dernier_score = round(
+        score_normalise,
+        2
+    )
+
+    profil.dernier_type_exercice = (
+        type_exercice
+    )
+
+    profil.derniere_difficulte = (
+        niveau_difficulte
+    )
 
     if competence_cible:
         profil.competence_cible = competence_cible
+
+    # ============================================================
+    # TENDANCE
+    # ============================================================
 
     profil.tendance = determiner_tendance(
         ancienne_maitrise,
         nouvelle_maitrise
     )
 
+    # ============================================================
+    # RECOMMANDATION PÉDAGOGIQUE
+    # ============================================================
+    #
+    # La difficulté estimée est prioritaire.
+    #
+    # p >= 0.70 -> remediation
+    # p >= 0.40 -> consolidation
+    # p < 0.40  -> décision selon la maîtrise
+    # ============================================================
+
     profil.recommandation = determiner_recommandation(
         profil.maitrise_estimee,
         profil.probabilite_difficulte
     )
 
-    historique = profil.historique_resume or []
+    # ============================================================
+    # HISTORIQUE
+    # ============================================================
+
+    historique = (
+        profil.historique_resume
+        or []
+    )
 
     historique.append({
         "date": datetime.utcnow().isoformat(),
@@ -174,10 +315,15 @@ def mettre_a_jour_profil_apprenant(
         "recommandation": profil.recommandation
     })
 
-    # On garde seulement les 10 dernières traces pour éviter de grossir inutilement
+    # On garde seulement les 10 dernières traces afin
+    # d'éviter de grossir inutilement le profil.
     profil.historique_resume = historique[-10:]
 
     profil.updated_at = datetime.utcnow()
+
+    # ============================================================
+    # SAUVEGARDE
+    # ============================================================
 
     db.session.commit()
 
