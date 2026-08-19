@@ -388,3 +388,502 @@ def verifier_solution_equation_fractionnaire(equation_initiale, reponse_eleve):
             "erreur": str(e),
             "message_interne": ""
         }
+
+def verifier_resultat_expression_contextuelle(objectif_initial, reponse_eleve):
+    """
+    Vérifie une réponse numérique/fractionnaire donnée en langage naturel
+    par rapport à une expression arithmétique présente dans l'objectif initial.
+
+    Exemple :
+        objectif_initial = "Aide moi a effectuer 1/3+1/4"
+        reponse_eleve = "le résultat est 7/12"
+
+    Retour :
+        {
+            "verification_contextuelle": True,
+            "est_correct": True,
+            "expression_initiale": "1/3+1/4",
+            "valeur_attendue": "7/12",
+            "valeur_proposee": "7/12",
+            "message_interne": "..."
+        }
+
+    Sécurité :
+    - aucune variable n'est autorisée ;
+    - seules les opérations numériques simples sont évaluées ;
+    - si l'extraction est ambiguë, on retourne NON VÉRIFIÉ ;
+    - non vérifié ne signifie jamais incorrect.
+    """
+
+    objectif = objectif_initial or ""
+    reponse = reponse_eleve or ""
+
+    if not objectif.strip() or not reponse.strip():
+        return {
+            "verification_contextuelle": False,
+            "est_correct": None,
+            "message_interne": ""
+        }
+
+    # ------------------------------------------------------------
+    # 1. NORMALISER L'OBJECTIF
+    # ------------------------------------------------------------
+
+    objectif_normalise = _normaliser_texte_math(objectif)
+
+    # ------------------------------------------------------------
+    # 2. EXTRAIRE UNE EXPRESSION ARITHMÉTIQUE NUMÉRIQUE
+    # ------------------------------------------------------------
+    #
+    # Exemples visés :
+    #   1/3+1/4
+    #   2+3/5
+    #   (1/2)*4
+    #   5-2/3
+    #
+    # On exige au moins un véritable opérateur arithmétique.
+    # ------------------------------------------------------------
+
+    candidats = re.findall(
+        r"(?<![\w.])"
+        r"[-+]?"
+        r"(?:\d+(?:\.\d+)?|\(\s*[-+]?\d+(?:\.\d+)?\s*\))"
+        r"(?:\s*[+\-*/]\s*"
+        r"(?:\d+(?:\.\d+)?|\(\s*[-+]?\d+(?:\.\d+)?\s*\))"
+        r")+",
+        objectif_normalise
+    )
+
+    # Le motif précédent peut être trop restrictif pour des fractions
+    # comme 1/3+1/4. On utilise donc un second extracteur contrôlé.
+    if not candidats:
+        candidats = re.findall(
+            r"(?<![\w.])"
+            r"[0-9.\s()+\-*/]+"
+            r"(?![\w.])",
+            objectif_normalise
+        )
+
+    expressions_valides = []
+
+    for candidat in candidats:
+        candidat = candidat.strip()
+
+        if not candidat:
+            continue
+
+        # Retirer les espaces.
+        candidat = re.sub(r"\s+", "", candidat)
+
+        # Un candidat doit contenir au moins une opération.
+        if not any(op in candidat for op in ["+", "-", "*", "/"]):
+            continue
+
+        # Pas de lettres.
+        if re.search(r"[a-zA-Z]", candidat):
+            continue
+
+        # Seulement les caractères mathématiques autorisés.
+        if not re.fullmatch(r"[0-9+\-*/().]+", candidat):
+            continue
+
+        try:
+            valeur = _eval_expr_fraction(candidat)
+            expressions_valides.append((candidat, valeur))
+        except Exception:
+            continue
+
+    if not expressions_valides:
+        return {
+            "verification_contextuelle": False,
+            "est_correct": None,
+            "message_interne": ""
+        }
+
+    # On prend la dernière expression mathématique valide de l'objectif.
+    expression_initiale, valeur_attendue = expressions_valides[-1]
+
+    # ------------------------------------------------------------
+    # 3. EXTRAIRE LA VALEUR PROPOSÉE PAR L'ÉLÈVE
+    # ------------------------------------------------------------
+
+    texte_reponse = _normaliser_texte_math(reponse).strip()
+
+    valeur_proposee_txt = None
+
+    # Cas A : réponse constituée uniquement d'une valeur.
+    #
+    # Exemples :
+    #   7/12
+    #   0.5
+    #   -3
+    #
+    match_valeur_seule = re.fullmatch(
+        r"\s*([-+]?\d+(?:\.\d+)?(?:\s*/\s*[-+]?\d+(?:\.\d+)?)?)\s*",
+        texte_reponse
+    )
+
+    if match_valeur_seule:
+        valeur_proposee_txt = match_valeur_seule.group(1)
+
+    # Cas B : formulation explicite d'une réponse finale.
+    #
+    # Exemples :
+    #   le résultat est 7/12
+    #   la réponse est 7/12
+    #   j'obtiens 7/12
+    #   donc 7/12
+    #   ça donne 7/12
+    #
+    if not valeur_proposee_txt:
+        patterns_reponse = [
+            r"(?:le\s+)?r[eé]sultat\s+(?:est|=)\s*"
+            r"([-+]?\d+(?:\.\d+)?(?:\s*/\s*[-+]?\d+(?:\.\d+)?)?)",
+
+            r"(?:la\s+)?r[eé]ponse\s+(?:est|=)\s*"
+            r"([-+]?\d+(?:\.\d+)?(?:\s*/\s*[-+]?\d+(?:\.\d+)?)?)",
+
+            r"j['’]?\s*obtiens\s*"
+            r"([-+]?\d+(?:\.\d+)?(?:\s*/\s*[-+]?\d+(?:\.\d+)?)?)",
+
+            r"on\s+obtient\s*"
+            r"([-+]?\d+(?:\.\d+)?(?:\s*/\s*[-+]?\d+(?:\.\d+)?)?)",
+
+            r"(?:donc|alors)\s*"
+            r"([-+]?\d+(?:\.\d+)?(?:\s*/\s*[-+]?\d+(?:\.\d+)?)?)",
+
+            r"(?:[cç]a|cela)\s+donne\s*"
+            r"([-+]?\d+(?:\.\d+)?(?:\s*/\s*[-+]?\d+(?:\.\d+)?)?)",
+        ]
+
+        for pattern in patterns_reponse:
+            match = re.search(
+                pattern,
+                texte_reponse,
+                flags=re.IGNORECASE
+            )
+
+            if match:
+                valeur_proposee_txt = match.group(1)
+                break
+
+    if not valeur_proposee_txt:
+        return {
+            "verification_contextuelle": False,
+            "est_correct": None,
+            "expression_initiale": expression_initiale,
+            "valeur_attendue": str(valeur_attendue),
+            "message_interne": ""
+        }
+
+    valeur_proposee_txt = re.sub(
+        r"\s+",
+        "",
+        valeur_proposee_txt
+    )
+
+    # ------------------------------------------------------------
+    # 4. ÉVALUATION EXACTE AVEC FRACTION
+    # ------------------------------------------------------------
+
+    try:
+        valeur_proposee = _eval_expr_fraction(
+            valeur_proposee_txt
+        )
+    except Exception:
+        return {
+            "verification_contextuelle": False,
+            "est_correct": None,
+            "expression_initiale": expression_initiale,
+            "valeur_attendue": str(valeur_attendue),
+            "message_interne": ""
+        }
+
+    est_correct = valeur_proposee == valeur_attendue
+
+    # ------------------------------------------------------------
+    # 5. MESSAGE PRIORITAIRE POUR NAIMA
+    # ------------------------------------------------------------
+
+    if est_correct:
+
+        message_interne = (
+            "Vérification mathématique contextuelle prioritaire : "
+            f"l'objectif initial contient l'expression "
+            f"{expression_initiale}. "
+            f"Cette expression vaut exactement {valeur_attendue}. "
+            f"L'élève propose {valeur_proposee}. "
+            "La réponse de l'élève est donc mathématiquement correcte. "
+            "Naima doit reconnaître clairement que cette réponse est correcte. "
+            "Naima ne doit pas dire que cette réponse est fausse. "
+            "Elle peut ensuite conclure l'exercice ou vérifier brièvement "
+            "la compréhension si cela est pédagogiquement nécessaire."
+        )
+
+    else:
+
+        message_interne = (
+            "Vérification mathématique contextuelle : "
+            f"l'objectif initial contient l'expression "
+            f"{expression_initiale}, qui vaut exactement "
+            f"{valeur_attendue}. "
+            f"L'élève propose {valeur_proposee}. "
+            "Ces valeurs ne sont pas égales. "
+            "La réponse proposée est donc incorrecte pour cette expression. "
+            "Naima doit corriger avec bienveillance et guider l'élève "
+            "sans inventer une autre valeur."
+        )
+
+    return {
+        "verification_contextuelle": True,
+        "est_correct": est_correct,
+        "expression_initiale": expression_initiale,
+        "valeur_attendue": str(valeur_attendue),
+        "valeur_proposee": str(valeur_proposee),
+        "message_interne": message_interne
+    }
+
+
+def verifier_chaine_egalites_fractionnaire(texte, objectif_initial=""):
+    """
+    Vérifie une chaîne d'égalités numériques/fractionnaires contenue dans
+    une phrase de l'élève.
+
+    Exemples :
+        "on a 1/2+1/3=3/6+2/6=5/6"
+        "donc 1/2+1/3 = 5/6"
+
+    Principes de sécurité :
+    - seules des expressions numériques sont évaluées ;
+    - aucune lettre/variable n'est évaluée ;
+    - chaque membre de la chaîne doit avoir exactement la même valeur ;
+    - si l'analyse est ambiguë, on retourne NON VÉRIFIÉ ;
+    - NON VÉRIFIÉ ne signifie jamais incorrect.
+
+    Si un objectif initial numérique est disponible, la fonction indique
+    aussi si la chaîne correspond réellement à cet objectif et si le
+    dernier membre constitue un résultat final explicite.
+    """
+
+    texte = texte or ""
+
+    if "=" not in texte:
+        return {
+            "verification_chaine": False,
+            "calcul_verifie": False,
+            "est_correct": None,
+            "message_interne": ""
+        }
+
+    texte_normalise = _normaliser_texte_math(texte)
+
+    # ------------------------------------------------------------
+    # EXTRACTION D'UNE CHAÎNE MATHÉMATIQUE CONTENANT AU MOINS "="
+    # ------------------------------------------------------------
+    #
+    # On récupère uniquement des blocs composés de chiffres,
+    # opérateurs, parenthèses, points et signes "=".
+    # Les mots autour ("on a", "donc", etc.) sont ignorés.
+    # ------------------------------------------------------------
+
+    candidats = re.findall(
+        r"[0-9\.\s\+\-\*/\(\)=]+",
+        texte_normalise
+    )
+
+    chaines_valides = []
+
+    for candidat in candidats:
+        candidat = re.sub(r"\s+", "", candidat).strip()
+
+        if not candidat or "=" not in candidat:
+            continue
+
+        candidat = candidat.strip("=+-*/.")
+
+        if "=" not in candidat:
+            continue
+
+        if not re.fullmatch(r"[0-9+\-*/().=]+", candidat):
+            continue
+
+        membres = [m.strip() for m in candidat.split("=")]
+
+        if len(membres) < 2 or any(not m for m in membres):
+            continue
+
+        valeurs = []
+
+        try:
+            for membre in membres:
+                valeurs.append(_eval_expr_fraction(membre))
+        except Exception:
+            continue
+
+        chaines_valides.append(
+            {
+                "chaine": candidat,
+                "membres": membres,
+                "valeurs": valeurs
+            }
+        )
+
+    if not chaines_valides:
+        return {
+            "verification_chaine": False,
+            "calcul_verifie": False,
+            "est_correct": None,
+            "message_interne": ""
+        }
+
+    # On privilégie la chaîne la plus riche, puis la dernière trouvée.
+    chaine_info = sorted(
+        chaines_valides,
+        key=lambda item: (len(item["membres"]), len(item["chaine"]))
+    )[-1]
+
+    chaine = chaine_info["chaine"]
+    membres = chaine_info["membres"]
+    valeurs = chaine_info["valeurs"]
+
+    valeur_reference = valeurs[0]
+    est_correct = all(
+        valeur == valeur_reference
+        for valeur in valeurs[1:]
+    )
+
+    # ------------------------------------------------------------
+    # LE DERNIER MEMBRE EST-IL UN RÉSULTAT FINAL EXPLICITE ?
+    # ------------------------------------------------------------
+    #
+    # On considère comme final :
+    # - un entier : 5
+    # - un décimal : 0.5
+    # - une fraction simple : 5/6
+    # - un nombre négatif : -23/35
+    #
+    # Une expression comme 3/6+2/6 n'est pas encore considérée
+    # comme un résultat final explicite.
+    # ------------------------------------------------------------
+
+    dernier_membre = membres[-1]
+
+    resultat_final_explicite = bool(
+        re.fullmatch(
+            r"[-+]?\d+(?:\.\d+)?(?:/[-+]?\d+(?:\.\d+)?)?",
+            dernier_membre
+        )
+    )
+
+    # ------------------------------------------------------------
+    # COMPARAISON AVEC L'OBJECTIF INITIAL
+    # ------------------------------------------------------------
+
+    correspond_objectif = False
+    valeur_objectif = None
+    expression_objectif = None
+
+    objectif = objectif_initial or ""
+
+    if objectif.strip():
+        objectif_normalise = _normaliser_texte_math(objectif)
+
+        candidats_objectif = re.findall(
+            r"[0-9\.\s\+\-\*/\(\)]+",
+            objectif_normalise
+        )
+
+        expressions_objectif = []
+
+        for candidat in candidats_objectif:
+            candidat = re.sub(r"\s+", "", candidat).strip()
+
+            if not candidat:
+                continue
+
+            if not any(op in candidat for op in ["+", "-", "*", "/"]):
+                continue
+
+            if not re.fullmatch(r"[0-9+\-*/().]+", candidat):
+                continue
+
+            try:
+                valeur = _eval_expr_fraction(candidat)
+                expressions_objectif.append((candidat, valeur))
+            except Exception:
+                continue
+
+        if expressions_objectif:
+            expression_objectif, valeur_objectif = expressions_objectif[-1]
+
+            correspond_objectif = (
+                valeur_reference == valeur_objectif
+            )
+
+    # ------------------------------------------------------------
+    # MESSAGE INTERNE PRIORITAIRE
+    # ------------------------------------------------------------
+
+    if est_correct:
+        message = (
+            "Vérification mathématique locale d'une chaîne d'égalités : "
+            f"la chaîne « {chaine} » est correcte. "
+            f"Tous ses membres valent exactement {valeur_reference}. "
+        )
+
+        if correspond_objectif:
+            message += (
+                f"Elle correspond à l'objectif initial "
+                f"« {expression_objectif} », qui vaut aussi "
+                f"{valeur_objectif}. "
+            )
+
+        if resultat_final_explicite and correspond_objectif:
+            message += (
+                f"Le dernier membre ({dernier_membre}) est un résultat "
+                "final explicite et correct pour l'objectif initial. "
+                "Naima doit reconnaître que l'objectif est atteint. "
+                "Elle ne doit pas revenir à une étape déjà validée "
+                "et ne doit pas poser une nouvelle question sur cet exercice."
+            )
+        else:
+            message += (
+                "Naima doit reconnaître clairement que cette étape est "
+                "correcte et poursuivre uniquement vers l'étape suivante. "
+                "Elle ne doit pas revenir sur une étape déjà validée."
+            )
+
+    else:
+        details = ", ".join(
+            f"{membre}={valeur}"
+            for membre, valeur in zip(membres, valeurs)
+        )
+
+        message = (
+            "Vérification mathématique locale d'une chaîne d'égalités : "
+            f"la chaîne « {chaine} » n'est pas entièrement correcte. "
+            f"Valeurs calculées : {details}. "
+            "Naima doit corriger uniquement la première rupture d'égalité "
+            "et ne pas inventer une autre erreur."
+        )
+
+    return {
+        "verification_chaine": True,
+        "calcul_verifie": True,
+        "est_correct": est_correct,
+        "chaine": chaine,
+        "membres": membres,
+        "valeurs": [str(v) for v in valeurs],
+        "valeur_commune": str(valeur_reference) if est_correct else None,
+        "resultat_final_explicite": resultat_final_explicite,
+        "resultat_final": str(valeurs[-1]) if resultat_final_explicite else None,
+        "correspond_objectif": correspond_objectif,
+        "expression_objectif": expression_objectif,
+        "valeur_objectif": (
+            str(valeur_objectif)
+            if valeur_objectif is not None
+            else None
+        ),
+        "message_interne": message
+    }
+

@@ -427,40 +427,92 @@
             </div>
         </div>
 
-        <!-- Filtres -->
+        <!-- Filtres serveur -->
         <div class="card mb-4">
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">{% if lang == 'en' %}Filter by Level{% else %}Filtrer par Niveau{% endif %}</label>
-                        <select class="form-select" id="niveauFilter">
-                            <option value="">{% if lang == 'en' %}All Levels{% else %}Tous les niveaux{% endif %}</option>
-                            {% for niveau in niveaux %}
-                            <option value="{{ niveau.id }}">{{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">{% if lang == 'en' %}Filter by Subject{% else %}Filtrer par Matière{% endif %}</label>
-                        <select class="form-select" id="matiereFilter">
-                            <option value="">{% if lang == 'en' %}All Subjects{% else %}Toutes les matières{% endif %}</option>
-                            {% for niveau in niveaux %}
-                                {% for matiere in matieres_par_niveau[niveau.id] %}
-                                <option value="{{ matiere.id }}" data-niveau="{{ niveau.id }}">{{ matiere.nom }}</option>
+                <form method="GET" action="{{ url_for('liste_exercices') }}" id="filtersForm">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">
+                                {% if lang == 'en' %}Filter by Level{% else %}Filtrer par Niveau{% endif %}
+                            </label>
+                            <select class="form-select" id="niveauFilter" name="niveau_id">
+                                <option value="">
+                                    {% if lang == 'en' %}All Levels{% else %}Tous les niveaux{% endif %}
+                                </option>
+                                {% for niveau in niveaux %}
+                                    <option
+                                        value="{{ niveau.id }}"
+                                        {% if niveau_id_selectionne == niveau.id %}selected{% endif %}
+                                    >
+                                        {{ niveau.nom_en if lang == 'en' and niveau.nom_en else niveau.nom }}
+                                    </option>
                                 {% endfor %}
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">{% if lang == 'en' %}Search Exercise{% else %}Rechercher un exercice{% endif %}</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" placeholder="{% if lang == 'en' %}Search...{% else %}Rechercher...{% endif %}" id="searchInput">
-                            <button class="btn btn-outline-secondary" type="button" id="clearSearch">
-                                <i class="fas fa-times"></i>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">
+                                {% if lang == 'en' %}Filter by Subject{% else %}Filtrer par Matière{% endif %}
+                            </label>
+                            <select class="form-select" id="matiereFilter" name="matiere_id">
+                                <option value="">
+                                    {% if lang == 'en' %}All Subjects{% else %}Toutes les matières{% endif %}
+                                </option>
+
+                                {% for niveau in niveaux %}
+                                    {% for matiere in matieres_par_niveau.get(niveau.id, []) %}
+                                        <option
+                                            value="{{ matiere.id }}"
+                                            data-niveau="{{ niveau.id }}"
+                                            {% if matiere_id_selectionnee == matiere.id %}selected{% endif %}
+                                        >
+                                            {{ matiere.nom_en if lang == 'en' and matiere.nom_en else matiere.nom }}
+                                        </option>
+                                    {% endfor %}
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                {% if lang == 'en' %}Search Exercise{% else %}Rechercher un exercice{% endif %}
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                name="q"
+                                id="searchInput"
+                                value="{{ q or '' }}"
+                                placeholder="{% if lang == 'en' %}Search...{% else %}Rechercher...{% endif %}"
+                            >
+                        </div>
+
+                        <div class="col-md-2 d-flex gap-2">
+                            <button class="btn btn-primary flex-grow-1" type="submit">
+                                <i class="fas fa-filter"></i>
+                                {% if lang == 'en' %}Apply{% else %}Appliquer{% endif %}
                             </button>
+
+                            <a
+                                class="btn btn-outline-secondary"
+                                href="{{ url_for('liste_exercices') }}"
+                                title="{% if lang == 'en' %}Reset{% else %}Réinitialiser{% endif %}"
+                            >
+                                <i class="fas fa-rotate-left"></i>
+                            </a>
                         </div>
                     </div>
-                </div>
+                </form>
+
+                {% if niveau_id_selectionne or matiere_id_selectionnee or q %}
+                    <div class="mt-3">
+                        <span class="badge bg-secondary">
+                            {{ total_exercices_filtres }}
+                            {% if lang == 'en' %}matching exercises{% else %}exercices correspondant aux filtres{% endif %}
+                        </span>
+                    </div>
+                {% endif %}
             </div>
         </div>
 
@@ -694,31 +746,54 @@
             </div>
             {% endfor %}
 
-            <!-- Pagination -->
-            {% if matieres_avec_exercices|length >= per_page %}
-            <nav aria-label="Page navigation" class="mt-4">
+            <!-- Pagination par unité -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Page navigation" class="mt-4 mb-4">
                 <ul class="pagination justify-content-center">
-                    {% if page > 1 %}
+
+                    {% if has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('liste_exercices', page=page-1) }}">
+                        <a
+                            class="page-link"
+                            href="{{ url_for(
+                                'liste_exercices',
+                                page=previous_page,
+                                niveau_id=niveau_id_selectionne,
+                                matiere_id=matiere_id_selectionnee,
+                                q=q
+                            ) }}"
+                        >
                             <i class="fas fa-chevron-left"></i>
                             {% if lang == 'en' %}Previous{% else %}Précédent{% endif %}
                         </a>
                     </li>
                     {% endif %}
-                    
-                    <li class="page-item active">
-                        <span class="page-link">Page {{ page }}</span>
+
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            {% if lang == 'en' %}Units page{% else %}Page des unités{% endif %}
+                            {{ page }} / {{ total_pages }}
+                        </span>
                     </li>
-                    
+
                     {% if has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('liste_exercices', page=page+1) }}">
+                        <a
+                            class="page-link"
+                            href="{{ url_for(
+                                'liste_exercices',
+                                page=next_page,
+                                niveau_id=niveau_id_selectionne,
+                                matiere_id=matiere_id_selectionnee,
+                                q=q
+                            ) }}"
+                        >
                             {% if lang == 'en' %}Next{% else %}Suivant{% endif %}
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
                     {% endif %}
+
                 </ul>
             </nav>
             {% endif %}
@@ -871,27 +946,10 @@
             updateSelectionUI();
         }
 
-        // Appliquer les filtres depuis l'URL
+        // Les filtres sont désormais appliqués côté serveur.
+        // Les valeurs sélectionnées sont déjà injectées par Jinja.
         function applyFiltersFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const niveauId = urlParams.get('niveau');
-            const matiereId = urlParams.get('matiere');
-            const search = urlParams.get('search');
-            
-            if (niveauId) {
-                document.getElementById('niveauFilter').value = niveauId;
-                filterByNiveau();
-            }
-            
-            if (matiereId) {
-                document.getElementById('matiereFilter').value = matiereId;
-                filterByMatiere();
-            }
-            
-            if (search) {
-                document.getElementById('searchInput').value = search;
-                filterExercises();
-            }
+            refreshSubjectOptions();
         }
 
         // Mettre à jour l'interface de sélection
@@ -1164,49 +1222,73 @@
             });
         }
 
-        // Initialiser le filtre des matières
+        // Initialiser les filtres serveur
         function initMatiereFilter() {
-            const matiereFilter = document.getElementById('matiereFilter');
             const niveauFilter = document.getElementById('niveauFilter');
-            
-            // Stocker toutes les options de matière
-            const allMatiereOptions = Array.from(matiereFilter.options).map(option => ({
-                value: option.value,
-                text: option.textContent,
-                niveau: option.getAttribute('data-niveau')
-            }));
-            
-            // Écouter les changements du filtre de niveau
-            niveauFilter.addEventListener('change', function() {
-                const selectedNiveau = this.value;
-                
-                // Vider le filtre des matières
-                matiereFilter.innerHTML = '<option value="">' + (langJs === 'en' ? 'All Subjects' : 'Toutes les matières') + '</option>';
-                
-                if (selectedNiveau) {
-                    // Filtrer les matières par niveau
-                    allMatiereOptions.forEach(option => {
-                        if (option.niveau === selectedNiveau) {
-                            const newOption = document.createElement('option');
-                            newOption.value = option.value;
-                            newOption.textContent = option.text;
-                            newOption.setAttribute('data-niveau', option.niveau);
-                            matiereFilter.appendChild(newOption);
-                        }
-                    });
-                } else {
-                    // Afficher toutes les matières
-                    allMatiereOptions.forEach(option => {
+            const matiereFilter = document.getElementById('matiereFilter');
+            const filtersForm = document.getElementById('filtersForm');
+
+            if (!niveauFilter || !matiereFilter || !filtersForm) {
+                return;
+            }
+
+            // Sauvegarder les options matières originales.
+            const allOptions = Array.from(matiereFilter.options)
+                .filter(option => option.value !== '')
+                .map(option => ({
+                    value: option.value,
+                    text: option.textContent,
+                    niveau: option.getAttribute('data-niveau'),
+                    selected: option.selected
+                }));
+
+            function rebuildSubjects() {
+                const selectedNiveau = niveauFilter.value;
+                const currentMatiere = matiereFilter.value;
+
+                matiereFilter.innerHTML =
+                    '<option value="">' +
+                    (langJs === 'en' ? 'All Subjects' : 'Toutes les matières') +
+                    '</option>';
+
+                allOptions.forEach(option => {
+                    if (!selectedNiveau || option.niveau === selectedNiveau) {
                         const newOption = document.createElement('option');
                         newOption.value = option.value;
                         newOption.textContent = option.text;
                         newOption.setAttribute('data-niveau', option.niveau);
+
+                        if (option.value === currentMatiere || option.selected) {
+                            newOption.selected = true;
+                        }
+
                         matiereFilter.appendChild(newOption);
-                    });
+                    }
+                });
+
+                // Si la matière sélectionnée n'appartient pas au nouveau niveau,
+                // revenir à "Toutes les matières".
+                if (
+                    matiereFilter.value &&
+                    !Array.from(matiereFilter.options)
+                        .some(option => option.value === matiereFilter.value)
+                ) {
+                    matiereFilter.value = '';
                 }
-                
-                // Réappliquer le filtre
-                filterByMatiere();
+            }
+
+            window.refreshSubjectOptions = rebuildSubjects;
+            rebuildSubjects();
+
+            // Changer de niveau recharge immédiatement la page côté serveur.
+            niveauFilter.addEventListener('change', function() {
+                matiereFilter.value = '';
+                filtersForm.submit();
+            });
+
+            // Changer de matière recharge immédiatement la page côté serveur.
+            matiereFilter.addEventListener('change', function() {
+                filtersForm.submit();
             });
         }
 
@@ -1374,128 +1456,15 @@
             });
         });
 
-        // Filtrage par niveau et matière
-        document.getElementById('niveauFilter').addEventListener('change', function() {
-            filterByNiveau();
-        });
-
-        document.getElementById('matiereFilter').addEventListener('change', function() {
-            filterByMatiere();
-        });
-
-        document.getElementById('searchInput').addEventListener('input', function() {
-            filterExercises();
-        });
-
-        document.getElementById('clearSearch').addEventListener('click', function() {
-            document.getElementById('searchInput').value = '';
-            filterExercises();
-        });
-
-        function filterByNiveau() {
-            const niveauId = document.getElementById('niveauFilter').value;
-            const matiereSections = document.querySelectorAll('.matiere-section');
-            
-            matiereSections.forEach(section => {
-                const sectionNiveau = section.getAttribute('data-niveau');
-                if (!niveauId || niveauId === '' || sectionNiveau === niveauId) {
-                    section.style.display = 'block';
-                } else {
-                    section.style.display = 'none';
-                }
-            });
-            
-            // Réinitialiser le filtre de matière
-            document.getElementById('matiereFilter').value = '';
-            filterByMatiere();
-        }
-
-        function filterByMatiere() {
-            const matiereId = document.getElementById('matiereFilter').value;
-            const matiereSections = document.querySelectorAll('.matiere-section');
-            
-            matiereSections.forEach(section => {
-                const sectionMatiereId = section.getAttribute('data-matiere-id');
-                if (!matiereId || matiereId === '' || sectionMatiereId === matiereId) {
-                    section.style.display = 'block';
-                } else {
-                    section.style.display = 'none';
-                }
-            });
-        }
-
-        function filterExercises() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const exerciseTexts = document.querySelectorAll('.exercise-text');
-            let foundAny = false;
-            
-            exerciseTexts.forEach(textElement => {
-                const exerciseItem = textElement.closest('.exercise-item');
-                const textContent = textElement.textContent.toLowerCase();
-                
-                if (textContent.includes(searchTerm)) {
-                    exerciseItem.style.display = 'block';
-                    foundAny = true;
-                    
-                    // Ouvrir l'accordéon parent si fermé
-                    const accordionItem = exerciseItem.closest('.accordion-item');
-                    const button = accordionItem.querySelector('.accordion-button');
-                    if (button && button.classList.contains('collapsed')) {
-                        const collapseId = button.getAttribute('data-bs-target');
-                        const collapseElement = document.querySelector(collapseId);
-                        if (collapseElement) {
-                            new bootstrap.Collapse(collapseElement, { toggle: true });
-                        }
-                    }
-                    
-                    // Ouvrir la section unité si fermée
-                    const uniteSection = exerciseItem.closest('.unite-section');
-                    if (uniteSection) {
-                        uniteSection.style.display = 'block';
-                    }
-                    
-                    // Ouvrir la section matière si fermée
-                    const matiereSection = exerciseItem.closest('.matiere-section');
-                    if (matiereSection) {
-                        matiereSection.style.display = 'block';
-                    }
-                } else {
-                    exerciseItem.style.display = 'none';
-                }
-            });
-            
-            // Si aucun exercice trouvé, afficher un message
-            if (!foundAny && searchTerm) {
-                showNoResultsMessage(searchTerm);
-            } else {
-                hideNoResultsMessage();
+        // Recherche : le formulaire GET envoie q au serveur.
+        // Le bouton Entrée dans le champ fonctionne nativement.
+        document.getElementById('searchInput')?.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                document.getElementById('filtersForm').submit();
             }
-        }
+        });
 
-        function showNoResultsMessage(searchTerm) {
-            let message = document.getElementById('noResultsMessage');
-            if (!message) {
-                message = document.createElement('div');
-                message.id = 'noResultsMessage';
-                message.className = 'alert alert-warning mt-3';
-                message.innerHTML = `
-                    <i class="fas fa-search me-2"></i>
-                    <strong id="noResultsText"></strong>
-                    <p class="mb-0 mt-2">${langJs === 'en' ? 'Try different keywords or filters' : 'Essayez d\'autres mots-clés ou filtres'}</p>
-                `;
-                document.querySelector('.container').appendChild(message);
-            }
-            document.getElementById('noResultsText').textContent = 
-                langJs === 'en' ? `No results found for "${searchTerm}"` : `Aucun résultat trouvé pour "${searchTerm}"`;
-        }
-
-        function hideNoResultsMessage() {
-            const message = document.getElementById('noResultsMessage');
-            if (message) {
-                message.remove();
-            }
-        }
-        
         // Fonction de debug (à enlever en production)
         window.debugSelection = function() {
             console.log('=== DEBUG SELECTION ===');
