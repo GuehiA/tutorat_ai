@@ -971,8 +971,8 @@
             </div>
             
             <div style="margin-top: 30px;">
-                <a href="{{ url_for('paiement_direct') }}?type=quarterly&plan=quarterly&amount=49.99" 
-                   class="nav-btn urgent-btn" onclick="trackUpgrade('quarterly')">
+                <a href="{{ url_for('paiement_direct', type='quarterly') }}" 
+                   class="nav-btn urgent-btn">
                     <i class="fas fa-bolt"></i>
                     {% if lang == 'en' %}Upgrade Now to Continue{% else %}Améliorer Maintenant pour Continuer{% endif %}
                 </a>
@@ -1048,7 +1048,7 @@
         <!-- Container des plans - 3 CARTES OPTIMISÉES -->
         <div class="plans-container">
             <!-- Plan Mensuel -->
-            <div class="plan-card monthly fade-in-up" onclick="selectPlan('monthly')">
+            <div class="plan-card monthly fade-in-up">
                 <div class="plan-badge">
                     <i class="fas fa-calendar-alt"></i> 
                     {% if lang == 'en' %}FLEXIBLE{% else %}FLEXIBLE{% endif %}
@@ -1086,16 +1086,15 @@
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Progress tracking{% else %}Suivi de progression{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Cancel anytime{% else %}Annulation à tout moment{% endif %}</li>
                 </ul>
-                <a href="{{ url_for('paiement_direct') }}?type=monthly&plan=monthly&amount=19.99" 
-                   class="upgrade-btn {% if essai_expire %}urgent{% else %}monthly{% endif %}" 
-                   onclick="trackUpgrade('monthly')">
+                <a href="{{ url_for('paiement_direct', type='monthly') }}" 
+                   class="upgrade-btn {% if essai_expire %}urgent{% else %}monthly{% endif %}">
                     <i class="fas fa-calendar-alt"></i>
                     {% if lang == 'en' %}Choose Monthly{% else %}Choisir Mensuel{% endif %}
                 </a>
             </div>
             
             <!-- Plan Trimestriel (Populaire) -->
-            <div class="plan-card quarterly popular fade-in-up" onclick="selectPlan('quarterly')">
+            <div class="plan-card quarterly popular fade-in-up">
                 <div class="plan-badge">
                     <i class="fas fa-gem"></i> 
                     {% if lang == 'en' %}POPULAR{% else %}POPULAIRE{% endif %}
@@ -1137,16 +1136,15 @@
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Personalized roadmap{% else %}Feuille de route personnalisée{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}Save 3.33$/month{% else %}Économisez 3.33$/mois{% endif %}</strong></li>
                 </ul>
-                <a href="{{ url_for('paiement_direct') }}?type=quarterly&plan=quarterly&amount=49.99" 
-                   class="upgrade-btn {% if essai_expire %}urgent{% else %}quarterly{% endif %}" 
-                   onclick="trackUpgrade('quarterly')">
+                <a href="{{ url_for('paiement_direct', type='quarterly') }}" 
+                   class="upgrade-btn {% if essai_expire %}urgent{% else %}quarterly{% endif %}">
                     <i class="fas fa-calendar-check"></i>
                     {% if lang == 'en' %}Choose Quarterly{% else %}Choisir Trimestriel{% endif %}
                 </a>
             </div>
             
             <!-- Plan Annuel (Meilleur rapport) -->
-            <div class="plan-card annual best-value fade-in-up" onclick="selectPlan('annual')">
+            <div class="plan-card annual best-value fade-in-up">
                 <div class="plan-badge">
                     <i class="fas fa-crown"></i> 
                     {% if lang == 'en' %}BEST VALUE{% else %}MEILLEUR RAPPORT{% endif %}
@@ -1188,9 +1186,8 @@
                     <li><i class="fas fa-check feature-included"></i> {% if lang == 'en' %}Advanced analytics{% else %}Analyses avancées{% endif %}</li>
                     <li><i class="fas fa-check feature-included"></i> <strong>{% if lang == 'en' %}Save 89.89$/year{% else %}Économisez 89,89$/an{% endif %}</strong></li>
                 </ul>
-                <a href="{{ url_for('paiement_direct') }}?type=annual&plan=annual&amount=149.99" 
-                   class="upgrade-btn {% if essai_expire %}urgent{% else %}annual{% endif %}" 
-                   onclick="trackUpgrade('annual')">
+                <a href="{{ url_for('paiement_direct', type='annual') }}" 
+                   class="upgrade-btn {% if essai_expire %}urgent{% else %}annual{% endif %}">
                     <i class="fas fa-crown"></i>
                     {% if lang == 'en' %}Choose Annual{% else %}Choisir Annuel{% endif %}
                 </a>
@@ -1392,9 +1389,8 @@
                 <i class="fas fa-arrow-left"></i>
                 {% if lang == 'en' %}Back to Dashboard{% else %}Retour au Tableau de Bord{% endif %}
             </a>
-            <a href="{{ url_for('paiement_direct') }}?type=quarterly&plan=quarterly&amount=49.99" 
-               class="nav-btn {% if essai_expire %}urgent-btn{% else %}continue-btn{% endif %}" 
-               onclick="trackUpgrade('quarterly')">
+            <a href="{{ url_for('paiement_direct', type='quarterly') }}" 
+               class="nav-btn {% if essai_expire %}urgent-btn{% else %}continue-btn{% endif %}">
                 <i class="fas fa-rocket"></i>
                 {% if lang == 'en' %}Upgrade Now{% else %}Améliorer Maintenant{% endif %}
             </a>
@@ -1455,38 +1451,6 @@
                 });
             }
         });
-        
-        // Fonction pour sélectionner un plan
-        function selectPlan(planType) {
-            console.log(`✅ Plan sélectionné: ${planType}`);
-            
-            // Animation de sélection
-            const planCard = document.querySelector(`.plan-card.${planType}`);
-            if (planCard) {
-                planCard.style.transform = 'translateY(-15px)';
-                setTimeout(() => {
-                    planCard.style.transform = 'translateY(-10px)';
-                }, 300);
-            }
-            
-            // Mettre à jour le lien du bouton principal avec les nouveaux montants
-            const continueBtn = document.querySelector('.continue-btn, .urgent-btn');
-            if (continueBtn) {
-                const amount = planType === 'monthly' ? '19.99' : 
-                               planType === 'quarterly' ? '49.99' : '149.99';
-                continueBtn.href = `{{ url_for('paiement_direct') }}?type=${planType}&plan=${planType}&amount=${amount}`;
-                
-                // Mettre à jour le texte du bouton
-                const btnText = planType === 'monthly' ? 
-                    "{% if lang == 'en' %}Upgrade to Monthly{% else %}Améliorer en Mensuel{% endif %}" :
-                    planType === 'quarterly' ? 
-                    "{% if lang == 'en' %}Upgrade to Quarterly{% else %}Améliorer en Trimestriel{% endif %}" :
-                    "{% if lang == 'en' %}Upgrade to Annual{% else %}Améliorer en Annuel{% endif %}";
-                
-                continueBtn.innerHTML = `<i class="fas fa-rocket"></i> ${btnText}`;
-            }
-        }
-        
         // Calcul des économies AVEC LES NOUVEAUX PRIX
         function calculateSavings() {
             const monthlyCost = 19.99;
@@ -1525,38 +1489,6 @@
                     "{% if lang == 'en' %}Choose Annual and save " + annualSavings + "%{% else %}Choisissez Annuel et économisez " + annualSavings + "%{% endif %}";
             }
         }
-        
-        // Tracking des clics sur les boutons d'upgrade
-        function trackUpgrade(planType) {
-            console.log("🎯 Upgrade initiated:", planType);
-            
-            // ✅ Ajouter un paramètre pour indiquer que l'essai a expiré
-            const trialExpired = {% if essai_expire %}true{% else %}false{% endif %};
-            if (trialExpired) {
-                console.log("⚠️ Upgrade depuis essai expiré");
-                // Sauvegarder dans localStorage
-                localStorage.setItem('upgrade_from_expired_trial', 'true');
-            }
-            
-            // Sauvegarder le choix
-            localStorage.setItem('last_selected_plan', planType);
-            
-            // Animation de chargement sur le bouton cliqué
-            const button = event.target.closest('.upgrade-btn') || event.target.closest('.nav-btn') || event.target;
-            const originalHTML = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% if lang == "en" %}Processing...{% else %}Traitement...{% endif %}';
-            button.disabled = true;
-            
-            // Ajouter un délai pour l'animation
-            setTimeout(() => {
-                button.innerHTML = originalHTML;
-                button.disabled = false;
-            }, 2000);
-            
-            // Ici vous pourriez ajouter Google Analytics
-            // gtag('event', 'upgrade_click', { 'plan_type': planType });
-        }
-        
         // Fonction pour afficher des notifications
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');

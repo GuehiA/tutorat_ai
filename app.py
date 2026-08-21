@@ -288,7 +288,16 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 # Debug Stripe
 print(f"🎯 Stripe configuré: {bool(stripe.api_key)}")
-print(f"🔑 Clé utilisée: {stripe.api_key[:20]}..." if stripe.api_key else "❌ Pas de clé Stripe")
+
+if stripe.api_key:
+    if stripe.api_key.startswith("sk_live_"):
+        print("🔑 Mode Stripe: LIVE")
+    elif stripe.api_key.startswith("sk_test_"):
+        print("🔑 Mode Stripe: TEST")
+    else:
+        print("🔑 Mode Stripe: INCONNU")
+else:
+    print("❌ Pas de clé Stripe")
 
 # ====================================================================
 # 📁 CONFIGURATION DES UPLOADS
@@ -3538,7 +3547,8 @@ def enseignant_virtuel():
         verifier_expression_fractionnaire,
         verifier_solution_equation_fractionnaire,
         verifier_resultat_expression_contextuelle,
-        verifier_chaine_egalites_fractionnaire
+        verifier_chaine_egalites_fractionnaire,
+        verifier_equation_intermediaire_equivalente
     )
 
     # ============================================================
@@ -3564,6 +3574,18 @@ def enseignant_virtuel():
     eleve = utilisateur
     current_lang = session.get("lang", "fr")
     conversation = session.get("conversation", [])
+
+    # Mémoire des étapes mathématiques déjà validées par le moteur local.
+    # Cette mémoire empêche Naima de revenir en arrière sur une étape
+    # qui a déjà été prouvée correcte.
+    etapes_validees_naima = session.get(
+        "etapes_validees_naima",
+        []
+    )
+
+    if not isinstance(etapes_validees_naima, list):
+        etapes_validees_naima = []
+
     matiere = session.get("matiere", "mathématiques")
 
     niveau_eleve = (
@@ -3637,6 +3659,1220 @@ def enseignant_virtuel():
                 )
 
         return html
+
+
+    def identifier_intention_pedagogique(
+        message,
+        premier_message=False,
+        derniere_question_ia=""
+    ):
+        """
+        Identifie ce que l'élève est en train de faire AVANT de choisir
+        la stratégie pédagogique de Naima.
+
+        Catégories :
+        - probleme_a_resoudre
+        - question_directe
+        - demande_explication
+        - demande_verification
+        - reponse_intermediaire
+        - reponse_finale
+        - demande_indice
+        - demande_exercice
+        - conversation
+
+        La fonction reste volontairement prudente :
+        si l'intention est ambiguë, elle ne déclare pas une réponse fausse.
+        Elle sert seulement à orienter Naima.
+        """
+
+        texte_original = (message or "").strip()
+        texte = texte_original.lower().strip()
+        derniere_q = (derniere_question_ia or "").lower().strip()
+
+        resultat = {
+            "type_demande": "conversation",
+            "domaine": "general",
+            "sous_type": None,
+            "objectif": None,
+            "contenu_principal": texte_original,
+            "contenu_math": None,
+            "est_premier_message": bool(premier_message),
+            "est_reponse_a_naima": bool(
+                not premier_message and derniere_q
+            ),
+            "confiance": 0.50
+        }
+
+        if not texte:
+            return resultat
+
+        # --------------------------------------------------------
+        # DÉTECTION DU DOMAINE MATHÉMATIQUE
+        # --------------------------------------------------------
+
+        contient_equation = "=" in texte
+
+        contient_expression_math = bool(
+            re.search(
+                r"\d+\s*[+\-*/×÷]\s*\d+",
+                texte
+            )
+        )
+
+        contient_variable_math = bool(
+            re.search(
+                r"(?<![a-zà-ÿ])[xyzabc](?![a-zà-ÿ])",
+                texte
+            )
+            or re.search(r"\d\s*[xyzabc]\b", texte)
+        )
+
+        mots_math = [
+            "équation", "equation", "calcul", "calcule",
+            "résoudre", "resoudre", "résous", "resous",
+            "fraction", "factorise", "factoriser",
+            "développe", "developpe", "simplifie",
+            "géométrie", "geometrie", "aire", "périmètre",
+            "perimetre", "volume", "fonction", "racine",
+            "probabilité", "probabilite", "pourcentage"
+        ]
+
+        if (
+            contient_equation
+            or contient_expression_math
+            or contient_variable_math
+            or any(mot in texte for mot in mots_math)
+        ):
+            resultat["domaine"] = "mathematiques"
+
+        # --------------------------------------------------------
+        # EXTRACTION D'UN CONTENU MATHÉMATIQUE CENTRAL
+        # --------------------------------------------------------
+        #
+        # On évite volontairement d'autoriser a/b/c comme variables
+        # dans cette extraction textuelle générique : dans une phrase
+        # française, ces lettres sont trop facilement absorbées depuis
+        # des mots ("car", "avec", etc.).
+        #
+        # Les variables x, y, z sont suffisamment discriminantes ici.
+        # --------------------------------------------------------
+
+        def extraire_contenu_math_intention(texte_source):
+            texte_math = (
+                (texte_source or "")
+                .lower()
+                .replace("×", "*")
+                .replace("÷", "/")
+                .replace(",", ".")
+            )
+
+            # Priorité aux équations contenant x/y/z.
+            candidats_eq = re.findall(
+                r"(?<![a-zà-ÿ])"
+                r"[-+]?(?:\d+(?:\.\d+)?\s*\*?\s*)?[xyz]"
+                r"(?:\s*[+\-*/]\s*(?:"
+                r"(?:\d+(?:\.\d+)?\s*\*?\s*)?[xyz]"
+                r"|\d+(?:\.\d+)?"
+                r"))*"
+                r"\s*=\s*"
+                r"[-+]?(?:"
+                r"(?:\d+(?:\.\d+)?\s*\*?\s*)?[xyz]"
+                r"|\d+(?:\.\d+)?"
+                r")"
+                r"(?:\s*[+\-*/]\s*(?:"
+                r"(?:\d+(?:\.\d+)?\s*\*?\s*)?[xyz]"
+                r"|\d+(?:\.\d+)?"
+                r"))*"
+                r"(?![a-zà-ÿ])",
+                texte_math,
+                flags=re.IGNORECASE
+            )
+
+            if candidats_eq:
+                return re.sub(
+                    r"\s+",
+                    "",
+                    max(candidats_eq, key=len)
+                )
+
+            # Sinon, expression numérique simple.
+            candidats_num = re.findall(
+                r"(?<![\w.])"
+                r"[-+]?\d+(?:\.\d+)?"
+                r"(?:\s*[+\-*/]\s*[-+]?\d+(?:\.\d+)?)+"
+                r"(?![\w.])",
+                texte_math
+            )
+
+            if candidats_num:
+                return re.sub(
+                    r"\s+",
+                    "",
+                    max(candidats_num, key=len)
+                )
+
+            return None
+
+        if resultat["domaine"] == "mathematiques":
+            candidats_equation = re.findall(
+                r"(?<![a-zà-ÿ])"
+                r"[-+0-9xyz().*/\s]+"
+                r"="
+                r"[-+0-9xyz().*/\s]+"
+                r"(?![a-zà-ÿ])",
+                texte_original.lower()
+                .replace("×", "*")
+                .replace("÷", "/")
+                .replace(",", "."),
+                flags=re.IGNORECASE
+            )
+
+            candidats_equation = [
+                re.sub(r"\s+", "", c).rstrip("+-*/.")
+                for c in candidats_equation
+                if c and re.search(r"[xyz]", c)
+            ]
+
+            if candidats_equation:
+                resultat["contenu_math"] = (
+                    candidats_equation[-1]
+                )
+            else:
+                resultat["contenu_math"] = (
+                    extraire_contenu_math_intention(
+                        texte_original
+                    )
+                )
+
+        # --------------------------------------------------------
+        # 1. DEMANDE DE NOUVEL EXERCICE
+        # --------------------------------------------------------
+
+        mots_exercice = [
+            "donne-moi un exercice",
+            "donne moi un exercice",
+            "propose-moi un exercice",
+            "propose moi un exercice",
+            "génère un exercice",
+            "genere un exercice",
+            "je veux m'exercer",
+            "je veux m’exercer",
+            "je veux pratiquer",
+            "entraine-moi",
+            "entraîne-moi"
+        ]
+
+        if any(mot in texte for mot in mots_exercice):
+            resultat.update({
+                "type_demande": "demande_exercice",
+                "objectif": "pratiquer",
+                "confiance": 0.95
+            })
+            return resultat
+
+        # --------------------------------------------------------
+        # 2. DEMANDE D'INDICE
+        # --------------------------------------------------------
+
+        mots_indice = [
+            "donne-moi un indice",
+            "donne moi un indice",
+            "un indice",
+            "aide-moi sans donner la réponse",
+            "aide moi sans donner la reponse",
+            "je suis bloqué",
+            "je suis bloquee",
+            "je suis bloquée",
+            "je ne sais pas quoi faire",
+            "quelle est la prochaine étape",
+            "quelle est la prochaine etape"
+        ]
+
+        if any(mot in texte for mot in mots_indice):
+            resultat.update({
+                "type_demande": "demande_indice",
+                "objectif": "obtenir_un_indice",
+                "confiance": 0.93
+            })
+            return resultat
+
+        # --------------------------------------------------------
+        # 3. DEMANDE DE VÉRIFICATION
+        # --------------------------------------------------------
+
+        mots_verification = [
+            "est-ce correct",
+            "est ce correct",
+            "est-ce que c'est correct",
+            "est ce que c'est correct",
+            "est-ce que j'ai bon",
+            "est ce que j'ai bon",
+            "vérifie",
+            "verifie",
+            "peux-tu vérifier",
+            "peux tu verifier",
+            "ai-je raison",
+            "j'ai raison",
+            "c'est juste ?",
+            "c’est juste ?"
+        ]
+
+        if any(mot in texte for mot in mots_verification):
+            resultat.update({
+                "type_demande": "demande_verification",
+                "objectif": "verifier_une_reponse",
+                "confiance": 0.96
+            })
+            return resultat
+
+        # --------------------------------------------------------
+        # 4. DEMANDE D'EXPLICATION
+        # --------------------------------------------------------
+
+        mots_explication = [
+            "explique",
+            "explique-moi",
+            "explique moi",
+            "je veux comprendre",
+            "je ne comprends pas",
+            "je comprends pas",
+            "aide-moi à comprendre",
+            "aide moi à comprendre",
+            "pourquoi",
+            "c'est quoi",
+            "c’est quoi",
+            "qu'est-ce que",
+            "qu’est-ce que",
+            "définis",
+            "definis",
+            "définition",
+            "definition"
+        ]
+
+        if any(mot in texte for mot in mots_explication):
+            resultat.update({
+                "type_demande": "demande_explication",
+                "objectif": "comprendre_une_notion",
+                "confiance": 0.92
+            })
+
+            # "Aide-moi à résoudre..." reste une résolution et non
+            # une simple demande d'explication.
+            if any(mot in texte for mot in [
+                "résoudre", "resoudre", "résous", "resous",
+                "calcule", "calculer", "trouve", "détermine",
+                "determine"
+            ]):
+                resultat["type_demande"] = "probleme_a_resoudre"
+                resultat["objectif"] = "resoudre"
+                resultat["confiance"] = 0.97
+
+            # on ne retourne pas tout de suite si c'est une résolution
+            if resultat["type_demande"] == "demande_explication":
+                return resultat
+
+        # --------------------------------------------------------
+        # 5. PROBLÈME / EXERCICE À RÉSOUDRE
+        # --------------------------------------------------------
+
+        mots_resolution = [
+            "résoudre", "resoudre", "résous", "resous",
+            "calcule", "calculer", "effectue", "effectuer",
+            "trouve", "trouver", "détermine", "determine",
+            "simplifie", "simplifier", "factorise",
+            "factoriser", "développe", "developpe"
+        ]
+
+        debut_probleme_verbal = [
+            "un rectangle", "un triangle", "un carré", "un carre",
+            "une voiture", "un train", "un élève", "un eleve",
+            "une classe", "un magasin", "une boîte", "une boite",
+            "un nombre", "la somme", "la différence", "la difference",
+            "le produit", "le quotient"
+        ]
+
+        if (
+            any(mot in texte for mot in mots_resolution)
+            or (
+                premier_message
+                and resultat["domaine"] == "mathematiques"
+                and (contient_equation or contient_expression_math)
+            )
+            or any(texte.startswith(mot) for mot in debut_probleme_verbal)
+        ):
+            resultat.update({
+                "type_demande": "probleme_a_resoudre",
+                "objectif": "resoudre",
+                "confiance": 0.97
+            })
+
+            if contient_equation:
+                resultat["sous_type"] = "equation"
+                resultat["objectif"] = "resoudre_equation"
+            elif contient_expression_math:
+                resultat["sous_type"] = "calcul"
+                resultat["objectif"] = "effectuer_calcul"
+            else:
+                resultat["sous_type"] = "probleme_verbal"
+
+            return resultat
+
+        # --------------------------------------------------------
+        # 6. RÉPONSE FINALE
+        # --------------------------------------------------------
+
+        if not premier_message:
+            reponse_finale_x = bool(
+                re.search(
+                    r"(?<![0-9A-Za-zÀ-ÿ*])x\s*=",
+                    texte,
+                    flags=re.IGNORECASE
+                )
+            )
+
+            marqueurs_finaux = [
+                "la réponse est",
+                "la reponse est",
+                "réponse finale",
+                "reponse finale",
+                "le résultat final est",
+                "le resultat final est",
+                "conclusion",
+                "finalement",
+                "en conclusion"
+            ]
+
+            if (
+                reponse_finale_x
+                or any(mot in texte for mot in marqueurs_finaux)
+            ):
+                resultat.update({
+                    "type_demande": "reponse_finale",
+                    "objectif": "soumettre_reponse",
+                    "confiance": 0.88
+                })
+                return resultat
+
+        # --------------------------------------------------------
+        # 7. RÉPONSE INTERMÉDIAIRE
+        # --------------------------------------------------------
+
+        if not premier_message and derniere_q:
+            signaux_etape = [
+                "on ajoute",
+                "j'ajoute",
+                "je vais ajouter",
+                "on soustrait",
+                "je soustrais",
+                "on divise",
+                "je divise",
+                "on multiplie",
+                "je multiplie",
+                "cela donne",
+                "ce qui donne",
+                "on a",
+                "j'obtiens",
+                "donc"
+            ]
+
+            if (
+                contient_equation
+                or contient_expression_math
+                or any(signal in texte for signal in signaux_etape)
+            ):
+                resultat.update({
+                    "type_demande": "reponse_intermediaire",
+                    "objectif": "poursuivre_raisonnement",
+                    "confiance": 0.90
+                })
+                return resultat
+
+        # --------------------------------------------------------
+        # 7B. RÉPONSE CONTEXTUELLE AVEC VALEURS / UNITÉS
+        # --------------------------------------------------------
+
+        if (
+            not premier_message
+            and derniere_q
+            and re.search(
+                r"\d",
+                texte
+            )
+        ):
+            mots_unites = [
+                "mètre", "metre", "mètres", "metres",
+                "cm", "mm", "km",
+                "ans", "année", "annee",
+                "euros", "dollars", "$", "€",
+                "largeur", "longueur", "aire",
+                "périmètre", "perimetre",
+                "volume", "temps", "vitesse"
+            ]
+
+            if any(
+                mot in texte
+                for mot in mots_unites
+            ):
+                resultat.update({
+                    "type_demande": "reponse_intermediaire",
+                    "objectif": "poursuivre_raisonnement",
+                    "confiance": 0.84
+                })
+                return resultat
+
+        # --------------------------------------------------------
+        # 8. QUESTION DIRECTE
+        # --------------------------------------------------------
+
+        marqueurs_question = [
+            "comment",
+            "pourquoi",
+            "quand",
+            "où",
+            "ou est",
+            "quel",
+            "quelle",
+            "quels",
+            "quelles",
+            "combien",
+            "peux-tu",
+            "peux tu",
+            "est-ce que",
+            "est ce que"
+        ]
+
+        if (
+            "?" in texte_original
+            or any(texte.startswith(mot) for mot in marqueurs_question)
+        ):
+            resultat.update({
+                "type_demande": "question_directe",
+                "objectif": "obtenir_reponse",
+                "confiance": 0.85
+            })
+            return resultat
+
+        return resultat
+
+
+
+    def _parcourir_textes_structure(obj):
+        """
+        Parcourt récursivement dict/list/str et retourne tous les textes.
+        """
+        textes = []
+
+        if isinstance(obj, str):
+            textes.append(obj)
+
+        elif isinstance(obj, dict):
+            for valeur in obj.values():
+                textes.extend(
+                    _parcourir_textes_structure(valeur)
+                )
+
+        elif isinstance(obj, (list, tuple)):
+            for valeur in obj:
+                textes.extend(
+                    _parcourir_textes_structure(valeur)
+                )
+
+        return textes
+
+
+
+    def extraire_equations_math_depuis_texte_naima(
+        texte_source
+    ):
+        """
+        Extrait des équations mathématiques depuis du texte naturel.
+
+        Cette version accepte notamment :
+        - 2(x+2x)=30
+        - 2x+4x=30
+        - x+3x=32
+        - -2x-5=1
+
+        Elle refuse les lettres provenant de mots français autour de
+        l'équation.
+        """
+
+        texte_math = (
+            str(texte_source or "")
+            .lower()
+            .replace("×", "*")
+            .replace("÷", "/")
+            .replace(",", ".")
+        )
+
+        candidats = re.findall(
+            r"(?<![a-zà-ÿ])"
+            r"[-+0-9xyz().*/\s]+"
+            r"="
+            r"[-+0-9xyz().*/\s]+"
+            r"(?![a-zà-ÿ])",
+            texte_math,
+            flags=re.IGNORECASE
+        )
+
+        equations = []
+
+        for candidat in candidats:
+            equation = re.sub(
+                r"\s+",
+                "",
+                candidat
+            ).strip()
+
+            # Nettoyage uniquement des caractères parasites
+            # de fin. Ne jamais supprimer un '-' initial.
+            equation = equation.rstrip("+-*/.")
+
+            if (
+                not equation
+                or equation.count("=") != 1
+            ):
+                continue
+
+            gauche, droite = equation.split("=", 1)
+
+            if not gauche or not droite:
+                continue
+
+            if not re.search(
+                r"[xyz]",
+                equation,
+                flags=re.IGNORECASE
+            ):
+                continue
+
+            if not re.fullmatch(
+                r"[0-9xyz+\-*/().=]+",
+                equation,
+                flags=re.IGNORECASE
+            ):
+                continue
+
+            if equation not in equations:
+                equations.append(equation)
+
+        return equations
+
+
+    def extraire_equations_reference_exercice():
+        """
+        Cherche des équations de référence dans la correction de l'exercice
+        généré.
+
+        Les équations avec parenthèses et multiplication implicite sont
+        maintenant prises en charge.
+        """
+        exercice = session.get("exercice_en_cours") or {}
+        correction = exercice.get("correction") or {}
+
+        equations = []
+
+        for texte_ref in _parcourir_textes_structure(
+            correction
+        ):
+            for eq in extraire_equations_math_depuis_texte_naima(
+                texte_ref
+            ):
+                if eq not in equations:
+                    equations.append(eq)
+
+        return equations
+
+
+    def verifier_modelisation_probleme_verbal(
+        reponse_eleve
+    ):
+        """
+        Vérifie une équation de modélisation proposée dans un problème verbal
+        en la comparant aux équations présentes dans la correction générée.
+
+        Sécurité :
+        - si aucune équation de référence n'existe, NON VÉRIFIÉ ;
+        - aucune absence de preuve n'est transformée en erreur.
+        """
+        references = (
+            extraire_equations_reference_exercice()
+        )
+
+        if not references:
+            print(
+                "🧩 Aucune équation de référence extraite "
+                "de la correction de l'exercice."
+            )
+            return {
+                "verification_modelisation": False,
+                "est_correct": None,
+                "message_interne": ""
+            }
+
+        resultats_non_equivalents = []
+
+        for equation_reference in references:
+            try:
+                verification = (
+                    verifier_equation_intermediaire_equivalente(
+                        equation_initiale=equation_reference,
+                        reponse_eleve=reponse_eleve
+                    )
+                )
+            except Exception:
+                continue
+
+            if not verification.get(
+                "verification_equation_intermediaire"
+            ):
+                continue
+
+            if verification.get("est_correct") is True:
+                equation_eleve = verification.get(
+                    "equation_eleve"
+                )
+
+                return {
+                    "verification_modelisation": True,
+                    "est_correct": True,
+                    "equation_reference": equation_reference,
+                    "equation_eleve": equation_eleve,
+                    "message_interne": (
+                        "Vérification déterministe de la modélisation : "
+                        f"l'équation proposée par l'élève « {equation_eleve} » "
+                        f"est équivalente à l'équation de référence "
+                        f"« {equation_reference} ». "
+                        "La modélisation est donc mathématiquement cohérente "
+                        "avec la correction de l'exercice. "
+                        "Naima doit reconnaître cette étape et poursuivre "
+                        "à partir de cette équation."
+                    )
+                }
+
+            if verification.get("est_correct") is False:
+                resultats_non_equivalents.append(
+                    verification
+                )
+
+        # On reste prudent : plusieurs équations de référence peuvent exister
+        # dans une correction. Si aucune ne correspond, on ne sanctionne pas
+        # automatiquement la modélisation.
+        return {
+            "verification_modelisation": False,
+            "est_correct": None,
+            "references_testees": references,
+            "message_interne": ""
+        }
+
+
+    def _extraire_nombres_fraction_texte(texte):
+        """
+        Extrait des valeurs numériques d'un texte sous forme canonique.
+        """
+        from fractions import Fraction
+
+        valeurs = []
+
+        texte = (
+            (texte or "")
+            .replace(",", ".")
+        )
+
+        for morceau in re.findall(
+            r"(?<![\w.])[-+]?\d+(?:\.\d+)?(?:\s*/\s*[-+]?\d+(?:\.\d+)?)?",
+            texte
+        ):
+            morceau = re.sub(r"\s+", "", morceau)
+
+            try:
+                if "/" in morceau:
+                    num, den = morceau.split("/", 1)
+                    valeur = Fraction(
+                        str(num),
+                        str(den)
+                    )
+                else:
+                    valeur = Fraction(str(morceau))
+
+                if valeur not in valeurs:
+                    valeurs.append(valeur)
+
+            except Exception:
+                continue
+
+        return valeurs
+
+
+    def obtenir_reponse_finale_reference_exercice():
+        """
+        Récupère prudemment une réponse finale depuis la correction générée.
+        """
+        exercice = session.get("exercice_en_cours") or {}
+        correction = exercice.get("correction") or {}
+
+        if isinstance(correction, dict):
+            for cle in [
+                "reponse_finale",
+                "réponse_finale",
+                "resultat_final",
+                "résultat_final",
+                "solution_finale",
+                "solution"
+            ]:
+                valeur = correction.get(cle)
+
+                if isinstance(valeur, str) and valeur.strip():
+                    valeur = valeur.strip()
+
+                    if valeur.lower() not in {
+                        "réponse à vérifier",
+                        "reponse a verifier",
+                        "à vérifier",
+                        "a verifier"
+                    }:
+                        return valeur
+
+        return ""
+
+
+
+    def _normaliser_texte_semantique_simple(texte):
+        import unicodedata
+
+        texte = str(texte or "").lower()
+
+        texte = "".join(
+            c
+            for c in unicodedata.normalize("NFD", texte)
+            if unicodedata.category(c) != "Mn"
+        )
+
+        texte = re.sub(
+            r"[^a-z0-9%€$]+",
+            " ",
+            texte
+        )
+
+        return re.sub(
+            r"\s+",
+            " ",
+            texte
+        ).strip()
+
+
+    def reponse_vise_objectif_final_probleme(
+        reponse_eleve,
+        derniere_question_ia,
+        objectif
+    ):
+        """
+        Repère si la réponse vise la grande question finale du problème.
+        """
+        rep = _normaliser_texte_semantique_simple(
+            reponse_eleve
+        )
+        derniere = _normaliser_texte_semantique_simple(
+            derniere_question_ia
+        )
+        obj = _normaliser_texte_semantique_simple(
+            objectif
+        )
+
+        if not rep or not obj:
+            return False
+
+        familles = [
+            ["budget", "cout", "prix", "montant", "argent"],
+            ["aire", "surface"],
+            ["perimetre"],
+            ["volume"],
+            ["distance"],
+            ["duree", "temps"],
+            ["vitesse"],
+            ["age", "ages"],
+            ["largeur", "longueur", "dimensions"],
+            ["nombre total", "total"]
+        ]
+
+        for famille in familles:
+            if not any(m in obj for m in famille):
+                continue
+
+            if (
+                any(m in rep for m in famille)
+                or any(m in derniere for m in famille)
+            ):
+                return True
+
+        stopwords = {
+            "quel", "quelle", "quels", "quelles",
+            "combien", "sera", "seront", "est", "sont",
+            "pour", "avec", "dans", "des", "les", "une",
+            "un", "du", "de", "la", "le", "et", "qui",
+            "que", "ce", "cet", "cette", "tous", "toutes",
+            "leur", "leurs", "sur", "par", "afin"
+        }
+
+        mots_obj = {
+            mot
+            for mot in obj.split()
+            if len(mot) >= 4
+            and mot not in stopwords
+        }
+
+        mots_courants = set(
+            (derniere + " " + rep).split()
+        )
+
+        return len(
+            mots_obj & mots_courants
+        ) >= 3
+
+
+    def memoriser_etape_numerique_validee_naima(
+        verification_chaine,
+        question_eleve
+    ):
+        """
+        Mémorise chaque calcul numérique prouvé correct localement.
+        """
+
+        if not (
+            verification_chaine
+            and verification_chaine.get(
+                "verification_chaine"
+            )
+            and verification_chaine.get(
+                "est_correct"
+            ) is True
+        ):
+            return
+
+        resultat = (
+            verification_chaine.get(
+                "resultat_final"
+            )
+            or verification_chaine.get(
+                "valeur_commune"
+            )
+        )
+
+        entree = {
+            "calcul": verification_chaine.get(
+                "chaine"
+            ),
+            "resultat": (
+                str(resultat)
+                if resultat is not None
+                else None
+            ),
+            "reponse_eleve": str(
+                question_eleve or ""
+            )[:500]
+        }
+
+        historique = session.get(
+            "etapes_numeriques_validees_naima",
+            []
+        ) or []
+
+        signatures = {
+            (
+                item.get("calcul"),
+                item.get("resultat")
+            )
+            for item in historique
+            if isinstance(item, dict)
+        }
+
+        signature = (
+            entree.get("calcul"),
+            entree.get("resultat")
+        )
+
+        if signature not in signatures:
+            historique.append(entree)
+
+        session[
+            "etapes_numeriques_validees_naima"
+        ] = historique[-12:]
+
+        session[
+            "derniere_etape_numerique_validee_naima"
+        ] = entree
+
+        session.modified = True
+
+        print(
+            "🧠 Étape numérique validée mémorisée :",
+            entree
+        )
+
+
+    def verifier_reponse_finale_probleme_verbal(
+        reponse_eleve
+    ):
+        """
+        Vérification conservatrice d'une réponse finale de problème verbal.
+
+        Elle exige une référence finale disponible dans la correction et
+        vérifie que toutes les valeurs numériques attendues apparaissent
+        dans la réponse de l'élève.
+
+        Cette fonction n'affirme jamais qu'une réponse est fausse si elle
+        ne dispose pas d'assez d'information.
+        """
+        reference = (
+            obtenir_reponse_finale_reference_exercice()
+        )
+
+        if not reference:
+            return {
+                "verification_probleme_verbal": False,
+                "est_correct": None,
+                "message_interne": ""
+            }
+
+        valeurs_attendues = (
+            _extraire_nombres_fraction_texte(reference)
+        )
+        valeurs_eleve = (
+            _extraire_nombres_fraction_texte(reponse_eleve)
+        )
+
+        if not valeurs_attendues:
+            return {
+                "verification_probleme_verbal": False,
+                "est_correct": None,
+                "reference": reference,
+                "message_interne": ""
+            }
+
+        toutes_presentes = all(
+            valeur in valeurs_eleve
+            for valeur in valeurs_attendues
+        )
+
+        if not toutes_presentes:
+            # Ne pas déclarer faux automatiquement : la correction textuelle
+            # pourrait contenir des nombres intermédiaires.
+            return {
+                "verification_probleme_verbal": False,
+                "est_correct": None,
+                "reference": reference,
+                "valeurs_attendues": [
+                    str(v) for v in valeurs_attendues
+                ],
+                "valeurs_eleve": [
+                    str(v) for v in valeurs_eleve
+                ],
+                "message_interne": ""
+            }
+
+        return {
+            "verification_probleme_verbal": True,
+            "est_correct": True,
+            "reference": reference,
+            "valeurs_attendues": [
+                str(v) for v in valeurs_attendues
+            ],
+            "valeurs_eleve": [
+                str(v) for v in valeurs_eleve
+            ],
+            "message_interne": (
+                "Vérification locale de la réponse finale du problème : "
+                "les valeurs finales attendues dans la correction sont "
+                "toutes présentes dans la réponse de l'élève. "
+                "Naima peut conclure l'exercice, sans ajouter une nouvelle "
+                "question socratique."
+            )
+        }
+
+
+
+    def reinitialiser_contexte_pedagogique_naima(
+        conserver_conversation=True
+    ):
+        """
+        Réinitialise l'objectif et la mémoire mathématique de Naima
+        lorsqu'un élève lance explicitement un NOUVEAU problème ou une
+        nouvelle activité depuis le chat.
+
+        On conserve l'historique visuel par défaut, mais l'ancien exercice
+        n'est plus utilisé comme objectif pédagogique.
+        """
+
+        cles = [
+            "derniere_q_ia",
+            "exercice_en_cours",
+            "exercice_termine",
+            "objectif_initial_naima",
+            "objectif_atteint_naima",
+            "conversation_terminee",
+            "mode_pedagogique_naima",
+            "sujet_courant_naima",
+            "lecon_courante_naima",
+            "intention_pedagogique_naima",
+            "etapes_validees_naima",
+            "derniere_etape_validee_naima",
+            "etapes_numeriques_validees_naima",
+            "derniere_etape_numerique_validee_naima",
+            "equation_courante_naima",
+            "equation_modele_naima",
+            "solution_variable_naima",
+            "solution_finale_naima",
+            "diagnostic_bayesien",
+            "signaux_bayesiens",
+            "verification_calcul",
+            "naima_processus_connecte"
+        ]
+
+        if not conserver_conversation:
+            cles.append("conversation")
+
+        for cle in cles:
+            session.pop(cle, None)
+
+        session.modified = True
+
+
+    def construire_instruction_intention_naima(intention):
+        """
+        Transforme l'intention identifiée en règle interne destinée à Naima.
+        """
+
+        intention = intention or {}
+        type_demande = intention.get(
+            "type_demande",
+            "conversation"
+        )
+        contenu = intention.get(
+            "contenu_principal",
+            ""
+        )
+        sous_type = intention.get("sous_type")
+        premier = intention.get("est_premier_message", False)
+
+        if current_lang == "en":
+            base = (
+                "\n\nSTUDENT INTENT IDENTIFICATION: "
+                f"type={type_demande}; "
+                f"subtype={sous_type}; "
+                f"content=« {contenu} ». "
+            )
+
+            if premier and type_demande == "probleme_a_resoudre":
+                return base + (
+                    "This is the student's initial problem, not a solution attempt. "
+                    "Acknowledge the problem briefly and immediately start helping "
+                    "to solve THIS exact problem. Do not answer with only a greeting. "
+                    "Use a Socratic first step appropriate to the problem. "
+                    "Do not claim that the statement itself is a correct student step."
+                )
+
+            if type_demande == "demande_explication":
+                return base + (
+                    "Explain the requested concept clearly before checking understanding."
+                )
+
+            if type_demande == "demande_verification":
+                return base + (
+                    "Verify the student's proposition before judging it."
+                )
+
+            if type_demande == "demande_exercice":
+                return base + (
+                    "The student is asking for a NEW exercise. "
+                    "Do not continue or evaluate the previous exercise. "
+                    "Propose a new exercise in the current subject without "
+                    "giving the solution, then ask a first Socratic question."
+                )
+
+            if type_demande == "demande_indice":
+                return base + (
+                    "Give the smallest useful hint. Do not give the full solution."
+                )
+
+            if type_demande == "reponse_intermediaire":
+                return base + (
+                    "Treat this as an intermediate reasoning step and evaluate this "
+                    "step before asking the next question."
+                )
+
+            if type_demande == "reponse_finale":
+                return base + (
+                    "Treat this as a proposed final answer and verify it before concluding."
+                )
+
+            return base
+
+        base = (
+            "\n\nIDENTIFICATION DE L'INTENTION DE L'ÉLÈVE : "
+            f"type={type_demande}; "
+            f"sous_type={sous_type}; "
+            f"contenu=« {contenu} ». "
+        )
+
+        if premier and type_demande == "probleme_a_resoudre":
+            return base + (
+                "Il s'agit du PROBLÈME INITIAL posé par l'élève, pas d'une tentative "
+                "de solution. Reconnais brièvement le problème puis commence "
+                "immédiatement à aider l'élève à résoudre CE problème précis. "
+                "Ne réponds jamais uniquement par une salutation. "
+                "Pose une première question socratique directement utile. "
+                "Ne présente pas l'énoncé lui-même comme une étape de l'élève "
+                "qui aurait été validée."
+            )
+
+        if type_demande == "demande_explication":
+            return base + (
+                "Commence par expliquer clairement la notion demandée, puis vérifie "
+                "la compréhension avec une courte question."
+            )
+
+        if type_demande == "demande_verification":
+            return base + (
+                "Vérifie la proposition de l'élève avant de porter un jugement."
+            )
+
+        if type_demande == "demande_exercice":
+            return base + (
+                "L'élève demande un NOUVEL exercice. "
+                "Ne continue pas l'ancien exercice et ne l'évalue pas. "
+                "Propose un nouvel exercice adapté à la matière courante, "
+                "sans donner la solution, puis pose une première question "
+                "socratique. Ce nouveau problème devient le seul objectif "
+                "pédagogique actif pour la suite."
+            )
+
+        if type_demande == "demande_indice":
+            return base + (
+                "Donne le plus petit indice utile possible. "
+                "Ne donne pas directement toute la solution."
+            )
+
+        if type_demande == "reponse_intermediaire":
+            return base + (
+                "Il s'agit d'une étape intermédiaire du raisonnement. "
+                "Évalue cette étape avant de poser la question suivante."
+            )
+
+        if type_demande == "reponse_finale":
+            return base + (
+                "Il s'agit d'une réponse finale proposée. "
+                "Vérifie-la avant de conclure l'exercice."
+            )
+
+        if type_demande == "question_directe":
+            return base + (
+                "Réponds directement à la question posée tout en conservant "
+                "une démarche pédagogique adaptée."
+            )
+
+        return base
+
 
     def detecter_mode_pedagogique(question):
         """
@@ -3975,6 +5211,176 @@ def enseignant_virtuel():
         )
 
 
+    def _extraire_forme_ax_egal_b(equation):
+        """
+        Essaie de reconnaître une équation simple de la forme a*x=b
+        ou x=b après normalisation.
+
+        Retourne un dict ou None.
+        Cette fonction sert seulement à produire une question socratique
+        déterministe après une étape déjà validée.
+        """
+        if not equation:
+            return None
+
+        eq = str(equation).replace(" ", "")
+
+        # x=b
+        match_x = re.fullmatch(
+            r"x=([-+]?\d+(?:/\d+)?(?:\.\d+)?)",
+            eq
+        )
+        if match_x:
+            return {
+                "coefficient": 1,
+                "droite": match_x.group(1)
+            }
+
+        # a*x=b
+        match_ax = re.fullmatch(
+            r"([-+]?\d+(?:/\d+)?(?:\.\d+)?)\*?x="
+            r"([-+]?\d+(?:/\d+)?(?:\.\d+)?)",
+            eq
+        )
+
+        if not match_ax:
+            return None
+
+        coeff_txt = match_ax.group(1)
+        droite_txt = match_ax.group(2)
+
+        try:
+            from fractions import Fraction
+            coeff = Fraction(coeff_txt)
+        except Exception:
+            return None
+
+        return {
+            "coefficient": coeff,
+            "droite": droite_txt
+        }
+
+
+    def construire_reponse_intermediaire_deterministe(
+        verification_equation_intermediaire
+    ):
+        """
+        Produit une réponse pédagogique sûre quand une équation
+        intermédiaire vient d'être prouvée correcte.
+
+        Le LLM n'a alors pas le droit de requalifier cette étape
+        de fausse ou de calculer une valeur contradictoire.
+        """
+        equation_validee = (
+            verification_equation_intermediaire.get(
+                "equation_eleve"
+            )
+            or ""
+        )
+
+        forme = _extraire_forme_ax_egal_b(
+            equation_validee
+        )
+
+        if current_lang == "en":
+            if forme and forme.get("coefficient") not in (None, 0, 1):
+                coeff = forme["coefficient"]
+                return (
+                    f"Yes, **{equation_validee.replace('*', '')}** is correct. "
+                    "This step has been mathematically verified. "
+                    f"To isolate x, what operation should you apply to both sides "
+                    f"to remove the coefficient {coeff}? — Naima ✨"
+                )
+
+            return (
+                f"Yes, **{equation_validee.replace('*', '')}** is correct. "
+                "This step has been mathematically verified. "
+                "What should you do next to continue isolating x? — Naima ✨"
+            )
+
+        if forme and forme.get("coefficient") not in (None, 0, 1):
+            coeff = forme["coefficient"]
+            return (
+                f"Oui, **{equation_validee.replace('*', '')}** est correct. "
+                "Cette étape a été vérifiée mathématiquement. "
+                f"Pour isoler x, quelle opération dois-tu appliquer aux deux membres "
+                f"pour éliminer le coefficient {coeff} ? — Naima ✨"
+            )
+
+        return (
+            f"Oui, **{equation_validee.replace('*', '')}** est correct. "
+            "Cette étape a été vérifiée mathématiquement. "
+            "Quelle est la prochaine opération pour continuer à isoler x ? — Naima ✨"
+        )
+
+
+    def construire_instruction_operation_depuis_etape_validee(
+        question_eleve
+    ):
+        """
+        Si une étape validée de la forme a*x=b existe et que l'élève
+        annonce qu'il divise les deux membres par a, calcule localement
+        le résultat attendu.
+
+        Le but est d'empêcher le LLM d'inventer par exemple x=5
+        après 2x=11.
+        """
+        derniere = (
+            session.get("derniere_etape_validee_naima")
+            or ""
+        )
+
+        forme = _extraire_forme_ax_egal_b(derniere)
+
+        if not forme:
+            return "", None
+
+        coeff = forme.get("coefficient")
+        droite_txt = forme.get("droite")
+
+        if coeff in (None, 0, 1):
+            return "", None
+
+        texte = (question_eleve or "").lower()
+
+        signaux_division = [
+            "divise",
+            "diviser",
+            "division",
+            "divisant",
+            "je divise",
+            "on divise",
+            "divisé",
+            "divisee",
+            "divisée"
+        ]
+
+        if not any(signal in texte for signal in signaux_division):
+            return "", None
+
+        try:
+            from fractions import Fraction
+            droite = Fraction(str(droite_txt))
+            solution = droite / coeff
+        except Exception:
+            return "", None
+
+        solution_txt = str(solution)
+
+        instruction = (
+            "\n\nCONTRAINTE MATHÉMATIQUE DÉTERMINISTE ABSOLUE : "
+            f"La dernière étape déjà validée est « {derniere} ». "
+            f"L'élève indique maintenant qu'il divise les deux membres par {coeff}. "
+            f"Le résultat exact de cette opération est x = {solution_txt}. "
+            "Tu ne dois produire aucune autre valeur numérique pour x. "
+            "En particulier, ne fais pas de calcul mental contradictoire. "
+            "Tu peux demander à l'élève d'effectuer lui-même la division, "
+            "mais si tu cites le résultat, il doit être exactement celui-ci."
+        )
+
+        return instruction, solution_txt
+
+
     def contient_variable_mathematique(texte):
         texte = (texte or "").lower()
 
@@ -4137,6 +5543,47 @@ def enseignant_virtuel():
         """
 
         objectif_initial = session.get("objectif_initial_naima", "").strip()
+
+        etapes_validees = session.get(
+            "etapes_validees_naima",
+            []
+        ) or []
+
+        derniere_etape_validee = session.get(
+            "derniere_etape_validee_naima",
+            ""
+        )
+
+        instruction_etapes_validees = ""
+
+        if etapes_validees:
+            liste_etapes = " → ".join(
+                str(etape)
+                for etape in etapes_validees[-5:]
+            )
+
+            if current_lang == "fr":
+                instruction_etapes_validees = (
+                    "\n\nMÉMOIRE DES ÉTAPES MATHÉMATIQUEMENT VALIDÉES : "
+                    f"{liste_etapes}. "
+                    "Ces étapes ont déjà été vérifiées par le moteur mathématique local. "
+                    "Tu dois les considérer comme acquises. "
+                    "Tu ne dois pas dire qu'elles sont incorrectes et tu ne dois pas "
+                    "demander à l'élève de les refaire. "
+                    f"Continue le raisonnement à partir de la dernière étape validée : "
+                    f"« {derniere_etape_validee} ». "
+                )
+            else:
+                instruction_etapes_validees = (
+                    "\n\nMEMORY OF MATHEMATICALLY VALIDATED STEPS: "
+                    f"{liste_etapes}. "
+                    "These steps have already been verified by the local math engine. "
+                    "Treat them as acquired. Do not say they are wrong and do not ask "
+                    "the student to redo them. "
+                    f"Continue from the latest validated step: "
+                    f"« {derniere_etape_validee} ». "
+                )
+
         mode_pedagogique = session.get("mode_pedagogique_naima", "conversation")
         lecon_courante = session.get("lecon_courante_naima", "").strip()
         derniere_question_ia = session.get("derniere_q_ia", "").strip()
@@ -4226,6 +5673,7 @@ def enseignant_virtuel():
                 "Ne pose pas une longue série de questions générales sans lien direct avec l'objectif. "
                 "À chaque réponse, demande-toi : est-ce que cela aide l'élève à comprendre ou résoudre l'objectif principal ? "
                 "Si non, recentre-toi."
+                + instruction_etapes_validees
             )
 
         return (
@@ -4260,6 +5708,7 @@ def enseignant_virtuel():
             "Do not ask a long sequence of general questions unrelated to the goal. "
             "Before each answer, ask yourself whether it helps the student understand or solve the main goal. "
             "If not, refocus."
+            + instruction_etapes_validees
         )
 
     # ============================================================
@@ -4288,6 +5737,153 @@ def enseignant_virtuel():
             )
 
             # ------------------------------------------------------------
+            # IDENTIFICATION STRUCTURÉE DE L'INTENTION DE L'ÉLÈVE
+            # ------------------------------------------------------------
+
+            intention_pedagogique = identifier_intention_pedagogique(
+                message=question,
+                premier_message=premier_message_naima,
+                derniere_question_ia=session.get(
+                    "derniere_q_ia",
+                    ""
+                )
+            )
+
+            session["intention_pedagogique_naima"] = (
+                intention_pedagogique
+            )
+            session.modified = True
+
+            print(
+                "🧭 Intention pédagogique identifiée :",
+                intention_pedagogique
+            )
+
+            # ------------------------------------------------------------
+            # CHANGEMENT EXPLICITE DE PROBLÈME DEPUIS LE CHAT
+            # ------------------------------------------------------------
+            #
+            # Exemple :
+            # ancien objectif : problème de Paul et Marie
+            # nouvel envoi : "résoudre 2x-5=4x+1"
+            #
+            # Ce nouvel envoi doit devenir le nouvel objectif au lieu
+            # d'être évalué dans le contexte de l'ancien exercice.
+            # ------------------------------------------------------------
+
+            type_demande_courante = (
+                intention_pedagogique.get(
+                    "type_demande"
+                )
+            )
+
+            nouveau_probleme_explicite = bool(
+                type_demande_courante
+                == "probleme_a_resoudre"
+                and (
+                    not intention_pedagogique.get(
+                        "est_reponse_a_naima"
+                    )
+                    or any(
+                        marqueur in question.lower()
+                        for marqueur in [
+                            "résoudre",
+                            "resoudre",
+                            "résous",
+                            "resous",
+                            "nouveau problème",
+                            "nouveau probleme",
+                            "autre problème",
+                            "autre probleme"
+                        ]
+                    )
+                )
+            )
+
+            if (
+                nouveau_probleme_explicite
+                and session.get(
+                    "objectif_initial_naima"
+                )
+                and question.strip()
+                != str(
+                    session.get(
+                        "objectif_initial_naima"
+                    )
+                ).strip()
+            ):
+                ancien_objectif = session.get(
+                    "objectif_initial_naima"
+                )
+
+                reinitialiser_contexte_pedagogique_naima(
+                    conserver_conversation=True
+                )
+
+                premier_message_naima = True
+
+                intention_pedagogique = (
+                    identifier_intention_pedagogique(
+                        message=question,
+                        premier_message=True,
+                        derniere_question_ia=""
+                    )
+                )
+
+                session[
+                    "intention_pedagogique_naima"
+                ] = intention_pedagogique
+
+                print(
+                    "🔄 Nouveau problème détecté dans le chat."
+                )
+                print(
+                    "   Ancien objectif :",
+                    ancien_objectif
+                )
+                print(
+                    "   Nouvel objectif :",
+                    question
+                )
+
+            # ------------------------------------------------------------
+            # DEMANDE EXPLICITE D'UN NOUVEL EXERCICE DANS LE CHAT
+            # ------------------------------------------------------------
+            #
+            # On ne doit pas continuer à analyser cette demande comme
+            # une réponse à l'exercice précédent.
+            # ------------------------------------------------------------
+
+            demande_nouvel_exercice_chat = bool(
+                intention_pedagogique.get(
+                    "type_demande"
+                ) == "demande_exercice"
+            )
+
+            if demande_nouvel_exercice_chat:
+                ancien_objectif = session.get(
+                    "objectif_initial_naima"
+                )
+
+                reinitialiser_contexte_pedagogique_naima(
+                    conserver_conversation=True
+                )
+
+                premier_message_naima = True
+
+                session[
+                    "intention_pedagogique_naima"
+                ] = intention_pedagogique
+
+                print(
+                    "🆕 Demande de nouvel exercice détectée dans le chat."
+                )
+                print(
+                    "   Ancien objectif désactivé :",
+                    ancien_objectif
+                )
+
+            # ------------------------------------------------------------
             # MÉMOIRE DE L'OBJECTIF PÉDAGOGIQUE
             # ------------------------------------------------------------
 
@@ -4312,6 +5908,7 @@ def enseignant_virtuel():
                 session["lecon_courante_naima"] = (
                     enonce_exercice_genere
                 )
+                session.pop("solution_finale_naima", None)
                 session.modified = True
 
                 premier_message_naima = False
@@ -4326,21 +5923,55 @@ def enseignant_virtuel():
                 )
 
             elif premier_message_naima:
-                mode_detecte = detecter_mode_pedagogique(question)
+                type_demande_initiale = (
+                    intention_pedagogique.get(
+                        "type_demande"
+                    )
+                )
 
-                session["objectif_initial_naima"] = question
-                session["mode_pedagogique_naima"] = mode_detecte
+                if type_demande_initiale == "probleme_a_resoudre":
+                    mode_detecte = "resolution"
+                elif type_demande_initiale in {
+                    "demande_explication",
+                    "question_directe"
+                }:
+                    mode_detecte = "explication_lecon"
+                elif type_demande_initiale == "demande_exercice":
+                    mode_detecte = "entrainement"
+                else:
+                    mode_detecte = detecter_mode_pedagogique(
+                        question
+                    )
+
+                if type_demande_initiale != "demande_exercice":
+                    session["objectif_initial_naima"] = question
+                    session["mode_pedagogique_naima"] = mode_detecte
+                else:
+                    # Objectif provisoire non mathématique :
+                    # il empêche un KeyError et évite de réutiliser
+                    # l'ancien exercice comme objectif.
+                    session[
+                        "objectif_initial_naima"
+                    ] = question
+                    session[
+                        "mode_pedagogique_naima"
+                    ] = "entrainement"
                 session["sujet_courant_naima"] = matiere
                 session["lecon_courante_naima"] = matiere
+                session.pop("solution_finale_naima", None)
                 session.modified = True
 
                 print(
                     "🎯 Objectif initial Naima:",
-                    session["objectif_initial_naima"]
+                    session.get(
+                        "objectif_initial_naima"
+                    )
                 )
                 print(
                     "🧭 Mode pédagogique Naima:",
-                    session["mode_pedagogique_naima"]
+                    session.get(
+                        "mode_pedagogique_naima"
+                    )
                 )
 
             # ------------------------------------------------------------
@@ -4463,6 +6094,15 @@ def enseignant_virtuel():
                 instruction_calcul = ""
                 objectif_atteint = False
 
+                # Réponse locale prioritaire : lorsqu'une étape intermédiaire
+                # est prouvée correcte, on peut répondre sans laisser le LLM
+                # requalifier cette étape.
+                reponse_locale_prioritaire = None
+
+                # Solution calculée localement à partir d'une opération
+                # annoncée par l'élève (ex. division des deux membres).
+                solution_operation_locale = None
+
                 objectif_effectif, source_objectif = (
                     obtenir_objectif_effectif_naima()
                 )
@@ -4470,11 +6110,139 @@ def enseignant_virtuel():
                 question_contient_variable = (
                     contient_variable_mathematique(question)
                 )
+
                 objectif_contient_variable = (
                     contient_variable_mathematique(
                         objectif_effectif
                     )
                 )
+
+                # Pour un problème verbal, l'objectif initial reste l'énoncé,
+                # mais dès qu'une équation de modélisation est validée,
+                # elle devient la référence mathématique courante.
+                equation_courante_naima = (
+                    session.get("equation_courante_naima")
+                    or ""
+                )
+
+                reference_math_naima = (
+                    equation_courante_naima
+                    if equation_courante_naima
+                    else objectif_effectif
+                )
+
+                reference_math_contient_variable = (
+                    contient_variable_mathematique(
+                        reference_math_naima
+                    )
+                )
+
+                probleme_verbal_genere = bool(
+                    source_objectif == "exercice_genere"
+                    and not objectif_contient_variable
+                    and "=" not in objectif_effectif
+                )
+
+                # --------------------------------------------------------
+                # PRIORITÉ 0 : MODÉLISATION D'UN PROBLÈME VERBAL
+                # --------------------------------------------------------
+
+                verification_modelisation = {
+                    "verification_modelisation": False,
+                    "est_correct": None
+                }
+
+                if (
+                    probleme_verbal_genere
+                    and "=" in question
+                    and question_contient_variable
+                    and not session.get(
+                        "equation_courante_naima"
+                    )
+                ):
+                    verification_modelisation = (
+                        verifier_modelisation_probleme_verbal(
+                            reponse_eleve=question
+                        )
+                    )
+
+                    print(
+                        "🧩 Vérification modélisation problème :",
+                        verification_modelisation
+                    )
+
+                    if (
+                        verification_modelisation.get(
+                            "verification_modelisation"
+                        )
+                        and verification_modelisation.get(
+                            "est_correct"
+                        ) is True
+                    ):
+                        equation_modele = (
+                            verification_modelisation.get(
+                                "equation_eleve"
+                            )
+                        )
+
+                        session[
+                            "equation_courante_naima"
+                        ] = equation_modele
+
+                        session[
+                            "equation_modele_naima"
+                        ] = equation_modele
+
+                        equation_courante_naima = (
+                            equation_modele
+                        )
+                        reference_math_naima = (
+                            equation_modele
+                        )
+                        reference_math_contient_variable = True
+
+                        etapes_modele = session.get(
+                            "etapes_validees_naima",
+                            []
+                        ) or []
+
+                        if (
+                            equation_modele
+                            and equation_modele
+                            not in etapes_modele
+                        ):
+                            etapes_modele.append(
+                                equation_modele
+                            )
+
+                        session[
+                            "etapes_validees_naima"
+                        ] = etapes_modele[-10:]
+
+                        session[
+                            "derniere_etape_validee_naima"
+                        ] = equation_modele
+
+                        session.modified = True
+
+                        instruction_calcul += (
+                            "\n\nInstruction mathématique "
+                            "déterministe PRIORITAIRE : "
+                            + verification_modelisation.get(
+                                "message_interne",
+                                ""
+                            )
+                        )
+
+                        mettre_a_jour_statut_naima(
+                            "verification_math_locale",
+                            True
+                        )
+
+                        print(
+                            "✅ Équation de modélisation mémorisée :",
+                            equation_modele
+                        )
 
                 # --------------------------------------------------------
                 # PRIORITÉ 1 : SOLUTION D'ÉQUATION AVEC VARIABLE
@@ -4484,10 +6252,24 @@ def enseignant_virtuel():
                     "verification_contextuelle": False
                 }
 
-                if objectif_contient_variable:
+                # Une solution finale doit contenir une affectation explicite
+                # de x. Cela empêche de confondre « 3x=26 » avec « x=26 ».
+                reponse_contient_solution_x_explicite = bool(
+                    re.search(
+                        r"(?<![0-9A-Za-zÀ-ÿ])x\s*=",
+                        question,
+                        flags=re.IGNORECASE
+                    )
+                )
+
+                if (
+                    reference_math_contient_variable
+                    and reponse_contient_solution_x_explicite
+                    and not premier_message_naima
+                ):
                     verification_equation = (
                         verifier_solution_equation_fractionnaire(
-                            equation_initiale=objectif_effectif,
+                            equation_initiale=reference_math_naima,
                             reponse_eleve=question
                         )
                     )
@@ -4548,16 +6330,210 @@ def enseignant_virtuel():
                             "mode_pedagogique_naima"
                         ) == "resolution"
                     ):
-                        objectif_atteint = True
-                        session["objectif_atteint_naima"] = True
-                        session["conversation_terminee"] = True
-                        session["exercice_termine"] = True
-                        session.pop("derniere_q_ia", None)
-                        session.modified = True
+                        if probleme_verbal_genere:
+                            # x est résolu, mais le problème peut demander
+                            # plusieurs grandeurs (âge de Marie ET de Paul,
+                            # prix initial ET réduction, etc.).
+                            session[
+                                "solution_variable_naima"
+                            ] = verification_equation.get(
+                                "valeur_x_calculee"
+                            )
+                            session.modified = True
+
+                            print(
+                                "✅ Variable du problème résolue : "
+                                f"x={session.get('solution_variable_naima')}. "
+                                "Vérification de la réponse contextuelle finale requise."
+                            )
+
+                        else:
+                            objectif_atteint = True
+                            session["objectif_atteint_naima"] = True
+                            session["conversation_terminee"] = True
+                            session["exercice_termine"] = True
+                            session.pop("derniere_q_ia", None)
+                            session.modified = True
+
+                            print(
+                                "🏁 Objectif Naima atteint : "
+                                "solution d'équation prouvée correcte."
+                            )
+
+                # --------------------------------------------------------
+                # PRIORITÉ 1B : ÉQUATION INTERMÉDIAIRE ÉQUIVALENTE
+                # --------------------------------------------------------
+                #
+                # Exemple :
+                #   objectif : 2x - 5 = 6
+                #   élève    : 2x = 11
+                #
+                # La solution finale n'est pas encore donnée sous la forme x=...
+                # mais l'étape peut être mathématiquement équivalente.
+                #
+                # IMPORTANT :
+                # - cette vérification passe seulement si la vérification
+                #   de solution finale n'a pas déjà reconnu la réponse ;
+                # - une impossibilité d'analyse locale ne signifie jamais
+                #   que la réponse est fausse.
+                # --------------------------------------------------------
+
+                verification_equation_intermediaire = {
+                    "verification_equation_intermediaire": False,
+                    "verification_contextuelle": False
+                }
+
+                if (
+                    not premier_message_naima
+                    and not verification_modelisation.get(
+                        "verification_modelisation"
+                    )
+                    and not verification_equation.get(
+                        "verification_contextuelle"
+                    )
+                    and reference_math_contient_variable
+                    and "=" in question
+                ):
+                    try:
+                        verification_equation_intermediaire = (
+                            verifier_equation_intermediaire_equivalente(
+                                equation_initiale=reference_math_naima,
+                                reponse_eleve=question
+                            )
+                        )
 
                         print(
-                            "🏁 Objectif Naima atteint : "
-                            "solution d'équation prouvée correcte."
+                            "🧮 Vérification équation intermédiaire :",
+                            verification_equation_intermediaire
+                        )
+
+                    except Exception as e:
+                        verification_equation_intermediaire = {
+                            "verification_equation_intermediaire": False,
+                            "verification_contextuelle": False,
+                            "est_correct": None,
+                            "message_interne": ""
+                        }
+
+                        print(
+                            "⚠️ Vérification équation intermédiaire "
+                            f"non disponible : {e}"
+                        )
+
+                if verification_equation_intermediaire.get(
+                    "verification_equation_intermediaire"
+                ):
+                    instruction_calcul = (
+                        "\n\nInstruction mathématique déterministe "
+                        "PRIORITAIRE : "
+                        + verification_equation_intermediaire.get(
+                            "message_interne",
+                            ""
+                        )
+                    )
+
+                    session["verification_calcul"] = {
+                        "calcul_verifie": True,
+                        "verification_equation": False,
+                        "verification_equation_intermediaire": True,
+                        "verification_chaine": False,
+                        "verification_contextuelle": True,
+                        "est_correct": verification_equation_intermediaire.get(
+                            "est_correct"
+                        ),
+                        "equation_initiale": (
+                            verification_equation_intermediaire.get(
+                                "equation_initiale"
+                            )
+                        ),
+                        "equation_eleve": (
+                            verification_equation_intermediaire.get(
+                                "equation_eleve"
+                            )
+                        ),
+                        "type_solution_initiale": (
+                            verification_equation_intermediaire.get(
+                                "type_solution_initiale"
+                            )
+                        ),
+                        "type_solution_eleve": (
+                            verification_equation_intermediaire.get(
+                                "type_solution_eleve"
+                            )
+                        ),
+                        "solution_initiale": (
+                            verification_equation_intermediaire.get(
+                                "solution_initiale"
+                            )
+                        ),
+                        "solution_eleve": (
+                            verification_equation_intermediaire.get(
+                                "solution_eleve"
+                            )
+                        )
+                    }
+
+                    mettre_a_jour_statut_naima(
+                        "verification_math_locale",
+                        True
+                    )
+
+                    if verification_equation_intermediaire.get(
+                        "est_correct"
+                    ) is True:
+                        equation_validee = (
+                            verification_equation_intermediaire.get(
+                                "equation_eleve"
+                            )
+                        )
+
+                        if equation_validee:
+                            etapes_validees_naima = session.get(
+                                "etapes_validees_naima",
+                                []
+                            ) or []
+
+                            if equation_validee not in etapes_validees_naima:
+                                etapes_validees_naima.append(
+                                    equation_validee
+                                )
+
+                            # On garde seulement les 10 dernières étapes
+                            # validées afin de ne pas gonfler la session.
+                            etapes_validees_naima = (
+                                etapes_validees_naima[-10:]
+                            )
+
+                            session[
+                                "etapes_validees_naima"
+                            ] = etapes_validees_naima
+
+                            session[
+                                "derniere_etape_validee_naima"
+                            ] = equation_validee
+
+                            session[
+                                "equation_courante_naima"
+                            ] = equation_validee
+
+                            session.modified = True
+
+                            print(
+                                "✅ Étape Naima mémorisée :",
+                                equation_validee
+                            )
+                            print(
+                                "🧭 Équation courante Naima :",
+                                equation_validee
+                            )
+
+                        # Une preuve locale positive ne doit jamais être
+                        # contredite par le LLM. Pour ce tour, on prépare
+                        # donc une réponse pédagogique déterministe.
+                        reponse_locale_prioritaire = (
+                            construire_reponse_intermediaire_deterministe(
+                                verification_equation_intermediaire
+                            )
                         )
 
                 # --------------------------------------------------------
@@ -4578,6 +6554,9 @@ def enseignant_virtuel():
                 if (
                     not verification_equation.get(
                         "verification_contextuelle"
+                    )
+                    and not verification_equation_intermediaire.get(
+                        "verification_equation_intermediaire"
                     )
                     and not question_contient_variable
                 ):
@@ -4645,6 +6624,16 @@ def enseignant_virtuel():
                     )
 
                     if (
+                        verification_chaine.get(
+                            "est_correct"
+                        ) is True
+                    ):
+                        memoriser_etape_numerique_validee_naima(
+                            verification_chaine,
+                            question
+                        )
+
+                    if (
                         verification_chaine.get("est_correct") is True
                         and verification_chaine.get(
                             "correspond_objectif"
@@ -4681,6 +6670,9 @@ def enseignant_virtuel():
                 if (
                     not verification_equation.get(
                         "verification_contextuelle"
+                    )
+                    and not verification_equation_intermediaire.get(
+                        "verification_equation_intermediaire"
                     )
                     and not verification_chaine.get(
                         "verification_chaine"
@@ -4761,6 +6753,9 @@ def enseignant_virtuel():
                     not verification_equation.get(
                         "verification_contextuelle"
                     )
+                    and not verification_equation_intermediaire.get(
+                        "verification_equation_intermediaire"
+                    )
                     and not verification_chaine.get(
                         "verification_chaine"
                     )
@@ -4796,6 +6791,151 @@ def enseignant_virtuel():
                         "🧮 Vérification calcul ignorée : "
                         "aucune preuve mathématique locale suffisamment sûre."
                     )
+
+                # --------------------------------------------------------
+                # PRIORITÉ 4 : RÉPONSE FINALE D'UN PROBLÈME VERBAL
+                # --------------------------------------------------------
+
+                verification_probleme_verbal = {
+                    "verification_probleme_verbal": False,
+                    "est_correct": None
+                }
+
+                derniere_question_active = (
+                    session.get("derniere_q_ia")
+                    or derniere_q_ia
+                    or ""
+                )
+
+                reponse_cible_finale_probleme = (
+                    reponse_vise_objectif_final_probleme(
+                        reponse_eleve=question,
+                        derniere_question_ia=(
+                            derniere_question_active
+                        ),
+                        objectif=objectif_effectif
+                    )
+                    if probleme_verbal_genere
+                    else False
+                )
+
+                if reponse_cible_finale_probleme:
+                    print(
+                        "🎯 La réponse cible la question finale "
+                        "du problème verbal."
+                    )
+
+                if (
+                    probleme_verbal_genere
+                    and (
+                        intention_pedagogique.get(
+                            "type_demande"
+                        ) == "reponse_finale"
+                        or reponse_cible_finale_probleme
+                    )
+                ):
+                    verification_probleme_verbal = (
+                        verifier_reponse_finale_probleme_verbal(
+                            reponse_eleve=question
+                        )
+                    )
+
+                    print(
+                        "🧩 Vérification finale problème verbal :",
+                        verification_probleme_verbal
+                    )
+
+                    if (
+                        not verification_probleme_verbal.get(
+                            "verification_probleme_verbal"
+                        )
+                        and reponse_cible_finale_probleme
+                        and verification_chaine.get(
+                            "verification_chaine"
+                        )
+                        and verification_chaine.get(
+                            "est_correct"
+                        ) is True
+                        and verification_chaine.get(
+                            "resultat_final_explicite"
+                        ) is True
+                    ):
+                        resultat_final_local = (
+                            verification_chaine.get(
+                                "resultat_final"
+                            )
+                            or verification_chaine.get(
+                                "valeur_commune"
+                            )
+                        )
+
+                        verification_probleme_verbal = {
+                            "verification_probleme_verbal": True,
+                            "est_correct": True,
+                            "source": "calcul_local_et_cible_finale",
+                            "resultat_final": str(
+                                resultat_final_local
+                            ),
+                            "message_interne": (
+                                "La réponse vise explicitement la "
+                                "question finale du problème et le "
+                                "calcul final est localement prouvé "
+                                "exact. Ne reviens pas sur les étapes "
+                                "précédentes. Conclus l'exercice."
+                            )
+                        }
+
+                        print(
+                            "✅ Réponse finale confirmée par "
+                            "calcul local + cible finale :",
+                            verification_probleme_verbal
+                        )
+
+                    if (
+                        verification_probleme_verbal.get(
+                            "verification_probleme_verbal"
+                        )
+                        and verification_probleme_verbal.get(
+                            "est_correct"
+                        ) is True
+                    ):
+                        objectif_atteint = True
+
+                        session[
+                            "objectif_atteint_naima"
+                        ] = True
+                        session[
+                            "conversation_terminee"
+                        ] = True
+                        session[
+                            "exercice_termine"
+                        ] = True
+
+                        session.pop(
+                            "derniere_q_ia",
+                            None
+                        )
+                        session.modified = True
+
+                        instruction_calcul += (
+                            "\n\nInstruction mathématique "
+                            "prioritaire : "
+                            + verification_probleme_verbal.get(
+                                "message_interne",
+                                ""
+                            )
+                        )
+
+                        mettre_a_jour_statut_naima(
+                            "verification_math_locale",
+                            True
+                        )
+
+                        print(
+                            "🏁 Objectif Naima atteint : "
+                            "réponse finale du problème verbal "
+                            "confirmée localement."
+                        )
 
                 # --------------------------------------------------------
                 # PRIORITÉ À UNE PREUVE MATHÉMATIQUE LOCALE POSITIVE
@@ -4859,6 +6999,30 @@ def enseignant_virtuel():
                 # CONSTRUCTION DU DIAGNOSTIC INJECTÉ APRÈS ARBITRAGE
                 # --------------------------------------------------------
 
+                # --------------------------------------------------------
+                # CONTRAINTE SUR L'OPÉRATION SUIVANTE
+                # --------------------------------------------------------
+                #
+                # Exemple :
+                # dernière étape validée : 2x=11
+                # élève : "je divise les deux membres par 2"
+                # -> le moteur calcule x=11/2 et interdit toute autre valeur.
+                # --------------------------------------------------------
+
+                instruction_operation_locale, solution_operation_locale = (
+                    construire_instruction_operation_depuis_etape_validee(
+                        question
+                    )
+                )
+
+                if instruction_operation_locale:
+                    instruction_calcul += instruction_operation_locale
+
+                    print(
+                        "🧮 Résultat local attendu après opération :",
+                        solution_operation_locale
+                    )
+
                 instruction_bayesienne = ""
 
                 if diagnostic_bayesien and not premier_message_naima:
@@ -4869,6 +7033,38 @@ def enseignant_virtuel():
                 instruction_recentrage = construire_instruction_recentrage(
                     question
                 )
+
+                etapes_numeriques_memorisees = (
+                    session.get(
+                        "etapes_numeriques_validees_naima",
+                        []
+                    )
+                    or []
+                )
+
+                if etapes_numeriques_memorisees:
+                    resume_etapes_numeriques = "; ".join(
+                        f"{item.get('calcul')} → {item.get('resultat')}"
+                        for item in etapes_numeriques_memorisees[-6:]
+                        if isinstance(item, dict)
+                    )
+
+                    if resume_etapes_numeriques:
+                        instruction_recentrage += (
+                            "\n\nMÉMOIRE NUMÉRIQUE VALIDÉE : "
+                            + resume_etapes_numeriques
+                            + ". Ces calculs ont été prouvés corrects "
+                            "localement. Ne demande jamais à l'élève "
+                            "de les refaire et ne les présente jamais "
+                            "comme manquants ou incorrects."
+                        )
+
+                instruction_intention = (
+                    construire_instruction_intention_naima(
+                        intention_pedagogique
+                    )
+                )
+
                 instruction_exercice_genere = (
                     construire_contexte_exercice_genere()
                 )
@@ -4876,6 +7072,7 @@ def enseignant_virtuel():
                 instruction_interne_complete = (
                     contexte_apprentissage_eleve
                     + instruction_exercice_genere
+                    + instruction_intention
                     + instruction_recentrage
                     + instruction_bayesienne
                     + instruction_calcul
@@ -4889,6 +7086,19 @@ def enseignant_virtuel():
                     valeur_finale = (
                         verification_equation.get(
                             "valeur_x_calculee"
+                        )
+                        or verification_equation.get(
+                            "valeur_x_proposee"
+                        )
+                        or verification_equation_intermediaire.get(
+                            "solution_eleve"
+                        )
+                        or verification_equation_intermediaire.get(
+                            "solution_initiale"
+                        )
+                        or solution_operation_locale
+                        or session.get(
+                            "solution_finale_naima"
                         )
                         or verification_chaine.get(
                             "resultat_final"
@@ -4905,12 +7115,52 @@ def enseignant_virtuel():
                         or ""
                     )
 
-                    if verification_equation.get(
-                        "verification_contextuelle"
+                    # Dernier filet de sécurité : extraire x=... directement
+                    # du message courant si la branche de validation a prouvé
+                    # que l'objectif est atteint mais n'a pas conservé la valeur.
+                    if not valeur_finale:
+                        match_x_final = re.search(
+                            r"x\s*=\s*([-+]?\d+(?:[.,]\d+)?(?:\s*/\s*[-+]?\d+(?:[.,]\d+)?)?)",
+                            question,
+                            flags=re.IGNORECASE
+                        )
+
+                        if match_x_final:
+                            valeur_finale = (
+                                match_x_final.group(1)
+                                .replace(" ", "")
+                                .replace(",", ".")
+                            )
+
+                    if valeur_finale:
+                        session["solution_finale_naima"] = str(
+                            valeur_finale
+                        )
+                        session.modified = True
+
+                    if (
+                        probleme_verbal_genere
+                        and verification_probleme_verbal.get(
+                            "verification_probleme_verbal"
+                        )
                     ):
-                        resultat_affiche = f"x = {valeur_finale}"
+                        resultat_affiche = question
+
+                    elif verification_equation.get(
+                        "verification_contextuelle"
+                    ) or reference_math_contient_variable:
+                        resultat_affiche = (
+                            f"x = {valeur_finale}"
+                            if valeur_finale
+                            else "x"
+                        )
+
                     else:
-                        resultat_affiche = valeur_finale
+                        resultat_affiche = (
+                            valeur_finale
+                            if valeur_finale
+                            else "le résultat final"
+                        )
 
                     if current_lang == "fr":
                         reponse_ia = (
@@ -4935,6 +7185,19 @@ def enseignant_virtuel():
                     print(
                         "🏁 Réponse finale déterministe envoyée : "
                         "aucune nouvelle question socratique."
+                    )
+
+                elif reponse_locale_prioritaire:
+                    reponse_ia = reponse_locale_prioritaire
+
+                    # La réponse locale contient déjà la prochaine question
+                    # pédagogique. On laisse l'extracteur de question ci-dessous
+                    # l'enregistrer normalement.
+                    session.pop('derniere_q_ia', None)
+
+                    print(
+                        "🛡️ Réponse locale prioritaire utilisée : "
+                        "aucun risque de contradiction LLM sur l'étape validée."
                     )
 
                 elif derniere_q_ia:
@@ -5100,6 +7363,13 @@ def enseignant_virtuel():
                                     "diagnostic_bayesien": diagnostic_bayesien,
                                     "signaux_bayesiens": session.get("signaux_bayesiens"),
                                     "verification_calcul": session.get("verification_calcul"),
+                                    "intention_pedagogique_naima": session.get("intention_pedagogique_naima"),
+                                    "equation_courante_naima": session.get("equation_courante_naima"),
+                                    "equation_modele_naima": session.get("equation_modele_naima"),
+                                    "etapes_numeriques_validees_naima": session.get("etapes_numeriques_validees_naima", []),
+                                    "solution_variable_naima": session.get("solution_variable_naima"),
+                                    "etapes_validees_naima": session.get("etapes_validees_naima", []),
+                                    "derniere_etape_validee_naima": session.get("derniere_etape_validee_naima"),
                                     "analyse_pedagogique": analyse_pedagogique,
 
                                     # Preuve du processus Naima
@@ -5199,6 +7469,13 @@ def enseignant_virtuel():
                 'mode_pedagogique_naima': session.get("mode_pedagogique_naima"),
                 'lecon_courante_naima': session.get("lecon_courante_naima"),
                 'exercice_en_cours': session.get("exercice_en_cours"),
+                'intention_pedagogique_naima': session.get("intention_pedagogique_naima"),
+                'equation_courante_naima': session.get("equation_courante_naima"),
+                'equation_modele_naima': session.get("equation_modele_naima"),
+                'etapes_numeriques_validees_naima': session.get("etapes_numeriques_validees_naima", []),
+                'solution_variable_naima': session.get("solution_variable_naima"),
+                'etapes_validees_naima': session.get("etapes_validees_naima", []),
+                'derniere_etape_validee_naima': session.get("derniere_etape_validee_naima"),
                 'naima_processus_connecte': session.get("naima_processus_connecte")
             })
 
@@ -5226,6 +7503,12 @@ def enseignant_virtuel():
         objectif_initial_naima=session.get("objectif_initial_naima"),
         mode_pedagogique_naima=session.get("mode_pedagogique_naima"),
         lecon_courante_naima=session.get("lecon_courante_naima"),
+        intention_pedagogique_naima=session.get("intention_pedagogique_naima"),
+        equation_courante_naima=session.get("equation_courante_naima"),
+        equation_modele_naima=session.get("equation_modele_naima"),
+        solution_variable_naima=session.get("solution_variable_naima"),
+        etapes_validees_naima=session.get("etapes_validees_naima", []),
+        derniere_etape_validee_naima=session.get("derniere_etape_validee_naima"),
         naima_processus_connecte=session.get("naima_processus_connecte")
     )
 
@@ -5574,11 +7857,20 @@ def nouvel_exercice():
     
     print(f"[DEBUG] Options: {matiere}, {difficulte}, {type_exercice}, mots-clés: {mots_cles}")
     
-    # ✅ Réinitialiser l'état de fin d'exercice
-    session.pop('exercice_termine', None)
-    
-    # Vider la conversation existante
+    # ============================================================
+    # RÉINITIALISATION COMPLÈTE DE L'ÉTAT NAIMA
+    # ============================================================
+    #
+    # Un nouvel exercice ne doit jamais hériter :
+    # - d'une ancienne équation ;
+    # - d'une ancienne solution ;
+    # - d'une étape déjà validée ;
+    # - d'un ancien diagnostic ;
+    # - de l'état "exercice terminé".
+    # ============================================================
+
     session_keys_to_remove = [
+        # Conversation
         "conversation",
         "derniere_q_ia",
         "exercice_en_cours",
@@ -5593,16 +7885,37 @@ def nouvel_exercice():
         "sujet_courant_naima",
         "lecon_courante_naima",
 
-        # Diagnostic du dialogue précédent
+        # Identification de la demande
+        "intention_pedagogique_naima",
+
+        # Mémoire mathématique Naima
+        "etapes_validees_naima",
+        "derniere_etape_validee_naima",
+        "equation_courante_naima",
+        "equation_modele_naima",
+        "solution_variable_naima",
+        "solution_finale_naima",
+
+        # Diagnostic / vérifications
         "diagnostic_bayesien",
         "signaux_bayesiens",
         "verification_calcul",
         "naima_processus_connecte"
     ]
+
     for key in session_keys_to_remove:
-        if key in session:
-            session.pop(key)
-    
+        session.pop(key, None)
+
+    session.modified = True
+
+    print(
+        "[DEBUG] 🧹 État Naima complètement réinitialisé. "
+        "Aucune mémoire mathématique de l'exercice précédent n'est conservée."
+    )
+    print(
+        f"[DEBUG] Session keys APRÈS nettoyage: {list(session.keys())}"
+    )
+
     try:
         # Récupérer le niveau de l'élève
         niveau_eleve = eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème")
@@ -5635,14 +7948,24 @@ def nouvel_exercice():
             'matiere': matiere,
             'difficulte': difficulte,
             'etape': 1,
-            'total_etapes': len(
-                exercice.get(
-                    'correction',
-                    {}
-                ).get(
-                    'etapes',
-                    [3]
+            'total_etapes': (
+                len(
+                    exercice.get(
+                        'correction',
+                        {}
+                    ).get(
+                        'etapes',
+                        [3]
+                    )
                 )
+                if isinstance(
+                    exercice.get(
+                        'correction',
+                        {}
+                    ),
+                    dict
+                )
+                else 1
             )
         }
 
@@ -5660,6 +7983,30 @@ def nouvel_exercice():
 
         session["objectif_atteint_naima"] = False
         session["conversation_terminee"] = False
+
+        # --------------------------------------------------------
+        # MÉMOIRE MATHÉMATIQUE DU NOUVEL EXERCICE
+        # --------------------------------------------------------
+        #
+        # Elle commence toujours vide. Elle sera alimentée ensuite
+        # par enseignant_virtuel() lorsqu'une modélisation ou une
+        # étape mathématique aura été validée.
+        # --------------------------------------------------------
+
+        session["etapes_validees_naima"] = []
+        session.pop("derniere_etape_validee_naima", None)
+        session.pop("equation_courante_naima", None)
+        session.pop("equation_modele_naima", None)
+        session.pop("solution_variable_naima", None)
+        session.pop("solution_finale_naima", None)
+        session.pop("intention_pedagogique_naima", None)
+        session.pop("verification_calcul", None)
+
+        session.modified = True
+
+        print(
+            "[DEBUG] 🧠 Mémoire mathématique du nouvel exercice initialisée à vide."
+        )
 
         print(
             "[DEBUG] 🎯 Objectif Naima fixé depuis l'exercice :",
@@ -9185,44 +11532,127 @@ def login_parent():
 
 @app.route("/connexion", methods=["GET", "POST"])
 def connexion():
-    """Route pour la connexion des utilisateurs"""
-    from flask import session, flash, redirect, url_for, request
-    
-    # Si l'utilisateur est déjà connecté, rediriger selon son rôle
-    if session.get('eleve_id'):
-        return redirect(url_for('dashboard_eleve'))
-    elif session.get('enseignant_id'):
-        return redirect(url_for('dashboard_enseignant'))
-    elif session.get('is_admin'):
-        return redirect(url_for('admin_dashboard'))
-    
-    if request.method == 'POST':
-        email = request.form.get('email')
-        mot_de_passe = request.form.get('mot_de_passe')
-        
-        # Chercher l'utilisateur dans la base
-        user = User.query.filter_by(email=email).first()
-        
-        if user and user.verifier_mot_de_passe(mot_de_passe):
-            # Connecter selon le rôle
-            if user.role == 'élève':
-                session['eleve_id'] = user.id
-                session['eleve_username'] = user.username
-                flash('Connexion réussie!', 'success')
-                return redirect(url_for('dashboard_eleve'))
-            elif user.role == 'admin':
-                session['is_admin'] = True
-                session['admin_id'] = user.id
-                flash('Connexion admin réussie!', 'success')
-                return redirect(url_for('admin_dashboard'))
-            else:
-                flash('Rôle non reconnu', 'error')
-        else:
-            flash('Email ou mot de passe incorrect', 'error')
-    
-    lang = session.get('lang', 'fr')
-    return render_template("connexion.html", lang=lang)
+    """
+    Connexion générale.
 
+    Pour un élève :
+    - crée toujours une session minimale ;
+    - autorise le dashboard si l'essai ou l'abonnement est valide ;
+    - sinon redirige vers les options d'abonnement.
+
+    Ainsi cette route ne peut pas contourner les règles de paiement.
+    """
+    from flask import session, flash, redirect, url_for, request
+
+    # Si déjà connecté, rediriger selon le rôle.
+    if session.get("eleve_id") or (
+        session.get("user_id")
+        and session.get("role") == "eleve"
+    ):
+        eleve_id = (
+            session.get("eleve_id")
+            or session.get("user_id")
+        )
+        eleve = db.session.get(User, eleve_id)
+
+        if eleve and eleve.a_acces_plateforme():
+            return redirect(url_for("dashboard_eleve"))
+
+        if eleve:
+            return redirect(url_for("upgrade_options"))
+
+    elif session.get("enseignant_id"):
+        return redirect(url_for("dashboard_enseignant"))
+
+    elif session.get("is_admin"):
+        return redirect(url_for("admin_dashboard"))
+
+    if request.method == "POST":
+        email = (
+            request.form.get("email")
+            or ""
+        ).strip()
+
+        mot_de_passe = (
+            request.form.get("mot_de_passe")
+            or ""
+        )
+
+        user = User.query.filter_by(
+            email=email
+        ).first()
+
+        if (
+            user
+            and user.verifier_mot_de_passe(
+                mot_de_passe
+            )
+        ):
+            role = str(
+                getattr(user, "role", "")
+                or ""
+            ).lower()
+
+            if role in {"eleve", "élève"}:
+                session["user_id"] = user.id
+                session["eleve_id"] = user.id
+                session["username"] = user.username
+                session["eleve_username"] = user.username
+                session["nom_complet"] = user.nom_complet
+                session["email"] = user.email
+                session["role"] = "eleve"
+                session["lang"] = (
+                    getattr(user, "langue", None)
+                    or session.get("lang", "fr")
+                )
+
+                if user.a_acces_plateforme():
+                    flash(
+                        "Connexion réussie !",
+                        "success"
+                    )
+                    return redirect(
+                        url_for("dashboard_eleve")
+                    )
+
+                flash(
+                    "Votre essai ou votre abonnement est expiré. "
+                    "Choisissez un forfait pour réactiver "
+                    "automatiquement votre accès.",
+                    "warning"
+                )
+                return redirect(
+                    url_for("upgrade_options")
+                )
+
+            elif role == "admin":
+                session["is_admin"] = True
+                session["admin_id"] = user.id
+                flash(
+                    "Connexion admin réussie !",
+                    "success"
+                )
+                return redirect(
+                    url_for("admin_dashboard")
+                )
+
+            else:
+                flash(
+                    "Rôle non reconnu",
+                    "error"
+                )
+
+        else:
+            flash(
+                "Email ou mot de passe incorrect",
+                "error"
+            )
+
+    lang = session.get("lang", "fr")
+    return render_template(
+        "connexion.html",
+        lang=lang
+    )
 
 @app.route("/inscription-eleve", methods=["GET", "POST"])
 def inscription_eleve():
@@ -9378,7 +11808,9 @@ def inscription_eleve():
                 db.session.commit()
                 
                 session['user_id'] = eleve.id
+                session['eleve_id'] = eleve.id
                 session['username'] = eleve.username
+                session['eleve_username'] = eleve.username
                 session['nom_complet'] = eleve.nom_complet
                 session['role'] = 'eleve'
                 session['lang'] = eleve.langue if eleve.langue else 'fr'
@@ -9511,7 +11943,9 @@ def inscription_eleve():
                     db.session.commit()
                     
                     session['user_id'] = eleve.id
+                    session['eleve_id'] = eleve.id
                     session['username'] = eleve.username
+                    session['eleve_username'] = eleve.username
                     session['nom_complet'] = eleve.nom_complet
                     session['role'] = 'eleve'
                     
@@ -9634,315 +12068,696 @@ def upgrade_options():
         return render_template("upgrade_options.html", eleve=None, essai_actif=False, lang=session.get('lang', 'fr'))
     
     
+# ============================================================
+# OUTILS STRIPE / ACCÈS AUTOMATIQUE
+# ============================================================
+
+def _role_est_eleve(user):
+    return bool(
+        user
+        and str(getattr(user, "role", "")).lower() in {
+            "eleve",
+            "élève"
+        }
+    )
+
+
+def _stripe_obj_get(obj, key, default=None):
+    """
+    Compatible objets Stripe / dict Stripe.
+    """
+    if obj is None:
+        return default
+
+    try:
+        value = obj.get(key, default)
+        return value
+    except Exception:
+        pass
+
+    return getattr(obj, key, default)
+
+
+def _datetime_depuis_timestamp_stripe(timestamp_value):
+    if not timestamp_value:
+        return None
+
+    try:
+        return datetime.utcfromtimestamp(int(timestamp_value))
+    except Exception:
+        return None
+
+
+def _extraire_date_fin_abonnement_stripe(
+    subscription=None,
+    invoice=None
+):
+    """
+    Cherche la vraie fin de période payée Stripe.
+
+    Plusieurs versions d'API Stripe n'exposent pas exactement
+    les mêmes champs ; cette fonction teste plusieurs emplacements.
+    """
+
+    # 1. Subscription.current_period_end si présent
+    current_period_end = _stripe_obj_get(
+        subscription,
+        "current_period_end"
+    )
+
+    date_fin = _datetime_depuis_timestamp_stripe(
+        current_period_end
+    )
+
+    if date_fin:
+        return date_fin
+
+    # 2. Dans les items de la subscription
+    items = _stripe_obj_get(subscription, "items")
+
+    if items:
+        data = _stripe_obj_get(items, "data", []) or []
+
+        fins = []
+
+        for item in data:
+            item_end = _stripe_obj_get(
+                item,
+                "current_period_end"
+            )
+
+            dt = _datetime_depuis_timestamp_stripe(
+                item_end
+            )
+
+            if dt:
+                fins.append(dt)
+
+        if fins:
+            return max(fins)
+
+    # 3. Période de ligne de facture
+    if invoice:
+        lines = _stripe_obj_get(
+            invoice,
+            "lines"
+        )
+
+        data = (
+            _stripe_obj_get(lines, "data", [])
+            if lines
+            else []
+        ) or []
+
+        fins = []
+
+        for line in data:
+            period = _stripe_obj_get(
+                line,
+                "period",
+                {}
+            ) or {}
+
+            end_ts = _stripe_obj_get(
+                period,
+                "end"
+            )
+
+            dt = _datetime_depuis_timestamp_stripe(
+                end_ts
+            )
+
+            if dt:
+                fins.append(dt)
+
+        if fins:
+            return max(fins)
+
+    return None
+
+
+def _plan_duree_fallback(plan_type):
+    return {
+        "monthly": 31,
+        "quarterly": 93,
+        "annual": 366,
+    }.get(plan_type, 31)
+
+
+def _metadata_stripe(obj):
+    metadata = _stripe_obj_get(
+        obj,
+        "metadata",
+        {}
+    ) or {}
+
+    try:
+        return dict(metadata)
+    except Exception:
+        return metadata
+
+
+def _trouver_eleve_stripe(
+    eleve_id=None,
+    customer_id=None,
+    email=None
+):
+    """
+    Retrouve l'élève sans dépendre de la session Flask.
+    C'est essentiel pour les webhooks et pour paiement_success.
+    """
+
+    eleve = None
+
+    if eleve_id:
+        try:
+            eleve = db.session.get(
+                User,
+                int(eleve_id)
+            )
+        except Exception:
+            eleve = None
+
+        if _role_est_eleve(eleve):
+            return eleve
+
+    if customer_id and hasattr(
+        User,
+        "stripe_customer_id"
+    ):
+        eleve = User.query.filter_by(
+            stripe_customer_id=customer_id
+        ).first()
+
+        if _role_est_eleve(eleve):
+            return eleve
+
+    if email:
+        eleve = User.query.filter_by(
+            email=email
+        ).first()
+
+        if _role_est_eleve(eleve):
+            return eleve
+
+    return None
+
+
+def _mettre_a_jour_preferences_paiement(
+    eleve,
+    plan_type=None,
+    customer_id=None,
+    subscription_id=None,
+    session_id=None,
+    amount_paid=None,
+    extra=None
+):
+    preferences = (
+        eleve.preferences_notifications
+        if isinstance(
+            eleve.preferences_notifications,
+            dict
+        )
+        else {}
+    )
+
+    if plan_type:
+        preferences["plan_type"] = plan_type
+
+    details = preferences.get(
+        "paid_plan_details",
+        {}
+    )
+
+    if not isinstance(details, dict):
+        details = {}
+
+    if plan_type:
+        details["plan_type"] = plan_type
+
+    if customer_id:
+        details["stripe_customer_id"] = (
+            customer_id
+        )
+
+    if subscription_id:
+        details["subscription_id"] = (
+            subscription_id
+        )
+
+    if session_id:
+        details["stripe_session_id"] = (
+            session_id
+        )
+
+    details["last_sync"] = (
+        datetime.utcnow().isoformat()
+    )
+
+    preferences[
+        "paid_plan_details"
+    ] = details
+
+    if amount_paid is not None:
+        preferences["paid_amount"] = (
+            float(amount_paid)
+        )
+
+    if isinstance(extra, dict):
+        preferences.update(extra)
+
+    eleve.preferences_notifications = (
+        preferences
+    )
+
+
+def _activer_depuis_subscription(
+    eleve,
+    subscription,
+    *,
+    invoice=None,
+    checkout_session=None,
+    plan_type=None,
+    amount_paid=None
+):
+    """
+    Source de vérité principale :
+    synchronise un User local avec une subscription Stripe.
+    """
+
+    if not eleve or not subscription:
+        return False
+
+    subscription_id = _stripe_obj_get(
+        subscription,
+        "id"
+    )
+
+    customer_id = _stripe_obj_get(
+        subscription,
+        "customer"
+    )
+
+    status = str(
+        _stripe_obj_get(
+            subscription,
+            "status",
+            ""
+        )
+        or ""
+    ).lower()
+
+    metadata = _metadata_stripe(
+        subscription
+    )
+
+    if not plan_type:
+        plan_type = metadata.get(
+            "plan_type"
+        )
+
+    # Statuts donnant une période d'accès déjà acquise.
+    statuts_autorisables = {
+        "active",
+        "trialing",
+        "past_due",
+    }
+
+    date_fin = (
+        _extraire_date_fin_abonnement_stripe(
+            subscription=subscription,
+            invoice=invoice
+        )
+    )
+
+    if not date_fin:
+        # Fallback uniquement si Stripe ne fournit pas la période.
+        date_fin = (
+            datetime.utcnow()
+            + timedelta(
+                days=_plan_duree_fallback(
+                    plan_type
+                )
+            )
+        )
+
+    if status in statuts_autorisables:
+        eleve.marquer_comme_paye(
+            stripe_session_id=(
+                _stripe_obj_get(
+                    checkout_session,
+                    "id"
+                )
+                if checkout_session
+                else None
+            ),
+            stripe_payment_intent=(
+                _stripe_obj_get(
+                    checkout_session,
+                    "payment_intent"
+                )
+                if checkout_session
+                else None
+            ),
+            date_fin_abonnement=date_fin
+        )
+
+        # Si past_due, on garde l'accès jusqu'à la
+        # période déjà payée mais on mémorise l'échec.
+        if status == "past_due":
+            eleve.statut_paiement = (
+                "paiement_echoue"
+            )
+
+    else:
+        # Canceled / unpaid / incomplete_expired, etc.
+        # Ne pas prolonger artificiellement l'accès.
+        if (
+            eleve.date_fin_abonnement
+            and datetime.utcnow()
+            < eleve.date_fin_abonnement
+            and status == "canceled"
+        ):
+            # Cas rare : l'annulation a été enregistrée
+            # mais la période payée n'est pas encore finie.
+            eleve.statut_paiement = "paye"
+        else:
+            eleve.statut_paiement = "expire"
+            eleve.statut = "inactif"
+
+    if customer_id and hasattr(
+        eleve,
+        "stripe_customer_id"
+    ):
+        eleve.stripe_customer_id = customer_id
+
+    _mettre_a_jour_preferences_paiement(
+        eleve,
+        plan_type=plan_type,
+        customer_id=customer_id,
+        subscription_id=subscription_id,
+        session_id=(
+            _stripe_obj_get(
+                checkout_session,
+                "id"
+            )
+            if checkout_session
+            else None
+        ),
+        amount_paid=amount_paid,
+        extra={
+            "stripe_subscription_status": status,
+            "subscription_synced_at": (
+                datetime.utcnow().isoformat()
+            )
+        }
+    )
+
+    # --------------------------------------------------------
+    # Synchroniser aussi le choix de renouvellement automatique
+    # dans le compte local de l'élève.
+    # --------------------------------------------------------
+    cancel_at_period_end = bool(
+        _stripe_obj_get(
+            subscription,
+            "cancel_at_period_end",
+            False
+        )
+    )
+
+    if hasattr(
+        eleve,
+        "enregistrer_etat_abonnement_stripe"
+    ):
+        eleve.enregistrer_etat_abonnement_stripe(
+            subscription_id=subscription_id,
+            status=status,
+            cancel_at_period_end=cancel_at_period_end,
+            current_period_end=date_fin,
+            plan_type=plan_type,
+            customer_id=customer_id
+        )
+
+    print(
+        "🔁 Renouvellement automatique Stripe:",
+        "OUI" if not cancel_at_period_end else "NON",
+        f"pour {getattr(eleve, 'email', 'élève inconnu')}"
+    )
+
+    return True
+
 # Route de succès de paiement
 @app.route("/paiement-success")
 def paiement_success():
-    """Page de succès après paiement - Optimisée pour le modèle User unifié"""
+    """
+    Confirmation navigateur après Checkout.
+
+    IMPORTANT :
+    - ne dépend plus de session["user_id"] ;
+    - accepte eleve_id (qui est ce que tes success_url envoient) ;
+    - confirme auprès de Stripe ;
+    - récupère la vraie subscription et la vraie période.
+    """
+
     try:
-        session_id = request.args.get('session_id')
-        user_id = request.args.get('user_id')
-        plan_type = request.args.get('plan_type', 'quarterly')
-        
+        session_id = request.args.get(
+            "session_id"
+        )
+
+        # Tes URLs actuelles utilisent eleve_id.
+        eleve_id = (
+            request.args.get("eleve_id")
+            or request.args.get("user_id")
+            or session.get("user_id")
+            or session.get("eleve_id")
+        )
+
+        plan_type = request.args.get(
+            "plan_type",
+            "quarterly"
+        )
+
         if not session_id:
-            flash("Session de paiement invalide", "error")
-            return redirect(url_for('inscription_eleve'))
-        
-        # ✅ CORRECTION 1: Vérifier la connexion avec le modèle User unifié
-        if "user_id" not in session:
-            flash("Vous devez être connecté", "error")
-            return redirect(url_for("login_eleve"))
-        
-        # Vérifier le rôle
-        if session.get("role") != "eleve":
-            flash("Accès réservé aux élèves", "error")
-            return redirect("/")
-        
-        # ✅ CORRECTION 2: Utiliser User directement (pas get_user_model())
-        # Utiliser user_id de la session si non fourni
-        if not user_id:
-            user_id = session["user_id"]
-        
-        # Vérifier la session Stripe
-        stripe_session = stripe.checkout.Session.retrieve(session_id)
-        
-        if stripe_session.payment_status == 'paid' or stripe_session.mode == 'subscription':
-            # Activer le compte élève
-            eleve = User.query.get(user_id)
-            if eleve and eleve.role == "eleve":
-                # ✅ VÉRIFICATION SUPPLEMENTAIRE : ne pas réactiver si déjà payé
-                if eleve.statut_paiement == "paye" and eleve.date_fin_abonnement:
-                    if datetime.utcnow() < eleve.date_fin_abonnement:
-                        # L'utilisateur a déjà un abonnement actif
-                        lang = session.get('lang', 'fr')
-                        message = "✅ Votre abonnement est déjà actif !" if lang == 'fr' else "✅ Your subscription is already active!"
-                        flash(message, "success")
-                        return redirect(url_for('dashboard_eleve'))
-                
-                # Déterminer la durée de l'abonnement selon le plan
-                plan_durations = {
-                    'monthly': 30,     # 30 jours
-                    'quarterly': 90,   # 90 jours (3 mois)
-                    'annual': 365      # 365 jours (1 an)
-                }
-                duration_days = plan_durations.get(plan_type, 30)
-                
-                # ✅ CORRECTION 3: Récupérer l'enseignant depuis les metadata Stripe
-                enseignant_id = stripe_session.metadata.get('enseignant_id')
-                if enseignant_id and enseignant_id.strip() and enseignant_id not in ['', 'None', 'null', 'undefined']:
-                    try:
-                        teacher = User.query.filter_by(id=int(enseignant_id), role="enseignant").first()
-                        if teacher:
-                            eleve.enseignant_referent_id = teacher.id
-                            print(f"✅ Enseignant assigné: {teacher.nom_complet}")
-                    except (ValueError, TypeError) as e:
-                        print(f"⚠️ ID enseignant invalide: {enseignant_id}, erreur: {e}")
-                
-                # ✅ CORRECTION 4: Utiliser la méthode marquer_comme_paye de User
-                eleve.marquer_comme_paye(
-                    stripe_session_id=session_id,
-                    stripe_payment_intent=stripe_session.get('payment_intent')
+            flash(
+                "Session de paiement invalide.",
+                "error"
+            )
+            return redirect(
+                url_for("upgrade_options")
+            )
+
+        stripe_session = (
+            stripe.checkout.Session.retrieve(
+                session_id
+            )
+        )
+
+        metadata = _metadata_stripe(
+            stripe_session
+        )
+
+        eleve_id = (
+            metadata.get("eleve_id")
+            or eleve_id
+        )
+
+        plan_type = (
+            metadata.get("plan_type")
+            or plan_type
+        )
+
+        customer_id = _stripe_obj_get(
+            stripe_session,
+            "customer"
+        )
+
+        customer_email = (
+            metadata.get("student_email")
+            or _stripe_obj_get(
+                _stripe_obj_get(
+                    stripe_session,
+                    "customer_details",
+                    {}
+                ),
+                "email"
+            )
+        )
+
+        eleve = _trouver_eleve_stripe(
+            eleve_id=eleve_id,
+            customer_id=customer_id,
+            email=customer_email
+        )
+
+        if not eleve:
+            flash(
+                "Paiement reçu, mais le compte élève "
+                "n'a pas pu être associé automatiquement. "
+                "Le webhook tentera la synchronisation.",
+                "warning"
+            )
+            return redirect(
+                url_for("login_eleve")
+            )
+
+        payment_status = str(
+            _stripe_obj_get(
+                stripe_session,
+                "payment_status",
+                ""
+            )
+            or ""
+        ).lower()
+
+        subscription_id = _stripe_obj_get(
+            stripe_session,
+            "subscription"
+        )
+
+        # En mode subscription, exiger une subscription réelle.
+        if not subscription_id:
+            flash(
+                "Abonnement Stripe introuvable.",
+                "warning"
+            )
+            return redirect(
+                url_for("upgrade_options")
+            )
+
+        subscription = (
+            stripe.Subscription.retrieve(
+                subscription_id
+            )
+        )
+
+        # Récupérer la facture pour montant + période.
+        invoice = None
+        amount_paid = None
+
+        invoice_id = _stripe_obj_get(
+            stripe_session,
+            "invoice"
+        )
+
+        if invoice_id:
+            try:
+                invoice = stripe.Invoice.retrieve(
+                    invoice_id
                 )
-                
-                # ✅ CORRECTION 5: Utiliser renouveler_abonnement avec durée spécifique
-                eleve.renouveler_abonnement(duration_days)
-                
-                # ✅ CORRECTION 6: Mettre à jour les préférences avec le nouveau format
-                if not eleve.preferences_notifications:
-                    eleve.preferences_notifications = {}
-                
-                # Ajouter le type de plan
-                eleve.preferences_notifications['plan_type'] = plan_type
-                
-                # ✅ Stocker les détails du plan payé
-                plan_details = {
-                    'plan_type': plan_type,
-                    'payment_date': datetime.utcnow().isoformat(),
-                    'stripe_session_id': session_id,
-                    'stripe_customer_id': stripe_session.get('customer'),
-                    'subscription_id': stripe_session.get('subscription'),
-                    'enseignant_id': int(enseignant_id) if enseignant_id and enseignant_id.strip() and enseignant_id not in ['', 'None', 'null'] else None
-                }
-                
-                # ✅ CORRECTION 7: Stocker dans un champ JSON dédié ou dans preferences_notifications
-                eleve.preferences_notifications['paid_plan_details'] = plan_details
-                
-                # ✅ Stocker le customer ID Stripe
-                eleve.stripe_customer_id = stripe_session.get('customer')
-                
-                # ✅ Marquer l'essai comme terminé
-                if eleve.statut_essai == 'actif':
-                    eleve.statut_essai = 'payant'
-                    eleve.statut_paiement = 'paye'
-                
-                # ✅ CORRECTION 8: Récupérer le montant payé depuis Stripe
-                amount_paid = 0
-                try:
-                    if stripe_session.get('invoice'):
-                        invoice = stripe.Invoice.retrieve(stripe_session.invoice)
-                        amount_paid = invoice.amount_paid / 100  # Convertir en dollars
-                    elif stripe_session.amount_total:
-                        amount_paid = stripe_session.amount_total / 100
-                    else:
-                        # Utiliser les prix standards comme référence
-                        standard_prices = {
-                            'monthly': 19.99,
-                            'quarterly': 49.99,
-                            'annual': 149.99
-                        }
-                        amount_paid = standard_prices.get(plan_type, 49.99)
-                    
-                    eleve.preferences_notifications['paid_amount'] = amount_paid
-                    
-                except Exception as invoice_error:
-                    print(f"⚠️ Impossible de récupérer le montant payé: {invoice_error}")
-                    # Utiliser les prix standards
-                    standard_prices = {
-                        'monthly': 19.99,
-                        'quarterly': 49.99,
-                        'annual': 149.99
-                    }
-                    amount_paid = standard_prices.get(plan_type, 49.99)
-                    eleve.preferences_notifications['paid_amount'] = amount_paid
-                
-                # ✅ CORRECTION 9: Mettre à jour la date de fin d'essai si applicable
-                if eleve.date_fin_essai and eleve.date_fin_essai > datetime.utcnow():
-                    # L'essai n'était pas encore terminé, on le termine maintenant
-                    eleve.date_fin_essai = datetime.utcnow()
-                
-                # ✅ Sauvegarder les changements
-                db.session.commit()
-                
-                # ✅ CORRECTION 10: Mettre à jour la session avec les bonnes clés
-                session['user_id'] = eleve.id
-                session['username'] = eleve.username
-                session['nom_complet'] = eleve.nom_complet
-                session['role'] = eleve.role
-                session['email'] = eleve.email
-                session['lang'] = eleve.langue if eleve.langue else 'fr'
-                
-                # ✅ LOG pour suivi des paiements
-                print(f"🎉 PAIEMENT SUCCÈS: {eleve.email}")
-                print(f"📊 Plan: {plan_type}")
-                print(f"💰 Montant: {amount_paid}$ CAD")
-                print(f"📅 Durée: {duration_days} jours")
-                print(f"👤 Customer ID: {stripe_session.get('customer')}")
-                print(f"👨‍🏫 Enseignant ID: {enseignant_id if enseignant_id else 'Aucun'}")
-                print(f"🔗 Session ID: {session_id}")
-                print(f"📅 Fin abonnement: {eleve.date_fin_abonnement}")
-                print(f"✅ Statut paiement: {eleve.statut_paiement}")
-                print(f"✅ Statut essai: {eleve.statut_essai}")
-                
-                # ✅ Messages de succès selon la langue
-                lang = session.get('lang', 'fr')
-                success_messages = {
-                    'monthly': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement mensuel est activé. {amount_paid:.2f}$ CAD / mois (≈ 0.67$/jour)",
-                        'en': f"✅ Payment confirmed! Your monthly subscription is activated. {amount_paid:.2f}$ CAD / month (≈ $0.67/day)"
-                    },
-                    'quarterly': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement trimestriel est activé pour 3 mois. {amount_paid:.2f}$ CAD (≈ 16.66$/mois) - Vous économisez 3.33$/mois !",
-                        'en': f"✅ Payment confirmed! Your quarterly subscription is activated for 3 months. {amount_paid:.2f}$ CAD (≈ $16.66/month) - You save $3.33/month!"
-                    },
-                    'annual': {
-                        'fr': f"✅ Paiement confirmé ! Votre abonnement annuel est activé pour 1 an. {amount_paid:.2f}$ CAD (≈ 12.50$/mois) - Vous économisez 89.89$/an (37%) !",
-                        'en': f"✅ Payment confirmed! Your annual subscription is activated for 1 year. {amount_paid:.2f}$ CAD (≈ $12.50/month) - You save $89.89/year (37%)!"
-                    }
-                }
-                
-                message = success_messages.get(plan_type, success_messages['quarterly']).get(lang, success_messages['quarterly']['fr'])
-                flash(message, "success")
-                
-                # ✅ Message spécial si enseignant assigné
-                if enseignant_id and enseignant_id.strip() and enseignant_id not in ['', 'None', 'null']:
-                    try:
-                        teacher = User.query.filter_by(id=int(enseignant_id), role="enseignant").first()
-                        if teacher:
-                            teacher_message = f"👨‍🏫 Votre enseignant tuteur: {teacher.nom_complet}" if lang == 'fr' else f"👨‍🏫 Your tutor teacher: {teacher.nom_complet}"
-                            flash(teacher_message, "info")
-                    except (ValueError, TypeError) as e:
-                        print(f"⚠️ Impossible d'afficher le nom de l'enseignant: {e}")
-                
-                # ✅ Envoyer un email de confirmation si configuré
-                try:
-                    if os.environ.get('SEND_CONFIRMATION_EMAIL', 'false').lower() == 'true':
-                        # Construire l'email de confirmation
-                        subject_fr = f"Confirmation de votre abonnement {plan_type} - TutoratAI"
-                        subject_en = f"Your {plan_type} subscription confirmation - TutoratAI"
-                        subject = subject_fr if lang == 'fr' else subject_en
-                        
-                        # Construire le corps du message
-                        body_fr = f"""
-                        Bonjour {eleve.nom_complet or eleve.username},
-                        
-                        Votre paiement a été confirmé avec succès !
-                        
-                        Détails de votre abonnement :
-                        • Plan : {plan_type}
-                        • Montant : {amount_paid:.2f}$ CAD
-                        • Durée : {duration_days} jours
-                        • Statut : Actif
-                        • Prochain renouvellement : {eleve.date_fin_abonnement.strftime('%d/%m/%Y') if eleve.date_fin_abonnement else 'N/A'}
-                        {"• Enseignant tuteur : " + teacher.nom_complet if enseignant_id and 'teacher' in locals() and teacher else ""}
-                        
-                        Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme.
-                        
-                        Merci pour votre confiance !
-                        L'équipe TutoratAI
-                        """
-                        
-                        body_en = f"""
-                        Hello {eleve.nom_complet or eleve.username},
-                        
-                        Your payment has been successfully confirmed!
-                        
-                        Subscription details:
-                        • Plan: {plan_type}
-                        • Amount: {amount_paid:.2f}$ CAD
-                        • Duration: {duration_days} days
-                        • Status: Active
-                        • Next renewal: {eleve.date_fin_abonnement.strftime('%Y-%m-%d') if eleve.date_fin_abonnement else 'N/A'}
-                        {"• Tutor teacher: " + teacher.nom_complet if enseignant_id and 'teacher' in locals() and teacher else ""}
-                        
-                        You can now access all platform features.
-                        
-                        Thank you for your trust!
-                        The TutoratAI Team
-                        """
-                        
-                        body = body_fr if lang == 'fr' else body_en
-                        
-                        # Ici vous intégreriez votre système d'envoi d'emails
-                        # send_email(eleve.email, subject, body)
-                        print(f"📧 Email de confirmation prêt pour {eleve.email}")
-                        
-                except Exception as email_error:
-                    print(f"⚠️ Erreur préparation email: {email_error}")
-                
-                # ✅ CORRECTION 11: Créer une commission si enseignant assigné
-                if enseignant_id and enseignant_id.strip() and enseignant_id not in ['', 'None', 'null']:
-                    try:
-                        from models import Commission
-                        from datetime import datetime
-                        
-                        # Calculer la commission (20% par défaut)
-                        taux_commission = 20.0
-                        montant_commission = (amount_paid * taux_commission) / 100
-                        
-                        commission = Commission(
-                            enseignant_id=int(enseignant_id),
-                            eleve_id=eleve.id,
-                            type_abonnement=plan_type,
-                            montant_total=amount_paid,
-                            montant_commission=montant_commission,
-                            taux_base=taux_commission,
-                            date_paiement_eleve=datetime.utcnow(),
-                            statut='pending',
-                            statut_eleve='actif'
-                        )
-                        
-                        db.session.add(commission)
-                        db.session.commit()
-                        
-                        print(f"💰 Commission créée: {montant_commission}$ pour l'enseignant {enseignant_id}")
-                        
-                    except Exception as comm_error:
-                        print(f"⚠️ Erreur création commission: {comm_error}")
-                        db.session.rollback()
-                
-                # ✅ Rediriger vers le dashboard avec un paramètre de succès
-                return redirect(url_for('dashboard_eleve') + '?payment_success=true&plan=' + plan_type)
-                
-            else:
-                lang = session.get('lang', 'fr')
-                error_msg = "Élève non trouvé" if lang == 'fr' else "Student not found"
-                flash(error_msg, "error")
-                return redirect(url_for('login_eleve'))
-                
-        else:
-            lang = session.get('lang', 'fr')
-            error_msg = "Paiement non confirmé" if lang == 'fr' else "Payment not confirmed"
-            flash(error_msg, "warning")
-            
-            # ✅ Rediriger vers la page d'upgrade avec le type de plan pour réessayer
-            return redirect(url_for('upgrade_options') + f'?plan={plan_type}&payment_pending=true')
-            
-    except stripe.error.StripeError as e:
-        print(f"❌ Erreur Stripe lors de la confirmation: {e}")
-        lang = session.get('lang', 'fr')
-        error_msg = "Erreur de vérification du paiement" if lang == 'fr' else "Payment verification error"
-        flash(error_msg, "error")
-        
-    except Exception as e:
-        print(f"❌ Erreur confirmation paiement: {e}")
+                amount_paid = (
+                    _stripe_obj_get(
+                        invoice,
+                        "amount_paid",
+                        0
+                    )
+                    / 100
+                )
+            except Exception as exc:
+                print(
+                    "⚠️ Facture Stripe non récupérée:",
+                    exc
+                )
+
+        # Checkout subscription peut avoir payment_status
+        # 'paid' ou 'no_payment_required' selon configuration.
+        if payment_status not in {
+            "paid",
+            "no_payment_required"
+        }:
+            flash(
+                "Le paiement n'est pas encore confirmé.",
+                "warning"
+            )
+            return redirect(
+                url_for("upgrade_options")
+                + f"?plan={plan_type}"
+                + "&payment_pending=true"
+            )
+
+        _activer_depuis_subscription(
+            eleve,
+            subscription,
+            invoice=invoice,
+            checkout_session=stripe_session,
+            plan_type=plan_type,
+            amount_paid=amount_paid
+        )
+
+        # L'essai prend fin dès l'abonnement payé.
+        if hasattr(eleve, "date_fin_essai"):
+            eleve.date_fin_essai = (
+                datetime.utcnow()
+            )
+
+        db.session.commit()
+
+        # Restaurer une session cohérente pour l'utilisateur,
+        # même si l'ancienne session avait expiré.
+        session["user_id"] = eleve.id
+        session["eleve_id"] = eleve.id
+        session["username"] = eleve.username
+        session["eleve_username"] = eleve.username
+        session["nom_complet"] = eleve.nom_complet
+        session["role"] = "eleve"
+        session["email"] = eleve.email
+        session["lang"] = (
+            getattr(eleve, "langue", None)
+            or session.get("lang", "fr")
+        )
+
+        print(
+            f"✅ PAIEMENT SYNCHRONISÉ: {eleve.email}"
+        )
+        print(
+            f"   Subscription: {subscription_id}"
+        )
+        print(
+            f"   Fin abonnement: {eleve.date_fin_abonnement}"
+        )
+        print(
+            f"   Accès: {eleve.a_acces_plateforme()}"
+        )
+
+        flash(
+            "✅ Paiement confirmé. "
+            "Votre accès est maintenant actif.",
+            "success"
+        )
+
+        return redirect(
+            url_for("dashboard_eleve")
+            + "?payment_success=true"
+            + f"&plan={plan_type}"
+        )
+
+    except stripe.error.StripeError as exc:
+        print(
+            "❌ Stripe paiement_success:",
+            exc
+        )
+        flash(
+            "Erreur de vérification du paiement.",
+            "error"
+        )
+
+    except Exception as exc:
+        db.session.rollback()
+        print(
+            "❌ paiement_success:",
+            exc
+        )
+
         import traceback
         traceback.print_exc()
-        
-        lang = session.get('lang', 'fr')
-        error_msg = "Erreur lors de la confirmation du paiement" if lang == 'fr' else "Error confirming payment"
-        flash(error_msg, "error")
-    
-    # Fallback redirection
-    return redirect(url_for('upgrade_options'))
+
+        flash(
+            "Erreur lors de l'activation de l'abonnement.",
+            "error"
+        )
+
+    return redirect(
+        url_for("upgrade_options")
+    )
 
 @app.route("/creer-session-paiement", methods=["POST"])
 def creer_session_paiement():
@@ -9955,7 +12770,7 @@ def creer_session_paiement():
     
     try:
         # Récupérer le type de plan depuis le formulaire
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         plan_type = data.get('plan_type', 'quarterly')  # monthly, quarterly, annual
         
         # ✅ CONFIGURATION DES PLANS OPTIMISÉE (NOUVEAUX PRIX MIS À JOUR)
@@ -10146,7 +12961,7 @@ def creer_session_paiement():
                 "name": eleve.nom_complet,
                 "email": eleve.email,
                 "lang": lang,
-                "enseignant_id": eleve.enseignant_referent_id if hasattr(eleve, 'enseignant_id') else None
+                "enseignant_id": eleve.enseignant_referent_id if hasattr(eleve, 'enseignant_referent_id') else None
             }
         })
         
@@ -10159,411 +12974,1391 @@ def creer_session_paiement():
 
 @app.route("/paiement-direct")
 def paiement_direct():
-    """Route de paiement direct pour les élèves - Corrigée"""
-    # Vérifier si l'utilisateur est connecté
+    """Route de paiement direct sécurisée pour les élèves."""
+
+    # ============================================================
+    # DIAGNOSTIC TEMPORAIRE 1 : SESSION NAVIGATEUR
+    # ============================================================
+    #
+    # Test :
+    # http://127.0.0.1:5000/paiement-direct?debug=1
+    #
+    # Aucun appel Stripe dans ce mode.
+    # ============================================================
+
+    if request.args.get("debug") == "1":
+        return jsonify({
+            "diagnostic": True,
+            "endpoint": request.endpoint,
+            "path": request.path,
+            "user_id": session.get("user_id"),
+            "eleve_id": session.get("eleve_id"),
+            "role": session.get("role"),
+            "lang": session.get("lang"),
+            "session_keys": list(session.keys())
+        })
+
+    # ============================================================
+    # AUTHENTIFICATION
+    # ============================================================
+
     if "user_id" not in session:
-        return redirect(url_for("login_eleve"))
-    
-    # Vérifier si c'est un élève
-    if session.get("role") != "eleve":
-        flash("Accès réservé aux élèves", "error")
+        return redirect(
+            url_for("login_eleve")
+        )
+
+    if session.get("role") not in {
+        "eleve",
+        "élève"
+    }:
+        flash(
+            "Accès réservé aux élèves",
+            "error"
+        )
         return redirect("/")
-    
+
     try:
-        # Récupérer l'élève
-        eleve = User.query.get(session["user_id"])
-        if not eleve or eleve.role != "eleve":
-            flash("Élève non trouvé", "error")
-            return redirect(url_for("login_eleve"))
-        
-        plan_type = request.args.get("type", "quarterly")
-        amount_param = request.args.get("amount", None)
-        
-        print(f"📋 Paiement direct - Plan demandé: {plan_type}, Montant: {amount_param}")
-        
-        # Vérifier si le type de plan est valide
-        valid_plans = ['monthly', 'quarterly', 'annual']
-        if plan_type not in valid_plans:
-            plan_type = 'quarterly'
-        
-        try:
-            # Configuration des plans
-            plan_config = {
-                'monthly': {
-                    'amount': 1999,
-                    'description_fr': "Forfait mensuel - Tutorat IA avec enseignant virtuel - 19.99$/mois",
-                    'description_en': "Monthly plan - AI tutoring with virtual teacher - 19.99$/month",
-                    'product_name_fr': "Forfait Mensuel (19.99$/mois)",
-                    'product_name_en': "Monthly Plan (19.99$/month)",
-                    'interval': 'month',
-                    'monthly_effective': 19.99,
-                    'savings_percentage': 0,
-                    'price_per_day': 0.67
-                },
-                'quarterly': {
-                    'amount': 4999,
-                    'description_fr': "Forfait trimestriel - Tutorat IA avec enseignant virtuel - 49.99$/3 mois",
-                    'description_en': "Quarterly plan - AI tutoring with virtual teacher - 49.99$/3 months",
-                    'product_name_fr': "Forfait Trimestriel (49.99$/3 mois)",
-                    'product_name_en': "Quarterly Plan (49.99$/3 months)",
-                    'interval': 'month',
-                    'interval_count': 3,
-                    'monthly_effective': 16.66,
-                    'savings_percentage': 17,
-                    'price_per_day': 0.56
-                },
-                'annual': {
-                    'amount': 14999,
-                    'description_fr': "Forfait annuel - Tutorat IA avec enseignant virtuel - 149.99$/an",
-                    'description_en': "Annual plan - AI tutoring with virtual teacher - 149.99$/year",
-                    'product_name_fr': "Forfait Annuel (149.99$/an)",
-                    'product_name_en': "Annual Plan (149.99$/year)",
-                    'interval': 'year',
-                    'monthly_effective': 12.50,
-                    'savings_percentage': 37,
-                    'price_per_day': 0.42
-                }
+        # ========================================================
+        # RÉCUPÉRER L'ÉLÈVE
+        # ========================================================
+
+        eleve = db.session.get(
+            User,
+            session["user_id"]
+        )
+
+        if (
+            not eleve
+            or eleve.role not in {
+                "eleve",
+                "élève"
             }
-            
-            if amount_param:
-                try:
-                    custom_amount = int(float(amount_param) * 100)
-                    plan_config[plan_type]['amount'] = custom_amount
-                except ValueError:
-                    print(f"⚠️ Montant invalide: {amount_param}")
-            
-            plan_info = plan_config[plan_type]
-            lang = session.get("lang", "fr")
-            
-            # ✅ CORRECTION : Récupérer le customer Stripe existant ou en créer un
-            customer = None
-            if eleve.stripe_customer_id:
-                try:
-                    customer = stripe.Customer.retrieve(eleve.stripe_customer_id)
-                    print(f"✅ Customer Stripe existant trouvé: {customer.id}")
-                except stripe.error.StripeError:
-                    print(f"⚠️ Customer Stripe non trouvé, création d'un nouveau")
-            
-            # Créer ou récupérer l'enseignant référent
-            teacher_info = {}
-            if hasattr(eleve, 'enseignant_referent_id') and eleve.enseignant_referent_id:
-                teacher = User.query.filter_by(
+        ):
+            flash(
+                "Élève non trouvé",
+                "error"
+            )
+
+            return redirect(
+                url_for("login_eleve")
+            )
+
+        # ========================================================
+        # PLAN DEMANDÉ
+        # ========================================================
+        #
+        # Le prix est décidé uniquement côté serveur.
+        # amount= dans l'URL est complètement ignoré.
+        # ========================================================
+
+        plan_type = request.args.get(
+            "type",
+            "quarterly"
+        )
+
+        valid_plans = {
+            "monthly",
+            "quarterly",
+            "annual"
+        }
+
+        if plan_type not in valid_plans:
+            print(
+                f"⚠️ Plan invalide demandé : {plan_type}. "
+                f"Utilisation du forfait quarterly."
+            )
+            plan_type = "quarterly"
+
+        # ========================================================
+        # CONFIGURATION DES FORFAITS
+        # ========================================================
+
+        plan_config = {
+            "monthly": {
+                "amount": 1999,
+
+                "description_fr":
+                    "Forfait mensuel - Tutorat IA avec enseignant virtuel "
+                    "- 19.99$/mois",
+
+                "description_en":
+                    "Monthly plan - AI tutoring with virtual teacher "
+                    "- 19.99$/month",
+
+                "product_name_fr":
+                    "Forfait Mensuel (19.99$/mois)",
+
+                "product_name_en":
+                    "Monthly Plan (19.99$/month)",
+
+                "interval": "month",
+                "interval_count": 1,
+
+                "monthly_effective": 19.99,
+                "savings_percentage": 0,
+                "price_per_day": 0.67
+            },
+
+            "quarterly": {
+                "amount": 4999,
+
+                "description_fr":
+                    "Forfait trimestriel - Tutorat IA avec enseignant virtuel "
+                    "- 49.99$/3 mois",
+
+                "description_en":
+                    "Quarterly plan - AI tutoring with virtual teacher "
+                    "- 49.99$/3 months",
+
+                "product_name_fr":
+                    "Forfait Trimestriel (49.99$/3 mois)",
+
+                "product_name_en":
+                    "Quarterly Plan (49.99$/3 months)",
+
+                "interval": "month",
+                "interval_count": 3,
+
+                "monthly_effective": 16.66,
+                "savings_percentage": 17,
+                "price_per_day": 0.56
+            },
+
+            "annual": {
+                "amount": 14999,
+
+                "description_fr":
+                    "Forfait annuel - Tutorat IA avec enseignant virtuel "
+                    "- 149.99$/an",
+
+                "description_en":
+                    "Annual plan - AI tutoring with virtual teacher "
+                    "- 149.99$/year",
+
+                "product_name_fr":
+                    "Forfait Annuel (149.99$/an)",
+
+                "product_name_en":
+                    "Annual Plan (149.99$/year)",
+
+                "interval": "year",
+                "interval_count": 1,
+
+                "monthly_effective": 12.50,
+                "savings_percentage": 37,
+                "price_per_day": 0.42
+            }
+        }
+
+        plan_info = plan_config[
+            plan_type
+        ]
+
+        print(
+            f"📋 Paiement direct sécurisé - "
+            f"Plan: {plan_type}, "
+            f"Montant serveur: {plan_info['amount']} cents"
+        )
+
+        # ========================================================
+        # LANGUE
+        # ========================================================
+
+        lang = session.get(
+            "lang",
+            "fr"
+        )
+
+        if lang not in {
+            "fr",
+            "en"
+        }:
+            lang = "fr"
+
+        # ========================================================
+        # CUSTOMER STRIPE EXISTANT
+        # ========================================================
+
+        customer = None
+
+        if eleve.stripe_customer_id:
+            try:
+                customer = stripe.Customer.retrieve(
+                    eleve.stripe_customer_id
+                )
+
+                print(
+                    f"✅ Customer Stripe existant trouvé: "
+                    f"{customer.id}"
+                )
+
+            except stripe.error.StripeError as e:
+                print(
+                    f"⚠️ Customer Stripe local inutilisable "
+                    f"{eleve.stripe_customer_id}: {e}"
+                )
+                customer = None
+
+        # ========================================================
+        # ENSEIGNANT RÉFÉRENT
+        # ========================================================
+
+        teacher_info = {}
+
+        if (
+            hasattr(
+                eleve,
+                "enseignant_referent_id"
+            )
+            and eleve.enseignant_referent_id
+        ):
+            teacher = (
+                User.query.filter_by(
                     id=eleve.enseignant_referent_id,
                     role="enseignant"
                 ).first()
-                if teacher:
-                    teacher_info = {
-                        'teacher_id': teacher.id,
-                        'teacher_name': teacher.nom_complet,
-                        'teacher_email': teacher.email
-                    }
-            
-            # ✅ CORRECTION IMPORTANTE : Configuration de la session Stripe
-            checkout_session_params = {
-                'payment_method_types': ['card'],
-                'line_items': [{
-                    'price_data': {
-                        'currency': 'cad',
-                        'product_data': {
-                            'name': plan_info[f'product_name_{lang}'] if f'product_name_{lang}' in plan_info else plan_info['product_name_fr'],
-                            'description': plan_info[f'description_{lang}'] if f'description_{lang}' in plan_info else plan_info['description_fr'],
-                            'metadata': {
-                                'plan_type': plan_type,
-                                'lang': lang
-                            }
-                        },
-                        'unit_amount': plan_info['amount'],
-                        'recurring': {
-                            'interval': plan_info['interval'],
-                            'interval_count': plan_info.get('interval_count', 1)
+            )
+
+            if teacher:
+                teacher_info = {
+                    "teacher_id":
+                        teacher.id,
+
+                    "teacher_name":
+                        teacher.nom_complet,
+
+                    "teacher_email":
+                        teacher.email
+                }
+
+        # ========================================================
+        # LANGUE DU PRODUIT
+        # ========================================================
+
+        product_name_key = (
+            f"product_name_{lang}"
+        )
+
+        description_key = (
+            f"description_{lang}"
+        )
+
+        # ========================================================
+        # URLS DE RETOUR
+        # ========================================================
+        #
+        # On utilise l'hôte courant pour éviter les incohérences
+        # localhost / 127.0.0.1 en local.
+        # ========================================================
+
+        base_url = request.host_url.rstrip("/")
+
+        success_url = (
+            f"{base_url}"
+            + url_for("paiement_success")
+            + "?session_id={CHECKOUT_SESSION_ID}"
+            + f"&eleve_id={eleve.id}"
+            + f"&plan_type={plan_type}"
+        )
+
+        cancel_url = (
+            f"{base_url}"
+            + url_for("upgrade_options")
+            + f"?cancel=true"
+            + f"&plan_type={plan_type}"
+        )
+
+        print(
+            f"🔗 Success URL: "
+            f"{success_url}"
+        )
+
+        print(
+            f"🔗 Cancel URL: "
+            f"{cancel_url}"
+        )
+
+        # ========================================================
+        # PARAMÈTRES STRIPE CHECKOUT
+        # ========================================================
+
+        checkout_session_params = {
+            "payment_method_types": [
+                "card"
+            ],
+
+            "line_items": [{
+                "price_data": {
+                    "currency": "cad",
+
+                    "product_data": {
+                        "name":
+                            plan_info.get(
+                                product_name_key,
+                                plan_info[
+                                    "product_name_fr"
+                                ]
+                            ),
+
+                        "description":
+                            plan_info.get(
+                                description_key,
+                                plan_info[
+                                    "description_fr"
+                                ]
+                            ),
+
+                        "metadata": {
+                            "plan_type":
+                                plan_type,
+
+                            "lang":
+                                lang
                         }
                     },
-                    'quantity': 1,
-                }],
-                'mode': 'subscription',
-                'success_url': url_for('paiement_success', _external=True) + f'?session_id={{CHECKOUT_SESSION_ID}}&eleve_id={eleve.id}&plan_type={plan_type}',
-                'cancel_url': url_for('upgrade_options', _external=True) + f'?cancel=true&plan_type={plan_type}',
-                'metadata': {
-                    'eleve_id': eleve.id,
-                    'plan_type': plan_type,
-                    'lang': lang,
-                    'student_name': eleve.nom_complet,
-                    'student_email': eleve.email,
-                    'enseignant_id': str(teacher_info.get('teacher_id', '')),
-                    'enseignant_email': teacher_info.get('teacher_email', '')
+
+                    # ============================================
+                    # PRIX IMPOSÉ CÔTÉ SERVEUR
+                    # ============================================
+
+                    "unit_amount":
+                        plan_info[
+                            "amount"
+                        ],
+
+                    "recurring": {
+                        "interval":
+                            plan_info[
+                                "interval"
+                            ],
+
+                        "interval_count":
+                            plan_info.get(
+                                "interval_count",
+                                1
+                            )
+                    }
+                },
+
+                "quantity": 1
+            }],
+
+            # ================================================
+            # ABONNEMENT RÉCURRENT
+            # ================================================
+
+            "mode": "subscription",
+
+            # ================================================
+            # URLS
+            # ================================================
+
+            "success_url":
+                success_url,
+
+            "cancel_url":
+                cancel_url,
+
+            # ================================================
+            # MÉTADONNÉES CHECKOUT
+            # ================================================
+
+            "metadata": {
+                "eleve_id":
+                    str(eleve.id),
+
+                "plan_type":
+                    plan_type,
+
+                "lang":
+                    lang,
+
+                "student_name":
+                    eleve.nom_complet
+                    or "",
+
+                "student_email":
+                    eleve.email
+                    or "",
+
+                "enseignant_id":
+                    str(
+                        teacher_info.get(
+                            "teacher_id",
+                            ""
+                        )
+                    ),
+
+                "enseignant_email":
+                    teacher_info.get(
+                        "teacher_email",
+                        ""
+                    )
+            },
+
+            # ================================================
+            # MÉTADONNÉES CONSERVÉES DANS L'ABONNEMENT
+            # ================================================
+
+            "subscription_data": {
+                "metadata": {
+                    "eleve_id":
+                        str(eleve.id),
+
+                    "plan_type":
+                        plan_type,
+
+                    "student_email":
+                        eleve.email
+                        or "",
+
+                    "enseignant_id":
+                        str(
+                            teacher_info.get(
+                                "teacher_id",
+                                ""
+                            )
+                        )
                 }
             }
-            
-            # ✅ AJOUTER LE CUSTOMER SI EXISTANT
-            if customer:
-                checkout_session_params['customer'] = customer.id
-            else:
-                checkout_session_params['customer_email'] = eleve.email
-            
-            # ✅ Créer la session Stripe
-            checkout_session = stripe.checkout.Session.create(**checkout_session_params)
-            
-            # ✅ Mettre à jour l'élève avec l'ID de session Stripe
-            eleve.stripe_session_id = checkout_session.id
-            db.session.commit()
-            
-            print(f"✅ Session Stripe créée: {checkout_session.id}")
-            print(f"🔗 Redirection vers: {checkout_session.url}")
-            
-            return redirect(checkout_session.url)
-            
-        except stripe.error.StripeError as e:
-            print(f"❌ Erreur Stripe: {str(e)}")
-            flash(f"Erreur de paiement: {str(e)}", "error")
-            return redirect(url_for('upgrade_options'))
-            
+        }
+
+        # ========================================================
+        # CUSTOMER
+        # ========================================================
+
+        if customer:
+            checkout_session_params[
+                "customer"
+            ] = customer.id
+
+        else:
+            checkout_session_params[
+                "customer_email"
+            ] = eleve.email
+
+        # ========================================================
+        # CRÉATION DE LA SESSION STRIPE
+        # ========================================================
+
+        checkout_session = (
+            stripe.checkout.Session.create(
+                **checkout_session_params
+            )
+        )
+
+        # ========================================================
+        # SAUVEGARDE DE LA SESSION STRIPE
+        # ========================================================
+
+        eleve.stripe_session_id = (
+            checkout_session.id
+        )
+
+        db.session.commit()
+
+        print(
+            f"✅ Session Stripe créée: "
+            f"{checkout_session.id}"
+        )
+
+        print(
+            f"🔗 Redirection Stripe créée pour "
+            f"{eleve.email} - {plan_type}"
+        )
+
+        # ========================================================
+        # DIAGNOSTIC TEMPORAIRE 2 : STRIPE
+        # ========================================================
+        #
+        # Test :
+        #
+        # http://127.0.0.1:5000/
+        # paiement-direct?type=monthly&debug_stripe=1
+        #
+        # Stripe crée réellement la session,
+        # mais le navigateur ne sera PAS redirigé.
+        # ========================================================
+
+        if request.args.get(
+            "debug_stripe"
+        ) == "1":
+
+            essai_expire = None
+
+            try:
+                if hasattr(
+                    eleve,
+                    "essai_est_expire"
+                ):
+                    essai_expire = (
+                        eleve.essai_est_expire()
+                    )
+
+            except Exception as diagnostic_error:
+                print(
+                    "⚠️ Impossible de déterminer "
+                    f"essai_expire: {diagnostic_error}"
+                )
+
+            return jsonify({
+                "success":
+                    True,
+
+                "eleve_id":
+                    eleve.id,
+
+                "email":
+                    eleve.email,
+
+                "statut_paiement":
+                    eleve.statut_paiement,
+
+                "essai_expire":
+                    essai_expire,
+
+                "stripe_session_id":
+                    checkout_session.id,
+
+                "stripe_url":
+                    checkout_session.url,
+
+                "plan_type":
+                    plan_type,
+
+                "amount":
+                    plan_info[
+                        "amount"
+                    ],
+
+                "success_url":
+                    success_url,
+
+                "cancel_url":
+                    cancel_url
+            })
+
+        # ========================================================
+        # REDIRECTION NORMALE VERS STRIPE
+        # ========================================================
+
+        return redirect(
+            checkout_session.url
+        )
+
+    # ============================================================
+    # ERREUR STRIPE
+    # ============================================================
+
+    except stripe.error.StripeError as e:
+        db.session.rollback()
+
+        print(
+            f"❌ Erreur Stripe paiement direct: "
+            f"{e}"
+        )
+
+        # --------------------------------------------------------
+        # DIAGNOSTIC :
+        # NE PAS MASQUER L'ERREUR
+        # --------------------------------------------------------
+
+        if request.args.get(
+            "debug_stripe"
+        ) == "1":
+
+            return jsonify({
+                "success":
+                    False,
+
+                "type_erreur":
+                    "stripe",
+
+                "classe_erreur":
+                    type(e).__name__,
+
+                "message":
+                    str(e),
+
+                "endpoint":
+                    request.endpoint,
+
+                "user_id":
+                    session.get(
+                        "user_id"
+                    ),
+
+                "eleve_id":
+                    session.get(
+                        "eleve_id"
+                    ),
+
+                "role":
+                    session.get(
+                        "role"
+                    )
+            }), 500
+
+        flash(
+            "Une erreur est survenue lors de "
+            "la préparation du paiement. "
+            "Veuillez réessayer.",
+            "error"
+        )
+
+        return redirect(
+            url_for(
+                "upgrade_options"
+            )
+        )
+
+    # ============================================================
+    # AUTRE ERREUR PYTHON
+    # ============================================================
+
     except Exception as e:
-        print(f"❌ Erreur paiement direct: {e}")
-        flash("Erreur lors de la création du paiement", "error")
-        return redirect(url_for('upgrade_options'))
-    
+        db.session.rollback()
+
+        print(
+            f"❌ Erreur paiement direct: "
+            f"{e}"
+        )
+
+        import traceback
+        traceback.print_exc()
+
+        # --------------------------------------------------------
+        # DIAGNOSTIC :
+        # NE PAS MASQUER L'ERREUR
+        # --------------------------------------------------------
+
+        if request.args.get(
+            "debug_stripe"
+        ) == "1":
+
+            return jsonify({
+                "success":
+                    False,
+
+                "type_erreur":
+                    "python",
+
+                "classe_erreur":
+                    type(e).__name__,
+
+                "message":
+                    str(e),
+
+                "endpoint":
+                    request.endpoint,
+
+                "user_id":
+                    session.get(
+                        "user_id"
+                    ),
+
+                "eleve_id":
+                    session.get(
+                        "eleve_id"
+                    ),
+
+                "role":
+                    session.get(
+                        "role"
+                    )
+            }), 500
+
+        flash(
+            "Erreur lors de la création "
+            "du paiement.",
+            "error"
+        )
+
+        return redirect(
+            url_for(
+                "upgrade_options"
+            )
+        )
 
 @app.route("/stripe-webhook", methods=["POST"])
 def stripe_webhook():
-    """Webhook Stripe pour gérer les événements de paiement - Adapté au nouveau système User"""
-    payload = request.get_data(as_text=True)
-    sig_header = request.headers.get('Stripe-Signature')
-    endpoint_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
+    """
+    Stripe devient la source de vérité de l'abonnement.
+
+    Gère :
+    - checkout.session.completed
+    - invoice.payment_succeeded
+    - invoice.paid
+    - invoice.payment_failed
+    - customer.subscription.updated
+    - customer.subscription.deleted
+    """
+
+    payload = request.get_data(
+        as_text=True
+    )
+
+    sig_header = request.headers.get(
+        "Stripe-Signature"
+    )
+
+    endpoint_secret = os.environ.get(
+        "STRIPE_WEBHOOK_SECRET"
+    )
 
     try:
         event = stripe.Webhook.construct_event(
-            payload, sig_header, endpoint_secret
+            payload,
+            sig_header,
+            endpoint_secret
         )
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except stripe.error.SignatureVerificationError as e:
-        return jsonify({'error': str(e)}), 400
-    
-    # Gérer l'événement checkout.session.completed
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        
-        try:
-            UserModel = get_user_model()
-            
-            eleve_id = session['metadata'].get('eleve_id')
-            plan_type = session['metadata'].get('plan_type', 'quarterly')
-            
-            if eleve_id:
-                eleve = UserModel.query.get(eleve_id)
-                if eleve and eleve.role == "eleve":
-                    # Déterminer la durée avec les nouveaux plans
-                    plan_durations = {
-                        'monthly': 30,     # 30 jours
-                        'quarterly': 90,   # 90 jours (3 mois)
-                        'annual': 365      # 365 jours (1 an)
-                    }
-                    duration_days = plan_durations.get(plan_type, 30)
-                    
-                    # Récupérer les informations de l'enseignant si présentes
-                    enseignant_id = session['metadata'].get('enseignant_id')
-                    if enseignant_id and enseignant_id != '' and enseignant_id != 'None' and enseignant_id != 'null':
-                        # Vérifier que l'enseignant existe (dans la table User maintenant)
-                        teacher = UserModel.query.filter_by(id=enseignant_id, role="enseignant").first()
-                        if teacher and hasattr(eleve, 'enseignant_referent_id'):
-                            eleve.enseignant_referent_id = teacher.id
-                    
-                    # Utiliser les méthodes existantes si disponibles
-                    if hasattr(eleve, 'marquer_comme_paye'):
-                        eleve.marquer_comme_paye(
-                            stripe_session_id=session['id'],
-                            stripe_payment_intent=session.get('payment_intent')
-                        )
-                    
-                    # Renouveler l'abonnement si la méthode existe
-                    if hasattr(eleve, 'renouveler_abonnement'):
-                        eleve.renouveler_abonnement(duration_days)
-                    else:
-                        # Fallback: gérer l'abonnement manuellement
-                        from datetime import datetime, timedelta
-                        if hasattr(eleve, 'date_fin_abonnement'):
-                            if eleve.date_fin_abonnement and datetime.utcnow() < eleve.date_fin_abonnement:
-                                # Ajouter à la date de fin existante
-                                eleve.date_fin_abonnement = eleve.date_fin_abonnement + timedelta(days=duration_days)
-                            else:
-                                # Nouvel abonnement
-                                eleve.date_fin_abonnement = datetime.utcnow() + timedelta(days=duration_days)
-                    
-                    # Stocker le type de plan dans les préférences
-                    if not hasattr(eleve, 'preferences_notifications'):
-                        eleve.preferences_notifications = {}
-                    else:
-                        eleve.preferences_notifications = eleve.preferences_notifications or {}
-                    
-                    eleve.preferences_notifications['plan_type'] = plan_type
-                    
-                    # Stocker les détails du paiement
-                    eleve.preferences_notifications['paid_plan_details'] = {
-                        'plan_type': plan_type,
-                        'payment_date': datetime.utcnow().isoformat(),
-                        'stripe_session_id': session['id'],
-                        'stripe_customer_id': session.get('customer'),
-                        'subscription_id': session.get('subscription'),
-                        'enseignant_id': enseignant_id if enseignant_id else None,
-                        'webhook_processed': True,
-                        'webhook_timestamp': datetime.utcnow().isoformat()
-                    }
-                    
-                    # Stocker le customer ID Stripe si l'attribut existe
-                    if hasattr(eleve, 'stripe_customer_id'):
-                        eleve.stripe_customer_id = session.get('customer')
-                    
-                    # Récupérer le montant payé
-                    try:
-                        if session.get('invoice'):
-                            invoice = stripe.Invoice.retrieve(session.invoice)
-                            amount_paid = invoice.amount_paid / 100
-                        else:
-                            amount_paid = session.amount_total / 100 if session.amount_total else 0
-                        
-                        eleve.preferences_notifications['paid_amount'] = amount_paid
-                        print(f"💰 Montant payé récupéré: {amount_paid}$ CAD")
-                    except Exception as invoice_error:
-                        print(f"⚠️ Impossible de récupérer le montant payé: {invoice_error}")
-                        # Utiliser les prix standards comme référence
-                        standard_prices = {
-                            'monthly': 19.99,
-                            'quarterly': 49.99,
-                            'annual': 149.99
-                        }
-                        amount_paid = standard_prices.get(plan_type, 49.99)
-                        eleve.preferences_notifications['paid_amount'] = amount_paid
-                    
-                    # Marquer l'essai comme terminé si applicable
-                    if hasattr(eleve, 'statut_essai') and hasattr(eleve, 'statut_essai') == 'actif':
-                        eleve.statut_essai = 'payant'
-                        if hasattr(eleve, 'statut_paiement'):
-                            eleve.statut_paiement = 'paye'
-                    
-                    db.session.commit()
-                    print(f"✅ Webhook: Élève {eleve_id} ({eleve.email}) abonné avec succès au plan {plan_type} ({amount_paid}$ CAD)")
-                    
-                    # Log détaillé
-                    print(f"📊 Plan: {plan_type}")
-                    print(f"💰 Montant: {amount_paid}$ CAD")
-                    print(f"📅 Durée: {duration_days} jours")
-                    print(f"📅 Date fin: {eleve.date_fin_abonnement if hasattr(eleve, 'date_fin_abonnement') else 'Non défini'}")
-                    print(f"👤 Customer ID: {session.get('customer')}")
-                    print(f"👨‍🏫 Enseignant ID: {enseignant_id if enseignant_id else 'Aucun'}")
-                    print(f"📝 Préférences: {eleve.preferences_notifications.get('plan_type', 'Non défini')}")
-                    
-                else:
-                    print(f"⚠️ Webhook: Élève non trouvé ou n'est pas un élève (ID: {eleve_id})")
-        
-        except Exception as e:
-            print(f"❌ Erreur webhook checkout.session.completed: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    # Gérer l'événement invoice.payment_succeeded
-    elif event['type'] == 'invoice.payment_succeeded':
-        invoice = event['data']['object']
-        
-        try:
-            UserModel = get_user_model()
-            
-            customer_id = invoice.get('customer')
-            subscription_id = invoice.get('subscription')
-            
-            if customer_id:
-                # Trouver l'élève par customer_id
-                eleve = UserModel.query.filter_by(
-                    stripe_customer_id=customer_id,
-                    role="eleve"
-                ).first()
-                
-                if eleve and subscription_id:
-                    # Vérifier si l'abonnement est encore actif
-                    subscription = stripe.Subscription.retrieve(subscription_id)
-                    
-                    if subscription.status in ['active', 'trialing']:
-                        # Calculer la nouvelle date de fin
-                        current_period_end = subscription.current_period_end
-                        new_end_date = datetime.fromtimestamp(current_period_end)
-                        
-                        # Mettre à jour la date de fin d'abonnement
-                        if hasattr(eleve, 'date_fin_abonnement'):
-                            eleve.date_fin_abonnement = new_end_date
-                        
-                        if hasattr(eleve, 'date_dernier_paiement'):
-                            eleve.date_dernier_paiement = datetime.utcnow()
-                        
-                        # Mettre à jour les préférences
-                        if not hasattr(eleve, 'preferences_notifications'):
-                            eleve.preferences_notifications = {}
-                        
-                        # Ajouter un log de renouvellement
-                        renewals = eleve.preferences_notifications.get('subscription_renewals', [])
-                        renewals.append({
-                            'timestamp': datetime.utcnow().isoformat(),
-                            'invoice_id': invoice.get('id'),
-                            'amount': invoice.get('amount_paid', 0) / 100,
-                            'subscription_id': subscription_id,
-                            'period_end': new_end_date.isoformat()
-                        })
-                        eleve.preferences_notifications['subscription_renewals'] = renewals
-                        
-                        db.session.commit()
-                        print(f"✅ Webhook: Renouvellement abonnement pour {eleve.email} jusqu'au {new_end_date}")
-        
-        except Exception as e:
-            print(f"❌ Erreur webhook invoice.payment_succeeded: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    # Gérer l'événement customer.subscription.deleted (abonnement annulé)
-    elif event['type'] == 'customer.subscription.deleted':
-        subscription = event['data']['object']
-        
-        try:
-            UserModel = get_user_model()
-            
-            customer_id = subscription.get('customer')
-            
-            if customer_id:
-                # Trouver l'élève par customer_id
-                eleve = UserModel.query.filter_by(
-                    stripe_customer_id=customer_id,
-                    role="eleve"
-                ).first()
-                
-                if eleve:
-                    # Marquer comme non payé (mais garder la date de fin)
-                    if hasattr(eleve, 'statut_paiement'):
-                        eleve.statut_paiement = 'expire'
-                    
-                    # Mettre à jour les préférences
-                    if not hasattr(eleve, 'preferences_notifications'):
-                        eleve.preferences_notifications = {}
-                    
-                    eleve.preferences_notifications['subscription_cancelled'] = {
-                        'timestamp': datetime.utcnow().isoformat(),
-                        'subscription_id': subscription.get('id'),
-                        'cancellation_date': subscription.get('canceled_at'),
-                        'cancellation_reason': subscription.get('cancellation_details', {}).get('reason', 'unknown')
-                    }
-                    
-                    db.session.commit()
-                    print(f"⚠️ Webhook: Abonnement annulé pour {eleve.email}")
-        
-        except Exception as e:
-            print(f"❌ Erreur webhook customer.subscription.deleted: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    # Gérer l'événement checkout.session.expired (session expirée)
-    elif event['type'] == 'checkout.session.expired':
-        session = event['data']['object']
-        print(f"ℹ️ Webhook: Session checkout expirée: {session.get('id')}")
-        # Pas d'action nécessaire, juste pour le logging
-    
-    return jsonify({'status': 'success', 'processed': True})
 
+    except ValueError as exc:
+        return jsonify(
+            {"error": str(exc)}
+        ), 400
+
+    except stripe.error.SignatureVerificationError as exc:
+        return jsonify(
+            {"error": str(exc)}
+        ), 400
+
+    event_type = event.get("type")
+    obj = event["data"]["object"]
+
+    print(
+        f"🔔 Stripe webhook: {event_type}"
+    )
+
+    try:
+        # --------------------------------------------------------
+        # 1. CHECKOUT TERMINÉ
+        # --------------------------------------------------------
+        if event_type == "checkout.session.completed":
+            checkout_session = obj
+            metadata = _metadata_stripe(
+                checkout_session
+            )
+
+            eleve_id = metadata.get(
+                "eleve_id"
+            )
+
+            plan_type = metadata.get(
+                "plan_type",
+                "quarterly"
+            )
+
+            customer_id = _stripe_obj_get(
+                checkout_session,
+                "customer"
+            )
+
+            subscription_id = _stripe_obj_get(
+                checkout_session,
+                "subscription"
+            )
+
+            eleve = _trouver_eleve_stripe(
+                eleve_id=eleve_id,
+                customer_id=customer_id,
+                email=metadata.get(
+                    "student_email"
+                )
+            )
+
+            if not eleve:
+                print(
+                    "⚠️ Aucun élève associé au Checkout",
+                    _stripe_obj_get(
+                        checkout_session,
+                        "id"
+                    )
+                )
+                return jsonify(
+                    {
+                        "status": "success",
+                        "warning": "student_not_found"
+                    }
+                )
+
+            if not subscription_id:
+                print(
+                    "⚠️ Checkout sans subscription."
+                )
+                return jsonify(
+                    {
+                        "status": "success",
+                        "warning": "subscription_missing"
+                    }
+                )
+
+            subscription = (
+                stripe.Subscription.retrieve(
+                    subscription_id
+                )
+            )
+
+            invoice = None
+            amount_paid = None
+
+            invoice_id = _stripe_obj_get(
+                checkout_session,
+                "invoice"
+            )
+
+            if invoice_id:
+                try:
+                    invoice = (
+                        stripe.Invoice.retrieve(
+                            invoice_id
+                        )
+                    )
+                    amount_paid = (
+                        _stripe_obj_get(
+                            invoice,
+                            "amount_paid",
+                            0
+                        )
+                        / 100
+                    )
+                except Exception as exc:
+                    print(
+                        "⚠️ Invoice checkout:",
+                        exc
+                    )
+
+            _activer_depuis_subscription(
+                eleve,
+                subscription,
+                invoice=invoice,
+                checkout_session=(
+                    checkout_session
+                ),
+                plan_type=plan_type,
+                amount_paid=amount_paid
+            )
+
+            if hasattr(
+                eleve,
+                "date_fin_essai"
+            ):
+                eleve.date_fin_essai = (
+                    datetime.utcnow()
+                )
+
+            db.session.commit()
+
+            print(
+                f"✅ Checkout activé: {eleve.email} "
+                f"jusqu'au {eleve.date_fin_abonnement}"
+            )
+
+        # --------------------------------------------------------
+        # 2. FACTURE PAYÉE / RENOUVELLEMENT
+        # --------------------------------------------------------
+        elif event_type in {
+            "invoice.payment_succeeded",
+            "invoice.paid",
+        }:
+            invoice = obj
+
+            customer_id = _stripe_obj_get(
+                invoice,
+                "customer"
+            )
+
+            subscription_id = _stripe_obj_get(
+                invoice,
+                "subscription"
+            )
+
+            eleve = _trouver_eleve_stripe(
+                customer_id=customer_id
+            )
+
+            if eleve and subscription_id:
+                subscription = (
+                    stripe.Subscription.retrieve(
+                        subscription_id
+                    )
+                )
+
+                metadata = _metadata_stripe(
+                    subscription
+                )
+
+                plan_type = metadata.get(
+                    "plan_type"
+                )
+
+                amount_paid = (
+                    _stripe_obj_get(
+                        invoice,
+                        "amount_paid",
+                        0
+                    )
+                    / 100
+                )
+
+                _activer_depuis_subscription(
+                    eleve,
+                    subscription,
+                    invoice=invoice,
+                    plan_type=plan_type,
+                    amount_paid=amount_paid
+                )
+
+                # Très important :
+                # un renouvellement réussi réactive aussi
+                # un compte qui avait été mis manuellement inactif.
+                eleve.statut = "actif"
+                eleve.statut_paiement = "paye"
+                eleve.statut_essai = "payant"
+                eleve.date_dernier_paiement = (
+                    datetime.utcnow()
+                )
+
+                db.session.commit()
+
+                print(
+                    f"✅ Renouvellement: {eleve.email} "
+                    f"jusqu'au {eleve.date_fin_abonnement}"
+                )
+
+        # --------------------------------------------------------
+        # 3. PAIEMENT ÉCHOUÉ
+        # --------------------------------------------------------
+        elif event_type == "invoice.payment_failed":
+            invoice = obj
+
+            customer_id = _stripe_obj_get(
+                invoice,
+                "customer"
+            )
+
+            eleve = _trouver_eleve_stripe(
+                customer_id=customer_id
+            )
+
+            if eleve:
+                # L'accès déjà payé reste valable jusqu'à
+                # date_fin_abonnement, mais on marque l'incident.
+                eleve.statut_paiement = (
+                    "paiement_echoue"
+                )
+
+                _mettre_a_jour_preferences_paiement(
+                    eleve,
+                    customer_id=customer_id,
+                    extra={
+                        "last_payment_failed": {
+                            "timestamp": (
+                                datetime.utcnow()
+                                .isoformat()
+                            ),
+                            "invoice_id": (
+                                _stripe_obj_get(
+                                    invoice,
+                                    "id"
+                                )
+                            )
+                        }
+                    }
+                )
+
+                db.session.commit()
+
+                print(
+                    f"⚠️ Paiement échoué: {eleve.email}. "
+                    "Accès conservé uniquement jusqu'à "
+                    f"{eleve.date_fin_abonnement}."
+                )
+
+        # --------------------------------------------------------
+        # 4. ABONNEMENT MODIFIÉ
+        # --------------------------------------------------------
+        elif event_type == "customer.subscription.updated":
+            subscription = obj
+
+            customer_id = _stripe_obj_get(
+                subscription,
+                "customer"
+            )
+
+            eleve = _trouver_eleve_stripe(
+                customer_id=customer_id
+            )
+
+            if eleve:
+                _activer_depuis_subscription(
+                    eleve,
+                    subscription,
+                    plan_type=(
+                        _metadata_stripe(
+                            subscription
+                        ).get("plan_type")
+                    )
+                )
+
+                db.session.commit()
+
+                print(
+                    f"🔄 Subscription synchronisée: "
+                    f"{eleve.email} "
+                    f"({eleve.statut_paiement})"
+                )
+
+                if hasattr(
+                    eleve,
+                    "renouvellement_automatique_actif"
+                ):
+                    renouvellement_auto = (
+                        eleve.renouvellement_automatique_actif()
+                    )
+
+                    print(
+                        "   🔁 Renouvellement automatique:",
+                        (
+                            "OUI"
+                            if renouvellement_auto is True
+                            else "NON"
+                            if renouvellement_auto is False
+                            else "INCONNU"
+                        )
+                    )
+
+        # --------------------------------------------------------
+        # 5. ABONNEMENT TERMINÉ
+        # --------------------------------------------------------
+        elif event_type == "customer.subscription.deleted":
+            subscription = obj
+
+            customer_id = _stripe_obj_get(
+                subscription,
+                "customer"
+            )
+
+            eleve = _trouver_eleve_stripe(
+                customer_id=customer_id
+            )
+
+            if eleve:
+                # Au moment de subscription.deleted,
+                # l'accès récurrent est réellement terminé.
+                eleve.statut_paiement = "expire"
+                eleve.statut = "inactif"
+
+                # Conserver l'historique, sans prolonger la date.
+                _mettre_a_jour_preferences_paiement(
+                    eleve,
+                    customer_id=customer_id,
+                    subscription_id=(
+                        _stripe_obj_get(
+                            subscription,
+                            "id"
+                        )
+                    ),
+                    extra={
+                        "subscription_cancelled": {
+                            "timestamp": (
+                                datetime.utcnow()
+                                .isoformat()
+                            ),
+                            "canceled_at": (
+                                _stripe_obj_get(
+                                    subscription,
+                                    "canceled_at"
+                                )
+                            )
+                        }
+                    }
+                )
+
+                if hasattr(
+                    eleve,
+                    "enregistrer_etat_abonnement_stripe"
+                ):
+                    eleve.enregistrer_etat_abonnement_stripe(
+                        subscription_id=_stripe_obj_get(
+                            subscription,
+                            "id"
+                        ),
+                        status="canceled",
+                        cancel_at_period_end=True,
+                        current_period_end=(
+                            _extraire_date_fin_abonnement_stripe(
+                                subscription=subscription
+                            )
+                        ),
+                        plan_type=(
+                            _metadata_stripe(
+                                subscription
+                            ).get("plan_type")
+                        ),
+                        customer_id=customer_id
+                    )
+
+                db.session.commit()
+
+                print(
+                    f"⛔ Abonnement terminé: {eleve.email}"
+                )
+
+        elif event_type == "checkout.session.expired":
+            print(
+                "ℹ️ Checkout expiré:",
+                _stripe_obj_get(
+                    obj,
+                    "id"
+                )
+            )
+
+    except Exception as exc:
+        db.session.rollback()
+
+        print(
+            f"❌ Erreur webhook {event_type}:",
+            exc
+        )
+
+        import traceback
+        traceback.print_exc()
+
+        # IMPORTANT :
+        # 500 permet à Stripe de réessayer le webhook.
+        return jsonify(
+            {
+                "status": "error",
+                "event": event_type
+            }
+        ), 500
+
+    return jsonify(
+        {
+            "status": "success",
+            "processed": True,
+            "event": event_type
+        }
+    )
+
+@app.route(
+    "/admin/stripe/resynchroniser-abonnements",
+    methods=["POST"]
+)
+@admin_required
+def admin_resynchroniser_abonnements_stripe():
+    """
+    Répare les élèves auparavant activés manuellement
+    à partir de la réalité Stripe.
+
+    Paramètre facultatif :
+        ?dry_run=1  -> analyse sans modifier
+        ?dry_run=0  -> applique réellement
+    """
+
+    dry_run = (
+        request.args.get(
+            "dry_run",
+            "1"
+        )
+        != "0"
+    )
+
+    resultats = {
+        "dry_run": dry_run,
+        "synchronises": [],
+        "sans_abonnement_actif": [],
+        "sans_customer_stripe": [],
+        "erreurs": []
+    }
+
+    eleves = User.query.filter(
+        User.role.in_(
+            ["eleve", "élève"]
+        )
+    ).all()
+
+    for eleve in eleves:
+        customer_id = getattr(
+            eleve,
+            "stripe_customer_id",
+            None
+        )
+
+        if not customer_id:
+            resultats[
+                "sans_customer_stripe"
+            ].append(
+                {
+                    "id": eleve.id,
+                    "email": eleve.email,
+                    "statut": eleve.statut,
+                    "statut_paiement": (
+                        eleve.statut_paiement
+                    )
+                }
+            )
+            continue
+
+        try:
+            subscriptions = (
+                stripe.Subscription.list(
+                    customer=customer_id,
+                    status="all",
+                    limit=20
+                )
+            )
+
+            data = _stripe_obj_get(
+                subscriptions,
+                "data",
+                []
+            ) or []
+
+            # Priorité active > trialing > past_due.
+            priorite = {
+                "active": 0,
+                "trialing": 1,
+                "past_due": 2,
+            }
+
+            candidats = [
+                sub
+                for sub in data
+                if str(
+                    _stripe_obj_get(
+                        sub,
+                        "status",
+                        ""
+                    )
+                ).lower()
+                in priorite
+            ]
+
+            candidats.sort(
+                key=lambda sub: priorite.get(
+                    str(
+                        _stripe_obj_get(
+                            sub,
+                            "status",
+                            ""
+                        )
+                    ).lower(),
+                    99
+                )
+            )
+
+            if not candidats:
+                resultats[
+                    "sans_abonnement_actif"
+                ].append(
+                    {
+                        "id": eleve.id,
+                        "email": eleve.email,
+                        "customer_id": customer_id,
+                        "statut_local": (
+                            eleve.statut
+                        ),
+                        "statut_paiement_local": (
+                            eleve.statut_paiement
+                        )
+                    }
+                )
+
+                # En mode APPLY seulement, si la période
+                # locale est déjà dépassée, couper l'accès.
+                if (
+                    not dry_run
+                    and (
+                        not eleve.date_fin_abonnement
+                        or datetime.utcnow()
+                        >= eleve.date_fin_abonnement
+                    )
+                ):
+                    eleve.statut = "inactif"
+                    eleve.statut_paiement = (
+                        "expire"
+                    )
+
+                continue
+
+            subscription = candidats[0]
+
+            avant = {
+                "statut": eleve.statut,
+                "statut_paiement": (
+                    eleve.statut_paiement
+                ),
+                "date_fin_abonnement": (
+                    eleve.date_fin_abonnement
+                    .isoformat()
+                    if eleve.date_fin_abonnement
+                    else None
+                )
+            }
+
+            if not dry_run:
+                _activer_depuis_subscription(
+                    eleve,
+                    subscription,
+                    plan_type=(
+                        _metadata_stripe(
+                            subscription
+                        ).get("plan_type")
+                    )
+                )
+
+            date_fin_stripe = (
+                _extraire_date_fin_abonnement_stripe(
+                    subscription=subscription
+                )
+            )
+
+            resultats[
+                "synchronises"
+            ].append(
+                {
+                    "id": eleve.id,
+                    "email": eleve.email,
+                    "customer_id": customer_id,
+                    "subscription_id": (
+                        _stripe_obj_get(
+                            subscription,
+                            "id"
+                        )
+                    ),
+                    "subscription_status": (
+                        _stripe_obj_get(
+                            subscription,
+                            "status"
+                        )
+                    ),
+                    "date_fin_stripe": (
+                        date_fin_stripe.isoformat()
+                        if date_fin_stripe
+                        else None
+                    ),
+                    "avant": avant
+                }
+            )
+
+        except Exception as exc:
+            resultats[
+                "erreurs"
+            ].append(
+                {
+                    "id": eleve.id,
+                    "email": eleve.email,
+                    "customer_id": customer_id,
+                    "erreur": str(exc)
+                }
+            )
+
+    if not dry_run:
+        db.session.commit()
+
+    return jsonify(resultats)
 
 @app.route("/paiement-cancel")
 def paiement_cancel():
@@ -26346,101 +30141,169 @@ def supprimer_eleve(eleve_id):
 
 @app.route("/login-eleve", methods=["GET", "POST"])
 def login_eleve():
-    """Connexion des élèves - VERSION CORRIGÉE"""
+    """Connexion des élèves avec contrôle automatique de l'accès."""
     lang = session.get("lang", "fr")
-    
-    # Si déjà connecté en tant qu'élève
-    if "user_id" in session and session.get("role") == "eleve":
-        return redirect(url_for("dashboard_eleve"))
-    
+
+    # Élève déjà connecté
+    if (
+        "user_id" in session
+        and session.get("role") in {"eleve", "élève"}
+    ):
+        eleve_connecte = User.query.get(session["user_id"])
+
+        if eleve_connecte:
+            session["eleve_id"] = eleve_connecte.id
+
+            if eleve_connecte.a_acces_plateforme():
+                return redirect(url_for("dashboard_eleve"))
+
+            # L'élève reste connecté afin de pouvoir payer
+            return redirect(url_for("upgrade_options"))
+
+        session.clear()
+
     if request.method == "POST":
         email = request.form.get("email")
         mot_de_passe = request.form.get("mot_de_passe")
-        print(f"DEBUG login-eleve: Tentative de connexion avec email={email}")
-        
+
+        print(
+            f"DEBUG login-eleve: "
+            f"Tentative de connexion avec email={email}"
+        )
+
         if not email or not mot_de_passe:
             flash(
-                "Email et mot de passe requis" if lang == "fr" else "Email and password required",
+                "Email et mot de passe requis"
+                if lang == "fr"
+                else "Email and password required",
                 "error"
             )
-            return render_template("login_eleve.html", lang=lang)
+            return render_template(
+                "login_eleve.html",
+                lang=lang
+            )
 
-        # ✅ CORRECTION: Chercher avec les DEUX variantes de rôle
         from sqlalchemy import or_
+
         eleve = User.query.filter(
             User.email == email,
-            or_(User.role == "eleve", User.role == "élève")  # ✅ Recherche les deux
+            or_(
+                User.role == "eleve",
+                User.role == "élève"
+            )
         ).first()
-        
+
         if not eleve:
-            print(f"DEBUG login-eleve: Aucun élève trouvé avec email={email}")
+            print(
+                f"DEBUG login-eleve: "
+                f"Aucun élève trouvé avec email={email}"
+            )
+
             flash(
-                "Email ou mot de passe incorrect" if lang == "fr" else "Incorrect email or password",
+                "Email ou mot de passe incorrect"
+                if lang == "fr"
+                else "Incorrect email or password",
                 "error"
             )
-            return render_template("login_eleve.html", lang=lang)
 
-        # Vérifier mot de passe
+            return render_template(
+                "login_eleve.html",
+                lang=lang
+            )
+
         if not eleve.verifier_mot_de_passe(mot_de_passe):
-            print(f"DEBUG login-eleve: Mot de passe incorrect pour {email}")
+            print(
+                f"DEBUG login-eleve: "
+                f"Mot de passe incorrect pour {email}"
+            )
+
             flash(
-                "Email ou mot de passe incorrect" if lang == "fr" else "Incorrect email or password",
+                "Email ou mot de passe incorrect"
+                if lang == "fr"
+                else "Incorrect email or password",
                 "error"
             )
-            return render_template("login_eleve.html", lang=lang)
 
-        # ✅ CORRECTION PRINCIPALE : CONNECTER L'UTILISATEUR MÊME SI L'ESSAI A EXPIRÉ
-        # Vérifier si l'élève a accès à la plateforme
-        if not eleve.a_acces_plateforme():
-            # ✅ IMPORTANT : Connecter l'utilisateur d'abord !
-            session["user_id"] = eleve.id
-            session["role"] = eleve.role
-            session["nom_complet"] = eleve.nom_complet
-            session["lang"] = eleve.langue if eleve.langue else "fr"
-            
-            # Mettre à jour les stats de connexion
-            eleve.derniere_connexion = datetime.utcnow()
-            eleve.nombre_connexions += 1
-            db.session.commit()
-            
-            print(f"⚠️ Essai gratuit expiré pour {eleve.email}")
-            
-            # Vérifier spécifiquement si l'essai a expiré
-            if hasattr(eleve, 'est_en_essai_gratuit') and hasattr(eleve, 'essai_est_expire'):
-                if eleve.essai_est_expire():
-                    flash(
-                        "Votre essai gratuit a expiré. Veuillez souscrire à un abonnement." 
-                        if lang == "fr" else "Your free trial has expired. Please subscribe.",
-                        "warning"
-                    )
-                else:
-                    flash(
-                        "Votre compte n'est pas actif. Contactez l'administrateur." 
-                        if lang == "fr" else "Your account is not active. Contact administrator.",
-                        "error"
-                    )
-            
-            # ✅ REDIRIGER VERS upgrade_options POUR CHOISIR UN ABONNEMENT
-            return redirect(url_for("upgrade_options"))
-        
-        # ✅ Connexion réussie (essai actif ou déjà payé)
+            return render_template(
+                "login_eleve.html",
+                lang=lang
+            )
+
+        # Créer la session AVANT le contrôle d'accès afin que
+        # l'élève expiré puisse ensuite accéder au paiement.
         session["user_id"] = eleve.id
+        session["eleve_id"] = eleve.id
         session["role"] = eleve.role
         session["nom_complet"] = eleve.nom_complet
-        session["lang"] = eleve.langue if eleve.langue else "fr"
-        
-        # Mettre à jour les stats de connexion
+        session["lang"] = (
+            eleve.langue
+            if eleve.langue
+            else "fr"
+        )
+
+        # Statistiques de connexion
         eleve.derniere_connexion = datetime.utcnow()
         eleve.nombre_connexions += 1
         db.session.commit()
-        
-        print(f"DEBUG login-eleve: Connexion réussie pour {eleve.nom_complet}")
-        flash("Connexion réussie !" if lang == "fr" else "Login successful!", "success")
 
-        return redirect(url_for("dashboard_eleve"))
+        # Contrôle centralisé de l'accès
+        if not eleve.a_acces_plateforme():
+            print(
+                f"⚠️ Accès expiré ou invalide "
+                f"pour {eleve.email}"
+            )
 
-    # GET -> afficher formulaire
-    return render_template("login_eleve.html", lang=lang)
+            if (
+                getattr(
+                    eleve,
+                    "statut_paiement",
+                    None
+                ) == "essai_gratuit"
+            ):
+                flash(
+                    "Votre période d'essai gratuit de 72 heures "
+                    "est terminée. Veuillez choisir un abonnement."
+                    if lang == "fr"
+                    else
+                    "Your 72-hour free trial has expired. "
+                    "Please choose a subscription.",
+                    "warning"
+                )
+            else:
+                flash(
+                    "Votre abonnement n'est plus actif. "
+                    "Veuillez renouveler votre abonnement."
+                    if lang == "fr"
+                    else
+                    "Your subscription is no longer active. "
+                    "Please renew your subscription.",
+                    "warning"
+                )
+
+            return redirect(
+                url_for("upgrade_options")
+            )
+
+        print(
+            f"DEBUG login-eleve: "
+            f"Connexion réussie pour {eleve.nom_complet}"
+        )
+
+        flash(
+            "Connexion réussie !"
+            if lang == "fr"
+            else "Login successful!",
+            "success"
+        )
+
+        return redirect(
+            url_for("dashboard_eleve")
+        )
+
+    return render_template(
+        "login_eleve.html",
+        lang=lang
+    )
 
     
 @app.route("/cleanup-bad-names")
@@ -26548,18 +30411,105 @@ def a_propos():
     return render_template('a_propos.html')
 
 @app.before_request
-def before_request():
-    """Vérifier l'accès avant chaque requête - VERSION FINALE"""
-    if 'eleve_id' in session and request.endpoint and any(route in request.endpoint for route in ['dashboard_eleve', 'contenus_eleve', 'exercice', 'enseignant_virtuel']):
-        from models import User
-        
-        eleve = User.query.get(session['eleve_id'])
-        if eleve and eleve.role == "élève":
-            # VÉRIFICATION ESSAI GRATUIT EXPIRÉ
-            if eleve.essai_est_expire() and eleve.statut_paiement != "paye":
-                session.clear()
-                flash("Votre période d'essai gratuit de 48h est terminée. Veuillez vous abonner pour continuer.", "error")
-                return redirect(url_for('login_eleve'))
+def verifier_acces_eleve_global():
+    """
+    Vérification globale de l'accès des élèves.
+
+    - Essai gratuit actif -> accès autorisé
+    - Abonnement payé encore valide -> accès autorisé
+    - Abonnement expiré -> accès refusé
+    - Essai expiré -> accès refusé
+    - Les pages de paiement restent accessibles
+    """
+
+    if not request.endpoint:
+        return None
+
+    # Routes qui doivent rester accessibles même si l'accès est expiré
+    endpoints_autorises = {
+        "static",
+        "login_eleve",
+        "connexion",
+        "logout",
+        "upgrade_options",
+        "paiement_success",
+        "creer_session_paiement",
+        "paiement_direct",
+        "paiement_cancel",
+        "stripe_webhook",
+        "changer_langue",
+        "a_propos",
+    }
+
+    if request.endpoint in endpoints_autorises:
+        return None
+
+    # Compatibilité avec les deux clés historiques de session
+    eleve_id = session.get("eleve_id") or session.get("user_id")
+
+    if not eleve_id:
+        return None
+
+    role_session = session.get("role")
+
+    # Ne pas appliquer ce contrôle aux admins, enseignants ou parents
+    if role_session not in {"eleve", "élève"}:
+        return None
+
+    eleve = User.query.get(eleve_id)
+
+    if not eleve:
+        session.clear()
+
+        flash(
+            "Votre session n'est plus valide. Veuillez vous reconnecter.",
+            "error"
+        )
+
+        return redirect(url_for("login_eleve"))
+
+    try:
+        acces_autorise = eleve.a_acces_plateforme()
+    except Exception as e:
+        print(
+            f"❌ Erreur vérification accès élève "
+            f"{eleve.id}: {e}"
+        )
+        acces_autorise = False
+
+    if acces_autorise:
+        return None
+
+    # On garde la session afin que l'élève puisse payer
+    session["user_id"] = eleve.id
+    session["eleve_id"] = eleve.id
+    session["role"] = eleve.role
+
+    # Pour les appels API, éviter une redirection HTML
+    if request.path.startswith("/api/"):
+        return jsonify({
+            "success": False,
+            "access_expired": True,
+            "message": (
+                "Votre accès à TutoratAI a expiré. "
+                "Veuillez renouveler votre abonnement."
+            )
+        }), 403
+
+    if getattr(eleve, "statut_paiement", None) == "essai_gratuit":
+        flash(
+            "Votre période d'essai gratuit de 72 heures est terminée. "
+            "Veuillez choisir un abonnement pour continuer.",
+            "warning"
+        )
+    else:
+        flash(
+            "Votre abonnement TutoratAI n'est plus actif. "
+            "Veuillez renouveler votre abonnement pour continuer.",
+            "warning"
+        )
+
+    return redirect(url_for("upgrade_options"))
 
 
 @app.route("/admin/exercices")

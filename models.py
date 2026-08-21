@@ -184,12 +184,37 @@ class User(db.Model):
         return self.role == 'admin'
 
     def est_actif(self):
-        if self.role == 'admin':
+        """
+        Détermine automatiquement si l'utilisateur a le droit
+        d'accéder à la plateforme.
+
+        Règles :
+        - admin : toujours autorisé ;
+        - essai gratuit : autorisé seulement avant date_fin_essai ;
+        - abonnement payé : autorisé seulement avant date_fin_abonnement ;
+        - paiement échoué : accès conservé uniquement jusqu'à la fin
+          de la période déjà payée ;
+        - un simple statut="actif" ne suffit plus à donner un accès illimité.
+        """
+        maintenant = datetime.utcnow()
+
+        if self.role == "admin":
             return True
-        if self.statut_paiement == "paye":
+
+        if (
+            self.statut_paiement == "essai_gratuit"
+            and self.date_fin_essai
+            and maintenant < self.date_fin_essai
+        ):
             return True
-        if self.est_en_essai_gratuit():
+
+        if (
+            self.statut_paiement in {"paye", "paiement_echoue"}
+            and self.date_fin_abonnement
+            and maintenant < self.date_fin_abonnement
+        ):
             return True
+
         return False
 
     def est_en_attente_paiement(self):
@@ -199,7 +224,7 @@ class User(db.Model):
         return self.est_actif()
 
     # -------------------- Essai gratuit --------------------
-    def activer_essai_gratuit(self, duree_heures=48):
+    def activer_essai_gratuit(self, duree_heures=72):
         self.statut = "actif"
         self.statut_paiement = "essai_gratuit"
         self.statut_essai = "actif"
@@ -225,29 +250,322 @@ class User(db.Model):
         return self.date_fin_essai - datetime.utcnow()
 
     # -------------------- Paiement --------------------
-    def marquer_comme_paye(self, stripe_session_id=None, stripe_payment_intent=None):
+    def marquer_comme_paye(
+        self,
+        stripe_session_id=None,
+        stripe_payment_intent=None,
+        date_fin_abonnement=None
+    ):
+        """
+        Active automatiquement l'accès après confirmation Stripe.
+
+        IMPORTANT :
+        cette méthode ne donne plus arbitrairement 365 jours.
+        La vraie date de fin doit venir de Stripe lorsque disponible.
+        """
         self.statut = "actif"
         self.statut_paiement = "paye"
         self.statut_essai = "payant"
+
         if stripe_session_id:
             self.stripe_session_id = stripe_session_id
+
         if stripe_payment_intent:
             self.stripe_payment_intent = stripe_payment_intent
-        self.date_dernier_paiement = datetime.utcnow()
-        self.date_fin_abonnement = datetime.utcnow() + timedelta(days=365)
 
-    def renouveler_abonnement(self, duree_jours=365):
         self.date_dernier_paiement = datetime.utcnow()
-        self.date_fin_abonnement = datetime.utcnow() + timedelta(days=duree_jours)
+
+        if date_fin_abonnement is not None:
+            self.date_fin_abonnement = date_fin_abonnement
+
+    def renouveler_abonnement(
+        self,
+        duree_jours=None,
+        date_fin_abonnement=None
+    ):
+        """
+        Renouvelle ou réactive l'abonnement.
+
+        Priorité :
+        1. vraie date de fin fournie par Stripe ;
+        2. durée locale uniquement comme solution de secours.
+        """
+        maintenant = datetime.utcnow()
+
+        self.date_dernier_paiement = maintenant
         self.statut_paiement = "paye"
         self.statut = "actif"
         self.statut_essai = "payant"
 
+        if date_fin_abonnement is not None:
+            self.date_fin_abonnement = date_fin_abonnement
+            return
+
+        if duree_jours is None:
+            duree_jours = 30
+
+        self.date_fin_abonnement = (
+            maintenant + timedelta(days=int(duree_jours))
+        )
+
     def jours_restants_abonnement(self):
+        """
+        Retourne le nombre de jours restant avant expiration.
+        """
         if not self.date_fin_abonnement:
             return 0
+
         delta = self.date_fin_abonnement - datetime.utcnow()
-        return max(delta.days, 0)
+
+        if delta.total_seconds() <= 0:
+            return 0
+
+        return max(
+            1,
+            int(delta.total_seconds() // 86400) + 1
+        )
+
+
+    def abonnement_est_expire(self):
+        """
+        Indique si l'abonnement payant est arrivé à échéance.
+        """
+        if not self.date_fin_abonnement:
+            return True
+
+        return datetime.utcnow() >= self.date_fin_abonnement
+
+
+    # -------------------- État Stripe / renouvellement automatique --------------------
+    def _get_preferences_dict(self):
+        """
+        Retourne toujours un dictionnaire exploitable pour les préférences.
+
+        On utilise le champ JSON existant afin d'éviter d'ajouter
+        de nouvelles colonnes PostgreSQL uniquement pour l'état Stripe.
+        """
+        if isinstance(self.preferences_notifications, dict):
+            return dict(self.preferences_notifications)
+
+        return {}
+
+    def enregistrer_etat_abonnement_stripe(
+        self,
+        subscription_id=None,
+        status=None,
+        cancel_at_period_end=None,
+        current_period_end=None,
+        plan_type=None,
+        customer_id=None
+    ):
+        """
+        Enregistre dans preferences_notifications l'état réel de
+        l'abonnement Stripe.
+
+        Cette méthode ne contacte pas Stripe elle-même : le webhook
+        lui transmet les informations reçues de Stripe.
+
+        Exemples :
+        - status="active", cancel_at_period_end=False
+          -> renouvellement automatique actif ;
+        - status="active", cancel_at_period_end=True
+          -> abonnement encore actif, mais annulation programmée
+             à la fin de la période ;
+        - status="canceled"
+          -> abonnement terminé.
+        """
+        preferences = self._get_preferences_dict()
+
+        stripe_info = preferences.get(
+            "stripe_subscription",
+            {}
+        )
+
+        if not isinstance(stripe_info, dict):
+            stripe_info = {}
+
+        if subscription_id:
+            stripe_info["subscription_id"] = str(
+                subscription_id
+            )
+
+        if customer_id:
+            stripe_info["customer_id"] = str(
+                customer_id
+            )
+
+        if status is not None:
+            stripe_info["status"] = str(
+                status
+            ).lower()
+
+        if cancel_at_period_end is not None:
+            stripe_info[
+                "cancel_at_period_end"
+            ] = bool(cancel_at_period_end)
+
+            stripe_info[
+                "automatic_renewal"
+            ] = not bool(
+                cancel_at_period_end
+            )
+
+        if plan_type:
+            stripe_info["plan_type"] = str(
+                plan_type
+            )
+            preferences["plan_type"] = str(
+                plan_type
+            )
+
+        if current_period_end is not None:
+            if isinstance(
+                current_period_end,
+                datetime
+            ):
+                date_fin = current_period_end
+                stripe_info[
+                    "current_period_end"
+                ] = date_fin.isoformat()
+
+            else:
+                stripe_info[
+                    "current_period_end"
+                ] = str(
+                    current_period_end
+                )
+
+                date_fin = None
+
+                try:
+                    date_fin = datetime.fromisoformat(
+                        str(current_period_end)
+                    )
+                except Exception:
+                    pass
+
+            # Quand une vraie date datetime est disponible,
+            # elle devient aussi la date locale de fin d'accès.
+            if date_fin is not None:
+                self.date_fin_abonnement = date_fin
+
+        stripe_info[
+            "last_sync"
+        ] = datetime.utcnow().isoformat()
+
+        preferences[
+            "stripe_subscription"
+        ] = stripe_info
+
+        self.preferences_notifications = preferences
+
+    def get_etat_abonnement_stripe(self):
+        """
+        Retourne les informations Stripe mémorisées localement.
+        """
+        preferences = self._get_preferences_dict()
+
+        stripe_info = preferences.get(
+            "stripe_subscription",
+            {}
+        )
+
+        if not isinstance(stripe_info, dict):
+            return {}
+
+        return stripe_info
+
+    def renouvellement_automatique_actif(self):
+        """
+        Retourne :
+        - True  : renouvellement automatique connu comme actif ;
+        - False : annulation en fin de période programmée ;
+        - None  : information Stripe encore inconnue.
+        """
+        info = self.get_etat_abonnement_stripe()
+
+        if "automatic_renewal" in info:
+            return bool(
+                info.get("automatic_renewal")
+            )
+
+        if "cancel_at_period_end" in info:
+            return not bool(
+                info.get("cancel_at_period_end")
+            )
+
+        return None
+
+    def annulation_fin_periode_programmee(self):
+        """
+        True lorsque Stripe indique que l'abonnement reste actif
+        jusqu'à la fin de la période actuelle, mais ne sera pas renouvelé.
+        """
+        info = self.get_etat_abonnement_stripe()
+
+        return bool(
+            info.get(
+                "cancel_at_period_end",
+                False
+            )
+        )
+
+    def statut_abonnement_stripe(self):
+        """
+        Retourne le statut Stripe mémorisé :
+        active, trialing, past_due, canceled, unpaid, etc.
+        """
+        info = self.get_etat_abonnement_stripe()
+
+        return info.get("status")
+
+    def stripe_subscription_id(self):
+        """
+        Retourne l'identifiant d'abonnement Stripe mémorisé
+        dans le JSON utilisateur.
+        """
+        info = self.get_etat_abonnement_stripe()
+
+        return info.get("subscription_id")
+
+    def plan_abonnement(self):
+        """
+        Retourne le plan connu : monthly, quarterly ou annual.
+        """
+        info = self.get_etat_abonnement_stripe()
+
+        if info.get("plan_type"):
+            return info.get("plan_type")
+
+        preferences = self._get_preferences_dict()
+
+        return preferences.get("plan_type")
+
+    def resume_abonnement(self):
+        """
+        Fournit un résumé exploitable dans l'interface élève/admin.
+        """
+        renouvellement = (
+            self.renouvellement_automatique_actif()
+        )
+
+        return {
+            "statut_local": self.statut,
+            "statut_paiement": self.statut_paiement,
+            "statut_stripe": self.statut_abonnement_stripe(),
+            "plan_type": self.plan_abonnement(),
+            "date_fin_abonnement": self.date_fin_abonnement,
+            "jours_restants": self.jours_restants_abonnement(),
+            "renouvellement_automatique": renouvellement,
+            "annulation_fin_periode": (
+                self.annulation_fin_periode_programmee()
+            ),
+            "stripe_customer_id": self.stripe_customer_id,
+            "stripe_subscription_id": (
+                self.stripe_subscription_id()
+            ),
+            "acces_actif": self.a_acces_plateforme()
+        }
 
     # -------------------- Relations pédagogiques --------------------
     def get_enseignant_referent(self):
@@ -307,6 +625,7 @@ User.remediations = db.relationship(
     foreign_keys='RemediationSuggestion.user_id',
     cascade="all, delete-orphan"
 )
+
 
 # -------------------------------------------------------------------------------------------------
 # Les autres classes restent identiques : ExerciceRemediation, RemediationSuggestion, Parent, ParentEleve,
