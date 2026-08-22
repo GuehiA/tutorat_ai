@@ -12977,49 +12977,19 @@ def paiement_direct():
     """Route de paiement direct sécurisée pour les élèves."""
 
     # ============================================================
-    # DIAGNOSTIC TEMPORAIRE 1 : SESSION NAVIGATEUR
-    # ============================================================
-    #
-    # Test :
-    # http://127.0.0.1:5000/paiement-direct?debug=1
-    #
-    # Aucun appel Stripe dans ce mode.
-    # ============================================================
-
-    if request.args.get("debug") == "1":
-        return jsonify({
-            "diagnostic": True,
-            "endpoint": request.endpoint,
-            "path": request.path,
-            "user_id": session.get("user_id"),
-            "eleve_id": session.get("eleve_id"),
-            "role": session.get("role"),
-            "lang": session.get("lang"),
-            "session_keys": list(session.keys())
-        })
-
-    # ============================================================
     # AUTHENTIFICATION
     # ============================================================
 
     if "user_id" not in session:
-        return redirect(
-            url_for("login_eleve")
-        )
+        return redirect(url_for("login_eleve"))
 
-    if session.get("role") not in {
-        "eleve",
-        "élève"
-    }:
-        flash(
-            "Accès réservé aux élèves",
-            "error"
-        )
+    if session.get("role") not in {"eleve", "élève"}:
+        flash("Accès réservé aux élèves", "error")
         return redirect("/")
 
     try:
         # ========================================================
-        # RÉCUPÉRER L'ÉLÈVE
+        # RÉCUPÉRATION DE L'ÉLÈVE
         # ========================================================
 
         eleve = db.session.get(
@@ -13029,10 +12999,7 @@ def paiement_direct():
 
         if (
             not eleve
-            or eleve.role not in {
-                "eleve",
-                "élève"
-            }
+            or eleve.role not in {"eleve", "élève"}
         ):
             flash(
                 "Élève non trouvé",
@@ -13047,8 +13014,8 @@ def paiement_direct():
         # PLAN DEMANDÉ
         # ========================================================
         #
-        # Le prix est décidé uniquement côté serveur.
-        # amount= dans l'URL est complètement ignoré.
+        # Le prix est toujours décidé côté serveur.
+        # Aucun montant envoyé dans l'URL n'est utilisé.
         # ========================================================
 
         plan_type = request.args.get(
@@ -13067,10 +13034,11 @@ def paiement_direct():
                 f"⚠️ Plan invalide demandé : {plan_type}. "
                 f"Utilisation du forfait quarterly."
             )
+
             plan_type = "quarterly"
 
         # ========================================================
-        # CONFIGURATION DES FORFAITS
+        # CONFIGURATION OFFICIELLE DES FORFAITS
         # ========================================================
 
         plan_config = {
@@ -13078,12 +13046,12 @@ def paiement_direct():
                 "amount": 1999,
 
                 "description_fr":
-                    "Forfait mensuel - Tutorat IA avec enseignant virtuel "
-                    "- 19.99$/mois",
+                    "Forfait mensuel - Tutorat IA avec "
+                    "enseignant virtuel - 19.99$/mois",
 
                 "description_en":
-                    "Monthly plan - AI tutoring with virtual teacher "
-                    "- 19.99$/month",
+                    "Monthly plan - AI tutoring with "
+                    "virtual teacher - 19.99$/month",
 
                 "product_name_fr":
                     "Forfait Mensuel (19.99$/mois)",
@@ -13103,12 +13071,12 @@ def paiement_direct():
                 "amount": 4999,
 
                 "description_fr":
-                    "Forfait trimestriel - Tutorat IA avec enseignant virtuel "
-                    "- 49.99$/3 mois",
+                    "Forfait trimestriel - Tutorat IA avec "
+                    "enseignant virtuel - 49.99$/3 mois",
 
                 "description_en":
-                    "Quarterly plan - AI tutoring with virtual teacher "
-                    "- 49.99$/3 months",
+                    "Quarterly plan - AI tutoring with "
+                    "virtual teacher - 49.99$/3 months",
 
                 "product_name_fr":
                     "Forfait Trimestriel (49.99$/3 mois)",
@@ -13128,12 +13096,12 @@ def paiement_direct():
                 "amount": 14999,
 
                 "description_fr":
-                    "Forfait annuel - Tutorat IA avec enseignant virtuel "
-                    "- 149.99$/an",
+                    "Forfait annuel - Tutorat IA avec "
+                    "enseignant virtuel - 149.99$/an",
 
                 "description_en":
-                    "Annual plan - AI tutoring with virtual teacher "
-                    "- 149.99$/year",
+                    "Annual plan - AI tutoring with "
+                    "virtual teacher - 149.99$/year",
 
                 "product_name_fr":
                     "Forfait Annuel (149.99$/an)",
@@ -13157,7 +13125,8 @@ def paiement_direct():
         print(
             f"📋 Paiement direct sécurisé - "
             f"Plan: {plan_type}, "
-            f"Montant serveur: {plan_info['amount']} cents"
+            f"Montant serveur: "
+            f"{plan_info['amount']} cents"
         )
 
         # ========================================================
@@ -13197,7 +13166,142 @@ def paiement_direct():
                     f"⚠️ Customer Stripe local inutilisable "
                     f"{eleve.stripe_customer_id}: {e}"
                 )
+
                 customer = None
+
+
+
+        # ========================================================
+        # PROTECTION CONTRE LES DOUBLES ABONNEMENTS STRIPE
+        # ========================================================
+        #
+        # Si le Customer possède déjà un abonnement actif ou
+        # en période d'essai Stripe, on ne crée PAS un deuxième
+        # abonnement.
+        #
+        # On resynchronise également le compte local avec Stripe
+        # au cas où la base locale serait en retard.
+        # ========================================================
+
+        if customer:
+            try:
+                subscriptions = stripe.Subscription.list(
+                    customer=customer.id,
+                    status="all",
+                    limit=100
+                )
+
+                abonnement_existant = None
+
+                for subscription in subscriptions.data:
+                    status = _stripe_obj_get(
+                        subscription,
+                        "status",
+                        ""
+                    )
+
+                    if status in {
+                        "active",
+                        "trialing"
+                    }:
+                        abonnement_existant = subscription
+                        break
+
+                if abonnement_existant:
+                    subscription_id = _stripe_obj_get(
+                        abonnement_existant,
+                        "id"
+                    )
+
+                    subscription_status = _stripe_obj_get(
+                        abonnement_existant,
+                        "status"
+                    )
+
+                    metadata_subscription = _metadata_stripe(
+                        abonnement_existant
+                    )
+
+                    plan_existant = metadata_subscription.get(
+                        "plan_type"
+                    )
+
+                    print(
+                        "🛡️ Abonnement Stripe déjà actif détecté"
+                    )
+
+                    print(
+                        f"   Élève : {eleve.email}"
+                    )
+
+                    print(
+                        f"   Subscription : {subscription_id}"
+                    )
+
+                    print(
+                        f"   Statut : {subscription_status}"
+                    )
+
+                    print(
+                        f"   Plan : "
+                        f"{plan_existant or 'non précisé'}"
+                    )
+
+                    # --------------------------------------------
+                    # Resynchroniser le compte local avec Stripe
+                    # --------------------------------------------
+
+                    try:
+                        _activer_depuis_subscription(
+                            eleve,
+                            abonnement_existant,
+                            plan_type=(
+                                plan_existant
+                                or plan_type
+                            )
+                        )
+
+                        db.session.commit()
+
+                        print(
+                            "✅ Compte local resynchronisé "
+                            "avec l'abonnement Stripe existant"
+                        )
+
+                    except Exception as sync_error:
+                        db.session.rollback()
+
+                        print(
+                            "⚠️ Impossible de resynchroniser "
+                            f"le compte local : {sync_error}"
+                        )
+
+                    # --------------------------------------------
+                    # Ne jamais créer un second abonnement
+                    # --------------------------------------------
+
+                    flash(
+                        "Votre abonnement TutoratAI est déjà actif. "
+                        "Aucun nouvel abonnement n'a été créé.",
+                        "info"
+                    )
+
+                    return redirect(
+                        url_for("dashboard_eleve")
+                    )
+
+            except stripe.error.StripeError as e:
+                # Une erreur de consultation Stripe ne doit pas
+                # nécessairement empêcher un vrai nouvel abonné
+                # de poursuivre son paiement.
+                print(
+                    "⚠️ Impossible de vérifier les abonnements "
+                    f"Stripe existants : {e}"
+                )
+
+
+
+
 
         # ========================================================
         # ENSEIGNANT RÉFÉRENT
@@ -13232,7 +13336,7 @@ def paiement_direct():
                 }
 
         # ========================================================
-        # LANGUE DU PRODUIT
+        # NOM / DESCRIPTION DU PRODUIT
         # ========================================================
 
         product_name_key = (
@@ -13247,8 +13351,15 @@ def paiement_direct():
         # URLS DE RETOUR
         # ========================================================
         #
-        # On utilise l'hôte courant pour éviter les incohérences
-        # localhost / 127.0.0.1 en local.
+        # L'hôte courant est utilisé :
+        #
+        # local :
+        # http://127.0.0.1:5000
+        #
+        # production :
+        # domaine Render / TutoratAI
+        #
+        # Cela évite le mélange localhost / 127.0.0.1.
         # ========================================================
 
         base_url = request.host_url.rstrip("/")
@@ -13268,16 +13379,6 @@ def paiement_direct():
             + f"&plan_type={plan_type}"
         )
 
-        print(
-            f"🔗 Success URL: "
-            f"{success_url}"
-        )
-
-        print(
-            f"🔗 Cancel URL: "
-            f"{cancel_url}"
-        )
-
         # ========================================================
         # PARAMÈTRES STRIPE CHECKOUT
         # ========================================================
@@ -13289,7 +13390,8 @@ def paiement_direct():
 
             "line_items": [{
                 "price_data": {
-                    "currency": "cad",
+                    "currency":
+                        "cad",
 
                     "product_data": {
                         "name":
@@ -13317,10 +13419,7 @@ def paiement_direct():
                         }
                     },
 
-                    # ============================================
-                    # PRIX IMPOSÉ CÔTÉ SERVEUR
-                    # ============================================
-
+                    # Prix imposé côté serveur
                     "unit_amount":
                         plan_info[
                             "amount"
@@ -13343,15 +13442,9 @@ def paiement_direct():
                 "quantity": 1
             }],
 
-            # ================================================
-            # ABONNEMENT RÉCURRENT
-            # ================================================
-
-            "mode": "subscription",
-
-            # ================================================
-            # URLS
-            # ================================================
+            # Abonnement Stripe récurrent
+            "mode":
+                "subscription",
 
             "success_url":
                 success_url,
@@ -13359,9 +13452,9 @@ def paiement_direct():
             "cancel_url":
                 cancel_url,
 
-            # ================================================
+            # ====================================================
             # MÉTADONNÉES CHECKOUT
-            # ================================================
+            # ====================================================
 
             "metadata": {
                 "eleve_id":
@@ -13396,9 +13489,9 @@ def paiement_direct():
                     )
             },
 
-            # ================================================
-            # MÉTADONNÉES CONSERVÉES DANS L'ABONNEMENT
-            # ================================================
+            # ====================================================
+            # MÉTADONNÉES CONSERVÉES DANS LA SUBSCRIPTION
+            # ====================================================
 
             "subscription_data": {
                 "metadata": {
@@ -13424,7 +13517,7 @@ def paiement_direct():
         }
 
         # ========================================================
-        # CUSTOMER
+        # CUSTOMER STRIPE
         # ========================================================
 
         if customer:
@@ -13438,7 +13531,7 @@ def paiement_direct():
             ] = eleve.email
 
         # ========================================================
-        # CRÉATION DE LA SESSION STRIPE
+        # CRÉATION CHECKOUT STRIPE
         # ========================================================
 
         checkout_session = (
@@ -13448,7 +13541,7 @@ def paiement_direct():
         )
 
         # ========================================================
-        # SAUVEGARDE DE LA SESSION STRIPE
+        # SAUVEGARDE DE LA SESSION
         # ========================================================
 
         eleve.stripe_session_id = (
@@ -13463,83 +13556,13 @@ def paiement_direct():
         )
 
         print(
-            f"🔗 Redirection Stripe créée pour "
-            f"{eleve.email} - {plan_type}"
+            f"🔗 Redirection Stripe créée "
+            f"pour {eleve.email} "
+            f"- {plan_type}"
         )
 
         # ========================================================
-        # DIAGNOSTIC TEMPORAIRE 2 : STRIPE
-        # ========================================================
-        #
-        # Test :
-        #
-        # http://127.0.0.1:5000/
-        # paiement-direct?type=monthly&debug_stripe=1
-        #
-        # Stripe crée réellement la session,
-        # mais le navigateur ne sera PAS redirigé.
-        # ========================================================
-
-        if request.args.get(
-            "debug_stripe"
-        ) == "1":
-
-            essai_expire = None
-
-            try:
-                if hasattr(
-                    eleve,
-                    "essai_est_expire"
-                ):
-                    essai_expire = (
-                        eleve.essai_est_expire()
-                    )
-
-            except Exception as diagnostic_error:
-                print(
-                    "⚠️ Impossible de déterminer "
-                    f"essai_expire: {diagnostic_error}"
-                )
-
-            return jsonify({
-                "success":
-                    True,
-
-                "eleve_id":
-                    eleve.id,
-
-                "email":
-                    eleve.email,
-
-                "statut_paiement":
-                    eleve.statut_paiement,
-
-                "essai_expire":
-                    essai_expire,
-
-                "stripe_session_id":
-                    checkout_session.id,
-
-                "stripe_url":
-                    checkout_session.url,
-
-                "plan_type":
-                    plan_type,
-
-                "amount":
-                    plan_info[
-                        "amount"
-                    ],
-
-                "success_url":
-                    success_url,
-
-                "cancel_url":
-                    cancel_url
-            })
-
-        # ========================================================
-        # REDIRECTION NORMALE VERS STRIPE
+        # REDIRECTION VERS STRIPE
         # ========================================================
 
         return redirect(
@@ -13558,47 +13581,6 @@ def paiement_direct():
             f"{e}"
         )
 
-        # --------------------------------------------------------
-        # DIAGNOSTIC :
-        # NE PAS MASQUER L'ERREUR
-        # --------------------------------------------------------
-
-        if request.args.get(
-            "debug_stripe"
-        ) == "1":
-
-            return jsonify({
-                "success":
-                    False,
-
-                "type_erreur":
-                    "stripe",
-
-                "classe_erreur":
-                    type(e).__name__,
-
-                "message":
-                    str(e),
-
-                "endpoint":
-                    request.endpoint,
-
-                "user_id":
-                    session.get(
-                        "user_id"
-                    ),
-
-                "eleve_id":
-                    session.get(
-                        "eleve_id"
-                    ),
-
-                "role":
-                    session.get(
-                        "role"
-                    )
-            }), 500
-
         flash(
             "Une erreur est survenue lors de "
             "la préparation du paiement. "
@@ -13613,7 +13595,7 @@ def paiement_direct():
         )
 
     # ============================================================
-    # AUTRE ERREUR PYTHON
+    # AUTRE ERREUR
     # ============================================================
 
     except Exception as e:
@@ -13627,50 +13609,8 @@ def paiement_direct():
         import traceback
         traceback.print_exc()
 
-        # --------------------------------------------------------
-        # DIAGNOSTIC :
-        # NE PAS MASQUER L'ERREUR
-        # --------------------------------------------------------
-
-        if request.args.get(
-            "debug_stripe"
-        ) == "1":
-
-            return jsonify({
-                "success":
-                    False,
-
-                "type_erreur":
-                    "python",
-
-                "classe_erreur":
-                    type(e).__name__,
-
-                "message":
-                    str(e),
-
-                "endpoint":
-                    request.endpoint,
-
-                "user_id":
-                    session.get(
-                        "user_id"
-                    ),
-
-                "eleve_id":
-                    session.get(
-                        "eleve_id"
-                    ),
-
-                "role":
-                    session.get(
-                        "role"
-                    )
-            }), 500
-
         flash(
-            "Erreur lors de la création "
-            "du paiement.",
+            "Erreur lors de la création du paiement.",
             "error"
         )
 
@@ -13919,11 +13859,75 @@ def stripe_webhook():
                     datetime.utcnow()
                 )
 
+                # =================================================
+                # COMMISSION ENSEIGNANT
+                # =================================================
+                #
+                # Chaque facture Stripe payée peut générer
+                # une commission.
+                #
+                # invoice.id sert de référence unique afin
+                # d'empêcher les doublons entre :
+                #
+                # - invoice.payment_succeeded
+                # - invoice.paid
+                # - éventuelles nouvelles tentatives Stripe
+                #
+                # La fonction creer_commission_apres_paiement()
+                # est elle-même idempotente grâce à cette référence.
+                # =================================================
+
+                invoice_id = _stripe_obj_get(
+                    invoice,
+                    "id"
+                )
+
+                if (
+                    amount_paid
+                    and amount_paid > 0
+                ):
+                    try:
+                        commission = (
+                            creer_commission_apres_paiement(
+                                eleve_id=eleve.id,
+                                plan_type=(
+                                    plan_type
+                                    or "subscription"
+                                ),
+                                montant=amount_paid,
+                                stripe_reference=invoice_id,
+                                source="stripe_invoice"
+                            )
+                        )
+
+                        if commission:
+                            print(
+                                "💰 Commission Stripe "
+                                f"traitée pour "
+                                f"{eleve.email}"
+                            )
+
+                    except Exception as commission_error:
+                        # Une erreur de commission ne doit jamais
+                        # annuler l'activation d'un abonnement payé.
+                        print(
+                            "⚠️ Erreur commission après "
+                            f"paiement Stripe : "
+                            f"{commission_error}"
+                        )
+
+                else:
+                    print(
+                        "ℹ️ Aucune commission : "
+                        "montant Stripe nul ou absent."
+                    )
+
                 db.session.commit()
 
                 print(
                     f"✅ Renouvellement: {eleve.email} "
-                    f"jusqu'au {eleve.date_fin_abonnement}"
+                    f"jusqu'au "
+                    f"{eleve.date_fin_abonnement}"
                 )
 
         # --------------------------------------------------------
@@ -18489,12 +18493,6 @@ def api_rapport_versements():
         'rapport': rapport,
         'total_general': sum(v['total_verse'] for v in rapport.values())
     })
-
-
-# Fonction pour intégrer dans vos routes de paiement existantes
-def integrer_commission(eleve_id, plan_type, montant):
-    """À appeler après un paiement réussi d'élève"""
-    return creer_commission_apres_paiement(eleve_id, plan_type, montant)
 
 
 @app.route("/logout-parent")
