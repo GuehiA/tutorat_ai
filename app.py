@@ -13860,6 +13860,21 @@ def stripe_webhook():
                 )
 
                 # =================================================
+                # SÉCURITÉ : PERSISTER D'ABORD L'ABONNEMENT
+                # =================================================
+                #
+                # Le paiement Stripe est prioritaire.
+                # L'accès de l'élève doit être enregistré avant
+                # toute tentative de création de commission.
+                #
+                # Ainsi, si la commission rencontre une erreur
+                # et effectue un rollback, l'abonnement payé
+                # reste quand même correctement activé.
+                # =================================================
+
+                db.session.commit()
+
+                # =================================================
                 # COMMISSION ENSEIGNANT
                 # =================================================
                 #
