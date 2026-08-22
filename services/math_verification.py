@@ -256,36 +256,64 @@ def _eval_expr_fraction(expr, x_value=None):
 
 def _extraire_equation_depuis_texte(texte):
     """
-    Extrait une équation contenant '=' depuis un texte.
-    Exemple :
-    'Résoudre x/4=3/16 ?' -> 'x/4=3/16'
+    Extrait proprement une équation contenant '=' depuis un texte.
+
+    Exemples :
+        "Résoudre x/4=3/16 ?" -> "x/4=3/16"
+        "aide moi à résoudre 3x-2=5x+4" -> "3*x-2=5*x+4"
+
+    Important :
+    - les mots précédant l'équation ne doivent jamais être intégrés
+      à l'expression mathématique ;
+    - le signe négatif d'un terme est conservé.
     """
 
-    texte = _normaliser_texte_math(texte)
+    texte = _normaliser_texte_math(texte or "")
 
-    # On retire les mots fréquents avant l'équation
-    texte = texte.replace("résoudre", "")
-    texte = texte.replace("resoudre", "")
-    texte = texte.replace("l'équation", "")
-    texte = texte.replace("l’equation", "")
-    texte = texte.replace("equation", "")
-    texte = texte.replace("équation", "")
-    texte = texte.replace("?", " ")
-    texte = texte.replace(":", " ")
+    # On recherche uniquement une vraie zone mathématique autour de "=".
+    # Les mots comme "aide", "résoudre", etc. ne peuvent donc pas être
+    # absorbés dans l'équation.
+    candidats = re.findall(
+        r"(?<![a-zà-ÿ])"
+        r"[-+]?[0-9x\.\(\)\+\-\*/\s]+"
+        r"="
+        r"[-+]?[0-9x\.\(\)\+\-\*/\s]+"
+        r"(?![a-zà-ÿ])",
+        texte,
+        flags=re.IGNORECASE
+    )
 
-    # Cherche une partie avec =
-    morceaux = re.findall(r"[a-z0-9\+\-\*/\.\(\)\s\*]+=[a-z0-9\+\-\*/\.\(\)\s\*]+", texte)
+    equations_valides = []
 
-    if not morceaux:
+    for candidat in candidats:
+        equation = re.sub(r"\s+", "", candidat).strip()
+
+        # Ne retirer que les caractères parasites de fin.
+        # Ne jamais retirer le signe '-' du début.
+        equation = equation.rstrip("+-*/.")
+
+        if not equation or equation.count("=") != 1:
+            continue
+
+        gauche, droite = equation.split("=", 1)
+
+        if not gauche or not droite:
+            continue
+
+        if not re.fullmatch(r"[0-9x+\-*/().]+", gauche):
+            continue
+
+        if not re.fullmatch(r"[0-9x+\-*/().]+", droite):
+            continue
+
+        equations_valides.append(equation)
+
+    if not equations_valides:
         return None
 
-    equation = morceaux[0].strip()
-
-    # Nettoyage léger
-    equation = re.sub(r"\s+", "", equation)
-
-    return equation
-
+    # La dernière équation explicite est généralement celle que l'utilisateur
+    # veut réellement traiter.
+    return equations_valides[-1]
 
 def _extraire_valeur_x_depuis_reponse(reponse):
     """
@@ -297,7 +325,10 @@ def _extraire_valeur_x_depuis_reponse(reponse):
 
     texte = _normaliser_texte_math(reponse)
 
-    match = re.search(r"x\s*=\s*([0-9x\+\-\*/\.\(\)\s\*]+)", texte)
+    match = re.search(
+        r"(?<![0-9a-z*])x\s*=\s*([0-9x\+\-\*/\.\(\)\s\*]+)",
+        texte
+    )
 
     if not match:
         return None
@@ -882,6 +913,336 @@ def verifier_chaine_egalites_fractionnaire(texte, objectif_initial=""):
         "valeur_objectif": (
             str(valeur_objectif)
             if valeur_objectif is not None
+            else None
+        ),
+        "message_interne": message
+    }
+
+
+# ================================================================
+# VÉRIFICATION D'UNE ÉQUATION INTERMÉDIAIRE ÉQUIVALENTE
+# ================================================================
+
+def _extraire_equation_math_depuis_reponse(texte):
+    """
+    Extrait une équation mathématique contenant x depuis une réponse
+    en langage naturel.
+
+    Exemples :
+        "je trouve 2x=11" -> "2*x=11"
+        "cela donne -2x-2=4" -> "-2*x-2=4"
+        "on ajoute 5 : 2x-5+5=6+5" -> "2*x-5+5=6+5"
+
+    Le signe négatif placé devant le premier terme est conservé.
+    """
+
+    texte = _normaliser_texte_math(texte or "")
+
+    candidats = re.findall(
+        r"(?<![a-zà-ÿ])"
+        r"[-+]?[0-9x\.\(\)\+\-\*/\s]+"
+        r"="
+        r"[-+]?[0-9x\.\(\)\+\-\*/\s]+"
+        r"(?![a-zà-ÿ])",
+        texte,
+        flags=re.IGNORECASE
+    )
+
+    equations = []
+
+    for candidat in candidats:
+        equation = re.sub(r"\s+", "", candidat).strip()
+
+        # IMPORTANT : ne pas utiliser strip("+-*/.")
+        # car cela transformerait "-2*x-2=4" en "2*x-2=4".
+        equation = equation.rstrip("+-*/.")
+
+        if not equation or equation.count("=") != 1:
+            continue
+
+        gauche, droite = equation.split("=", 1)
+
+        if not gauche or not droite:
+            continue
+
+        if "x" not in gauche and "x" not in droite:
+            continue
+
+        if not re.fullmatch(r"[0-9x+\-*/().=]+", equation):
+            continue
+
+        equations.append(equation)
+
+    if not equations:
+        return None
+
+    return equations[-1]
+
+def _analyser_equation_lineaire(equation):
+    """
+    Analyse une équation simple en x par évaluation exacte avec Fraction.
+
+    On pose :
+        f(x) = membre_gauche - membre_droit
+
+    Pour une équation linéaire :
+        f(x) = a*x + b
+
+    On détermine a et b avec x=0 et x=1 puis on vérifie avec x=2
+    que l'expression est réellement linéaire.
+
+    Retour :
+        {
+            "analyse_reussie": True,
+            "type_solution": "unique" | "toutes" | "aucune",
+            "solution": Fraction(...) ou None,
+            ...
+        }
+
+    Si l'équation n'est pas reconnue comme linéaire, on retourne
+    analyse_reussie=False. Cela ne signifie jamais que l'équation
+    de l'élève est incorrecte.
+    """
+
+    if not equation or equation.count("=") != 1:
+        return {
+            "analyse_reussie": False,
+            "raison": "equation_absente_ou_ambigue"
+        }
+
+    try:
+        gauche, droite = equation.split("=", 1)
+
+        if not gauche or not droite:
+            return {
+                "analyse_reussie": False,
+                "raison": "membre_equation_manquant"
+            }
+
+        def f(x_value):
+            return (
+                _eval_expr_fraction(
+                    gauche,
+                    x_value=x_value
+                )
+                -
+                _eval_expr_fraction(
+                    droite,
+                    x_value=x_value
+                )
+            )
+
+        f0 = f(Fraction(0, 1))
+        f1 = f(Fraction(1, 1))
+        f2 = f(Fraction(2, 1))
+
+        b = f0
+        a = f1 - f0
+
+        # Vérification de linéarité.
+        if f2 != b + 2 * a:
+            return {
+                "analyse_reussie": False,
+                "raison": "equation_non_lineaire_ou_non_supportee"
+            }
+
+        if a == 0:
+            if b == 0:
+                return {
+                    "analyse_reussie": True,
+                    "type_solution": "toutes",
+                    "solution": None,
+                    "coefficient_a": str(a),
+                    "coefficient_b": str(b)
+                }
+
+            return {
+                "analyse_reussie": True,
+                "type_solution": "aucune",
+                "solution": None,
+                "coefficient_a": str(a),
+                "coefficient_b": str(b)
+            }
+
+        solution = -b / a
+
+        return {
+            "analyse_reussie": True,
+            "type_solution": "unique",
+            "solution": solution,
+            "coefficient_a": str(a),
+            "coefficient_b": str(b)
+        }
+
+    except Exception as e:
+        return {
+            "analyse_reussie": False,
+            "raison": "erreur_analyse_equation",
+            "erreur": str(e)
+        }
+
+
+def verifier_equation_intermediaire_equivalente(
+    equation_initiale,
+    reponse_eleve
+):
+    """
+    Vérifie qu'une équation intermédiaire proposée par l'élève est
+    équivalente à l'équation initiale.
+
+    Exemples :
+        initiale : 2x - 5 = 6
+        élève     : 2x = 11
+        -> correct
+
+        initiale : 2x - 5 = 6
+        élève     : 2x = 1
+        -> incorrect
+
+        initiale : 3x = 9
+        élève     : x = 3
+        -> correct
+
+    Principe :
+    - on extrait l'équation initiale ;
+    - on extrait l'équation proposée par l'élève ;
+    - on calcule exactement leur ensemble de solutions lorsqu'elles
+      sont linéaires ;
+    - mêmes ensembles de solutions = transformation équivalente.
+
+    Sécurité :
+    - si l'analyse locale n'est pas possible, retourne NON VÉRIFIÉ ;
+    - NON VÉRIFIÉ ne signifie jamais incorrect.
+    """
+
+    equation_depart = _extraire_equation_depuis_texte(
+        equation_initiale
+    )
+
+    equation_eleve = _extraire_equation_math_depuis_reponse(
+        reponse_eleve
+    )
+
+    if not equation_depart or not equation_eleve:
+        return {
+            "verification_equation_intermediaire": False,
+            "verification_contextuelle": False,
+            "est_correct": None,
+            "message_interne": ""
+        }
+
+    analyse_depart = _analyser_equation_lineaire(
+        equation_depart
+    )
+
+    analyse_eleve = _analyser_equation_lineaire(
+        equation_eleve
+    )
+
+    if (
+        not analyse_depart.get("analyse_reussie")
+        or not analyse_eleve.get("analyse_reussie")
+    ):
+        return {
+            "verification_equation_intermediaire": False,
+            "verification_contextuelle": False,
+            "est_correct": None,
+            "equation_initiale": equation_depart,
+            "equation_eleve": equation_eleve,
+            "analyse_initiale": analyse_depart,
+            "analyse_eleve": analyse_eleve,
+            "message_interne": ""
+        }
+
+    type_depart = analyse_depart.get("type_solution")
+    type_eleve = analyse_eleve.get("type_solution")
+
+    est_equivalente = False
+
+    if type_depart == type_eleve:
+        if type_depart == "unique":
+            est_equivalente = (
+                analyse_depart.get("solution")
+                ==
+                analyse_eleve.get("solution")
+            )
+        else:
+            # "toutes" avec "toutes", ou "aucune" avec "aucune".
+            est_equivalente = True
+
+    solution_depart = analyse_depart.get("solution")
+    solution_eleve = analyse_eleve.get("solution")
+
+    if est_equivalente:
+        message = (
+            "Vérification déterministe prioritaire d'une transformation "
+            "d'équation : "
+            f"l'équation initiale est « {equation_depart} » et l'élève "
+            f"propose « {equation_eleve} ». "
+        )
+
+        if type_depart == "unique":
+            message += (
+                f"Les deux équations ont exactement la même solution "
+                f"x = {solution_depart}. "
+            )
+        elif type_depart == "toutes":
+            message += (
+                "Les deux équations sont vraies pour toutes les valeurs de x. "
+            )
+        else:
+            message += (
+                "Les deux équations n'ont aucune solution. "
+            )
+
+        message += (
+            "L'étape de l'élève est donc mathématiquement correcte et "
+            "équivalente à l'équation précédente. "
+            "Naima doit reconnaître explicitement que cette étape est correcte, "
+            "la considérer comme acquise et poursuivre à partir de cette "
+            "nouvelle équation. "
+            "Naima ne doit pas demander à l'élève de refaire une opération "
+            "déjà correctement effectuée."
+        )
+
+    else:
+        message = (
+            "Vérification déterministe d'une transformation d'équation : "
+            f"l'équation initiale est « {equation_depart} » tandis que "
+            f"l'élève propose « {equation_eleve} ». "
+        )
+
+        if (
+            type_depart == "unique"
+            and type_eleve == "unique"
+        ):
+            message += (
+                f"La première a pour solution x = {solution_depart}, "
+                f"alors que la seconde a pour solution x = {solution_eleve}. "
+            )
+
+        message += (
+            "Les deux équations ne sont donc pas équivalentes. "
+            "Naima doit signaler doucement l'erreur dans cette transformation "
+            "et guider l'élève sans inventer une autre erreur."
+        )
+
+    return {
+        "verification_equation_intermediaire": True,
+        "verification_contextuelle": True,
+        "est_correct": est_equivalente,
+        "equation_initiale": equation_depart,
+        "equation_eleve": equation_eleve,
+        "type_solution_initiale": type_depart,
+        "type_solution_eleve": type_eleve,
+        "solution_initiale": (
+            str(solution_depart)
+            if solution_depart is not None
+            else None
+        ),
+        "solution_eleve": (
+            str(solution_eleve)
+            if solution_eleve is not None
             else None
         ),
         "message_interne": message
