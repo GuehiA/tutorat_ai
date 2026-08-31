@@ -481,6 +481,47 @@
       color: rgba(255, 255, 255, 0.8);
     }
 
+    .new-exercise-action {
+      display: none;
+      padding: 12px 20px 0;
+      background: white;
+      border-top: 1px solid var(--light);
+      flex-shrink: 0;
+    }
+
+    .new-exercise-action.visible {
+      display: block;
+    }
+
+    .new-exercise-btn {
+      width: 100%;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 30px;
+      background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+      color: white;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .new-exercise-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .new-exercise-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     .chat-input-area {
       background: white;
       padding: 16px 20px;
@@ -1067,6 +1108,21 @@
         {% endif %}
       </div>
 
+      <div
+        id="nouvelExerciceContainer"
+        class="new-exercise-action{% if session.get('exercice_termine') %} visible{% endif %}"
+      >
+        <button
+          type="button"
+          class="new-exercise-btn"
+          id="nouvelExerciceBtn"
+          onclick="startNewExercise()"
+        >
+          <i class="fas fa-plus-circle"></i>
+          {% if lang == 'fr' %}Nouvel exercice{% else %}New exercise{% endif %}
+        </button>
+      </div>
+
       <div class="chat-input-area">
         <form id="chatForm" style="width: 100%;" method="POST" action="{{ url_for('enseignant_virtuel') }}">
           <input type="hidden" name="matiere" id="matiereInput" value="{{ matiere }}">
@@ -1256,49 +1312,125 @@
     const questionInput = document.getElementById('questionInput');
     const chatForm = document.getElementById('chatForm');
 
+    function showNewExerciseButton() {
+      const container = document.getElementById('nouvelExerciceContainer');
+      if (container) container.classList.add('visible');
+    }
+
+    function hideNewExerciseButton() {
+      const container = document.getElementById('nouvelExerciceContainer');
+      if (container) container.classList.remove('visible');
+    }
+
+    function startNewExercise() {
+      if (isSubmitting) return;
+      sessionStorage.removeItem('exercice_termine');
+      hideNewExerciseButton();
+      generateExercise();
+    }
+
     // ============================================================
     // RÉINITIALISATION
     // ============================================================
     
     async function resetConversation() {
-      if (isSubmitting) return;
-      
-      const confirmMsg = document.documentElement.lang === 'fr' 
+      if (isSubmitting || isResettingConversation) return;
+
+      const confirmMsg = document.documentElement.lang === 'fr'
         ? '⚠️ Es-tu sûr de vouloir réinitialiser la conversation ? Tout l\'historique sera effacé.'
         : '⚠️ Are you sure you want to reset the conversation? All history will be erased.';
-      
-      if (confirm(confirmMsg)) {
-        setLoadingState(true);
-        
-        try {
-          const response = await fetch('/reset-chat', {
-            method: 'POST',
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          });
-          
-          if (response.ok) {
-            const messagesDiv = document.getElementById('chatMessages');
-            if (messagesDiv) {
-              messagesDiv.innerHTML = '';
-            }
-            
-            const welcomeMsg = document.documentElement.lang === 'fr'
-              ? '👋 Bonjour ! Je suis Naima, ton enseignante virtuelle. La conversation a été réinitialisée. Comment puis-je t\'aider ?'
-              : '👋 Hello! I\'m Naima, your virtual teacher. The conversation has been reset. How can I help you?';
-            
-            addNaimaMessage(welcomeMsg);
-            
-            sessionStorage.removeItem('exercice_termine');
-            
-            updateExerciseSidebar(null);
+
+      if (!confirm(confirmMsg)) {
+        return;
+      }
+
+      isResettingConversation = true;
+      setLoadingState(true);
+
+      try {
+        // ==========================================================
+        // ATTENDRE UNE ÉVENTUELLE REQUÊTE DE STATISTIQUES EN COURS
+        // ==========================================================
+        //
+        // Une requête /api/eleve/stats commencée avant le reset
+        // pourrait sinon terminer après /reset-chat et réécrire
+        // une ancienne version de la session.
+        // ==========================================================
+
+        let attente = 0;
+
+        while (isUpdatingStats && attente < 50) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attente++;
+        }
+
+        const response = await fetch('/reset-chat', {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
           }
-        } catch (error) {
-          console.error('Erreur reset:', error);
-        } finally {
-          setLoadingState(false);
-          if (questionInput) questionInput.focus();
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Erreur reset : HTTP ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(
+            data.message || 'Échec de la réinitialisation'
+          );
+        }
+
+        // ==========================================================
+        // NETTOYAGE DE L'INTERFACE
+        // ==========================================================
+
+        const messagesDiv =
+          document.getElementById('chatMessages');
+
+        if (messagesDiv) {
+          messagesDiv.innerHTML = '';
+        }
+
+        sessionStorage.removeItem(
+          'exercice_termine'
+        );
+
+        hideNewExerciseButton();
+
+        updateExerciseSidebar(null);
+
+        const welcomeMsg =
+          document.documentElement.lang === 'fr'
+            ? '👋 Bonjour ! Je suis Naima, ton enseignante virtuelle. La conversation a été réinitialisée. Comment puis-je t\'aider ?'
+            : '👋 Hello! I\'m Naima, your virtual teacher. The conversation has been reset. How can I help you?';
+
+        addNaimaMessage(welcomeMsg);
+
+      } catch (error) {
+        console.error(
+          'Erreur reset:',
+          error
+        );
+
+        const errorMessage =
+          document.documentElement.lang === 'fr'
+            ? 'La conversation n\'a pas pu être réinitialisée correctement. Réessaie.'
+            : 'The conversation could not be reset correctly. Please try again.';
+
+        addNaimaMessage(errorMessage);
+
+      } finally {
+        setLoadingState(false);
+
+        isResettingConversation = false;
+
+        if (questionInput) {
+          questionInput.focus();
         }
       }
     }
@@ -1351,6 +1483,7 @@
       document.body.appendChild(form);
       
       sessionStorage.removeItem('exercice_termine');
+      hideNewExerciseButton();
 
       const currentExerciseSidebar = document.getElementById('currentExerciseSidebar');
       const noExerciseMessage = document.getElementById('noExerciseMessage');
@@ -1538,9 +1671,10 @@
     }
 
     let isUpdatingStats = false;
+    let isResettingConversation = false;
 
     async function updateStats() {
-      if (isUpdatingStats) {
+      if (isUpdatingStats || isResettingConversation) {
         return;
       }
 
@@ -1690,8 +1824,10 @@
         questionInput.style.height = 'auto';
 
         const msgFin = document.documentElement.lang === 'fr'
-          ? '✅ Exercice terminé ! Clique sur "Réinitialiser" pour recommencer.'
-          : '✅ Exercise finished! Click "Reset" to start over.';
+          ? '✅ Exercice terminé ! Clique sur "Nouvel exercice" pour continuer.'
+          : '✅ Exercise finished! Click "New exercise" to continue.';
+
+        showNewExerciseButton();
 
         addNaimaMessage(`
           <div class="exercise-finished-message" style="background: #e8f5e9; border-left-color: var(--secondary);">
@@ -1747,6 +1883,10 @@
 
         if (data.termine) {
           sessionStorage.setItem('exercice_termine', 'true');
+          showNewExerciseButton();
+        } else {
+          sessionStorage.removeItem('exercice_termine');
+          hideNewExerciseButton();
         }
 
         if (data.success && data.messages && data.messages.length > 0) {
@@ -1817,7 +1957,13 @@
       const savedMatiere = document.getElementById('matiereSelect')?.value || 'mathématiques';
       updateSubjectSidebar(savedMatiere);
 
-      sessionStorage.removeItem('exercice_termine');
+      {% if session.get('exercice_termine') %}
+        sessionStorage.setItem('exercice_termine', 'true');
+        showNewExerciseButton();
+      {% else %}
+        sessionStorage.removeItem('exercice_termine');
+        hideNewExerciseButton();
+      {% endif %}
 
       {% if session.get('exercice_en_cours') %}
         updateExerciseSidebar({{ session.get('exercice_en_cours')|tojson }});

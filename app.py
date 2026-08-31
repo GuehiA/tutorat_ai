@@ -209,25 +209,31 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Options avancées pour PostgreSQL
 if 'postgresql' in DB_URL:
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        "pool_pre_ping": True,          # Vérifie la connexion avant utilisation
-        "pool_recycle": 280,            # Recycle les connexions après 280s
+        "pool_pre_ping": True,          # Vérifie qu'une connexion est encore valide avant de l'utiliser
+        "pool_recycle": 280,            # Recrée les connexions anciennes après 280 secondes
+        "pool_timeout": 20,             # Attend au maximum 20 secondes pour obtenir une connexion du pool
         "pool_size": 5,                 # Nombre de connexions permanentes
-        "max_overflow": 10,             # Connexions supplémentaires temporaires
+        "max_overflow": 10,             # Connexions temporaires supplémentaires
+
         "connect_args": {
-            "connect_timeout": 10,      # Timeout de connexion de 10s
-            "keepalives": 1,            # Keepalive TCP
-            "keepalives_idle": 30,      # Attente avant keepalive
-            "keepalives_interval": 10,  # Intervalle entre keepalives
+            "connect_timeout": 10,      # Abandonne une tentative de connexion après 10 secondes
+            "keepalives": 1,            # Active les keepalives TCP
+            "keepalives_idle": 30,      # Commence les vérifications après 30 secondes d'inactivité
+            "keepalives_interval": 10,  # Vérifie ensuite toutes les 10 secondes
+            "keepalives_count": 5,      # Abandonne après plusieurs keepalives sans réponse
         }
     }
-    print(f"⚙️ Options PostgreSQL activées")
+
+    print("⚙️ Options PostgreSQL activées")
+
 else:
     # SQLite - options minimales
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         "pool_pre_ping": False,
         "pool_recycle": -1,
     }
-    print(f"⚙️ Options SQLite (développement)")
+
+    print("⚙️ Options SQLite (développement)")
 
 # Log de l'URL (masquée pour sécurité)
 if DB_URL and len(DB_URL) > 20:
@@ -1277,80 +1283,507 @@ def admin_diagnostics_bayesiens():
 @app.route("/reset-chat", methods=["POST"])
 def reset_chat():
     """
-    Réinitialise complètement la conversation pédagogique de Naima
-    sans déconnecter l'élève.
+    Réinitialise la conversation de Naima sans perdre l'exercice actif.
 
-    IMPORTANT :
-    une nouvelle conversation doit repartir avec :
-    - aucun ancien objectif ;
-    - aucun ancien mode pédagogique ;
-    - aucune ancienne question de Naima ;
-    - aucun ancien diagnostic ;
-    - aucune ancienne preuve mathématique ;
-    - aucun état de fin précédent.
+    Trois cas :
+
+    1. Exercice généré par Naima :
+       on conserve session["exercice_en_cours"].
+
+    2. Problème/exercice saisi directement par l'élève :
+       on conserve session["objectif_initial_naima"].
+
+    3. Aucun exercice actif :
+       remise à zéro complète.
+
+    La progression mathématique, les diagnostics et les anciennes
+    réponses sont toujours effacés.
     """
 
+    # ============================================================
+    # AUTHENTIFICATION
+    # ============================================================
+
     if "user_id" not in session:
-        return jsonify({"error": "Non authentifié"}), 401
+        return jsonify({
+            "error": "Non authentifié"
+        }), 401
+
+    # ============================================================
+    # SAUVEGARDE DU CONTEXTE AVANT NETTOYAGE
+    # ============================================================
+
+    exercice_actuel = (
+        session.get("exercice_en_cours")
+        or {}
+    )
+
+    exercice_genere_actif = bool(
+        isinstance(exercice_actuel, dict)
+        and str(
+            exercice_actuel.get("enonce")
+            or ""
+        ).strip()
+    )
+
+    enonce_exercice_genere = ""
+
+    if exercice_genere_actif:
+        enonce_exercice_genere = str(
+            exercice_actuel.get("enonce")
+            or ""
+        ).strip()
 
     # ------------------------------------------------------------
-    # CONVERSATION
+    # OBJECTIF SAISI DIRECTEMENT DANS LE CHAT
     # ------------------------------------------------------------
 
-    session.pop("conversation", None)
-    session.pop("derniere_q_ia", None)
+    objectif_chat_actuel = str(
+        session.get(
+            "objectif_initial_naima"
+        )
+        or ""
+    ).strip()
 
-    # ------------------------------------------------------------
-    # EXERCICE
-    # ------------------------------------------------------------
+    mode_chat_actuel = str(
+        session.get(
+            "mode_pedagogique_naima"
+        )
+        or ""
+    ).strip()
 
-    session.pop("exercice_en_cours", None)
-    session.pop("exercice_termine", None)
-    session.pop("mode_exercice", None)
+    sujet_chat_actuel = str(
+        session.get(
+            "sujet_courant_naima"
+        )
+        or ""
+    ).strip()
 
-    # ------------------------------------------------------------
-    # ÉTAT PÉDAGOGIQUE NAIMA
-    # ------------------------------------------------------------
+    lecon_chat_actuelle = str(
+        session.get(
+            "lecon_courante_naima"
+        )
+        or ""
+    ).strip()
 
-    session.pop("objectif_initial_naima", None)
-    session.pop("objectif_atteint_naima", None)
-    session.pop("conversation_terminee", None)
+    # Un objectif chat est considéré comme exercice actif si
+    # Naima était réellement en mode résolution.
+    exercice_chat_actif = bool(
+        objectif_chat_actuel
+        and mode_chat_actuel == "resolution"
+        and not exercice_genere_actif
+    )
 
-    session.pop("mode_pedagogique_naima", None)
-    session.pop("sujet_courant_naima", None)
-    session.pop("lecon_courante_naima", None)
+    print(
+        "🧹 Réinitialisation conversation Naima."
+    )
 
-    # ------------------------------------------------------------
-    # DIAGNOSTIC ET VÉRIFICATIONS DU DIALOGUE PRÉCÉDENT
-    # ------------------------------------------------------------
+    print(
+        "   - Exercice généré actif :",
+        exercice_genere_actif
+    )
 
-    session.pop("diagnostic_bayesien", None)
-    session.pop("signaux_bayesiens", None)
-    session.pop("verification_calcul", None)
-    session.pop("naima_processus_connecte", None)
+    print(
+        "   - Exercice saisi dans le chat actif :",
+        exercice_chat_actif
+    )
 
-    # ------------------------------------------------------------
+    if exercice_genere_actif:
+        print(
+            "   - Énoncé généré conservé :",
+            enonce_exercice_genere
+        )
+
+    elif exercice_chat_actif:
+        print(
+            "   - Objectif chat conservé :",
+            objectif_chat_actuel
+        )
+
+    # ============================================================
+    # NETTOYAGE DE LA CONVERSATION
+    # ============================================================
+
+    session.pop(
+        "conversation",
+        None
+    )
+
+    session.pop(
+        "derniere_q_ia",
+        None
+    )
+
+    # ============================================================
+    # ÉTAT DE FIN
+    # ============================================================
+
+    session.pop(
+        "exercice_termine",
+        None
+    )
+
+    session.pop(
+        "objectif_atteint_naima",
+        None
+    )
+
+    session.pop(
+        "conversation_terminee",
+        None
+    )
+
+    # ============================================================
+    # MÉMOIRE MATHÉMATIQUE
+    # ============================================================
+
+    session.pop(
+        "equation_courante_naima",
+        None
+    )
+
+    session.pop(
+        "equation_modele_naima",
+        None
+    )
+
+    session.pop(
+        "etapes_validees_naima",
+        None
+    )
+
+    session.pop(
+        "derniere_etape_validee_naima",
+        None
+    )
+
+    session.pop(
+        "etapes_numeriques_validees_naima",
+        None
+    )
+
+    session.pop(
+        "derniere_etape_numerique_validee_naima",
+        None
+    )
+
+    session.pop(
+        "solution_variable_naima",
+        None
+    )
+
+    session.pop(
+        "solution_finale_naima",
+        None
+    )
+
+    # ============================================================
+    # VALIDATION
+    # ============================================================
+
+    session.pop(
+        "validation_unifiee_naima",
+        None
+    )
+
+    session.pop(
+        "verification_calcul",
+        None
+    )
+
+    # ============================================================
+    # DIAGNOSTIC
+    # ============================================================
+
+    session.pop(
+        "diagnostic_bayesien",
+        None
+    )
+
+    session.pop(
+        "signaux_bayesiens",
+        None
+    )
+
+    session.pop(
+        "naima_processus_connecte",
+        None
+    )
+
+    session.pop(
+        "intention_pedagogique_naima",
+        None
+    )
+
+    # ============================================================
     # REMÉDIATION
-    # ------------------------------------------------------------
+    # ============================================================
 
-    session.pop("remediation_access", None)
-    session.pop("remediation_access_granted", None)
-    session.pop("remediation_exercice_id", None)
-    session.pop("remediation_access_count", None)
+    session.pop(
+        "remediation_access",
+        None
+    )
+
+    session.pop(
+        "remediation_access_granted",
+        None
+    )
+
+    session.pop(
+        "remediation_exercice_id",
+        None
+    )
+
+    session.pop(
+        "remediation_access_count",
+        None
+    )
+
+    # ============================================================
+    # CAS 1 : EXERCICE GÉNÉRÉ PAR NAIMA
+    # ============================================================
+
+    if exercice_genere_actif:
+
+        session[
+            "exercice_en_cours"
+        ] = exercice_actuel
+
+        session[
+            "objectif_initial_naima"
+        ] = enonce_exercice_genere
+
+        session[
+            "mode_pedagogique_naima"
+        ] = "resolution"
+
+        session[
+            "lecon_courante_naima"
+        ] = enonce_exercice_genere
+
+        session[
+            "sujet_courant_naima"
+        ] = (
+            sujet_chat_actuel
+            or session.get(
+                "matiere",
+                "mathématiques"
+            )
+        )
+
+        # Repartir depuis le début pédagogique de l'exercice.
+        if isinstance(
+            session["exercice_en_cours"],
+            dict
+        ):
+            session[
+                "exercice_en_cours"
+            ]["etape"] = 1
+
+        print(
+            "♻️ Exercice généré conservé."
+        )
+
+        print(
+            "🎯 Objectif Naima restauré :",
+            enonce_exercice_genere
+        )
+
+    # ============================================================
+    # CAS 2 : EXERCICE SAISI DIRECTEMENT PAR L'ÉLÈVE
+    # ============================================================
+
+    elif exercice_chat_actif:
+
+        # Pas d'exercice_en_cours artificiel.
+        session.pop(
+            "exercice_en_cours",
+            None
+        )
+
+        session[
+            "objectif_initial_naima"
+        ] = objectif_chat_actuel
+
+        session[
+            "mode_pedagogique_naima"
+        ] = "resolution"
+
+        session[
+            "sujet_courant_naima"
+        ] = (
+            sujet_chat_actuel
+            or session.get(
+                "matiere",
+                "mathématiques"
+            )
+        )
+
+        session[
+            "lecon_courante_naima"
+        ] = (
+            lecon_chat_actuelle
+            or session.get(
+                "matiere",
+                "mathématiques"
+            )
+        )
+
+        print(
+            "♻️ Exercice saisi dans le chat conservé."
+        )
+
+        print(
+            "🎯 Objectif Naima restauré :",
+            objectif_chat_actuel
+        )
+
+    # ============================================================
+    # CAS 3 : AUCUN EXERCICE ACTIF
+    # ============================================================
+
+    else:
+
+        session.pop(
+            "exercice_en_cours",
+            None
+        )
+
+        session.pop(
+            "objectif_initial_naima",
+            None
+        )
+
+        session.pop(
+            "mode_pedagogique_naima",
+            None
+        )
+
+        session.pop(
+            "sujet_courant_naima",
+            None
+        )
+
+        session.pop(
+            "lecon_courante_naima",
+            None
+        )
+
+        print(
+            "🆕 Aucun exercice actif : "
+            "nouvelle conversation complètement vide."
+        )
+
+    # ============================================================
+    # MESSAGE DE REPRISE
+    # ============================================================
+    #
+    # On prépare également un petit message afin que l'interface
+    # ne donne plus l'impression que Naima a oublié l'exercice.
+    # ============================================================
+
+    if exercice_genere_actif:
+
+        if session.get(
+            "lang",
+            "fr"
+        ) == "en":
+            message_reprise = (
+                "👋 The conversation has been reset. "
+                "I still have your current exercise. "
+                "Let's start it again from the beginning."
+            )
+        else:
+            message_reprise = (
+                "👋 La conversation a été réinitialisée. "
+                "Je garde ton exercice actuel en mémoire. "
+                "Nous pouvons le reprendre depuis le début."
+            )
+
+        session[
+            "conversation"
+        ] = [
+            f"🤖 Naima: {message_reprise}"
+        ]
+
+    elif exercice_chat_actif:
+
+        if session.get(
+            "lang",
+            "fr"
+        ) == "en":
+            message_reprise = (
+                "👋 The conversation has been reset. "
+                f"I still have your problem: "
+                f"« {objectif_chat_actuel} ». "
+                "Let's continue with this problem."
+            )
+        else:
+            message_reprise = (
+                "👋 La conversation a été réinitialisée. "
+                f"Je garde ton exercice en mémoire : "
+                f"« {objectif_chat_actuel} ». "
+                "Nous pouvons continuer avec cet exercice."
+            )
+
+        session[
+            "conversation"
+        ] = [
+            f"🤖 Naima: {message_reprise}"
+        ]
+
+    else:
+
+        if session.get(
+            "lang",
+            "fr"
+        ) == "en":
+            message_reprise = (
+                "👋 Hello! I'm Naima, your virtual teacher. "
+                "The conversation has been reset. "
+                "How can I help you?"
+            )
+        else:
+            message_reprise = (
+                "👋 Bonjour ! Je suis Naima, ton enseignante virtuelle. "
+                "La conversation a été réinitialisée. "
+                "Comment puis-je t'aider ?"
+            )
+
+        session[
+            "conversation"
+        ] = [
+            f"🤖 Naima: {message_reprise}"
+        ]
+
+    # ============================================================
+    # SAUVEGARDE
+    # ============================================================
 
     session.modified = True
 
-    print("🧹 Conversation Naima complètement réinitialisée.")
-    print("   - objectif_initial_naima supprimé")
-    print("   - mode_pedagogique_naima supprimé")
-    print("   - état de fin supprimé")
-    print("   - diagnostic précédent supprimé")
-    print("   - vérification mathématique précédente supprimée")
+    print(
+        "✅ Réinitialisation Naima terminée."
+    )
 
     return jsonify({
         "success": True,
-        "message": "Conversation réinitialisée",
-        "conversation_reset": True
+        "conversation_reset": True,
+        "exercice_genere_conserve": (
+            exercice_genere_actif
+        ),
+        "exercice_chat_conserve": (
+            exercice_chat_actif
+        ),
+        "objectif_restaure": (
+            enonce_exercice_genere
+            if exercice_genere_actif
+            else (
+                objectif_chat_actuel
+                if exercice_chat_actif
+                else None
+            )
+        )
     })
 
 
@@ -2979,23 +3412,48 @@ def api_eleve_stats():
     """
     API pour récupérer les statistiques de l'élève.
 
-    Version optimisée :
+    Version sécurisée :
     - compatible SQLAlchemy 2 ;
     - évite User.query.get ;
     - réduit les requêtes ;
-    - ajoute un petit cache session pour éviter de recalculer trop souvent ;
-    - accepte eleve et élève.
+    - cache session de 30 secondes ;
+    - accepte "eleve" et "élève" ;
+    - distingue les exercices évalués et non évalués ;
+    - les exercices non évalués ne pénalisent jamais le taux de réussite ;
+    - une note de 0 étoile reste un véritable échec évalué ;
+    - une note NULL / None signifie "non évalué".
     """
 
     from datetime import datetime, date
     from sqlalchemy import func, case
 
+    # ============================================================
+    # AUTHENTIFICATION
+    # ============================================================
+
     if "user_id" not in session:
-        return jsonify({"error": "Non authentifié"}), 401
+        return jsonify({
+            "error": "Non authentifié"
+        }), 401
 
     user_id = session.get("user_id")
 
-    # Petit cache de 30 secondes pour éviter les recalculs répétés
+    # ============================================================
+    # CACHE SESSION
+    # ============================================================
+    #
+    # On garde un petit cache de 30 secondes afin d'éviter que
+    # l'interface déclenche plusieurs calculs identiques de statistiques.
+    #
+    # IMPORTANT :
+    # lorsqu'une nouvelle réponse est enregistrée ailleurs dans
+    # l'application, il est préférable de supprimer :
+    #
+    #     session.pop("api_eleve_stats_cache", None)
+    #
+    # afin que les nouvelles statistiques apparaissent immédiatement.
+    # ============================================================
+
     cache = session.get("api_eleve_stats_cache")
 
     if cache:
@@ -3003,134 +3461,484 @@ def api_eleve_stats():
         cache_time = cache.get("timestamp")
         maintenant = datetime.utcnow().timestamp()
 
-        if cache_user_id == user_id and cache_time and maintenant - cache_time < 30:
-            data = cache.get("data", {})
-            data["cached"] = True
-            return jsonify(data)
+        if (
+            cache_user_id == user_id
+            and cache_time
+            and maintenant - cache_time < 30
+        ):
+            data_cache = dict(
+                cache.get("data", {}) or {}
+            )
 
-    eleve = db.session.get(User, user_id)
+            data_cache["cached"] = True
 
-    if not eleve or eleve.role not in ["eleve", "élève"]:
-        return jsonify({"error": "Accès non autorisé"}), 403
+            return jsonify(data_cache)
+
+    # ============================================================
+    # RÉCUPÉRATION DE L'ÉLÈVE
+    # ============================================================
+
+    eleve = db.session.get(
+        User,
+        user_id
+    )
+
+    if (
+        not eleve
+        or eleve.role not in ["eleve", "élève"]
+    ):
+        return jsonify({
+            "error": "Accès non autorisé"
+        }), 403
 
     from models import StudentResponse
 
     # ============================================================
-    # TOTAL + RÉUSSITES EN UNE SEULE REQUÊTE
+    # STATISTIQUES DES EXERCICES
     # ============================================================
+    #
+    # RÈGLE MÉTIER :
+    #
+    # etoiles = None
+    #     => réponse NON ÉVALUÉE
+    #     => ne compte PAS dans le taux de réussite
+    #
+    # etoiles = 0, 1 ou 2
+    #     => réponse évaluée mais non réussie
+    #
+    # etoiles >= 3
+    #     => réponse évaluée et réussie
+    #
+    # Exemple :
+    #
+    # 10 réponses enregistrées
+    #  6 réussies
+    #  2 échouées
+    #  2 non évaluées
+    #
+    # taux = 6 / 8 = 75 %
+    #
+    # et NON 6 / 10 = 60 %
+    # ============================================================
+
+    total_reponses = 0
+    total_evalues = 0
+    reussis = 0
+    echoues = 0
+    non_evalues = 0
 
     try:
         if hasattr(StudentResponse, "etoiles"):
-            total, reussis = db.session.query(
-                func.count(StudentResponse.id),
+
+            (
+                total_reponses,
+                total_evalues,
+                reussis,
+                echoues,
+                non_evalues
+            ) = db.session.query(
+
+                # ------------------------------------------------
+                # Toutes les réponses enregistrées
+                # ------------------------------------------------
+                func.count(
+                    StudentResponse.id
+                ),
+
+                # ------------------------------------------------
+                # Réponses réellement évaluées
+                # ------------------------------------------------
                 func.coalesce(
                     func.sum(
                         case(
-                            (StudentResponse.etoiles >= 3, 1),
+                            (
+                                StudentResponse.etoiles.isnot(None),
+                                1
+                            ),
+                            else_=0
+                        )
+                    ),
+                    0
+                ),
+
+                # ------------------------------------------------
+                # Réponses réussies
+                # ------------------------------------------------
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (
+                                StudentResponse.etoiles >= 3,
+                                1
+                            ),
+                            else_=0
+                        )
+                    ),
+                    0
+                ),
+
+                # ------------------------------------------------
+                # Réponses évaluées mais non réussies
+                #
+                # 0, 1 ou 2 étoiles
+                # ------------------------------------------------
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (
+                                (
+                                    StudentResponse.etoiles.isnot(None)
+                                )
+                                &
+                                (
+                                    StudentResponse.etoiles < 3
+                                ),
+                                1
+                            ),
+                            else_=0
+                        )
+                    ),
+                    0
+                ),
+
+                # ------------------------------------------------
+                # Réponses non évaluées
+                # ------------------------------------------------
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (
+                                StudentResponse.etoiles.is_(None),
+                                1
+                            ),
                             else_=0
                         )
                     ),
                     0
                 )
+
             ).filter(
                 StudentResponse.user_id == eleve.id
             ).one()
-        else:
-            total = db.session.query(
-                func.count(StudentResponse.id)
-            ).filter(
-                StudentResponse.user_id == eleve.id
-            ).scalar() or 0
 
+        else:
+            # ----------------------------------------------------
+            # Compatibilité si un ancien modèle ne possède pas
+            # encore la colonne "etoiles".
+            #
+            # Dans ce cas on ne fabrique pas artificiellement
+            # un taux de réussite.
+            # ----------------------------------------------------
+
+            total_reponses = (
+                db.session.query(
+                    func.count(
+                        StudentResponse.id
+                    )
+                )
+                .filter(
+                    StudentResponse.user_id == eleve.id
+                )
+                .scalar()
+                or 0
+            )
+
+            total_evalues = 0
             reussis = 0
+            echoues = 0
+            non_evalues = total_reponses
 
     except Exception as e:
-        print(f"⚠️ Erreur statistiques élève: {e}")
-        total = 0
-        reussis = 0
+        print(
+            f"⚠️ Erreur statistiques élève: {e}"
+        )
 
-    total = int(total or 0)
-    reussis = int(reussis or 0)
+        total_reponses = 0
+        total_evalues = 0
+        reussis = 0
+        echoues = 0
+        non_evalues = 0
+
+    # ============================================================
+    # NORMALISATION DES TYPES
+    # ============================================================
+
+    total_reponses = int(
+        total_reponses or 0
+    )
+
+    total_evalues = int(
+        total_evalues or 0
+    )
+
+    reussis = int(
+        reussis or 0
+    )
+
+    echoues = int(
+        echoues or 0
+    )
+
+    non_evalues = int(
+        non_evalues or 0
+    )
+
+    # ============================================================
+    # TAUX DE RÉUSSITE
+    # ============================================================
+    #
+    # TRÈS IMPORTANT :
+    #
+    # Le dénominateur est uniquement total_evalues.
+    #
+    # Les réponses non évaluées ne peuvent donc plus faire
+    # baisser artificiellement le taux de réussite.
+    # ============================================================
+
+    if total_evalues > 0:
+        taux_reussite = round(
+            reussis
+            / total_evalues
+            * 100
+        )
+    else:
+        taux_reussite = 0
+
+    # ============================================================
+    # TAUX D'ÉVALUATION
+    # ============================================================
+    #
+    # Cette information n'influence PAS la réussite.
+    #
+    # Elle permet seulement de savoir quelle proportion des réponses
+    # enregistrées possède réellement une évaluation.
+    # ============================================================
+
+    if total_reponses > 0:
+        taux_evaluation = round(
+            total_evalues
+            / total_reponses
+            * 100
+        )
+    else:
+        taux_evaluation = 0
 
     # ============================================================
     # CALCUL DE LA SÉRIE
+    # ============================================================
+    #
+    # La série représente ici les jours d'activité consécutifs.
+    #
+    # Elle reste basée sur les réponses enregistrées, qu'elles aient
+    # ou non été évaluées, car une activité d'apprentissage réelle
+    # reste une activité.
     # ============================================================
 
     serie = 0
 
     def normaliser_date(valeur):
         """
-        Convertit une valeur date venant de SQLite/PostgreSQL en objet date Python.
+        Convertit une valeur date venant de SQLite/PostgreSQL
+        en objet date Python.
         """
 
         if not valeur:
             return None
 
-        if isinstance(valeur, datetime):
+        if isinstance(
+            valeur,
+            datetime
+        ):
             return valeur.date()
 
-        if isinstance(valeur, date):
+        if isinstance(
+            valeur,
+            date
+        ):
             return valeur
 
-        if isinstance(valeur, str):
+        if isinstance(
+            valeur,
+            str
+        ):
             try:
-                return datetime.strptime(valeur[:10], "%Y-%m-%d").date()
+                return datetime.strptime(
+                    valeur[:10],
+                    "%Y-%m-%d"
+                ).date()
+
             except Exception:
                 return None
 
         return None
 
     try:
-        dates_brutes = db.session.query(
-            func.date(StudentResponse.timestamp)
-        ).filter(
-            StudentResponse.user_id == eleve.id,
-            StudentResponse.timestamp.isnot(None)
-        ).distinct().order_by(
-            func.date(StudentResponse.timestamp).desc()
-        ).limit(60).all()
+        dates_brutes = (
+            db.session.query(
+                func.date(
+                    StudentResponse.timestamp
+                )
+            )
+            .filter(
+                StudentResponse.user_id == eleve.id,
+                StudentResponse.timestamp.isnot(None)
+            )
+            .distinct()
+            .order_by(
+                func.date(
+                    StudentResponse.timestamp
+                ).desc()
+            )
+            .limit(60)
+            .all()
+        )
 
         dates_list = []
 
         for ligne in dates_brutes:
-            d = normaliser_date(ligne[0])
-            if d:
+            if not ligne:
+                continue
+
+            d = normaliser_date(
+                ligne[0]
+            )
+
+            if (
+                d
+                and d not in dates_list
+            ):
                 dates_list.append(d)
 
         if dates_list:
             today = datetime.utcnow().date()
 
+            # ----------------------------------------------------
+            # Comportement actuel :
+            # la série ne démarre que si l'élève a travaillé
+            # aujourd'hui.
+            # ----------------------------------------------------
+
             if dates_list[0] == today:
                 serie = 1
 
-                for i in range(len(dates_list) - 1):
-                    if (dates_list[i] - dates_list[i + 1]).days == 1:
+                for i in range(
+                    len(dates_list) - 1
+                ):
+                    difference = (
+                        dates_list[i]
+                        - dates_list[i + 1]
+                    ).days
+
+                    if difference == 1:
                         serie += 1
                     else:
                         break
 
     except Exception as e:
-        print(f"⚠️ Erreur calcul série élève: {e}")
+        print(
+            f"⚠️ Erreur calcul série élève: {e}"
+        )
+
         serie = 0
 
-    taux_reussite = round((reussis / total * 100) if total > 0 else 0)
+    # ============================================================
+    # CONTRÔLES DE COHÉRENCE
+    # ============================================================
+    #
+    # Ces contrôles ne modifient normalement rien.
+    # Ils évitent seulement qu'une incohérence ancienne en base
+    # produise des nombres absurdes dans l'interface.
+    # ============================================================
+
+    if total_evalues < 0:
+        total_evalues = 0
+
+    if reussis < 0:
+        reussis = 0
+
+    if echoues < 0:
+        echoues = 0
+
+    if non_evalues < 0:
+        non_evalues = 0
+
+    if reussis > total_evalues:
+        reussis = total_evalues
+
+    if echoues > total_evalues:
+        echoues = total_evalues
+
+    # ============================================================
+    # RÉPONSE API
+    # ============================================================
+    #
+    # Compatibilité :
+    #
+    # "total_exercices" continue d'exister pour ne pas casser
+    # ton JavaScript actuel.
+    #
+    # Mais il représente maintenant le nombre réellement évalué,
+    # puisque c'est ce nombre qui doit être utilisé pour la réussite.
+    #
+    # "total_activites" contient toutes les réponses enregistrées.
+    # ============================================================
 
     data = {
         "success": True,
-        "total_exercices": total,
+
+        # --------------------------------------------------------
+        # Statistique utilisée pour le taux de réussite
+        # --------------------------------------------------------
+        "total_exercices": total_evalues,
+        "total_evalues": total_evalues,
         "exercices_reussis": reussis,
+        "exercices_echoues": echoues,
         "taux_reussite": taux_reussite,
+
+        # --------------------------------------------------------
+        # Activité totale
+        # --------------------------------------------------------
+        "total_activites": total_reponses,
+
+        # --------------------------------------------------------
+        # Réponses enregistrées mais non évaluées
+        # --------------------------------------------------------
+        "exercices_non_evalues": non_evalues,
+        "taux_evaluation": taux_evaluation,
+
+        # --------------------------------------------------------
+        # Autres statistiques
+        # --------------------------------------------------------
         "serie": serie,
         "temps_apprentissage": 0,
+
         "cached": False
     }
 
-    # Sauvegarde cache session
+    # ============================================================
+    # LOG DE CONTRÔLE
+    # ============================================================
+
+    print(
+        "📊 Stats élève : "
+        f"activités={total_reponses}, "
+        f"évaluées={total_evalues}, "
+        f"réussies={reussis}, "
+        f"échouées={echoues}, "
+        f"non évaluées={non_evalues}, "
+        f"taux={taux_reussite}%"
+    )
+
+    # ============================================================
+    # SAUVEGARDE CACHE SESSION
+    # ============================================================
+
     session["api_eleve_stats_cache"] = {
         "user_id": user_id,
         "timestamp": datetime.utcnow().timestamp(),
-        "data": data
+        "data": dict(data)
     }
+
     session.modified = True
 
     return jsonify(data)
@@ -3550,6 +4358,44 @@ def enseignant_virtuel():
         verifier_chaine_egalites_fractionnaire,
         verifier_equation_intermediaire_equivalente
     )
+    from services.validation_engine import ValidationEngine
+
+    # ============================================================
+    # COUCHE COMPORTEMENTALE ET POLITIQUE PÉDAGOGIQUE
+    # ============================================================
+    # Ces services ne remplacent jamais ValidationEngine.
+    # ============================================================
+
+    from services.behavioral_state_service import (
+        diagnostiquer_etat_comportemental
+    )
+    from services.cognitive_control_service import (
+        detecter_controle_cognitif
+    )
+    from services.pedagogical_policy_service import (
+        choisir_intervention_pedagogique,
+        construire_instruction_pedagogique
+    )
+    from services.pedagogical_response_guard import (
+        verifier_reponse_naima,
+        construire_instruction_regeneration
+    )
+
+    # ============================================================
+    # SUIVI LONGITUDINAL DE RÉCUPÉRATION D'APPRENTISSAGE
+    # ============================================================
+    from services.learning_recovery_service import (
+        analyser_recuperation_apprentissage,
+        resume_recuperation_apprentissage
+    )
+
+    from services.reasoning_consistency_service import (
+        verifier_coherence_resultat_raisonnement
+    )
+
+    from services.context_continuity_service import (
+        detecter_continuation_contextuelle
+    )
 
     # ============================================================
     # AUTHENTIFICATION
@@ -3610,6 +4456,11 @@ def enseignant_virtuel():
         "verification_math_locale": False,
         "recentrage_pedagogique": False,
         "analyse_pedagogique": False,
+        "diagnostic_comportemental": False,
+        "controle_cognitif": False,
+        "politique_pedagogique": False,
+        "garde_fou_reponse": False,
+        "recuperation_apprentissage": False,
         "profil_personnalise": True,
         "contexte_injecte": True,
         "source": "TraceApprentissage + DiagnosticBayesien + session pédagogique",
@@ -3659,6 +4510,111 @@ def enseignant_virtuel():
                 )
 
         return html
+
+
+    def nettoyer_message_eleve_naima(message):
+        """
+        Nettoie uniquement les artefacts d'interface susceptibles d'être
+        copiés avec le message de l'élève.
+
+        Exemples corrigés :
+        - "Élève :\nRésoudre 3x-5=10" -> "Résoudre 3x-5=10"
+        - "Student: Solve 3x-5=10" -> "Solve 3x-5=10"
+        - "x=5 11:43 PM" -> "x=5"
+        - "x=5\n23:43" -> "x=5"
+
+        Le contenu mathématique interne n'est pas modifié.
+        """
+
+        texte = str(message or "").strip()
+
+        if not texte:
+            return ""
+
+        texte = re.sub(
+            r"^\s*(?:👤\s*)?(?:élève|eleve|student)\s*:\s*",
+            "",
+            texte,
+            flags=re.IGNORECASE
+        ).strip()
+
+        texte = re.sub(
+            r"(?:\s|\r|\n)+"
+            r"\d{1,2}:\d{2}\s*(?:AM|PM)\s*$",
+            "",
+            texte,
+            flags=re.IGNORECASE
+        ).strip()
+
+        texte = re.sub(
+            r"(?:\s|\r|\n)+"
+            r"(?:[01]?\d|2[0-3]):[0-5]\d\s*$",
+            "",
+            texte
+        ).strip()
+
+        return texte
+
+
+    def normaliser_operations_eleve_naima(texte):
+        """
+        Corrige uniquement quelques fautes fréquentes portant sur les
+        verbes d'opérations mathématiques.
+
+        Cette normalisation est volontairement conservatrice :
+        - elle ne modifie jamais les nombres ;
+        - elle ne modifie jamais les variables ;
+        - elle ne modifie jamais les signes =, <, >, <=, >= ;
+        - elle ne transforme pas librement tout le texte de l'élève.
+
+        Exemples :
+        - "ajoter -2x aux deux membres" -> "ajouter -2x aux deux membres"
+        - "soustrair 4" -> "soustraire 4"
+        - "divisser par 3" -> "diviser par 3"
+        - "multipler par -2" -> "multiplier par -2"
+        """
+
+        texte = str(texte or "").strip()
+
+        if not texte:
+            return ""
+
+        remplacements = [
+            # Ajouter
+            (r"\bajoter\b", "ajouter"),
+            (r"\bajoutter\b", "ajouter"),
+            (r"\bajouterr\b", "ajouter"),
+            (r"\bajouté\b", "ajouter"),
+            (r"\bajoutee\b", "ajouter"),
+            (r"\bajoutée\b", "ajouter"),
+
+            # Soustraire
+            (r"\bsoustrair\b", "soustraire"),
+            (r"\bsoustrairre\b", "soustraire"),
+            (r"\bsoustraiere\b", "soustraire"),
+
+            # Diviser
+            (r"\bdivisser\b", "diviser"),
+            (r"\bdivizer\b", "diviser"),
+            (r"\bdiviserr\b", "diviser"),
+
+            # Multiplier
+            (r"\bmultipler\b", "multiplier"),
+            (r"\bmultipilier\b", "multiplier"),
+            (r"\bmultiplierr\b", "multiplier"),
+        ]
+
+        texte_normalise = texte
+
+        for pattern, remplacement in remplacements:
+            texte_normalise = re.sub(
+                pattern,
+                remplacement,
+                texte_normalise,
+                flags=re.IGNORECASE
+            )
+
+        return texte_normalise
 
 
     def identifier_intention_pedagogique(
@@ -3712,6 +4668,12 @@ def enseignant_virtuel():
         # --------------------------------------------------------
 
         contient_equation = "=" in texte
+        contient_inequation = bool(
+            re.search(r"(?:<=|>=|<|>|≤|≥)", texte)
+        )
+        contient_relation = bool(
+            contient_equation or contient_inequation
+        )
 
         contient_expression_math = bool(
             re.search(
@@ -3729,7 +4691,8 @@ def enseignant_virtuel():
         )
 
         mots_math = [
-            "équation", "equation", "calcul", "calcule",
+            "équation", "equation", "inéquation", "inequation",
+            "calcul", "calcule",
             "résoudre", "resoudre", "résous", "resous",
             "fraction", "factorise", "factoriser",
             "développe", "developpe", "simplifie",
@@ -3739,7 +4702,7 @@ def enseignant_virtuel():
         ]
 
         if (
-            contient_equation
+            contient_relation
             or contient_expression_math
             or contient_variable_math
             or any(mot in texte for mot in mots_math)
@@ -3759,44 +4722,44 @@ def enseignant_virtuel():
         # --------------------------------------------------------
 
         def extraire_contenu_math_intention(texte_source):
+            """
+            Extrait une équation OU une inéquation simple contenant x/y/z.
+
+            Exemples :
+            - 3x-5=10
+            - 2x-5>5
+            - -3x+2<=11
+            - x>=4
+            """
             texte_math = (
                 (texte_source or "")
                 .lower()
                 .replace("×", "*")
                 .replace("÷", "/")
+                .replace("≤", "<=")
+                .replace("≥", ">=")
                 .replace(",", ".")
             )
 
-            # Priorité aux équations contenant x/y/z.
-            candidats_eq = re.findall(
+            candidats_relation = re.findall(
                 r"(?<![a-zà-ÿ])"
-                r"[-+]?(?:\d+(?:\.\d+)?\s*\*?\s*)?[xyz]"
-                r"(?:\s*[+\-*/]\s*(?:"
-                r"(?:\d+(?:\.\d+)?\s*\*?\s*)?[xyz]"
-                r"|\d+(?:\.\d+)?"
-                r"))*"
-                r"\s*=\s*"
-                r"[-+]?(?:"
-                r"(?:\d+(?:\.\d+)?\s*\*?\s*)?[xyz]"
-                r"|\d+(?:\.\d+)?"
-                r")"
-                r"(?:\s*[+\-*/]\s*(?:"
-                r"(?:\d+(?:\.\d+)?\s*\*?\s*)?[xyz]"
-                r"|\d+(?:\.\d+)?"
-                r"))*"
+                r"[-+0-9xyz().*/\s]+"
+                r"(?:<=|>=|=|<|>)"
+                r"[-+0-9xyz().*/\s]+"
                 r"(?![a-zà-ÿ])",
                 texte_math,
                 flags=re.IGNORECASE
             )
 
-            if candidats_eq:
-                return re.sub(
-                    r"\s+",
-                    "",
-                    max(candidats_eq, key=len)
-                )
+            candidats_relation = [
+                re.sub(r"\s+", "", c).rstrip("+-*/.")
+                for c in candidats_relation
+                if c and re.search(r"[xyz]", c, flags=re.IGNORECASE)
+            ]
 
-            # Sinon, expression numérique simple.
+            if candidats_relation:
+                return max(candidats_relation, key=len)
+
             candidats_num = re.findall(
                 r"(?<![\w.])"
                 r"[-+]?\d+(?:\.\d+)?"
@@ -3815,35 +4778,11 @@ def enseignant_virtuel():
             return None
 
         if resultat["domaine"] == "mathematiques":
-            candidats_equation = re.findall(
-                r"(?<![a-zà-ÿ])"
-                r"[-+0-9xyz().*/\s]+"
-                r"="
-                r"[-+0-9xyz().*/\s]+"
-                r"(?![a-zà-ÿ])",
-                texte_original.lower()
-                .replace("×", "*")
-                .replace("÷", "/")
-                .replace(",", "."),
-                flags=re.IGNORECASE
+            resultat["contenu_math"] = (
+                extraire_contenu_math_intention(
+                    texte_original
+                )
             )
-
-            candidats_equation = [
-                re.sub(r"\s+", "", c).rstrip("+-*/.")
-                for c in candidats_equation
-                if c and re.search(r"[xyz]", c)
-            ]
-
-            if candidats_equation:
-                resultat["contenu_math"] = (
-                    candidats_equation[-1]
-                )
-            else:
-                resultat["contenu_math"] = (
-                    extraire_contenu_math_intention(
-                        texte_original
-                    )
-                )
 
         # --------------------------------------------------------
         # 1. DEMANDE DE NOUVEL EXERCICE
@@ -3992,12 +4931,46 @@ def enseignant_virtuel():
             "le produit", "le quotient"
         ]
 
+        reponse_finale_x_detectee = bool(
+            not premier_message
+            and re.search(
+                r"(?<![0-9A-Za-zÀ-ÿ*])x\s*=",
+                texte,
+                flags=re.IGNORECASE
+            )
+        )
+
+        demande_resolution_textuelle = any(
+            mot in texte
+            for mot in mots_resolution
+        )
+
+        # Une phrase comme « je veux résoudre cette équation » ne doit
+        # jamais remplacer un objectif mathématique déjà connu si elle ne
+        # contient aucune nouvelle donnée mathématique.
+        resolution_contient_un_vrai_probleme = bool(
+            demande_resolution_textuelle
+            and (
+                premier_message
+                or contient_relation
+                or contient_expression_math
+                or resultat.get("contenu_math")
+                or any(
+                    texte.startswith(mot)
+                    for mot in debut_probleme_verbal
+                )
+            )
+        )
+
         if (
-            any(mot in texte for mot in mots_resolution)
+            (
+                resolution_contient_un_vrai_probleme
+                and not reponse_finale_x_detectee
+            )
             or (
                 premier_message
                 and resultat["domaine"] == "mathematiques"
-                and (contient_equation or contient_expression_math)
+                and (contient_relation or contient_expression_math)
             )
             or any(texte.startswith(mot) for mot in debut_probleme_verbal)
         ):
@@ -4007,7 +4980,10 @@ def enseignant_virtuel():
                 "confiance": 0.97
             })
 
-            if contient_equation:
+            if contient_inequation:
+                resultat["sous_type"] = "inequation"
+                resultat["objectif"] = "resoudre_inequation"
+            elif contient_equation:
                 resultat["sous_type"] = "equation"
                 resultat["objectif"] = "resoudre_equation"
             elif contient_expression_math:
@@ -4018,6 +4994,56 @@ def enseignant_virtuel():
 
             return resultat
 
+        
+        # --------------------------------------------------------
+        # 5B. NOUVELLE ÉQUATION SAISIE SPONTANÉMENT
+        # --------------------------------------------------------
+        #
+        # Cas important :
+        #
+        # Après une réinitialisation ou lorsqu'aucune question
+        # pédagogique n'est actuellement active, l'élève peut écrire :
+        #
+        #     3x-5=9
+        #
+        # ou :
+        #
+        #     aide moi a resoudrte l'equation 3x-5=9
+        #
+        # même avec une faute dans "résoudre".
+        #
+        # Une équation complète contenant une variable constitue alors
+        # suffisamment d'information pour démarrer un nouveau problème.
+        #
+        # En revanche, si Naima vient de poser une question, cette même
+        # équation peut être une réponse intermédiaire et ne doit pas être
+        # automatiquement considérée comme un nouveau problème.
+        # --------------------------------------------------------
+
+        if (
+            not premier_message
+            and not derniere_q
+            and contient_relation
+            and contient_variable_math
+        ):
+            resultat.update({
+                "type_demande": "probleme_a_resoudre",
+                "domaine": "mathematiques",
+                "sous_type": (
+                    "inequation"
+                    if contient_inequation
+                    else "equation"
+                ),
+                "objectif": (
+                    "resoudre_inequation"
+                    if contient_inequation
+                    else "resoudre_equation"
+                ),
+                "confiance": 0.96
+            })
+
+            return resultat
+
         # --------------------------------------------------------
         # 6. RÉPONSE FINALE
         # --------------------------------------------------------
@@ -4025,7 +5051,7 @@ def enseignant_virtuel():
         if not premier_message:
             reponse_finale_x = bool(
                 re.search(
-                    r"(?<![0-9A-Za-zÀ-ÿ*])x\s*=",
+                    r"(?<![0-9A-Za-zÀ-ÿ*])x\s*(?:=|<=|>=|<|>|≤|≥)",
                     texte,
                     flags=re.IGNORECASE
                 )
@@ -4060,24 +5086,52 @@ def enseignant_virtuel():
 
         if not premier_message and derniere_q:
             signaux_etape = [
+                # Addition
+                "ajouter",
+                "ajoute",
                 "on ajoute",
                 "j'ajoute",
                 "je vais ajouter",
+                "ajoutons",
+
+                # Soustraction
+                "soustraire",
+                "soustrais",
                 "on soustrait",
                 "je soustrais",
+                "je vais soustraire",
+                "retrancher",
+                "retranche",
+                "enlever",
+                "enleve",
+
+                # Division
+                "diviser",
+                "divise",
                 "on divise",
                 "je divise",
+                "je vais diviser",
+
+                # Multiplication
+                "multiplier",
+                "multiplie",
                 "on multiplie",
                 "je multiplie",
+                "je vais multiplier",
+
+                # Résultat d'une étape
                 "cela donne",
+                "ça donne",
+                "ca donne",
                 "ce qui donne",
-                "on a",
+                "on obtient",
                 "j'obtiens",
+                "on a",
                 "donc"
             ]
 
             if (
-                contient_equation
+                contient_relation
                 or contient_expression_math
                 or any(signal in texte for signal in signaux_etape)
             ):
@@ -4258,6 +5312,745 @@ def enseignant_virtuel():
                 equations.append(equation)
 
         return equations
+
+
+
+    def normaliser_operateur_relation_naima(texte):
+        return (
+            str(texte or "")
+            .replace("≤", "<=")
+            .replace("≥", ">=")
+            .replace("×", "*")
+            .replace("÷", "/")
+            .replace(",", ".")
+        )
+
+
+    def extraire_relations_math_depuis_texte_naima(texte_source):
+        """
+        Extrait équations et inéquations simples contenant x/y/z.
+        """
+        texte_math = normaliser_operateur_relation_naima(
+            texte_source
+        ).lower()
+
+        candidats = re.findall(
+            r"(?<![a-zà-ÿ])"
+            r"[-+0-9xyz().*/\s]+"
+            r"(?:<=|>=|=|<|>)"
+            r"[-+0-9xyz().*/\s]+"
+            r"(?![a-zà-ÿ])",
+            texte_math,
+            flags=re.IGNORECASE
+        )
+
+        relations = []
+
+        for candidat in candidats:
+            relation = re.sub(
+                r"\s+",
+                "",
+                candidat
+            ).strip().rstrip("+-*/.")
+
+            if not relation:
+                continue
+
+            if not re.search(
+                r"(?:<=|>=|=|<|>)",
+                relation
+            ):
+                continue
+
+            if not re.search(
+                r"[xyz]",
+                relation,
+                flags=re.IGNORECASE
+            ):
+                continue
+
+            if relation not in relations:
+                relations.append(relation)
+
+        return relations
+
+
+    def est_inequation_naima(texte):
+        texte = normaliser_operateur_relation_naima(
+            texte
+        )
+        return bool(
+            re.search(r"(?:<=|>=|<|>)", texte)
+        )
+
+
+    def _separer_relation_naima(relation):
+        relation = normaliser_operateur_relation_naima(
+            relation
+        )
+        relation = re.sub(r"\s+", "", relation)
+
+        match = re.fullmatch(
+            r"(.+?)(<=|>=|=|<|>)(.+)",
+            relation
+        )
+
+        if not match:
+            return None
+
+        return (
+            match.group(1),
+            match.group(2),
+            match.group(3)
+        )
+
+
+    def _inverser_operateur_inegalite_naima(op):
+        return {
+            ">": "<",
+            "<": ">",
+            ">=": "<=",
+            "<=": ">="
+        }.get(op, op)
+
+
+    def _sympifier_expression_naima(expression):
+        """
+        Sympifie prudemment une expression simple en x.
+
+        Retourne None si SymPy n'est pas disponible ou si l'expression
+        ne peut pas être interprétée.
+        """
+        try:
+            import sympy as sp
+
+            x = sp.Symbol("x")
+
+            expr = normaliser_operateur_relation_naima(
+                expression
+            )
+            expr = re.sub(r"\s+", "", expr)
+
+            # multiplication implicite : 2x -> 2*x, 2(x+1) -> 2*(x+1)
+            expr = re.sub(
+                r"(?<=\d)(?=[xyz(])",
+                "*",
+                expr,
+                flags=re.IGNORECASE
+            )
+            expr = re.sub(
+                r"(?<=[xyz)])(?=\d|[xyz(])",
+                "*",
+                expr,
+                flags=re.IGNORECASE
+            )
+
+            return sp.sympify(
+                expr,
+                locals={"x": x}
+            )
+
+        except Exception:
+            return None
+
+
+    def _formatter_expression_naima(expr):
+        try:
+            import sympy as sp
+            expr = sp.simplify(expr)
+            texte = str(expr)
+        except Exception:
+            texte = str(expr)
+
+        return (
+            texte
+            .replace("**", "^")
+            .replace(" ", "")
+        )
+
+
+    def _extraire_operation_inequation_naima(message):
+        """
+        Détecte une opération verbale simple appliquée aux deux membres.
+
+        Retour :
+        {
+            "type": "add"|"subtract"|"multiply"|"divide",
+            "valeur": Fraction(...)
+        }
+        """
+        from fractions import Fraction
+
+        texte = (
+            str(message or "")
+            .lower()
+            .replace(",", ".")
+            .replace("−", "-")
+        )
+
+        patterns = [
+            (
+                "add",
+                [
+                    r"(?:ajout(?:e|er|ons)?|additionn(?:e|er|ons)?)"
+                    r"(?:\s+de)?\s+([-+]?\d+(?:\.\d+)?(?:/\d+)?)"
+                ]
+            ),
+            (
+                "subtract",
+                [
+                    r"(?:soustrai(?:s|re|t)?|retranch(?:e|er|ons)?|enlev(?:e|er|ons)?)"
+                    r"(?:\s+de)?\s+([-+]?\d+(?:\.\d+)?(?:/\d+)?)"
+                ]
+            ),
+            (
+                "divide",
+                [
+                    r"(?:divis(?:e|er|ons|é|ee|ée)|division|divisant)"
+                    r"(?:\s+(?:les\s+deux\s+membres\s+)?)?"
+                    r"(?:par\s+)?([-+]?\d+(?:\.\d+)?(?:/\d+)?)"
+                ]
+            ),
+            (
+                "multiply",
+                [
+                    r"(?:multipli(?:e|er|ons|é|ee|ée)|produit)"
+                    r"(?:\s+(?:les\s+deux\s+membres\s+)?)?"
+                    r"(?:par\s+)?([-+]?\d+(?:\.\d+)?(?:/\d+)?)"
+                ]
+            ),
+        ]
+
+        for type_op, expressions in patterns:
+            for pattern in expressions:
+                match = re.search(
+                    pattern,
+                    texte,
+                    flags=re.IGNORECASE
+                )
+                if not match:
+                    continue
+
+                try:
+                    valeur = Fraction(
+                        match.group(1)
+                    )
+                except Exception:
+                    continue
+
+                return {
+                    "type": type_op,
+                    "valeur": valeur
+                }
+
+        return None
+
+
+    def transformer_inequation_naima(
+        inequation,
+        operation
+    ):
+        """
+        Applique une opération numérique identique aux deux membres.
+
+        IMPORTANT :
+        lors d'une multiplication ou division par un nombre négatif,
+        le sens de l'inégalité est inversé.
+        """
+        if not inequation or not operation:
+            return None
+
+        morceaux = _separer_relation_naima(
+            inequation
+        )
+
+        if not morceaux:
+            return None
+
+        gauche_txt, operateur, droite_txt = morceaux
+
+        if operateur == "=":
+            return None
+
+        gauche = _sympifier_expression_naima(
+            gauche_txt
+        )
+        droite = _sympifier_expression_naima(
+            droite_txt
+        )
+
+        if gauche is None or droite is None:
+            return None
+
+        try:
+            import sympy as sp
+
+            valeur = sp.Rational(
+                operation["valeur"].numerator,
+                operation["valeur"].denominator
+            )
+
+            type_op = operation["type"]
+            nouvel_operateur = operateur
+
+            if type_op == "add":
+                gauche_nouveau = sp.simplify(
+                    gauche + valeur
+                )
+                droite_nouveau = sp.simplify(
+                    droite + valeur
+                )
+
+            elif type_op == "subtract":
+                gauche_nouveau = sp.simplify(
+                    gauche - valeur
+                )
+                droite_nouveau = sp.simplify(
+                    droite - valeur
+                )
+
+            elif type_op == "multiply":
+                if valeur == 0:
+                    return {
+                        "valide": False,
+                        "raison": (
+                            "Multiplier une inéquation par 0 détruit "
+                            "l'information d'ordre."
+                        )
+                    }
+
+                gauche_nouveau = sp.simplify(
+                    gauche * valeur
+                )
+                droite_nouveau = sp.simplify(
+                    droite * valeur
+                )
+
+                if valeur < 0:
+                    nouvel_operateur = (
+                        _inverser_operateur_inegalite_naima(
+                            operateur
+                        )
+                    )
+
+            elif type_op == "divide":
+                if valeur == 0:
+                    return {
+                        "valide": False,
+                        "raison": "Division par zéro impossible."
+                    }
+
+                gauche_nouveau = sp.simplify(
+                    gauche / valeur
+                )
+                droite_nouveau = sp.simplify(
+                    droite / valeur
+                )
+
+                if valeur < 0:
+                    nouvel_operateur = (
+                        _inverser_operateur_inegalite_naima(
+                            operateur
+                        )
+                    )
+
+            else:
+                return None
+
+            relation = (
+                f"{_formatter_expression_naima(gauche_nouveau)}"
+                f"{nouvel_operateur}"
+                f"{_formatter_expression_naima(droite_nouveau)}"
+            )
+
+            return {
+                "valide": True,
+                "relation": relation,
+                "operateur_avant": operateur,
+                "operateur_apres": nouvel_operateur,
+                "inversion_sens": (
+                    nouvel_operateur != operateur
+                ),
+                "operation_type": type_op,
+                "operation_value": str(
+                    operation["valeur"]
+                )
+            }
+
+        except Exception:
+            return None
+
+
+    def inequations_equivalentes_naima(
+        inequation_a,
+        inequation_b
+    ):
+        """
+        Compare deux inéquations par leur ensemble solution.
+        Retourne True/False/None.
+        """
+        try:
+            import sympy as sp
+
+            x = sp.Symbol("x")
+
+            def construire_relation(texte):
+                morceaux = _separer_relation_naima(
+                    texte
+                )
+                if not morceaux:
+                    return None
+
+                gauche_txt, op, droite_txt = morceaux
+                gauche = _sympifier_expression_naima(
+                    gauche_txt
+                )
+                droite = _sympifier_expression_naima(
+                    droite_txt
+                )
+
+                if gauche is None or droite is None:
+                    return None
+
+                if op == ">":
+                    return sp.Gt(gauche, droite)
+                if op == "<":
+                    return sp.Lt(gauche, droite)
+                if op == ">=":
+                    return sp.Ge(gauche, droite)
+                if op == "<=":
+                    return sp.Le(gauche, droite)
+
+                return None
+
+            rel_a = construire_relation(
+                inequation_a
+            )
+            rel_b = construire_relation(
+                inequation_b
+            )
+
+            if rel_a is None or rel_b is None:
+                return None
+
+            ens_a = sp.solve_univariate_inequality(
+                rel_a,
+                x,
+                relational=False
+            )
+            ens_b = sp.solve_univariate_inequality(
+                rel_b,
+                x,
+                relational=False
+            )
+
+            return bool(
+                sp.simplify(
+                    sp.SymmetricDifference(
+                        ens_a,
+                        ens_b
+                    )
+                ) == sp.EmptySet
+            )
+
+        except Exception:
+            return None
+
+
+    def construire_reponse_inequation_correcte_naima(
+        relation
+    ):
+        relation_affichee = (
+            str(relation or "")
+            .replace("*", "")
+        )
+
+        morceaux = _separer_relation_naima(
+            relation
+        )
+
+        if not morceaux:
+            return None
+
+        gauche, op, droite = morceaux
+
+        # Si x est isolé, l'objectif est terminé.
+        if re.fullmatch(r"x", gauche):
+            if current_lang == "fr":
+                return (
+                    f"🎉 Bravo ! **{relation_affichee}** est la bonne solution. "
+                    "L'inéquation est résolue. — Naima ✨"
+                )
+
+            return (
+                f"🎉 Well done! **{relation_affichee}** is the correct solution. "
+                "The inequality is solved. — Naima ✨"
+            )
+
+        forme = _extraire_forme_ax_relation_b_naima(
+            relation
+        )
+
+        if forme and forme.get("coefficient") not in (None, 0, 1):
+            coeff = forme["coefficient"]
+
+            if current_lang == "fr":
+                precision = ""
+                if coeff < 0:
+                    precision = (
+                        " Comme ce coefficient est négatif, n'oublie pas "
+                        "que le sens de l'inégalité devra s'inverser."
+                    )
+
+                return (
+                    f"Oui, **{relation_affichee}** est correct. "
+                    "Cette étape a été vérifiée mathématiquement. "
+                    f"Pour isoler x, quelle opération dois-tu appliquer "
+                    f"aux deux membres pour éliminer le coefficient {coeff} ?"
+                    f"{precision} — Naima ✨"
+                )
+
+            return (
+                f"Yes, **{relation_affichee}** is correct. "
+                "This step has been mathematically verified. "
+                f"What operation should you apply to both sides to remove "
+                f"the coefficient {coeff}? — Naima ✨"
+            )
+
+        if current_lang == "fr":
+            return (
+                f"Oui, **{relation_affichee}** est correct. "
+                "Quelle est la prochaine opération pour continuer à isoler x ? "
+                "— Naima ✨"
+            )
+
+        return (
+            f"Yes, **{relation_affichee}** is correct. "
+            "What is the next operation to continue isolating x? — Naima ✨"
+        )
+
+
+    def _extraire_forme_ax_relation_b_naima(relation):
+        """
+        Reconnaît a*x <op> b ou x <op> b.
+        """
+        morceaux = _separer_relation_naima(
+            relation
+        )
+
+        if not morceaux:
+            return None
+
+        gauche, op, droite = morceaux
+
+        if op == "=":
+            return None
+
+        match_x = re.fullmatch(
+            r"x",
+            gauche
+        )
+
+        if match_x:
+            return {
+                "coefficient": 1,
+                "droite": droite,
+                "operateur": op
+            }
+
+        match_ax = re.fullmatch(
+            r"([-+]?\d+(?:/\d+)?(?:\.\d+)?)\*?x",
+            gauche
+        )
+
+        if not match_ax:
+            return None
+
+        try:
+            from fractions import Fraction
+            coeff = Fraction(
+                match_ax.group(1)
+            )
+        except Exception:
+            return None
+
+        return {
+            "coefficient": coeff,
+            "droite": droite,
+            "operateur": op
+        }
+
+
+    def verifier_et_transformer_inequation_naima(
+        question_eleve,
+        relation_courante
+    ):
+        """
+        Vérification locale des étapes d'une inéquation linéaire simple.
+
+        Cas pris en charge :
+        - proposition d'une nouvelle inéquation équivalente ;
+        - ajout/soustraction d'un nombre aux deux membres ;
+        - multiplication/division par un nombre ;
+        - inversion du sens pour facteur négatif ;
+        - solution finale x <op> valeur.
+        """
+        if not est_inequation_naima(
+            relation_courante
+        ):
+            return {
+                "traite": False,
+                "verdict": "uncertain"
+            }
+
+        relations_eleve = (
+            extraire_relations_math_depuis_texte_naima(
+                question_eleve
+            )
+        )
+
+        # 1) L'élève donne explicitement une nouvelle inéquation.
+        if relations_eleve:
+            proposition = relations_eleve[-1]
+
+            equivalent = inequations_equivalentes_naima(
+                relation_courante,
+                proposition
+            )
+
+            if equivalent is True:
+                return {
+                    "traite": True,
+                    "verdict": "correct",
+                    "confidence": 1.0,
+                    "method": "inequality_equivalence",
+                    "relation": proposition,
+                    "transformed_inequality": proposition,
+                    "reasoning_correct": True,
+                    "objectif_atteint": bool(
+                        re.match(
+                            r"^x(?:<=|>=|<|>)",
+                            proposition
+                        )
+                    ),
+                    "reason": (
+                        "L'inéquation proposée possède le même ensemble "
+                        "solution que l'inéquation courante."
+                    )
+                }
+
+            if equivalent is False:
+                return {
+                    "traite": True,
+                    "verdict": "incorrect",
+                    "confidence": 1.0,
+                    "method": "inequality_equivalence",
+                    "relation": proposition,
+                    "reasoning_correct": False,
+                    "error_type": "non_equivalent_inequality",
+                    "reason": (
+                        "L'inéquation proposée n'a pas le même ensemble "
+                        "solution que l'inéquation courante."
+                    )
+                }
+
+        # 2) L'élève annonce une opération.
+        operation = _extraire_operation_inequation_naima(
+            question_eleve
+        )
+
+        if operation:
+            transformation = transformer_inequation_naima(
+                relation_courante,
+                operation
+            )
+
+            if transformation and transformation.get(
+                "valide"
+            ) is False:
+                return {
+                    "traite": True,
+                    "verdict": "incorrect",
+                    "confidence": 1.0,
+                    "method": "inequality_operation",
+                    "reasoning_correct": False,
+                    "error_type": "invalid_inequality_operation",
+                    "reason": transformation.get(
+                        "raison",
+                        "Opération invalide."
+                    )
+                }
+
+            if transformation and transformation.get(
+                "valide"
+            ):
+                relation_transformee = transformation[
+                    "relation"
+                ]
+
+                # Si le message contient aussi une inéquation finale,
+                # elle doit correspondre à la transformation calculée.
+                if relations_eleve:
+                    proposition = relations_eleve[-1]
+                    equivalent = inequations_equivalentes_naima(
+                        relation_transformee,
+                        proposition
+                    )
+
+                    if equivalent is False:
+                        return {
+                            "traite": True,
+                            "verdict": "incorrect",
+                            "confidence": 1.0,
+                            "method": "inequality_operation",
+                            "reasoning_correct": False,
+                            "error_type": "wrong_inequality_result",
+                            "expected_relation": relation_transformee,
+                            "student_relation": proposition,
+                            "reason": (
+                                "L'opération annoncée est interprétable, "
+                                "mais le résultat écrit ne correspond pas "
+                                "à cette transformation."
+                            )
+                        }
+
+                    if equivalent is True:
+                        relation_transformee = proposition
+
+                return {
+                    "traite": True,
+                    "verdict": "correct",
+                    "confidence": 1.0,
+                    "method": "inequality_operation",
+                    "relation": relation_transformee,
+                    "transformed_inequality": relation_transformee,
+                    "reasoning_correct": True,
+                    "objectif_atteint": bool(
+                        re.match(
+                            r"^x(?:<=|>=|<|>)",
+                            relation_transformee
+                        )
+                    ),
+                    "operation_type": transformation.get(
+                        "operation_type"
+                    ),
+                    "operation_value": transformation.get(
+                        "operation_value"
+                    ),
+                    "inversion_sens": transformation.get(
+                        "inversion_sens",
+                        False
+                    ),
+                    "reason": (
+                        "L'opération est valide sur les deux membres "
+                        "de l'inéquation."
+                    )
+                }
+
+        return {
+            "traite": False,
+            "verdict": "uncertain"
+        }
 
 
     def extraire_equations_reference_exercice():
@@ -4726,7 +6519,14 @@ def enseignant_virtuel():
             "diagnostic_bayesien",
             "signaux_bayesiens",
             "verification_calcul",
-            "naima_processus_connecte"
+            "naima_processus_connecte",
+            "etat_comportemental_naima",
+            "controle_cognitif_naima",
+            "politique_pedagogique_naima",
+            "garde_fou_naima",
+            "naima_nb_indices_recents",
+            "recuperation_apprentissage_naima",
+            "resume_recuperation_naima"
         ]
 
         if not conserver_conversation:
@@ -4938,7 +6738,11 @@ def enseignant_virtuel():
             "resolution",
             "équation",
             "equation",
-            "="
+            "inéquation",
+            "inequation",
+            "=",
+            ">",
+            "<"
         ]
 
         mots_entrainement = [
@@ -5716,7 +7520,29 @@ def enseignant_virtuel():
     # ============================================================
 
     if request.method == 'POST':
-        question = request.form.get("question", "").strip()
+        question_brute = request.form.get("question", "").strip()
+        question = nettoyer_message_eleve_naima(
+            question_brute
+        )
+
+        if question != question_brute:
+            print(
+                "🧹 Message élève nettoyé avant analyse :",
+                repr(question)
+            )
+
+        question_avant_normalisation_operation = question
+
+        question = normaliser_operations_eleve_naima(
+            question
+        )
+
+        if question != question_avant_normalisation_operation:
+            print(
+                "✍️ Opération élève normalisée avant validation :",
+                repr(question)
+            )
+
         matiere_form = request.form.get("matiere", "")
         difficulte_form = request.form.get("difficulte", "moyen")
 
@@ -5725,6 +7551,7 @@ def enseignant_virtuel():
             session["matiere"] = matiere
 
         if question and len(question) >= 3:
+            validation_engine = ValidationEngine()
             eleve_label = "👤 Élève:" if current_lang == "fr" else "👤 Student:"
             conversation.append(f"{eleve_label} {question}")
 
@@ -5777,41 +7604,212 @@ def enseignant_virtuel():
                 )
             )
 
-            nouveau_probleme_explicite = bool(
-                type_demande_courante
-                == "probleme_a_resoudre"
-                and (
-                    not intention_pedagogique.get(
-                        "est_reponse_a_naima"
-                    )
-                    or any(
-                        marqueur in question.lower()
-                        for marqueur in [
-                            "résoudre",
-                            "resoudre",
-                            "résous",
-                            "resous",
-                            "nouveau problème",
-                            "nouveau probleme",
-                            "autre problème",
-                            "autre probleme"
-                        ]
+            # ------------------------------------------------------------
+            # DÉTECTION ROBUSTE D'UN NOUVEAU PROBLÈME
+            # ------------------------------------------------------------
+            #
+            # IMPORTANT :
+            #
+            # "Résoudre 3x-5=9"
+            #     => nouveau problème
+            #
+            # "Aide moi a resoudrte l'equation 3x-5=9"
+            #     => nouveau problème même avec une faute
+            #
+            # "je veux résoudre cette équation"
+            #     => PAS un nouveau problème :
+            #        on conserve l'équation déjà mémorisée.
+            #
+            # "continuons cette équation"
+            #     => PAS un nouveau problème.
+            #
+            # ------------------------------------------------------------
+
+            question_lower = (
+                question
+                or ""
+            ).lower().strip()
+
+            contenu_math_courant = (
+                intention_pedagogique.get(
+                    "contenu_math"
+                )
+                or ""
+            ).strip()
+
+            derniere_question_active_avant_message = (
+                session.get("derniere_q_ia")
+                or ""
+            ).strip()
+
+            contient_relation_question = bool(
+                contenu_math_courant
+                and re.search(
+                    r"(?:<=|>=|=|<|>)",
+                    normaliser_operateur_relation_naima(
+                        contenu_math_courant
                     )
                 )
             )
 
-            if (
-                nouveau_probleme_explicite
-                and session.get(
-                    "objectif_initial_naima"
+            contient_variable_question = bool(
+                re.search(
+                    r"[xyz]",
+                    contenu_math_courant,
+                    flags=re.IGNORECASE
                 )
-                and question.strip()
-                != str(
-                    session.get(
-                        "objectif_initial_naima"
+            )
+
+            marqueurs_changement_explicite = [
+                "nouveau problème",
+                "nouveau probleme",
+                "nouvelle équation",
+                "nouvelle equation",
+                "autre problème",
+                "autre probleme",
+                "autre équation",
+                "autre equation",
+                "changeons de problème",
+                "changeons de probleme",
+                "changeons d'équation",
+                "changeons d'equation"
+            ]
+
+            changement_explicitement_demande = any(
+                marqueur in question_lower
+                for marqueur in marqueurs_changement_explicite
+            )
+
+            def signature_equation_naima(valeur):
+                valeur = (
+                    str(valeur or "")
+                    .lower()
+                    .replace("×", "*")
+                    .replace("÷", "/")
+                    .replace(" ", "")
+                )
+                return valeur
+
+            equation_reference_avant_message = (
+                session.get("equation_courante_naima")
+                or ""
+            )
+
+            if not equation_reference_avant_message:
+                objectif_avant_message = (
+                    session.get("objectif_initial_naima")
+                    or ""
+                )
+                equations_ancien_objectif = (
+                    extraire_relations_math_depuis_texte_naima(
+                        objectif_avant_message
                     )
-                ).strip()
-            ):
+                )
+                if equations_ancien_objectif:
+                    equation_reference_avant_message = (
+                        equations_ancien_objectif[-1]
+                    )
+
+            equation_nouvelle_signature = (
+                signature_equation_naima(
+                    contenu_math_courant
+                )
+            )
+
+            equation_ancienne_signature = (
+                signature_equation_naima(
+                    equation_reference_avant_message
+                )
+            )
+
+            equation_reellement_differente = bool(
+                equation_nouvelle_signature
+                and equation_nouvelle_signature
+                != equation_ancienne_signature
+            )
+
+            # Une équation écrite alors qu'aucune question de Naima n'est
+            # active est considérée comme un nouvel objectif seulement si
+            # elle diffère de l'équation déjà mémorisée. Une équation donnée
+            # en réponse à une question de Naima reste une étape intermédiaire.
+            marqueurs_resolution_explicite = [
+                "résoudre",
+                "resoudre",
+                "résous",
+                "resous",
+                "solve",
+                "inéquation",
+                "inequation"
+            ]
+
+            demande_resolution_explicitement_formulee = any(
+                marqueur in question_lower
+                for marqueur in marqueurs_resolution_explicite
+            )
+
+            # --------------------------------------------------------
+            # GARDE DE CONTINUITÉ CONTEXTUELLE V1.2
+            # --------------------------------------------------------
+            # Une correction comme :
+            #   "on divise plutôt par 3 et on a x=5/3"
+            # ne doit pas devenir un nouveau problème si Naima est déjà
+            # engagée dans un objectif actif, en particulier lorsqu'un
+            # raisonnement est encore à corriger.
+            etat_recuperation_contexte = (
+                session.get("recuperation_apprentissage_naima")
+                or {}
+            )
+
+            continuite_contextuelle_naima = (
+                detecter_continuation_contextuelle(
+                    question,
+                    objectif_actif=session.get("objectif_initial_naima"),
+                    equation_courante=equation_reference_avant_message,
+                    derniere_question_naima=(
+                        derniere_question_active_avant_message
+                    ),
+                    phase_recuperation=(
+                        etat_recuperation_contexte.get("phase")
+                    ),
+                )
+            )
+
+            message_est_continuation_contextuelle = bool(
+                continuite_contextuelle_naima.get("est_continuation")
+            )
+
+            if message_est_continuation_contextuelle:
+                print(
+                    "🧭 Continuité contextuelle Naima préservée :",
+                    continuite_contextuelle_naima
+                )
+
+            nouvelle_equation_complete = bool(
+                contient_relation_question
+                and contient_variable_question
+                and not message_est_continuation_contextuelle
+                and not derniere_question_active_avant_message
+                and (
+                    not session.get("exercice_en_cours")
+                    or demande_resolution_explicitement_formulee
+                )
+                and (
+                    not equation_ancienne_signature
+                    or equation_reellement_differente
+                    or demande_resolution_explicitement_formulee
+                )
+            )
+
+            nouveau_probleme_explicite = bool(
+                nouvelle_equation_complete
+                or changement_explicitement_demande
+            )
+
+            # ------------------------------------------------------------
+            # APPLIQUER LE CHANGEMENT DE PROBLÈME
+            # ------------------------------------------------------------
+
+            if nouveau_probleme_explicite:
                 ancien_objectif = session.get(
                     "objectif_initial_naima"
                 )
@@ -5830,9 +7828,52 @@ def enseignant_virtuel():
                     )
                 )
 
+                # Si la faute de frappe empêche encore un mot comme
+                # « résoudre » d'être reconnu, la présence d'une vraie
+                # équation suffit pour qualifier le nouveau problème.
+                if contenu_math_courant:
+                    intention_pedagogique.update({
+                        "type_demande": "probleme_a_resoudre",
+                        "domaine": "mathematiques",
+                        "sous_type": (
+                            "inequation"
+                            if est_inequation_naima(
+                                contenu_math_courant
+                            )
+                            else "equation"
+                        ),
+                        "objectif": (
+                            "resoudre_inequation"
+                            if est_inequation_naima(
+                                contenu_math_courant
+                            )
+                            else "resoudre_equation"
+                        ),
+                        "contenu_math": contenu_math_courant,
+                        "est_premier_message": True,
+                        "est_reponse_a_naima": False,
+                        "confiance": max(
+                            float(
+                                intention_pedagogique.get(
+                                    "confiance",
+                                    0.0
+                                )
+                                or 0.0
+                            ),
+                            0.96
+                        )
+                    })
+
                 session[
                     "intention_pedagogique_naima"
                 ] = intention_pedagogique
+
+                if contenu_math_courant:
+                    session[
+                        "equation_courante_naima"
+                    ] = contenu_math_courant
+
+                session.modified = True
 
                 print(
                     "🔄 Nouveau problème détecté dans le chat."
@@ -5845,6 +7886,11 @@ def enseignant_virtuel():
                     "   Nouvel objectif :",
                     question
                 )
+                if contenu_math_courant:
+                    print(
+                        "   Équation initiale mémorisée :",
+                        contenu_math_courant
+                    )
 
             # ------------------------------------------------------------
             # DEMANDE EXPLICITE D'UN NOUVEL EXERCICE DANS LE CHAT
@@ -5958,6 +8004,31 @@ def enseignant_virtuel():
                     ] = "entrainement"
                 session["sujet_courant_naima"] = matiere
                 session["lecon_courante_naima"] = matiere
+
+                equation_initiale_intention = (
+                    intention_pedagogique.get("contenu_math")
+                    or ""
+                ).strip()
+
+                if (
+                    type_demande_initiale == "probleme_a_resoudre"
+                    and equation_initiale_intention
+                    and re.search(
+                        r"(?:<=|>=|=|<|>)",
+                        normaliser_operateur_relation_naima(
+                            equation_initiale_intention
+                        )
+                    )
+                ):
+                    session[
+                        "equation_courante_naima"
+                    ] = equation_initiale_intention
+
+                    print(
+                        "🧭 Équation initiale Naima mémorisée :",
+                        equation_initiale_intention
+                    )
+
                 session.pop("solution_finale_naima", None)
                 session.modified = True
 
@@ -6000,6 +8071,20 @@ def enseignant_virtuel():
             # ------------------------------------------------------------
             # DIAGNOSTIC BAYÉSIEN
             # ------------------------------------------------------------
+
+            # On conserve le diagnostic antérieur AVANT d'analyser
+            # le message courant.
+            #
+            # Il sera restauré si le ValidationEngine conclut "uncertain",
+            # car une réponse non vérifiable ne doit pas dégrader
+            # artificiellement le profil de l'élève.
+            diagnostic_precedent_naima = dict(
+                session.get("diagnostic_bayesien") or {}
+            )
+
+            signaux_precedents_naima = dict(
+                session.get("signaux_bayesiens") or {}
+            )
 
             diagnostic_bayesien = None
 
@@ -6129,6 +8214,235 @@ def enseignant_virtuel():
                     equation_courante_naima
                     if equation_courante_naima
                     else objectif_effectif
+                )
+
+                # --------------------------------------------------------
+                # DÉMARRAGE DÉTERMINISTE D'UNE ÉQUATION OU INÉQUATION
+                # --------------------------------------------------------
+                # Le premier message contenant déjà une relation mathématique
+                # ne doit jamais aboutir à une simple salutation.
+
+                relation_courante_naima = (
+                    equation_courante_naima
+                )
+
+                relation_courante_est_inequation = (
+                    est_inequation_naima(
+                        relation_courante_naima
+                    )
+                )
+
+                if (
+                    premier_message_naima
+                    and relation_courante_naima
+                    and re.search(
+                        r"(?:<=|>=|=|<|>)",
+                        normaliser_operateur_relation_naima(
+                            relation_courante_naima
+                        )
+                    )
+                    and contient_variable_mathematique(
+                        relation_courante_naima
+                    )
+                ):
+                    relation_affichee = (
+                        relation_courante_naima
+                        .replace("*", "")
+                    )
+
+                    if current_lang == "fr":
+                        if relation_courante_est_inequation:
+                            reponse_locale_prioritaire = (
+                                f"Bien sûr. Nous allons résoudre "
+                                f"**{relation_affichee}** ensemble. "
+                                "Pour commencer à isoler x, quelle opération "
+                                "peux-tu appliquer aux deux membres de "
+                                "l'inéquation ? — Naima ✨"
+                            )
+                        else:
+                            reponse_locale_prioritaire = (
+                                f"Bien sûr. Nous allons résoudre "
+                                f"**{relation_affichee}** ensemble. "
+                                "Pour commencer à isoler x, quelle opération "
+                                "peux-tu appliquer aux deux membres de "
+                                "l'équation ? — Naima ✨"
+                            )
+                    else:
+                        if relation_courante_est_inequation:
+                            reponse_locale_prioritaire = (
+                                f"Of course. We will solve "
+                                f"**{relation_affichee}** together. "
+                                "To start isolating x, what operation can you "
+                                "apply to both sides of the inequality? "
+                                "— Naima ✨"
+                            )
+                        else:
+                            reponse_locale_prioritaire = (
+                                f"Of course. We will solve "
+                                f"**{relation_affichee}** together. "
+                                "To start isolating x, what operation can you "
+                                "apply to both sides of the equation? "
+                                "— Naima ✨"
+                            )
+
+                    print(
+                        "🛡️ Démarrage déterministe de la relation :",
+                        relation_courante_naima
+                    )
+
+                # ============================================================
+                # MOTEUR DE VALIDATION UNIFIÉ
+                # ============================================================
+
+                from services.validation_result import ValidationResult
+
+                validation_inequation_locale = {
+                    "traite": False,
+                    "verdict": "uncertain"
+                }
+
+                if (
+                    not premier_message_naima
+                    and relation_courante_est_inequation
+                ):
+                    validation_inequation_locale = (
+                        verifier_et_transformer_inequation_naima(
+                            question_eleve=question,
+                            relation_courante=relation_courante_naima
+                        )
+                    )
+
+                    if validation_inequation_locale.get(
+                        "traite"
+                    ):
+                        print(
+                            "🧮 Validation locale inéquation :",
+                            validation_inequation_locale
+                        )
+
+                if premier_message_naima:
+                    # Le premier message définit le problème ou l'objectif.
+                    # Ce n'est PAS encore une réponse de l'élève à évaluer.
+                    validation_unifiee = ValidationResult(
+                        verdict="uncertain",
+                        confidence=0.0,
+                        method="initial_problem_not_answer",
+                        normalized_student_answer=question,
+                        normalized_expected_answer=None,
+                        result_correct=None,
+                        reasoning_correct=None,
+                        reason=(
+                            "Le premier message définit l'objectif pédagogique "
+                            "et ne constitue pas encore une réponse à évaluer."
+                        ),
+                        requires_review=False,
+                    )
+
+                elif validation_inequation_locale.get(
+                    "traite"
+                ):
+                    details_inequation = {
+                        cle: valeur
+                        for cle, valeur
+                        in validation_inequation_locale.items()
+                        if cle not in {
+                            "traite",
+                            "verdict",
+                            "confidence",
+                            "method",
+                            "reasoning_correct",
+                            "error_type",
+                            "reason"
+                        }
+                    }
+
+                    validation_unifiee = ValidationResult(
+                        verdict=validation_inequation_locale.get(
+                            "verdict",
+                            "uncertain"
+                        ),
+                        confidence=float(
+                            validation_inequation_locale.get(
+                                "confidence",
+                                0.0
+                            )
+                            or 0.0
+                        ),
+                        method=validation_inequation_locale.get(
+                            "method",
+                            "inequality_local"
+                        ),
+                        normalized_student_answer=question,
+                        normalized_expected_answer=None,
+                        result_correct=None,
+                        reasoning_correct=(
+                            validation_inequation_locale.get(
+                                "reasoning_correct"
+                            )
+                        ),
+                        error_type=(
+                            validation_inequation_locale.get(
+                                "error_type"
+                            )
+                        ),
+                        reason=validation_inequation_locale.get(
+                            "reason",
+                            ""
+                        ),
+                        requires_review=False,
+                        details=details_inequation,
+                    )
+
+                else:
+                    # Le ValidationEngine existant reste responsable des
+                    # équations et autres formes déjà prises en charge.
+                    previous_equation_validation = None
+
+                    if (
+                        equation_courante_naima
+                        and not est_inequation_naima(
+                            equation_courante_naima
+                        )
+                    ):
+                        previous_equation_validation = (
+                            equation_courante_naima
+                        )
+                    elif (
+                        contient_variable_mathematique(
+                            objectif_effectif
+                        )
+                        and "=" in objectif_effectif
+                        and not est_inequation_naima(
+                            objectif_effectif
+                        )
+                    ):
+                        previous_equation_validation = (
+                            objectif_effectif
+                        )
+
+                    validation_unifiee = validation_engine.validate(
+                        student_answer=question,
+                        expected_answer=None,
+                        question=objectif_effectif,
+                        previous_equation=(
+                            previous_equation_validation
+                        ),
+                        last_teacher_question=(
+                            session.get("derniere_q_ia")
+                            or derniere_q_ia
+                            or ""
+                        ),
+                    )
+
+
+                session["validation_unifiee_naima"] = (
+                    validation_unifiee.to_dict()
+                )
+                session.modified = True
+
+                print(
+                    "🧪 ValidationEngine Naima :",
+                    session["validation_unifiee_naima"]
                 )
 
                 reference_math_contient_variable = (
@@ -6330,7 +8644,193 @@ def enseignant_virtuel():
                             "mode_pedagogique_naima"
                         ) == "resolution"
                     ):
-                        if probleme_verbal_genere:
+                        # ====================================================
+                        # CAS MIXTE : RÉSULTAT FINAL CORRECT,
+                        # MAIS RAISONNEMENT VERBAL INCORRECT
+                        # ====================================================
+                        #
+                        # Exemple :
+                        #   équation courante : 3x=5
+                        #   élève : "je divise par 2 ... donc x=5/3"
+                        #
+                        # Le vérificateur de solution prouve x=5/3 correct,
+                        # tandis que ReasoningValidator prouve l'opération /2
+                        # incorrecte. On fusionne ces deux preuves au lieu de
+                        # terminer l'exercice.
+                        # ====================================================
+
+                        verdict_raisonnement_initial = (
+                            getattr(
+                                validation_unifiee,
+                                "verdict",
+                                "uncertain"
+                            )
+                            or "uncertain"
+                        )
+
+                        confiance_raisonnement_initiale = float(
+                            getattr(
+                                validation_unifiee,
+                                "confidence",
+                                0.0
+                            )
+                            or 0.0
+                        )
+
+                        raisonnement_initial_correct = getattr(
+                            validation_unifiee,
+                            "reasoning_correct",
+                            None
+                        )
+
+                        erreur_raisonnement_initiale = getattr(
+                            validation_unifiee,
+                            "error_type",
+                            None
+                        )
+
+                        conflit_resultat_raisonnement = bool(
+                            verdict_raisonnement_initial == "incorrect"
+                            and confiance_raisonnement_initiale >= 0.95
+                            and raisonnement_initial_correct is False
+                        )
+
+                        if conflit_resultat_raisonnement:
+                            validation_initiale_mixte = (
+                                validation_unifiee.to_dict()
+                                if hasattr(
+                                    validation_unifiee,
+                                    "to_dict"
+                                )
+                                else {}
+                            )
+
+                            valeur_x_correcte = (
+                                verification_equation.get(
+                                    "valeur_x_calculee"
+                                )
+                                or verification_equation.get(
+                                    "valeur_x_proposee"
+                                )
+                            )
+
+                            validation_unifiee = ValidationResult(
+                                verdict="correct",
+                                confidence=1.0,
+                                method=(
+                                    "equation_solution_reasoning_conflict"
+                                ),
+                                normalized_student_answer=question,
+                                normalized_expected_answer=None,
+                                result_correct=True,
+                                reasoning_correct=False,
+                                error_type=(
+                                    erreur_raisonnement_initiale
+                                    or "correct_result_wrong_reasoning_operation"
+                                ),
+                                reason=(
+                                    "La valeur finale proposée pour x est "
+                                    "mathématiquement correcte, mais "
+                                    "l'opération verbalisée par l'élève "
+                                    "est incorrecte."
+                                ),
+                                requires_review=False,
+                                details={
+                                    "resultat_correct_raisonnement_incorrect": True,
+                                    "validation_raisonnement_initiale": (
+                                        validation_initiale_mixte
+                                    ),
+                                    "verification_solution_locale": (
+                                        verification_equation
+                                    ),
+                                    "valeur_x_correcte": (
+                                        str(valeur_x_correcte)
+                                        if valeur_x_correcte is not None
+                                        else None
+                                    ),
+                                },
+                            )
+
+                            session[
+                                "validation_unifiee_naima"
+                            ] = validation_unifiee.to_dict()
+
+                            # Le résultat est bon, mais l'objectif
+                            # pédagogique reste ouvert tant que le
+                            # raisonnement n'est pas corrigé.
+                            objectif_atteint = False
+                            session.pop(
+                                "objectif_atteint_naima",
+                                None
+                            )
+                            session.pop(
+                                "conversation_terminee",
+                                None
+                            )
+                            session.pop(
+                                "exercice_termine",
+                                None
+                            )
+
+                            if valeur_x_correcte is not None:
+                                session[
+                                    "solution_finale_naima"
+                                ] = str(valeur_x_correcte)
+
+                            equation_actuelle = (
+                                session.get(
+                                    "equation_courante_naima"
+                                )
+                                or reference_math_naima
+                                or ""
+                            )
+
+                            equation_affichee = (
+                                str(equation_actuelle)
+                                .replace("*", "")
+                            )
+
+                            if current_lang == "fr":
+                                reponse_locale_prioritaire = (
+                                    f"Ton résultat **x = {valeur_x_correcte}** "
+                                    "est correct, mais ton raisonnement contient "
+                                    "une erreur. "
+                                    f"Nous sommes à **{equation_affichee}**. "
+                                    "L'opération que tu as indiquée ne permet pas "
+                                    "d'éliminer correctement le coefficient de x. "
+                                    "Par quel nombre faut-il réellement diviser "
+                                    "les deux membres ? — Naima ✨"
+                                )
+                            else:
+                                reponse_locale_prioritaire = (
+                                    f"Your result **x = {valeur_x_correcte}** "
+                                    "is correct, but your reasoning contains "
+                                    "an error. "
+                                    f"We are at **{equation_affichee}**. "
+                                    "The operation you stated does not correctly "
+                                    "eliminate the coefficient of x. "
+                                    "What number should you actually divide both "
+                                    "sides by? — Naima ✨"
+                                )
+
+                            session.modified = True
+
+                            print(
+                                "🧠 CAS MIXTE détecté : "
+                                "résultat correct + raisonnement incorrect."
+                            )
+                            print(
+                                "   result_correct=True"
+                            )
+                            print(
+                                "   reasoning_correct=False"
+                            )
+                            print(
+                                "🛡️ Exercice maintenu ouvert jusqu'à "
+                                "correction du raisonnement."
+                            )
+
+                        elif probleme_verbal_genere:
                             # x est résolu, mais le problème peut demander
                             # plusieurs grandeurs (âge de Marie ET de Paul,
                             # prix initial ET réduction, etc.).
@@ -6937,48 +9437,633 @@ def enseignant_virtuel():
                             "confirmée localement."
                         )
 
-                # --------------------------------------------------------
-                # PRIORITÉ À UNE PREUVE MATHÉMATIQUE LOCALE POSITIVE
-                # --------------------------------------------------------
+                # À INSÉRER dans :
+                # @app.route("/enseignant-virtuel", methods=['GET', 'POST'])
+                # def enseignant_virtuel():
                 #
-                # Les signaux linguistiques sont des indices pédagogiques,
-                # pas une preuve que la réponse de l'élève est fausse.
+                # Emplacement exact :
+                # APRÈS le bloc qui calcule et traite `verification_equation_intermediaire`
+                # MAIS AVANT le commentaire :
                 #
-                # Si le calcul a été vérifié localement et démontré correct,
-                # cette preuve prend priorité sur une estimation heuristique
-                # de difficulté issue des mots employés par l'élève.
+                #     # ========================================================
+                #     # ARBITRAGE FINAL PAR LE VALIDATION ENGINE
+                #     # ========================================================
                 #
-                # IMPORTANT :
-                # - si le calcul n'a pas été vérifié, aucun signal n'est forcé ;
-                # - si le calcul est vérifié incorrect, le diagnostic existant
-                #   est conservé ;
-                # - seule une preuve locale POSITIVE peut neutraliser un
-                #   faux signal négatif de ce tour.
-                # --------------------------------------------------------
-
-                verification_session = session.get("verification_calcul") or {}
+                # Ce bloc ne modifie pas ValidationEngine lui-même.
 
                 if (
-                    verification_session.get("calcul_verifie") is True
-                    and verification_session.get("est_correct") is True
+                    verification_equation_intermediaire.get(
+                        "verification_equation_intermediaire"
+                    )
+                    and verification_equation_intermediaire.get(
+                        "est_correct"
+                    ) is True
+                    and getattr(
+                        validation_unifiee,
+                        "verdict",
+                        "uncertain"
+                    ) == "incorrect"
                 ):
-                    maitrise_cours = "bonne"
-                    erreurs = "peu"
-                    temps_reponse = "rapide"
+                    from services.validation_result import ValidationResult
 
-                    diagnostic_bayesien = diagnostiquer_difficulte(
-                        maitrise_cours=maitrise_cours,
-                        erreurs=erreurs,
-                        temps_reponse=temps_reponse
+                    validation_engine_initial_dict = (
+                        validation_unifiee.to_dict()
+                        if hasattr(validation_unifiee, "to_dict")
+                        else {}
                     )
 
-                    session["diagnostic_bayesien"] = diagnostic_bayesien
-                    session["signaux_bayesiens"] = {
+                    equation_locale_validee = (
+                        verification_equation_intermediaire.get(
+                            "equation_eleve"
+                        )
+                    )
+
+                    validation_unifiee = ValidationResult(
+                        verdict="correct",
+                        confidence=1.0,
+                        method="equation_equivalence_local_override",
+                        normalized_student_answer=question,
+                        normalized_expected_answer=None,
+                        result_correct=None,
+                        reasoning_correct=True,
+                        error_type=None,
+                        reason=(
+                            "Conflit résolu en faveur du vérificateur local spécialisé : "
+                            "l'équation proposée par l'élève a été prouvée équivalente "
+                            "à l'équation courante."
+                        ),
+                        requires_review=False,
+                        details={
+                            "conflit_validation": True,
+                            "validation_engine_initial": validation_engine_initial_dict,
+                            "verification_locale": verification_equation_intermediaire,
+                            "equation_validee": equation_locale_validee,
+                            "raison_override": "equivalence_deterministe_confirmee_localement",
+                        },
+                    )
+
+                    session["validation_unifiee_naima"] = validation_unifiee.to_dict()
+                    session.modified = True
+
+                    print(
+                        "🛡️ Conflit déterministe résolu : "
+                        "ValidationEngine=incorrect, vérification locale=correct."
+                    )
+                    print(
+                        "✅ Verdict final Naima remplacé par correct "
+                        "(equation_equivalence_local_override)."
+                    )
+
+
+                # ========================================================
+                # COHÉRENCE RÉSULTAT FINAL / RAISONNEMENT VERBAL
+                # ========================================================
+                coherence_resultat_raisonnement = (
+                    verifier_coherence_resultat_raisonnement(
+                        message_eleve=question,
+                        equation_courante=(
+                            session.get("equation_courante_naima")
+                            or equation_courante_naima
+                            or ""
+                        ),
+                        validation=validation_unifiee,
+                        lang=current_lang,
+                    )
+                )
+
+                if coherence_resultat_raisonnement.get("conflit"):
+                    validation_initiale_coherence = (
+                        validation_unifiee.to_dict()
+                        if hasattr(validation_unifiee, "to_dict")
+                        else {}
+                    )
+
+                    validation_unifiee = ValidationResult(
+                        verdict="correct",
+                        confidence=1.0,
+                        method="equation_solution_reasoning_conflict",
+                        normalized_student_answer=question,
+                        normalized_expected_answer=None,
+                        result_correct=True,
+                        reasoning_correct=False,
+                        error_type=coherence_resultat_raisonnement.get(
+                            "error_type"
+                        ),
+                        reason=coherence_resultat_raisonnement.get(
+                            "reason",
+                            ""
+                        ),
+                        requires_review=False,
+                        details={
+                            "resultat_correct_raisonnement_incorrect": True,
+                            "validation_initiale": validation_initiale_coherence,
+                            "coherence_resultat_raisonnement": (
+                                coherence_resultat_raisonnement
+                            ),
+                        },
+                    )
+
+                    session["validation_unifiee_naima"] = (
+                        validation_unifiee.to_dict()
+                    )
+
+                    objectif_atteint = False
+                    session.pop("objectif_atteint_naima", None)
+                    session.pop("conversation_terminee", None)
+                    session.pop("exercice_termine", None)
+
+                    reponse_locale_prioritaire = (
+                        coherence_resultat_raisonnement.get(
+                            "message_pedagogique"
+                        )
+                    )
+
+                    session.modified = True
+
+                    print(
+                        "🧠 Cohérence raisonnement : résultat correct, "
+                        "mais justification verbale incorrecte."
+                    )
+                    print(
+                        "🛡️ Exercice maintenu ouvert jusqu’à correction "
+                        "du raisonnement."
+                    )
+
+
+                # ========================================================
+                # ARBITRAGE FINAL PAR LE VALIDATION ENGINE
+                # ========================================================
+                #
+                # Principe :
+                #
+                # 1. Une preuve déterministe correcte est prioritaire sur
+                #    les estimations linguistiques.
+                #
+                # 2. Une preuve déterministe incorrecte constitue une
+                #    véritable erreur mathématique, mais on ne transforme
+                #    pas automatiquement UNE erreur en "beaucoup d'erreurs".
+                #
+                # 3. Un verdict UNCERTAIN ne doit PAS être interprété
+                #    comme une mauvaise performance.
+                #
+                # ========================================================
+
+                validation_verdict = (
+                    getattr(
+                        validation_unifiee,
+                        "verdict",
+                        "uncertain"
+                    )
+                    or "uncertain"
+                )
+
+                validation_confidence = float(
+                    getattr(
+                        validation_unifiee,
+                        "confidence",
+                        0.0
+                    )
+                    or 0.0
+                )
+
+                validation_method = (
+                    getattr(
+                        validation_unifiee,
+                        "method",
+                        "unknown"
+                    )
+                    or "unknown"
+                )
+
+                validation_reason = (
+                    getattr(
+                        validation_unifiee,
+                        "reason",
+                        ""
+                    )
+                    or ""
+                )
+
+                validation_result_correct = getattr(
+                    validation_unifiee,
+                    "result_correct",
+                    None
+                )
+
+                validation_reasoning_correct = getattr(
+                    validation_unifiee,
+                    "reasoning_correct",
+                    None
+                )
+
+                validation_error_type = getattr(
+                    validation_unifiee,
+                    "error_type",
+                    None
+                )
+
+                validation_details = (
+                    getattr(
+                        validation_unifiee,
+                        "details",
+                        {}
+                    )
+                    or {}
+                )
+
+                # --------------------------------------------------------
+                # CONSIGNE DESTINÉE À NAIMA
+                # --------------------------------------------------------
+
+                instruction_validation_unifiee = ""
+
+                # --------------------------------------------------------
+                # A. PREUVE CORRECTE
+                # --------------------------------------------------------
+
+                if (
+                    validation_verdict == "correct"
+                    and validation_confidence >= 0.95
+                ):
+                    # ====================================================
+                    # MÉMORISER UNE TRANSFORMATION VERBALE VALIDÉE
+                    # ====================================================
+                    #
+                    # Exemple :
+                    #   équation courante : 3*x-5=-2*x+10
+                    #   élève : "ajouter 2x aux deux membres"
+                    #
+                    # ReasoningValidator prouve alors :
+                    #   transformed_equation = 5*x - 5 = 10
+                    #
+                    # Cette nouvelle équation doit devenir immédiatement
+                    # la référence mathématique du tour suivant.
+                    # Sans cette mémorisation, Naima continuerait à
+                    # appliquer les opérations à l'équation précédente.
+                    # ====================================================
+
+                    if validation_reasoning_correct is True:
+                        equation_transformee = (
+                            validation_details.get(
+                                "transformed_equation"
+                            )
+                            or validation_details.get(
+                                "transformed_inequality"
+                            )
+                            or ""
+                        )
+
+                        # ====================================================
+                        # V1.3.2 — NE PAS RÉVÉLER UNE SOLUTION FINALE
+                        # CALCULÉE PAR LE MOTEUR À LA PLACE DE L'ÉLÈVE
+                        # ====================================================
+                        #
+                        # Exemple :
+                        #   équation courante : 3*x=5
+                        #   élève : "il faut diviser les deux membres par 3"
+                        #
+                        # ReasoningValidator sait que la transformation est
+                        # x=5/3. Cette information est utile pour vérifier
+                        # l'opération, mais elle ne doit pas être affichée
+                        # immédiatement : l'élève doit encore effectuer lui-même
+                        # le dernier calcul et proposer explicitement x=5/3.
+                        #
+                        # L'équation pédagogique active reste donc 3*x=5
+                        # jusqu'à la réponse finale de l'élève.
+                        # ====================================================
+
+                        operation_finale_sans_solution_eleve = False
+                        equation_avant_operation_finale = (
+                            session.get("equation_courante_naima")
+                            or validation_details.get("equation")
+                            or reference_math_naima
+                            or ""
+                        )
+
+                        equation_transformee_normalisee = (
+                            str(equation_transformee or "")
+                            .replace(" ", "")
+                        )
+
+                        transformation_est_solution_finale_x = bool(
+                            equation_transformee_normalisee
+                            and not est_inequation_naima(
+                                equation_transformee_normalisee
+                            )
+                            and re.fullmatch(
+                                r"x=.+",
+                                equation_transformee_normalisee,
+                                flags=re.IGNORECASE
+                            )
+                        )
+
+                        eleve_a_donne_solution_x_ce_tour = bool(
+                            re.search(
+                                r"(?<![0-9A-Za-zÀ-ÿ])x\s*=",
+                                question,
+                                flags=re.IGNORECASE
+                            )
+                        )
+
+                        if (
+                            transformation_est_solution_finale_x
+                            and not eleve_a_donne_solution_x_ce_tour
+                        ):
+                            operation_finale_sans_solution_eleve = True
+
+                            # Le résultat reste disponible uniquement comme
+                            # preuve interne de l'opération.
+                            solution_operation_locale = (
+                                validation_details.get("expected_result")
+                                or None
+                            )
+
+                            # IMPORTANT : ne pas remplacer l'équation active
+                            # par x=... tant que l'élève ne l'a pas formulé.
+                            if equation_avant_operation_finale:
+                                session[
+                                    "equation_courante_naima"
+                                ] = equation_avant_operation_finale
+
+                                session[
+                                    "derniere_etape_validee_naima"
+                                ] = equation_avant_operation_finale
+
+                            session.modified = True
+
+                            equation_affichee = (
+                                str(equation_avant_operation_finale)
+                                .replace("*", "")
+                            )
+
+                            operation_type_finale = (
+                                validation_details.get("operation_type")
+                                or ""
+                            )
+                            operation_value_finale = (
+                                validation_details.get("operation_value")
+                                or validation_details.get("operand")
+                                or ""
+                            )
+
+                            if current_lang == "fr":
+                                if (
+                                    operation_type_finale == "divide"
+                                    and operation_value_finale
+                                ):
+                                    reponse_locale_prioritaire = (
+                                        f"Oui, **diviser les deux membres par "
+                                        f"{operation_value_finale}** est la bonne "
+                                        f"opération pour **{equation_affichee}**. "
+                                        "Effectue maintenant cette division toi-même : "
+                                        "quelle valeur obtiens-tu pour x ? — Naima ✨"
+                                    )
+                                else:
+                                    reponse_locale_prioritaire = (
+                                        f"Oui, cette opération est correcte pour "
+                                        f"**{equation_affichee}**. "
+                                        "Effectue maintenant le dernier calcul toi-même : "
+                                        "quelle valeur obtiens-tu pour x ? — Naima ✨"
+                                    )
+                            else:
+                                if (
+                                    operation_type_finale == "divide"
+                                    and operation_value_finale
+                                ):
+                                    reponse_locale_prioritaire = (
+                                        f"Yes, **dividing both sides by "
+                                        f"{operation_value_finale}** is the correct "
+                                        f"operation for **{equation_affichee}**. "
+                                        "Now carry out that division yourself: "
+                                        "what value do you get for x? — Naima ✨"
+                                    )
+                                else:
+                                    reponse_locale_prioritaire = (
+                                        f"Yes, that operation is correct for "
+                                        f"**{equation_affichee}**. "
+                                        "Now complete the final calculation yourself: "
+                                        "what value do you get for x? — Naima ✨"
+                                    )
+
+                            print(
+                                "🛡️ V1.3.2 : opération finale validée, "
+                                "solution x=... gardée interne."
+                            )
+                            print(
+                                "🧭 Équation pédagogique conservée :",
+                                equation_avant_operation_finale
+                            )
+                            print(
+                                "🎓 L'élève doit encore formuler lui-même "
+                                "la solution finale."
+                            )
+
+                        elif equation_transformee:
+                            equation_transformee = (
+                                equation_transformee_normalisee
+                            )
+
+                            session[
+                                "equation_courante_naima"
+                            ] = equation_transformee
+
+                            etapes_validation = session.get(
+                                "etapes_validees_naima",
+                                []
+                            ) or []
+
+                            if (
+                                equation_transformee
+                                not in etapes_validation
+                            ):
+                                etapes_validation.append(
+                                    equation_transformee
+                                )
+
+                            session[
+                                "etapes_validees_naima"
+                            ] = etapes_validation[-10:]
+
+                            session[
+                                "derniere_etape_validee_naima"
+                            ] = equation_transformee
+
+                            session.modified = True
+
+                            # Mettre également à jour les variables locales
+                            # utilisées pendant ce même tour.
+                            equation_courante_naima = (
+                                equation_transformee
+                            )
+                            reference_math_naima = (
+                                equation_transformee
+                            )
+                            reference_math_contient_variable = (
+                                contient_variable_mathematique(
+                                    equation_transformee
+                                )
+                            )
+
+                            print(
+                                "✅ Transformation verbale mémorisée :",
+                                equation_transformee
+                            )
+                            print(
+                                "🧭 Nouvelle équation courante Naima :",
+                                equation_transformee
+                            )
+
+                            # La transformation est prouvée correcte :
+                            # le LLM ne doit plus pouvoir la contredire ni
+                            # revenir à l'équation précédente.
+                            if est_inequation_naima(
+                                equation_transformee
+                            ):
+                                reponse_locale_prioritaire = (
+                                    construire_reponse_inequation_correcte_naima(
+                                        equation_transformee
+                                    )
+                                )
+                            else:
+                                reponse_locale_prioritaire = (
+                                    construire_reponse_intermediaire_deterministe({
+                                        "equation_eleve": equation_transformee
+                                    })
+                                )
+
+                            if validation_details.get(
+                                "objectif_atteint"
+                            ):
+                                objectif_atteint = True
+                                session[
+                                    "objectif_atteint_naima"
+                                ] = True
+                                session[
+                                    "conversation_terminee"
+                                ] = True
+                                session[
+                                    "exercice_termine"
+                                ] = True
+                                session.pop(
+                                    "derniere_q_ia",
+                                    None
+                                )
+                                session.modified = True
+
+                                print(
+                                    "🏁 Objectif Naima atteint : "
+                                    "inéquation résolue localement."
+                                )
+
+                    # Une équation intermédiaire prouvée équivalente doit
+                    # également produire une réponse locale prioritaire,
+                    # même si une autre couche de vérification n'a pas déjà
+                    # préparé cette réponse.
+                    if (
+                        validation_method == "equation_equivalence"
+                        and not reponse_locale_prioritaire
+                    ):
+                        equation_equivalente = (
+                            validation_details.get("equation_eleve")
+                            or ""
+                        )
+                        if equation_equivalente:
+                            session[
+                                "equation_courante_naima"
+                            ] = equation_equivalente
+                            session[
+                                "derniere_etape_validee_naima"
+                            ] = equation_equivalente
+
+                            etapes_equivalentes = session.get(
+                                "etapes_validees_naima",
+                                []
+                            ) or []
+                            if equation_equivalente not in etapes_equivalentes:
+                                etapes_equivalentes.append(
+                                    equation_equivalente
+                                )
+                            session[
+                                "etapes_validees_naima"
+                            ] = etapes_equivalentes[-10:]
+                            session.modified = True
+
+                            reponse_locale_prioritaire = (
+                                construire_reponse_intermediaire_deterministe({
+                                    "equation_eleve": equation_equivalente
+                                })
+                            )
+
+                    signaux_actuels = (
+                        session.get("signaux_bayesiens")
+                        or {}
+                    )
+
+                    # Résultat correct + raisonnement faux :
+                    # ne pas enregistrer une maîtrise pleinement bonne.
+                    if (
+                        validation_result_correct is True
+                        and validation_reasoning_correct is False
+                    ):
+                        maitrise_cours = "moyenne"
+                        erreurs = "peu"
+                    else:
+                        maitrise_cours = "bonne"
+                        erreurs = "peu"
+
+                    # La correction mathématique ne prouve pas que
+                    # l'élève a répondu rapidement.
+                    # On conserve donc le signal temporel déjà estimé.
+                    temps_reponse = (
+                        signaux_actuels.get("temps_reponse")
+                        or "rapide"
+                    )
+
+                    diagnostic_bayesien = (
+                        diagnostiquer_difficulte(
+                            maitrise_cours=maitrise_cours,
+                            erreurs=erreurs,
+                            temps_reponse=temps_reponse
+                        )
+                    )
+
+                    diagnostic_bayesien[
+                        "evaluation_performance"
+                    ] = True
+
+                    diagnostic_bayesien[
+                        "validation_deterministe"
+                    ] = True
+
+                    diagnostic_bayesien[
+                        "validation_verdict"
+                    ] = "correct"
+
+                    diagnostic_bayesien[
+                        "validation_method"
+                    ] = validation_method
+
+                    session[
+                        "diagnostic_bayesien"
+                    ] = diagnostic_bayesien
+
+                    session[
+                        "signaux_bayesiens"
+                    ] = {
                         "maitrise_cours": maitrise_cours,
                         "erreurs": erreurs,
                         "temps_reponse": temps_reponse,
                         "difficulte_demandee": difficulte_form,
-                        "preuve_math_locale_prioritaire": True
+                        "evaluation_performance": True,
+                        "preuve_validation_engine": True,
+                        "validation_verdict": "correct",
+                        "validation_method": validation_method,
+                        "result_correct": (
+                            validation_result_correct
+                        ),
+                        "reasoning_correct": (
+                            validation_reasoning_correct
+                        ),
                     }
 
                     mettre_a_jour_statut_naima(
@@ -6986,14 +10071,646 @@ def enseignant_virtuel():
                         True
                     )
 
-                    print(
-                        "✅ Preuve mathématique locale prioritaire : "
-                        "le calcul est correct."
+                    instruction_validation_unifiee = (
+                        "\n\n"
+                        "CONTRAINTE DE VALIDATION DÉTERMINISTE "
+                        "PRIORITAIRE :\n"
+                        "La réponse ou l'étape de l'élève vient "
+                        "d'être vérifiée mathématiquement comme "
+                        "CORRECTE.\n"
+                        f"Méthode de vérification : "
+                        f"{validation_method}.\n"
+                        f"Preuve interne : {validation_reason}\n"
+                        "Tu dois reconnaître clairement que cette "
+                        "réponse est correcte. "
+                        "Tu ne dois pas la contredire, demander à "
+                        "l'élève de refaire une étape déjà validée "
+                        "ou revenir à une ancienne équation. "
+                        "Poursuis uniquement à partir de l'état "
+                        "mathématique actuellement validé."
                     )
+
+                    if validation_details:
+                        equation_validee = (
+                            validation_details.get("equation")
+                            or validation_details.get(
+                                "equation_eleve"
+                            )
+                            or ""
+                        )
+
+                        resultat_attendu = (
+                            validation_details.get(
+                                "expected_result"
+                            )
+                            or ""
+                        )
+
+                        if equation_validee:
+                            instruction_validation_unifiee += (
+                                "\nÉquation actuellement validée : "
+                                f"{equation_validee}."
+                            )
+
+                        if resultat_attendu:
+                            instruction_validation_unifiee += (
+                                "\nSi tu dois citer le résultat de "
+                                "l'opération validée, le résultat "
+                                f"exact est : {resultat_attendu}."
+                            )
+
                     print(
-                        "🧠 Diagnostic recalculé après preuve locale :",
+                        "✅ ValidationEngine prioritaire : "
+                        "réponse prouvée correcte."
+                    )
+
+                    print(
+                        "🧠 Diagnostic recalculé après "
+                        "ValidationEngine :",
                         diagnostic_bayesien
                     )
+
+                # --------------------------------------------------------
+                # B. PREUVE INCORRECTE
+                # --------------------------------------------------------
+
+                elif (
+                    validation_verdict == "incorrect"
+                    and validation_confidence >= 0.95
+                ):
+                    # Le diagnostic linguistique courant est conservé.
+                    #
+                    # On ajoute cependant la preuve réelle de l'erreur
+                    # pour que les couches suivantes sachent qu'il ne
+                    # s'agit pas d'une simple supposition linguistique.
+
+                    if diagnostic_bayesien is None:
+                        diagnostic_bayesien = {}
+
+                    diagnostic_bayesien[
+                        "evaluation_performance"
+                    ] = True
+
+                    diagnostic_bayesien[
+                        "validation_deterministe"
+                    ] = True
+
+                    diagnostic_bayesien[
+                        "validation_verdict"
+                    ] = "incorrect"
+
+                    diagnostic_bayesien[
+                        "validation_method"
+                    ] = validation_method
+
+                    diagnostic_bayesien[
+                        "error_type"
+                    ] = validation_error_type
+
+                    session[
+                        "diagnostic_bayesien"
+                    ] = diagnostic_bayesien
+
+                    signaux_actuels = dict(
+                        session.get("signaux_bayesiens")
+                        or {}
+                    )
+
+                    signaux_actuels[
+                        "evaluation_performance"
+                    ] = True
+
+                    signaux_actuels[
+                        "preuve_validation_engine"
+                    ] = True
+
+                    signaux_actuels[
+                        "validation_verdict"
+                    ] = "incorrect"
+
+                    signaux_actuels[
+                        "validation_method"
+                    ] = validation_method
+
+                    signaux_actuels[
+                        "error_type"
+                    ] = validation_error_type
+
+                    signaux_actuels[
+                        "result_correct"
+                    ] = validation_result_correct
+
+                    signaux_actuels[
+                        "reasoning_correct"
+                    ] = validation_reasoning_correct
+
+                    session[
+                        "signaux_bayesiens"
+                    ] = signaux_actuels
+
+                    mettre_a_jour_statut_naima(
+                        "verification_math_locale",
+                        True
+                    )
+
+                    instruction_validation_unifiee = (
+                        "\n\n"
+                        "CONTRAINTE DE VALIDATION DÉTERMINISTE "
+                        "PRIORITAIRE :\n"
+                        "La réponse ou l'étape proposée par l'élève "
+                        "vient d'être vérifiée mathématiquement comme "
+                        "INCORRECTE.\n"
+                        f"Méthode de vérification : "
+                        f"{validation_method}.\n"
+                        f"Type d'erreur : "
+                        f"{validation_error_type or 'non précisé'}.\n"
+                        f"Preuve interne : {validation_reason}\n"
+                        "Tu ne dois jamais dire que cette réponse est "
+                        "correcte. "
+                        "Explique l'erreur avec douceur et de manière "
+                        "socratique. "
+                        "Ne donne pas toute la solution immédiatement "
+                        "si une question intermédiaire peut aider "
+                        "l'élève à se corriger."
+                    )
+
+                    # Une erreur d'opération déterministe doit utiliser
+                    # l'équation courante réelle. On évite ainsi que le LLM
+                    # revienne à une ancienne étape déjà validée.
+                    if (
+                        validation_method in {
+                            "reasoning_operation",
+                            "reasoning_linear_transformation",
+                        }
+                        and validation_error_type in {
+                            "wrong_operation_value",
+                            "non_progressing_operation",
+                            "wrong_operation",
+                        }
+                    ):
+                        equation_active_erreur = (
+                            session.get(
+                                "equation_courante_naima"
+                            )
+                            or reference_math_naima
+                            or ""
+                        )
+
+                        equation_active_affichee = (
+                            str(equation_active_erreur)
+                            .replace("*", "")
+                        )
+
+                        expected_divisor = (
+                            validation_details.get(
+                                "expected_divisor"
+                            )
+                            or ""
+                        )
+
+                        if current_lang == "fr":
+                            if expected_divisor:
+                                reponse_locale_prioritaire = (
+                                    "Cette opération n'est pas la bonne pour "
+                                    "l'étape actuelle. "
+                                    f"Nous sommes à **{equation_active_affichee}**. "
+                                    "Quel nombre dois-tu utiliser pour éliminer "
+                                    "le coefficient de x ? — Naima ✨"
+                                )
+                            else:
+                                reponse_locale_prioritaire = (
+                                    "Cette opération ne fait pas progresser "
+                                    "l'isolement de x. "
+                                    f"Nous sommes à **{equation_active_affichee}**. "
+                                    "Quelle opération permettrait d'éliminer "
+                                    "le coefficient de x ? — Naima ✨"
+                                )
+                        else:
+                            reponse_locale_prioritaire = (
+                                "That operation is not the right one for "
+                                "the current step. "
+                                f"We are at **{equation_active_affichee}**. "
+                                "What operation would eliminate the "
+                                "coefficient of x? — Naima ✨"
+                            )
+
+                        print(
+                            "🛡️ Réponse locale d'erreur utilisée sur "
+                            "l'équation courante :",
+                            equation_active_erreur
+                        )
+
+                    print(
+                        "❌ ValidationEngine prioritaire : "
+                        "erreur mathématique prouvée."
+                    )
+
+                # --------------------------------------------------------
+                # C. AUCUNE CONCLUSION FIABLE
+                # --------------------------------------------------------
+
+                else:
+                    # UNCERTAIN n'est PAS une erreur.
+                    #
+                    # On annule donc l'effet du diagnostic heuristique
+                    # calculé pour ce tour.
+                    #
+                    # Si un diagnostic antérieur existe, on le restaure.
+                    # Sinon on garde un état neutre.
+
+                    if diagnostic_precedent_naima:
+                        diagnostic_bayesien = dict(
+                            diagnostic_precedent_naima
+                        )
+
+                        diagnostic_bayesien[
+                            "evaluation_performance"
+                        ] = False
+
+                        diagnostic_bayesien[
+                            "raison"
+                        ] = (
+                            "validation_uncertain_"
+                            "aucune_penalisation"
+                        )
+
+                    else:
+                        diagnostic_bayesien = {
+                            "probabilite_difficulte": 0.10,
+                            "pourcentage_difficulte": 10.0,
+                            "niveau_risque": "faible",
+                            "evaluation_performance": False,
+                            "raison": (
+                                "validation_uncertain_"
+                                "aucune_penalisation"
+                            )
+                        }
+
+                    session[
+                        "diagnostic_bayesien"
+                    ] = diagnostic_bayesien
+
+                    session[
+                        "signaux_bayesiens"
+                    ] = {
+                        "maitrise_cours": None,
+                        "erreurs": None,
+                        "temps_reponse": None,
+                        "difficulte_demandee": difficulte_form,
+                        "evaluation_performance": False,
+                        "validation_verdict": "uncertain",
+                        "validation_method": validation_method,
+                        "aucune_penalisation": True,
+                    }
+
+                    instruction_validation_unifiee = (
+                        "\n\n"
+                        "ÉTAT DE VALIDATION : UNCERTAIN.\n"
+                        "Le système ne dispose pas d'une preuve "
+                        "suffisante pour classer cette réponse comme "
+                        "correcte ou incorrecte. "
+                        "Tu peux poursuivre le dialogue, demander une "
+                        "précision ou reformuler, mais tu ne dois pas "
+                        "présenter cette absence de preuve comme une "
+                        "erreur mathématique de l'élève."
+                    )
+
+                    print(
+                        "⚪ ValidationEngine uncertain : "
+                        "aucune pénalisation du diagnostic."
+                    )
+
+                session.modified = True
+
+                # ========================================================
+                # DIAGNOSTIC COMPORTEMENTAL + CONTRÔLE COGNITIF
+                # ========================================================
+                # Cette couche ne modifie jamais le verdict mathématique.
+                # Elle choisit uniquement la manière dont Naima doit aider.
+                # ========================================================
+
+                historique_comportemental = []
+
+                for message_historique in conversation[-12:]:
+                    texte_historique = str(message_historique or "").strip()
+
+                    if texte_historique.startswith("👤 Élève:") or texte_historique.startswith("👤 Student:"):
+                        historique_comportemental.append({
+                            "role": "eleve",
+                            "texte": (
+                                texte_historique
+                                .replace("👤 Élève:", "", 1)
+                                .replace("👤 Student:", "", 1)
+                                .strip()
+                            )
+                        })
+                    elif texte_historique.startswith("🤖 Naima:"):
+                        historique_comportemental.append({
+                            "role": "naima",
+                            "texte": texte_historique.replace("🤖 Naima:", "", 1).strip()
+                        })
+
+                if (
+                    historique_comportemental
+                    and historique_comportemental[-1].get("role") == "eleve"
+                    and historique_comportemental[-1].get("texte") == question
+                ):
+                    historique_comportemental = historique_comportemental[:-1]
+
+                type_intention_behavioral = intention_pedagogique.get("type_demande") or ""
+
+                aide_utilisee_behavioral = (
+                    type_intention_behavioral
+                    in {"demande_indice", "demande_explication"}
+                )
+
+                nb_indices_recents = int(
+                    session.get("naima_nb_indices_recents", 0) or 0
+                )
+
+                if type_intention_behavioral == "demande_indice":
+                    nb_indices_recents += 1
+                elif type_intention_behavioral in {
+                    "reponse_intermediaire",
+                    "reponse_finale",
+                    "probleme_a_resoudre"
+                }:
+                    nb_indices_recents = max(0, nb_indices_recents - 1)
+
+                session["naima_nb_indices_recents"] = min(nb_indices_recents, 10)
+
+                etat_comportemental_naima = diagnostiquer_etat_comportemental(
+                    question,
+                    historique=historique_comportemental,
+                    nb_tentatives_recentes=0,
+                    aide_utilisee=aide_utilisee_behavioral,
+                    nb_indices_recentes=session.get("naima_nb_indices_recents", 0),
+                    temps_depuis_derniere_aide=None,
+                    modification_apres_aide=None,
+                    verdict_validation=validation_verdict,
+                )
+
+                session["etat_comportemental_naima"] = etat_comportemental_naima
+                mettre_a_jour_statut_naima("diagnostic_comportemental", True)
+
+                print("🧠 État comportemental Naima :", etat_comportemental_naima)
+
+                controle_cognitif_naima = detecter_controle_cognitif(
+                    question,
+                    derniere_question_naima=(
+                        session.get("derniere_q_ia", "")
+                        or derniere_q_ia
+                        or ""
+                    ),
+                    intention_pedagogique=intention_pedagogique,
+                )
+
+                session["controle_cognitif_naima"] = controle_cognitif_naima
+                mettre_a_jour_statut_naima("controle_cognitif", True)
+
+                print("🧭 Contrôle cognitif Naima :", controle_cognitif_naima)
+
+                # La route considère correct/incorrect comme déterministes
+                # uniquement avec une confiance >= 0.95.
+                if premier_message_naima:
+                    verdict_pedagogique_effectif = None
+                elif (
+                    validation_verdict in {"correct", "incorrect"}
+                    and validation_confidence >= 0.95
+                ):
+                    verdict_pedagogique_effectif = validation_verdict
+                else:
+                    verdict_pedagogique_effectif = "uncertain"
+
+                validation_pour_politique = {
+                    "verdict": verdict_pedagogique_effectif,
+                    "confidence": validation_confidence,
+                    "method": validation_method,
+                    "reason": validation_reason,
+                    "error_type": validation_error_type,
+                    "result_correct": validation_result_correct,
+                    "reasoning_correct": validation_reasoning_correct,
+                }
+
+                # ========================================================
+                # GARDE V1.3.1 : RÉPÉTITION EXACTE ≠ PROGRESSION
+                # ========================================================
+                # On détecte ce cas AVANT le choix de politique afin
+                # d'éviter une fausse stratégie de félicitation lorsque
+                # l'élève ne fait que rappeler l'équation courante alors
+                # qu'une erreur ou un blocage est encore actif.
+                # ========================================================
+
+                etat_recuperation_precedent = (
+                    session.get("recuperation_apprentissage_naima")
+                    or {}
+                )
+
+                repetition_equation_sans_progression_naima = False
+                equation_avant_repetition = ""
+                equation_repetee_eleve = ""
+
+                if validation_method in {
+                    "equation_equivalence",
+                    "equation_equivalence_local_override",
+                }:
+                    equation_avant_repetition = (
+                        validation_details.get("equation_initiale")
+                        or validation_details.get("equation")
+                        or ""
+                    )
+
+                    equation_repetee_eleve = (
+                        validation_details.get("equation_eleve")
+                        or ""
+                    )
+
+                    signature_avant_repetition = (
+                        signature_equation_naima(
+                            equation_avant_repetition
+                        )
+                    )
+
+                    signature_equation_repetee = (
+                        signature_equation_naima(
+                            equation_repetee_eleve
+                        )
+                    )
+
+                    repetition_equation_sans_progression_naima = bool(
+                        signature_avant_repetition
+                        and signature_equation_repetee
+                        and signature_avant_repetition
+                        == signature_equation_repetee
+                    )
+
+                sequence_recuperation_active_naima = bool(
+                    etat_recuperation_precedent.get("erreur_active")
+                    or etat_recuperation_precedent.get("blocage_actif")
+                )
+
+                politique_pedagogique_naima = choisir_intervention_pedagogique(
+                    validation=validation_pour_politique,
+                    intention=intention_pedagogique,
+                    etat_comportemental=etat_comportemental_naima,
+                    controle_cognitif=controle_cognitif_naima,
+                    diagnostic=diagnostic_bayesien or {},
+                )
+
+                if premier_message_naima:
+                    politique_pedagogique_naima["requires_review"] = False
+
+                # V1.3.1 : si l'élève répète simplement l'équation
+                # courante alors qu'une erreur/blocage reste actif,
+                # la réponse est mathématiquement cohérente mais ce n'est
+                # ni une réussite complète ni une récupération.
+                if (
+                    repetition_equation_sans_progression_naima
+                    and sequence_recuperation_active_naima
+                ):
+                    politique_pedagogique_naima = {
+                        "strategie": "maintien_correction",
+                        "niveau_aide": 1,
+                        "peut_reveler_solution": False,
+                        "peut_declencher_remediation": False,
+                        "requires_review": False,
+                        "raison": (
+                            "L'élève rappelle correctement l'équation "
+                            "courante, mais n'a pas encore corrigé "
+                            "l'erreur ou le blocage précédent."
+                        ),
+                    }
+
+                    equation_repetition_affichee = (
+                        str(
+                            equation_repetee_eleve
+                            or session.get("equation_courante_naima")
+                            or ""
+                        )
+                        .replace("*", "")
+                    )
+
+                    if current_lang == "fr":
+                        reponse_locale_prioritaire = (
+                            f"Oui, nous sommes bien à "
+                            f"**{equation_repetition_affichee}**. "
+                            "Cette équation est correcte, mais elle ne "
+                            "corrige pas encore l'opération précédente. "
+                            "Revenons donc à cette étape : quelle opération "
+                            "permet réellement d'éliminer le coefficient "
+                            "de x ? — Naima ✨"
+                        )
+                    else:
+                        reponse_locale_prioritaire = (
+                            f"Yes, we are indeed at "
+                            f"**{equation_repetition_affichee}**. "
+                            "This equation is correct, but repeating it does "
+                            "not yet correct the previous operation. "
+                            "Let's return to that step: what operation actually "
+                            "eliminates the coefficient of x? — Naima ✨"
+                        )
+
+                    print(
+                        "🎓 Politique V1.3.1 : maintien_correction "
+                        "(répétition exacte sans progression)."
+                    )
+
+                session["politique_pedagogique_naima"] = politique_pedagogique_naima
+                mettre_a_jour_statut_naima("politique_pedagogique", True)
+
+                instruction_politique_pedagogique = construire_instruction_pedagogique(
+                    politique_pedagogique_naima,
+                    lang=current_lang
+                )
+
+                print("🎓 Politique pédagogique Naima :", politique_pedagogique_naima)
+
+                # ========================================================
+                # SUIVI LONGITUDINAL DE RÉCUPÉRATION D'APPRENTISSAGE
+                # ========================================================
+                # Cette couche observe la séquence :
+                # erreur/blocage -> aide -> nouvelle tentative -> récupération.
+                # Elle ne modifie jamais le verdict mathématique.
+                # ========================================================
+
+                # Les indicateurs de répétition et l'état de récupération
+                # précédent ont déjà été calculés avant la politique V1.3.1.
+                validation_pour_recuperation_naima = validation_unifiee
+
+                if (
+                    repetition_equation_sans_progression_naima
+                    and sequence_recuperation_active_naima
+                ):
+                    validation_pour_recuperation_naima = ValidationResult(
+                        verdict="uncertain",
+                        confidence=0.0,
+                        method="equation_repetition_no_progress",
+                        normalized_student_answer=question,
+                        normalized_expected_answer=None,
+                        result_correct=None,
+                        reasoning_correct=None,
+                        error_type=None,
+                        reason=(
+                            "L'élève répète exactement l'équation courante. "
+                            "Cette répétition est mathématiquement cohérente, "
+                            "mais elle ne constitue pas une nouvelle progression "
+                            "permettant de conclure à une récupération."
+                        ),
+                        requires_review=False,
+                        details={
+                            "repetition_equation_courante": True,
+                            "equation_avant": equation_avant_repetition,
+                            "equation_repetee": equation_repetee_eleve,
+                            "validation_math_principale": (
+                                validation_unifiee.to_dict()
+                                if hasattr(validation_unifiee, "to_dict")
+                                else {}
+                            ),
+                        },
+                    )
+
+                    print(
+                        "🧭 Répétition exacte de l'équation courante : "
+                        "validation mathématique conservée, "
+                        "mais aucune récupération comptabilisée."
+                    )
+
+                recuperation_apprentissage_naima = (
+                    analyser_recuperation_apprentissage(
+                        etat_precedent=etat_recuperation_precedent,
+                        validation=validation_pour_recuperation_naima,
+                        etat_comportemental=etat_comportemental_naima,
+                        controle_cognitif=controle_cognitif_naima,
+                        politique_pedagogique=politique_pedagogique_naima,
+                        intention=intention_pedagogique,
+                    )
+                )
+
+                resume_recuperation_naima = (
+                    resume_recuperation_apprentissage(
+                        recuperation_apprentissage_naima
+                    )
+                )
+
+                session[
+                    "recuperation_apprentissage_naima"
+                ] = recuperation_apprentissage_naima
+
+                # V1.2 : ne pas dupliquer le résumé dans le cookie de session.
+                # Il est recalculé à la demande depuis l'état compact principal.
+                session.pop("resume_recuperation_naima", None)
+
+                mettre_a_jour_statut_naima(
+                    "recuperation_apprentissage",
+                    True
+                )
+
+                session.modified = True
+
+                print(
+                    "🔁 Récupération apprentissage Naima :",
+                    resume_recuperation_naima
+                )
 
                 # --------------------------------------------------------
                 # CONSTRUCTION DU DIAGNOSTIC INJECTÉ APRÈS ARBITRAGE
@@ -7073,8 +10790,10 @@ def enseignant_virtuel():
                     contexte_apprentissage_eleve
                     + instruction_exercice_genere
                     + instruction_intention
+                    + instruction_validation_unifiee
                     + instruction_recentrage
                     + instruction_bayesienne
+                    + instruction_politique_pedagogique
                     + instruction_calcul
                 )
 
@@ -7138,7 +10857,29 @@ def enseignant_virtuel():
                         )
                         session.modified = True
 
+                    relation_finale_inequation = (
+                        session.get("equation_courante_naima")
+                        or ""
+                    )
+
                     if (
+                        relation_finale_inequation
+                        and est_inequation_naima(
+                            relation_finale_inequation
+                        )
+                        and re.match(
+                            r"^x(?:<=|>=|<|>)",
+                            normaliser_operateur_relation_naima(
+                                relation_finale_inequation
+                            ).replace(" ", "")
+                        )
+                    ):
+                        resultat_affiche = (
+                            relation_finale_inequation
+                            .replace("*", "")
+                        )
+
+                    elif (
                         probleme_verbal_genere
                         and verification_probleme_verbal.get(
                             "verification_probleme_verbal"
@@ -7223,6 +10964,168 @@ def enseignant_virtuel():
                         matiere=matiere
                     )
 
+                # ========================================================
+                # GARDE-FOU PÉDAGOGIQUE SUR LA RÉPONSE GÉNÉRÉE
+                # ========================================================
+                # Les réponses locales déterministes sont déjà sûres et
+                # restent prioritaires. Le garde-fou vise uniquement le LLM.
+                # ========================================================
+
+                reponse_generee_par_llm = bool(
+                    not objectif_atteint
+                    and not reponse_locale_prioritaire
+                )
+
+                garde_fou_naima = {
+                    "conforme": True,
+                    "problemes": [],
+                    "question_count": str(reponse_ia or "").count("?"),
+                    "solution_leakage": False,
+                    "requires_regeneration": False,
+                    "strategie": politique_pedagogique_naima.get("strategie"),
+                    "validation_verdict": verdict_pedagogique_effectif,
+                    "applique": False,
+                }
+
+                if reponse_generee_par_llm and reponse_ia:
+                    garde_fou_naima = verifier_reponse_naima(
+                        reponse_ia,
+                        decision_pedagogique=politique_pedagogique_naima,
+                        validation=validation_pour_politique,
+                        lang=current_lang,
+                        max_questions=1,
+                    )
+                    garde_fou_naima["applique"] = True
+
+                    print("🛡️ Garde-fou pédagogique Naima :", garde_fou_naima)
+
+                    if garde_fou_naima.get("requires_regeneration"):
+                        instruction_regeneration = construire_instruction_regeneration(
+                            garde_fou_naima,
+                            lang=current_lang
+                        )
+
+                        print(
+                            "🔄 Réponse refusée par le garde-fou : "
+                            "une seule régénération contrôlée."
+                        )
+
+                        if derniere_q_ia:
+                            reponse_regeneree = generer_suite_conversation(
+                                derniere_q=derniere_q_ia,
+                                reponse=(
+                                    question
+                                    + instruction_interne_complete
+                                    + "\n\n"
+                                    + instruction_regeneration
+                                ),
+                                historique=conversation,
+                                niveau=niveau_eleve,
+                                langue=current_lang,
+                                mode_examen=session.get("mode_examen", False),
+                                exercice_context="",
+                                matiere=matiere
+                            )
+                        else:
+                            reponse_regeneree = generer_debut_conversation(
+                                question=(
+                                    question
+                                    + instruction_interne_complete
+                                    + "\n\n"
+                                    + instruction_regeneration
+                                ),
+                                niveau=niveau_eleve,
+                                langue=current_lang,
+                                mode_examen=session.get("mode_examen", False),
+                                matiere=matiere
+                            )
+
+                        garde_fou_regeneration = verifier_reponse_naima(
+                            reponse_regeneree,
+                            decision_pedagogique=politique_pedagogique_naima,
+                            validation=validation_pour_politique,
+                            lang=current_lang,
+                            max_questions=1,
+                        )
+                        garde_fou_regeneration["applique"] = True
+                        garde_fou_regeneration["regeneration_effectuee"] = True
+
+                        if garde_fou_regeneration.get("conforme"):
+                            reponse_ia = reponse_regeneree
+                            garde_fou_naima = garde_fou_regeneration
+                            print("✅ Réponse régénérée acceptée par le garde-fou.")
+                        else:
+                            # Pas de troisième appel : fallback local sûr.
+                            if current_lang == "fr":
+                                if verdict_pedagogique_effectif == "uncertain":
+                                    reponse_ia = (
+                                        "Je veux vérifier ton raisonnement sans te dire "
+                                        "à tort que tu as faux. Peux-tu préciser l'étape "
+                                        "ou l'opération que tu viens d'utiliser ? — Naima ✨"
+                                    )
+                                elif (
+                                    controle_cognitif_naima.get("niveau")
+                                    == "delegation_strategique"
+                                    or etat_comportemental_naima.get("etat")
+                                    == "dependance_probable"
+                                ):
+                                    reponse_ia = (
+                                        "Je vais te laisser choisir la prochaine étape. "
+                                        "Quelle opération ou quelle idée voudrais-tu "
+                                        "essayer d'abord ? — Naima ✨"
+                                    )
+                                else:
+                                    reponse_ia = (
+                                        "Regardons seulement l'étape actuelle. "
+                                        "Quelle opération ou justification proposerais-tu "
+                                        "maintenant ? — Naima ✨"
+                                    )
+                            else:
+                                if verdict_pedagogique_effectif == "uncertain":
+                                    reponse_ia = (
+                                        "I want to check your reasoning without wrongly "
+                                        "marking it as incorrect. Can you clarify the step "
+                                        "or operation you just used? — Naima ✨"
+                                    )
+                                elif (
+                                    controle_cognitif_naima.get("niveau")
+                                    == "delegation_strategique"
+                                    or etat_comportemental_naima.get("etat")
+                                    == "dependance_probable"
+                                ):
+                                    reponse_ia = (
+                                        "I will let you choose the next step. "
+                                        "What operation or idea would you like "
+                                        "to try first? — Naima ✨"
+                                    )
+                                else:
+                                    reponse_ia = (
+                                        "Let's focus only on the current step. "
+                                        "What operation or justification would "
+                                        "you propose next? — Naima ✨"
+                                    )
+
+                            garde_fou_naima = dict(garde_fou_regeneration)
+                            garde_fou_naima["fallback_local_utilise"] = True
+                            garde_fou_naima["reponse_originale_refusee"] = True
+
+                            print(
+                                "🛡️ Régénération encore non conforme : "
+                                "fallback pédagogique local utilisé."
+                            )
+                else:
+                    print(
+                        "🛡️ Garde-fou LLM non nécessaire : "
+                        "réponse déterministe locale prioritaire."
+                    )
+
+                session["garde_fou_naima"] = garde_fou_naima
+                mettre_a_jour_statut_naima(
+                    "garde_fou_reponse",
+                    bool(garde_fou_naima.get("applique"))
+                )
+                session.modified = True
+
                 if not reponse_ia or len(reponse_ia.strip()) < 10:
                     reponse_ia = (
                         "Je réfléchis... Peux-tu reformuler ta question ?"
@@ -7244,19 +11147,126 @@ def enseignant_virtuel():
                         enregistrer_diagnostic_bayesien
                     )
 
-                    analyse_pedagogique = analyser_tentative_pedagogique(
-                        objectif_initial=session.get("objectif_initial_naima"),
-                        derniere_question_ia=derniere_q_ia,
-                        reponse_eleve=question,
-                        reponse_naima=reponse_ia,
-                        matiere=matiere,
-                        niveau=niveau_eleve,
-                        diagnostic_bayesien=diagnostic_bayesien,
-                        signaux_bayesiens=session.get("signaux_bayesiens"),
-                        verification_calcul=session.get("verification_calcul")
+                    # ------------------------------------------------
+                    # ANALYSE LOCALE SI LE TOUR EST DÉJÀ DÉTERMINISTE
+                    # ------------------------------------------------
+
+                    analyse_locale_deterministe = bool(
+                        objectif_atteint
+                        or reponse_locale_prioritaire
                     )
 
-                    mettre_a_jour_statut_naima("analyse_pedagogique", True)
+                    if analyse_locale_deterministe:
+                        validation_est_correcte = (
+                            validation_verdict == "correct"
+                            and validation_confidence >= 0.95
+                        )
+
+                        erreurs_probables_locales = []
+
+                        if (
+                            validation_verdict == "incorrect"
+                            and validation_confidence >= 0.95
+                            and validation_error_type
+                        ):
+                            erreurs_probables_locales = [
+                                validation_error_type
+                            ]
+
+                        relation_pedagogique_locale = (
+                            session.get("equation_courante_naima")
+                            or session.get("objectif_initial_naima")
+                            or ""
+                        )
+
+                        relation_pedagogique_locale_normalisee = (
+                            normaliser_operateur_relation_naima(
+                                relation_pedagogique_locale
+                            )
+                        )
+
+                        if matiere.lower().startswith("math"):
+                            if re.search(
+                                r"(?:<=|>=|<|>)",
+                                relation_pedagogique_locale_normalisee
+                            ):
+                                notion_locale = (
+                                    "Résolution d'inéquations linéaires"
+                                    if current_lang == "fr"
+                                    else "Solving linear inequalities"
+                                )
+
+                            elif "=" in relation_pedagogique_locale_normalisee:
+                                notion_locale = (
+                                    "Résolution d'équations linéaires"
+                                    if current_lang == "fr"
+                                    else "Solving linear equations"
+                                )
+
+                            else:
+                                notion_locale = matiere
+
+                        else:
+                            notion_locale = matiere
+
+                        analyse_pedagogique = {
+                            "notion_cible": notion_locale,
+                            "erreurs_probables": (
+                                erreurs_probables_locales
+                            ),
+                            "reponse_correcte": (
+                                True
+                                if validation_est_correcte
+                                else (
+                                    False
+                                    if (
+                                        validation_verdict == "incorrect"
+                                        and validation_confidence >= 0.95
+                                    )
+                                    else None
+                                )
+                            ),
+                            "validation_verdict": validation_verdict,
+                            "validation_method": validation_method,
+                            "validation_confidence": validation_confidence,
+                            "source_analyse": (
+                                "validation_deterministe_locale"
+                            ),
+                            "analyse_ia_utilisee": False
+                        }
+
+                        print(
+                            "⚡ Analyse pédagogique locale utilisée : "
+                            "aucun second appel IA nécessaire pour ce tour."
+                        )
+
+                    else:
+                        analyse_pedagogique = (
+                            analyser_tentative_pedagogique(
+                                objectif_initial=session.get(
+                                    "objectif_initial_naima"
+                                ),
+                                derniere_question_ia=derniere_q_ia,
+                                reponse_eleve=question,
+                                reponse_naima=reponse_ia,
+                                matiere=matiere,
+                                niveau=niveau_eleve,
+                                diagnostic_bayesien=(
+                                    diagnostic_bayesien
+                                ),
+                                signaux_bayesiens=session.get(
+                                    "signaux_bayesiens"
+                                ),
+                                verification_calcul=session.get(
+                                    "verification_calcul"
+                                )
+                            )
+                        )
+
+                    mettre_a_jour_statut_naima(
+                        "analyse_pedagogique",
+                        True
+                    )
 
                     if diagnostic_bayesien:
                         enregistrer_diagnostic_bayesien(
@@ -7276,6 +11286,18 @@ def enseignant_virtuel():
                                 "recentrage_pedagogique_utilise": session.get("naima_processus_connecte", {}).get("recentrage_pedagogique", False),
                                 "analyse_pedagogique_effectuee": session.get("naima_processus_connecte", {}).get("analyse_pedagogique", False),
                                 "verification_math_locale_utilisee": session.get("naima_processus_connecte", {}).get("verification_math_locale", False),
+                                "diagnostic_comportemental_utilise": session.get("naima_processus_connecte", {}).get("diagnostic_comportemental", False),
+                                "controle_cognitif_utilise": session.get("naima_processus_connecte", {}).get("controle_cognitif", False),
+                                "politique_pedagogique_utilisee": session.get("naima_processus_connecte", {}).get("politique_pedagogique", False),
+                                "garde_fou_reponse_utilise": session.get("naima_processus_connecte", {}).get("garde_fou_reponse", False),
+                                "etat_comportemental_naima": session.get("etat_comportemental_naima"),
+                                "controle_cognitif_naima": session.get("controle_cognitif_naima"),
+                                "politique_pedagogique_naima": session.get("politique_pedagogique_naima"),
+                                "garde_fou_naima": session.get("garde_fou_naima"),
+                                "recuperation_apprentissage_naima": session.get("recuperation_apprentissage_naima"),
+                                "resume_recuperation_naima": resume_recuperation_apprentissage(
+                                    session.get("recuperation_apprentissage_naima") or {}
+                                ),
                                 "source_accompagnement": "naima",
                                 "objectif_initial_naima": session.get("objectif_initial_naima"),
                                 "mode_pedagogique_naima": session.get("mode_pedagogique_naima"),
@@ -7300,7 +11322,28 @@ def enseignant_virtuel():
                             # --------------------------------------------------------
 
                             matiere_obj = None
-                            notion_cible_naima = analyse_pedagogique.get("notion_cible") or matiere
+                            notion_cible_naima = (
+                                analyse_pedagogique.get("notion_cible")
+                                or matiere
+                            )
+
+                            relation_trace_naima = (
+                                session.get("equation_courante_naima")
+                                or session.get("objectif_initial_naima")
+                                or ""
+                            )
+
+                            if (
+                                matiere.lower().startswith("math")
+                                and est_inequation_naima(
+                                    relation_trace_naima
+                                )
+                            ):
+                                notion_cible_naima = (
+                                    "Résolution d'inéquations linéaires"
+                                    if current_lang == "fr"
+                                    else "Solving linear inequalities"
+                                )
 
                             try:
                                 matiere_obj = (
@@ -7372,6 +11415,20 @@ def enseignant_virtuel():
                                     "derniere_etape_validee_naima": session.get("derniere_etape_validee_naima"),
                                     "analyse_pedagogique": analyse_pedagogique,
 
+                                    # Couche comportementale
+                                    "etat_comportemental_naima": session.get("etat_comportemental_naima"),
+                                    "controle_cognitif_naima": session.get("controle_cognitif_naima"),
+                                    "politique_pedagogique_naima": session.get("politique_pedagogique_naima"),
+                                    "garde_fou_naima": session.get("garde_fou_naima"),
+
+                                    # Suivi longitudinal de récupération
+                                    "recuperation_apprentissage_naima": session.get(
+                                        "recuperation_apprentissage_naima"
+                                    ),
+                                    "resume_recuperation_naima": resume_recuperation_apprentissage(
+                                        session.get("recuperation_apprentissage_naima") or {}
+                                    ),
+
                                     # Preuve du processus Naima
                                     "processus_naima": {
                                         "naima_connectee_aux_traces": processus_naima.get("traces_apprentissage", False),
@@ -7380,6 +11437,11 @@ def enseignant_virtuel():
                                         "recentrage_pedagogique_utilise": processus_naima.get("recentrage_pedagogique", False),
                                         "analyse_pedagogique_effectuee": processus_naima.get("analyse_pedagogique", False),
                                         "verification_math_locale_utilisee": processus_naima.get("verification_math_locale", False),
+                                        "diagnostic_comportemental_utilise": processus_naima.get("diagnostic_comportemental", False),
+                                        "controle_cognitif_utilise": processus_naima.get("controle_cognitif", False),
+                                        "politique_pedagogique_utilisee": processus_naima.get("politique_pedagogique", False),
+                                        "garde_fou_reponse_utilise": processus_naima.get("garde_fou_reponse", False),
+                                        "recuperation_apprentissage_utilisee": processus_naima.get("recuperation_apprentissage", False),
                                         "profil_personnalise": processus_naima.get("profil_personnalise", False),
                                         "derniere_mise_a_jour": processus_naima.get("derniere_mise_a_jour")
                                     }
@@ -7476,7 +11538,17 @@ def enseignant_virtuel():
                 'solution_variable_naima': session.get("solution_variable_naima"),
                 'etapes_validees_naima': session.get("etapes_validees_naima", []),
                 'derniere_etape_validee_naima': session.get("derniere_etape_validee_naima"),
-                'naima_processus_connecte': session.get("naima_processus_connecte")
+                'naima_processus_connecte': session.get("naima_processus_connecte"),
+                'etat_comportemental_naima': session.get("etat_comportemental_naima"),
+                'controle_cognitif_naima': session.get("controle_cognitif_naima"),
+                'politique_pedagogique_naima': session.get("politique_pedagogique_naima"),
+                'garde_fou_naima': session.get("garde_fou_naima"),
+                'recuperation_apprentissage_naima': session.get(
+                    "recuperation_apprentissage_naima"
+                ),
+                'resume_recuperation_naima': resume_recuperation_apprentissage(
+                    session.get("recuperation_apprentissage_naima") or {}
+                )
             })
 
         return redirect(url_for("enseignant_virtuel"))
@@ -7509,8 +11581,19 @@ def enseignant_virtuel():
         solution_variable_naima=session.get("solution_variable_naima"),
         etapes_validees_naima=session.get("etapes_validees_naima", []),
         derniere_etape_validee_naima=session.get("derniere_etape_validee_naima"),
-        naima_processus_connecte=session.get("naima_processus_connecte")
+        naima_processus_connecte=session.get("naima_processus_connecte"),
+        etat_comportemental_naima=session.get("etat_comportemental_naima"),
+        controle_cognitif_naima=session.get("controle_cognitif_naima"),
+        politique_pedagogique_naima=session.get("politique_pedagogique_naima"),
+        garde_fou_naima=session.get("garde_fou_naima"),
+        recuperation_apprentissage_naima=session.get(
+            "recuperation_apprentissage_naima"
+        ),
+        resume_recuperation_naima=resume_recuperation_apprentissage(
+            session.get("recuperation_apprentissage_naima") or {}
+        )
     )
+
 
 
 @app.route("/debug/naima-processus")
@@ -8815,40 +12898,155 @@ def supprimer_exercices_multiple():
 
 @app.route("/eleve/remediation/<int:id>", methods=["GET", "POST"])
 def faire_remediation(id):
+    """
+    Permet à un élève de réaliser une remédiation validée.
+
+    Règle importante concernant l'évaluation :
+
+    - etoiles = None
+        => la réponse n'a pas pu être évaluée avec suffisamment
+           de certitude ou la note n'a pas pu être extraite ;
+        => elle ne doit PAS pénaliser les statistiques de l'élève.
+
+    - etoiles = 0
+        => l'évaluation a réellement produit une note de 0/5 ;
+        => il s'agit alors d'un véritable échec évalué.
+
+    - etoiles >= 3
+        => remédiation réussie.
+    """
+
     from datetime import datetime
+    import re
+
+    # ============================================================
+    # AUTHENTIFICATION
+    # ============================================================
+
     eleve_id = session.get("eleve_id")
 
     if not eleve_id:
         return redirect("/login-eleve")
 
-    remediation = RemediationSuggestion.query.get_or_404(id)
-    eleve = User.query.get_or_404(eleve_id)
+    # ============================================================
+    # RÉCUPÉRATION DE LA REMÉDIATION ET DE L'ÉLÈVE
+    # ============================================================
+
+    remediation = db.session.get(
+        RemediationSuggestion,
+        id
+    )
+
+    if not remediation:
+        return "Remédiation introuvable", 404
+
+    try:
+        eleve_id_int = int(eleve_id)
+    except (TypeError, ValueError):
+        return "Identifiant élève invalide", 400
+
+    eleve = db.session.get(
+        User,
+        eleve_id_int
+    )
+
+    if not eleve:
+        return "Élève introuvable", 404
+
+    # ============================================================
+    # AUTORISATION
+    # ============================================================
 
     if remediation.user_id != eleve.id:
         return "Accès non autorisé", 403
 
-    lang = eleve.langue if hasattr(eleve, "langue") and eleve.langue == "en" else "fr"
+    # ============================================================
+    # LANGUE
+    # ============================================================
+
+    lang = (
+        eleve.langue
+        if (
+            hasattr(eleve, "langue")
+            and eleve.langue == "en"
+        )
+        else "fr"
+    )
+
+    # ============================================================
+    # LA REMÉDIATION DOIT ÊTRE VALIDÉE
+    # ============================================================
 
     if remediation.statut != "valide":
-        return render_template("remediation_non_validee.html", lang=lang)
+        return render_template(
+            "remediation_non_validee.html",
+            lang=lang
+        )
+
+    # ============================================================
+    # SOUMISSION DE LA RÉPONSE
+    # ============================================================
 
     if request.method == "POST":
-        reponse_texte = request.form.get("reponse_eleve") or request.form.get("reponse", "")
-        reponse_texte = reponse_texte.strip()
+
+        reponse_texte = (
+            request.form.get("reponse_eleve")
+            or request.form.get("reponse", "")
+        )
+
+        reponse_texte = str(
+            reponse_texte or ""
+        ).strip()
+
         if not reponse_texte:
             return "Réponse vide", 400
 
+        # ========================================================
+        # EXTRACTION DE LA QUESTION ET DE LA RÉPONSE ATTENDUE
+        # ========================================================
+
         question = ""
         reponse_attendue = ""
-        if remediation.exercice_suggere:
-            for ligne in remediation.exercice_suggere.splitlines():
-                if not question and ("Question :" in ligne or "Question:" in ligne):
-                    question = ligne.split(":", 1)[1].strip()
-                elif not reponse_attendue and ("Réponse attendue" in ligne or "Expected answer" in ligne):
-                    reponse_attendue = ligne.split(":", 1)[1].strip()
 
-        # ✅ NOUVEAU PROMPT avec barème sur 5
+        if remediation.exercice_suggere:
+
+            for ligne in (
+                remediation.exercice_suggere
+                .splitlines()
+            ):
+
+                ligne = str(ligne or "").strip()
+
+                if (
+                    not question
+                    and (
+                        "Question :" in ligne
+                        or "Question:" in ligne
+                    )
+                ):
+                    question = (
+                        ligne.split(":", 1)[1]
+                        .strip()
+                    )
+
+                elif (
+                    not reponse_attendue
+                    and (
+                        "Réponse attendue" in ligne
+                        or "Expected answer" in ligne
+                    )
+                ):
+                    reponse_attendue = (
+                        ligne.split(":", 1)[1]
+                        .strip()
+                    )
+
+        # ========================================================
+        # PROMPT D'ÉVALUATION
+        # ========================================================
+
         if lang == "en":
+
             prompt = f"""
 You are a rigorous and expert math teacher. You must evaluate a student's solution.
 
@@ -8870,29 +13068,33 @@ You are a rigorous and expert math teacher. You must evaluate a student's soluti
 - Use the informal "you" to address the student directly for a more familiar tone.
 - Give priority to reasoning over final result.
 - Award partial credit for correct steps.
-- ❗ Important: Do not contradict yourself. If the final answer is correct and the reasoning is valid, do not say otherwise.
+- Important: Do not contradict yourself. If the final answer is correct and the reasoning is valid, do not say otherwise.
 
 ⭐ SCORING SCALE (5 POINTS MAXIMUM):
 - 5/5: Excellent reasoning, complete methodology, correct result
-- 4/5: Very good reasoning, appropriate method, minor calculation error  
+- 4/5: Very good reasoning, appropriate method, minor calculation error
 - 3/5: Good overall approach, method understood but imperfect application
 - 2/5: Partial reasoning, some relevant elements but incomplete
 - 1/5: Fragmented approach, very limited correct elements
 - 0/5: Off-topic or no answer
 
-🎯 IMPORTANT: 
-- You MUST use the 5-point scale above
-- ALWAYS write "Score: X/5" in your response
+IMPORTANT:
+- You MUST use the 5-point scale above.
+- ALWAYS write exactly "Score: X/5" in your response.
 
-📤 Output format:
+Output format:
 Analysis:
 [...]
+
 Score: X/5
+
 Correction:
 - Expert resolution: [...]
 - Final answer: [...]
 """
+
         else:
+
             prompt = f"""
 Tu es un professeur de mathématiques expert et rigoureux. Tu dois évaluer la réponse d'un élève.
 
@@ -8902,19 +13104,19 @@ Tu es un professeur de mathématiques expert et rigoureux. Tu dois évaluer la r
 📜 Réponse de l'élève :
 {reponse_texte}
 
-🌟 Réponse finale attendue (imposée) :
+🌟 Réponse finale attendue :
 {reponse_attendue}
 
 🔍 Ce que tu dois faire :
-- Résous l'exercice toi-même pour vérifier que tu obtiens la même réponse que celle attendue.
-- Compare chaque ligne du raisonnement de l'élève avec ta propre résolution.
-- Si chaque transformation est correcte même si elle est formulée autrement, accepte-la.
-- Sois cohérent : ne dis pas qu'il y a une erreur si la réponse est bonne et la méthode correcte.
+- Résous l'exercice toi-même.
+- Compare chaque étape du raisonnement de l'élève avec ta propre résolution.
+- Accepte toute transformation mathématiquement correcte, même si elle est formulée autrement.
+- Ne déclare pas une étape fausse simplement parce qu'elle est différente de ta méthode.
 - Sois pédagogique, clair et bienveillant.
-- Tutoie l'élève pour plus de familiarité en t'adressant directement à lui.
+- Tutoie l'élève.
 - Privilégie le raisonnement sur le résultat final.
-- Accordez des points partiels pour les étapes correctes.
-- ❗ Important : ne te contredit pas. Si la réponse finale est correcte et que le raisonnement est valide, ne dit pas le contraire.
+- Accorde des points partiels pour les étapes réellement correctes.
+- Ne te contredis pas : si la réponse finale et le raisonnement sont corrects, ne dis pas qu'ils sont faux.
 
 ⭐ BARÈME (5 POINTS MAXIMUM) :
 - 5/5 : Raisonnement excellent, méthodologie complète, résultat correct
@@ -8924,13 +13126,15 @@ Tu es un professeur de mathématiques expert et rigoureux. Tu dois évaluer la r
 - 1/5 : Démarche ébauchée, éléments corrects très limités
 - 0/5 : Hors sujet ou absence de réponse
 
-🎯 IMPORTANT :
-- Vous DEVEZ utiliser le barème sur 5 points ci-dessus
-- Écrivez TOUJOURS "Note : X/5" dans votre réponse
+IMPORTANT :
+- Tu DOIS utiliser le barème sur 5 points ci-dessus.
+- Écris TOUJOURS exactement "Note : X/5".
 
-📤 Format attendu :
+Format attendu :
+
 Analyse :
-[Ligne par ligne : ce qui est correct ou faux, justification, remarque]
+[...]
+
 Note : X/5
 
 Correction :
@@ -8938,61 +13142,355 @@ Correction :
 - Résultat final : [...]
 """
 
-        try:
-            chat_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-            )
-            analyse_ia = chat_completion.choices[0].message.content.strip()
-        except Exception as e:
-            return f"Erreur IA : {e}", 500
+        # ========================================================
+        # APPEL IA
+        # ========================================================
 
-        # ✅ EXTRACTION DE NOTE SUR 5
-        etoiles = 0
-        match = re.search(r"(Note|Score)\s*:\s*(\d)/5", analyse_ia, re.IGNORECASE)
+        try:
+
+            chat_completion = (
+                client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                )
+            )
+
+            analyse_ia = (
+                chat_completion
+                .choices[0]
+                .message
+                .content
+                .strip()
+            )
+
+        except Exception as e:
+
+            print(
+                "❌ Erreur IA pendant "
+                f"la remédiation : {e}"
+            )
+
+            return (
+                f"Erreur IA : {e}",
+                500
+            )
+
+        # ========================================================
+        # EXTRACTION DE LA NOTE
+        # ========================================================
+        #
+        # IMPORTANT :
+        #
+        # Avant :
+        #
+        #     etoiles = 0
+        #
+        # Cela transformait une note introuvable en échec.
+        #
+        # Maintenant :
+        #
+        #     etoiles = None
+        #
+        # Une note n'existe QUE si elle est réellement extraite.
+        # ========================================================
+
+        etoiles = None
+        score_pourcentage = None
+
+        # --------------------------------------------------------
+        # Format principal :
+        #
+        # Note : 4/5
+        # Score: 4/5
+        # --------------------------------------------------------
+
+        match = re.search(
+            r"(?:Note|Score)\s*:\s*([0-5])\s*/\s*5\b",
+            analyse_ia,
+            re.IGNORECASE
+        )
+
         if match:
-            etoiles = int(match.group(2))
-            print(f"⭐ Note remédiation extraite: {etoiles}/5")
+
+            etoiles = int(
+                match.group(1)
+            )
+
+            print(
+                "⭐ Note remédiation "
+                f"extraite: {etoiles}/5"
+            )
+
         else:
-            # Fallback pour l'ancien format
-            match = re.search(r"(Note|Score)\s*:\s*(\d)", analyse_ia, re.IGNORECASE)
+
+            # ----------------------------------------------------
+            # Fallback prudent :
+            #
+            # Note : 4
+            # Score: 4
+            #
+            # On exige toujours une valeur comprise entre 0 et 5.
+            # ----------------------------------------------------
+
+            match = re.search(
+                r"(?:Note|Score)\s*:\s*([0-5])\b",
+                analyse_ia,
+                re.IGNORECASE
+            )
+
             if match:
-                etoiles = min(int(match.group(2)), 5)  # Limite à 5 maximum
-                print(f"⭐ Note remédiation extraite (sans /5): {etoiles}/5")
+
+                etoiles = int(
+                    match.group(1)
+                )
+
+                print(
+                    "⭐ Note remédiation "
+                    "extraite sans /5 : "
+                    f"{etoiles}/5"
+                )
+
             else:
-                print("⚠️ Impossible d'extraire la note de l'analyse IA")
+
+                print(
+                    "⚠️ Impossible d'extraire "
+                    "une note fiable de l'analyse IA."
+                )
+
+                print(
+                    "🛡️ La réponse sera enregistrée "
+                    "comme NON ÉVALUÉE."
+                )
+
+        # ========================================================
+        # SCORE POURCENTAGE
+        # ========================================================
+
+        if etoiles is not None:
+
+            score_pourcentage = int(
+                etoiles * 20
+            )
+
+        # ========================================================
+        # CRÉATION DE STUDENT RESPONSE
+        # ========================================================
+        #
+        # Une tentative de remédiation est bien conservée comme
+        # activité même lorsque sa note n'a pas pu être déterminée.
+        #
+        # Mais etoiles=None signifie explicitement :
+        # NON ÉVALUÉ.
+        # ========================================================
 
         reponse = StudentResponse(
             user_id=eleve.id,
+
+            # Ce StudentResponse correspond à une remédiation,
+            # pas à un exercice normal.
             exercice_id=None,
+
             reponse_eleve=reponse_texte,
             analyse_ia=analyse_ia,
+
+            # Peut volontairement être None.
             etoiles=etoiles,
+
+            # Même principe pour le score.
+            score=score_pourcentage,
+
+            feedback_ia_structure={
+                "source": "remediation",
+                "remediation_id": remediation.id,
+                "lang": lang,
+
+                "score_sur_5": etoiles,
+                "score_pourcentage": score_pourcentage,
+
+                # True si aucune note fiable n'a été obtenue.
+                "requires_review": (
+                    etoiles is None
+                ),
+
+                "evaluation_status": (
+                    "evaluated"
+                    if etoiles is not None
+                    else "not_evaluated"
+                ),
+            },
+
             timestamp=datetime.utcnow()
         )
-        db.session.add(reponse)
 
-        remediation.reponse_eleve = reponse_texte
-        remediation.analyse_ia = analyse_ia
-        remediation.etoiles = etoiles
+        db.session.add(
+            reponse
+        )
 
-        # ✅ Mise à jour du statut selon la note sur 5
-        if etoiles >= 3:  # Si note ≥ 3/5, la remédiation est réussie
+        # ========================================================
+        # MISE À JOUR DE LA REMÉDIATION
+        # ========================================================
+
+        remediation.reponse_eleve = (
+            reponse_texte
+        )
+
+        remediation.analyse_ia = (
+            analyse_ia
+        )
+
+        remediation.etoiles = (
+            etoiles
+        )
+
+        # ========================================================
+        # STATUT DE LA REMÉDIATION
+        # ========================================================
+        #
+        # Très important :
+        #
+        # None :
+        #     on NE considère PAS la remédiation comme échouée.
+        #
+        # >= 3 :
+        #     réussite.
+        #
+        # < 3 :
+        #     véritable résultat évalué insuffisant.
+        # ========================================================
+
+        if etoiles is None:
+
+            # On conserve la remédiation disponible.
+            # Elle n'est ni déclarée réussie,
+            # ni transformée artificiellement en échec.
+            remediation.statut = "valide"
+
+            print(
+                "⚠️ Remédiation non évaluée : "
+                "statut conservé à 'valide'."
+            )
+
+        elif etoiles >= 3:
+
             remediation.statut = "reussie"
-        else:
-            remediation.statut = "en_attente"  # Doit retravailler
 
-        db.session.commit()
+            print(
+                "✅ Remédiation réussie "
+                f"(note: {etoiles}/5)"
+            )
+
+        else:
+
+            remediation.statut = "en_attente"
+
+            print(
+                "🔄 Remédiation à retravailler "
+                f"(note réelle: {etoiles}/5)"
+            )
+
+        # ========================================================
+        # SAUVEGARDE
+        # ========================================================
+
+        try:
+
+            db.session.commit()
+
+        except Exception as e:
+
+            db.session.rollback()
+
+            print(
+                "❌ Erreur sauvegarde "
+                f"remédiation : {e}"
+            )
+
+            return (
+                f"Erreur base de données : {e}",
+                500
+            )
+
+        # ========================================================
+        # INVALIDATION DU CACHE DES STATISTIQUES
+        # ========================================================
+
+        session.pop(
+            "api_eleve_stats_cache",
+            None
+        )
+
+        session.modified = True
+
+        print(
+            "🧹 Cache statistiques "
+            "élève invalidé."
+        )
+
+        # ========================================================
+        # LOG FINAL
+        # ========================================================
+
+        if etoiles is None:
+
+            print(
+                "🛡️ Réponse de remédiation "
+                "enregistrée sans note : "
+                "elle ne pénalisera pas "
+                "les statistiques."
+            )
+
+        else:
+
+            print(
+                "📊 Réponse de remédiation "
+                f"évaluée : {etoiles}/5 "
+                f"({score_pourcentage}%)."
+            )
+
+        # ========================================================
+        # AFFICHAGE DU FEEDBACK
+        # ========================================================
 
         return render_template(
             "feedback_exercice.html",
+
             reponse=reponse_texte,
             analyse=analyse_ia,
+
+            # Peut être None.
             etoiles=etoiles,
-            redirect_url=f"/eleve/remediations?username={eleve.username}&lang={lang}",
+
+            redirect_url=(
+                "/eleve/remediations"
+                f"?username={eleve.username}"
+                f"&lang={lang}"
+            ),
+
             lang=lang,
-            is_remediation=True
+            is_remediation=True,
+
+            # Variables supplémentaires facultatives.
+            evaluation_disponible=(
+                etoiles is not None
+            ),
+
+            requires_review=(
+                etoiles is None
+            )
         )
+
+    # ============================================================
+    # AFFICHAGE INITIAL DE LA REMÉDIATION
+    # ============================================================
+    #
+    # Ici également, il ne faut pas transmettre 0 comme si une
+    # évaluation avait déjà eu lieu.
+    # ============================================================
 
     return render_template(
         "faire_remediation.html",
@@ -9000,7 +13498,9 @@ Correction :
         eleve=eleve,
         lang=lang,
         feedback=None,
-        etoiles=0
+
+        # Pas encore évalué.
+        etoiles=None
     )
 
 @app.route("/close-remediation-access", methods=["POST"])
@@ -9113,11 +13613,11 @@ def soumettre_reponse():
     from datetime import datetime
     import re
 
-    # Import local pour éviter de modifier immédiatement tous les imports globaux de app.py.
+    # Import local pour éviter de modifier immédiatement
+    # tous les imports globaux de app.py.
     from validation.engine import ValidationEngine
 
     print("=== 📝 SOUMISSION RÉPONSE — MOTEUR HYBRIDE ===")
-
     print("📦 Données reçues:", dict(request.form))
 
     # ============================================================
@@ -9126,8 +13626,15 @@ def soumettre_reponse():
 
     student_id = request.form.get("student_id")
     exercice_id = request.form.get("exercice_id")
-    reponse_eleve = request.form.get("reponse_eleve", "").strip()
-    redirect_url = request.form.get("redirect_url", "/")
+    reponse_eleve = request.form.get(
+        "reponse_eleve",
+        ""
+    ).strip()
+
+    redirect_url = request.form.get(
+        "redirect_url",
+        "/"
+    )
 
     print(f"Student ID: {student_id}")
     print(f"Exercice ID: {exercice_id}")
@@ -9149,11 +13656,50 @@ def soumettre_reponse():
         missing_fields.append("reponse_eleve")
 
     if missing_fields:
-        print(f"❌ Champs manquants: {missing_fields}")
-        return f"Données manquantes: {', '.join(missing_fields)}", 400
+        print(
+            f"❌ Champs manquants: {missing_fields}"
+        )
 
-    eleve = User.query.get(student_id)
-    exercice = Exercice.query.get(exercice_id)
+        return (
+            f"Données manquantes: "
+            f"{', '.join(missing_fields)}",
+            400
+        )
+
+    # ============================================================
+    # CONVERSION DES IDENTIFIANTS
+    # ============================================================
+    #
+    # SQLAlchemy 2 :
+    # on travaille avec des IDs entiers et db.session.get().
+    # ============================================================
+
+    try:
+        student_id_int = int(student_id)
+        exercice_id_int = int(exercice_id)
+
+    except (TypeError, ValueError):
+        print(
+            "❌ Identifiants invalides : "
+            f"student_id={student_id}, "
+            f"exercice_id={exercice_id}"
+        )
+
+        return "Identifiants invalides", 400
+
+    # ============================================================
+    # RÉCUPÉRATION ÉLÈVE + EXERCICE
+    # ============================================================
+
+    eleve = db.session.get(
+        User,
+        student_id_int
+    )
+
+    exercice = db.session.get(
+        Exercice,
+        exercice_id_int
+    )
 
     if not eleve:
         print("❌ Élève non trouvé")
@@ -9167,23 +13713,39 @@ def soumettre_reponse():
     # LANGUE DE L'ÉLÈVE
     # ============================================================
 
-    lang = eleve.langue if hasattr(eleve, "langue") and eleve.langue == "en" else "fr"
+    lang = (
+        eleve.langue
+        if (
+            hasattr(eleve, "langue")
+            and eleve.langue == "en"
+        )
+        else "fr"
+    )
 
     question = (
         exercice.question_en
-        if lang == "en" and exercice.question_en
+        if (
+            lang == "en"
+            and exercice.question_en
+        )
         else exercice.question_fr
     )
 
     reponse_attendue = (
         exercice.reponse_en
-        if lang == "en" and exercice.reponse_en
+        if (
+            lang == "en"
+            and exercice.reponse_en
+        )
         else exercice.reponse_fr
     )
 
     explication_reference = (
         exercice.explication_en
-        if lang == "en" and exercice.explication_en
+        if (
+            lang == "en"
+            and exercice.explication_en
+        )
         else exercice.explication_fr
     )
 
@@ -9198,31 +13760,77 @@ def soumettre_reponse():
 
     try:
         lecon = exercice.lecon
-        unite = lecon.unite if lecon else None
-        matiere = unite.matiere if unite else None
-        niveau = matiere.niveau if matiere else eleve.niveau
+
+        unite = (
+            lecon.unite
+            if lecon
+            else None
+        )
+
+        matiere = (
+            unite.matiere
+            if unite
+            else None
+        )
+
+        niveau = (
+            matiere.niveau
+            if matiere
+            else eleve.niveau
+        )
+
     except Exception as e:
-        print(f"⚠️ Impossible de récupérer le contexte pédagogique: {e}")
+        print(
+            "⚠️ Impossible de récupérer "
+            f"le contexte pédagogique: {e}"
+        )
+
         niveau = eleve.niveau
 
-    matiere_nom_fr = matiere.nom if matiere else "Mathématiques"
+    matiere_nom_fr = (
+        matiere.nom
+        if matiere
+        else "Mathématiques"
+    )
+
     matiere_nom_en = (
         matiere.nom_en
-        if matiere and hasattr(matiere, "nom_en") and matiere.nom_en
+        if (
+            matiere
+            and hasattr(matiere, "nom_en")
+            and matiere.nom_en
+        )
         else matiere_nom_fr
     )
 
-    unite_nom_fr = unite.nom if unite else None
+    unite_nom_fr = (
+        unite.nom
+        if unite
+        else None
+    )
+
     unite_nom_en = (
         unite.nom_en
-        if unite and hasattr(unite, "nom_en") and unite.nom_en
+        if (
+            unite
+            and hasattr(unite, "nom_en")
+            and unite.nom_en
+        )
         else unite_nom_fr
     )
 
-    lecon_nom_fr = lecon.titre_fr if lecon else "Général"
+    lecon_nom_fr = (
+        lecon.titre_fr
+        if lecon
+        else "Général"
+    )
+
     lecon_nom_en = (
         lecon.titre_en
-        if lecon and lecon.titre_en
+        if (
+            lecon
+            and lecon.titre_en
+        )
         else lecon_nom_fr
     )
 
@@ -9249,9 +13857,17 @@ def soumettre_reponse():
     # L'IA pédagogique appelée plus bas n'a plus le droit
     # de reclasser une réponse correcte en incorrecte.
 
-    verdict_validation = validation_result.verdict
-    confiance_validation = validation_result.confidence
-    methode_validation = validation_result.method
+    verdict_validation = (
+        validation_result.verdict
+    )
+
+    confiance_validation = (
+        validation_result.confidence
+    )
+
+    methode_validation = (
+        validation_result.method
+    )
 
     # ============================================================
     # ROUTAGE INTELLIGENT SELON LA MATIÈRE
@@ -9260,142 +13876,306 @@ def soumettre_reponse():
     def get_correction_model_from_exercice(exercice):
         """
         Récupère la configuration IA pour la matière de l'exercice.
+
         L'admin peut tout configurer via /admin/ai-config.
         """
 
         matiere_nom = None
 
         try:
-            if exercice.lecon and exercice.lecon.unite and exercice.lecon.unite.matiere:
-                matiere_nom = exercice.lecon.unite.matiere.nom
+            if (
+                exercice.lecon
+                and exercice.lecon.unite
+                and exercice.lecon.unite.matiere
+            ):
+                matiere_nom = (
+                    exercice.lecon.unite.matiere.nom
+                )
+
         except Exception:
             pass
 
-        # Si pas de matière, essayer de détecter depuis la question
+        # --------------------------------------------------------
+        # Si aucune matière n'est trouvée depuis la hiérarchie,
+        # essayer de la détecter depuis la question.
+        # --------------------------------------------------------
+
         if not matiere_nom and exercice:
-            question_text = (exercice.question_fr or exercice.question_en or "").lower()
+
+            question_text = (
+                exercice.question_fr
+                or exercice.question_en
+                or ""
+            ).lower()
 
             keyword_mapping = {
                 "Mathématiques": [
-                    "equation", "équation", "calcul", "x=", "fraction",
-                    "geometrie", "géométrie", "algebre", "algèbre",
-                    "fonction", "trigonométrie", "trigonometrie"
+                    "equation",
+                    "équation",
+                    "calcul",
+                    "x=",
+                    "fraction",
+                    "geometrie",
+                    "géométrie",
+                    "algebre",
+                    "algèbre",
+                    "fonction",
+                    "trigonométrie",
+                    "trigonometrie"
                 ],
+
                 "MCR3U": [
-                    "mcr3u", "fonction", "quadratique", "exponentiel"
+                    "mcr3u",
+                    "fonction",
+                    "quadratique",
+                    "exponentiel"
                 ],
+
                 "MHF4U": [
-                    "mhf4u", "advanced function", "polynôme",
-                    "polynome", "logarithme"
+                    "mhf4u",
+                    "advanced function",
+                    "polynôme",
+                    "polynome",
+                    "logarithme"
                 ],
+
                 "MCV4U": [
-                    "mcv4u", "calculus", "dérivée", "derivee",
-                    "intégrale", "integrale", "vecteur"
+                    "mcv4u",
+                    "calculus",
+                    "dérivée",
+                    "derivee",
+                    "intégrale",
+                    "integrale",
+                    "vecteur"
                 ],
+
                 "Français": [
-                    "grammaire", "conjugaison", "verbe", "phrase",
-                    "texte", "littérature", "litterature", "poème", "poeme"
+                    "grammaire",
+                    "conjugaison",
+                    "verbe",
+                    "phrase",
+                    "texte",
+                    "littérature",
+                    "litterature",
+                    "poème",
+                    "poeme"
                 ],
+
                 "English": [
-                    "grammar", "conjugation", "verb", "sentence",
-                    "literature", "poem"
+                    "grammar",
+                    "conjugation",
+                    "verb",
+                    "sentence",
+                    "literature",
+                    "poem"
                 ],
+
                 "Histoire": [
-                    "date", "guerre", "révolution", "revolution",
-                    "siècle", "siecle", "roi", "bataille"
+                    "date",
+                    "guerre",
+                    "révolution",
+                    "revolution",
+                    "siècle",
+                    "siecle",
+                    "roi",
+                    "bataille"
                 ],
+
                 "Sciences": [
-                    "atome", "cellule", "force", "énergie", "energie",
-                    "vitesse", "masse"
+                    "atome",
+                    "cellule",
+                    "force",
+                    "énergie",
+                    "energie",
+                    "vitesse",
+                    "masse"
                 ],
+
                 "Physique": [
-                    "physique", "force", "vitesse", "accélération",
-                    "acceleration", "énergie", "energie"
+                    "physique",
+                    "force",
+                    "vitesse",
+                    "accélération",
+                    "acceleration",
+                    "énergie",
+                    "energie"
                 ],
+
                 "Chimie": [
-                    "chimie", "atome", "molécule", "molecule",
-                    "réaction", "reaction", "acide"
+                    "chimie",
+                    "atome",
+                    "molécule",
+                    "molecule",
+                    "réaction",
+                    "reaction",
+                    "acide"
                 ],
+
                 "Biologie": [
-                    "biologie", "cellule", "organe", "adn", "génétique",
+                    "biologie",
+                    "cellule",
+                    "organe",
+                    "adn",
+                    "génétique",
                     "genetique"
                 ]
             }
 
             for mat, keywords in keyword_mapping.items():
-                if any(kw in question_text for kw in keywords):
+
+                if any(
+                    kw in question_text
+                    for kw in keywords
+                ):
                     matiere_nom = mat
                     break
 
         if not matiere_nom:
             matiere_nom = "Mathématiques"
 
-        print(f"🔍 Matière détectée pour correction: {matiere_nom}")
+        print(
+            "🔍 Matière détectée "
+            f"pour correction: {matiere_nom}"
+        )
+
+        # --------------------------------------------------------
+        # Configuration IA depuis la base
+        # --------------------------------------------------------
 
         try:
             from models import MatiereAIConfig
 
-            config = MatiereAIConfig.query.filter_by(
-                matiere_nom=matiere_nom,
-                actif=True
-            ).first()
+            config = (
+                MatiereAIConfig.query
+                .filter_by(
+                    matiere_nom=matiere_nom,
+                    actif=True
+                )
+                .first()
+            )
 
             if config:
                 print(
                     f"⚙️ Configuration trouvée: "
-                    f"{config.matiere_nom} → {config.api_choice}/{config.modele_ia}"
+                    f"{config.matiere_nom} → "
+                    f"{config.api_choice}/"
+                    f"{config.modele_ia}"
                 )
 
                 if config.api_choice == "deepseek":
-                    return client_deepseek, config.modele_ia, f"DeepSeek/{config.modele_ia}"
+                    return (
+                        client_deepseek,
+                        config.modele_ia,
+                        f"DeepSeek/{config.modele_ia}"
+                    )
 
-                return client_openai, config.modele_ia, f"OpenAI/{config.modele_ia}"
+                return (
+                    client_openai,
+                    config.modele_ia,
+                    f"OpenAI/{config.modele_ia}"
+                )
 
         except Exception as e:
-            print(f"⚠️ Erreur lecture config: {e}")
+            print(
+                f"⚠️ Erreur lecture config: {e}"
+            )
 
-        print("⚠️ Fallback config: DeepSeek Flash")
-        return client_deepseek, "deepseek-v4-flash", "DeepSeek/fallback"
+        print(
+            "⚠️ Fallback config: "
+            "DeepSeek Flash"
+        )
 
-    correction_client, correction_model, correction_source = get_correction_model_from_exercice(exercice)
+        return (
+            client_deepseek,
+            "deepseek-v4-flash",
+            "DeepSeek/fallback"
+        )
 
-    print(f"🔀 Correction avec: {correction_source}")
+    (
+        correction_client,
+        correction_model,
+        correction_source
+    ) = get_correction_model_from_exercice(
+        exercice
+    )
 
+    print(
+        f"🔀 Correction avec: "
+        f"{correction_source}"
+    )
 
     # ============================================================
     # 2. RÉTROACTION PÉDAGOGIQUE
+    # ============================================================
+    #
+    # IMPORTANT :
+    #
+    # None = non évalué
+    #
+    # Cela permet de distinguer :
+    #
+    # etoiles = None
+    #     -> le système n'a pas pu évaluer avec certitude
+    #
+    # etoiles = 0
+    #     -> le système a évalué la réponse et elle vaut réellement 0
     # ============================================================
 
     analyse_ia = ""
     etoiles = None
     score_pourcentage = None
 
-    # Cas incertain :
-    # on ne fabrique PAS une mauvaise note.
+    # ============================================================
+    # CAS INCERTAIN
+    # ============================================================
+    #
+    # On ne fabrique PAS une mauvaise note.
+    # ============================================================
+
     if verdict_validation == "uncertain":
+
         if lang == "en":
             analyse_ia = (
-                "I could not validate this answer with sufficient certainty. "
-                "Your answer has not been automatically marked incorrect. "
-                "It should be reviewed or re-evaluated before affecting your progress."
+                "I could not validate this answer with "
+                "sufficient certainty. "
+                "Your answer has not been automatically "
+                "marked incorrect. "
+                "It should be reviewed or re-evaluated "
+                "before affecting your progress."
             )
+
         else:
             analyse_ia = (
-                "Je n'ai pas pu valider cette réponse avec suffisamment de certitude. "
-                "Ta réponse n'est pas automatiquement considérée comme incorrecte. "
-                "Elle doit être vérifiée ou réévaluée avant d'influencer ta progression."
+                "Je n'ai pas pu valider cette réponse "
+                "avec suffisamment de certitude. "
+                "Ta réponse n'est pas automatiquement "
+                "considérée comme incorrecte. "
+                "Elle doit être vérifiée ou réévaluée "
+                "avant d'influencer ta progression."
             )
 
-        print("⚠️ Verdict incertain : aucune pénalisation automatique.")
+        print(
+            "⚠️ Verdict incertain : "
+            "aucune pénalisation automatique."
+        )
 
     else:
-        # Le moteur hybride a déjà décidé correct / incorrect.
-        # Le modèle appelé ici sert uniquement à expliquer et à noter
-        # la qualité pédagogique DANS LES LIMITES du verdict validé.
+
+        # ========================================================
+        # Le moteur hybride a déjà décidé :
+        #
+        # correct / incorrect
+        #
+        # Le modèle IA sert uniquement à expliquer et à attribuer
+        # une note pédagogique cohérente AVEC ce verdict.
+        # ========================================================
 
         if lang == "en":
+
             verdict_text = (
-                "CORRECT" if verdict_validation == "correct" else "INCORRECT"
+                "CORRECT"
+                if verdict_validation == "correct"
+                else "INCORRECT"
             )
 
             prompt = f"""You are producing pedagogical feedback after a separate validation engine has already evaluated the student's answer.
@@ -9442,9 +14222,13 @@ Analysis: ...
 Score: X/5
 Main error: ...
 Correct answer: ..."""
+
         else:
+
             verdict_text = (
-                "CORRECT" if verdict_validation == "correct" else "INCORRECT"
+                "CORRECT"
+                if verdict_validation == "correct"
+                else "INCORRECT"
             )
 
             prompt = f"""Tu produis une rétroaction pédagogique APRÈS qu'un moteur de validation séparé a déjà évalué la réponse de l'élève.
@@ -9492,65 +14276,159 @@ Note: X/5
 Erreur principale: ...
 Réponse correcte: ..."""
 
-        try:
-            print(f"🤖 Génération rétroaction pédagogique ({correction_source})...")
+        # ========================================================
+        # APPEL IA POUR LA RÉTROACTION
+        # ========================================================
 
-            chat_completion = correction_client.chat.completions.create(
-                model=correction_model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-                max_tokens=700
+        try:
+
+            print(
+                "🤖 Génération rétroaction "
+                f"pédagogique ({correction_source})..."
             )
 
-            analyse_ia = chat_completion.choices[0].message.content.strip()
-            print(f"✅ Rétroaction reçue de {correction_source}")
-
-        except Exception as e:
-            print(f"❌ Erreur avec {correction_source}: {e}")
-
-            try:
-                print("🔄 Fallback rétroaction sur l'autre API...")
-
-                if correction_client == client_deepseek:
-                    fallback_client = client_openai
-                    fallback_model = "gpt-4o-mini"
-                    fallback_source = "OpenAI/gpt-4o-mini (fallback)"
-                else:
-                    fallback_client = client_deepseek
-                    fallback_model = "deepseek-v4-flash"
-                    fallback_source = "DeepSeek Flash (fallback)"
-
-                chat_completion = fallback_client.chat.completions.create(
-                    model=fallback_model,
-                    messages=[{"role": "user", "content": prompt}],
+            chat_completion = (
+                correction_client
+                .chat.completions.create(
+                    model=correction_model,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
                     temperature=0.2,
                     max_tokens=700
                 )
+            )
 
-                analyse_ia = chat_completion.choices[0].message.content.strip()
-                correction_source = fallback_source
+            analyse_ia = (
+                chat_completion
+                .choices[0]
+                .message
+                .content
+                .strip()
+            )
 
-                print(f"✅ Fallback rétroaction réussi avec {fallback_source}")
+            print(
+                "✅ Rétroaction reçue de "
+                f"{correction_source}"
+            )
+
+        except Exception as e:
+
+            print(
+                f"❌ Erreur avec "
+                f"{correction_source}: {e}"
+            )
+
+            # ====================================================
+            # FALLBACK SUR L'AUTRE API
+            # ====================================================
+
+            try:
+
+                print(
+                    "🔄 Fallback rétroaction "
+                    "sur l'autre API..."
+                )
+
+                if correction_client == client_deepseek:
+
+                    fallback_client = (
+                        client_openai
+                    )
+
+                    fallback_model = (
+                        "gpt-4o-mini"
+                    )
+
+                    fallback_source = (
+                        "OpenAI/gpt-4o-mini "
+                        "(fallback)"
+                    )
+
+                else:
+
+                    fallback_client = (
+                        client_deepseek
+                    )
+
+                    fallback_model = (
+                        "deepseek-v4-flash"
+                    )
+
+                    fallback_source = (
+                        "DeepSeek Flash "
+                        "(fallback)"
+                    )
+
+                chat_completion = (
+                    fallback_client
+                    .chat.completions.create(
+                        model=fallback_model,
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        temperature=0.2,
+                        max_tokens=700
+                    )
+                )
+
+                analyse_ia = (
+                    chat_completion
+                    .choices[0]
+                    .message
+                    .content
+                    .strip()
+                )
+
+                correction_source = (
+                    fallback_source
+                )
+
+                print(
+                    "✅ Fallback rétroaction "
+                    f"réussi avec {fallback_source}"
+                )
 
             except Exception as e2:
-                print(f"❌ Erreur fallback rétroaction: {e2}")
+
+                print(
+                    "❌ Erreur fallback "
+                    f"rétroaction: {e2}"
+                )
 
                 # Même si la rétroaction IA tombe,
                 # le verdict de validation reste utilisable.
+
                 if verdict_validation == "correct":
+
                     analyse_ia = (
                         "Réponse validée comme correcte."
                         if lang == "fr"
-                        else "Answer validated as correct."
+                        else
+                        "Answer validated as correct."
                     )
+
                 else:
+
                     analyse_ia = (
-                        "Réponse validée comme incorrecte. Une explication détaillée "
-                        "n'est temporairement pas disponible."
+                        (
+                            "Réponse validée comme incorrecte. "
+                            "Une explication détaillée n'est "
+                            "temporairement pas disponible."
+                        )
                         if lang == "fr"
                         else
-                        "Answer validated as incorrect. A detailed explanation "
-                        "is temporarily unavailable."
+                        (
+                            "Answer validated as incorrect. "
+                            "A detailed explanation is "
+                            "temporarily unavailable."
+                        )
                     )
 
         # ========================================================
@@ -9560,6 +14438,7 @@ Réponse correcte: ..."""
         note_ia = None
 
         if analyse_ia:
+
             match = re.search(
                 r"(Note|Score)\s*:\s*([0-5])\s*/?\s*5?",
                 analyse_ia,
@@ -9567,35 +14446,82 @@ Réponse correcte: ..."""
             )
 
             if match:
-                note_ia = min(int(match.group(2)), 5)
+
+                note_ia = min(
+                    int(match.group(2)),
+                    5
+                )
+
             else:
-                match = re.search(r"\b([0-5])\s*/\s*5\b", analyse_ia)
+
+                match = re.search(
+                    r"\b([0-5])\s*/\s*5\b",
+                    analyse_ia
+                )
+
                 if match:
-                    note_ia = min(int(match.group(1)), 5)
+
+                    note_ia = min(
+                        int(match.group(1)),
+                        5
+                    )
+
+        # --------------------------------------------------------
+        # Réponse validée correcte
+        # --------------------------------------------------------
 
         if verdict_validation == "correct":
-            # Une réponse validée correcte ne peut plus recevoir 0,1,2 ou 3.
-            etoiles = max(note_ia if note_ia is not None else 5, 4)
+
+            # Une réponse validée correcte ne peut plus
+            # recevoir 0, 1, 2 ou 3.
+            etoiles = max(
+                note_ia
+                if note_ia is not None
+                else 5,
+                4
+            )
+
+        # --------------------------------------------------------
+        # Réponse validée incorrecte
+        # --------------------------------------------------------
 
         elif verdict_validation == "incorrect":
-            # Une réponse validée incorrecte peut garder du crédit
-            # pour un bon raisonnement, mais pas 5/5.
-            etoiles = min(note_ia if note_ia is not None else 2, 4)
 
-        score_pourcentage = int(etoiles * 20)
+            # Une réponse incorrecte peut conserver du crédit
+            # pour un bon raisonnement, mais jamais 5/5.
+            etoiles = min(
+                note_ia
+                if note_ia is not None
+                else 2,
+                4
+            )
 
-        print(
-            f"⭐ Score final contraint par validation: "
-            f"{etoiles}/5 ({score_pourcentage}%)"
-        )
+        if etoiles is not None:
+
+            score_pourcentage = int(
+                etoiles * 20
+            )
+
+            print(
+                "⭐ Score final contraint "
+                "par validation: "
+                f"{etoiles}/5 "
+                f"({score_pourcentage}%)"
+            )
 
     # ============================================================
     # 3. TYPE D'ERREUR
     # ============================================================
 
-    type_erreur = validation_result.error_type
+    type_erreur = (
+        validation_result.error_type
+    )
 
-    if not type_erreur and analyse_ia:
+    if (
+        not type_erreur
+        and analyse_ia
+    ):
+
         match_erreur_fr = re.search(
             r"Erreur principale\s*:\s*(.+)",
             analyse_ia,
@@ -9609,13 +14535,28 @@ Réponse correcte: ..."""
         )
 
         if match_erreur_fr:
-            type_erreur = match_erreur_fr.group(1).strip()[:100]
-        elif match_erreur_en:
-            type_erreur = match_erreur_en.group(1).strip()[:100]
 
-    # Une réponse correcte ne doit pas conserver artificiellement
-    # un type d'erreur comme si le résultat était faux.
-    if verdict_validation == "correct" and not validation_result.reasoning_correct is False:
+            type_erreur = (
+                match_erreur_fr
+                .group(1)
+                .strip()[:100]
+            )
+
+        elif match_erreur_en:
+
+            type_erreur = (
+                match_erreur_en
+                .group(1)
+                .strip()[:100]
+            )
+
+    # Une réponse correcte ne doit pas conserver
+    # artificiellement un type d'erreur.
+    if (
+        verdict_validation == "correct"
+        and validation_result.reasoning_correct
+        is not False
+    ):
         type_erreur = None
 
     # ============================================================
@@ -9623,23 +14564,39 @@ Réponse correcte: ..."""
     # ============================================================
 
     if verdict_validation == "uncertain":
+
         niveau_risque = "a_verifier"
-    elif etoiles is not None and etoiles >= 4:
+
+    elif (
+        etoiles is not None
+        and etoiles >= 4
+    ):
+
         niveau_risque = "faible"
-    elif etoiles is not None and etoiles >= 3:
+
+    elif (
+        etoiles is not None
+        and etoiles >= 3
+    ):
+
         niveau_risque = "moyen"
+
     else:
+
         niveau_risque = "élevé"
 
     # ============================================================
     # 5. REMÉDIATION
     # ============================================================
-
+    #
     # Important :
+    #
     # - pas de remédiation automatique sur un verdict incertain ;
     # - pas de remédiation sur une réponse validée correcte ;
     # - remédiation seulement après un verdict incorrect confirmé
     #   et une note réellement faible.
+    # ============================================================
+
     remediation_declenchee = (
         verdict_validation == "incorrect"
         and etoiles is not None
@@ -9647,9 +14604,14 @@ Réponse correcte: ..."""
     )
 
     if remediation_declenchee:
-        print(f"🔄 Génération remédiation (note: {etoiles}/5)")
+
+        print(
+            "🔄 Génération remédiation "
+            f"(note: {etoiles}/5)"
+        )
 
         if lang == "en":
+
             remediation_prompt = f"""Generate a short remediation exercise for a student whose answer was confirmed incorrect.
 
 Original question:
@@ -9665,7 +14627,9 @@ Output:
 Question: ...
 Expected answer: ...
 Hint: ..."""
+
         else:
+
             remediation_prompt = f"""Génère un court exercice de remédiation pour un élève dont la réponse a été confirmée incorrecte.
 
 Question originale:
@@ -9683,171 +14647,541 @@ Réponse attendue: ...
 Indice: ..."""
 
         try:
-            remediation_completion = client_deepseek.chat.completions.create(
-                model="deepseek-v4-flash",
-                messages=[{"role": "user", "content": remediation_prompt}],
-                temperature=0.7,
-                max_tokens=350
+
+            remediation_completion = (
+                client_deepseek
+                .chat.completions.create(
+                    model="deepseek-v4-flash",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": remediation_prompt
+                        }
+                    ],
+                    temperature=0.7,
+                    max_tokens=350
+                )
             )
 
-            remediation_content = remediation_completion.choices[0].message.content.strip()
+            remediation_content = (
+                remediation_completion
+                .choices[0]
+                .message
+                .content
+                .strip()
+            )
 
-            print("✅ Remédiation générée avec DeepSeek Flash")
+            print(
+                "✅ Remédiation générée "
+                "avec DeepSeek Flash"
+            )
 
             remediation_message = (
-                f"Exercice de remédiation proposé après une note de {etoiles}/5."
+                (
+                    "Exercice de remédiation proposé "
+                    f"après une note de {etoiles}/5."
+                )
                 if lang == "fr"
-                else f"Remediation exercise suggested after a score of {etoiles}/5."
+                else
+                (
+                    "Remediation exercise suggested "
+                    f"after a score of {etoiles}/5."
+                )
             )
 
-            nouvelle_suggestion = RemediationSuggestion(
-                user_id=eleve.id,
-                theme=matiere_nom_fr if lang == "fr" else matiere_nom_en,
-                lecon=lecon_nom_fr if lang == "fr" else lecon_nom_en,
-                message=remediation_message,
-                exercice_suggere=remediation_content,
-                statut="en_attente",
-                timestamp=datetime.utcnow()
+            nouvelle_suggestion = (
+                RemediationSuggestion(
+                    user_id=eleve.id,
+                    theme=(
+                        matiere_nom_fr
+                        if lang == "fr"
+                        else matiere_nom_en
+                    ),
+                    lecon=(
+                        lecon_nom_fr
+                        if lang == "fr"
+                        else lecon_nom_en
+                    ),
+                    message=remediation_message,
+                    exercice_suggere=(
+                        remediation_content
+                    ),
+                    statut="en_attente",
+                    timestamp=datetime.utcnow()
+                )
             )
 
-            db.session.add(nouvelle_suggestion)
+            db.session.add(
+                nouvelle_suggestion
+            )
 
-            print("✅ Suggestion de remédiation sauvegardée")
+            print(
+                "✅ Suggestion de remédiation "
+                "sauvegardée"
+            )
 
             session["remediation_access"] = {
                 "exercice_id": exercice.id,
                 "note": etoiles,
-                "score_pourcentage": score_pourcentage,
+                "score_pourcentage": (
+                    score_pourcentage
+                ),
                 "access_count": 0,
-                "first_access": datetime.utcnow().isoformat(),
+                "first_access": (
+                    datetime.utcnow()
+                    .isoformat()
+                ),
                 "lang": lang
             }
 
-            print(f"✅ Accès enseignant virtuel autorisé (note: {etoiles}/5)")
+            print(
+                "✅ Accès enseignant virtuel "
+                f"autorisé (note: {etoiles}/5)"
+            )
 
         except Exception as e:
-            print(f"❌ Erreur génération remédiation: {e}")
+
+            print(
+                "❌ Erreur génération "
+                f"remédiation: {e}"
+            )
 
     # ============================================================
-    # 6. SAUVEGARDE DE LA RÉPONSE + TRACE D'APPRENTISSAGE
+    # 6. SAUVEGARDE DE LA RÉPONSE
+    #    + TRACE D'APPRENTISSAGE
     # ============================================================
 
     try:
+
         from models import TraceApprentissage
 
-        validation_details = validation_result.details or {}
+        validation_details = (
+            validation_result.details
+            or {}
+        )
+
+        # --------------------------------------------------------
+        # STUDENT RESPONSE
+        # --------------------------------------------------------
 
         nouvelle = StudentResponse(
             user_id=eleve.id,
             exercice_id=exercice.id,
-            reponse_eleve=reponse_eleve,
-            analyse_ia=analyse_ia,
+
+            reponse_eleve=(
+                reponse_eleve
+            ),
+
+            analyse_ia=(
+                analyse_ia
+            ),
+
+            # None est volontairement conservé
+            # lorsque le verdict est uncertain.
             etoiles=etoiles,
-            score=score_pourcentage,
-            type_erreur=type_erreur,
-            niveau_difficulte=getattr(exercice, "niveau_difficulte", None),
-            aide_utilisee=bool(session.get("remediation_access")),
+
+            score=(
+                score_pourcentage
+            ),
+
+            type_erreur=(
+                type_erreur
+            ),
+
+            niveau_difficulte=(
+                getattr(
+                    exercice,
+                    "niveau_difficulte",
+                    None
+                )
+            ),
+
+            aide_utilisee=bool(
+                session.get(
+                    "remediation_access"
+                )
+            ),
+
             feedback_ia_structure={
                 "lang": lang,
-                "score_sur_5": etoiles,
-                "score_pourcentage": score_pourcentage,
-                "niveau_risque": niveau_risque,
-                "type_erreur": type_erreur,
-                "notion_cible": getattr(exercice, "notion_cible", None),
-                "competence_cible": getattr(exercice, "competence_cible", None),
-                "correction_source": correction_source,
-                "matiere_fr": matiere_nom_fr,
-                "matiere_en": matiere_nom_en,
-                "unite_fr": unite_nom_fr,
-                "unite_en": unite_nom_en,
-                "lecon_fr": lecon_nom_fr,
-                "lecon_en": lecon_nom_en,
 
-                # Nouvelle traçabilité du moteur hybride
-                "validation_verdict": verdict_validation,
-                "validation_confidence": confiance_validation,
-                "validation_method": methode_validation,
-                "validation_reason": validation_result.reason,
-                "validation_result_correct": validation_result.result_correct,
-                "validation_reasoning_correct": validation_result.reasoning_correct,
-                "validation_error_type": validation_result.error_type,
-                "validation_details": validation_details,
-                "requires_review": verdict_validation == "uncertain",
+                "score_sur_5": (
+                    etoiles
+                ),
+
+                "score_pourcentage": (
+                    score_pourcentage
+                ),
+
+                "niveau_risque": (
+                    niveau_risque
+                ),
+
+                "type_erreur": (
+                    type_erreur
+                ),
+
+                "notion_cible": (
+                    getattr(
+                        exercice,
+                        "notion_cible",
+                        None
+                    )
+                ),
+
+                "competence_cible": (
+                    getattr(
+                        exercice,
+                        "competence_cible",
+                        None
+                    )
+                ),
+
+                "correction_source": (
+                    correction_source
+                ),
+
+                "matiere_fr": (
+                    matiere_nom_fr
+                ),
+
+                "matiere_en": (
+                    matiere_nom_en
+                ),
+
+                "unite_fr": (
+                    unite_nom_fr
+                ),
+
+                "unite_en": (
+                    unite_nom_en
+                ),
+
+                "lecon_fr": (
+                    lecon_nom_fr
+                ),
+
+                "lecon_en": (
+                    lecon_nom_en
+                ),
+
+                # -----------------------------------------------
+                # Traçabilité du moteur hybride
+                # -----------------------------------------------
+
+                "validation_verdict": (
+                    verdict_validation
+                ),
+
+                "validation_confidence": (
+                    confiance_validation
+                ),
+
+                "validation_method": (
+                    methode_validation
+                ),
+
+                "validation_reason": (
+                    validation_result.reason
+                ),
+
+                "validation_result_correct": (
+                    validation_result.result_correct
+                ),
+
+                "validation_reasoning_correct": (
+                    validation_result.reasoning_correct
+                ),
+
+                "validation_error_type": (
+                    validation_result.error_type
+                ),
+
+                "validation_details": (
+                    validation_details
+                ),
+
+                "requires_review": (
+                    verdict_validation
+                    == "uncertain"
+                ),
             },
+
             timestamp=datetime.utcnow()
         )
 
-        db.session.add(nouvelle)
+        db.session.add(
+            nouvelle
+        )
+
+        # Flush pour récupérer nouvelle.id
+        # avant la création de la trace.
         db.session.flush()
+
+        # --------------------------------------------------------
+        # TRACE D'APPRENTISSAGE
+        # --------------------------------------------------------
 
         trace = TraceApprentissage(
             user_id=eleve.id,
 
-            niveau_id=niveau.id if niveau else eleve.niveau_id,
-            matiere_id=matiere.id if matiere else None,
-            unite_id=unite.id if unite else None,
-            lecon_id=lecon.id if lecon else None,
-            exercice_id=exercice.id,
+            niveau_id=(
+                niveau.id
+                if niveau
+                else eleve.niveau_id
+            ),
 
-            type_action="exercice",
-            source="soumettre_reponse",
+            matiere_id=(
+                matiere.id
+                if matiere
+                else None
+            ),
 
-            reponse_eleve=reponse_eleve,
-            analyse_ia=analyse_ia,
-            score=score_pourcentage,
+            unite_id=(
+                unite.id
+                if unite
+                else None
+            ),
 
-            niveau_risque=niveau_risque,
-            difficulte_estimee=getattr(exercice, "niveau_difficulte", None),
-            notion_cible=getattr(exercice, "notion_cible", None),
-            type_erreur=type_erreur,
+            lecon_id=(
+                lecon.id
+                if lecon
+                else None
+            ),
+
+            exercice_id=(
+                exercice.id
+            ),
+
+            type_action=(
+                "exercice"
+            ),
+
+            source=(
+                "soumettre_reponse"
+            ),
+
+            reponse_eleve=(
+                reponse_eleve
+            ),
+
+            analyse_ia=(
+                analyse_ia
+            ),
+
+            # None reste None pour une
+            # réponse non évaluée.
+            score=(
+                score_pourcentage
+            ),
+
+            niveau_risque=(
+                niveau_risque
+            ),
+
+            difficulte_estimee=(
+                getattr(
+                    exercice,
+                    "niveau_difficulte",
+                    None
+                )
+            ),
+
+            notion_cible=(
+                getattr(
+                    exercice,
+                    "notion_cible",
+                    None
+                )
+            ),
+
+            type_erreur=(
+                type_erreur
+            ),
 
             meta_json={
                 "lang": lang,
-                "score_sur_5": etoiles,
-                "score_pourcentage": score_pourcentage,
-                "student_response_id": nouvelle.id,
-                "correction_source": correction_source,
 
-                "question_fr": exercice.question_fr,
-                "question_en": exercice.question_en,
+                "score_sur_5": (
+                    etoiles
+                ),
 
-                "matiere_fr": matiere_nom_fr,
-                "matiere_en": matiere_nom_en,
+                "score_pourcentage": (
+                    score_pourcentage
+                ),
 
-                "unite_fr": unite_nom_fr,
-                "unite_en": unite_nom_en,
+                "student_response_id": (
+                    nouvelle.id
+                ),
 
-                "lecon_fr": lecon_nom_fr,
-                "lecon_en": lecon_nom_en,
+                "correction_source": (
+                    correction_source
+                ),
 
-                "competence_cible": getattr(exercice, "competence_cible", None),
-                "type_exercice": getattr(exercice, "type_exercice", None),
-                "classification_validee": getattr(exercice, "classification_validee", None),
+                "question_fr": (
+                    exercice.question_fr
+                ),
 
-                "aide_utilisee": bool(session.get("remediation_access")),
-                "remediation_declenchee": remediation_declenchee,
+                "question_en": (
+                    exercice.question_en
+                ),
 
-                # Nouvelle trace de validation
-                "validation_verdict": verdict_validation,
-                "validation_confidence": confiance_validation,
-                "validation_method": methode_validation,
-                "validation_reason": validation_result.reason,
-                "validation_result_correct": validation_result.result_correct,
-                "validation_reasoning_correct": validation_result.reasoning_correct,
-                "validation_error_type": validation_result.error_type,
-                "validation_details": validation_details,
-                "requires_review": verdict_validation == "uncertain",
+                "matiere_fr": (
+                    matiere_nom_fr
+                ),
+
+                "matiere_en": (
+                    matiere_nom_en
+                ),
+
+                "unite_fr": (
+                    unite_nom_fr
+                ),
+
+                "unite_en": (
+                    unite_nom_en
+                ),
+
+                "lecon_fr": (
+                    lecon_nom_fr
+                ),
+
+                "lecon_en": (
+                    lecon_nom_en
+                ),
+
+                "competence_cible": (
+                    getattr(
+                        exercice,
+                        "competence_cible",
+                        None
+                    )
+                ),
+
+                "type_exercice": (
+                    getattr(
+                        exercice,
+                        "type_exercice",
+                        None
+                    )
+                ),
+
+                "classification_validee": (
+                    getattr(
+                        exercice,
+                        "classification_validee",
+                        None
+                    )
+                ),
+
+                "aide_utilisee": bool(
+                    session.get(
+                        "remediation_access"
+                    )
+                ),
+
+                "remediation_declenchee": (
+                    remediation_declenchee
+                ),
+
+                # -----------------------------------------------
+                # Trace détaillée de validation
+                # -----------------------------------------------
+
+                "validation_verdict": (
+                    verdict_validation
+                ),
+
+                "validation_confidence": (
+                    confiance_validation
+                ),
+
+                "validation_method": (
+                    methode_validation
+                ),
+
+                "validation_reason": (
+                    validation_result.reason
+                ),
+
+                "validation_result_correct": (
+                    validation_result.result_correct
+                ),
+
+                "validation_reasoning_correct": (
+                    validation_result.reasoning_correct
+                ),
+
+                "validation_error_type": (
+                    validation_result.error_type
+                ),
+
+                "validation_details": (
+                    validation_details
+                ),
+
+                "requires_review": (
+                    verdict_validation
+                    == "uncertain"
+                ),
             },
+
             created_at=datetime.utcnow()
         )
 
-        db.session.add(trace)
+        db.session.add(
+            trace
+        )
+
+        # ========================================================
+        # COMMIT UNIQUE
+        # ========================================================
+
         db.session.commit()
 
-        print("✅ Réponse sauvegardée en base de données")
-        print("✅ Trace d'apprentissage créée")
+        # ========================================================
+        # INVALIDATION DU CACHE DES STATISTIQUES
+        # ========================================================
+        #
+        # Une nouvelle activité vient d'être enregistrée.
+        #
+        # Le cache des statistiques peut maintenant être obsolète.
+        #
+        # On le supprime pour forcer /api/eleve/stats
+        # à recalculer lors du prochain appel.
+        #
+        # Cela fonctionne aussi lorsque :
+        #
+        # - la réponse est correcte ;
+        # - la réponse est incorrecte ;
+        # - la réponse est uncertain ;
+        # - etoiles vaut None.
+        # ========================================================
+
+        session.pop(
+            "api_eleve_stats_cache",
+            None
+        )
+
+        session.modified = True
+
         print(
-            f"🧠 Trace: élève={eleve.id}, "
+            "🧹 Cache statistiques "
+            "élève invalidé."
+        )
+
+        print(
+            "✅ Réponse sauvegardée "
+            "en base de données"
+        )
+
+        print(
+            "✅ Trace d'apprentissage créée"
+        )
+
+        print(
+            f"🧠 Trace: "
+            f"élève={eleve.id}, "
             f"exercice={exercice.id}, "
             f"verdict={verdict_validation}, "
             f"score={score_pourcentage}, "
@@ -9855,11 +15189,23 @@ Indice: ..."""
         )
 
     except Exception as e:
-        db.session.rollback()
-        print(f"❌ Erreur lors de la sauvegarde réponse/trace: {e}")
-        return f"Erreur base de données: {e}", 500
 
-    print("=== ✅ RÉPONSE + TRACE SAUVEGARDÉES ===")
+        db.session.rollback()
+
+        print(
+            "❌ Erreur lors de la sauvegarde "
+            f"réponse/trace: {e}"
+        )
+
+        return (
+            f"Erreur base de données: {e}",
+            500
+        )
+
+    print(
+        "=== ✅ RÉPONSE + TRACE "
+        "SAUVEGARDÉES ==="
+    )
 
     # ============================================================
     # 7. AFFICHAGE DE LA RÉTROACTION
@@ -9878,7 +15224,9 @@ Indice: ..."""
         reponse=nouvelle,
         show_feedback=True,
         already_completed=True,
-        show_teacher_button=show_teacher_button
+        show_teacher_button=(
+            show_teacher_button
+        )
     )
 
 
@@ -14731,77 +20079,344 @@ def creer_contenu():
 
 @app.route("/enseignant/eleves")
 def enseignant_eleves():
-    """Route pour voir les élèves assignés - Adaptée au nouveau système User"""
-    # Vérifier si l'utilisateur est connecté
+    """
+    Route pour voir les élèves assignés.
+
+    Version corrigée :
+    - compatible avec le système User actuel ;
+    - utilise SQLAlchemy 2 pour les récupérations par ID ;
+    - distingue les activités enregistrées des réponses évaluées ;
+    - une réponse avec etoiles=None n'est jamais transformée en 0 ;
+    - la moyenne est calculée uniquement sur les réponses réellement évaluées ;
+    - conserve les variables déjà envoyées au template.
+    """
+
+    # ============================================================
+    # AUTHENTIFICATION
+    # ============================================================
+
     if "user_id" not in session:
-        return redirect(url_for("login"))
-    
-    # Vérifier si c'est un enseignant
+        return redirect(
+            url_for("login")
+        )
+
+    # ============================================================
+    # VÉRIFICATION DU RÔLE
+    # ============================================================
+
     if session.get("role") != "enseignant":
-        flash("Accès réservé aux enseignants", "error")
+        flash(
+            "Accès réservé aux enseignants",
+            "error"
+        )
+
         return redirect("/")
-    
+
+    # ============================================================
+    # RÉCUPÉRATION DE L'ENSEIGNANT
+    # ============================================================
+
     UserModel = get_user_model()
-    enseignant = UserModel.query.get(session["user_id"])
-    
-    if not enseignant or enseignant.role != "enseignant":
-        flash("Enseignant non trouvé", "error")
-        return redirect(url_for("login"))
-    
-    lang = session.get("lang", "fr")
-    
-    # Récupérer les élèves assignés à cet enseignant
-    # Utiliser enseignant_referent_id (nouveau système)
-    eleves = UserModel.query.filter_by(
-        enseignant_referent_id=enseignant.id,
-        role="eleve"
-    ).all()
-    
-    # Pour la compatibilité, vérifier aussi l'ancien champ enseignant_id
-    if not eleves and hasattr(UserModel, 'enseignant_id'):
-        eleves = UserModel.query.filter_by(
-            enseignant_id=enseignant.id,
+
+    enseignant = db.session.get(
+        UserModel,
+        session["user_id"]
+    )
+
+    if (
+        not enseignant
+        or enseignant.role != "enseignant"
+    ):
+        flash(
+            "Enseignant non trouvé",
+            "error"
+        )
+
+        return redirect(
+            url_for("login")
+        )
+
+    # ============================================================
+    # LANGUE
+    # ============================================================
+
+    lang = session.get(
+        "lang",
+        "fr"
+    )
+
+    # ============================================================
+    # RÉCUPÉRATION DES ÉLÈVES ASSIGNÉS
+    # ============================================================
+
+    eleves = (
+        UserModel.query
+        .filter_by(
+            enseignant_referent_id=enseignant.id,
             role="eleve"
-        ).all()
-    
-    # Calculer les statistiques pour chaque élève
+        )
+        .all()
+    )
+
+    # ============================================================
+    # COMPATIBILITÉ AVEC L'ANCIEN CHAMP enseignant_id
+    # ============================================================
+
+    if (
+        not eleves
+        and hasattr(
+            UserModel,
+            "enseignant_id"
+        )
+    ):
+
+        eleves = (
+            UserModel.query
+            .filter_by(
+                enseignant_id=enseignant.id,
+                role="eleve"
+            )
+            .all()
+        )
+
+    # ============================================================
+    # STATISTIQUES DE CHAQUE ÉLÈVE
+    # ============================================================
+
     stats_eleves = []
+
     for eleve in eleves:
-        # Utiliser la table StudentResponse si elle existe
+
+        # --------------------------------------------------------
+        # Valeurs par défaut
+        # --------------------------------------------------------
+
+        total_activites = 0
+        total_evalues = 0
+        non_evalues = 0
+        moyenne = 0.0
+
+        # --------------------------------------------------------
+        # STATISTIQUES STUDENT RESPONSE
+        # --------------------------------------------------------
+
         try:
             from models import StudentResponse
-            reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
-            total_reponses = len(reponses)
-            moyenne = round(sum(r.etoiles or 0 for r in reponses) / total_reponses, 2) if total_reponses else 0
-        except:
-            # Fallback si la table n'existe pas
-            total_reponses = 0
-            moyenne = 0
-        
-        # Récupérer le niveau de l'élève si l'attribut existe
+
+            reponses = (
+                StudentResponse.query
+                .filter_by(
+                    user_id=eleve.id
+                )
+                .all()
+            )
+
+            # Toutes les réponses enregistrées.
+            total_activites = len(
+                reponses
+            )
+
+            # ----------------------------------------------------
+            # IMPORTANT :
+            #
+            # etoiles=None = non évalué
+            #
+            # Ces réponses ne doivent jamais entrer dans
+            # la moyenne de performance.
+            # ----------------------------------------------------
+
+            notes_evaluees = [
+                r.etoiles
+                for r in reponses
+                if r.etoiles is not None
+            ]
+
+            total_evalues = len(
+                notes_evaluees
+            )
+
+            non_evalues = (
+                total_activites
+                - total_evalues
+            )
+
+            # ----------------------------------------------------
+            # MOYENNE
+            # ----------------------------------------------------
+            #
+            # Un vrai 0 reste dans notes_evaluees.
+            #
+            # Exemple :
+            #
+            # [5, 4, 0, None]
+            #
+            # donne :
+            #
+            # moyenne = (5 + 4 + 0) / 3
+            #
+            # et NON :
+            #
+            # moyenne = (5 + 4 + 0 + 0) / 4
+            # ----------------------------------------------------
+
+            if total_evalues > 0:
+
+                moyenne = round(
+                    sum(notes_evaluees)
+                    / total_evalues,
+                    2
+                )
+
+            else:
+
+                moyenne = 0.0
+
+        except Exception as e:
+
+            print(
+                "⚠️ Erreur statistiques élève "
+                f"{eleve.id}: {e}"
+            )
+
+            total_activites = 0
+            total_evalues = 0
+            non_evalues = 0
+            moyenne = 0.0
+
+        # ========================================================
+        # NIVEAU DE L'ÉLÈVE
+        # ========================================================
+
         niveau_nom = "Non défini"
-        if hasattr(eleve, 'niveau_id') and eleve.niveau_id:
+
+        if (
+            hasattr(
+                eleve,
+                "niveau_id"
+            )
+            and eleve.niveau_id
+        ):
+
             from models import Niveau
-            niveau_obj = Niveau.query.get(eleve.niveau_id)
+
+            niveau_obj = db.session.get(
+                Niveau,
+                eleve.niveau_id
+            )
+
             if niveau_obj:
-                niveau_nom = niveau_obj.nom
-        elif hasattr(eleve, 'niveau') and eleve.niveau:
-            niveau_nom = eleve.niveau.nom if hasattr(eleve.niveau, 'nom') else str(eleve.niveau)
-        
-        # Vérifier le statut d'abonnement
-        statut_abonnement = "Inactif"
-        if hasattr(eleve, 'statut_paiement'):
-            statut_abonnement = eleve.statut_paiement.capitalize() if eleve.statut_paiement else "Inactif"
-        
+                niveau_nom = (
+                    niveau_obj.nom
+                )
+
+        elif (
+            hasattr(
+                eleve,
+                "niveau"
+            )
+            and eleve.niveau
+        ):
+
+            niveau_nom = (
+                eleve.niveau.nom
+                if hasattr(
+                    eleve.niveau,
+                    "nom"
+                )
+                else str(
+                    eleve.niveau
+                )
+            )
+
+        # ========================================================
+        # STATUT D'ABONNEMENT
+        # ========================================================
+
+        statut_abonnement = (
+            "Inactif"
+        )
+
+        if hasattr(
+            eleve,
+            "statut_paiement"
+        ):
+
+            statut_abonnement = (
+                eleve.statut_paiement.capitalize()
+                if eleve.statut_paiement
+                else "Inactif"
+            )
+
+        # ========================================================
+        # DATE D'INSCRIPTION
+        # ========================================================
+
+        date_inscription = (
+            eleve.date_inscription.strftime(
+                "%d/%m/%Y"
+            )
+            if (
+                hasattr(
+                    eleve,
+                    "date_inscription"
+                )
+                and eleve.date_inscription
+            )
+            else "N/A"
+        )
+
+        # ========================================================
+        # DONNÉES ENVOYÉES AU TEMPLATE
+        # ========================================================
+
         stats_eleves.append({
-            'eleve': eleve,
-            'total_exercices': total_reponses,
-            'moyenne_etoiles': moyenne,
-            'niveau': niveau_nom,
-            'statut_abonnement': statut_abonnement,
-            'date_inscription': eleve.date_inscription.strftime('%d/%m/%Y') if hasattr(eleve, 'date_inscription') and eleve.date_inscription else "N/A"
+            "eleve": eleve,
+
+            # ----------------------------------------------------
+            # Compatibilité avec ton template existant.
+            #
+            # total_exercices représente maintenant les réponses
+            # réellement évaluées.
+            # ----------------------------------------------------
+            "total_exercices": total_evalues,
+
+            "moyenne_etoiles": moyenne,
+
+            # ----------------------------------------------------
+            # Nouvelles informations disponibles.
+            # ----------------------------------------------------
+            "total_activites": total_activites,
+            "total_evalues": total_evalues,
+            "non_evalues": non_evalues,
+
+            "niveau": niveau_nom,
+
+            "statut_abonnement": (
+                statut_abonnement
+            ),
+
+            "date_inscription": (
+                date_inscription
+            )
         })
-    
+
+        # ========================================================
+        # LOG DE CONTRÔLE
+        # ========================================================
+
+        print(
+            "📊 Élève enseignant : "
+            f"id={eleve.id}, "
+            f"activités={total_activites}, "
+            f"évaluées={total_evalues}, "
+            f"non évaluées={non_evalues}, "
+            f"moyenne={moyenne}/5"
+        )
+
+    # ============================================================
+    # RENDU
+    # ============================================================
+
     return render_template(
         "enseignant_eleves.html",
         enseignant=enseignant,
@@ -15831,42 +21446,84 @@ def dashboard_enseignant():
         all_stars = []
 
         if eleves_ids:
-            from sqlalchemy import func
+            from sqlalchemy import func, case
 
-            moyennes_par_eleve = dict(
+            # Une seule requête agrégée par élève :
+            # - activités totales ;
+            # - réponses réellement évaluées ;
+            # - réponses non évaluées ;
+            # - moyenne calculée uniquement sur etoiles non NULL.
+            stats_reponses_rows = (
                 db.session.query(
                     StudentResponse.user_id,
-                    func.avg(StudentResponse.etoiles)
+                    func.count(StudentResponse.id).label("total_activites"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (StudentResponse.etoiles.isnot(None), 1),
+                                else_=0
+                            )
+                        ),
+                        0
+                    ).label("total_evalues"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (StudentResponse.etoiles.is_(None), 1),
+                                else_=0
+                            )
+                        ),
+                        0
+                    ).label("non_evalues"),
+                    func.avg(StudentResponse.etoiles).label("moyenne")
                 )
                 .filter(
-                    StudentResponse.user_id.in_(eleves_ids),
-                    StudentResponse.etoiles.isnot(None)
+                    StudentResponse.user_id.in_(eleves_ids)
                 )
                 .group_by(StudentResponse.user_id)
                 .all()
             )
 
-            total_reponses_par_eleve = dict(
-                db.session.query(
-                    StudentResponse.user_id,
-                    func.count(StudentResponse.id)
-                )
-                .filter(
-                    StudentResponse.user_id.in_(eleves_ids),
-                    StudentResponse.etoiles.isnot(None)
-                )
-                .group_by(StudentResponse.user_id)
-                .all()
-            )
+            stats_reponses_par_eleve = {
+                row.user_id: {
+                    "total_activites": int(row.total_activites or 0),
+                    "total_evalues": int(row.total_evalues or 0),
+                    "non_evalues": int(row.non_evalues or 0),
+                    "moyenne": (
+                        round(float(row.moyenne), 2)
+                        if row.moyenne is not None
+                        else None
+                    )
+                }
+                for row in stats_reponses_rows
+            }
         else:
-            moyennes_par_eleve = {}
-            total_reponses_par_eleve = {}
+            stats_reponses_par_eleve = {}
 
         for eleve in eleves:
-            moyenne = moyennes_par_eleve.get(eleve.id, 0)
-            moyenne = round(float(moyenne or 0), 2)
+            stats_reponses = stats_reponses_par_eleve.get(
+                eleve.id,
+                {
+                    "total_activites": 0,
+                    "total_evalues": 0,
+                    "non_evalues": 0,
+                    "moyenne": None
+                }
+            )
 
-            if moyenne > 0:
+            total_activites = stats_reponses["total_activites"]
+            total_evalues = stats_reponses["total_evalues"]
+            non_evalues = stats_reponses["non_evalues"]
+            moyenne_reelle = stats_reponses["moyenne"]
+
+            # Pour compatibilité avec le template, l'affichage numérique
+            # reste à 0 lorsqu'aucune évaluation n'existe.
+            moyenne = moyenne_reelle if moyenne_reelle is not None else 0.0
+
+            # IMPORTANT : un élève ayant une vraie moyenne de 0/5 doit
+            # participer à la moyenne globale. On teste donc le nombre
+            # d'évaluations, et non `moyenne > 0`.
+            if total_evalues > 0:
                 all_stars.append(moyenne)
 
             niveau_nom = eleve.niveau.nom if eleve.niveau else "Non défini"
@@ -15877,15 +21534,33 @@ def dashboard_enseignant():
                 "username": eleve.username,
                 "niveau": niveau_nom,
                 "moyenne": moyenne,
-                "total": total_reponses_par_eleve.get(eleve.id, 0)
+
+                # Compatibilité : `total` = réponses réellement évaluées.
+                "total": total_evalues,
+
+                # Informations supplémentaires disponibles pour le template.
+                "total_activites": total_activites,
+                "total_evalues": total_evalues,
+                "non_evalues": non_evalues,
+                "evaluation_disponible": total_evalues > 0
             })
 
-            noms_eleves.append((eleve.nom_complet or eleve.username or "Élève")[:15])
-            moyennes.append(moyenne if moyenne <= 3 else 3)
+            noms_eleves.append(
+                (eleve.nom_complet or eleve.username or "Élève")[:15]
+            )
+
+            # Le système est maintenant sur 5 étoiles : ne plus plafonner à 3.
+            moyennes.append(
+                min(max(float(moyenne), 0.0), 5.0)
+            )
 
             niveau_counts[niveau_nom] = niveau_counts.get(niveau_nom, 0) + 1
 
-        avg_stars = round(sum(all_stars) / len(all_stars), 1) if all_stars else 0
+        avg_stars = (
+            round(sum(all_stars) / len(all_stars), 1)
+            if all_stars
+            else 0
+        )
 
         niveaux = list(niveau_counts.keys())
         counts = list(niveau_counts.values())
@@ -17266,64 +22941,437 @@ def api_lecon_exercices(lecon_id):
 
 @app.route("/api/eleve/<int:eleve_id>/matiere/<int:matiere_id>/progress")
 def api_eleve_matiere_progress(eleve_id, matiere_id):
-    """API pour charger la progression d'un élève dans une matière"""
-    from models import User, EleveMatiere, StudentResponse, Exercice, Lecon, Unite
-    
-    eleve = User.query.get(eleve_id)
+    """
+    API pour charger la progression d'un élève dans une matière.
+
+    Règles :
+    - un exercice tenté compte comme activité/progression ;
+    - plusieurs tentatives du même exercice ne gonflent pas la progression ;
+    - etoiles=None signifie NON ÉVALUÉ ;
+    - une réponse non évaluée ne baisse jamais la moyenne ;
+    - etoiles=0 reste un véritable résultat évalué ;
+    - pour l'affichage d'un exercice, on utilise la tentative la plus récente.
+    """
+
+    from models import (
+        User,
+        EleveMatiere,
+        StudentResponse,
+        Exercice,
+        Lecon,
+        Unite
+    )
+
+    # ============================================================
+    # RÉCUPÉRATION DE L'ÉLÈVE
+    # ============================================================
+
+    eleve = db.session.get(
+        User,
+        eleve_id
+    )
+
     if not eleve:
-        return jsonify({'success': False, 'error': 'Élève non trouvé'})
-    
-    # Vérifier que l'élève a cette matière
-    eleve_matiere = EleveMatiere.query.filter_by(
-        eleve_id=eleve_id,
-        matiere_id=matiere_id
-    ).first()
-    
+        return jsonify({
+            "success": False,
+            "error": "Élève non trouvé"
+        }), 404
+
+    # ============================================================
+    # VÉRIFIER QUE L'ÉLÈVE POSSÈDE CETTE MATIÈRE
+    # ============================================================
+
+    eleve_matiere = (
+        EleveMatiere.query
+        .filter_by(
+            eleve_id=eleve_id,
+            matiere_id=matiere_id
+        )
+        .first()
+    )
+
     if not eleve_matiere:
-        return jsonify({'success': False, 'error': 'Élève non assigné à cette matière'})
-    
-    # Récupérer tous les exercices de la matière
-    exercices_matiere = db.session.query(Exercice).join(
-        Lecon, Lecon.id == Exercice.lecon_id
-    ).join(
-        Unite, Unite.id == Lecon.unite_id
-    ).filter(
-        Unite.matiere_id == matiere_id
-    ).all()
-    
-    exercice_ids = [ex.id for ex in exercices_matiere]
-    total = len(exercice_ids)
-    
-    # Récupérer les réponses de l'élève
-    reponses = StudentResponse.query.filter(
-        StudentResponse.user_id == eleve_id,
-        StudentResponse.exercice_id.in_(exercice_ids)
-    ).all()
-    
-    completed = len(reponses)
-    moyenne_etoiles = sum(r.etoiles for r in reponses) / completed if completed > 0 else 0
-    progression = (completed / total * 100) if total > 0 else 0
-    
-    # Détails par exercice
-    exercices_details = []
-    for exo in exercices_matiere:
-        reponse = next((r for r in reponses if r.exercice_id == exo.id), None)
-        exercices_details.append({
-            'id': exo.id,
-            'titre': exo.titre,
-            'statut': 'completed' if reponse else 'pending',
-            'score': reponse.etoiles if reponse else 0,
-            'date': reponse.date_soumission.strftime('%d/%m/%Y') if reponse else None
+        return jsonify({
+            "success": False,
+            "error": (
+                "Élève non assigné "
+                "à cette matière"
+            )
+        }), 404
+
+    # ============================================================
+    # RÉCUPÉRER LES EXERCICES DE LA MATIÈRE
+    # ============================================================
+
+    exercices_matiere = (
+        db.session.query(Exercice)
+        .join(
+            Lecon,
+            Lecon.id == Exercice.lecon_id
+        )
+        .join(
+            Unite,
+            Unite.id == Lecon.unite_id
+        )
+        .filter(
+            Unite.matiere_id == matiere_id
+        )
+        .order_by(
+            Exercice.id.asc()
+        )
+        .all()
+    )
+
+    exercice_ids = [
+        ex.id
+        for ex in exercices_matiere
+    ]
+
+    total_exercices = len(
+        exercice_ids
+    )
+
+    # ============================================================
+    # AUCUN EXERCICE DANS LA MATIÈRE
+    # ============================================================
+
+    if not exercice_ids:
+
+        return jsonify({
+            "success": True,
+            "eleve_id": eleve_id,
+            "matiere_id": matiere_id,
+
+            "total_exercices": 0,
+
+            "completed": 0,
+            "total_activites": 0,
+
+            "total_evalues": 0,
+            "non_evalues": 0,
+
+            "progression": 0,
+            "moyenne_etoiles": 0,
+
+            "exercices": []
         })
-    
+
+    # ============================================================
+    # RÉPONSES DE L'ÉLÈVE POUR CETTE MATIÈRE
+    # ============================================================
+    #
+    # On trie de la plus récente à la plus ancienne.
+    #
+    # Cela permettra de prendre la dernière tentative de chaque
+    # exercice pour l'affichage.
+    # ============================================================
+
+    reponses = (
+        StudentResponse.query
+        .filter(
+            StudentResponse.user_id == eleve_id,
+            StudentResponse.exercice_id.in_(
+                exercice_ids
+            )
+        )
+        .order_by(
+            StudentResponse.timestamp.desc()
+        )
+        .all()
+    )
+
+    # ============================================================
+    # ACTIVITÉS TOTALES
+    # ============================================================
+    #
+    # Il s'agit du nombre de tentatives enregistrées.
+    #
+    # Exemple :
+    #
+    # exercice 1 tenté 3 fois
+    # exercice 2 tenté 1 fois
+    #
+    # total_activites = 4
+    # completed = 2
+    # ============================================================
+
+    total_activites = len(
+        reponses
+    )
+
+    # ============================================================
+    # DERNIÈRE RÉPONSE DE CHAQUE EXERCICE
+    # ============================================================
+
+    derniere_reponse_par_exercice = {}
+
+    for reponse in reponses:
+
+        exercice_id_reponse = (
+            reponse.exercice_id
+        )
+
+        if exercice_id_reponse is None:
+            continue
+
+        # Les réponses sont déjà triées DESC.
+        # La première rencontrée est donc la plus récente.
+        if (
+            exercice_id_reponse
+            not in derniere_reponse_par_exercice
+        ):
+            derniere_reponse_par_exercice[
+                exercice_id_reponse
+            ] = reponse
+
+    # ============================================================
+    # EXERCICES RÉELLEMENT TENTÉS
+    # ============================================================
+
+    completed = len(
+        derniere_reponse_par_exercice
+    )
+
+    # ============================================================
+    # RÉPONSES ÉVALUÉES
+    # ============================================================
+    #
+    # IMPORTANT :
+    #
+    # etoiles=None
+    #     -> non évalué
+    #     -> ne rentre PAS dans la moyenne
+    #
+    # etoiles=0
+    #     -> évalué
+    #     -> entre normalement dans la moyenne
+    # ============================================================
+
+    notes_evaluees = [
+        reponse.etoiles
+
+        for reponse
+        in derniere_reponse_par_exercice.values()
+
+        if reponse.etoiles is not None
+    ]
+
+    total_evalues = len(
+        notes_evaluees
+    )
+
+    non_evalues = (
+        completed
+        - total_evalues
+    )
+
+    # ============================================================
+    # MOYENNE DES ÉTOILES
+    # ============================================================
+
+    if total_evalues > 0:
+
+        moyenne_etoiles = (
+            sum(notes_evaluees)
+            / total_evalues
+        )
+
+    else:
+
+        moyenne_etoiles = 0.0
+
+    # ============================================================
+    # PROGRESSION DANS LA MATIÈRE
+    # ============================================================
+    #
+    # La progression mesure ici les EXERCICES TENTÉS,
+    # pas seulement ceux que l'IA a réussi à évaluer.
+    #
+    # Un élève ne perd donc pas son activité simplement parce
+    # que le système n'a pas su noter sa réponse.
+    # ============================================================
+
+    if total_exercices > 0:
+
+        progression = (
+            completed
+            / total_exercices
+            * 100
+        )
+
+    else:
+
+        progression = 0.0
+
+    # Protection supplémentaire.
+    # Plusieurs tentatives ne doivent jamais produire > 100 %.
+
+    progression = min(
+        progression,
+        100.0
+    )
+
+    # ============================================================
+    # DÉTAILS PAR EXERCICE
+    # ============================================================
+
+    exercices_details = []
+
+    for exo in exercices_matiere:
+
+        reponse = (
+            derniere_reponse_par_exercice.get(
+                exo.id
+            )
+        )
+
+        # --------------------------------------------------------
+        # EXERCICE JAMAIS TENTÉ
+        # --------------------------------------------------------
+
+        if reponse is None:
+
+            statut = "pending"
+            score = None
+            evaluation_disponible = False
+            requires_review = False
+            date_reponse = None
+
+        # --------------------------------------------------------
+        # EXERCICE TENTÉ MAIS NON ÉVALUÉ
+        # --------------------------------------------------------
+
+        elif reponse.etoiles is None:
+
+            statut = "not_evaluated"
+
+            # IMPORTANT :
+            # surtout pas 0.
+            score = None
+
+            evaluation_disponible = False
+            requires_review = True
+
+            date_reponse = (
+                reponse.timestamp.strftime(
+                    "%d/%m/%Y"
+                )
+                if reponse.timestamp
+                else None
+            )
+
+        # --------------------------------------------------------
+        # EXERCICE ÉVALUÉ
+        # --------------------------------------------------------
+
+        else:
+
+            statut = "completed"
+
+            # 0 est ici une vraie note.
+            score = reponse.etoiles
+
+            evaluation_disponible = True
+            requires_review = False
+
+            date_reponse = (
+                reponse.timestamp.strftime(
+                    "%d/%m/%Y"
+                )
+                if reponse.timestamp
+                else None
+            )
+
+        exercices_details.append({
+            "id": exo.id,
+
+            "titre": exo.titre,
+
+            "statut": statut,
+
+            # None = pas de note.
+            # 0 = vraie note de zéro.
+            "score": score,
+
+            "evaluation_disponible": (
+                evaluation_disponible
+            ),
+
+            "requires_review": (
+                requires_review
+            ),
+
+            "date": date_reponse
+        })
+
+    # ============================================================
+    # LOG DE CONTRÔLE
+    # ============================================================
+
+    print(
+        "📊 Progression matière : "
+        f"élève={eleve_id}, "
+        f"matière={matiere_id}, "
+        f"exercices={total_exercices}, "
+        f"tentés={completed}, "
+        f"activités={total_activites}, "
+        f"évalués={total_evalues}, "
+        f"non évalués={non_evalues}, "
+        f"moyenne={round(moyenne_etoiles, 1)}/5, "
+        f"progression={round(progression, 1)}%"
+    )
+
+    # ============================================================
+    # RÉPONSE JSON
+    # ============================================================
+
     return jsonify({
-        'success': True,
-        'eleve_id': eleve_id,
-        'total_exercices': total,
-        'completed': completed,
-        'progression': progression,
-        'moyenne_etoiles': round(moyenne_etoiles, 1),
-        'exercices': exercices_details
+        "success": True,
+
+        "eleve_id": eleve_id,
+        "matiere_id": matiere_id,
+
+        # Nombre total d'exercices disponibles dans la matière.
+        "total_exercices": (
+            total_exercices
+        ),
+
+        # --------------------------------------------------------
+        # Compatibilité avec l'interface actuelle :
+        #
+        # completed = nombre d'exercices différents tentés.
+        # --------------------------------------------------------
+        "completed": completed,
+
+        # Nombre total de tentatives enregistrées.
+        "total_activites": (
+            total_activites
+        ),
+
+        # Résultats d'évaluation.
+        "total_evalues": (
+            total_evalues
+        ),
+
+        "non_evalues": (
+            non_evalues
+        ),
+
+        # Progression d'activité.
+        "progression": round(
+            progression,
+            1
+        ),
+
+        # Performance uniquement sur les évaluations réelles.
+        "moyenne_etoiles": round(
+            moyenne_etoiles,
+            1
+        ),
+
+        "exercices": (
+            exercices_details
+        )
     })
 
 
@@ -19440,47 +25488,172 @@ def dashboard_eleve():
         print(f"⚠️ Erreur chargement remédiations non lues: {e}")
 
     # ============================================================
-    # STATISTIQUES OPTIMISÉES
+    # STATISTIQUES ÉLÈVE — UNIQUEMENT LES RÉPONSES ÉVALUÉES
+    # ============================================================
+    #
+    # RÈGLE MÉTIER :
+    #
+    # etoiles = None
+    #     -> non évalué
+    #     -> activité conservée
+    #     -> NE compte PAS dans le taux de réussite
+    #     -> NE compte PAS dans la moyenne
+    #
+    # etoiles = 0, 1 ou 2
+    #     -> évalué et non réussi
+    #
+    # etoiles >= 3
+    #     -> évalué et réussi
     # ============================================================
 
-    total_reponses = 0
-    moyenne_etoiles = 0
+    total_activites = 0
+    total_evalues = 0
+    non_evalues = 0
+    moyenne_etoiles = 0.0
     bonnes_reponses = 0
-    taux_reussite = 0
+    reponses_echouees = 0
+    taux_reussite = 0.0
 
     try:
-        total_reponses, moyenne_etoiles, bonnes_reponses = db.session.query(
+        (
+            total_activites,
+            total_evalues,
+            non_evalues,
+            moyenne_etoiles,
+            bonnes_reponses,
+            reponses_echouees
+        ) = db.session.query(
+
+            # Toutes les réponses enregistrées
             func.count(StudentResponse.id),
-            func.coalesce(func.avg(StudentResponse.etoiles), 0),
+
+            # Réponses réellement évaluées
             func.coalesce(
                 func.sum(
                     case(
-                        (StudentResponse.etoiles >= 3, 1),
+                        (
+                            StudentResponse.etoiles.isnot(None),
+                            1
+                        ),
+                        else_=0
+                    )
+                ),
+                0
+            ),
+
+            # Réponses non évaluées
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            StudentResponse.etoiles.is_(None),
+                            1
+                        ),
+                        else_=0
+                    )
+                ),
+                0
+            ),
+
+            # AVG ignore naturellement les NULL
+            func.coalesce(
+                func.avg(StudentResponse.etoiles),
+                0
+            ),
+
+            # Réponses réussies
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            StudentResponse.etoiles >= 3,
+                            1
+                        ),
+                        else_=0
+                    )
+                ),
+                0
+            ),
+
+            # Réponses évaluées mais non réussies
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            (
+                                StudentResponse.etoiles.isnot(None)
+                            )
+                            &
+                            (
+                                StudentResponse.etoiles < 3
+                            ),
+                            1
+                        ),
                         else_=0
                     )
                 ),
                 0
             )
+
         ).filter(
             StudentResponse.user_id == eleve.id
         ).one()
 
-        total_reponses = int(total_reponses or 0)
+        total_activites = int(total_activites or 0)
+        total_evalues = int(total_evalues or 0)
+        non_evalues = int(non_evalues or 0)
         moyenne_etoiles = float(moyenne_etoiles or 0)
         bonnes_reponses = int(bonnes_reponses or 0)
+        reponses_echouees = int(reponses_echouees or 0)
 
-        taux_reussite = round(
-            (bonnes_reponses / total_reponses) * 100,
-            1
-        ) if total_reponses else 0
+        if total_evalues > 0:
+            taux_reussite = round(
+                (
+                    bonnes_reponses
+                    / total_evalues
+                ) * 100,
+                1
+            )
+        else:
+            taux_reussite = 0.0
+
+        print(
+            "📊 Dashboard élève : "
+            f"activités={total_activites}, "
+            f"évaluées={total_evalues}, "
+            f"réussies={bonnes_reponses}, "
+            f"échouées={reponses_echouees}, "
+            f"non évaluées={non_evalues}, "
+            f"taux={taux_reussite}%"
+        )
 
     except Exception as e:
-        print(f"⚠️ Erreur calcul statistiques dashboard élève: {e}")
+        print(
+            "⚠️ Erreur calcul statistiques "
+            f"dashboard élève: {e}"
+        )
+
+        total_activites = 0
+        total_evalues = 0
+        non_evalues = 0
+        moyenne_etoiles = 0.0
+        bonnes_reponses = 0
+        reponses_echouees = 0
+        taux_reussite = 0.0
 
     stats = {
-        "total": total_reponses,
+        # Compatibilité avec le template actuel :
+        # total représente maintenant les exercices réellement évalués.
+        "total": total_evalues,
         "average": round(moyenne_etoiles, 1),
-        "success": taux_reussite
+        "success": taux_reussite,
+
+        # Informations supplémentaires disponibles pour le template.
+        "total_activites": total_activites,
+        "total_evalues": total_evalues,
+        "non_evalues": non_evalues,
+        "reussis": bonnes_reponses,
+        "echoues": reponses_echouees
     }
 
     # ============================================================
@@ -19540,20 +25713,44 @@ def dashboard_eleve():
                 if not reponse.timestamp:
                     continue
 
+                # Une réponse non évaluée n'est jamais un zéro.
+                # Elle reste dans l'historique d'activité, mais elle est
+                # exclue du graphique de performance.
+                if reponse.etoiles is None:
+                    continue
+
                 date_str = reponse.timestamp.strftime("%Y-%m-%d")
 
                 if date_str not in reponses_par_jour:
                     reponses_par_jour[date_str] = []
 
-                reponses_par_jour[date_str].append(reponse.etoiles or 0)
+                reponses_par_jour[date_str].append(
+                    float(reponse.etoiles)
+                )
 
-            dates_ordonnees = sorted(reponses_par_jour.keys())[-30:]
+            dates_ordonnees = sorted(
+                reponses_par_jour.keys()
+            )[-30:]
+
             moyennes_journalieres = []
 
             for date_str in dates_ordonnees:
-                etoiles_du_jour = reponses_par_jour[date_str]
-                moyenne_jour = sum(etoiles_du_jour) / len(etoiles_du_jour)
-                moyennes_journalieres.append(round(moyenne_jour, 2))
+                etoiles_du_jour = reponses_par_jour.get(
+                    date_str,
+                    []
+                )
+
+                if not etoiles_du_jour:
+                    continue
+
+                moyenne_jour = (
+                    sum(etoiles_du_jour)
+                    / len(etoiles_du_jour)
+                )
+
+                moyennes_journalieres.append(
+                    round(moyenne_jour, 2)
+                )
 
             dates_formatees = [
                 datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m")
@@ -19726,11 +25923,11 @@ def dashboard_eleve():
 
     objectifs_du_jour = []
 
-    objectif1_completed = stats["total"] > 0
+    objectif1_completed = stats["total_activites"] > 0
     objectif1_progress = (
-        f"({stats['total']} complété(s))"
+        f"({stats['total_activites']} complété(s))"
         if lang == "fr"
-        else f"({stats['total']} completed)"
+        else f"({stats['total_activites']} completed)"
     )
 
     objectifs_du_jour.append({
@@ -20783,24 +26980,45 @@ def exercice_sequentiel_progressif():
 
     if not eleve.a_acces_plateforme():
         flash(msg_acces_refuse, "danger")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+        return redirect(
+            url_for(
+                "dashboard_eleve",
+                username=username,
+                lang=lang
+            )
+        )
 
     try:
         lecon_id_int = int(lecon_id)
     except (ValueError, TypeError):
         flash(msg_lecon_introuvable, "danger")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+        return redirect(
+            url_for(
+                "dashboard_eleve",
+                username=username,
+                lang=lang
+            )
+        )
 
     lecon = (
         Lecon.query
-        .options(joinedload(Lecon.unite).joinedload(Unite.matiere))
+        .options(
+            joinedload(Lecon.unite)
+            .joinedload(Unite.matiere)
+        )
         .filter(Lecon.id == lecon_id_int)
         .first()
     )
 
     if not lecon:
         flash(msg_lecon_introuvable, "danger")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+        return redirect(
+            url_for(
+                "dashboard_eleve",
+                username=username,
+                lang=lang
+            )
+        )
 
     # ============================================================
     # 2. LISTE LÉGÈRE DES IDS DES EXERCICES
@@ -20810,70 +27028,131 @@ def exercice_sequentiel_progressif():
         row[0]
         for row in (
             db.session.query(Exercice.id)
-            .filter(Exercice.lecon_id == lecon.id)
+            .filter(
+                Exercice.lecon_id == lecon.id
+            )
             .order_by(
-                func.coalesce(Exercice.ordre_progression, 999999).asc(),
+                func.coalesce(
+                    Exercice.ordre_progression,
+                    999999
+                ).asc(),
                 Exercice.id.asc()
             )
             .all()
         )
     ]
 
-    total_exercices = len(exercice_ids)
+    total_exercices = len(
+        exercice_ids
+    )
 
     if total_exercices == 0:
-        flash(msg_aucun_exercice, "info")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+        flash(
+            msg_aucun_exercice,
+            "info"
+        )
+
+        return redirect(
+            url_for(
+                "dashboard_eleve",
+                username=username,
+                lang=lang
+            )
+        )
 
     # ============================================================
     # 3. RÉPONSES DÉJÀ COMPLÉTÉES EN UNE SEULE REQUÊTE
+    # ============================================================
+    #
+    # IMPORTANT :
+    #
+    # Ici, "complété" signifie que l'élève a réellement soumis une
+    # réponse pour l'exercice.
+    #
+    # Une réponse avec etoiles=None reste donc une activité complétée,
+    # mais elle n'est PAS considérée comme une évaluation réussie ou
+    # échouée.
     # ============================================================
 
     completed_exercise_ids = {
         row[0]
         for row in (
-            db.session.query(StudentResponse.exercice_id)
-            .filter(StudentResponse.user_id == eleve.id)
-            .filter(StudentResponse.exercice_id.in_(exercice_ids))
-            .filter(StudentResponse.exercice_id.isnot(None))
+            db.session.query(
+                StudentResponse.exercice_id
+            )
+            .filter(
+                StudentResponse.user_id == eleve.id
+            )
+            .filter(
+                StudentResponse.exercice_id.in_(
+                    exercice_ids
+                )
+            )
+            .filter(
+                StudentResponse.exercice_id.isnot(None)
+            )
             .distinct()
             .all()
         )
         if row[0]
     }
 
-    exercices_completes = len(completed_exercise_ids)
+    exercices_completes = len(
+        completed_exercise_ids
+    )
 
     progression_pourcentage = (
-        int((exercices_completes / total_exercices) * 100)
+        int(
+            (
+                exercices_completes
+                / total_exercices
+            ) * 100
+        )
         if total_exercices > 0
         else 0
     )
 
     reponses_status = [
-        "completed" if ex_id in completed_exercise_ids else "not_started"
+        (
+            "completed"
+            if ex_id in completed_exercise_ids
+            else "not_started"
+        )
         for ex_id in exercice_ids
     ]
 
     # ============================================================
     # 4. DÉTERMINER L’EXERCICE ACTUEL
     # ============================================================
+    #
     # Règles :
+    #
     # - Si exercice_id est fourni, on affiche cet exercice.
     # - S’il est déjà fait, on affiche sa réponse et sa rétroaction.
-    # - Si aucun exercice_id n’est fourni, on reprend au premier exercice non fait.
-    # - Si tous les exercices sont faits, on affiche le dernier exercice fait avec rétroaction.
+    # - Si aucun exercice_id n’est fourni, on reprend au premier
+    #   exercice non fait.
+    # - Si tous les exercices sont faits, on affiche le dernier
+    #   exercice fait avec rétroaction.
+    # ============================================================
 
     exercice_actuel = None
     reprise_automatique = False
 
     if exercice_id_param:
+
         try:
-            exercice_id_int = int(exercice_id_param)
+            exercice_id_int = int(
+                exercice_id_param
+            )
+
         except (ValueError, TypeError):
             exercice_id_int = None
 
-        if exercice_id_int and exercice_id_int in exercice_ids:
+        if (
+            exercice_id_int
+            and exercice_id_int in exercice_ids
+        ):
+
             exercice_actuel = (
                 Exercice.query
                 .filter(
@@ -20882,45 +27161,92 @@ def exercice_sequentiel_progressif():
                 )
                 .first()
             )
-            index = exercice_ids.index(exercice_id_int)
+
+            index = exercice_ids.index(
+                exercice_id_int
+            )
 
     if not exercice_actuel:
+
         premier_non_fait_id = None
 
         for ex_id in exercice_ids:
+
             if ex_id not in completed_exercise_ids:
                 premier_non_fait_id = ex_id
                 break
 
         if premier_non_fait_id:
-            exercice_actuel = db.session.get(Exercice, premier_non_fait_id)
-            index = exercice_ids.index(premier_non_fait_id)
+
+            exercice_actuel = db.session.get(
+                Exercice,
+                premier_non_fait_id
+            )
+
+            index = exercice_ids.index(
+                premier_non_fait_id
+            )
+
             reprise_automatique = True
+
         else:
+
             if index < 0:
                 index = 0
 
             if index >= total_exercices:
-                index = total_exercices - 1
+                index = (
+                    total_exercices - 1
+                )
 
-            exercice_actuel = db.session.get(Exercice, exercice_ids[index])
+            exercice_actuel = db.session.get(
+                Exercice,
+                exercice_ids[index]
+            )
 
     if not exercice_actuel:
-        flash(msg_aucun_exercice, "info")
-        return redirect(url_for("dashboard_eleve", username=username, lang=lang))
+
+        flash(
+            msg_aucun_exercice,
+            "info"
+        )
+
+        return redirect(
+            url_for(
+                "dashboard_eleve",
+                username=username,
+                lang=lang
+            )
+        )
 
     # ============================================================
     # 5. RÉPONSE EXISTANTE ET RÉTROACTION PROPRE
     # ============================================================
+    #
+    # On récupère la réponse la plus récente pour cet exercice.
+    #
+    # Cela évite qu'une ancienne tentative soit affichée alors qu'une
+    # nouvelle réponse existe.
+    # ============================================================
 
-    reponse = StudentResponse.query.filter_by(
-        user_id=eleve.id,
-        exercice_id=exercice_actuel.id
-    ).first()
+    reponse = (
+        StudentResponse.query
+        .filter_by(
+            user_id=eleve.id,
+            exercice_id=exercice_actuel.id
+        )
+        .order_by(
+            StudentResponse.timestamp.desc()
+        )
+        .first()
+    )
 
-    exercice_deja_fait = reponse is not None
+    exercice_deja_fait = (
+        reponse is not None
+    )
 
-    # Anti-gaspillage de tokens : un exercice déjà fait n’est jamais resoumis.
+    # Anti-gaspillage de tokens :
+    # un exercice déjà fait n’est jamais resoumis automatiquement.
     # On force l’affichage direct de la réponse et de la rétroaction.
     if exercice_deja_fait:
         show_feedback = True
@@ -20930,91 +27256,310 @@ def exercice_sequentiel_progressif():
     feedback_a_afficher = None
 
     if reponse:
-        reponse_existante = reponse.reponse_eleve
+
+        reponse_existante = (
+            reponse.reponse_eleve
+        )
 
         try:
-            if reponse.analyse_ia and reponse.analyse_ia.strip().startswith("{"):
-                feedback_data = json.loads(reponse.analyse_ia)
+
+            if (
+                reponse.analyse_ia
+                and reponse.analyse_ia.strip().startswith("{")
+            ):
+
+                feedback_data = json.loads(
+                    reponse.analyse_ia
+                )
+
             elif reponse.analyse_ia:
+
                 feedback_data = {
-                    "current_feedback": reponse.analyse_ia,
-                    "current_stars": reponse.etoiles or 0,
+                    "current_feedback": (
+                        reponse.analyse_ia
+                    ),
+
+                    # =================================================
+                    # CORRECTION IMPORTANTE
+                    # =================================================
+                    #
+                    # Avant :
+                    #
+                    #     reponse.etoiles or 0
+                    #
+                    # Ce code transformait None en 0.
+                    #
+                    # Maintenant :
+                    #
+                    #     reponse.etoiles
+                    #
+                    # None reste donc "non évalué".
+                    # =================================================
+
+                    "current_stars": (
+                        reponse.etoiles
+                    ),
+
                     "symbolic_verification": {},
                     "adaptive_next": {},
                     "bayesian_diagnostic": {},
-                    "metadata": {}
+
+                    "metadata": {
+                        "evaluation_disponible": (
+                            reponse.etoiles
+                            is not None
+                        ),
+
+                        "requires_review": (
+                            reponse.etoiles
+                            is None
+                        )
+                    }
                 }
+
         except Exception as e:
-            print(f"⚠️ Erreur parsing feedback exercice {exercice_actuel.id}: {e}")
+
+            print(
+                "⚠️ Erreur parsing feedback "
+                f"exercice {exercice_actuel.id}: {e}"
+            )
+
             feedback_data = {
                 "current_feedback": (
-                    "La rétroaction existe, mais elle n’a pas pu être lue correctement."
+                    "La rétroaction existe, mais elle n’a pas "
+                    "pu être lue correctement."
                     if lang == "fr"
-                    else "Feedback exists, but it could not be read correctly."
+                    else
+                    "Feedback exists, but it could not "
+                    "be read correctly."
                 ),
-                "current_stars": reponse.etoiles or 0,
+
+                # =================================================
+                # CORRECTION :
+                #
+                # surtout pas :
+                #
+                #     reponse.etoiles or 0
+                #
+                # =================================================
+
+                "current_stars": (
+                    reponse.etoiles
+                ),
+
                 "symbolic_verification": {},
                 "adaptive_next": {},
                 "bayesian_diagnostic": {},
-                "metadata": {}
+
+                "metadata": {
+                    "evaluation_disponible": (
+                        reponse.etoiles
+                        is not None
+                    ),
+
+                    "requires_review": (
+                        reponse.etoiles
+                        is None
+                    )
+                }
             }
 
+    # ============================================================
+    # CONSTRUCTION DU FEEDBACK À AFFICHER
+    # ============================================================
+
     if feedback_data:
+
+        current_stars = (
+            feedback_data.get(
+                "current_stars"
+            )
+        )
+
+        metadata_feedback = (
+            feedback_data.get(
+                "metadata",
+                {}
+            )
+            or {}
+        )
+
+        # --------------------------------------------------------
+        # Déterminer si l'évaluation existe réellement.
+        # --------------------------------------------------------
+
+        evaluation_disponible = (
+            current_stars is not None
+        )
+
+        requires_review = bool(
+            metadata_feedback.get(
+                "requires_review",
+                not evaluation_disponible
+            )
+        )
+
         feedback_a_afficher = {
-            "analyse": feedback_data.get("current_feedback", ""),
-            "etoiles": feedback_data.get("current_stars", 0),
-            "symbolic": feedback_data.get("symbolic_verification", {}),
-            "adaptive": feedback_data.get("adaptive_next", {}),
-            "bayesian": feedback_data.get("bayesian_diagnostic", {}),
-            "metadata": feedback_data.get("metadata", {})
+            "analyse": feedback_data.get(
+                "current_feedback",
+                ""
+            ),
+
+            # None reste None.
+            "etoiles": current_stars,
+
+            "symbolic": feedback_data.get(
+                "symbolic_verification",
+                {}
+            ),
+
+            "adaptive": feedback_data.get(
+                "adaptive_next",
+                {}
+            ),
+
+            "bayesian": feedback_data.get(
+                "bayesian_diagnostic",
+                {}
+            ),
+
+            "metadata": metadata_feedback,
+
+            # Nouvelles variables explicites.
+            "evaluation_disponible": (
+                evaluation_disponible
+            ),
+
+            "requires_review": (
+                requires_review
+            )
         }
 
-    if exercice_deja_fait and not feedback_a_afficher:
+    # ============================================================
+    # CAS : RÉPONSE DÉJÀ FAITE MAIS FEEDBACK NON DISPONIBLE
+    # ============================================================
+
+    if (
+        exercice_deja_fait
+        and not feedback_a_afficher
+    ):
+
+        evaluation_disponible = (
+            reponse is not None
+            and reponse.etoiles is not None
+        )
+
         feedback_a_afficher = {
             "analyse": (
-                "La réponse a déjà été enregistrée. La rétroaction détaillée n’est pas disponible pour le moment, mais aucun nouveau calcul ne sera lancé."
+                "La réponse a déjà été enregistrée. "
+                "La rétroaction détaillée n’est pas disponible "
+                "pour le moment, mais aucun nouveau calcul "
+                "ne sera lancé."
                 if lang == "fr"
-                else "This answer has already been saved. Detailed feedback is not available right now, but no new calculation will be launched."
+                else
+                "This answer has already been saved. "
+                "Detailed feedback is not available right now, "
+                "but no new calculation will be launched."
             ),
-            "etoiles": reponse.etoiles if reponse else 0,
+
+            # =====================================================
+            # CORRECTION
+            # =====================================================
+            #
+            # Avant :
+            #
+            #     reponse.etoiles if reponse else 0
+            #
+            # Maintenant :
+            #
+            # None reste None.
+            # =====================================================
+
+            "etoiles": (
+                reponse.etoiles
+                if reponse
+                else None
+            ),
+
             "symbolic": {},
             "adaptive": {},
             "bayesian": {},
-            "metadata": {}
+
+            "metadata": {
+                "evaluation_disponible": (
+                    evaluation_disponible
+                ),
+
+                "requires_review": (
+                    not evaluation_disponible
+                )
+            },
+
+            "evaluation_disponible": (
+                evaluation_disponible
+            ),
+
+            "requires_review": (
+                not evaluation_disponible
+            )
         }
 
     # ============================================================
     # 6. NAVIGATION ADAPTATIVE AVEC SÉCURITÉ
     # ============================================================
+    #
     # Les exercices déjà faits peuvent être revus depuis la progression,
     # mais les exercices non faits restent verrouillés en mode IA.
+    # ============================================================
 
     bouton_precedent = None
     bouton_suivant = None
     prochain_non_fait_id = None
 
-    prochain_adaptatif = session.get("prochain_exercice_adaptatif")
+    prochain_adaptatif = session.get(
+        "prochain_exercice_adaptatif"
+    )
 
-    # 1. Prochain exercice recommandé par le moteur adaptatif
+    # ============================================================
+    # 1. PROCHAIN EXERCICE RECOMMANDÉ PAR LE MOTEUR ADAPTATIF
+    # ============================================================
+
     if (
         show_feedback
         and prochain_adaptatif
-        and prochain_adaptatif.get("lecon_id") == lecon.id
-        and prochain_adaptatif.get("exercice_source_id") == exercice_actuel.id
-        and prochain_adaptatif.get("prochain_exercice_id")
+        and prochain_adaptatif.get(
+            "lecon_id"
+        ) == lecon.id
+        and prochain_adaptatif.get(
+            "exercice_source_id"
+        ) == exercice_actuel.id
+        and prochain_adaptatif.get(
+            "prochain_exercice_id"
+        )
     ):
-        prochain_exercice_id = prochain_adaptatif.get("prochain_exercice_id")
+
+        prochain_exercice_id = (
+            prochain_adaptatif.get(
+                "prochain_exercice_id"
+            )
+        )
 
         try:
-            prochain_exercice_id = int(prochain_exercice_id)
+            prochain_exercice_id = int(
+                prochain_exercice_id
+            )
+
         except (ValueError, TypeError):
             prochain_exercice_id = None
 
         if (
             prochain_exercice_id
-            and prochain_exercice_id in exercice_ids
-            and prochain_exercice_id not in completed_exercise_ids
+            and prochain_exercice_id
+            in exercice_ids
+            and prochain_exercice_id
+            not in completed_exercise_ids
         ):
+
             bouton_suivant = url_for(
                 "exercice_sequentiel_progressif",
                 username=username,
@@ -21023,34 +27568,76 @@ def exercice_sequentiel_progressif():
                 exercice_id=prochain_exercice_id
             )
 
-    # 2. Sécurité : si aucun prochain exercice adaptatif n'est disponible,
-    # proposer le premier exercice non encore fait.
+    # ============================================================
+    # 2. FALLBACK SUR LE PREMIER EXERCICE NON FAIT
+    # ============================================================
     #
     # IMPORTANT :
-    # si la stratégie actuelle est "verification", on peut permettre à
-    # l'élève de continuer, mais on NE DOIT PAS remplacer cette stratégie
-    # par "fallback", car cela ferait perdre l'information qu'une réponse
-    # précédente nécessite une vérification.
+    #
+    # Si la stratégie actuelle est "verification", on peut permettre à
+    # l'élève de continuer, mais on NE DOIT PAS transformer cette
+    # stratégie en "fallback".
+    #
+    # Une réponse non évaluée ne doit donc déclencher :
+    #
+    # - ni échec ;
+    # - ni remédiation ;
+    # - ni baisse automatique de difficulté.
+    # ============================================================
 
-    if show_feedback and not bouton_suivant:
+    if (
+        show_feedback
+        and not bouton_suivant
+    ):
 
         prochain_non_fait_id = None
 
         strategie_actuelle = None
-        requires_review = False
+        requires_review_navigation = False
 
-        if isinstance(prochain_adaptatif, dict):
-            strategie_actuelle = prochain_adaptatif.get("strategie")
-            requires_review = bool(
-                prochain_adaptatif.get("requires_review", False)
+        if isinstance(
+            prochain_adaptatif,
+            dict
+        ):
+
+            strategie_actuelle = (
+                prochain_adaptatif.get(
+                    "strategie"
+                )
             )
 
+            requires_review_navigation = bool(
+                prochain_adaptatif.get(
+                    "requires_review",
+                    False
+                )
+            )
+
+        # --------------------------------------------------------
+        # Si le feedback lui-même indique "requires_review",
+        # on le prend également en compte.
+        # --------------------------------------------------------
+
+        if (
+            feedback_a_afficher
+            and feedback_a_afficher.get(
+                "requires_review"
+            )
+        ):
+            requires_review_navigation = True
+
         for ex_id in exercice_ids:
+
             if (
                 ex_id != exercice_actuel.id
-                and ex_id not in completed_exercise_ids
+                and ex_id
+                not in completed_exercise_ids
             ):
-                prochain_non_fait_id = ex_id
+
+                prochain_non_fait_id = (
+                    ex_id
+                )
+
                 break
 
         if prochain_non_fait_id:
@@ -21064,139 +27651,242 @@ def exercice_sequentiel_progressif():
             )
 
             # ====================================================
-            # CAS 1 : LA RÉPONSE PRÉCÉDENTE EST À VÉRIFIER
+            # CAS 1 :
+            # LA RÉPONSE PRÉCÉDENTE EST À VÉRIFIER
             # ====================================================
 
             if (
-                strategie_actuelle == "verification"
-                or requires_review
+                strategie_actuelle
+                == "verification"
+                or requires_review_navigation
             ):
 
-                session["prochain_exercice_adaptatif"] = {
-                    "lecon_id": lecon.id,
-                    "exercice_source_id": exercice_actuel.id,
-                    "prochain_exercice_id": prochain_non_fait_id,
+                session[
+                    "prochain_exercice_adaptatif"
+                ] = {
+                    "lecon_id": (
+                        lecon.id
+                    ),
 
-                    "strategie": "verification",
+                    "exercice_source_id": (
+                        exercice_actuel.id
+                    ),
+
+                    "prochain_exercice_id": (
+                        prochain_non_fait_id
+                    ),
+
+                    "strategie": (
+                        "verification"
+                    ),
 
                     "raison": (
-                        "La réponse précédente nécessite une vérification. "
-                        "L'élève peut néanmoins continuer avec un exercice "
-                        "non encore fait, sans remédiation ni baisse de difficulté."
+                        (
+                            "La réponse précédente nécessite "
+                            "une vérification. "
+                            "L'élève peut néanmoins continuer "
+                            "avec un exercice non encore fait, "
+                            "sans remédiation ni baisse "
+                            "de difficulté."
+                        )
                         if lang == "fr"
                         else
-                        "The previous answer requires review. "
-                        "The student may continue with an unfinished exercise "
-                        "without remediation or a reduction in difficulty."
+                        (
+                            "The previous answer requires review. "
+                            "The student may continue with an "
+                            "unfinished exercise without remediation "
+                            "or a reduction in difficulty."
+                        )
                     ),
 
                     "niveau_cible": (
-                        prochain_adaptatif.get("niveau_cible")
-                        if isinstance(prochain_adaptatif, dict)
+                        prochain_adaptatif.get(
+                            "niveau_cible"
+                        )
+                        if isinstance(
+                            prochain_adaptatif,
+                            dict
+                        )
                         else exercice_actuel.niveau_difficulte
                     ),
 
                     "notion_cible": (
-                        prochain_adaptatif.get("notion_cible")
-                        if isinstance(prochain_adaptatif, dict)
+                        prochain_adaptatif.get(
+                            "notion_cible"
+                        )
+                        if isinstance(
+                            prochain_adaptatif,
+                            dict
+                        )
                         else exercice_actuel.notion_cible
                     ),
 
                     "requires_review": True,
+
                     "adaptation_bloquee": True,
 
                     "validation_verdict": (
-                        prochain_adaptatif.get("validation_verdict", "uncertain")
-                        if isinstance(prochain_adaptatif, dict)
+                        prochain_adaptatif.get(
+                            "validation_verdict",
+                            "uncertain"
+                        )
+                        if isinstance(
+                            prochain_adaptatif,
+                            dict
+                        )
                         else "uncertain"
                     ),
 
                     "validation_confidence": (
-                        prochain_adaptatif.get("validation_confidence")
-                        if isinstance(prochain_adaptatif, dict)
+                        prochain_adaptatif.get(
+                            "validation_confidence"
+                        )
+                        if isinstance(
+                            prochain_adaptatif,
+                            dict
+                        )
                         else None
                     ),
 
                     "validation_method": (
-                        prochain_adaptatif.get("validation_method")
-                        if isinstance(prochain_adaptatif, dict)
+                        prochain_adaptatif.get(
+                            "validation_method"
+                        )
+                        if isinstance(
+                            prochain_adaptatif,
+                            dict
+                        )
                         else None
                     )
                 }
 
-                if feedback_a_afficher is not None:
+                if (
+                    feedback_a_afficher
+                    is not None
+                ):
 
-                    feedback_a_afficher["adaptive"] = {
-                        "strategie": "verification",
-
-                        "raison": (
-                            "Cette réponse nécessite une vérification. "
-                            "Elle n'a pas été considérée comme fausse et "
-                            "n'a déclenché aucune remédiation."
-                            if lang == "fr"
-                            else
-                            "This answer requires review. "
-                            "It was not marked incorrect and did not trigger remediation."
+                    feedback_a_afficher[
+                        "adaptive"
+                    ] = {
+                        "strategie": (
+                            "verification"
                         ),
 
-                        "prochain_exercice_id": prochain_non_fait_id,
+                        "raison": (
+                            (
+                                "Cette réponse nécessite "
+                                "une vérification. "
+                                "Elle n'a pas été considérée "
+                                "comme fausse et n'a déclenché "
+                                "aucune remédiation."
+                            )
+                            if lang == "fr"
+                            else
+                            (
+                                "This answer requires review. "
+                                "It was not marked incorrect "
+                                "and did not trigger remediation."
+                            )
+                        ),
+
+                        "prochain_exercice_id": (
+                            prochain_non_fait_id
+                        ),
 
                         "requires_review": True
                     }
 
                 print(
-                    f"⚠️ Réponse à vérifier : "
-                    f"poursuite autorisée vers l'exercice "
-                    f"{prochain_non_fait_id}, sans remédiation."
+                    "⚠️ Réponse à vérifier : "
+                    "poursuite autorisée vers "
+                    f"l'exercice {prochain_non_fait_id}, "
+                    "sans remédiation."
                 )
 
             # ====================================================
-            # CAS 2 : AUCUNE RECOMMANDATION ADAPTATIVE
+            # CAS 2 :
+            # AUCUNE RECOMMANDATION ADAPTATIVE
             # ====================================================
 
             else:
 
-                session["prochain_exercice_adaptatif"] = {
-                    "lecon_id": lecon.id,
-                    "exercice_source_id": exercice_actuel.id,
-                    "prochain_exercice_id": prochain_non_fait_id,
+                session[
+                    "prochain_exercice_adaptatif"
+                ] = {
+                    "lecon_id": (
+                        lecon.id
+                    ),
 
-                    "strategie": "fallback",
+                    "exercice_source_id": (
+                        exercice_actuel.id
+                    ),
+
+                    "prochain_exercice_id": (
+                        prochain_non_fait_id
+                    ),
+
+                    "strategie": (
+                        "fallback"
+                    ),
 
                     "raison": (
-                        "Prochain exercice non encore fait, utilisé car "
-                        "aucune recommandation adaptative n'était disponible."
+                        (
+                            "Prochain exercice non encore fait, "
+                            "utilisé car aucune recommandation "
+                            "adaptative n'était disponible."
+                        )
                         if lang == "fr"
                         else
-                        "Next unfinished exercise used because no adaptive "
-                        "recommendation was available."
+                        (
+                            "Next unfinished exercise used because "
+                            "no adaptive recommendation was available."
+                        )
                     ),
 
                     "requires_review": False,
+
                     "adaptation_bloquee": False
                 }
 
-                if feedback_a_afficher is not None:
+                if (
+                    feedback_a_afficher
+                    is not None
+                ):
 
-                    feedback_a_afficher["adaptive"] = {
-                        "strategie": "fallback",
-
-                        "raison": (
-                            "Le système propose maintenant le prochain "
-                            "exercice non encore fait."
-                            if lang == "fr"
-                            else
-                            "The system now suggests the next unfinished exercise."
+                    feedback_a_afficher[
+                        "adaptive"
+                    ] = {
+                        "strategie": (
+                            "fallback"
                         ),
 
-                        "prochain_exercice_id": prochain_non_fait_id,
+                        "raison": (
+                            (
+                                "Le système propose maintenant "
+                                "le prochain exercice non encore fait."
+                            )
+                            if lang == "fr"
+                            else
+                            (
+                                "The system now suggests "
+                                "the next unfinished exercise."
+                            )
+                        ),
+
+                        "prochain_exercice_id": (
+                            prochain_non_fait_id
+                        ),
 
                         "requires_review": False
                     }
 
             session.modified = True
 
-    bouton_terminer = url_for("dashboard_eleve", username=username, lang=lang)
+    bouton_terminer = url_for(
+        "dashboard_eleve",
+        username=username,
+        lang=lang
+    )
 
     # ============================================================
     # 7. INFORMATIONS BILINGUES
@@ -21204,36 +27894,30 @@ def exercice_sequentiel_progressif():
 
     question = (
         exercice_actuel.question_en
-        if lang == "en" and exercice_actuel.question_en
+        if (
+            lang == "en"
+            and exercice_actuel.question_en
+        )
         else exercice_actuel.question_fr
     )
 
     # ============================================================
     # 7A. OPTIONS DE QCM POUR L'INTERFACE ÉLÈVE
     # ============================================================
-    #
-    # Les options sont stockées dans options_fr / options_en sous
-    # une forme comme :
-    #
-    #   A) -4/3, B) 3/4, C) 4/3, D) -3/4
-    #
-    # On les transforme ici en une liste structurée afin que le
-    # template puisse les afficher comme de vrais choix cliquables.
-    #
-    # IMPORTANT :
-    # la réponse libre reste disponible. Un élève peut donc choisir
-    # "B" OU écrire "3/4", "0.75", etc.
-    # ============================================================
 
     options_brutes = (
         exercice_actuel.options_en
-        if lang == "en" and exercice_actuel.options_en
+        if (
+            lang == "en"
+            and exercice_actuel.options_en
+        )
         else exercice_actuel.options_fr
     )
 
     options_affichees = []
 
     if options_brutes:
+
         import re
 
         motif_options = re.compile(
@@ -21241,56 +27925,107 @@ def exercice_sequentiel_progressif():
             r"([A-H])\s*[\)\].:\-]\s*"
             r"(.*?)"
             r"(?=,\s*[A-H]\s*[\)\].:\-]\s*|$)",
-            re.IGNORECASE | re.DOTALL
+            re.IGNORECASE
+            | re.DOTALL
         )
 
-        for match in motif_options.finditer(options_brutes.strip()):
-            lettre = match.group(1).upper()
-            texte_option = match.group(2).strip()
+        for match in motif_options.finditer(
+            options_brutes.strip()
+        ):
+
+            lettre = (
+                match.group(1)
+                .upper()
+            )
+
+            texte_option = (
+                match.group(2)
+                .strip()
+            )
 
             if texte_option:
+
                 options_affichees.append({
                     "label": lettre,
                     "value": texte_option,
-                    "display": f"{lettre}) {texte_option}"
+                    "display": (
+                        f"{lettre}) "
+                        f"{texte_option}"
+                    )
                 })
 
-        # Fallback prudent si le format ne contient pas explicitement
-        # A), B), C)... mais reste une liste séparée par des virgules.
+        # --------------------------------------------------------
+        # Fallback prudent
+        # --------------------------------------------------------
+
         if not options_affichees:
+
             morceaux = [
                 morceau.strip()
-                for morceau in options_brutes.split(",")
+                for morceau
+                in options_brutes.split(",")
                 if morceau.strip()
             ]
 
-            for position, morceau in enumerate(morceaux[:8]):
-                lettre = chr(ord("A") + position)
+            for position, morceau in enumerate(
+                morceaux[:8]
+            ):
+
+                lettre = chr(
+                    ord("A") + position
+                )
 
                 options_affichees.append({
                     "label": lettre,
                     "value": morceau,
-                    "display": f"{lettre}) {morceau}"
+                    "display": (
+                        f"{lettre}) {morceau}"
+                    )
                 })
+
+    # ============================================================
+    # CORRIGÉ DISPONIBLE
+    # ============================================================
 
     corrige_disponible = bool(
         exercice_actuel.reponse_en
-        if lang == "en" and exercice_actuel.reponse_en
+        if (
+            lang == "en"
+            and exercice_actuel.reponse_en
+        )
         else exercice_actuel.reponse_fr
     )
 
+    # ============================================================
+    # TITRE DE LA LEÇON
+    # ============================================================
+
     titre_lecon = (
         lecon.titre_en
-        if lang == "en" and lecon.titre_en
+        if (
+            lang == "en"
+            and lecon.titre_en
+        )
         else lecon.titre_fr
     )
 
+    # ============================================================
+    # MATIÈRE
+    # ============================================================
+
     nom_matiere = None
 
-    if lecon.unite and lecon.unite.matiere:
+    if (
+        lecon.unite
+        and lecon.unite.matiere
+    ):
+
         nom_matiere = (
             lecon.unite.matiere.nom_en
-            if lang == "en" and lecon.unite.matiere.nom_en
+            if (
+                lang == "en"
+                and lecon.unite.matiere.nom_en
+            )
             else lecon.unite.matiere.nom
         )
 
@@ -21298,19 +28033,85 @@ def exercice_sequentiel_progressif():
     # 8. LOGS
     # ============================================================
 
-    print("========== EXERCICE SÉQUENTIEL ADAPTATIF ==========")
-    print(f"👤 Élève : {eleve.username} | ID : {eleve.id}")
-    print(f"📘 Leçon : {lecon.id} - {titre_lecon}")
-    print(f"📚 Matière : {nom_matiere}")
-    print(f"🧩 Exercice actuel : {exercice_actuel.id}")
-    print(f"🔘 Options QCM affichées : {len(options_affichees)}")
-    print(f"📊 Position : {index + 1}/{total_exercices}")
-    print(f"✅ Complétés : {exercices_completes}/{total_exercices}")
-    print(f"🔒 Exercice déjà fait : {exercice_deja_fait}")
-    print(f"🔁 Reprise automatique : {reprise_automatique}")
-    print(f"🧠 Prochain adaptatif : {session.get('prochain_exercice_adaptatif')}")
-    print(f"➡️ Bouton suivant : {bouton_suivant}")
-    print("===================================================")
+    print(
+        "========== EXERCICE "
+        "SÉQUENTIEL ADAPTATIF =========="
+    )
+
+    print(
+        f"👤 Élève : {eleve.username} "
+        f"| ID : {eleve.id}"
+    )
+
+    print(
+        f"📘 Leçon : "
+        f"{lecon.id} - {titre_lecon}"
+    )
+
+    print(
+        f"📚 Matière : {nom_matiere}"
+    )
+
+    print(
+        f"🧩 Exercice actuel : "
+        f"{exercice_actuel.id}"
+    )
+
+    print(
+        "🔘 Options QCM affichées : "
+        f"{len(options_affichees)}"
+    )
+
+    print(
+        f"📊 Position : "
+        f"{index + 1}/{total_exercices}"
+    )
+
+    print(
+        f"✅ Complétés : "
+        f"{exercices_completes}/"
+        f"{total_exercices}"
+    )
+
+    print(
+        f"🔒 Exercice déjà fait : "
+        f"{exercice_deja_fait}"
+    )
+
+    print(
+        f"🔁 Reprise automatique : "
+        f"{reprise_automatique}"
+    )
+
+    # ------------------------------------------------------------
+    # État de l'évaluation
+    # ------------------------------------------------------------
+
+    if reponse:
+
+        print(
+            "⭐ Évaluation : "
+            + (
+                f"{reponse.etoiles}/5"
+                if reponse.etoiles
+                is not None
+                else "NON ÉVALUÉE"
+            )
+        )
+
+    print(
+        "🧠 Prochain adaptatif : "
+        f"{session.get('prochain_exercice_adaptatif')}"
+    )
+
+    print(
+        f"➡️ Bouton suivant : "
+        f"{bouton_suivant}"
+    )
+
+    print(
+        "==================================================="
+    )
 
     # ============================================================
     # 9. RENDU TEMPLATE
@@ -21318,36 +28119,116 @@ def exercice_sequentiel_progressif():
 
     return render_template(
         "exercice_sequentiel_progressif.html",
+
         eleve=eleve,
+
         username=username,
+
         lecon=lecon,
+
         titre_lecon=titre_lecon,
+
         nom_matiere=nom_matiere,
+
         exercice=exercice_actuel,
+
         question=question,
-        options_affichees=options_affichees,
-        options_brutes=options_brutes,
+
+        options_affichees=(
+            options_affichees
+        ),
+
+        options_brutes=(
+            options_brutes
+        ),
+
         index=index,
+
         total=total_exercices,
-        total_exercices=total_exercices,
-        exercice_ids=exercice_ids,
-        progression_pourcentage=progression_pourcentage,
-        exercices_completes=exercices_completes,
-        reponse_existante=reponse_existante,
+
+        total_exercices=(
+            total_exercices
+        ),
+
+        exercice_ids=(
+            exercice_ids
+        ),
+
+        progression_pourcentage=(
+            progression_pourcentage
+        ),
+
+        exercices_completes=(
+            exercices_completes
+        ),
+
+        reponse_existante=(
+            reponse_existante
+        ),
+
         reponse=reponse,
-        reponses_status=reponses_status,
-        corrige_disponible=corrige_disponible,
-        feedback=feedback_a_afficher,
-        show_feedback=show_feedback,
+
+        reponses_status=(
+            reponses_status
+        ),
+
+        corrige_disponible=(
+            corrige_disponible
+        ),
+
+        feedback=(
+            feedback_a_afficher
+        ),
+
+        show_feedback=(
+            show_feedback
+        ),
+
         lang=lang,
-        bouton_precedent=bouton_precedent,
-        bouton_suivant=bouton_suivant,
-        bouton_terminer=bouton_terminer,
+
+        bouton_precedent=(
+            bouton_precedent
+        ),
+
+        bouton_suivant=(
+            bouton_suivant
+        ),
+
+        bouton_terminer=(
+            bouton_terminer
+        ),
+
         mode_parcours="ia_guided",
+
         navigation_libre=False,
-        libelle_mode=libelle_mode,
-        libelle_bouton_continuer=libelle_bouton_continuer,
-        exercice_deja_fait=exercice_deja_fait
+
+        libelle_mode=(
+            libelle_mode
+        ),
+
+        libelle_bouton_continuer=(
+            libelle_bouton_continuer
+        ),
+
+        exercice_deja_fait=(
+            exercice_deja_fait
+        ),
+
+        # ========================================================
+        # ÉTAT EXPLICITE DE L'ÉVALUATION
+        # ========================================================
+
+        evaluation_disponible=(
+            reponse is not None
+            and reponse.etoiles
+            is not None
+        ),
+
+        requires_review=(
+            reponse is not None
+            and reponse.etoiles
+            is None
+        )
     )
 
 
@@ -21828,47 +28709,260 @@ def retour_exercices():
 @app.route("/test/<int:test_id>", methods=["GET", "POST"])
 def faire_test_sommatif(test_id):
     from datetime import datetime
+    import re
+
+    # ============================================================
+    # PARAMÈTRES
+    # ============================================================
 
     username = request.args.get("username")
     lang = request.args.get("lang", "fr")
 
-    eleve = User.query.filter_by(username=username).first_or_404()
-    test = TestSommatif.query.get_or_404(test_id)
+    if not username:
+        return "Nom d'utilisateur manquant", 400
 
-    if request.method == "POST" and request.form.get("revoir") == "1":
-        StudentResponse.query.filter_by(user_id=eleve.id, test_id=test.id).delete()
-        TestResponse.query.filter_by(user_id=eleve.id, test_id=test.id).delete()
-        db.session.commit()
-        return redirect(request.url)
+    # ============================================================
+    # RÉCUPÉRATION DE L'ÉLÈVE
+    # ============================================================
 
-    reponses_existantes = StudentResponse.query.filter_by(
-        user_id=eleve.id,
-        test_id=test.id
-    ).filter(StudentResponse.test_exercice_id.isnot(None)).all()
+    eleve = (
+        User.query
+        .filter_by(
+            username=username
+        )
+        .first()
+    )
 
-    deja_enregistre = TestResponse.query.filter_by(user_id=eleve.id, test_id=test.id).first()
+    if not eleve:
+        return "Élève introuvable", 404
 
-    if request.method == "POST" and not reponses_existantes and not deja_enregistre:
-        reponses_elevees = request.form.getlist("reponses[]")
-        ids_exercices = request.form.getlist("ex_ids[]")
+    # ============================================================
+    # RÉCUPÉRATION DU TEST
+    # ============================================================
 
-        if not any(rep.strip() for rep in reponses_elevees):
-            flash("❗ Aucune réponse saisie.", "error")
-            return redirect(request.url)
+    test = db.session.get(
+        TestSommatif,
+        test_id
+    )
+
+    if not test:
+        return "Test introuvable", 404
+
+    # ============================================================
+    # REFAIRE LE TEST
+    # ============================================================
+
+    if (
+        request.method == "POST"
+        and request.form.get("revoir") == "1"
+    ):
+
+        try:
+            (
+                StudentResponse.query
+                .filter_by(
+                    user_id=eleve.id,
+                    test_id=test.id
+                )
+                .delete(
+                    synchronize_session=False
+                )
+            )
+
+            (
+                TestResponse.query
+                .filter_by(
+                    user_id=eleve.id,
+                    test_id=test.id
+                )
+                .delete(
+                    synchronize_session=False
+                )
+            )
+
+            db.session.commit()
+
+            # ----------------------------------------------------
+            # Invalidation du cache statistiques
+            # ----------------------------------------------------
+
+            session.pop(
+                "api_eleve_stats_cache",
+                None
+            )
+
+            session.modified = True
+
+            print(
+                "🧹 Anciennes réponses du test supprimées."
+            )
+
+            print(
+                "🧹 Cache statistiques élève invalidé."
+            )
+
+        except Exception as e:
+
+            db.session.rollback()
+
+            print(
+                "❌ Erreur suppression ancien test : "
+                f"{e}"
+            )
+
+            return (
+                f"Erreur base de données : {e}",
+                500
+            )
+
+        return redirect(
+            request.url
+        )
+
+    # ============================================================
+    # RÉPONSES EXISTANTES
+    # ============================================================
+
+    reponses_existantes = (
+        StudentResponse.query
+        .filter_by(
+            user_id=eleve.id,
+            test_id=test.id
+        )
+        .filter(
+            StudentResponse
+            .test_exercice_id
+            .isnot(None)
+        )
+        .all()
+    )
+
+    # ============================================================
+    # TEST DÉJÀ ENREGISTRÉ
+    # ============================================================
+
+    deja_enregistre = (
+        TestResponse.query
+        .filter_by(
+            user_id=eleve.id,
+            test_id=test.id
+        )
+        .first()
+    )
+
+    # ============================================================
+    # SOUMISSION DU TEST
+    # ============================================================
+
+    if (
+        request.method == "POST"
+        and not reponses_existantes
+        and not deja_enregistre
+    ):
+
+        reponses_elevees = (
+            request.form.getlist(
+                "reponses[]"
+            )
+        )
+
+        ids_exercices = (
+            request.form.getlist(
+                "ex_ids[]"
+            )
+        )
+
+        # ========================================================
+        # VALIDATION MINIMALE
+        # ========================================================
+
+        if not any(
+            str(rep or "").strip()
+            for rep in reponses_elevees
+        ):
+
+            flash(
+                (
+                    "❗ Aucune réponse saisie."
+                    if lang == "fr"
+                    else
+                    "❗ No answer entered."
+                ),
+                "error"
+            )
+
+            return redirect(
+                request.url
+            )
+
+        # ========================================================
+        # CONSTRUCTION DES QUESTIONS ET RÉPONSES ATTENDUES
+        # ========================================================
 
         questions = []
         attendues = []
+
         for ex in test.exercices:
-            q = ex.question_en if lang == "en" else ex.question_fr
-            r = ex.reponse_en if lang == "en" else ex.reponse_fr
-            questions.append(q.strip())
-            attendues.append(r.strip() if r else "")
 
-        enonce_complet = "\n\n".join(f"🧩 Q{idx+1}:\n{q}" for idx, q in enumerate(questions))
-        reponses_concat = "\n\n".join(f"🧩 Q{idx+1}:\n{rep.strip()}" for idx, rep in enumerate(reponses_elevees))
+            q = (
+                ex.question_en
+                if (
+                    lang == "en"
+                    and ex.question_en
+                )
+                else ex.question_fr
+            )
 
-        # ✅ NOUVEAU PROMPT avec barème sur 5
+            r = (
+                ex.reponse_en
+                if (
+                    lang == "en"
+                    and ex.reponse_en
+                )
+                else ex.reponse_fr
+            )
+
+            questions.append(
+                str(q or "").strip()
+            )
+
+            attendues.append(
+                str(r or "").strip()
+            )
+
+        # ========================================================
+        # ÉNONCÉ COMPLET
+        # ========================================================
+
+        enonce_complet = "\n\n".join(
+            (
+                f"🧩 Q{idx + 1}:\n{q}"
+            )
+            for idx, q
+            in enumerate(questions)
+        )
+
+        # ========================================================
+        # RÉPONSES DE L'ÉLÈVE
+        # ========================================================
+
+        reponses_concat = "\n\n".join(
+            (
+                f"🧩 Q{idx + 1}:\n"
+                f"{str(rep or '').strip()}"
+            )
+            for idx, rep
+            in enumerate(
+                reponses_elevees
+            )
+        )
+
+        # ========================================================
+        # PROMPT D'ÉVALUATION
+        # ========================================================
+
         if lang == "en":
+
             prompt = f"""
 You are an expert math teacher evaluating a student's final test submission.
 
@@ -21884,11 +28978,12 @@ You are an expert math teacher evaluating a student's final test submission.
 🔍 What you must do:
 - Solve all the exercises yourself to compare with the expected answers.
 - For each exercise, compare each line of the student's reasoning.
-- Accept correct reasoning even if it's presented differently.
+- Accept correct reasoning even if it is presented differently.
 - Be pedagogical and constructive.
 - Give priority to reasoning over final result.
 - Award partial credit for correct steps.
-- ❗ Do not contradict yourself.
+- Do not contradict yourself.
+- If you cannot reliably evaluate one question, do NOT invent a score.
 
 ⭐ SCORING SCALE (5 points per exercise):
 - 5: Excellent reasoning, complete methodology, correct result
@@ -21898,7 +28993,13 @@ You are an expert math teacher evaluating a student's final test submission.
 - 1: Fragmented approach, very limited correct elements
 - 0: Off-topic or no answer
 
+IMPORTANT:
+- Use one block for every question.
+- Always write exactly "Score: X/5" when you are able to evaluate the question.
+- Never fabricate a score if the question cannot be evaluated reliably.
+
 📤 Output format:
+
 🧩 Q1
 Analysis: [...]
 Score: X/5
@@ -21909,9 +29010,12 @@ Correction:
 🧩 Q2
 ...
 """.strip()
+
         else:
+
             prompt = f"""
-Tu es un professeur expert en mathématiques. Tu dois corriger la soumission d'un test sommatif d'un élève.
+Tu es un professeur expert en mathématiques.
+Tu dois corriger la soumission d'un test sommatif d'un élève.
 
 📘 Questions du test :
 {enonce_complet}
@@ -21926,10 +29030,11 @@ Tu es un professeur expert en mathématiques. Tu dois corriger la soumission d'u
 - Résous tous les exercices toi-même pour vérifier les réponses.
 - Compare chaque ligne du raisonnement de l'élève avec ta propre résolution.
 - Si le raisonnement est correct même s'il est formulé différemment, accepte-le.
-- Sois pédagogique, clair, et bienveillant.
+- Sois pédagogique, clair et bienveillant.
 - Privilégie le raisonnement sur le résultat final.
-- Accordez des points partiels pour les étapes correctes.
-- ❗ Ne te contredis pas : si la réponse est correcte avec un raisonnement valide, ne dis pas le contraire.
+- Accorde des points partiels pour les étapes correctes.
+- Ne te contredis pas.
+- Si tu ne peux pas évaluer une question de manière fiable, ne fabrique pas de note.
 
 ⭐ BARÈME (5 points par exercice) :
 - 5 : Raisonnement excellent, méthodologie complète, résultat correct
@@ -21939,7 +29044,13 @@ Tu es un professeur expert en mathématiques. Tu dois corriger la soumission d'u
 - 1 : Démarche ébauchée, éléments corrects très limités
 - 0 : Hors sujet ou absence de réponse
 
+IMPORTANT :
+- Produis un bloc pour chaque question.
+- Écris exactement "Note : X/5" lorsque tu peux réellement évaluer la question.
+- Ne fabrique jamais une note lorsqu'une question ne peut pas être évaluée de manière fiable.
+
 📤 Format attendu :
+
 🧩 Q1
 Analyse : [...]
 Note : X/5
@@ -21951,98 +29062,835 @@ Correction :
 ...
 """.strip()
 
-        try:
-            chat_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-            )
-            analyse_ia = chat_completion.choices[0].message.content.strip()
-        except Exception as e:
-            return f"Erreur IA : {e}", 500
+        # ========================================================
+        # APPEL IA
+        # ========================================================
 
-        blocs = analyse_ia.split("🧩 Q")[1:]
+        try:
+
+            chat_completion = (
+                client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                )
+            )
+
+            analyse_ia = (
+                chat_completion
+                .choices[0]
+                .message
+                .content
+                .strip()
+            )
+
+        except Exception as e:
+
+            print(
+                "❌ Erreur IA correction test : "
+                f"{e}"
+            )
+
+            return (
+                f"Erreur IA : {e}",
+                500
+            )
+
+        # ========================================================
+        # DÉCOUPAGE DES BLOCS PAR QUESTION
+        # ========================================================
+
+        blocs = (
+            analyse_ia
+            .split("🧩 Q")[1:]
+        )
+
+        # ========================================================
+        # COMPTEURS
+        # ========================================================
+        #
+        # etoiles_total :
+        #     somme uniquement des notes réellement extraites.
+        #
+        # exercices_evalues :
+        #     nombre de questions réellement évaluées.
+        #
+        # exercices_non_evalues :
+        #     réponses enregistrées sans note fiable.
+        # ========================================================
 
         etoiles_total = 0
-        exercices_corriges = 0
-        
-        for ex_id, reponse_texte, bloc in zip(ids_exercices, reponses_elevees, blocs):
-            test_ex = TestExercice.query.get(int(ex_id))
+
+        exercices_evalues = 0
+
+        exercices_non_evalues = 0
+
+        reponses_enregistrees = 0
+
+        # ========================================================
+        # TRAITEMENT DE CHAQUE QUESTION
+        # ========================================================
+
+        for (
+            ex_id,
+            reponse_texte,
+            bloc
+        ) in zip(
+            ids_exercices,
+            reponses_elevees,
+            blocs
+        ):
+
+            # ----------------------------------------------------
+            # VALIDATION ID
+            # ----------------------------------------------------
+
+            try:
+                ex_id_int = int(
+                    ex_id
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                print(
+                    "⚠️ ID exercice test invalide : "
+                    f"{ex_id}"
+                )
+
+                continue
+
+            # ----------------------------------------------------
+            # RÉCUPÉRATION DE L'EXERCICE
+            # ----------------------------------------------------
+
+            test_ex = db.session.get(
+                TestExercice,
+                ex_id_int
+            )
+
             if not test_ex:
                 continue
 
-            texte = bloc.strip()
-            etoiles = 0
-            
-            # ✅ EXTRACTION DE NOTE SUR 5
-            match = re.search(r"(Note|Score)\s*:\s*(\d)/5", texte, re.IGNORECASE)
-            if match:
-                etoiles = int(match.group(2))
-            else:
-                # Fallback pour l'ancien format
-                match = re.search(r"(Note|Score)\s*:\s*(\d)", texte, re.IGNORECASE)
-                if match:
-                    etoiles = min(int(match.group(2)), 5)  # Limite à 5 maximum
+            texte = str(
+                bloc or ""
+            ).strip()
 
-            etoiles_total += etoiles
-            exercices_corriges += 1
+            reponse_texte = str(
+                reponse_texte or ""
+            ).strip()
+
+            # ====================================================
+            # EXTRACTION DE LA NOTE
+            # ====================================================
+            #
+            # RÈGLE :
+            #
+            # etoiles = None
+            #
+            # tant qu'une note explicite n'a pas réellement
+            # été trouvée.
+            # ====================================================
+
+            etoiles = None
+
+            score_pourcentage = None
+
+            # ----------------------------------------------------
+            # Format principal :
+            #
+            # Note : 4/5
+            # Score: 4/5
+            # ----------------------------------------------------
+
+            match = re.search(
+                r"(?:Note|Score)\s*:\s*([0-5])\s*/\s*5\b",
+                texte,
+                re.IGNORECASE
+            )
+
+            if match:
+
+                etoiles = int(
+                    match.group(1)
+                )
+
+                print(
+                    "⭐ Test "
+                    f"{test.id} - exercice "
+                    f"{test_ex.id} : "
+                    f"{etoiles}/5"
+                )
+
+            else:
+
+                # ------------------------------------------------
+                # Fallback prudent :
+                #
+                # Note : 4
+                # Score: 4
+                # ------------------------------------------------
+
+                match = re.search(
+                    r"(?:Note|Score)\s*:\s*([0-5])\b",
+                    texte,
+                    re.IGNORECASE
+                )
+
+                if match:
+
+                    etoiles = int(
+                        match.group(1)
+                    )
+
+                    print(
+                        "⭐ Test "
+                        f"{test.id} - exercice "
+                        f"{test_ex.id} : "
+                        f"{etoiles}/5 "
+                        "(sans /5)"
+                    )
+
+                else:
+
+                    print(
+                        "⚠️ Test "
+                        f"{test.id} - exercice "
+                        f"{test_ex.id} : "
+                        "aucune note fiable extraite."
+                    )
+
+                    print(
+                        "🛡️ Cette réponse sera "
+                        "enregistrée comme NON ÉVALUÉE."
+                    )
+
+            # ====================================================
+            # SCORE
+            # ====================================================
+
+            if etoiles is not None:
+
+                score_pourcentage = (
+                    etoiles * 20
+                )
+
+                etoiles_total += (
+                    etoiles
+                )
+
+                exercices_evalues += 1
+
+            else:
+
+                exercices_non_evalues += 1
+
+            # ====================================================
+            # STUDENT RESPONSE
+            # ====================================================
 
             nouvelle = StudentResponse(
                 user_id=eleve.id,
+
                 test_id=test.id,
-                test_exercice_id=test_ex.id,
-                reponse_eleve=reponse_texte.strip(),
-                analyse_ia=texte,
+
+                test_exercice_id=(
+                    test_ex.id
+                ),
+
+                reponse_eleve=(
+                    reponse_texte
+                ),
+
+                analyse_ia=(
+                    texte
+                ),
+
+                # None est volontairement autorisé.
                 etoiles=etoiles,
+
+                score=(
+                    score_pourcentage
+                ),
+
+                feedback_ia_structure={
+                    "source": (
+                        "test_sommatif"
+                    ),
+
+                    "test_id": (
+                        test.id
+                    ),
+
+                    "test_exercice_id": (
+                        test_ex.id
+                    ),
+
+                    "lang": (
+                        lang
+                    ),
+
+                    "score_sur_5": (
+                        etoiles
+                    ),
+
+                    "score_pourcentage": (
+                        score_pourcentage
+                    ),
+
+                    "evaluation_status": (
+                        "evaluated"
+                        if etoiles is not None
+                        else "not_evaluated"
+                    ),
+
+                    "requires_review": (
+                        etoiles is None
+                    )
+                },
+
                 timestamp=datetime.utcnow()
             )
-            db.session.add(nouvelle)
 
-        # Calcul de la moyenne sur 5
-        moyenne = round(etoiles_total / max(exercices_corriges, 1), 1) if exercices_corriges > 0 else 0
-        
-        # ✅ CORRECTION : Supprimer le paramètre 'moyenne' qui n'existe pas dans le modèle
+            db.session.add(
+                nouvelle
+            )
+
+            reponses_enregistrees += 1
+
+        # ========================================================
+        # ATTENTION AUX BLOCS IA MANQUANTS
+        # ========================================================
+        #
+        # zip() s'arrête au plus petit nombre d'éléments.
+        #
+        # Si l'IA ne produit pas un bloc Q pour toutes les réponses,
+        # on doit malgré tout conserver les réponses manquantes comme
+        # NON ÉVALUÉES et surtout pas les perdre.
+        # ========================================================
+
+        nombre_traite = min(
+            len(ids_exercices),
+            len(reponses_elevees),
+            len(blocs)
+        )
+
+        if (
+            nombre_traite
+            < min(
+                len(ids_exercices),
+                len(reponses_elevees)
+            )
+        ):
+
+            ids_restants = (
+                ids_exercices[
+                    nombre_traite:
+                ]
+            )
+
+            reponses_restantes = (
+                reponses_elevees[
+                    nombre_traite:
+                ]
+            )
+
+            for (
+                ex_id,
+                reponse_texte
+            ) in zip(
+                ids_restants,
+                reponses_restantes
+            ):
+
+                try:
+                    ex_id_int = int(
+                        ex_id
+                    )
+
+                except (
+                    TypeError,
+                    ValueError
+                ):
+                    continue
+
+                test_ex = db.session.get(
+                    TestExercice,
+                    ex_id_int
+                )
+
+                if not test_ex:
+                    continue
+
+                reponse_texte = str(
+                    reponse_texte or ""
+                ).strip()
+
+                nouvelle = StudentResponse(
+                    user_id=eleve.id,
+
+                    test_id=test.id,
+
+                    test_exercice_id=(
+                        test_ex.id
+                    ),
+
+                    reponse_eleve=(
+                        reponse_texte
+                    ),
+
+                    analyse_ia=(
+                        (
+                            "Cette réponse n'a pas pu être "
+                            "évaluée automatiquement."
+                        )
+                        if lang == "fr"
+                        else
+                        (
+                            "This answer could not be "
+                            "evaluated automatically."
+                        )
+                    ),
+
+                    etoiles=None,
+
+                    score=None,
+
+                    feedback_ia_structure={
+                        "source": (
+                            "test_sommatif"
+                        ),
+
+                        "test_id": (
+                            test.id
+                        ),
+
+                        "test_exercice_id": (
+                            test_ex.id
+                        ),
+
+                        "lang": (
+                            lang
+                        ),
+
+                        "score_sur_5": None,
+
+                        "score_pourcentage": None,
+
+                        "evaluation_status": (
+                            "not_evaluated"
+                        ),
+
+                        "requires_review": True,
+
+                        "reason": (
+                            "missing_ai_question_block"
+                        )
+                    },
+
+                    timestamp=datetime.utcnow()
+                )
+
+                db.session.add(
+                    nouvelle
+                )
+
+                exercices_non_evalues += 1
+
+                reponses_enregistrees += 1
+
+        # ========================================================
+        # CALCUL DE LA MOYENNE
+        # ========================================================
+        #
+        # IMPORTANT :
+        #
+        # uniquement sur les exercices réellement évalués.
+        #
+        # Exemple :
+        #
+        # 5 / 4 / None / 0
+        #
+        # moyenne =
+        #
+        # (5 + 4 + 0) / 3
+        #
+        # et NON :
+        #
+        # (5 + 4 + 0 + 0) / 4
+        # ========================================================
+
+        if exercices_evalues > 0:
+
+            moyenne = round(
+                etoiles_total
+                / exercices_evalues,
+                1
+            )
+
+        else:
+
+            moyenne = None
+
+        # ========================================================
+        # RÉSUMÉ DU TEST
+        # ========================================================
+        #
+        # TestResponse.etoiles accepte NULL.
+        #
+        # Si aucune question n'a été évaluée :
+        #
+        #     etoiles=None
+        #
+        # Si au moins une question est évaluée :
+        #
+        #     etoiles=total des vraies notes.
+        # ========================================================
+
         resume_test = TestResponse(
             user_id=eleve.id,
+
             test_id=test.id,
-            reponses_exercices={str(i+1): rep.strip() for i, rep in enumerate(reponses_elevees)},
-            analyse_ia=analyse_ia,
-            etoiles=etoiles_total,  # On garde le total des étoiles
+
+            reponses_exercices={
+                str(i + 1): (
+                    str(rep or "").strip()
+                )
+                for i, rep
+                in enumerate(
+                    reponses_elevees
+                )
+            },
+
+            analyse_ia=(
+                analyse_ia
+            ),
+
+            etoiles=(
+                etoiles_total
+                if exercices_evalues > 0
+                else None
+            ),
+
             timestamp=datetime.utcnow()
         )
-        db.session.add(resume_test)
 
-        db.session.commit()
-        
-        # ✅ CORRECTION : Stocker la moyenne dans la session pour l'affichage
-        session['derniere_moyenne'] = moyenne
-        
-        # Message de feedback adapté
-        if moyenne >= 4:
-            flash(f"🎉 Excellent travail ! Test réussi avec brio. Moyenne : {moyenne}/5", "success")
+        db.session.add(
+            resume_test
+        )
+
+        # ========================================================
+        # SAUVEGARDE
+        # ========================================================
+
+        try:
+
+            db.session.commit()
+
+        except Exception as e:
+
+            db.session.rollback()
+
+            print(
+                "❌ Erreur sauvegarde "
+                f"test sommatif : {e}"
+            )
+
+            return (
+                f"Erreur base de données : {e}",
+                500
+            )
+
+        # ========================================================
+        # INVALIDATION DU CACHE STATISTIQUES
+        # ========================================================
+
+        session.pop(
+            "api_eleve_stats_cache",
+            None
+        )
+
+        session.modified = True
+
+        print(
+            "🧹 Cache statistiques "
+            "élève invalidé."
+        )
+
+        # ========================================================
+        # INFORMATIONS D'AFFICHAGE
+        # ========================================================
+
+        session[
+            "derniere_moyenne"
+        ] = moyenne
+
+        session[
+            "dernier_test_total_evalues"
+        ] = exercices_evalues
+
+        session[
+            "dernier_test_non_evalues"
+        ] = exercices_non_evalues
+
+        session.modified = True
+
+        # ========================================================
+        # LOG DE CONTRÔLE
+        # ========================================================
+
+        print(
+            "📊 Test sommatif terminé : "
+            f"test={test.id}, "
+            f"élève={eleve.id}, "
+            f"réponses={reponses_enregistrees}, "
+            f"évaluées={exercices_evalues}, "
+            f"non évaluées={exercices_non_evalues}, "
+            f"moyenne="
+            + (
+                f"{moyenne}/5"
+                if moyenne is not None
+                else "NON DISPONIBLE"
+            )
+        )
+
+        # ========================================================
+        # MESSAGE DE FEEDBACK
+        # ========================================================
+
+        if moyenne is None:
+
+            flash(
+                (
+                    "⚠️ Le test a bien été enregistré, "
+                    "mais aucune question n'a pu être "
+                    "évaluée automatiquement. "
+                    "Aucune note de zéro n'a été attribuée."
+                    if lang == "fr"
+                    else
+                    "⚠️ The test was saved, but no question "
+                    "could be evaluated automatically. "
+                    "No zero score was assigned."
+                ),
+                "warning"
+            )
+
+        elif moyenne >= 4:
+
+            flash(
+                (
+                    "🎉 Excellent travail ! "
+                    "Test réussi avec brio. "
+                    f"Moyenne : {moyenne}/5"
+                    if lang == "fr"
+                    else
+                    "🎉 Excellent work! "
+                    "Great test result. "
+                    f"Average: {moyenne}/5"
+                ),
+                "success"
+            )
+
         elif moyenne >= 3:
-            flash(f"✅ Bon travail ! Test réussi. Moyenne : {moyenne}/5", "success")
-        else:
-            flash(f"📚 Test terminé. Des révisions seraient bénéfiques. Moyenne : {moyenne}/5", "info")
-            
-        return redirect(request.url)
 
-    reponses_par_exercice = {
-        r.test_exercice_id: r for r in StudentResponse.query.filter_by(
+            flash(
+                (
+                    "✅ Bon travail ! "
+                    "Test réussi. "
+                    f"Moyenne : {moyenne}/5"
+                    if lang == "fr"
+                    else
+                    "✅ Good work! "
+                    "Test passed. "
+                    f"Average: {moyenne}/5"
+                ),
+                "success"
+            )
+
+        else:
+
+            flash(
+                (
+                    "📚 Test terminé. "
+                    "Des révisions seraient bénéfiques. "
+                    f"Moyenne : {moyenne}/5"
+                    if lang == "fr"
+                    else
+                    "📚 Test completed. "
+                    "Some review would be beneficial. "
+                    f"Average: {moyenne}/5"
+                ),
+                "info"
+            )
+
+        # --------------------------------------------------------
+        # Informer si certaines questions n'ont pas été évaluées.
+        # --------------------------------------------------------
+
+        if (
+            exercices_non_evalues > 0
+            and moyenne is not None
+        ):
+
+            flash(
+                (
+                    f"ℹ️ {exercices_non_evalues} question(s) "
+                    "n'ont pas pu être évaluées automatiquement "
+                    "et n'ont pas été incluses dans la moyenne."
+                    if lang == "fr"
+                    else
+                    f"ℹ️ {exercices_non_evalues} question(s) "
+                    "could not be evaluated automatically "
+                    "and were not included in the average."
+                ),
+                "info"
+            )
+
+        return redirect(
+            request.url
+        )
+
+    # ============================================================
+    # RÉPONSES PAR EXERCICE POUR L'AFFICHAGE
+    # ============================================================
+    #
+    # On prend la réponse la plus récente par exercice.
+    # ============================================================
+
+    reponses_test = (
+        StudentResponse.query
+        .filter_by(
             user_id=eleve.id,
             test_id=test.id
-        ).filter(StudentResponse.test_exercice_id.isnot(None)).all()
-    }
+        )
+        .filter(
+            StudentResponse
+            .test_exercice_id
+            .isnot(None)
+        )
+        .order_by(
+            StudentResponse.timestamp.desc()
+        )
+        .all()
+    )
 
-    # ✅ CORRECTION : Récupérer la moyenne depuis la session pour l'affichage
-    derniere_moyenne = session.pop('derniere_moyenne', None)
+    reponses_par_exercice = {}
+
+    for r in reponses_test:
+
+        if (
+            r.test_exercice_id
+            not in reponses_par_exercice
+        ):
+
+            reponses_par_exercice[
+                r.test_exercice_id
+            ] = r
+
+    # ============================================================
+    # MOYENNE POUR L'AFFICHAGE
+    # ============================================================
+
+    derniere_moyenne = (
+        session.pop(
+            "derniere_moyenne",
+            None
+        )
+    )
+
+    total_evalues_affichage = (
+        session.pop(
+            "dernier_test_total_evalues",
+            None
+        )
+    )
+
+    non_evalues_affichage = (
+        session.pop(
+            "dernier_test_non_evalues",
+            None
+        )
+    )
+
+    session.modified = True
+
+    # ============================================================
+    # SI LA SESSION NE CONTIENT PLUS LA MOYENNE
+    # ============================================================
+    #
+    # On peut la recalculer depuis les StudentResponse existantes,
+    # toujours en excluant etoiles=None.
+    # ============================================================
+
+    if (
+        derniere_moyenne is None
+        and reponses_test
+    ):
+
+        notes_existantes = [
+            r.etoiles
+            for r in reponses_par_exercice.values()
+            if r.etoiles is not None
+        ]
+
+        total_evalues_affichage = len(
+            notes_existantes
+        )
+
+        non_evalues_affichage = (
+            len(
+                reponses_par_exercice
+            )
+            - total_evalues_affichage
+        )
+
+        if notes_existantes:
+
+            derniere_moyenne = round(
+                sum(
+                    notes_existantes
+                )
+                / len(
+                    notes_existantes
+                ),
+                1
+            )
+
+    # ============================================================
+    # RENDU
+    # ============================================================
 
     return render_template(
         "faire_test_sommatif.html",
+
         test=test,
+
         eleve=eleve,
+
         lang=lang,
-        reponses_par_exercice=reponses_par_exercice,
-        derniere_moyenne=derniere_moyenne  # Passer la moyenne au template
+
+        reponses_par_exercice=(
+            reponses_par_exercice
+        ),
+
+        derniere_moyenne=(
+            derniere_moyenne
+        ),
+
+        # Nouvelles variables disponibles dans le template.
+        total_evalues=(
+            total_evalues_affichage
+        ),
+
+        non_evalues=(
+            non_evalues_affichage
+        )
     )
 
 @app.route("/eleve/retroactions-bayesiennes")
@@ -27661,19 +35509,65 @@ import re
 @app.route("/soumettre-remediation/<int:remediation_id>", methods=["POST"])
 def soumettre_remediation(remediation_id):
     from datetime import datetime
-    reponse_eleve = request.form.get("reponse_eleve") or request.form.get("reponse", "").strip()
+    import re
 
-    remediation = RemediationSuggestion.query.get_or_404(remediation_id)
-    user = remediation.user
+    # ============================================================
+    # RÉCUPÉRATION DE LA RÉPONSE
+    # ============================================================
+
+    reponse_eleve = (
+        request.form.get("reponse_eleve")
+        or request.form.get("reponse", "")
+    )
+
+    reponse_eleve = str(
+        reponse_eleve or ""
+    ).strip()
 
     if not reponse_eleve:
         return "Réponse vide", 400
 
-    enonce = remediation.exercice_suggere or ""
-    lang = user.langue if hasattr(user, "langue") and user.langue == "en" else "fr"
+    # ============================================================
+    # RÉCUPÉRATION DE LA REMÉDIATION
+    # ============================================================
 
-    # ✅ NOUVEAU PROMPT avec barème sur 5
+    remediation = db.session.get(
+        RemediationSuggestion,
+        remediation_id
+    )
+
+    if not remediation:
+        return "Remédiation introuvable", 404
+
+    user = remediation.user
+
+    if not user:
+        return "Élève introuvable", 404
+
+    # ============================================================
+    # CONTEXTE
+    # ============================================================
+
+    enonce = (
+        remediation.exercice_suggere
+        or ""
+    )
+
+    lang = (
+        user.langue
+        if (
+            hasattr(user, "langue")
+            and user.langue == "en"
+        )
+        else "fr"
+    )
+
+    # ============================================================
+    # PROMPT D'ÉVALUATION
+    # ============================================================
+
     if lang == "en":
+
         prompt = f"""
 Correct the student's answer to a school exercise.
 
@@ -27691,17 +35585,26 @@ Correct the student's answer to a school exercise.
 - 1: Fragmented approach, very limited correct elements
 - 0: Off-topic or no answer
 
-🎯 IMPORTANT: Give priority to reasoning over final result. Award partial credit for correct steps.
+🎯 IMPORTANT:
+Give priority to reasoning over final result.
+Award partial credit for correct steps.
+
+You MUST provide the score explicitly.
 
 📤 Expected format:
+
 Analysis:
 [...]
+
 Score: X/5
+
 Correction:
 - Expert resolution: [...]
 - Final answer: [...]
 """.strip()
+
     else:
+
         prompt = f"""
 Corrige la réponse d'un élève à un exercice scolaire.
 
@@ -27719,68 +35622,342 @@ Corrige la réponse d'un élève à un exercice scolaire.
 - 1 : Démarche ébauchée, éléments corrects très limités
 - 0 : Hors sujet ou absence de réponse
 
-🎯 IMPORTANT : Privilégiez le raisonnement sur le résultat final. Accordez des points partiels pour les étapes correctes.
+🎯 IMPORTANT :
+Privilégie le raisonnement sur le résultat final.
+Accorde des points partiels pour les étapes correctes.
+
+Tu DOIS fournir explicitement la note.
 
 📤 Format attendu :
+
 Analyse :
 [...]
+
 Note : X/5
+
 Correction :
 - Résolution experte : [...]
 - Résultat final : [...]
 """.strip()
 
+    # ============================================================
+    # APPEL IA
+    # ============================================================
+
     try:
+
         chat_completion = client.chat.completions.create(
             model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
         )
-        analyse_ia = chat_completion.choices[0].message.content.strip()
+
+        analyse_ia = (
+            chat_completion
+            .choices[0]
+            .message
+            .content
+            .strip()
+        )
+
     except Exception as e:
+
+        print(
+            f"❌ Erreur IA remédiation "
+            f"{remediation_id}: {e}"
+        )
+
         return f"Erreur IA : {e}", 500
 
-    # ✅ EXTRACTION DE NOTE SUR 5
-    etoiles = 0
-    match = re.search(r"(Note|Score)\s*:\s*(\d)/5", analyse_ia, re.IGNORECASE)
-    if match:
-        etoiles = int(match.group(2))
-        print(f"⭐ Note remédiation extraite: {etoiles}/5")
-    else:
-        # Fallback si le format /5 n'est pas respecté
-        match = re.search(r"(Note|Score)\s*:\s*(\d)", analyse_ia, re.IGNORECASE)
-        if match:
-            etoiles = min(int(match.group(2)), 5)  # Limite à 5 maximum
-            print(f"⭐ Note remédiation extraite (sans /5): {etoiles}/5")
-        else:
-            print("⚠️ Impossible d'extraire la note de l'analyse IA")
+    # ============================================================
+    # EXTRACTION DE LA NOTE
+    # ============================================================
+    #
+    # IMPORTANT :
+    #
+    # Avant :
+    #
+    #     etoiles = 0
+    #
+    # Cela signifiait qu'un échec du parseur devenait
+    # automatiquement un échec scolaire.
+    #
+    # Maintenant :
+    #
+    #     etoiles = None
+    #
+    # Aucune note n'est fabriquée si l'évaluation
+    # n'est pas exploitable.
+    # ============================================================
 
-    # ✅ Mise à jour du statut de la remédiation
-    if etoiles >= 3:  # Si note ≥ 3/5, la remédiation est réussie
-        remediation.statut = "reussie"
-        print(f"✅ Remédiation réussie (note: {etoiles}/5)")
+    etoiles = None
+    score_pourcentage = None
+
+    # ------------------------------------------------------------
+    # Format principal :
+    #
+    # Note : 4/5
+    # Score: 4/5
+    # ------------------------------------------------------------
+
+    match = re.search(
+        r"(?:Note|Score)\s*:\s*([0-5])\s*/\s*5\b",
+        analyse_ia,
+        re.IGNORECASE
+    )
+
+    if match:
+
+        etoiles = int(
+            match.group(1)
+        )
+
+        print(
+            "⭐ Note remédiation extraite : "
+            f"{etoiles}/5"
+        )
+
     else:
-        remediation.statut = "en_attente"  # Reste en attente si échec
-        print(f"🔄 Remédiation à revoir (note: {etoiles}/5)")
+
+        # --------------------------------------------------------
+        # Fallback :
+        #
+        # Note : 4
+        # Score: 4
+        # --------------------------------------------------------
+
+        match = re.search(
+            r"(?:Note|Score)\s*:\s*([0-5])\b",
+            analyse_ia,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            etoiles = int(
+                match.group(1)
+            )
+
+            print(
+                "⭐ Note remédiation extraite "
+                f"sans /5 : {etoiles}/5"
+            )
+
+        else:
+
+            print(
+                "⚠️ Impossible d'extraire "
+                "une note fiable de l'analyse IA."
+            )
+
+            print(
+                "🛡️ La tentative restera "
+                "NON ÉVALUÉE."
+            )
+
+    # ============================================================
+    # SCORE POURCENTAGE
+    # ============================================================
+
+    if etoiles is not None:
+
+        score_pourcentage = int(
+            etoiles * 20
+        )
+
+    # ============================================================
+    # MISE À JOUR DE LA REMÉDIATION
+    # ============================================================
+
+    remediation.reponse_eleve = (
+        reponse_eleve
+    )
+
+    remediation.analyse_ia = (
+        analyse_ia
+    )
+
+    remediation.etoiles = (
+        etoiles
+    )
+
+    # ============================================================
+    # STATUT DE LA REMÉDIATION
+    # ============================================================
+
+    if etoiles is None:
+
+        # L'évaluation n'est pas suffisamment exploitable.
+        # On ne transforme pas cela en échec.
+        remediation.statut = "valide"
+
+        print(
+            "⚠️ Remédiation non évaluée : "
+            "statut conservé à 'valide'."
+        )
+
+    elif etoiles >= 3:
+
+        remediation.statut = "reussie"
+
+        print(
+            "✅ Remédiation réussie "
+            f"(note: {etoiles}/5)"
+        )
+
+    else:
+
+        remediation.statut = "en_attente"
+
+        print(
+            "🔄 Remédiation à revoir "
+            f"(note réelle: {etoiles}/5)"
+        )
+
+    # ============================================================
+    # ENREGISTREMENT DANS STUDENT RESPONSE
+    # ============================================================
 
     new_response = StudentResponse(
         user_id=user.id,
+
+        # Remédiation indépendante d'un exercice normal.
         exercice_id=None,
+
         reponse_eleve=reponse_eleve,
+
         analyse_ia=analyse_ia,
+
+        # Peut volontairement être None.
         etoiles=etoiles,
+
+        # Peut également être None.
+        score=score_pourcentage,
+
+        feedback_ia_structure={
+            "source": "remediation",
+            "remediation_id": remediation.id,
+            "lang": lang,
+
+            "score_sur_5": etoiles,
+            "score_pourcentage": score_pourcentage,
+
+            "evaluation_status": (
+                "evaluated"
+                if etoiles is not None
+                else "not_evaluated"
+            ),
+
+            "requires_review": (
+                etoiles is None
+            ),
+
+            "remediation_status": (
+                remediation.statut
+            ),
+        },
+
         timestamp=datetime.utcnow()
     )
-    db.session.add(new_response)
-    db.session.commit()
+
+    db.session.add(
+        new_response
+    )
+
+    # ============================================================
+    # SAUVEGARDE
+    # ============================================================
+
+    try:
+
+        db.session.commit()
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        print(
+            "❌ Erreur sauvegarde "
+            f"remédiation : {e}"
+        )
+
+        return (
+            f"Erreur base de données : {e}",
+            500
+        )
+
+    # ============================================================
+    # INVALIDATION DU CACHE DES STATISTIQUES
+    # ============================================================
+
+    session.pop(
+        "api_eleve_stats_cache",
+        None
+    )
+
+    session.modified = True
+
+    print(
+        "🧹 Cache statistiques "
+        "élève invalidé."
+    )
+
+    # ============================================================
+    # LOG FINAL
+    # ============================================================
+
+    if etoiles is None:
+
+        print(
+            "🛡️ Remédiation enregistrée "
+            "comme NON ÉVALUÉE."
+        )
+
+    else:
+
+        print(
+            "📊 Remédiation évaluée : "
+            f"{etoiles}/5 "
+            f"({score_pourcentage}%)."
+        )
+
+    # ============================================================
+    # AFFICHAGE DU FEEDBACK
+    # ============================================================
 
     return render_template(
         "feedback_exercice.html",
+
         reponse=reponse_eleve,
+
         analyse=analyse_ia,
+
+        # None est autorisé ici.
         etoiles=etoiles,
-        redirect_url=f"/eleve/remediations?username={user.username}&lang={lang}",
+
+        redirect_url=(
+            "/eleve/remediations"
+            f"?username={user.username}"
+            f"&lang={lang}"
+        ),
+
         lang=lang,
-        is_remediation=True
+
+        is_remediation=True,
+
+        # Variables complémentaires pour permettre au template
+        # de différencier note réelle / non évalué.
+        evaluation_disponible=(
+            etoiles is not None
+        ),
+
+        requires_review=(
+            etoiles is None
+        )
     )
 
 
@@ -27894,39 +36071,511 @@ def afficher_exercice_suggeres():
 
 @app.route("/progression-eleve")
 def progression_eleve():
-    username = request.args.get("username")
-    eleve = User.query.filter_by(username=username).first()
+    """
+    Affiche la progression détaillée d'un élève.
+
+    Règles :
+    - etoiles=None signifie "non évalué" ;
+    - etoiles=0 reste une vraie note de 0 ;
+    - les réponses de remédiation avec exercice_id=None
+      ne provoquent pas d'erreur ;
+    - les réponses sont affichées de la plus récente
+      à la plus ancienne.
+    """
+
+    # ============================================================
+    # RÉCUPÉRATION DES PARAMÈTRES
+    # ============================================================
+
+    username = (
+        request.args.get("username")
+        or ""
+    ).strip()
+
+    lang = request.args.get(
+        "lang",
+        session.get("lang", "fr")
+    )
+
+    if not username:
+        return "Nom d'utilisateur manquant", 400
+
+    # ============================================================
+    # RÉCUPÉRATION DE L'ÉLÈVE
+    # ============================================================
+
+    eleve = (
+        User.query
+        .filter_by(
+            username=username
+        )
+        .first()
+    )
+
     if not eleve:
         return "Élève introuvable", 404
 
-    reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
+    # ============================================================
+    # RÉCUPÉRATION DES RÉPONSES
+    # ============================================================
+
+    reponses = (
+        StudentResponse.query
+        .filter_by(
+            user_id=eleve.id
+        )
+        .order_by(
+            StudentResponse.timestamp.desc()
+        )
+        .all()
+    )
+
+    # ============================================================
+    # CONSTRUCTION DES DONNÉES
+    # ============================================================
+
     donnees = []
+
     for r in reponses:
-        exercice = exercice.query.get(r.exercice_id)
+
+        # --------------------------------------------------------
+        # EXERCICE ASSOCIÉ
+        # --------------------------------------------------------
+
+        exercice_obj = None
+
+        if r.exercice_id is not None:
+
+            exercice_obj = db.session.get(
+                Exercice,
+                r.exercice_id
+            )
+
+        # --------------------------------------------------------
+        # DÉTERMINER LE TYPE D'ACTIVITÉ
+        # --------------------------------------------------------
+
+        if exercice_obj:
+            type_activite = "exercice"
+
+        elif r.test_exercice_id:
+            type_activite = "test"
+
+        else:
+            type_activite = "remediation"
+
+        # --------------------------------------------------------
+        # INFORMATIONS DE L'EXERCICE
+        # --------------------------------------------------------
+        #
+        # Ton modèle Exercice actuel utilise notamment :
+        #
+        # question_fr / question_en
+        # niveau_difficulte
+        #
+        # Certains anciens enregistrements peuvent toutefois avoir
+        # utilisé d'autres attributs.
+        # On reste donc prudent.
+        # --------------------------------------------------------
+
+        theme = "-"
+
+        if exercice_obj:
+
+            if hasattr(
+                exercice_obj,
+                "theme"
+            ) and exercice_obj.theme:
+
+                theme = (
+                    exercice_obj.theme
+                )
+
+            elif (
+                hasattr(
+                    exercice_obj,
+                    "notion_cible"
+                )
+                and exercice_obj.notion_cible
+            ):
+
+                theme = (
+                    exercice_obj.notion_cible
+                )
+
+            elif (
+                getattr(
+                    exercice_obj,
+                    "lecon",
+                    None
+                )
+            ):
+
+                lecon_obj = (
+                    exercice_obj.lecon
+                )
+
+                theme = (
+                    getattr(
+                        lecon_obj,
+                        "titre_fr",
+                        None
+                    )
+                    or getattr(
+                        lecon_obj,
+                        "titre_en",
+                        None
+                    )
+                    or "-"
+                )
+
+        # --------------------------------------------------------
+        # NIVEAU / DIFFICULTÉ
+        # --------------------------------------------------------
+
+        niveau = "-"
+
+        if exercice_obj:
+
+            niveau = (
+                getattr(
+                    exercice_obj,
+                    "niveau_difficulte",
+                    None
+                )
+                or getattr(
+                    exercice_obj,
+                    "niveau",
+                    None
+                )
+                or "-"
+            )
+
+        # --------------------------------------------------------
+        # ÉNONCÉ
+        # --------------------------------------------------------
+
+        enonce = "-"
+
+        if exercice_obj:
+
+            if lang == "en":
+
+                enonce = (
+                    getattr(
+                        exercice_obj,
+                        "question_en",
+                        None
+                    )
+                    or getattr(
+                        exercice_obj,
+                        "question_fr",
+                        None
+                    )
+                    or getattr(
+                        exercice_obj,
+                        "enonce",
+                        None
+                    )
+                    or "-"
+                )
+
+            else:
+
+                enonce = (
+                    getattr(
+                        exercice_obj,
+                        "question_fr",
+                        None
+                    )
+                    or getattr(
+                        exercice_obj,
+                        "question_en",
+                        None
+                    )
+                    or getattr(
+                        exercice_obj,
+                        "enonce",
+                        None
+                    )
+                    or "-"
+                )
+
+        elif type_activite == "remediation":
+
+            enonce = (
+                "Exercice de remédiation"
+                if lang == "fr"
+                else "Remediation exercise"
+            )
+
+        elif type_activite == "test":
+
+            enonce = (
+                "Exercice de test"
+                if lang == "fr"
+                else "Test exercise"
+            )
+
+        # --------------------------------------------------------
+        # ÉVALUATION
+        # --------------------------------------------------------
+        #
+        # IMPORTANT :
+        #
+        # None = non évalué
+        # 0    = vraie note de zéro
+        # --------------------------------------------------------
+
+        evaluation_disponible = (
+            r.etoiles is not None
+        )
+
+        requires_review = (
+            r.etoiles is None
+        )
+
+        if evaluation_disponible:
+
+            etoiles_affichage = (
+                r.etoiles
+            )
+
+        else:
+
+            etoiles_affichage = (
+                None
+            )
+
+        # --------------------------------------------------------
+        # SCORE
+        # --------------------------------------------------------
+
+        score = (
+            r.score
+            if r.score is not None
+            else None
+        )
+
+        # --------------------------------------------------------
+        # DATE
+        # --------------------------------------------------------
+
+        date_reponse = (
+            r.timestamp.strftime(
+                "%d/%m/%Y %H:%M"
+            )
+            if r.timestamp
+            else "-"
+        )
+
+        # --------------------------------------------------------
+        # FEEDBACK STRUCTURÉ
+        # --------------------------------------------------------
+
+        feedback_structure = (
+            r.feedback_ia_structure
+            if isinstance(
+                r.feedback_ia_structure,
+                dict
+            )
+            else {}
+        )
+
+        # Si l'information est explicitement présente dans le JSON,
+        # on la respecte.
+
+        if (
+            feedback_structure.get(
+                "requires_review"
+            )
+            is True
+        ):
+            requires_review = True
+
+        # --------------------------------------------------------
+        # AJOUT À LA LISTE
+        # --------------------------------------------------------
+
         donnees.append({
-            "theme": exercice.theme,
-            "niveau": exercice.niveau,
-            "enonce": exercice.enonce,
-            "reponse_eleve": r.reponse_eleve,
-            "analyse_ia": r.analyse_ia,
-            "etoiles": r.etoiles or "-"
+            "id": r.id,
+
+            "type_activite": (
+                type_activite
+            ),
+
+            "theme": (
+                theme
+            ),
+
+            "niveau": (
+                niveau
+            ),
+
+            "enonce": (
+                enonce
+            ),
+
+            "reponse_eleve": (
+                r.reponse_eleve
+                or ""
+            ),
+
+            "analyse_ia": (
+                r.analyse_ia
+                or ""
+            ),
+
+            # -----------------------------------------------
+            # IMPORTANT :
+            #
+            # None reste None.
+            # -----------------------------------------------
+
+            "etoiles": (
+                etoiles_affichage
+            ),
+
+            "score": (
+                score
+            ),
+
+            "evaluation_disponible": (
+                evaluation_disponible
+            ),
+
+            "requires_review": (
+                requires_review
+            ),
+
+            "date": (
+                date_reponse
+            ),
+
+            "exercice_id": (
+                r.exercice_id
+            ),
+
+            "test_exercice_id": (
+                r.test_exercice_id
+            ),
+
+            "test_id": (
+                r.test_id
+            )
         })
 
-    return render_template("progression_eleve.html", eleve=eleve, exercice=donnees)
+    # ============================================================
+    # STATISTIQUES DE SYNTHÈSE
+    # ============================================================
+
+    total_activites = len(
+        reponses
+    )
+
+    reponses_evaluees = [
+        r
+        for r in reponses
+        if r.etoiles is not None
+    ]
+
+    total_evalues = len(
+        reponses_evaluees
+    )
+
+    non_evalues = (
+        total_activites
+        - total_evalues
+    )
+
+    if total_evalues > 0:
+
+        moyenne_etoiles = round(
+            sum(
+                r.etoiles
+                for r in reponses_evaluees
+            )
+            / total_evalues,
+            2
+        )
+
+    else:
+
+        moyenne_etoiles = None
+
+    # ============================================================
+    # LOG DE CONTRÔLE
+    # ============================================================
+
+    print(
+        "📈 Progression élève : "
+        f"élève={eleve.id}, "
+        f"activités={total_activites}, "
+        f"évaluées={total_evalues}, "
+        f"non évaluées={non_evalues}, "
+        f"moyenne="
+        + (
+            f"{moyenne_etoiles}/5"
+            if moyenne_etoiles is not None
+            else "non disponible"
+        )
+    )
+
+    # ============================================================
+    # RENDU
+    # ============================================================
+
+    return render_template(
+        "progression_eleve.html",
+
+        eleve=eleve,
+
+        # Compatibilité avec ton template actuel :
+        # il semble attendre la variable "exercice".
+        exercice=donnees,
+
+        # Nouvelle variable plus claire disponible
+        # si tu veux moderniser le template plus tard.
+        donnees=donnees,
+
+        total_activites=(
+            total_activites
+        ),
+
+        total_evalues=(
+            total_evalues
+        ),
+
+        non_evalues=(
+            non_evalues
+        ),
+
+        moyenne_etoiles=(
+            moyenne_etoiles
+        ),
+
+        lang=lang
+    )
 
 @app.route("/historique")
 def historique_eleve():
     """
     Historique optimisé d'un élève.
 
-    Version rapide :
+    Version corrigée :
     - charge l'élève une seule fois ;
     - charge les réponses de l'élève une seule fois ;
-    - charge les exercices avec la structure Matière → Unité → Leçon en une requête ;
-    - évite les requêtes répétées dans les boucles.
+    - garde la réponse la plus récente par exercice ;
+    - charge les exercices avec la structure
+      Matière → Unité → Leçon en une requête ;
+    - évite les requêtes répétées dans les boucles ;
+    - distingue exercice non fait, exercice fait non évalué
+      et véritable note de 0 ;
+    - etoiles=None n'est jamais transformé en 0.
     """
 
     from sqlalchemy.orm import joinedload
+
     from models import (
         db,
         User,
@@ -27942,7 +36591,10 @@ def historique_eleve():
     # LANGUE
     # ============================================================
 
-    lang = request.args.get("lang") or session.get("lang", "fr")
+    lang = (
+        request.args.get("lang")
+        or session.get("lang", "fr")
+    )
 
     if lang not in ["fr", "en"]:
         lang = "fr"
@@ -27957,44 +36609,147 @@ def historique_eleve():
     current_user = None
 
     if session.get("user_id"):
-        current_user = db.session.get(User, session["user_id"])
+
+        current_user = db.session.get(
+            User,
+            session["user_id"]
+        )
 
     # ============================================================
     # IDENTIFIER L'ÉLÈVE
     # ============================================================
 
-    username = request.args.get("username")
-    eleve_id_param = request.args.get("eleve_id", type=int)
+    username = request.args.get(
+        "username"
+    )
 
-    eleve_query = User.query.options(joinedload(User.niveau)).filter(
-        User.role.in_(["eleve", "élève"])
+    eleve_id_param = request.args.get(
+        "eleve_id",
+        type=int
+    )
+
+    eleve_query = (
+        User.query
+        .options(
+            joinedload(
+                User.niveau
+            )
+        )
+        .filter(
+            User.role.in_(
+                [
+                    "eleve",
+                    "élève"
+                ]
+            )
+        )
     )
 
     if eleve_id_param:
-        eleve = eleve_query.filter(User.id == eleve_id_param).first()
+
+        eleve = (
+            eleve_query
+            .filter(
+                User.id == eleve_id_param
+            )
+            .first()
+        )
+
     elif username:
-        eleve = eleve_query.filter(User.username == username).first()
-    elif current_user and current_user.role in ["eleve", "élève"]:
-        eleve = eleve_query.filter(User.id == current_user.id).first()
+
+        eleve = (
+            eleve_query
+            .filter(
+                User.username == username
+            )
+            .first()
+        )
+
+    elif (
+        current_user
+        and current_user.role
+        in ["eleve", "élève"]
+    ):
+
+        eleve = (
+            eleve_query
+            .filter(
+                User.id == current_user.id
+            )
+            .first()
+        )
+
     elif session.get("eleve_id"):
-        eleve = eleve_query.filter(User.id == session.get("eleve_id")).first()
+
+        eleve = (
+            eleve_query
+            .filter(
+                User.id
+                == session.get(
+                    "eleve_id"
+                )
+            )
+            .first()
+        )
+
     else:
-        session_username = session.get("eleve_username") or session.get("username")
+
+        session_username = (
+            session.get(
+                "eleve_username"
+            )
+            or session.get(
+                "username"
+            )
+        )
+
         if session_username:
-            eleve = eleve_query.filter(User.username == session_username).first()
+
+            eleve = (
+                eleve_query
+                .filter(
+                    User.username
+                    == session_username
+                )
+                .first()
+            )
+
         else:
+
             eleve = None
 
+    # ============================================================
+    # ÉLÈVE INTROUVABLE
+    # ============================================================
+
     if not eleve:
+
         flash(
-            "Élève introuvable." if lang == "fr" else "Student not found.",
+            (
+                "Élève introuvable."
+                if lang == "fr"
+                else "Student not found."
+            ),
             "danger"
         )
 
-        if current_user and current_user.role == "enseignant":
-            return redirect(url_for("dashboard_enseignant"))
+        if (
+            current_user
+            and current_user.role
+            == "enseignant"
+        ):
 
-        return redirect(url_for("dashboard_eleve"))
+            return redirect(
+                url_for(
+                    "dashboard_enseignant"
+                )
+            )
+
+        return redirect(
+            url_for(
+                "dashboard_eleve"
+            )
+        )
 
     # ============================================================
     # CONTRÔLE D'ACCÈS
@@ -28004,147 +36759,356 @@ def historique_eleve():
     is_enseignant_access = False
     is_eleve_direct_access = False
 
-    if session.get("parent_email"):
+    # ------------------------------------------------------------
+    # Parent
+    # ------------------------------------------------------------
+
+    if session.get(
+        "parent_email"
+    ):
         is_parent_access = True
 
-    if current_user and current_user.role in ["eleve", "élève"]:
+    # ------------------------------------------------------------
+    # Élève connecté
+    # ------------------------------------------------------------
+
+    if (
+        current_user
+        and current_user.role
+        in ["eleve", "élève"]
+    ):
+
         if current_user.id == eleve.id:
             is_eleve_direct_access = True
 
-    if session.get("eleve_id") == eleve.id:
+    # ------------------------------------------------------------
+    # Ancien système de session élève
+    # ------------------------------------------------------------
+
+    if (
+        session.get("eleve_id")
+        == eleve.id
+    ):
         is_eleve_direct_access = True
 
-    if session.get("username") == eleve.username:
+    if (
+        session.get("username")
+        == eleve.username
+    ):
         is_eleve_direct_access = True
 
-    if session.get("eleve_username") == eleve.username:
+    if (
+        session.get(
+            "eleve_username"
+        )
+        == eleve.username
+    ):
         is_eleve_direct_access = True
 
-    if current_user and current_user.role == "enseignant":
-        if getattr(eleve, "enseignant_referent_id", None) == current_user.id:
+    # ------------------------------------------------------------
+    # Enseignant référent
+    # ------------------------------------------------------------
+
+    if (
+        current_user
+        and current_user.role
+        == "enseignant"
+    ):
+
+        if (
+            getattr(
+                eleve,
+                "enseignant_referent_id",
+                None
+            )
+            == current_user.id
+        ):
+
             is_enseignant_access = True
+
         else:
+
             flash(
-                "Vous n'avez pas accès à l'historique de cet élève."
-                if lang == "fr"
-                else "You do not have access to this student's history.",
+                (
+                    "Vous n'avez pas accès "
+                    "à l'historique de cet élève."
+                    if lang == "fr"
+                    else
+                    "You do not have access "
+                    "to this student's history."
+                ),
                 "danger"
             )
-            return redirect(url_for("dashboard_enseignant"))
 
-    if not is_eleve_direct_access and not is_enseignant_access and not is_parent_access:
+            return redirect(
+                url_for(
+                    "dashboard_enseignant"
+                )
+            )
+
+    # ------------------------------------------------------------
+    # Aucun accès autorisé
+    # ------------------------------------------------------------
+
+    if (
+        not is_eleve_direct_access
+        and not is_enseignant_access
+        and not is_parent_access
+    ):
+
         flash(
-            "Accès non autorisé à cet historique."
-            if lang == "fr"
-            else "Unauthorized access to this history.",
+            (
+                "Accès non autorisé "
+                "à cet historique."
+                if lang == "fr"
+                else
+                "Unauthorized access "
+                "to this history."
+            ),
             "danger"
         )
 
-        if current_user and current_user.role == "enseignant":
-            return redirect(url_for("dashboard_enseignant"))
+        if (
+            current_user
+            and current_user.role
+            == "enseignant"
+        ):
 
-        return redirect(url_for("dashboard_eleve"))
+            return redirect(
+                url_for(
+                    "dashboard_enseignant"
+                )
+            )
+
+        return redirect(
+            url_for(
+                "dashboard_eleve"
+            )
+        )
 
     # ============================================================
     # NIVEAU
     # ============================================================
 
-    niveau_eleve = eleve.niveau
+    niveau_eleve = (
+        eleve.niveau
+    )
 
     if not niveau_eleve:
+
         flash(
-            "Le niveau de l'élève n'est pas défini."
-            if lang == "fr"
-            else "The student's level is not defined.",
+            (
+                "Le niveau de l'élève "
+                "n'est pas défini."
+                if lang == "fr"
+                else
+                "The student's level "
+                "is not defined."
+            ),
             "warning"
         )
 
         if is_enseignant_access:
-            return redirect(url_for("dashboard_enseignant"))
 
-        return redirect(url_for("dashboard_eleve"))
+            return redirect(
+                url_for(
+                    "dashboard_enseignant"
+                )
+            )
+
+        return redirect(
+            url_for(
+                "dashboard_eleve"
+            )
+        )
 
     # ============================================================
     # MATIÈRES DE L'ÉLÈVE
+    # ============================================================
+    #
     # 1. Matières choisies par l'élève.
     # 2. Sinon toutes les matières de son niveau.
     # ============================================================
 
     try:
+
         matiere_ids_selectionnees = [
             row[0]
-            for row in db.session.query(EleveMatiere.matiere_id)
-            .filter(EleveMatiere.eleve_id == eleve.id)
-            .all()
+            for row in (
+                db.session.query(
+                    EleveMatiere.matiere_id
+                )
+                .filter(
+                    EleveMatiere.eleve_id
+                    == eleve.id
+                )
+                .all()
+            )
         ]
-    except Exception:
+
+    except Exception as e:
+
+        print(
+            "⚠️ Impossible de récupérer "
+            f"les matières de l'élève : {e}"
+        )
+
         matiere_ids_selectionnees = []
 
     if matiere_ids_selectionnees:
-        matiere_ids = matiere_ids_selectionnees
+
+        matiere_ids = (
+            matiere_ids_selectionnees
+        )
+
     else:
+
         matiere_ids = [
             row[0]
-            for row in db.session.query(Matiere.id)
-            .filter(Matiere.niveau_id == niveau_eleve.id)
-            .all()
+            for row in (
+                db.session.query(
+                    Matiere.id
+                )
+                .filter(
+                    Matiere.niveau_id
+                    == niveau_eleve.id
+                )
+                .all()
+            )
         ]
 
+    # ============================================================
+    # AUCUNE MATIÈRE
+    # ============================================================
+
     if not matiere_ids:
+
         return render_template(
             "historique_eleve.html",
+
             eleve=eleve,
-            niveau_eleve=niveau_eleve,
+
+            niveau_eleve=(
+                niveau_eleve
+            ),
+
             stats_matiere=[],
+
             total_exercices=0,
+
             completed_exercices=0,
+
+            # Nouvelles informations
+            total_evalues=0,
+            total_non_evalues=0,
+
             pourcentage_global=0,
+
             tests=[],
-            is_parent_access=is_parent_access,
-            is_enseignant_access=is_enseignant_access,
-            is_eleve_direct_access=is_eleve_direct_access,
+
+            is_parent_access=(
+                is_parent_access
+            ),
+
+            is_enseignant_access=(
+                is_enseignant_access
+            ),
+
+            is_eleve_direct_access=(
+                is_eleve_direct_access
+            ),
+
             lang=lang
         )
 
     # ============================================================
     # RÉPONSES DE L'ÉLÈVE
+    # ============================================================
+    #
     # Une seule requête.
-    # On garde la réponse la plus récente par exercice.
+    #
+    # On garde la réponse la PLUS RÉCENTE par exercice.
     # ============================================================
 
     reponses = (
         StudentResponse.query
         .filter(
-            StudentResponse.user_id == eleve.id,
-            StudentResponse.exercice_id.isnot(None)
+            StudentResponse.user_id
+            == eleve.id,
+
+            StudentResponse.exercice_id
+            .isnot(None)
         )
-        .order_by(StudentResponse.timestamp.desc())
+        .order_by(
+            StudentResponse.timestamp.desc()
+        )
         .all()
     )
+
+    # ============================================================
+    # DERNIÈRE RÉPONSE PAR EXERCICE
+    # ============================================================
 
     reponse_par_exercice = {}
 
     for r in reponses:
-        if r.exercice_id and r.exercice_id not in reponse_par_exercice:
-            reponse_par_exercice[r.exercice_id] = r
+
+        if (
+            r.exercice_id
+            and r.exercice_id
+            not in reponse_par_exercice
+        ):
+
+            reponse_par_exercice[
+                r.exercice_id
+            ] = r
 
     # ============================================================
     # EXERCICES + STRUCTURE
+    # ============================================================
+    #
     # Une seule grande requête au lieu de requêtes dans les boucles.
     # ============================================================
 
     exercices = (
         Exercice.query
         .options(
-            joinedload(Exercice.lecon)
-            .joinedload(Lecon.unite)
-            .joinedload(Unite.matiere)
+            joinedload(
+                Exercice.lecon
+            )
+            .joinedload(
+                Lecon.unite
+            )
+            .joinedload(
+                Unite.matiere
+            )
         )
-        .join(Lecon, Lecon.id == Exercice.lecon_id)
-        .join(Unite, Unite.id == Lecon.unite_id)
-        .join(Matiere, Matiere.id == Unite.matiere_id)
-        .filter(Matiere.id.in_(matiere_ids))
-        .order_by(Matiere.id.asc(), Unite.id.asc(), Lecon.id.asc(), Exercice.id.asc())
+        .join(
+            Lecon,
+            Lecon.id
+            == Exercice.lecon_id
+        )
+        .join(
+            Unite,
+            Unite.id
+            == Lecon.unite_id
+        )
+        .join(
+            Matiere,
+            Matiere.id
+            == Unite.matiere_id
+        )
+        .filter(
+            Matiere.id.in_(
+                matiere_ids
+            )
+        )
+        .order_by(
+            Matiere.id.asc(),
+            Unite.id.asc(),
+            Lecon.id.asc(),
+            Exercice.id.asc()
+        )
         .all()
     )
 
@@ -28153,151 +37117,652 @@ def historique_eleve():
     # ============================================================
 
     matieres_map = {}
+
     total_exercices = 0
+
+    # Nombre d'exercices qui ont effectivement une réponse.
     completed_exercices = 0
 
+    # Nombre d'exercices tentés et réellement évalués.
+    total_evalues = 0
+
+    # Nombre d'exercices tentés mais sans évaluation.
+    total_non_evalues = 0
+
+    # ============================================================
+    # PARCOURIR LES EXERCICES
+    # ============================================================
+
     for exercice in exercices:
-        if not exercice.lecon or not exercice.lecon.unite or not exercice.lecon.unite.matiere:
+
+        if (
+            not exercice.lecon
+            or not exercice.lecon.unite
+            or not exercice.lecon.unite.matiere
+        ):
             continue
 
-        lecon = exercice.lecon
-        unite = lecon.unite
-        matiere = unite.matiere
+        lecon = (
+            exercice.lecon
+        )
+
+        unite = (
+            lecon.unite
+        )
+
+        matiere = (
+            unite.matiere
+        )
 
         total_exercices += 1
 
+        # ========================================================
+        # NOMS BILINGUES
+        # ========================================================
+
         matiere_nom = (
             matiere.nom_en
-            if lang == "en" and getattr(matiere, "nom_en", None)
+            if (
+                lang == "en"
+                and getattr(
+                    matiere,
+                    "nom_en",
+                    None
+                )
+            )
             else matiere.nom
         )
 
         unite_nom = (
             unite.nom_en
-            if lang == "en" and getattr(unite, "nom_en", None)
+            if (
+                lang == "en"
+                and getattr(
+                    unite,
+                    "nom_en",
+                    None
+                )
+            )
             else unite.nom
         )
 
         lecon_nom = (
             lecon.titre_en
-            if lang == "en" and lecon.titre_en
+            if (
+                lang == "en"
+                and lecon.titre_en
+            )
             else lecon.titre_fr
         )
 
-        if matiere.id not in matieres_map:
-            matieres_map[matiere.id] = {
-                "id": matiere.id,
-                "nom": matiere_nom,
+        # ========================================================
+        # MATIÈRE
+        # ========================================================
+
+        if (
+            matiere.id
+            not in matieres_map
+        ):
+
+            matieres_map[
+                matiere.id
+            ] = {
+                "id": (
+                    matiere.id
+                ),
+
+                "nom": (
+                    matiere_nom
+                ),
+
                 "total_exercices": 0,
+
                 "completed_exercices": 0,
+
+                # Nombre de réponses évaluées.
+                "total_evalues": 0,
+
+                # Nombre de réponses non évaluées.
+                "non_evalues": 0,
+
                 "details": {}
             }
 
-        matiere_data = matieres_map[matiere.id]
-        matiere_data["total_exercices"] += 1
+        matiere_data = (
+            matieres_map[
+                matiere.id
+            ]
+        )
 
-        if unite_nom not in matiere_data["details"]:
-            matiere_data["details"][unite_nom] = {
+        matiere_data[
+            "total_exercices"
+        ] += 1
+
+        # ========================================================
+        # UNITÉ
+        # ========================================================
+
+        if (
+            unite_nom
+            not in matiere_data[
+                "details"
+            ]
+        ):
+
+            matiere_data[
+                "details"
+            ][
+                unite_nom
+            ] = {
                 "total": 0,
+
                 "completed": 0,
+
+                "total_evalues": 0,
+
+                "non_evalues": 0,
+
                 "lecons": {}
             }
 
-        unite_data = matiere_data["details"][unite_nom]
-        unite_data["total"] += 1
+        unite_data = (
+            matiere_data[
+                "details"
+            ][
+                unite_nom
+            ]
+        )
 
-        if lecon_nom not in unite_data["lecons"]:
-            unite_data["lecons"][lecon_nom] = {
+        unite_data[
+            "total"
+        ] += 1
+
+        # ========================================================
+        # LEÇON
+        # ========================================================
+
+        if (
+            lecon_nom
+            not in unite_data[
+                "lecons"
+            ]
+        ):
+
+            unite_data[
+                "lecons"
+            ][
+                lecon_nom
+            ] = {
                 "total": 0,
+
                 "completed": 0,
+
+                "total_evalues": 0,
+
+                "non_evalues": 0,
+
                 "exercices": []
             }
 
-        lecon_data = unite_data["lecons"][lecon_nom]
-        lecon_data["total"] += 1
+        lecon_data = (
+            unite_data[
+                "lecons"
+            ][
+                lecon_nom
+            ]
+        )
 
-        reponse = reponse_par_exercice.get(exercice.id)
+        lecon_data[
+            "total"
+        ] += 1
+
+        # ========================================================
+        # RÉPONSE ASSOCIÉE
+        # ========================================================
+
+        reponse = (
+            reponse_par_exercice.get(
+                exercice.id
+            )
+        )
+
+        # ========================================================
+        # ÉNONCÉ
+        # ========================================================
 
         enonce = (
             exercice.question_en
-            if lang == "en" and exercice.question_en
+            if (
+                lang == "en"
+                and exercice.question_en
+            )
             else exercice.question_fr
         )
 
+        # ========================================================
+        # CAS 1 : EXERCICE TENTÉ
+        # ========================================================
+
         if reponse:
+
             fait = True
+
             completed_exercices += 1
-            matiere_data["completed_exercices"] += 1
-            unite_data["completed"] += 1
-            lecon_data["completed"] += 1
+
+            matiere_data[
+                "completed_exercices"
+            ] += 1
+
+            unite_data[
+                "completed"
+            ] += 1
+
+            lecon_data[
+                "completed"
+            ] += 1
+
+            # ====================================================
+            # ÉVALUATION
+            # ====================================================
+            #
+            # None :
+            #     tentative enregistrée mais non évaluée.
+            #
+            # 0 :
+            #     véritable zéro évalué.
+            # ====================================================
+
+            evaluation_disponible = (
+                reponse.etoiles
+                is not None
+            )
+
+            requires_review = (
+                reponse.etoiles
+                is None
+            )
+
+            # ----------------------------------------------------
+            # Respecter également le marqueur structuré,
+            # lorsqu'il existe.
+            # ----------------------------------------------------
+
+            feedback_structure = (
+                reponse.feedback_ia_structure
+                if isinstance(
+                    reponse.feedback_ia_structure,
+                    dict
+                )
+                else {}
+            )
+
+            if (
+                feedback_structure.get(
+                    "requires_review"
+                )
+                is True
+            ):
+                requires_review = True
+
+            # ----------------------------------------------------
+            # Comptage des évaluations
+            # ----------------------------------------------------
+
+            if evaluation_disponible:
+
+                total_evalues += 1
+
+                matiere_data[
+                    "total_evalues"
+                ] += 1
+
+                unite_data[
+                    "total_evalues"
+                ] += 1
+
+                lecon_data[
+                    "total_evalues"
+                ] += 1
+
+            else:
+
+                total_non_evalues += 1
+
+                matiere_data[
+                    "non_evalues"
+                ] += 1
+
+                unite_data[
+                    "non_evalues"
+                ] += 1
+
+                lecon_data[
+                    "non_evalues"
+                ] += 1
+
+            # ----------------------------------------------------
+            # Données de l'exercice
+            # ----------------------------------------------------
 
             exercice_data = {
-                "id": exercice.id,
+                "id": (
+                    exercice.id
+                ),
+
                 "fait": True,
-                "enonce": enonce or "",
-                "reponse_eleve": reponse.reponse_eleve or "",
-                "analyse_ia": reponse.analyse_ia or "",
-                "etoiles": reponse.etoiles if reponse.etoiles is not None else 0,
-                "date": reponse.timestamp.strftime("%d/%m/%Y %H:%M") if reponse.timestamp else ""
+
+                "enonce": (
+                    enonce or ""
+                ),
+
+                "reponse_eleve": (
+                    reponse.reponse_eleve
+                    or ""
+                ),
+
+                "analyse_ia": (
+                    reponse.analyse_ia
+                    or ""
+                ),
+
+                # ================================================
+                # CORRECTION PRINCIPALE
+                # ================================================
+                #
+                # None reste None.
+                #
+                # On ne fait plus :
+                #
+                #     None -> 0
+                # ================================================
+
+                "etoiles": (
+                    reponse.etoiles
+                ),
+
+                "score": (
+                    reponse.score
+                    if reponse.score
+                    is not None
+                    else None
+                ),
+
+                "evaluation_disponible": (
+                    evaluation_disponible
+                ),
+
+                "requires_review": (
+                    requires_review
+                ),
+
+                "statut_evaluation": (
+                    "evalue"
+                    if evaluation_disponible
+                    else "non_evalue"
+                ),
+
+                "date": (
+                    reponse.timestamp.strftime(
+                        "%d/%m/%Y %H:%M"
+                    )
+                    if reponse.timestamp
+                    else ""
+                )
             }
+
+        # ========================================================
+        # CAS 2 : EXERCICE JAMAIS TENTÉ
+        # ========================================================
+
         else:
+
             fait = False
 
             exercice_data = {
-                "id": exercice.id,
+                "id": (
+                    exercice.id
+                ),
+
                 "fait": False,
-                "enonce": enonce or "",
+
+                "enonce": (
+                    enonce or ""
+                ),
+
                 "reponse_eleve": "",
+
                 "analyse_ia": "",
-                "etoiles": 0,
+
+                # Aucun résultat.
+                # Surtout pas zéro.
+                "etoiles": None,
+
+                "score": None,
+
+                # Il n'est pas évalué parce qu'il n'a même
+                # pas encore été tenté.
+                "evaluation_disponible": False,
+
+                # Une absence de tentative n'est PAS une réponse
+                # incertaine à réviser.
+                "requires_review": False,
+
+                "statut_evaluation": (
+                    "non_commence"
+                ),
+
                 "date": ""
             }
 
-        lecon_data["exercices"].append(exercice_data)
+        # ========================================================
+        # AJOUT À LA LEÇON
+        # ========================================================
+
+        lecon_data[
+            "exercices"
+        ].append(
+            exercice_data
+        )
+
+    # ============================================================
+    # STATISTIQUES PAR MATIÈRE
+    # ============================================================
 
     stats_matiere = []
 
-    for matiere_data in matieres_map.values():
-        total_matiere = matiere_data["total_exercices"]
-        completed_matiere = matiere_data["completed_exercices"]
+    for matiere_data in (
+        matieres_map.values()
+    ):
 
-        matiere_data["pourcentage"] = (
-            completed_matiere / total_matiere * 100
+        total_matiere = (
+            matiere_data[
+                "total_exercices"
+            ]
+        )
+
+        completed_matiere = (
+            matiere_data[
+                "completed_exercices"
+            ]
+        )
+
+        matiere_data[
+            "pourcentage"
+        ] = (
+            completed_matiere
+            / total_matiere
+            * 100
             if total_matiere > 0
             else 0
         )
 
-        stats_matiere.append(matiere_data)
+        # ========================================================
+        # TAUX D'ÉVALUATION DE LA MATIÈRE
+        # ========================================================
+
+        if completed_matiere > 0:
+
+            matiere_data[
+                "taux_evaluation"
+            ] = round(
+                (
+                    matiere_data[
+                        "total_evalues"
+                    ]
+                    / completed_matiere
+                )
+                * 100,
+                1
+            )
+
+        else:
+
+            matiere_data[
+                "taux_evaluation"
+            ] = 0
+
+        stats_matiere.append(
+            matiere_data
+        )
+
+    # ============================================================
+    # PROGRESSION GLOBALE
+    # ============================================================
+    #
+    # La progression mesure les exercices tentés.
+    #
+    # Une réponse non évaluée reste donc une activité réellement
+    # accomplie et ne fait pas disparaître le travail de l'élève.
+    # ============================================================
 
     pourcentage_global = (
-        completed_exercices / total_exercices * 100
+        completed_exercices
+        / total_exercices
+        * 100
         if total_exercices > 0
         else 0
     )
 
+    # ============================================================
+    # TESTS
+    # ============================================================
+
     tests = []
 
-    print("========== HISTORIQUE OPTIMISÉ ==========")
-    print("Élève :", eleve.id, eleve.username, eleve.nom_complet)
-    print("Niveau :", niveau_eleve.nom if niveau_eleve else None)
-    print("Matières IDs :", matiere_ids)
-    print("Total exercices :", total_exercices)
-    print("Exercices complétés :", completed_exercices)
-    print("Nombre matières affichées :", len(stats_matiere))
-    print("=========================================")
+    # ============================================================
+    # LOGS
+    # ============================================================
+
+    print(
+        "========== HISTORIQUE "
+        "OPTIMISÉ =========="
+    )
+
+    print(
+        "Élève :",
+        eleve.id,
+        eleve.username,
+        eleve.nom_complet
+    )
+
+    print(
+        "Niveau :",
+        (
+            niveau_eleve.nom
+            if niveau_eleve
+            else None
+        )
+    )
+
+    print(
+        "Matières IDs :",
+        matiere_ids
+    )
+
+    print(
+        "Total exercices :",
+        total_exercices
+    )
+
+    print(
+        "Exercices complétés :",
+        completed_exercices
+    )
+
+    print(
+        "Exercices évalués :",
+        total_evalues
+    )
+
+    print(
+        "Exercices non évalués :",
+        total_non_evalues
+    )
+
+    print(
+        "Nombre matières affichées :",
+        len(
+            stats_matiere
+        )
+    )
+
+    print(
+        "========================================="
+    )
+
+    # ============================================================
+    # RENDU
+    # ============================================================
 
     return render_template(
         "historique_eleve.html",
+
         eleve=eleve,
-        niveau_eleve=niveau_eleve,
-        stats_matiere=stats_matiere,
-        total_exercices=total_exercices,
-        completed_exercices=completed_exercices,
-        pourcentage_global=pourcentage_global,
+
+        niveau_eleve=(
+            niveau_eleve
+        ),
+
+        stats_matiere=(
+            stats_matiere
+        ),
+
+        total_exercices=(
+            total_exercices
+        ),
+
+        # Exercices réellement tentés.
+        completed_exercices=(
+            completed_exercices
+        ),
+
+        # Nouveaux compteurs disponibles dans le template.
+        total_evalues=(
+            total_evalues
+        ),
+
+        total_non_evalues=(
+            total_non_evalues
+        ),
+
+        pourcentage_global=(
+            pourcentage_global
+        ),
+
         tests=tests,
-        is_parent_access=is_parent_access,
-        is_enseignant_access=is_enseignant_access,
-        is_eleve_direct_access=is_eleve_direct_access,
+
+        is_parent_access=(
+            is_parent_access
+        ),
+
+        is_enseignant_access=(
+            is_enseignant_access
+        ),
+
+        is_eleve_direct_access=(
+            is_eleve_direct_access
+        ),
+
         lang=lang
     )
 
