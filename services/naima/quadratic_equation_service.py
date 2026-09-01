@@ -620,6 +620,500 @@ def validate_coefficients(
         },
     }
 
+def extract_student_discriminant(
+    student_text: str,
+) -> dict:
+
+    result = {
+        "detected": False,
+        "raw_expression": None,
+        "parsed_value": None,
+        "is_simple_value": False,
+    }
+
+    if not student_text:
+        return result
+
+    text = (
+        str(student_text)
+        .replace("Δ", "delta")
+        .replace("δ", "delta")
+        .replace("−", "-")
+        .replace("–", "-")
+        .replace("—", "-")
+    )
+
+    match = re.search(
+        r"\b(?:delta|discriminant)\s*=\s*(.+?)\s*$",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if not match:
+        return result
+
+    raw_expression = (
+        match.group(1)
+        .strip()
+    )
+
+    parse_candidate = (
+        raw_expression
+        .replace("^", "**")
+    )
+
+    parsed_value = (
+        _parse_student_value(
+            parse_candidate
+        )
+    )
+
+    is_simple_value = bool(
+        re.fullmatch(
+            r"[+\-]?"
+            r"(?:"
+            r"\d+/\d+"
+            r"|"
+            r"\d+(?:\.\d+)?"
+            r")",
+            raw_expression,
+        )
+    )
+
+    return {
+        "detected": True,
+        "raw_expression": raw_expression,
+        "parsed_value": parsed_value,
+        "is_simple_value": is_simple_value,
+    }
+
+
+def validate_discriminant(
+    equation: str,
+    student_text: str,
+) -> dict:
+
+    analysis = analyze_quadratic(
+        equation
+    )
+
+    if not analysis.get(
+        "is_quadratic"
+    ):
+        return {
+            "verdict": "uncertain",
+            "confidence": 0.0,
+            "method": "quadratic_discriminant",
+            "result_correct": None,
+            "reasoning_correct": None,
+            "error_type": None,
+            "requires_review": True,
+            "reason": (
+                "Quadratic equation not available."
+            ),
+            "details": analysis,
+        }
+
+    extracted = (
+        extract_student_discriminant(
+            student_text
+        )
+    )
+
+    if not extracted.get(
+        "detected"
+    ):
+        return {
+            "verdict": "uncertain",
+            "confidence": 0.0,
+            "method": "quadratic_discriminant",
+            "result_correct": None,
+            "reasoning_correct": None,
+            "error_type": None,
+            "requires_review": True,
+            "reason": (
+                "No discriminant statement was extracted."
+            ),
+            "details": analysis,
+        }
+
+    student_value = (
+        extracted.get(
+            "parsed_value"
+        )
+    )
+
+    expected_value = (
+        _parse_student_value(
+            analysis.get(
+                "discriminant",
+                "",
+            )
+        )
+    )
+
+    if (
+        student_value is None
+        or expected_value is None
+    ):
+        return {
+            "verdict": "uncertain",
+            "confidence": 0.0,
+            "method": "quadratic_discriminant",
+            "result_correct": None,
+            "reasoning_correct": None,
+            "error_type": None,
+            "requires_review": True,
+            "reason": (
+                "The discriminant expression "
+                "could not be parsed."
+            ),
+            "details": {
+                **analysis,
+                **extracted,
+            },
+        }
+
+    correct = bool(
+        sp.simplify(
+            student_value
+            - expected_value
+        )
+        == 0
+    )
+
+    is_simple_value = bool(
+        extracted.get(
+            "is_simple_value"
+        )
+    )
+
+    method = (
+        "quadratic_discriminant_value"
+        if is_simple_value
+        else "quadratic_discriminant_expression"
+    )
+
+    return {
+        "verdict": (
+            "correct"
+            if correct
+            else "incorrect"
+        ),
+        "confidence": 1.0,
+        "method": method,
+        "result_correct": (
+            correct
+            if is_simple_value
+            else None
+        ),
+        "reasoning_correct": (
+            correct
+            if not is_simple_value
+            else None
+        ),
+        "error_type": (
+            None
+            if correct
+            else (
+                "wrong_quadratic_discriminant_value"
+                if is_simple_value
+                else "wrong_quadratic_discriminant_expression"
+            )
+        ),
+        "requires_review": False,
+        "reason": (
+            "The discriminant is correct."
+            if correct
+            else "The discriminant is incorrect."
+        ),
+        "details": {
+            **analysis,
+            "student_discriminant_expression": (
+                extracted.get(
+                    "raw_expression"
+                )
+            ),
+            "student_discriminant_value": str(
+                sp.simplify(
+                    student_value
+                )
+            ),
+            "expected_discriminant": str(
+                sp.simplify(
+                    expected_value
+                )
+            ),
+            "is_simple_value": (
+                is_simple_value
+            ),
+        },
+    }
+
+
+def detect_discriminant_interpretation(
+    student_text: str,
+) -> dict:
+
+    text = (
+        student_text
+        or ""
+    ).lower()
+
+    normalized = (
+        text
+        .replace("é", "e")
+        .replace("è", "e")
+        .replace("ê", "e")
+        .replace("à", "a")
+        .replace("Δ", "delta")
+        .replace("δ", "delta")
+    )
+
+    if not any(
+        marker in normalized
+        for marker in (
+            "delta",
+            "discriminant",
+        )
+    ):
+        return {
+            "detected": False,
+            "sign": None,
+            "solution_count": None,
+        }
+
+    sign = None
+
+    if any(
+        marker in normalized
+        for marker in (
+            "positif",
+            "superieur a 0",
+            ">0",
+            "> 0",
+        )
+    ):
+        sign = "positive"
+
+    elif any(
+        marker in normalized
+        for marker in (
+            "negatif",
+            "inferieur a 0",
+            "<0",
+            "< 0",
+        )
+    ):
+        sign = "negative"
+
+    elif any(
+        marker in normalized
+        for marker in (
+            "nul",
+            "egal a 0",
+            "=0",
+            "= 0",
+        )
+    ):
+        sign = "zero"
+
+    solution_count = None
+
+    if any(
+        marker in normalized
+        for marker in (
+            "2 solutions",
+            "deux solutions",
+            "2 racines",
+            "deux racines",
+        )
+    ):
+        solution_count = 2
+
+    elif any(
+        marker in normalized
+        for marker in (
+            "1 solution",
+            "une solution",
+            "solution double",
+            "racine double",
+        )
+    ):
+        solution_count = 1
+
+    elif any(
+        marker in normalized
+        for marker in (
+            "aucune solution",
+            "pas de solution",
+            "0 solution",
+            "aucune racine",
+        )
+    ):
+        solution_count = 0
+
+    return {
+        "detected": bool(
+            sign is not None
+            or solution_count is not None
+        ),
+        "sign": sign,
+        "solution_count": solution_count,
+    }
+
+
+def validate_discriminant_interpretation(
+    equation: str,
+    student_text: str,
+) -> dict:
+
+    analysis = analyze_quadratic(
+        equation
+    )
+
+    interpretation = (
+        detect_discriminant_interpretation(
+            student_text
+        )
+    )
+
+    if (
+        not analysis.get(
+            "is_quadratic"
+        )
+        or not interpretation.get(
+            "detected"
+        )
+    ):
+        return {
+            "verdict": "uncertain",
+            "confidence": 0.0,
+            "method": (
+                "quadratic_discriminant_interpretation"
+            ),
+            "result_correct": None,
+            "reasoning_correct": None,
+            "error_type": None,
+            "requires_review": True,
+            "reason": (
+                "No deterministic discriminant "
+                "interpretation was detected."
+            ),
+            "details": {
+                **analysis,
+                **interpretation,
+            },
+        }
+
+    discriminant = (
+        _parse_student_value(
+            analysis.get(
+                "discriminant",
+                "",
+            )
+        )
+    )
+
+    if discriminant is None:
+        return {
+            "verdict": "uncertain",
+            "confidence": 0.0,
+            "method": (
+                "quadratic_discriminant_interpretation"
+            ),
+            "result_correct": None,
+            "reasoning_correct": None,
+            "error_type": None,
+            "requires_review": True,
+            "reason": (
+                "The discriminant sign "
+                "could not be determined."
+            ),
+            "details": analysis,
+        }
+
+    if discriminant > 0:
+        expected_sign = "positive"
+        expected_count = 2
+
+    elif discriminant == 0:
+        expected_sign = "zero"
+        expected_count = 1
+
+    else:
+        expected_sign = "negative"
+        expected_count = 0
+
+    proposed_sign = (
+        interpretation.get(
+            "sign"
+        )
+    )
+
+    proposed_count = (
+        interpretation.get(
+            "solution_count"
+        )
+    )
+
+    sign_correct = (
+        proposed_sign is None
+        or proposed_sign
+        == expected_sign
+    )
+
+    count_correct = (
+        proposed_count is None
+        or proposed_count
+        == expected_count
+    )
+
+    correct = bool(
+        sign_correct
+        and count_correct
+        and (
+            proposed_sign is not None
+            or proposed_count is not None
+        )
+    )
+
+    return {
+        "verdict": (
+            "correct"
+            if correct
+            else "incorrect"
+        ),
+        "confidence": 1.0,
+        "method": (
+            "quadratic_discriminant_interpretation"
+        ),
+        "result_correct": None,
+        "reasoning_correct": correct,
+        "error_type": (
+            None
+            if correct
+            else (
+                "wrong_quadratic_discriminant_interpretation"
+            )
+        ),
+        "requires_review": False,
+        "reason": (
+            "The discriminant interpretation is correct."
+            if correct
+            else (
+                "The discriminant interpretation is incorrect."
+            )
+        ),
+        "details": {
+            **analysis,
+            **interpretation,
+            "expected_sign": expected_sign,
+            "expected_solution_count": (
+                expected_count
+            ),
+        },
+    }
 
 def detect_method_statement(
     student_text: str,

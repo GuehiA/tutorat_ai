@@ -199,6 +199,12 @@ def build_local_response(
         )
     )
 
+    error_type = (
+        validation_dict.get(
+            "error_type"
+        )
+    )
+
     details = (
         validation_dict.get(
             "details"
@@ -291,6 +297,68 @@ def build_local_response(
 
             reason=(
                 "inequality_solution_proved_correct"
+            ),
+        )
+
+    # ==========================================================
+    # 1C. RÉPONSE FINALE LINÉAIRE CORRECTE
+    # ==========================================================
+    #
+    # Cas :
+    #
+    #     équation active : 3*x=5
+    #     élève : x=5/3
+    #
+    # ValidationEngine a déjà prouvé localement que la valeur
+    # proposée vérifie l'équation.
+    #
+    # À ce stade :
+    # - aucune intervention LLM n'est nécessaire ;
+    # - l'objectif est atteint ;
+    # - l'exercice peut être fermé ;
+    # - Naima peut reconnaître le succès sans révéler une
+    #   nouvelle information mathématique.
+    # ==========================================================
+
+    if (
+        verdict == "correct"
+        and method == "equation_solution"
+        and result_correct is True
+    ):
+
+        if lang == "en":
+
+            text = (
+                "🎉 Exactly! Your value of x is correct. "
+                "You have solved the equation successfully. "
+                "— Naima ✨"
+            )
+
+        else:
+
+            text = (
+                "🎉 Exact ! Ta valeur de x est correcte. "
+                "Tu as bien résolu l’équation. "
+                "— Naima ✨"
+            )
+
+        return NaimaResponseDecision(
+            response_type=(
+                "final_correct"
+            ),
+
+            use_local_response=True,
+            use_llm=False,
+
+            text=text,
+
+            objective_reached=True,
+            keep_exercise_open=False,
+
+            solution_leakage_blocked=False,
+
+            reason=(
+                "correct_linear_equation_solution"
             ),
         )
 
@@ -397,6 +465,7 @@ def build_local_response(
 
         # Ne pas révéler la solution manquante.
         if extra:
+
             text = (
                 "Au moins une des valeurs proposées "
                 "ne vérifie pas l’équation. "
@@ -405,6 +474,7 @@ def build_local_response(
             )
 
         elif missing:
+
             text = (
                 "La valeur que tu as proposée peut être "
                 "correcte, mais ton ensemble de solutions "
@@ -415,6 +485,7 @@ def build_local_response(
             )
 
         else:
+
             text = (
                 "Tes solutions ne correspondent pas encore "
                 "exactement à celles de l’équation. "
@@ -504,12 +575,14 @@ def build_local_response(
                 == "divide"
                 and operation_value
             ):
+
                 text = (
                     f"Oui, diviser les deux membres par "
                     f"{operation_value} est la bonne opération"
                 )
 
                 if formatted_equation:
+
                     text += (
                         f" pour {formatted_equation}"
                     )
@@ -521,6 +594,7 @@ def build_local_response(
                 )
 
             else:
+
                 text = (
                     "Oui, cette opération isole correctement x. "
                     "Effectue maintenant le dernier calcul "
@@ -550,6 +624,437 @@ def build_local_response(
                     "final_linear_result_kept_internal"
                 ),
             )
+
+    
+    # ==========================================================
+    # 5B. OPÉRATION LINÉAIRE INCORRECTE PROUVÉE
+    #
+    # Une erreur déterministe ne doit pas être envoyée au LLM.
+    #
+    # Exemples :
+    #   3x=5
+    #   "je divise les deux membres par 2"
+    #
+    # Le moteur sait déjà que l'opération est incorrecte.
+    # Naima localise l'erreur sans révéler la bonne réponse.
+    # ==========================================================
+
+    if (
+        verdict == "incorrect"
+        and method in {
+            "reasoning_operation",
+            "reasoning_linear_transformation",
+        }
+        and reasoning_correct is False
+        and error_type in {
+            "wrong_operation_value",
+            "wrong_operation",
+            "non_progressing_operation",
+        }
+    ):
+
+        operation_type = (
+            details.get(
+                "operation_type"
+            )
+            or ""
+        )
+
+        operation_value = (
+            details.get(
+                "operation_value"
+            )
+            or ""
+        )
+
+        # ------------------------------------------------------
+        # FRANÇAIS
+        # ------------------------------------------------------
+
+        if lang != "en":
+
+            if (
+                error_type
+                == "wrong_operation_value"
+                and operation_type == "divide"
+            ):
+                text = (
+                    "Cette division n’est pas correcte "
+                    "pour l’étape actuelle"
+                )
+
+                if formatted_equation:
+                    text += (
+                        f" : {formatted_equation}"
+                    )
+
+                if operation_value:
+                    text += (
+                        f". Diviser par {operation_value} "
+                        "ne permet pas d’éliminer "
+                        "le coefficient de x"
+                    )
+
+                text += (
+                    ". Par quel nombre dois-tu réellement "
+                    "diviser les deux membres pour isoler x ? "
+                    "— Naima ✨"
+                )
+
+            elif (
+                error_type
+                == "non_progressing_operation"
+            ):
+                text = (
+                    "Cette opération est possible, mais elle "
+                    "ne fait pas progresser l’isolement de x"
+                )
+
+                if formatted_equation:
+                    text += (
+                        f" dans {formatted_equation}"
+                    )
+
+                text += (
+                    ". Quelle opération permettrait réellement "
+                    "d’éliminer le coefficient de x ? "
+                    "— Naima ✨"
+                )
+
+            else:
+                text = (
+                    "Cette opération n’est pas correcte "
+                    "pour l’étape actuelle"
+                )
+
+                if formatted_equation:
+                    text += (
+                        f" : {formatted_equation}"
+                    )
+
+                text += (
+                    ". Quelle opération dois-tu appliquer "
+                    "aux deux membres pour continuer à isoler x ? "
+                    "— Naima ✨"
+                )
+
+        # ------------------------------------------------------
+        # ANGLAIS
+        # ------------------------------------------------------
+
+        else:
+
+            if (
+                error_type
+                == "wrong_operation_value"
+                and operation_type == "divide"
+            ):
+                text = (
+                    "That division is not correct "
+                    "for the current step"
+                )
+
+                if formatted_equation:
+                    text += (
+                        f": {formatted_equation}"
+                    )
+
+                if operation_value:
+                    text += (
+                        f". Dividing by {operation_value} "
+                        "does not eliminate the coefficient of x"
+                    )
+
+                text += (
+                    ". What number should you actually divide "
+                    "both sides by to isolate x? — Naima ✨"
+                )
+
+            elif (
+                error_type
+                == "non_progressing_operation"
+            ):
+                text = (
+                    "That operation is mathematically possible, "
+                    "but it does not move you closer to isolating x"
+                )
+
+                if formatted_equation:
+                    text += (
+                        f" in {formatted_equation}"
+                    )
+
+                text += (
+                    ". What operation would eliminate "
+                    "the coefficient of x? — Naima ✨"
+                )
+
+            else:
+                text = (
+                    "That operation is not correct "
+                    "for the current step"
+                )
+
+                if formatted_equation:
+                    text += (
+                        f": {formatted_equation}"
+                    )
+
+                text += (
+                    ". What operation should you apply "
+                    "to both sides to continue isolating x? "
+                    "— Naima ✨"
+                )
+
+        return NaimaResponseDecision(
+            response_type=(
+                "linear_operation_error"
+            ),
+
+            use_local_response=True,
+            use_llm=False,
+
+            text=text,
+
+            objective_reached=False,
+            keep_exercise_open=True,
+
+            solution_leakage_blocked=True,
+
+            reason=(
+                "deterministic_linear_operation_error"
+            ),
+        )
+
+
+    # ==========================================================
+    # 5C. INÉQUATION : INVERSION DU SENS OUBLIÉE
+    # ==========================================================
+
+    if (
+        verdict == "incorrect"
+        and method == "inequality_direction_rule"
+        and reasoning_correct is False
+        and error_type
+        == "missing_inequality_direction_flip"
+    ):
+
+        if lang == "en":
+
+            text = (
+                "Dividing or multiplying an inequality by a "
+                "negative number requires reversing the "
+                "inequality sign. Apply that rule now and "
+                "write the inequality you obtain. — Naima ✨"
+            )
+
+        else:
+
+            text = (
+                "Comme tu divises ou multiplies une inéquation "
+                "par un nombre négatif, il faut inverser le sens "
+                "du symbole d’inégalité. Applique maintenant "
+                "cette règle et écris l’inéquation obtenue. "
+                "— Naima ✨"
+            )
+
+        return NaimaResponseDecision(
+            response_type=(
+                "inequality_direction_flip_missing"
+            ),
+
+            use_local_response=True,
+            use_llm=False,
+
+            text=text,
+
+            objective_reached=False,
+            keep_exercise_open=True,
+
+            solution_leakage_blocked=True,
+
+            reason=(
+                "missing_inequality_direction_flip"
+            ),
+        )
+
+    # ==========================================================
+    # 5D. INÉQUATION : RÈGLE D'INVERSION CORRECTEMENT APPLIQUÉE
+    # ==========================================================
+
+    if (
+        verdict == "correct"
+        and method == "inequality_direction_rule"
+        and reasoning_correct is True
+    ):
+
+        if lang == "en":
+
+            text = (
+                "Yes. Because you are dividing or multiplying "
+                "by a negative number, the inequality sign "
+                "must reverse. Now carry out the calculation "
+                "yourself and write the inequality you obtain. "
+                "— Naima ✨"
+            )
+
+        else:
+
+            text = (
+                "Oui. Comme tu divises ou multiplies par un "
+                "nombre négatif, il faut inverser le sens de "
+                "l’inégalité. Effectue maintenant le calcul "
+                "toi-même et écris l’inéquation obtenue. "
+                "— Naima ✨"
+            )
+
+        return NaimaResponseDecision(
+            response_type=(
+                "inequality_direction_rule_correct"
+            ),
+
+            use_local_response=True,
+            use_llm=False,
+
+            text=text,
+
+            objective_reached=False,
+            keep_exercise_open=True,
+
+            solution_leakage_blocked=True,
+
+            reason=(
+                "inequality_direction_rule_validated"
+            ),
+        )
+
+    # ==========================================================
+    # 5E. EXPRESSION DU DISCRIMINANT CORRECTE
+    # ==========================================================
+
+    if (
+        verdict == "correct"
+        and method
+        == "quadratic_discriminant_expression"
+    ):
+
+        return NaimaResponseDecision(
+            response_type=(
+                "quadratic_discriminant_expression_correct"
+            ),
+            use_local_response=True,
+            use_llm=False,
+            text=(
+                "C’est exact, tu as correctement écrit "
+                "l’expression du discriminant. "
+                "Effectue maintenant le calcul : "
+                "quelle valeur obtiens-tu pour Δ ? "
+                "— Naima ✨"
+            ),
+            objective_reached=False,
+            keep_exercise_open=True,
+            solution_leakage_blocked=True,
+            reason=(
+                "quadratic_discriminant_expression_validated"
+            ),
+        )
+
+    # ==========================================================
+    # 5F. VALEUR DU DISCRIMINANT CORRECTE
+    # ==========================================================
+
+    if (
+        verdict == "correct"
+        and method
+        == "quadratic_discriminant_value"
+        and result_correct is True
+    ):
+
+        return NaimaResponseDecision(
+            response_type=(
+                "quadratic_discriminant_value_correct"
+            ),
+            use_local_response=True,
+            use_llm=False,
+            text=(
+                "Oui, cette valeur du discriminant est correcte. "
+                "Que peux-tu déduire du signe de Δ concernant "
+                "le nombre de solutions de l’équation ? "
+                "— Naima ✨"
+            ),
+            objective_reached=False,
+            keep_exercise_open=True,
+            solution_leakage_blocked=True,
+            reason=(
+                "quadratic_discriminant_value_validated"
+            ),
+        )
+
+    # ==========================================================
+    # 5G. INTERPRÉTATION DU DISCRIMINANT CORRECTE
+    # ==========================================================
+
+    if (
+        verdict == "correct"
+        and method
+        == "quadratic_discriminant_interpretation"
+        and reasoning_correct is True
+    ):
+
+        return NaimaResponseDecision(
+            response_type=(
+                "quadratic_discriminant_interpretation_correct"
+            ),
+            use_local_response=True,
+            use_llm=False,
+            text=(
+                "Exact. Ton interprétation du discriminant "
+                "est correcte. Utilise maintenant la formule "
+                "quadratique avec a, b et Δ pour déterminer "
+                "les solutions. — Naima ✨"
+            ),
+            objective_reached=False,
+            keep_exercise_open=True,
+            solution_leakage_blocked=True,
+            reason=(
+                "quadratic_discriminant_interpretation_validated"
+            ),
+        )
+
+    # ==========================================================
+    # 5H. ERREUR SUR LE DISCRIMINANT
+    # ==========================================================
+
+    if (
+        verdict == "incorrect"
+        and method in {
+            "quadratic_discriminant_expression",
+            "quadratic_discriminant_value",
+            "quadratic_discriminant_interpretation",
+        }
+    ):
+
+        return NaimaResponseDecision(
+            response_type=(
+                "quadratic_discriminant_error"
+            ),
+            use_local_response=True,
+            use_llm=False,
+            text=(
+                "Il y a une erreur à cette étape du "
+                "discriminant. Reprends Δ = b² - 4ac "
+                "avec les coefficients déjà identifiés "
+                "et vérifie ton calcul ou son interprétation. "
+                "— Naima ✨"
+            ),
+            objective_reached=False,
+            keep_exercise_open=True,
+            solution_leakage_blocked=True,
+            reason=(
+                "quadratic_discriminant_error_localized"
+            ),
+        )
+
 
     # ==========================================================
     # 6. RÉSULTAT CORRECT MAIS RAISONNEMENT FAUX
@@ -600,6 +1105,7 @@ def build_local_response(
         )
 
         if formatted_equation:
+
             text += (
                 f" : {formatted_equation}"
             )
@@ -630,9 +1136,8 @@ def build_local_response(
             ),
         )
 
-
     # ==========================================================
-    # INÉQUATION FINALE INCORRECTE
+    # 7B. INÉQUATION FINALE INCORRECTE
     # ==========================================================
 
     if (

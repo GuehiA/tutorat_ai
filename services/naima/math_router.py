@@ -15,6 +15,8 @@ from services.naima.quadratic_equation_service import (
     analyze_quadratic,
     detect_method_statement,
     validate_coefficients,
+    validate_discriminant,
+    validate_discriminant_interpretation,
     validate_solution_set,
 )
 
@@ -323,6 +325,67 @@ class NaimaMathRouter:
             )
 
         # ------------------------------------------------------
+        # DISCRIMINANT :
+        # EXPRESSION, VALEUR OU INTERPRÉTATION
+        # ------------------------------------------------------
+        #
+        # Exemples :
+        #
+        #   delta = (-5)^2 - 4*3*2
+        #   delta = 1
+        #   le discriminant est positif donc 2 solutions
+        #
+        # On essaie d'abord de valider l'expression / valeur.
+        # Si cela reste incertain, on essaie l'interprétation
+        # du signe de Δ.
+        # ------------------------------------------------------
+
+        if (
+            "delta"
+            in lower_answer
+            or "δ"
+            in lower_answer
+            or "Δ"
+            in student_answer
+            or "discriminant"
+            in lower_answer
+        ):
+
+            discriminant_validation = (
+                validate_discriminant(
+                    equation,
+                    student_answer,
+                )
+            )
+
+            if (
+                discriminant_validation.get(
+                    "verdict"
+                )
+                != "uncertain"
+            ):
+                return (
+                    discriminant_validation
+                )
+
+            interpretation_validation = (
+                validate_discriminant_interpretation(
+                    equation,
+                    student_answer,
+                )
+            )
+
+            if (
+                interpretation_validation.get(
+                    "verdict"
+                )
+                != "uncertain"
+            ):
+                return (
+                    interpretation_validation
+                )
+
+        # ------------------------------------------------------
         # ENSEMBLE DE SOLUTIONS
         # ------------------------------------------------------
 
@@ -431,7 +494,6 @@ class NaimaMathRouter:
                 inequality
             )
         )
-
 
         # ------------------------------------------------------
         # RÉPONSE FINALE D'INÉQUATION

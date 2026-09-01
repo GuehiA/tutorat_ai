@@ -52,9 +52,55 @@ from naima_router import (
 
 
 # 🚀 IMPORTANT: Créer l'app Flask SANS configurer SQLAlchemy immédiatement
-# 🚀 IMPORTANT: Créer l'app Flask SANS configurer SQLAlchemy immédiatement
 app = Flask(__name__)
 load_dotenv()
+
+
+# ====================================================================
+# 🤖 NAIMA V2 - BLUEPRINT MODULAIRE
+# ====================================================================
+
+from routes.naima_routes import (
+    naima_v2_bp,
+    naima_v2_legacy_ajax_response,
+    reset_naima_v2_state,
+)
+
+app.register_blueprint(
+    naima_v2_bp
+)
+
+print("✅ Blueprint Naima v2 enregistré")
+
+NAIMA_V2_ENABLED = (
+    str(
+        os.getenv(
+            "NAIMA_V2_ENABLED",
+            "false",
+        )
+    )
+    .strip()
+    .lower()
+    in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+)
+
+print(
+    "🧪 Naima v2 interface :",
+    "ACTIVÉE"
+    if NAIMA_V2_ENABLED
+    else "désactivée",
+)
+
+# ====================================================================
+# 🤖 CONFIGURATION DES CLIENTS API (OpenAI + DeepSeek)
+# ====================================================================
+
+from openai import OpenAI
 
 # ====================================================================
 # 🤖 CONFIGURATION DES CLIENTS API (OpenAI + DeepSeek)
@@ -1516,6 +1562,38 @@ def reset_chat():
     )
 
     # ============================================================
+    # ÉTAT SPÉCIFIQUE NAIMA V2
+    # ============================================================
+    #
+    # Ces clés peuvent exister même lorsque le feature flag v2
+    # est momentanément désactivé. On les nettoie toujours pour
+    # éviter qu'un ancien tour v2 réapparaisse après un reset.
+    # ============================================================
+
+    for cle_v2 in [
+        "conversation_naima",
+        "equation_initiale_naima",
+        "derniere_question_naima",
+        "derniere_question_ia_naima",
+        "premier_message_naima",
+        "validation_naima_v2",
+        "response_decision_naima_v2",
+        "llm_response_naima_v2",
+        "equation_type_naima_v2",
+        "intention_pedagogique_naima_v2",
+        "nb_indices_recents_naima",
+        "etat_comportemental_naima",
+        "controle_cognitif_naima",
+        "politique_pedagogique_naima",
+        "recuperation_apprentissage_naima",
+        "resume_recuperation_naima",
+    ]:
+        session.pop(
+            cle_v2,
+            None,
+        )
+
+    # ============================================================
     # REMÉDIATION
     # ============================================================
 
@@ -1675,6 +1753,92 @@ def reset_chat():
         )
 
     # ============================================================
+    # RESTAURATION DU CONTEXTE NAIMA V2
+    # ============================================================
+    #
+    # Si un exercice reste actif, Naima v2 doit repartir du début
+    # de CET exercice et non d'une ancienne étape intermédiaire.
+    #
+    # On extrait donc, lorsque c'est possible, la relation
+    # mathématique initiale depuis l'énoncé restauré.
+    # ============================================================
+
+    objectif_v2_restaure = (
+        enonce_exercice_genere
+        if exercice_genere_actif
+        else (
+            objectif_chat_actuel
+            if exercice_chat_actif
+            else ""
+        )
+    )
+
+    relation_initiale_v2 = None
+    equation_type_v2 = None
+
+    if objectif_v2_restaure:
+        try:
+            from services.naima.math_parser_service import (
+                extract_math_relation_from_text,
+                classify_equation,
+            )
+
+            relation_initiale_v2 = (
+                extract_math_relation_from_text(
+                    objectif_v2_restaure
+                )
+            )
+
+            if relation_initiale_v2:
+                equation_type_v2 = (
+                    classify_equation(
+                        relation_initiale_v2
+                    )
+                )
+
+        except Exception as exc:
+            print(
+                "⚠️ Reset Naima v2 : "
+                "relation initiale non extraite :",
+                type(exc).__name__,
+                str(exc),
+            )
+
+    if objectif_v2_restaure:
+        session[
+            "objectif_initial_naima"
+        ] = objectif_v2_restaure
+
+        # L'exercice existe déjà : le prochain message de l'élève
+        # est une continuation, pas un premier énoncé.
+        session[
+            "premier_message_naima"
+        ] = False
+
+        if relation_initiale_v2:
+            session[
+                "equation_courante_naima"
+            ] = relation_initiale_v2
+
+            session[
+                "equation_initiale_naima"
+            ] = relation_initiale_v2
+
+            session[
+                "equation_type_naima_v2"
+            ] = equation_type_v2
+
+            print(
+                "🧭 Contexte Naima v2 restauré :",
+                relation_initiale_v2,
+            )
+
+    else:
+        session[
+            "premier_message_naima"
+        ] = True
+
+    # ============================================================
     # MESSAGE DE REPRISE
     # ============================================================
     #
@@ -1755,6 +1919,20 @@ def reset_chat():
         ] = [
             f"🤖 Naima: {message_reprise}"
         ]
+
+    # ============================================================
+    # SYNCHRONISATION DE LA CONVERSATION V1 / V2
+    # ============================================================
+
+    session[
+        "conversation_naima"
+    ] = list(
+        session.get(
+            "conversation",
+            [],
+        )
+        or []
+    )
 
     # ============================================================
     # SAUVEGARDE
@@ -4348,6 +4526,7 @@ def enseignant_virtuel():
     """
 
     from datetime import datetime
+    import os
     import re
 
     from services.bayesian_diagnostic import diagnostiquer_difficulte
@@ -4412,6 +4591,56 @@ def enseignant_virtuel():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Accès non autorisé'}), 403
         return redirect(url_for("login_eleve"))
+
+    # ============================================================
+    # BASCULE CONTRÔLÉE NAIMA V2
+    # ============================================================
+    #
+    # GET :
+    #     conserve toujours l'affichage historique et le template
+    #     existant.
+    #
+    # POST :
+    #     si NAIMA_V2_ENABLED=true dans .env, le message est traité
+    #     par le pipeline modulaire v2.
+    #
+    # Si le flag est désactivé, tout le pipeline v1.3.2 historique
+    # situé plus bas reste strictement disponible.
+    # ============================================================
+
+    naima_v2_enabled = (
+        str(
+            os.getenv(
+                "NAIMA_V2_ENABLED",
+                "false",
+            )
+        )
+        .strip()
+        .lower()
+        in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+    )
+
+    if (
+        request.method == "POST"
+        and naima_v2_enabled
+    ):
+        from routes.naima_routes import (
+            naima_v2_legacy_ajax_response,
+        )
+
+        print(
+            "🧪 /enseignant-virtuel "
+            "→ moteur Naima v2"
+        )
+
+        return (
+            naima_v2_legacy_ajax_response()
+        )
 
     # ============================================================
     # VARIABLES LOCALES

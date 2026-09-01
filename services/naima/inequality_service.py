@@ -306,17 +306,76 @@ def detect_direction_rule_statement(
         or ""
     ).lower()
 
-    negative_operation = any(
+    # Uniformiser les différents tirets
+    # susceptibles d'être saisis/copiés.
+    value = (
+        value
+        .replace("−", "-")
+        .replace("–", "-")
+        .replace("—", "-")
+    )
+
+    # ==========================================================
+    # 1. DÉTECTION D'UNE OPÉRATION AVEC UN NOMBRE NÉGATIF
+    # ==========================================================
+    #
+    # Exemples reconnus :
+    #
+    #   je divise par -2
+    #   je divise les deux membres par -2
+    #   on divise les deux côtés par -3
+    #   nous divisons chaque membre par -4
+    #
+    #   je multiplie par -2
+    #   je multiplie les deux membres par -3
+    #
+    # L'ancienne détection cherchait littéralement :
+    #
+    #   "divise par -"
+    #
+    # et ne reconnaissait donc pas :
+    #
+    #   "divise les deux membres par -2"
+    #
+    # ==========================================================
+
+    negative_division = bool(
+        re.search(
+            r"\bdivis(?:e|er|ons|ez|ent)?\b"
+            r".{0,60}?"
+            r"\bpar\s*-\s*\d",
+            value,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    negative_multiplication = bool(
+        re.search(
+            r"\bmultipli(?:e|er|ons|ez|ent)?\b"
+            r".{0,60}?"
+            r"\bpar\s*-\s*\d",
+            value,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    explicit_negative_number = any(
         marker in value
         for marker in (
-            "divise par -",
-            "diviser par -",
-            "multiplie par -",
-            "multiplier par -",
             "nombre negatif",
             "nombre négatif",
         )
     )
+
+    negative_operation = bool(
+        negative_division
+        or negative_multiplication
+        or explicit_negative_number
+    )
+
+    # ==========================================================
+    # 2. DÉTECTION DE L'INVERSION DU SENS
+    # ==========================================================
 
     inversion = any(
         marker in value
@@ -330,8 +389,17 @@ def detect_direction_rule_statement(
             "inverser l'inegalite",
             "j inverse le sens",
             "j'inverse le sens",
+            "il faut inverser",
+            "on inverse",
+            "je dois inverser",
+            "le signe s'inverse",
+            "le sens s'inverse",
         )
     )
+
+    # ==========================================================
+    # 3. OPÉRATION NÉGATIVE + INVERSION CORRECTEMENT MENTIONNÉE
+    # ==========================================================
 
     if (
         negative_operation
@@ -344,7 +412,13 @@ def detect_direction_rule_statement(
             "method": (
                 "inequality_direction_rule"
             ),
+            "negative_operation": True,
+            "direction_flip_mentioned": True,
         }
+
+    # ==========================================================
+    # 4. OPÉRATION NÉGATIVE MAIS INVERSION NON MENTIONNÉE
+    # ==========================================================
 
     if (
         negative_operation
@@ -360,13 +434,21 @@ def detect_direction_rule_statement(
             "error_type": (
                 "missing_inequality_direction_flip"
             ),
+            "negative_operation": True,
+            "direction_flip_mentioned": False,
         }
+
+    # ==========================================================
+    # 5. AUCUNE RÈGLE DÉTECTÉE
+    # ==========================================================
 
     return {
         "detected": False,
         "reasoning_correct": None,
         "confidence": 0.0,
         "method": None,
+        "negative_operation": False,
+        "direction_flip_mentioned": False,
     }
 
 

@@ -104,8 +104,6 @@ class NaimaOrchestrator:
               ↓
         validation
               ↓
-        garde répétition
-              ↓
         pipeline pédagogique
               ↓
         décision de réponse
@@ -247,8 +245,73 @@ class NaimaOrchestrator:
         # ======================================================
         # 2. VALIDATION MATHÉMATIQUE
         # ======================================================
+        #
+        # IMPORTANT :
+        #
+        # Lorsqu'un élève présente un NOUVEAU problème :
+        #
+        #     "resoudre 3x=5"
+        #
+        # l'équation extraite ne constitue pas une réponse
+        # de l'élève.
+        #
+        # On ne doit donc pas envoyer ce message au MathRouter
+        # comme s'il s'agissait d'une transformation de 3*x=5.
+        #
+        # Sinon ValidationEngine peut conclure à tort :
+        #
+        #     equation_equivalence
+        #     result_correct = True
+        #
+        # parce que l'équation de l'énoncé est évidemment
+        # équivalente à elle-même.
+        #
+        # Dans ce cas on produit une validation neutre :
+        #
+        #     new_problem_presented
+        #
+        # Le pipeline pédagogique peut ensuite demander au LLM
+        # de formuler la première question socratique.
+        # ======================================================
 
-        if equation:
+        if (
+            context.is_new_problem
+            and intention_resolue.get("type_demande")
+            == "probleme_a_resoudre"
+        ):
+            if equation:
+                context.current_objective = (
+                    f"resoudre {equation}"
+                )
+
+            validation = {
+                "verdict": "uncertain",
+                "confidence": 1.0,
+                "method": (
+                    "new_problem_presented"
+                ),
+                "result_correct": None,
+                "reasoning_correct": None,
+                "error_type": None,
+                "requires_review": False,
+                "reason": (
+                    "L'élève vient de présenter un nouveau "
+                    "problème. L'énoncé ne doit pas être "
+                    "interprété comme une réponse ni comme "
+                    "une transformation déjà effectuée."
+                ),
+                "details": {
+                    "new_problem": True,
+                    "equation": (
+                        equation
+                    ),
+                    "equation_type": (
+                        context.equation_type
+                    ),
+                },
+            }
+
+        elif equation:
 
             validation = (
                 self.math_router.validate(
@@ -256,9 +319,7 @@ class NaimaOrchestrator:
                         message
                     ),
 
-                    equation=(
-                        equation
-                    ),
+                    equation=equation,
 
                     teacher_question=(
                         last_teacher_question
@@ -299,39 +360,27 @@ class NaimaOrchestrator:
         # 2B. RÉPÉTITION DE L'ÉQUATION SANS PROGRESSION
         # ======================================================
 
-        recovery_state_source = (
-            previous_recovery_state
-            or {}
-        )
-
         recovery_active = bool(
-            recovery_state_source.get(
+            (
+                previous_recovery_state
+                or {}
+            ).get(
                 "erreur_active"
             )
-            or recovery_state_source.get(
+            or (
+                previous_recovery_state
+                or {}
+            ).get(
                 "blocage_actif"
             )
         )
 
         repeated_current_equation = bool(
             recovery_active
-
-            # Une vraie répétition ne doit jamais
-            # être confondue avec un nouveau problème.
             and not context.is_new_problem
-
-            # Le contexte actif doit avoir été conservé.
             and context.context_preserved
-
-            # Une relation mathématique doit effectivement
-            # avoir été extraite du message.
             and context.extracted_equation
-
-            # Une relation mathématique active doit exister.
             and context.current_equation
-
-            # La relation répétée est exactement
-            # la relation actuellement travaillée.
             and (
                 context.extracted_equation
                 == context.current_equation
@@ -341,9 +390,7 @@ class NaimaOrchestrator:
         if repeated_current_equation:
 
             validation = {
-                "verdict": (
-                    "uncertain"
-                ),
+                "verdict": "uncertain",
                 "confidence": 0.0,
                 "method": (
                     "equation_repetition_no_progress"
@@ -359,23 +406,12 @@ class NaimaOrchestrator:
                     "ne constitue pas une progression."
                 ),
                 "details": {
-                    "repetition_equation_courante": (
-                        True
-                    ),
+                    "repetition_equation_courante": True,
                     "equation_repetee": (
                         context.extracted_equation
                     ),
                     "equation_courante": (
                         context.current_equation
-                    ),
-                    "recovery_active": (
-                        recovery_active
-                    ),
-                    "context_preserved": (
-                        context.context_preserved
-                    ),
-                    "is_new_problem": (
-                        context.is_new_problem
                     ),
                 },
             }
@@ -388,13 +424,9 @@ class NaimaOrchestrator:
             PedagogicalPipelineResult
         ) = run_pedagogical_pipeline(
 
-            question=(
-                message
-            ),
+            question=message,
 
-            validation=(
-                validation
-            ),
+            validation=validation,
 
             intention=(
                 intention_resolue
@@ -425,9 +457,7 @@ class NaimaOrchestrator:
                 first_message
             ),
 
-            lang=(
-                lang
-            ),
+            lang=lang,
 
             validation_for_recovery=(
                 validation_for_recovery
@@ -442,18 +472,14 @@ class NaimaOrchestrator:
             NaimaResponseDecision
         ) = build_local_response(
 
-            validation=(
-                validation
-            ),
+            validation=validation,
 
             pedagogical_policy=(
                 pedagogical
                 .pedagogical_policy
             ),
 
-            equation=(
-                equation
-            ),
+            equation=equation,
 
             student_answer=(
                 message
@@ -463,9 +489,7 @@ class NaimaOrchestrator:
                 last_teacher_question
             ),
 
-            lang=(
-                lang
-            ),
+            lang=lang,
         )
 
         # ======================================================
@@ -487,11 +511,13 @@ class NaimaOrchestrator:
         ):
 
             try:
+
                 validation_dict = (
                     validation.to_dict()
                 )
 
             except Exception:
+
                 validation_dict = {}
 
         else:
@@ -513,9 +539,7 @@ class NaimaOrchestrator:
 
         return NaimaTurnResult(
 
-            message=(
-                message
-            ),
+            message=message,
 
             intent=(
                 intention_resolue
