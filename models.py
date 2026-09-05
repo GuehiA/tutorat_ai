@@ -1054,81 +1054,363 @@ class TestSommatif(db.Model):
 class StudentResponse(db.Model):
     __tablename__ = "student_responses"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
-    # Élève concerné
+    # ============================================================
+    # ÉLÈVE CONCERNÉ
+    # ============================================================
+
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('users.id', ondelete='CASCADE'),
+        db.ForeignKey(
+            "users.id",
+            ondelete="CASCADE"
+        ),
         nullable=False
     )
 
-    # Exercice normal
+    # ============================================================
+    # EXERCICE NORMAL
+    # ============================================================
+
     exercice_id = db.Column(
         db.Integer,
-        db.ForeignKey('exercices.id', ondelete='CASCADE'),
+        db.ForeignKey(
+            "exercices.id",
+            ondelete="CASCADE"
+        ),
         nullable=True
     )
 
-    # Exercice venant d’un test sommatif
+    # ============================================================
+    # EXERCICE VENANT D'UN TEST SOMMATIF
+    # ============================================================
+
     test_exercice_id = db.Column(
         db.Integer,
-        db.ForeignKey('test_exercices.id'),
+        db.ForeignKey(
+            "test_exercices.id"
+        ),
         nullable=True
     )
 
-    # Test sommatif concerné
+    # ============================================================
+    # TEST SOMMATIF CONCERNÉ
+    # ============================================================
+
     test_id = db.Column(
         db.Integer,
-        db.ForeignKey('tests_sommatifs.id'),
+        db.ForeignKey(
+            "tests_sommatifs.id"
+        ),
         nullable=True
     )
 
-    # Réponse donnée par l’élève
-    reponse_eleve = db.Column(db.Text)
+    # ============================================================
+    # RÉPONSE DE L'ÉLÈVE
+    # ============================================================
 
-    # Analyse textuelle produite par l’IA
-    analyse_ia = db.Column(db.Text)
+    reponse_eleve = db.Column(
+        db.Text
+    )
 
-    # Évaluation simple déjà utilisée dans ton projet
-    # Exemple : 1 à 5 étoiles
-    etoiles = db.Column(db.Integer)
+    # ============================================================
+    # ANALYSE AUTOMATIQUE
+    # ============================================================
 
-    # Nouveau : score numérique plus précis
-    # Exemple : 0 à 100
-    score = db.Column(db.Float, nullable=True)
+    analyse_ia = db.Column(
+        db.Text
+    )
 
-    # Nouveau : type d’erreur détectée par l’IA
-    # Exemples :
-    # erreur_de_calcul, erreur_de_signe, mauvaise_methode,
-    # raisonnement_incomplet, confusion_notion, etc.
-    type_erreur = db.Column(db.String(100), nullable=True)
+    # ------------------------------------------------------------
+    # ÉTOILES AUTOMATIQUES
+    # ------------------------------------------------------------
+    #
+    # Exemple :
+    #
+    # 0 à 5 étoiles
+    #
+    # None signifie :
+    #
+    #     réponse non évaluée automatiquement
+    #
+    # IMPORTANT :
+    # ne jamais transformer automatiquement None en 0.
+    # ------------------------------------------------------------
 
-    # Nouveau : niveau de difficulté de l’exercice au moment de la réponse
-    # Exemples : facile, moyen, difficile
-    niveau_difficulte = db.Column(db.String(50), nullable=True)
+    etoiles = db.Column(
+        db.Integer,
+        nullable=True
+    )
 
-    # Nouveau : temps passé par l’élève sur l’exercice, en secondes
-    temps_passe = db.Column(db.Integer, nullable=True)
+    # ------------------------------------------------------------
+    # SCORE AUTOMATIQUE
+    # ------------------------------------------------------------
+    #
+    # Exemple :
+    #
+    # 0 à 100
+    #
+    # Cette valeur reste la trace de l'évaluation automatique.
+    #
+    # Si un enseignant intervient plus tard, on conserve ce score
+    # au lieu de l'écraser.
+    # ------------------------------------------------------------
 
-    # Nouveau : indique si l’élève a utilisé une aide, un indice ou le chatbot
-    aide_utilisee = db.Column(db.Boolean, default=False)
+    score = db.Column(
+        db.Float,
+        nullable=True
+    )
 
-    # Nouveau : données structurées retournées par l’IA
-    # Utile plus tard pour stocker un JSON comme :
+    # ============================================================
+    # DIAGNOSTIC AUTOMATIQUE
+    # ============================================================
+
+    type_erreur = db.Column(
+        db.String(100),
+        nullable=True
+    )
+
+    niveau_difficulte = db.Column(
+        db.String(50),
+        nullable=True
+    )
+
+    temps_passe = db.Column(
+        db.Integer,
+        nullable=True
+    )
+
+    aide_utilisee = db.Column(
+        db.Boolean,
+        default=False
+    )
+
+    # ============================================================
+    # DONNÉES STRUCTURÉES DE L'ÉVALUATION IA
+    # ============================================================
+    #
+    # Exemple :
+    #
     # {
-    #   "notion": "équations",
-    #   "competence": "isoler une variable",
-    #   "erreur": "ordre_des_operations",
-    #   "confiance": 0.82
+    #     "notion": "équations",
+    #     "competence": "isoler une variable",
+    #     "erreur": "ordre_des_operations",
+    #     "confiance": 0.82,
+    #     "requires_review": true,
+    #     "evaluation_status": "not_evaluated"
     # }
-    feedback_ia_structure = db.Column(db.JSON, nullable=True)
+    #
+    # Cette structure continue d'être utilisée.
+    # ------------------------------------------------------------
 
-    # Date de soumission
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    feedback_ia_structure = db.Column(
+        db.JSON,
+        nullable=True
+    )
 
-    # Relations utiles
-    test_exercice = db.relationship("TestExercice")
+    # ============================================================
+    # RÉVISION HUMAINE PAR L'ENSEIGNANT
+    # ============================================================
+
+    # ------------------------------------------------------------
+    # STATUT DE RÉVISION
+    # ------------------------------------------------------------
+    #
+    # Valeurs prévues :
+    #
+    # not_required
+    #     L'évaluation automatique est suffisamment fiable.
+    #
+    # pending_teacher_review
+    #     L'exercice doit être examiné par l'enseignant.
+    #
+    # reviewed
+    #     L'enseignant a terminé la révision.
+    #
+    # IMPORTANT :
+    # ce statut ne remplace pas les données de l'IA.
+    # ------------------------------------------------------------
+
+    review_status = db.Column(
+        db.String(30),
+        nullable=False,
+        default="not_required",
+        index=True
+    )
+
+    # ------------------------------------------------------------
+    # SCORE DONNÉ PAR L'ENSEIGNANT
+    # ------------------------------------------------------------
+    #
+    # Exemple :
+    #
+    # 85.0
+    #
+    # None signifie :
+    #     aucune intervention humaine sur le score.
+    # ------------------------------------------------------------
+
+    teacher_score = db.Column(
+        db.Float,
+        nullable=True
+    )
+
+    # ------------------------------------------------------------
+    # ÉTOILES DONNÉES PAR L'ENSEIGNANT
+    # ------------------------------------------------------------
+    #
+    # None signifie :
+    #     aucune intervention humaine sur les étoiles.
+    # ------------------------------------------------------------
+
+    teacher_etoiles = db.Column(
+        db.Integer,
+        nullable=True
+    )
+
+    # ------------------------------------------------------------
+    # RÉTROACTION ENSEIGNANT
+    # ------------------------------------------------------------
+
+    teacher_feedback = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    # ------------------------------------------------------------
+    # ENSEIGNANT AYANT EFFECTUÉ LA RÉVISION
+    # ------------------------------------------------------------
+
+    reviewed_by = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "users.id",
+            ondelete="SET NULL"
+        ),
+        nullable=True,
+        index=True
+    )
+
+    # ------------------------------------------------------------
+    # DATE DE RÉVISION
+    # ------------------------------------------------------------
+
+    reviewed_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    # ============================================================
+    # DATE DE SOUMISSION
+    # ============================================================
+
+    timestamp = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    # ============================================================
+    # RELATIONS
+    # ============================================================
+
+    test_exercice = db.relationship(
+        "TestExercice"
+    )
+
+    teacher_reviewer = db.relationship(
+        "User",
+        foreign_keys=[reviewed_by]
+    )
+
+    # ============================================================
+    # PROPRIÉTÉS MÉTIER
+    # ============================================================
+
+    @property
+    def score_final(self):
+        """
+        Retourne le score officiellement utilisé.
+
+        Priorité :
+        1. score enseignant ;
+        2. score automatique.
+
+        L'évaluation humaine remplace donc l'évaluation automatique
+        uniquement pour l'affichage et les calculs finaux.
+
+        Le score automatique original reste conservé en base.
+        """
+
+        if self.teacher_score is not None:
+            return self.teacher_score
+
+        return self.score
+
+
+    @property
+    def etoiles_finales(self):
+        """
+        Retourne le nombre d'étoiles officiellement utilisé.
+
+        Priorité :
+        1. étoiles enseignant ;
+        2. étoiles automatiques.
+
+        Une valeur 0 reste une vraie valeur et ne doit jamais être
+        confondue avec None.
+        """
+
+        if self.teacher_etoiles is not None:
+            return self.teacher_etoiles
+
+        return self.etoiles
+
+
+    @property
+    def en_attente_revision_enseignant(self):
+        """
+        True lorsque cette réponse attend une intervention humaine.
+        """
+
+        return (
+            self.review_status
+            == "pending_teacher_review"
+        )
+
+
+    @property
+    def a_ete_revue_par_enseignant(self):
+        """
+        True lorsque la révision enseignant est terminée.
+        """
+
+        return (
+            self.review_status
+            == "reviewed"
+        )
+
+
+    @property
+    def evaluation_finale_disponible(self):
+        """
+        Indique si une évaluation finale existe réellement.
+
+        Une réponse n'est considérée comme évaluée que si au moins
+        une valeur finale existe.
+
+        IMPORTANT :
+        0 est une vraie note.
+        """
+
+        return bool(
+            self.score_final is not None
+            or self.etoiles_finales is not None
+        )
+
 
 class TraceApprentissage(db.Model):
     __tablename__ = "traces_apprentissage"

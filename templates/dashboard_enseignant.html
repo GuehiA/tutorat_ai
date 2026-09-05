@@ -940,6 +940,31 @@
     </h3>
 
     <div class="action-grid">
+
+      <a href="{{ url_for('corrections_a_revoir') }}" class="action-card warning-soft position-relative">
+        {% if corrections_a_revoir_count|default(0) > 0 %}
+          <div class="badge-notification">{{ corrections_a_revoir_count }}</div>
+        {% endif %}
+
+        <div class="action-icon"><i class="fas fa-clipboard-check"></i></div>
+
+        <div class="action-title">
+          {% if lang == 'en' %}
+            Reviews to complete
+          {% else %}
+            Corrections à revoir
+          {% endif %}
+        </div>
+
+        <div class="action-description">
+          {% if lang == 'en' %}
+            Review answers that could not be graded reliably by the automatic evaluation system.
+          {% else %}
+            Examinez les réponses qui n'ont pas pu être évaluées avec suffisamment de fiabilité par le système automatique.
+          {% endif %}
+        </div>
+      </a>
+
       <a href="{{ url_for('modifier_profil_enseignant') }}" class="action-card">
         <div class="action-icon"><i class="fas fa-user-edit"></i></div>
         <div class="action-title">

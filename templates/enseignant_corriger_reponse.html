@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'fr' }}">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% if lang == "en" %}
+            Review student answer - TutoratAI
+        {% else %}
+            Corriger une réponse - TutoratAI
+        {% endif %}
+    </title>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+
+            --success: #15803d;
+            --success-light: #dcfce7;
+
+            --warning: #b45309;
+            --warning-light: #fff7ed;
+
+            --danger: #b91c1c;
+            --danger-light: #fee2e2;
+
+            --info: #0369a1;
+            --info-light: #e0f2fe;
+
+            --purple: #7c3aed;
+            --purple-light: #ede9fe;
+
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+
+            --white: #ffffff;
+
+            --radius: 16px;
+            --shadow:
+                0 10px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+
+            font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background: var(--gray-50);
+            color: var(--gray-900);
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        /* ======================================================
+           PAGE
+        ====================================================== */
+
+        .review-page {
+            width: min(1280px, 100%);
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        /* ======================================================
+           HEADER
+        ====================================================== */
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+
+            margin-bottom: 24px;
+        }
+
+        .page-title-block h1 {
+            margin: 0 0 8px;
+
+            font-size: 30px;
+            line-height: 1.2;
+        }
+
+        .page-title-block p {
+            margin: 0;
+
+            color: var(--gray-600);
+            line-height: 1.6;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* ======================================================
+           BUTTONS
+        ====================================================== */
+
+        .btn {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+
+            min-height: 42px;
+
+            padding: 10px 16px;
+
+            border-radius: 10px;
+            border: none;
+
+            font-weight: 700;
+            font-size: 14px;
+
+            cursor: pointer;
+
+            transition:
+                transform 0.15s ease,
+                background 0.15s ease,
+                box-shadow 0.15s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--gray-700);
+
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-100);
+        }
+
+        /* ======================================================
+           FLASH
+        ====================================================== */
+
+        .flash-container {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 13px 16px;
+
+            margin-bottom: 10px;
+
+            border-radius: 10px;
+
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        .flash-success {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .flash-error,
+        .flash-danger {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        .flash-warning {
+            background: var(--warning-light);
+            color: var(--warning);
+        }
+
+        .flash-info {
+            background: var(--info-light);
+            color: var(--info);
+        }
+
+        /* ======================================================
+           STUDENT SUMMARY
+        ====================================================== */
+
+        .student-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+
+            margin-bottom: 22px;
+
+            padding: 18px 20px;
+
+            background: var(--white);
+
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+
+            box-shadow: var(--shadow);
+        }
+
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+        }
+
+        .student-avatar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            width: 48px;
+            height: 48px;
+
+            flex-shrink: 0;
+
+            border-radius: 50%;
+
+            background: var(--primary);
+            color: var(--white);
+
+            font-size: 19px;
+            font-weight: 800;
+        }
+
+        .student-name {
+            margin-bottom: 4px;
+
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .student-meta {
+            color: var(--gray-500);
+
+            font-size: 13px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+
+            padding: 7px 11px;
+
+            border-radius: 999px;
+
+            background: var(--warning-light);
+            color: var(--warning);
+
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        /* ======================================================
+           LAYOUT
+        ====================================================== */
+
+        .review-layout {
+            display: grid;
+
+            grid-template-columns:
+                minmax(0, 1.35fr)
+                minmax(340px, 0.65fr);
+
+            gap: 22px;
+
+            align-items: start;
+        }
+
+        .column {
+            display: grid;
+            gap: 18px;
+        }
+
+        /* ======================================================
+           PANELS
+        ====================================================== */
+
+        .panel {
+            overflow: hidden;
+
+            background: var(--white);
+
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+
+            box-shadow: var(--shadow);
+        }
+
+        .panel-header {
+            padding: 15px 18px;
+
+            border-bottom: 1px solid var(--gray-200);
+
+            background: var(--gray-50);
+
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .panel-body {
+            padding: 18px;
+        }
+
+        .content-text {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+
+            color: var(--gray-800);
+
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        /* ======================================================
+           SPECIAL PANELS
+        ====================================================== */
+
+        .student-answer-panel {
+            border-color: #bfdbfe;
+        }
+
+        .student-answer-panel .panel-header {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .expected-panel {
+            border-color: #bbf7d0;
+        }
+
+        .expected-panel .panel-header {
+            background: #f0fdf4;
+            color: var(--success);
+        }
+
+        .reason-panel {
+            border-color: #fed7aa;
+        }
+
+        .reason-panel .panel-header {
+            background: var(--warning-light);
+            color: var(--warning);
+        }
+
+        .ai-panel {
+            border-color: #ddd6fe;
+        }
+
+        .ai-panel .panel-header {
+            background: var(--purple-light);
+            color: var(--purple);
+        }
+
+        /* ======================================================
+           AUTOMATIC SCORE
+        ====================================================== */
+
+        .score-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .score-box {
+            padding: 14px;
+
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+
+            background: var(--gray-50);
+
+            text-align: center;
+        }
+
+        .score-label {
+            display: block;
+
+            margin-bottom: 6px;
+
+            color: var(--gray-500);
+
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .score-value {
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        .pending {
+            color: var(--warning);
+        }
+
+        /* ======================================================
+           FORM
+        ====================================================== */
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+
+            margin-bottom: 7px;
+
+            color: var(--gray-800);
+
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .required {
+            color: var(--danger);
+        }
+
+        select,
+        input,
+        textarea {
+            width: 100%;
+
+            border: 1px solid var(--gray-300);
+            border-radius: 10px;
+
+            background: var(--white);
+            color: var(--gray-900);
+
+            font: inherit;
+
+            outline: none;
+
+            transition:
+                border-color 0.15s ease,
+                box-shadow 0.15s ease;
+        }
+
+        select,
+        input {
+            height: 44px;
+            padding: 0 12px;
+        }
+
+        textarea {
+            min-height: 150px;
+            padding: 12px;
+
+            resize: vertical;
+
+            line-height: 1.55;
+        }
+
+        select:focus,
+        input:focus,
+        textarea:focus {
+            border-color: var(--primary);
+
+            box-shadow:
+                0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .form-help {
+            margin-top: 6px;
+
+            color: var(--gray-500);
+
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        /* ======================================================
+           GRADE BUTTONS
+        ====================================================== */
+
+        .grade-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+        }
+
+        .grade-choice {
+            position: relative;
+        }
+
+        .grade-choice input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .grade-choice label {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            height: 46px;
+
+            border: 1px solid var(--gray-300);
+            border-radius: 10px;
+
+            background: var(--white);
+
+            font-weight: 800;
+
+            cursor: pointer;
+
+            transition:
+                background 0.15s ease,
+                color 0.15s ease,
+                border-color 0.15s ease,
+                transform 0.15s ease;
+        }
+
+        .grade-choice label:hover {
+            transform: translateY(-1px);
+            border-color: var(--primary);
+        }
+
+        .grade-choice input:checked + label {
+            background: var(--primary);
+            color: var(--white);
+            border-color: var(--primary);
+        }
+
+        /* ======================================================
+           FORM ACTIONS
+        ====================================================== */
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+
+            margin-top: 22px;
+        }
+
+        .form-actions .btn {
+            min-width: 150px;
+        }
+
+        /* ======================================================
+           WARNING
+        ====================================================== */
+
+        .review-warning {
+            margin-bottom: 18px;
+
+            padding: 13px 15px;
+
+            border: 1px solid #fed7aa;
+            border-radius: 10px;
+
+            background: var(--warning-light);
+            color: var(--warning);
+
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        /* ======================================================
+           RESPONSIVE
+        ====================================================== */
+
+        @media (max-width: 950px) {
+
+            .review-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 700px) {
+
+            .review-page {
+                padding: 16px;
+            }
+
+            .page-header {
+                flex-direction: column;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .header-actions .btn {
+                flex: 1;
+            }
+
+            .student-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .score-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .grade-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .form-actions {
+                flex-direction: column-reverse;
+            }
+
+            .form-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<section class="review-page">
+
+    <!-- ======================================================
+         HEADER
+    ======================================================= -->
+
+    <header class="page-header">
+
+        <div class="page-title-block">
+
+            <h1>
+                {% if lang == "en" %}
+                    ✏️ Review student answer
+                {% else %}
+                    ✏️ Corriger la réponse
+                {% endif %}
+            </h1>
+
+            <p>
+                {% if lang == "en" %}
+                    Your evaluation will become the effective grade
+                    while preserving the original automatic evaluation.
+                {% else %}
+                    Ton évaluation deviendra la note effective de l'élève
+                    tout en conservant l'évaluation automatique originale.
+                {% endif %}
+            </p>
+
+        </div>
+
+        <div class="header-actions">
+
+            <a
+                href="{{ url_for('corrections_a_revoir') }}"
+                class="btn btn-secondary"
+            >
+                ←
+                {% if lang == "en" %}
+                    Pending reviews
+                {% else %}
+                    Corrections à revoir
+                {% endif %}
+            </a>
+
+        </div>
+
+    </header>
+
+
+    <!-- ======================================================
+         FLASH
+    ======================================================= -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            <div class="flash-container">
+
+                {% for category, message in messages %}
+
+                    <div class="flash flash-{{ category }}">
+                        {{ message }}
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% endif %}
+
+    {% endwith %}
+
+
+    <!-- ======================================================
+         STUDENT
+    ======================================================= -->
+
+    <section class="student-card">
+
+        <div class="student-info">
+
+            <div class="student-avatar">
+
+                {% if eleve and eleve.nom_complet %}
+
+                    {{ eleve.nom_complet[:1]|upper }}
+
+                {% elif eleve and eleve.username %}
+
+                    {{ eleve.username[:1]|upper }}
+
+                {% else %}
+
+                    ?
+
+                {% endif %}
+
+            </div>
+
+            <div>
+
+                <div class="student-name">
+
+                    {{ eleve.nom_complet
+                       or eleve.username
+                       or "Élève" }}
+
+                </div>
+
+                <div class="student-meta">
+
+                    {% if reponse.timestamp %}
+
+                        {% if lang == "en" %}
+                            Submitted:
+                        {% else %}
+                            Soumise le :
+                        {% endif %}
+
+                        {{ reponse.timestamp.strftime(
+                            "%d/%m/%Y %H:%M"
+                        ) }}
+
+                    {% endif %}
+
+                    ·
+
+                    {% if lang == "en" %}
+                        Response
+                    {% else %}
+                        Réponse
+                    {% endif %}
+
+                    #{{ reponse.id }}
+
+                </div>
+
+            </div>
+
+        </div>
+
+        {% if reponse.review_status == "reviewed" %}
+
+            <div
+                class="status-badge"
+                style="
+                    background: var(--success-light);
+                    color: var(--success);
+                "
+            >
+                ✅
+                {% if lang == "en" %}
+                    Reviewed
+                {% else %}
+                    Révisée
+                {% endif %}
+            </div>
+
+        {% else %}
+
+            <div class="status-badge">
+                ⏳
+                {% if lang == "en" %}
+                    Pending review
+                {% else %}
+                    À revoir
+                {% endif %}
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- ======================================================
+         MAIN GRID
+    ======================================================= -->
+
+    <div class="review-layout">
+
+        <!-- ==================================================
+             LEFT COLUMN
+        =================================================== -->
+
+        <div class="column">
+
+            <!-- QUESTION -->
+
+            <section class="panel">
+
+                <div class="panel-header">
+
+                    {% if lang == "en" %}
+                        📘 Exercise
+                    {% else %}
+                        📘 Énoncé
+                    {% endif %}
+
+                </div>
+
+                <div class="panel-body">
+
+                    <div class="content-text">
+                        {{ question or "Question non disponible" }}
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- STUDENT ANSWER -->
+
+            <section class="panel student-answer-panel">
+
+                <div class="panel-header">
+
+                    {% if lang == "en" %}
+                        👤 Student answer
+                    {% else %}
+                        👤 Réponse de l'élève
+                    {% endif %}
+
+                </div>
+
+                <div class="panel-body">
+
+                    <div class="content-text">
+                        {{ reponse.reponse_eleve
+                           or "Aucune réponse disponible." }}
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- EXPECTED ANSWER -->
+
+            <section class="panel expected-panel">
+
+                <div class="panel-header">
+
+                    {% if lang == "en" %}
+                        ✅ Reference answer
+                    {% else %}
+                        ✅ Réponse attendue
+                    {% endif %}
+
+                </div>
+
+                <div class="panel-body">
+
+                    <div class="content-text">
+
+                        {% if reponse_attendue %}
+
+                            {{ reponse_attendue }}
+
+                        {% else %}
+
+                            {% if lang == "en" %}
+                                No reliable reference answer is currently available.
+                            {% else %}
+                                Aucune réponse de référence fiable
+                                n'est actuellement disponible.
+                            {% endif %}
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- OFFICIAL CORRECTION -->
+
+            {% if correction_reference %}
+
+                <section class="panel">
+
+                    <div class="panel-header">
+
+                        {% if lang == "en" %}
+                            🧮 Existing correction
+                        {% else %}
+                            🧮 Corrigé existant
+                        {% endif %}
+
+                    </div>
+
+                    <div class="panel-body">
+
+                        <div class="content-text">
+                            {{ correction_reference }}
+                        </div>
+
+                    </div>
+
+                </section>
+
+            {% endif %}
+
+
+            <!-- REVIEW REASON -->
+
+            <section class="panel reason-panel">
+
+                <div class="panel-header">
+
+                    {% if lang == "en" %}
+                        ⚠️ Why human review was requested
+                    {% else %}
+                        ⚠️ Pourquoi une révision humaine a été demandée
+                    {% endif %}
+
+                </div>
+
+                <div class="panel-body">
+
+                    <div class="content-text">
+                        {{ raison_revision
+                           or "Évaluation automatique non concluante." }}
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- AI ANALYSIS -->
+
+            {% if reponse.analyse_ia %}
+
+                <section class="panel ai-panel">
+
+                    <div class="panel-header">
+
+                        🤖
+
+                        {% if lang == "en" %}
+                            Automatic analysis
+                        {% else %}
+                            Analyse automatique conservée
+                        {% endif %}
+
+                    </div>
+
+                    <div class="panel-body">
+
+                        <div class="content-text">
+                            {{ reponse.analyse_ia }}
+                        </div>
+
+                    </div>
+
+                </section>
+
+            {% endif %}
+
+        </div>
+
+
+        <!-- ==================================================
+             RIGHT COLUMN
+        =================================================== -->
+
+        <div class="column">
+
+            <!-- AUTOMATIC SCORE -->
+
+            <section class="panel">
+
+                <div class="panel-header">
+
+                    {% if lang == "en" %}
+                        🤖 Original automatic evaluation
+                    {% else %}
+                        🤖 Évaluation automatique originale
+                    {% endif %}
+
+                </div>
+
+                <div class="panel-body">
+
+                    <div class="score-summary">
+
+                        <div class="score-box">
+
+                            <span class="score-label">
+
+                                {% if lang == "en" %}
+                                    Grade
+                                {% else %}
+                                    Note
+                                {% endif %}
+
+                            </span>
+
+                            {% if reponse.etoiles is not none %}
+
+                                <span class="score-value">
+                                    {{ reponse.etoiles }}/5
+                                </span>
+
+                            {% else %}
+
+                                <span class="score-value pending">
+                                    —
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <div class="score-box">
+
+                            <span class="score-label">
+                                Score
+                            </span>
+
+                            {% if reponse.score is not none %}
+
+                                <span class="score-value">
+                                    {{ reponse.score|round|int }}%
+                                </span>
+
+                            {% else %}
+
+                                <span class="score-value pending">
+                                    —
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- TEACHER FORM -->
+
+            <section class="panel">
+
+                <div class="panel-header">
+
+                    {% if lang == "en" %}
+                        👨‍🏫 Teacher evaluation
+                    {% else %}
+                        👨‍🏫 Évaluation de l'enseignant
+                    {% endif %}
+
+                </div>
+
+                <div class="panel-body">
+
+                    <div class="review-warning">
+
+                        {% if lang == "en" %}
+
+                            Your evaluation will not erase the automatic
+                            result. It will be stored separately and used
+                            as the effective grade for the student.
+
+                        {% else %}
+
+                            Ton évaluation n'effacera pas le résultat
+                            automatique. Elle sera conservée séparément
+                            et deviendra la note effective affichée
+                            à l'élève.
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <form
+                        method="POST"
+                        action="{{ url_for(
+                            'corriger_reponse_eleve',
+                            response_id=reponse.id
+                        ) }}"
+                    >
+
+                        <!-- ====================================
+                             GRADE / 5
+                        ===================================== -->
+
+                        <div class="form-group">
+
+                            <label class="form-label">
+
+                                {% if lang == "en" %}
+                                    Grade out of 5
+                                {% else %}
+                                    Note sur 5
+                                {% endif %}
+
+                                <span class="required">*</span>
+
+                            </label>
+
+
+                            <div class="grade-grid">
+
+                                {% for note in range(0, 6) %}
+
+                                    <div class="grade-choice">
+
+                                        <input
+                                            type="radio"
+                                            id="grade-{{ note }}"
+                                            name="teacher_etoiles"
+                                            value="{{ note }}"
+                                            required
+
+                                            {% if reponse.teacher_etoiles
+                                                  is not none
+                                                  and reponse.teacher_etoiles
+                                                  == note %}
+                                                checked
+                                            {% endif %}
+                                        >
+
+                                        <label for="grade-{{ note }}">
+                                            {{ note }}
+                                        </label>
+
+                                    </div>
+
+                                {% endfor %}
+
+                            </div>
+
+                            <div class="form-help">
+
+                                {% if lang == "en" %}
+                                    0 = no demonstrated achievement,
+                                    5 = complete and correct response.
+                                {% else %}
+                                    0 = aucune réussite démontrée,
+                                    5 = réponse complète et correcte.
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ====================================
+                             SCORE / 100
+                        ===================================== -->
+
+                        <div class="form-group">
+
+                            <label
+                                for="teacher_score"
+                                class="form-label"
+                            >
+
+                                {% if lang == "en" %}
+                                    Percentage score
+                                {% else %}
+                                    Score en pourcentage
+                                {% endif %}
+
+                            </label>
+
+                            <input
+                                type="number"
+                                id="teacher_score"
+                                name="teacher_score"
+
+                                min="0"
+                                max="100"
+                                step="0.1"
+
+                                value="{% if reponse.teacher_score is not none %}{{ reponse.teacher_score }}{% endif %}"
+
+                                placeholder="{% if lang == 'en' %}Automatically calculated if empty{% else %}Calculé automatiquement si vide{% endif %}"
+                            >
+
+                            <div class="form-help">
+
+                                {% if lang == "en" %}
+                                    Optional. If left empty, TutoratAI
+                                    converts the grade automatically:
+                                    4/5 = 80%.
+                                {% else %}
+                                    Facultatif. Si tu laisses ce champ vide,
+                                    TutoratAI convertira automatiquement
+                                    la note : 4/5 = 80 %.
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ====================================
+                             FEEDBACK
+                        ===================================== -->
+
+                        <div class="form-group">
+
+                            <label
+                                for="teacher_feedback"
+                                class="form-label"
+                            >
+
+                                {% if lang == "en" %}
+                                    Feedback for the student
+                                {% else %}
+                                    Commentaire pour l'élève
+                                {% endif %}
+
+                            </label>
+
+                            <textarea
+                                id="teacher_feedback"
+                                name="teacher_feedback"
+
+                                placeholder="{% if lang == 'en' %}Explain what is correct, what should be improved, or how to proceed...{% else %}Explique ce qui est correct, ce qui doit être amélioré ou comment poursuivre...{% endif %}"
+                            >{{ reponse.teacher_feedback or "" }}</textarea>
+
+                            <div class="form-help">
+
+                                {% if lang == "en" %}
+                                    This feedback will later be displayed
+                                    to the student with the reviewed grade.
+                                {% else %}
+                                    Ce commentaire sera affiché à l'élève
+                                    avec la note révisée.
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ====================================
+                             ACTIONS
+                        ===================================== -->
+
+                        <div class="form-actions">
+
+                            <a
+                                href="{{ url_for(
+                                    'corrections_a_revoir'
+                                ) }}"
+                                class="btn btn-secondary"
+                            >
+
+                                {% if lang == "en" %}
+                                    Cancel
+                                {% else %}
+                                    Annuler
+                                {% endif %}
+
+                            </a>
+
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                            >
+                                ✅
+
+                                {% if lang == "en" %}
+                                    Save review
+                                {% else %}
+                                    Valider la correction
+                                {% endif %}
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </section>
+
+        </div>
+
+    </div>
+
+</section>
+
+</body>
+</html>

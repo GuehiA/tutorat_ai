@@ -3451,7 +3451,7 @@ def api_eleve_stats():
     - compatible SQLAlchemy 2 ;
     - évite User.query.get ;
     - réduit les requêtes ;
-    - cache session de 30 secondes ;
+    - statistiques recalculées à chaque appel afin que les révisions enseignant apparaissent immédiatement ;
     - accepte "eleve" et "élève" ;
     - distingue les exercices évalués et non évalués ;
     - les exercices non évalués ne pénalisent jamais le taux de réussite ;
@@ -3472,42 +3472,6 @@ def api_eleve_stats():
         }), 401
 
     user_id = session.get("user_id")
-
-    # ============================================================
-    # CACHE SESSION
-    # ============================================================
-    #
-    # On garde un petit cache de 30 secondes afin d'éviter que
-    # l'interface déclenche plusieurs calculs identiques de statistiques.
-    #
-    # IMPORTANT :
-    # lorsqu'une nouvelle réponse est enregistrée ailleurs dans
-    # l'application, il est préférable de supprimer :
-    #
-    #     session.pop("api_eleve_stats_cache", None)
-    #
-    # afin que les nouvelles statistiques apparaissent immédiatement.
-    # ============================================================
-
-    cache = session.get("api_eleve_stats_cache")
-
-    if cache:
-        cache_user_id = cache.get("user_id")
-        cache_time = cache.get("timestamp")
-        maintenant = datetime.utcnow().timestamp()
-
-        if (
-            cache_user_id == user_id
-            and cache_time
-            and maintenant - cache_time < 30
-        ):
-            data_cache = dict(
-                cache.get("data", {}) or {}
-            )
-
-            data_cache["cached"] = True
-
-            return jsonify(data_cache)
 
     # ============================================================
     # RÉCUPÉRATION DE L'ÉLÈVE
@@ -3565,6 +3529,26 @@ def api_eleve_stats():
     try:
         if hasattr(StudentResponse, "etoiles"):
 
+            # ========================================================
+            # NOTE EFFECTIVE
+            # ========================================================
+            #
+            # Après révision humaine :
+            #
+            #   teacher_etoiles est prioritaire.
+            #
+            # Sinon :
+            #
+            #   etoiles automatique reste utilisée.
+            #
+            # Une réponse encore sans aucune note reste non évaluée.
+            # ========================================================
+
+            etoiles_effectives = func.coalesce(
+                StudentResponse.teacher_etoiles,
+                StudentResponse.etoiles
+            )
+
             (
                 total_reponses,
                 total_evalues,
@@ -3573,21 +3557,17 @@ def api_eleve_stats():
                 non_evalues
             ) = db.session.query(
 
-                # ------------------------------------------------
-                # Toutes les réponses enregistrées
-                # ------------------------------------------------
+                # Toutes les réponses enregistrées.
                 func.count(
                     StudentResponse.id
                 ),
 
-                # ------------------------------------------------
-                # Réponses réellement évaluées
-                # ------------------------------------------------
+                # Réponses disposant d'une note effective.
                 func.coalesce(
                     func.sum(
                         case(
                             (
-                                StudentResponse.etoiles.isnot(None),
+                                etoiles_effectives.isnot(None),
                                 1
                             ),
                             else_=0
@@ -3596,14 +3576,12 @@ def api_eleve_stats():
                     0
                 ),
 
-                # ------------------------------------------------
-                # Réponses réussies
-                # ------------------------------------------------
+                # Réponses réussies : note effective >= 3.
                 func.coalesce(
                     func.sum(
                         case(
                             (
-                                StudentResponse.etoiles >= 3,
+                                etoiles_effectives >= 3,
                                 1
                             ),
                             else_=0
@@ -3612,21 +3590,17 @@ def api_eleve_stats():
                     0
                 ),
 
-                # ------------------------------------------------
-                # Réponses évaluées mais non réussies
-                #
-                # 0, 1 ou 2 étoiles
-                # ------------------------------------------------
+                # Réponses évaluées mais non réussies : 0, 1 ou 2.
                 func.coalesce(
                     func.sum(
                         case(
                             (
                                 (
-                                    StudentResponse.etoiles.isnot(None)
+                                    etoiles_effectives.isnot(None)
                                 )
                                 &
                                 (
-                                    StudentResponse.etoiles < 3
+                                    etoiles_effectives < 3
                                 ),
                                 1
                             ),
@@ -3636,14 +3610,12 @@ def api_eleve_stats():
                     0
                 ),
 
-                # ------------------------------------------------
-                # Réponses non évaluées
-                # ------------------------------------------------
+                # Aucune note automatique ni humaine disponible.
                 func.coalesce(
                     func.sum(
                         case(
                             (
-                                StudentResponse.etoiles.is_(None),
+                                etoiles_effectives.is_(None),
                                 1
                             ),
                             else_=0
@@ -3657,14 +3629,6 @@ def api_eleve_stats():
             ).one()
 
         else:
-            # ----------------------------------------------------
-            # Compatibilité si un ancien modèle ne possède pas
-            # encore la colonne "etoiles".
-            #
-            # Dans ce cas on ne fabrique pas artificiellement
-            # un taux de réussite.
-            # ----------------------------------------------------
-
             total_reponses = (
                 db.session.query(
                     func.count(
@@ -3963,18 +3927,6 @@ def api_eleve_stats():
         f"non évaluées={non_evalues}, "
         f"taux={taux_reussite}%"
     )
-
-    # ============================================================
-    # SAUVEGARDE CACHE SESSION
-    # ============================================================
-
-    session["api_eleve_stats_cache"] = {
-        "user_id": user_id,
-        "timestamp": datetime.utcnow().timestamp(),
-        "data": dict(data)
-    }
-
-    session.modified = True
 
     return jsonify(data)
 
@@ -13231,21 +13183,20 @@ def supprimer_exercices_multiple():
 @app.route("/eleve/remediation/<int:id>", methods=["GET", "POST"])
 def faire_remediation(id):
     """
-    Permet à un élève de réaliser une remédiation validée.
+    Réalisation d'une remédiation déjà validée par l'enseignant.
 
-    Règle importante concernant l'évaluation :
-
-    - etoiles = None
-        => la réponse n'a pas pu être évaluée avec suffisamment
-           de certitude ou la note n'a pas pu être extraite ;
-        => elle ne doit PAS pénaliser les statistiques de l'élève.
-
-    - etoiles = 0
-        => l'évaluation a réellement produit une note de 0/5 ;
-        => il s'agit alors d'un véritable échec évalué.
-
-    - etoiles >= 3
-        => remédiation réussie.
+    Règles :
+    - une remédiation n'est accessible que si statut == "valide" ;
+    - note >= 3/5 : la remédiation devient "reussie" ;
+    - note < 3/5 : la remédiation courante devient "echouee",
+      puis une NOUVELLE remédiation différente est générée
+      avec statut="en_attente" ;
+    - note automatique incertaine : aucune nouvelle remédiation
+      n'est générée ; StudentResponse passe en
+      pending_teacher_review et la remédiation courante est
+      bloquée en "en_revision" jusqu'à la décision humaine ;
+    - toute nouvelle remédiation IA doit être validée par
+      l'enseignant avant d'être présentée à l'élève.
     """
 
     from datetime import datetime
@@ -13255,13 +13206,53 @@ def faire_remediation(id):
     # AUTHENTIFICATION
     # ============================================================
 
-    eleve_id = session.get("eleve_id")
+    eleve_id = (
+        session.get("eleve_id")
+        or (
+            session.get("user_id")
+            if session.get("role")
+            in ["eleve", "élève"]
+            else None
+        )
+    )
 
     if not eleve_id:
-        return redirect("/login-eleve")
+        return redirect(
+            url_for("login_eleve")
+        )
+
+    try:
+        eleve_id_int = int(
+            eleve_id
+        )
+    except (
+        TypeError,
+        ValueError
+    ):
+        return (
+            "Identifiant élève invalide",
+            400
+        )
+
+    eleve = db.session.get(
+        User,
+        eleve_id_int
+    )
+
+    if (
+        not eleve
+        or eleve.role not in [
+            "eleve",
+            "élève"
+        ]
+    ):
+        return (
+            "Élève introuvable",
+            404
+        )
 
     # ============================================================
-    # RÉCUPÉRATION DE LA REMÉDIATION ET DE L'ÉLÈVE
+    # REMÉDIATION
     # ============================================================
 
     remediation = db.session.get(
@@ -13270,43 +13261,29 @@ def faire_remediation(id):
     )
 
     if not remediation:
-        return "Remédiation introuvable", 404
-
-    try:
-        eleve_id_int = int(eleve_id)
-    except (TypeError, ValueError):
-        return "Identifiant élève invalide", 400
-
-    eleve = db.session.get(
-        User,
-        eleve_id_int
-    )
-
-    if not eleve:
-        return "Élève introuvable", 404
-
-    # ============================================================
-    # AUTORISATION
-    # ============================================================
+        return (
+            "Remédiation introuvable",
+            404
+        )
 
     if remediation.user_id != eleve.id:
-        return "Accès non autorisé", 403
-
-    # ============================================================
-    # LANGUE
-    # ============================================================
+        return (
+            "Accès non autorisé",
+            403
+        )
 
     lang = (
-        eleve.langue
-        if (
-            hasattr(eleve, "langue")
-            and eleve.langue == "en"
-        )
+        "en"
+        if getattr(
+            eleve,
+            "langue",
+            None
+        ) == "en"
         else "fr"
     )
 
     # ============================================================
-    # LA REMÉDIATION DOIT ÊTRE VALIDÉE
+    # SEULE UNE REMÉDIATION VALIDÉE EST ACCESSIBLE
     # ============================================================
 
     if remediation.statut != "valide":
@@ -13316,523 +13293,696 @@ def faire_remediation(id):
         )
 
     # ============================================================
-    # SOUMISSION DE LA RÉPONSE
+    # EXTRACTION QUESTION / RÉPONSE / EXPLICATION
     # ============================================================
 
-    if request.method == "POST":
+    question = ""
+    reponse_attendue = ""
+    explication_reference = ""
 
-        reponse_texte = (
-            request.form.get("reponse_eleve")
-            or request.form.get("reponse", "")
-        )
+    for ligne in (
+        remediation.exercice_suggere
+        or ""
+    ).splitlines():
 
-        reponse_texte = str(
-            reponse_texte or ""
+        ligne = str(
+            ligne or ""
         ).strip()
 
-        if not reponse_texte:
-            return "Réponse vide", 400
+        if not ligne:
+            continue
 
-        # ========================================================
-        # EXTRACTION DE LA QUESTION ET DE LA RÉPONSE ATTENDUE
-        # ========================================================
+        ligne = (
+            ligne.lstrip("- ")
+            .strip()
+        )
 
-        question = ""
-        reponse_attendue = ""
+        lower = ligne.lower()
 
-        if remediation.exercice_suggere:
+        if (
+            not question
+            and lower.startswith(
+                "question"
+            )
+            and ":" in ligne
+        ):
+            question = (
+                ligne.split(
+                    ":",
+                    1
+                )[1].strip()
+            )
 
-            for ligne in (
-                remediation.exercice_suggere
-                .splitlines()
-            ):
+        elif (
+            not reponse_attendue
+            and (
+                lower.startswith(
+                    "réponse attendue"
+                )
+                or lower.startswith(
+                    "reponse attendue"
+                )
+                or lower.startswith(
+                    "expected answer"
+                )
+            )
+            and ":" in ligne
+        ):
+            reponse_attendue = (
+                ligne.split(
+                    ":",
+                    1
+                )[1].strip()
+            )
 
-                ligne = str(ligne or "").strip()
+        elif (
+            not explication_reference
+            and (
+                lower.startswith(
+                    "explication"
+                )
+                or lower.startswith(
+                    "explanation"
+                )
+            )
+            and ":" in ligne
+        ):
+            explication_reference = (
+                ligne.split(
+                    ":",
+                    1
+                )[1].strip()
+            )
 
-                if (
-                    not question
-                    and (
-                        "Question :" in ligne
-                        or "Question:" in ligne
-                    )
-                ):
-                    question = (
-                        ligne.split(":", 1)[1]
-                        .strip()
-                    )
+    # ============================================================
+    # GET
+    # ============================================================
 
-                elif (
-                    not reponse_attendue
-                    and (
-                        "Réponse attendue" in ligne
-                        or "Expected answer" in ligne
-                    )
-                ):
-                    reponse_attendue = (
-                        ligne.split(":", 1)[1]
-                        .strip()
-                    )
+    if request.method == "GET":
+        return render_template(
+            "faire_remediation.html",
+            remediation=remediation,
+            eleve=eleve,
+            lang=lang,
+            feedback=None,
+            etoiles=None
+        )
 
-        # ========================================================
-        # PROMPT D'ÉVALUATION
-        # ========================================================
+    # ============================================================
+    # POST
+    # ============================================================
 
-        if lang == "en":
+    reponse_texte = str(
+        request.form.get(
+            "reponse_eleve"
+        )
+        or request.form.get(
+            "reponse",
+            ""
+        )
+        or ""
+    ).strip()
 
-            prompt = f"""
-You are a rigorous and expert math teacher. You must evaluate a student's solution.
+    if not reponse_texte:
+        return (
+            "Réponse vide",
+            400
+        )
 
-📘 Problem:
+    # ============================================================
+    # ÉVALUATION DE LA RÉPONSE
+    # ============================================================
+
+    if lang == "en":
+        prompt = f"""
+You are a rigorous math teacher.
+
+Problem:
 {question}
 
-📜 Student's Response:
+Student response:
 {reponse_texte}
 
-🌟 Expected Final Answer (provided by human expert):
+Expected answer:
 {reponse_attendue}
 
-🔍 Instructions:
-- Solve the problem yourself and make sure your final answer matches the expert-provided one.
-- Compare each line of the student's reasoning with your own.
-- Accept steps that are logically and mathematically correct, even if expressed differently.
-- Do not claim something is wrong if it is correct but differently presented.
-- Be pedagogical and constructive in your feedback.
-- Use the informal "you" to address the student directly for a more familiar tone.
-- Give priority to reasoning over final result.
-- Award partial credit for correct steps.
-- Important: Do not contradict yourself. If the final answer is correct and the reasoning is valid, do not say otherwise.
+Reference explanation:
+{explication_reference}
 
-⭐ SCORING SCALE (5 POINTS MAXIMUM):
-- 5/5: Excellent reasoning, complete methodology, correct result
-- 4/5: Very good reasoning, appropriate method, minor calculation error
-- 3/5: Good overall approach, method understood but imperfect application
-- 2/5: Partial reasoning, some relevant elements but incomplete
-- 1/5: Fragmented approach, very limited correct elements
-- 0/5: Off-topic or no answer
+Evaluate reasoning and result.
+Give partial credit where appropriate.
 
-IMPORTANT:
-- You MUST use the 5-point scale above.
-- ALWAYS write exactly "Score: X/5" in your response.
+Use:
+5/5 = complete and correct
+4/5 = very good, minor error
+3/5 = generally correct method
+2/5 = partial understanding
+1/5 = very limited correct work
+0/5 = no meaningful correct work
 
-Output format:
+Write EXACTLY:
 Analysis:
 [...]
 
 Score: X/5
 
 Correction:
-- Expert resolution: [...]
-- Final answer: [...]
+[...]
 """
+    else:
+        prompt = f"""
+Tu es un professeur de mathématiques rigoureux.
 
-        else:
-
-            prompt = f"""
-Tu es un professeur de mathématiques expert et rigoureux. Tu dois évaluer la réponse d'un élève.
-
-📘 Énoncé :
+Énoncé :
 {question}
 
-📜 Réponse de l'élève :
+Réponse de l'élève :
 {reponse_texte}
 
-🌟 Réponse finale attendue :
+Réponse attendue :
 {reponse_attendue}
 
-🔍 Ce que tu dois faire :
-- Résous l'exercice toi-même.
-- Compare chaque étape du raisonnement de l'élève avec ta propre résolution.
-- Accepte toute transformation mathématiquement correcte, même si elle est formulée autrement.
-- Ne déclare pas une étape fausse simplement parce qu'elle est différente de ta méthode.
-- Sois pédagogique, clair et bienveillant.
-- Tutoie l'élève.
-- Privilégie le raisonnement sur le résultat final.
-- Accorde des points partiels pour les étapes réellement correctes.
-- Ne te contredis pas : si la réponse finale et le raisonnement sont corrects, ne dis pas qu'ils sont faux.
+Explication de référence :
+{explication_reference}
 
-⭐ BARÈME (5 POINTS MAXIMUM) :
-- 5/5 : Raisonnement excellent, méthodologie complète, résultat correct
-- 4/5 : Très bon raisonnement, méthode appropriée, erreur mineure de calcul
-- 3/5 : Bonne démarche globale, méthode comprise mais application imparfaite
-- 2/5 : Raisonnement partiel, éléments pertinents mais incomplets
-- 1/5 : Démarche ébauchée, éléments corrects très limités
-- 0/5 : Hors sujet ou absence de réponse
+Évalue le raisonnement et le résultat.
+Accorde des points partiels lorsque c'est justifié.
 
-IMPORTANT :
-- Tu DOIS utiliser le barème sur 5 points ci-dessus.
-- Écris TOUJOURS exactement "Note : X/5".
+Utilise :
+5/5 = complet et correct
+4/5 = très bon, erreur mineure
+3/5 = méthode globalement correcte
+2/5 = compréhension partielle
+1/5 = très peu d'éléments corrects
+0/5 = aucun travail correct significatif
 
-Format attendu :
-
+Écris EXACTEMENT :
 Analyse :
 [...]
 
 Note : X/5
 
 Correction :
-- Résolution experte : [...]
-- Résultat final : [...]
+[...]
 """
 
-        # ========================================================
-        # APPEL IA
-        # ========================================================
+    try:
+        analyse_ia = str(
+            get_ai_response(
+                messages=[
+                    {
+                        "role":
+                            "user",
 
-        try:
+                        "content":
+                            prompt
+                    }
+                ],
+                matiere="maths",
+                difficulte="moyen",
+                max_tokens=700,
+                temperature=0.2
+            ) or ""
+        ).strip()
 
-            chat_completion = (
-                client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                )
-            )
+    except Exception as e:
+        print(
+            "❌ Erreur IA pendant "
+            f"la remédiation : {e}"
+        )
 
-            analyse_ia = (
-                chat_completion
-                .choices[0]
-                .message
-                .content
-                .strip()
-            )
+        analyse_ia = ""
 
-        except Exception as e:
+    # ============================================================
+    # EXTRACTION DE LA NOTE
+    # ============================================================
 
-            print(
-                "❌ Erreur IA pendant "
-                f"la remédiation : {e}"
-            )
+    etoiles = None
+    score_pourcentage = None
 
-            return (
-                f"Erreur IA : {e}",
-                500
-            )
+    match = re.search(
+        r"(?:Note|Score)\s*:\s*([0-5])\s*/\s*5\b",
+        analyse_ia,
+        re.IGNORECASE
+    )
 
-        # ========================================================
-        # EXTRACTION DE LA NOTE
-        # ========================================================
-        #
-        # IMPORTANT :
-        #
-        # Avant :
-        #
-        #     etoiles = 0
-        #
-        # Cela transformait une note introuvable en échec.
-        #
-        # Maintenant :
-        #
-        #     etoiles = None
-        #
-        # Une note n'existe QUE si elle est réellement extraite.
-        # ========================================================
-
-        etoiles = None
-        score_pourcentage = None
-
-        # --------------------------------------------------------
-        # Format principal :
-        #
-        # Note : 4/5
-        # Score: 4/5
-        # --------------------------------------------------------
-
+    if not match:
         match = re.search(
-            r"(?:Note|Score)\s*:\s*([0-5])\s*/\s*5\b",
+            r"(?:Note|Score)\s*:\s*([0-5])\b",
             analyse_ia,
             re.IGNORECASE
         )
 
-        if match:
+    if match:
+        etoiles = int(
+            match.group(1)
+        )
 
-            etoiles = int(
-                match.group(1)
+        score_pourcentage = int(
+            etoiles * 20
+        )
+
+    # ============================================================
+    # ENREGISTRER LA TENTATIVE SUR LA REMÉDIATION COURANTE
+    # ============================================================
+
+    remediation.reponse_eleve = (
+        reponse_texte
+    )
+
+    if hasattr(
+        remediation,
+        "date_soumission"
+    ):
+        remediation.date_soumission = (
+            datetime.utcnow()
+        )
+
+    # ============================================================
+    # STATUT DE LA REMÉDIATION COURANTE
+    # ============================================================
+
+    nouvelle_remediation = None
+
+    if etoiles is None:
+        # --------------------------------------------------------
+        # ÉVALUATION INCERTAINE :
+        # on ne génère RIEN de nouveau.
+        #
+        # La correction humaine décidera :
+        # - >=3 : réussite
+        # - <3 : génération d'une nouvelle remédiation
+        # --------------------------------------------------------
+
+        remediation.statut = (
+            "en_revision"
+        )
+
+        print(
+            "🛡️ Remédiation en attente "
+            "de correction humaine."
+        )
+
+    elif etoiles >= 3:
+        remediation.statut = (
+            "reussie"
+        )
+
+        print(
+            "✅ Remédiation réussie "
+            f"({etoiles}/5)."
+        )
+
+    else:
+        # --------------------------------------------------------
+        # ÉCHEC RÉEL :
+        #
+        # on NE réactive PAS cette remédiation.
+        # Elle est conservée dans l'historique.
+        # --------------------------------------------------------
+
+        remediation.statut = (
+            "echouee"
+        )
+
+        # --------------------------------------------------------
+        # ÉVITER UN DOUBLON DÉJÀ EN ATTENTE
+        # --------------------------------------------------------
+
+        remediation_deja_en_attente = (
+            RemediationSuggestion.query
+            .filter(
+                RemediationSuggestion.user_id
+                == eleve.id,
+
+                RemediationSuggestion.lecon
+                == remediation.lecon,
+
+                RemediationSuggestion.statut
+                == "en_attente"
+            )
+            .order_by(
+                RemediationSuggestion.timestamp.desc()
+            )
+            .first()
+        )
+
+        if remediation_deja_en_attente:
+            nouvelle_remediation = (
+                remediation_deja_en_attente
             )
 
             print(
-                "⭐ Note remédiation "
-                f"extraite: {etoiles}/5"
+                "ℹ️ Une remédiation est déjà "
+                "en attente de validation : "
+                f"id={nouvelle_remediation.id}"
             )
 
         else:
+            if lang == "en":
+                prompt_nouvelle_remediation = f"""
+Create ONE NEW remediation exercise targeting the same skill.
 
-            # ----------------------------------------------------
-            # Fallback prudent :
-            #
-            # Note : 4
-            # Score: 4
-            #
-            # On exige toujours une valeur comprise entre 0 et 5.
-            # ----------------------------------------------------
+IMPORTANT:
+- Do NOT repeat the previous remediation.
+- Change numbers, context, wording, or representation.
+- Keep the same mathematical skill.
+- The new exercise must be solvable and unambiguous.
+- Provide the expected answer and a short explanation.
+- Do not simply ask the learner to retry the same problem.
 
-            match = re.search(
-                r"(?:Note|Score)\s*:\s*([0-5])\b",
-                analyse_ia,
-                re.IGNORECASE
-            )
+Previous remediation:
+{remediation.exercice_suggere or ""}
 
-            if match:
+Student response:
+{reponse_texte}
 
-                etoiles = int(
-                    match.group(1)
+Automatic grade:
+{etoiles}/5
+
+Automatic analysis:
+{analyse_ia}
+
+Return EXACTLY:
+Remediation:
+- Question: ...
+- Expected answer: ...
+- Explanation: ...
+"""
+            else:
+                prompt_nouvelle_remediation = f"""
+Crée UNE NOUVELLE remédiation ciblant la même compétence.
+
+IMPORTANT :
+- NE répète PAS la remédiation précédente.
+- Change les nombres, le contexte, la formulation ou la représentation.
+- Conserve la même compétence mathématique.
+- Le nouvel exercice doit être solvable et non ambigu.
+- Donne la réponse attendue et une courte explication.
+- Ne demande pas simplement à l'élève de refaire le même problème.
+
+Remédiation précédente :
+{remediation.exercice_suggere or ""}
+
+Réponse de l'élève :
+{reponse_texte}
+
+Note automatique :
+{etoiles}/5
+
+Analyse automatique :
+{analyse_ia}
+
+Retourne EXACTEMENT :
+Remédiation :
+- Question : ...
+- Réponse attendue : ...
+- Explication : ...
+"""
+
+            try:
+                nouveau_contenu = str(
+                    get_ai_response(
+                        messages=[
+                            {
+                                "role":
+                                    "user",
+
+                                "content":
+                                    prompt_nouvelle_remediation
+                            }
+                        ],
+                        matiere="maths",
+                        difficulte="moyen",
+                        max_tokens=500,
+                        temperature=0.5
+                    ) or ""
+                ).strip()
+
+            except Exception as generation_error:
+                print(
+                    "⚠️ Impossible de générer "
+                    "la nouvelle remédiation : "
+                    f"{generation_error}"
                 )
 
+                nouveau_contenu = ""
+
+            if nouveau_contenu:
+                nouvelle_remediation = (
+                    RemediationSuggestion(
+                        user_id=eleve.id,
+
+                        theme=(
+                            remediation.theme
+                        ),
+
+                        lecon=(
+                            remediation.lecon
+                        ),
+
+                        message=(
+                            (
+                                "Nouvelle remédiation générée "
+                                "après une tentative insuffisante. "
+                                "Validation enseignant requise."
+                            )
+                            if lang != "en"
+                            else
+                            (
+                                "New remediation generated "
+                                "after an insufficient attempt. "
+                                "Teacher validation required."
+                            )
+                        ),
+
+                        exercice_suggere=(
+                            nouveau_contenu
+                        ),
+
+                        # IMPORTANT :
+                        # l'élève ne peut pas encore l'utiliser.
+                        statut="en_attente",
+
+                        timestamp=datetime.utcnow()
+                    )
+                )
+
+                if hasattr(
+                    nouvelle_remediation,
+                    "vue_par_eleve"
+                ):
+                    nouvelle_remediation.vue_par_eleve = (
+                        False
+                    )
+
+                db.session.add(
+                    nouvelle_remediation
+                )
+
+                db.session.flush()
+
                 print(
-                    "⭐ Note remédiation "
-                    "extraite sans /5 : "
-                    f"{etoiles}/5"
+                    "📝 Nouvelle remédiation créée "
+                    "en attente de validation : "
+                    f"id={nouvelle_remediation.id}"
                 )
 
             else:
-
                 print(
-                    "⚠️ Impossible d'extraire "
-                    "une note fiable de l'analyse IA."
+                    "⚠️ Aucune nouvelle remédiation créée : "
+                    "le générateur n'a pas fourni "
+                    "un exercice exploitable."
                 )
 
-                print(
-                    "🛡️ La réponse sera enregistrée "
-                    "comme NON ÉVALUÉE."
-                )
+    # ============================================================
+    # STUDENT RESPONSE
+    # ============================================================
 
-        # ========================================================
-        # SCORE POURCENTAGE
-        # ========================================================
+    review_status = (
+        "pending_teacher_review"
+        if etoiles is None
+        else "not_required"
+    )
 
-        if etoiles is not None:
+    feedback_ia_structure = {
+        "source":
+            "remediation",
 
-            score_pourcentage = int(
-                etoiles * 20
-            )
+        "remediation_id":
+            remediation.id,
 
-        # ========================================================
-        # CRÉATION DE STUDENT RESPONSE
-        # ========================================================
-        #
-        # Une tentative de remédiation est bien conservée comme
-        # activité même lorsque sa note n'a pas pu être déterminée.
-        #
-        # Mais etoiles=None signifie explicitement :
-        # NON ÉVALUÉ.
-        # ========================================================
+        "next_remediation_id":
+            (
+                nouvelle_remediation.id
+                if nouvelle_remediation
+                else None
+            ),
 
-        reponse = StudentResponse(
-            user_id=eleve.id,
+        "lang":
+            lang,
 
-            # Ce StudentResponse correspond à une remédiation,
-            # pas à un exercice normal.
-            exercice_id=None,
+        "question":
+            question,
 
-            reponse_eleve=reponse_texte,
-            analyse_ia=analyse_ia,
+        "reponse_attendue":
+            reponse_attendue,
 
-            # Peut volontairement être None.
-            etoiles=etoiles,
+        "score_sur_5":
+            etoiles,
 
-            # Même principe pour le score.
-            score=score_pourcentage,
+        "score_pourcentage":
+            score_pourcentage,
 
-            feedback_ia_structure={
-                "source": "remediation",
-                "remediation_id": remediation.id,
-                "lang": lang,
+        "evaluation_status":
+            (
+                "evaluated"
+                if etoiles is not None
+                else "not_evaluated"
+            ),
 
-                "score_sur_5": etoiles,
-                "score_pourcentage": score_pourcentage,
+        "requires_review":
+            (
+                etoiles is None
+            ),
 
-                # True si aucune note fiable n'a été obtenue.
-                "requires_review": (
+        "remediation_status":
+            remediation.statut,
+
+        "next_remediation_status":
+            (
+                nouvelle_remediation.statut
+                if nouvelle_remediation
+                else None
+            ),
+
+        "metadata": {
+            "remediation_id":
+                remediation.id,
+
+            "next_remediation_id":
+                (
+                    nouvelle_remediation.id
+                    if nouvelle_remediation
+                    else None
+                ),
+
+            "question_fr":
+                (
+                    question
+                    if lang == "fr"
+                    else None
+                ),
+
+            "question_en":
+                (
+                    question
+                    if lang == "en"
+                    else None
+                ),
+
+            "reponse_attendue_fr":
+                (
+                    reponse_attendue
+                    if lang == "fr"
+                    else None
+                ),
+
+            "reponse_attendue_en":
+                (
+                    reponse_attendue
+                    if lang == "en"
+                    else None
+                ),
+
+            "validation_reason":
+                (
+                    (
+                        "La note automatique de la remédiation "
+                        "n'a pas pu être déterminée."
+                    )
+                    if (
+                        etoiles is None
+                        and lang == "fr"
+                    )
+                    else
+                    (
+                        "The automatic remediation grade "
+                        "could not be determined."
+                        if etoiles is None
+                        else None
+                    )
+                ),
+
+            "requires_review":
+                (
                     etoiles is None
-                ),
+                )
+        }
+    }
 
-                "evaluation_status": (
-                    "evaluated"
-                    if etoiles is not None
-                    else "not_evaluated"
-                ),
-            },
+    nouvelle_reponse = StudentResponse(
+        user_id=eleve.id,
+        exercice_id=None,
+        reponse_eleve=reponse_texte,
+        analyse_ia=analyse_ia,
+        etoiles=etoiles,
+        score=score_pourcentage,
+        feedback_ia_structure=(
+            feedback_ia_structure
+        ),
+        review_status=(
+            review_status
+        ),
+        timestamp=datetime.utcnow()
+    )
 
-            timestamp=datetime.utcnow()
-        )
+    db.session.add(
+        nouvelle_reponse
+    )
 
-        db.session.add(
-            reponse
-        )
+    # ============================================================
+    # SAUVEGARDE
+    # ============================================================
 
-        # ========================================================
-        # MISE À JOUR DE LA REMÉDIATION
-        # ========================================================
+    try:
+        db.session.commit()
 
-        remediation.reponse_eleve = (
-            reponse_texte
-        )
-
-        remediation.analyse_ia = (
-            analyse_ia
-        )
-
-        remediation.etoiles = (
-            etoiles
-        )
-
-        # ========================================================
-        # STATUT DE LA REMÉDIATION
-        # ========================================================
-        #
-        # Très important :
-        #
-        # None :
-        #     on NE considère PAS la remédiation comme échouée.
-        #
-        # >= 3 :
-        #     réussite.
-        #
-        # < 3 :
-        #     véritable résultat évalué insuffisant.
-        # ========================================================
-
-        if etoiles is None:
-
-            # On conserve la remédiation disponible.
-            # Elle n'est ni déclarée réussie,
-            # ni transformée artificiellement en échec.
-            remediation.statut = "valide"
-
-            print(
-                "⚠️ Remédiation non évaluée : "
-                "statut conservé à 'valide'."
-            )
-
-        elif etoiles >= 3:
-
-            remediation.statut = "reussie"
-
-            print(
-                "✅ Remédiation réussie "
-                f"(note: {etoiles}/5)"
-            )
-
-        else:
-
-            remediation.statut = "en_attente"
-
-            print(
-                "🔄 Remédiation à retravailler "
-                f"(note réelle: {etoiles}/5)"
-            )
-
-        # ========================================================
-        # SAUVEGARDE
-        # ========================================================
-
-        try:
-
-            db.session.commit()
-
-        except Exception as e:
-
-            db.session.rollback()
-
-            print(
-                "❌ Erreur sauvegarde "
-                f"remédiation : {e}"
-            )
-
-            return (
-                f"Erreur base de données : {e}",
-                500
-            )
-
-        # ========================================================
-        # INVALIDATION DU CACHE DES STATISTIQUES
-        # ========================================================
-
-        session.pop(
-            "api_eleve_stats_cache",
-            None
-        )
-
-        session.modified = True
+    except Exception as e:
+        db.session.rollback()
 
         print(
-            "🧹 Cache statistiques "
-            "élève invalidé."
+            "❌ Erreur sauvegarde "
+            f"remédiation : {e}"
         )
 
-        # ========================================================
-        # LOG FINAL
-        # ========================================================
-
-        if etoiles is None:
-
-            print(
-                "🛡️ Réponse de remédiation "
-                "enregistrée sans note : "
-                "elle ne pénalisera pas "
-                "les statistiques."
-            )
-
-        else:
-
-            print(
-                "📊 Réponse de remédiation "
-                f"évaluée : {etoiles}/5 "
-                f"({score_pourcentage}%)."
-            )
-
-        # ========================================================
-        # AFFICHAGE DU FEEDBACK
-        # ========================================================
-
-        return render_template(
-            "feedback_exercice.html",
-
-            reponse=reponse_texte,
-            analyse=analyse_ia,
-
-            # Peut être None.
-            etoiles=etoiles,
-
-            redirect_url=(
-                "/eleve/remediations"
-                f"?username={eleve.username}"
-                f"&lang={lang}"
-            ),
-
-            lang=lang,
-            is_remediation=True,
-
-            # Variables supplémentaires facultatives.
-            evaluation_disponible=(
-                etoiles is not None
-            ),
-
-            requires_review=(
-                etoiles is None
-            )
+        return (
+            f"Erreur base de données : {e}",
+            500
         )
 
     # ============================================================
-    # AFFICHAGE INITIAL DE LA REMÉDIATION
-    # ============================================================
-    #
-    # Ici également, il ne faut pas transmettre 0 comme si une
-    # évaluation avait déjà eu lieu.
+    # RETOUR
     # ============================================================
 
     return render_template(
-        "faire_remediation.html",
-        remediation=remediation,
-        eleve=eleve,
+        "feedback_exercice.html",
+        reponse=reponse_texte,
+        analyse=analyse_ia,
+        etoiles=etoiles,
+        redirect_url=(
+            "/eleve/remediations"
+            f"?username={eleve.username}"
+            f"&lang={lang}"
+        ),
         lang=lang,
-        feedback=None,
-
-        # Pas encore évalué.
-        etoiles=None
+        is_remediation=True,
+        evaluation_disponible=(
+            etoiles is not None
+        ),
+        requires_review=(
+            etoiles is None
+        )
     )
 
 @app.route("/close-remediation-access", methods=["POST"])
@@ -21776,15 +21926,31 @@ def dashboard_enseignant():
         moyennes = []
         niveau_counts = {}
         all_stars = []
+        corrections_a_revoir_count = 0
 
         if eleves_ids:
             from sqlalchemy import func, case
+
+            # ========================================================
+            # NOTE EFFECTIVE
+            # ========================================================
+            #
+            # Si une révision humaine existe, elle devient prioritaire.
+            # Sinon, on conserve la note automatique.
+            #
+            # COALESCE(teacher_etoiles, etoiles)
+            # ========================================================
+
+            etoiles_effectives = func.coalesce(
+                StudentResponse.teacher_etoiles,
+                StudentResponse.etoiles
+            )
 
             # Une seule requête agrégée par élève :
             # - activités totales ;
             # - réponses réellement évaluées ;
             # - réponses non évaluées ;
-            # - moyenne calculée uniquement sur etoiles non NULL.
+            # - moyenne calculée sur la note EFFECTIVE.
             stats_reponses_rows = (
                 db.session.query(
                     StudentResponse.user_id,
@@ -21792,7 +21958,7 @@ def dashboard_enseignant():
                     func.coalesce(
                         func.sum(
                             case(
-                                (StudentResponse.etoiles.isnot(None), 1),
+                                (etoiles_effectives.isnot(None), 1),
                                 else_=0
                             )
                         ),
@@ -21801,13 +21967,13 @@ def dashboard_enseignant():
                     func.coalesce(
                         func.sum(
                             case(
-                                (StudentResponse.etoiles.is_(None), 1),
+                                (etoiles_effectives.is_(None), 1),
                                 else_=0
                             )
                         ),
                         0
                     ).label("non_evalues"),
-                    func.avg(StudentResponse.etoiles).label("moyenne")
+                    func.avg(etoiles_effectives).label("moyenne")
                 )
                 .filter(
                     StudentResponse.user_id.in_(eleves_ids)
@@ -21829,6 +21995,24 @@ def dashboard_enseignant():
                 }
                 for row in stats_reponses_rows
             }
+
+            # Nombre de réponses qui attendent encore une correction humaine.
+            corrections_a_revoir_count = (
+                db.session.query(
+                    func.count(StudentResponse.id)
+                )
+                .filter(
+                    StudentResponse.user_id.in_(eleves_ids),
+                    StudentResponse.review_status == "pending_teacher_review"
+                )
+                .scalar()
+                or 0
+            )
+
+            corrections_a_revoir_count = int(
+                corrections_a_revoir_count
+            )
+
         else:
             stats_reponses_par_eleve = {}
 
@@ -22138,6 +22322,10 @@ def dashboard_enseignant():
 
             lang=lang,
             nv_count=nv_count,
+
+            # Nombre de corrections humaines en attente.
+            corrections_a_revoir_count=corrections_a_revoir_count,
+
             total_students=total_students,
             avg_stars=avg_stars,
 
@@ -22468,6 +22656,1095 @@ def calculer_alertes_pedagogiques_enseignant(enseignant_id, limite_traces=300):
     except Exception as e:
         print(f"⚠️ Erreur calcul alertes pédagogiques enseignant : {e}")
         return alertes
+
+# ============================================================
+# CORRECTIONS À REVOIR PAR L'ENSEIGNANT SUIVEUR
+# ============================================================
+
+@app.route("/enseignant/corrections-a-revoir", methods=["GET"])
+def corrections_a_revoir():
+    try:
+        if "user_id" not in session:
+            return redirect(url_for("login_enseignant"))
+        if session.get("role") != "enseignant":
+            flash("Accès réservé aux enseignants.", "error")
+            return redirect(url_for("login_enseignant"))
+
+        enseignant = db.session.get(User, session["user_id"])
+        if not enseignant or not enseignant.est_enseignant():
+            session.clear()
+            flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+            return redirect(url_for("login_enseignant"))
+
+        lang = session.get("lang", getattr(enseignant, "langue", None) or "fr")
+
+        eleves = (
+            User.query
+            .filter(
+                User.role.in_(["eleve", "élève"]),
+                User.enseignant_referent_id == enseignant.id
+            )
+            .all()
+        )
+
+        if not eleves and hasattr(User, "enseignant_id"):
+            eleves = (
+                User.query
+                .filter(
+                    User.role.in_(["eleve", "élève"]),
+                    User.enseignant_id == enseignant.id
+                )
+                .all()
+            )
+
+        eleves_ids = [e.id for e in eleves]
+
+        if not eleves_ids:
+            return render_template(
+                "enseignant_corrections_a_revoir.html",
+                enseignant=enseignant,
+                corrections=[],
+                total_corrections=0,
+                lang=lang
+            )
+
+        reponses_a_revoir = (
+            StudentResponse.query
+            .filter(
+                StudentResponse.user_id.in_(eleves_ids),
+                StudentResponse.review_status == "pending_teacher_review"
+            )
+            .order_by(StudentResponse.timestamp.desc())
+            .all()
+        )
+
+        eleves_par_id = {e.id: e for e in eleves}
+
+        exercice_ids = {
+            r.exercice_id
+            for r in reponses_a_revoir
+            if r.exercice_id is not None
+        }
+        exercices_par_id = {}
+        if exercice_ids:
+            exercices_par_id = {
+                ex.id: ex
+                for ex in Exercice.query.filter(Exercice.id.in_(list(exercice_ids))).all()
+            }
+
+        remediation_ids = set()
+        for r in reponses_a_revoir:
+            feedback = r.feedback_ia_structure if isinstance(r.feedback_ia_structure, dict) else {}
+            rid = feedback.get("remediation_id")
+            if rid is not None:
+                try:
+                    remediation_ids.add(int(rid))
+                except (TypeError, ValueError):
+                    pass
+
+        remediations_par_id = {}
+        if remediation_ids:
+            remediations_par_id = {
+                rem.id: rem
+                for rem in RemediationSuggestion.query.filter(
+                    RemediationSuggestion.id.in_(list(remediation_ids))
+                ).all()
+            }
+
+        def extraire_remediation(remediation):
+            question = None
+            reponse_attendue = None
+            if not remediation:
+                return question, reponse_attendue
+            for ligne in (remediation.exercice_suggere or "").splitlines():
+                ligne = str(ligne or "").strip().lstrip("- ").strip()
+                lower = ligne.lower()
+                if not question and lower.startswith("question") and ":" in ligne:
+                    question = ligne.split(":", 1)[1].strip()
+                elif (
+                    not reponse_attendue
+                    and (
+                        lower.startswith("réponse attendue")
+                        or lower.startswith("reponse attendue")
+                        or lower.startswith("expected answer")
+                    )
+                    and ":" in ligne
+                ):
+                    reponse_attendue = ligne.split(":", 1)[1].strip()
+            return question, reponse_attendue
+
+        corrections = []
+
+        for r in reponses_a_revoir:
+            eleve = eleves_par_id.get(r.user_id)
+            exercice = exercices_par_id.get(r.exercice_id) if r.exercice_id is not None else None
+            feedback = r.feedback_ia_structure if isinstance(r.feedback_ia_structure, dict) else {}
+            metadata = feedback.get("metadata", {}) if isinstance(feedback.get("metadata", {}), dict) else {}
+            symbolic = feedback.get("symbolic_verification", {}) if isinstance(feedback.get("symbolic_verification", {}), dict) else {}
+
+            result_details = symbolic.get("result", {})
+            raison_symbolique = result_details.get("reason") if isinstance(result_details, dict) else None
+
+            raison_revision = (
+                metadata.get("validation_reason")
+                or feedback.get("validation_reason")
+                or raison_symbolique
+                or feedback.get("reason")
+                or ("Automatic evaluation was inconclusive." if lang == "en" else "Évaluation automatique non concluante.")
+            )
+
+            source = (
+                feedback.get("source")
+                or metadata.get("source")
+                or metadata.get("correction_method")
+                or "exercice"
+            )
+
+            remediation = None
+            rid = feedback.get("remediation_id")
+            if rid is not None:
+                try:
+                    remediation = remediations_par_id.get(int(rid))
+                except (TypeError, ValueError):
+                    remediation = None
+
+            question = None
+            reponse_attendue = None
+
+            if exercice:
+                question = exercice.question_en if lang == "en" and exercice.question_en else exercice.question_fr
+                reponse_attendue = exercice.reponse_en if lang == "en" and exercice.reponse_en else exercice.reponse_fr
+
+            q_rem, rep_rem = extraire_remediation(remediation)
+            question = question or q_rem
+            reponse_attendue = reponse_attendue or rep_rem
+
+            if not question:
+                question = (
+                    metadata.get("question_en" if lang == "en" else "question_fr")
+                    or metadata.get("question_fr")
+                    or feedback.get("question")
+                    or ("Question unavailable" if lang == "en" else "Question non disponible")
+                )
+
+            if not reponse_attendue:
+                reponse_attendue = (
+                    metadata.get("reponse_attendue_en" if lang == "en" else "reponse_attendue_fr")
+                    or metadata.get("reponse_attendue_fr")
+                    or feedback.get("reponse_attendue")
+                )
+
+            corrections.append({
+                "response_id": r.id,
+                "reponse": r,
+                "eleve": eleve,
+                "exercice": exercice,
+                "remediation": remediation,
+                "question": question,
+                "reponse_eleve": r.reponse_eleve,
+                "reponse_attendue": reponse_attendue,
+                "analyse_ia": r.analyse_ia,
+                "etoiles_automatiques": r.etoiles,
+                "score_automatique": r.score,
+                "raison_revision": raison_revision,
+                "source": source,
+                "timestamp": r.timestamp,
+                "review_status": r.review_status,
+            })
+
+        return render_template(
+            "enseignant_corrections_a_revoir.html",
+            enseignant=enseignant,
+            corrections=corrections,
+            total_corrections=len(corrections),
+            lang=lang
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erreur chargement corrections à revoir : {e}")
+        flash("Impossible de charger les corrections à revoir pour le moment.", "error")
+        return redirect(url_for("dashboard_enseignant"))
+
+# ============================================================
+# 2) CORRECTION HUMAINE D'UNE RÉPONSE
+# ============================================================
+
+@app.route("/enseignant/correction/<int:response_id>", methods=["GET", "POST"])
+def corriger_reponse_eleve(response_id):
+    from datetime import datetime
+
+    try:
+        if "user_id" not in session:
+            return redirect(url_for("login_enseignant"))
+        if session.get("role") != "enseignant":
+            flash("Accès réservé aux enseignants.", "error")
+            return redirect(url_for("login_enseignant"))
+
+        enseignant = db.session.get(User, session["user_id"])
+        if not enseignant or not enseignant.est_enseignant():
+            session.clear()
+            flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+            return redirect(url_for("login_enseignant"))
+
+        reponse = db.session.get(StudentResponse, response_id)
+        if not reponse:
+            flash("Réponse introuvable.", "error")
+            return redirect(url_for("corrections_a_revoir"))
+
+        eleve = db.session.get(User, reponse.user_id)
+        if not eleve:
+            flash("Élève associé à cette réponse introuvable.", "error")
+            return redirect(url_for("corrections_a_revoir"))
+
+        enseignant_autorise = eleve.enseignant_referent_id == enseignant.id
+        if not enseignant_autorise and hasattr(eleve, "enseignant_id"):
+            enseignant_autorise = getattr(eleve, "enseignant_id", None) == enseignant.id
+
+        if not enseignant_autorise:
+            flash("Tu n'es pas autorisé à corriger la réponse de cet élève.", "error")
+            return redirect(url_for("corrections_a_revoir"))
+
+        lang = session.get("lang", getattr(enseignant, "langue", None) or "fr")
+
+        exercice = db.session.get(Exercice, reponse.exercice_id) if reponse.exercice_id is not None else None
+        feedback = reponse.feedback_ia_structure if isinstance(reponse.feedback_ia_structure, dict) else {}
+        metadata = feedback.get("metadata", {}) if isinstance(feedback.get("metadata", {}), dict) else {}
+        symbolic = feedback.get("symbolic_verification", {}) if isinstance(feedback.get("symbolic_verification", {}), dict) else {}
+
+        remediation_id = feedback.get("remediation_id") or metadata.get("remediation_id")
+        remediation_origine = None
+        if remediation_id is not None:
+            try:
+                remediation_origine = db.session.get(RemediationSuggestion, int(remediation_id))
+            except (TypeError, ValueError):
+                remediation_origine = None
+
+        est_reponse_remediation = remediation_origine is not None or feedback.get("source") == "remediation"
+
+        def extraire_remediation(remediation):
+            q = None
+            rep = None
+            exp = None
+            if not remediation:
+                return q, rep, exp
+            for ligne in (remediation.exercice_suggere or "").splitlines():
+                ligne = str(ligne or "").strip().lstrip("- ").strip()
+                lower = ligne.lower()
+                if not q and lower.startswith("question") and ":" in ligne:
+                    q = ligne.split(":", 1)[1].strip()
+                elif not rep and (
+                    lower.startswith("réponse attendue")
+                    or lower.startswith("reponse attendue")
+                    or lower.startswith("expected answer")
+                ) and ":" in ligne:
+                    rep = ligne.split(":", 1)[1].strip()
+                elif not exp and (
+                    lower.startswith("explication")
+                    or lower.startswith("explanation")
+                ) and ":" in ligne:
+                    exp = ligne.split(":", 1)[1].strip()
+            return q, rep, exp
+
+        q_rem, rep_rem, exp_rem = extraire_remediation(remediation_origine)
+
+        question = None
+        reponse_attendue = None
+        correction_reference = None
+
+        if exercice:
+            question = exercice.question_en if lang == "en" and exercice.question_en else exercice.question_fr
+            reponse_attendue = exercice.reponse_en if lang == "en" and exercice.reponse_en else exercice.reponse_fr
+            correction_reference = exercice.explication_en if lang == "en" and exercice.explication_en else exercice.explication_fr
+
+        question = question or q_rem or metadata.get("question_en" if lang == "en" else "question_fr") or metadata.get("question_fr") or feedback.get("question") or ("Question unavailable" if lang == "en" else "Question non disponible")
+        reponse_attendue = reponse_attendue or rep_rem or metadata.get("reponse_attendue_en" if lang == "en" else "reponse_attendue_fr") or metadata.get("reponse_attendue_fr") or feedback.get("reponse_attendue")
+        correction_reference = correction_reference or exp_rem
+
+        result_details = symbolic.get("result", {})
+        raison_symbolique = result_details.get("reason") if isinstance(result_details, dict) else None
+        raison_revision = (
+            metadata.get("validation_reason")
+            or feedback.get("validation_reason")
+            or raison_symbolique
+            or feedback.get("reason")
+            or ("Automatic evaluation was inconclusive." if lang == "en" else "Évaluation automatique non concluante.")
+        )
+
+        def afficher_formulaire():
+            return render_template(
+                "enseignant_corriger_reponse.html",
+                enseignant=enseignant,
+                eleve=eleve,
+                reponse=reponse,
+                exercice=exercice,
+                question=question,
+                reponse_attendue=reponse_attendue,
+                correction_reference=correction_reference,
+                raison_revision=raison_revision,
+                lang=lang
+            )
+
+        if request.method == "GET":
+            return afficher_formulaire()
+
+        teacher_etoiles_raw = str(request.form.get("teacher_etoiles", "") or "").strip()
+        if teacher_etoiles_raw == "":
+            flash("Veuillez attribuer une note sur 5.", "error")
+            return afficher_formulaire()
+
+        try:
+            teacher_etoiles = int(teacher_etoiles_raw)
+        except (TypeError, ValueError):
+            flash("La note doit être un entier entre 0 et 5.", "error")
+            return afficher_formulaire()
+
+        if not 0 <= teacher_etoiles <= 5:
+            flash("La note doit être comprise entre 0 et 5.", "error")
+            return afficher_formulaire()
+
+        teacher_score_raw = str(request.form.get("teacher_score", "") or "").strip()
+        if teacher_score_raw:
+            try:
+                teacher_score = float(teacher_score_raw.replace(",", "."))
+            except (TypeError, ValueError):
+                flash("Le score doit être un nombre entre 0 et 100.", "error")
+                return afficher_formulaire()
+            if not 0 <= teacher_score <= 100:
+                flash("Le score doit être compris entre 0 et 100.", "error")
+                return afficher_formulaire()
+        else:
+            teacher_score = teacher_etoiles * 20.0
+
+        teacher_feedback = str(request.form.get("teacher_feedback", "") or "").strip()
+
+        automatic_etoiles = reponse.etoiles
+        automatic_score = reponse.score
+        ancien_review_status = reponse.review_status
+
+        reponse.teacher_etoiles = teacher_etoiles
+        reponse.teacher_score = teacher_score
+        reponse.teacher_feedback = teacher_feedback
+        reponse.reviewed_by = enseignant.id
+        reponse.reviewed_at = datetime.utcnow()
+        reponse.review_status = "reviewed"
+
+        feedback_updated = dict(feedback)
+        metadata_updated = dict(metadata)
+        feedback_updated["metadata"] = metadata_updated
+        feedback_updated["requires_review"] = False
+        metadata_updated["requires_review"] = False
+        metadata_updated["human_review_completed"] = True
+        metadata_updated["teacher_etoiles"] = teacher_etoiles
+        metadata_updated["teacher_score"] = teacher_score
+
+        feedback_updated["human_review"] = {
+            "status": "reviewed",
+            "reviewed_by": enseignant.id,
+            "reviewed_at": reponse.reviewed_at.isoformat(),
+            "teacher_etoiles": teacher_etoiles,
+            "teacher_score": teacher_score,
+            "teacher_feedback": teacher_feedback,
+            "automatic_etoiles": automatic_etoiles,
+            "automatic_score": automatic_score,
+            "previous_review_status": ancien_review_status,
+            "effective_etoiles": teacher_etoiles,
+            "effective_score": teacher_score,
+            "remediation_created": False,
+            "remediation_reactivated": False,
+            "remediation_completed": False,
+            "remediation_id": remediation_origine.id if remediation_origine else None,
+        }
+
+        remediation_creee = None
+        remediation_reactivee = None
+        remediation_terminee = None
+
+        # ========================================================
+        # OUTIL LOCAL : GÉNÉRER UNE NOUVELLE REMÉDIATION
+        # ========================================================
+        #
+        # RÈGLE PÉDAGOGIQUE :
+        #
+        # Toute remédiation nouvellement générée par l'IA doit :
+        #   - être différente de l'exercice précédent ;
+        #   - cibler la même compétence / erreur ;
+        #   - être créée avec statut="en_attente" ;
+        #   - être validée par l'enseignant avant d'être visible
+        #     par l'élève.
+        #
+        # Aucun fallback ne renvoie l'exercice original tel quel.
+        # ========================================================
+
+        def generer_nouvelle_remediation(
+            question_source,
+            reponse_attendue_source,
+            reponse_eleve_source,
+            note_source,
+            commentaire_source,
+            theme_nom,
+            lecon_nom,
+            origine="teacher_review",
+            remediation_precedente=None
+        ):
+            """
+            REMEDIATION_GENERATION_GARANTIE
+
+            Crée toujours une fiche RemediationSuggestion en attente.
+
+            Si l'IA produit un exercice valide :
+                -> exercice_suggere contient la génération IA.
+
+            Si l'IA échoue ou retourne vide :
+                -> on crée quand même une fiche en_attente,
+                   exercice_suggere vide,
+                   afin que l'enseignant puisse la compléter/modifier.
+
+            Une difficulté confirmée par une note humaine < 3/5
+            ne doit jamais disparaître silencieusement.
+            """
+
+            if lang == "en":
+                prompt_remediation = f"""
+Create ONE NEW remediation exercise for the same mathematical skill.
+
+IMPORTANT RULES:
+- The new exercise MUST NOT repeat the original exercise.
+- Change the numbers, context, wording, or mathematical representation.
+- Keep the same target skill.
+- The exercise must be solvable and unambiguous.
+- Do not merely ask the student to redo the previous problem.
+- Return a complete expected answer and a concise explanation.
+
+Original exercise:
+{question_source}
+
+Expected answer to original:
+{reponse_attendue_source or "Not available"}
+
+Student response:
+{reponse_eleve_source}
+
+Grade:
+{note_source}/5
+
+Teacher feedback:
+{commentaire_source or "Not specified"}
+
+Previous remediation:
+{remediation_precedente or "None"}
+
+Return EXACTLY:
+Remediation:
+- Question: ...
+- Expected answer: ...
+- Explanation: ...
+"""
+            else:
+                prompt_remediation = f"""
+Crée UNE NOUVELLE remédiation ciblant la même compétence mathématique.
+
+RÈGLES IMPORTANTES :
+- Le nouvel exercice NE DOIT PAS répéter l'exercice précédent.
+- Change les nombres, le contexte, la formulation ou la représentation mathématique.
+- Conserve la même compétence cible.
+- L'exercice doit être solvable et non ambigu.
+- Ne demande pas simplement à l'élève de refaire l'exercice précédent.
+- Donne une réponse attendue complète et une explication concise.
+
+Exercice d'origine :
+{question_source}
+
+Réponse attendue de l'exercice d'origine :
+{reponse_attendue_source or "Non disponible"}
+
+Réponse de l'élève :
+{reponse_eleve_source}
+
+Note :
+{note_source}/5
+
+Commentaire de l'enseignant :
+{commentaire_source or "Non précisé"}
+
+Remédiation précédente :
+{remediation_precedente or "Aucune"}
+
+Retourne EXACTEMENT :
+Remédiation :
+- Question : ...
+- Réponse attendue : ...
+- Explication : ...
+"""
+
+            contenu = ""
+            generation_ok = False
+            generation_error_message = None
+
+            try:
+                contenu = str(
+                    get_ai_response(
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": prompt_remediation
+                            }
+                        ],
+                        matiere="maths",
+                        difficulte="moyen",
+                        max_tokens=500,
+                        temperature=0.5
+                    ) or ""
+                ).strip()
+
+                generation_ok = bool(contenu)
+
+                if not generation_ok:
+                    generation_error_message = (
+                        "La génération IA a retourné un contenu vide."
+                    )
+
+            except Exception as generation_error:
+                generation_error_message = str(
+                    generation_error
+                )
+
+                print(
+                    "⚠️ Génération de remédiation impossible : "
+                    f"{generation_error}"
+                )
+
+            if generation_ok:
+                message_remediation = (
+                    (
+                        "Remédiation générée après révision "
+                        f"de l'enseignant ({note_source}/5). "
+                        "Validation enseignant requise."
+                    )
+                    if lang != "en"
+                    else
+                    (
+                        "Remediation generated after teacher review "
+                        f"({note_source}/5). "
+                        "Teacher validation required."
+                    )
+                )
+            else:
+                message_remediation = (
+                    (
+                        "Difficulté confirmée par l'enseignant "
+                        f"({note_source}/5). "
+                        "La génération automatique n'a pas abouti. "
+                        "La remédiation doit être complétée ou modifiée "
+                        "par l'enseignant avant validation."
+                    )
+                    if lang != "en"
+                    else
+                    (
+                        "Difficulty confirmed by the teacher "
+                        f"({note_source}/5). "
+                        "Automatic generation did not complete. "
+                        "The remediation must be completed or edited "
+                        "by the teacher before validation."
+                    )
+                )
+
+            nouvelle = RemediationSuggestion(
+                user_id=eleve.id,
+                theme=theme_nom,
+                lecon=lecon_nom,
+                message=message_remediation,
+                exercice_suggere=(
+                    contenu
+                    if generation_ok
+                    else ""
+                ),
+                statut="en_attente",
+                timestamp=datetime.utcnow()
+            )
+
+            if hasattr(
+                nouvelle,
+                "vue_par_eleve"
+            ):
+                nouvelle.vue_par_eleve = False
+
+            db.session.add(
+                nouvelle
+            )
+
+            db.session.flush()
+
+            print(
+                "📝 REMEDIATION_GENERATION_GARANTIE : "
+                f"id={nouvelle.id}, "
+                f"generation_ok={generation_ok}, "
+                f"origine={origine}, "
+                f"statut={nouvelle.statut}"
+            )
+
+            if generation_error_message:
+                print(
+                    "ℹ️ Détail génération remédiation : "
+                    f"{generation_error_message}"
+                )
+
+            return nouvelle
+
+        # ========================================================
+        # CONTEXTE PÉDAGOGIQUE
+        # ========================================================
+
+        lecon_obj = (
+            exercice.lecon
+            if (
+                exercice
+                and getattr(
+                    exercice,
+                    "lecon",
+                    None
+                )
+            )
+            else None
+        )
+
+        unite_obj = (
+            lecon_obj.unite
+            if (
+                lecon_obj
+                and getattr(
+                    lecon_obj,
+                    "unite",
+                    None
+                )
+            )
+            else None
+        )
+
+        matiere_obj = (
+            unite_obj.matiere
+            if (
+                unite_obj
+                and getattr(
+                    unite_obj,
+                    "matiere",
+                    None
+                )
+            )
+            else None
+        )
+
+        if lang == "en":
+            theme_nom = (
+                getattr(
+                    matiere_obj,
+                    "nom_en",
+                    None
+                )
+                or getattr(
+                    matiere_obj,
+                    "nom",
+                    None
+                )
+                or "Mathematics"
+            )
+
+            lecon_nom = (
+                getattr(
+                    lecon_obj,
+                    "titre_en",
+                    None
+                )
+                or getattr(
+                    lecon_obj,
+                    "titre_fr",
+                    None
+                )
+                or getattr(
+                    lecon_obj,
+                    "nom",
+                    None
+                )
+                or (
+                    remediation_origine.lecon
+                    if remediation_origine
+                    else "Exercise review"
+                )
+            )
+        else:
+            theme_nom = (
+                getattr(
+                    matiere_obj,
+                    "nom",
+                    None
+                )
+                or getattr(
+                    matiere_obj,
+                    "nom_fr",
+                    None
+                )
+                or (
+                    remediation_origine.theme
+                    if remediation_origine
+                    else "Mathématiques"
+                )
+            )
+
+            lecon_nom = (
+                getattr(
+                    lecon_obj,
+                    "titre_fr",
+                    None
+                )
+                or getattr(
+                    lecon_obj,
+                    "titre_en",
+                    None
+                )
+                or getattr(
+                    lecon_obj,
+                    "nom",
+                    None
+                )
+                or (
+                    remediation_origine.lecon
+                    if remediation_origine
+                    else "Exercice à revoir"
+                )
+            )
+
+        # ========================================================
+        # CAS A : RÉPONSE PROVENANT D'UNE REMÉDIATION
+        # ========================================================
+
+        if est_reponse_remediation and remediation_origine:
+
+            if teacher_etoiles >= 3:
+                # L'élève maîtrise maintenant cette remédiation.
+                remediation_origine.statut = "reussie"
+                remediation_terminee = (
+                    remediation_origine
+                )
+
+                print(
+                    "✅ Remédiation réussie après correction "
+                    "enseignant : "
+                    f"id={remediation_origine.id}, "
+                    f"note={teacher_etoiles}/5"
+                )
+
+            else:
+                # ------------------------------------------------
+                # La remédiation courante est terminée en échec.
+                # Elle NE doit PAS être proposée à nouveau.
+                # ------------------------------------------------
+
+                remediation_origine.statut = "echouee"
+
+                ancienne_remediation_texte = (
+                    remediation_origine.exercice_suggere
+                    or ""
+                )
+
+                # ------------------------------------------------
+                # ÉVITER LES DOUBLONS EN ATTENTE
+                # ------------------------------------------------
+
+                remediation_deja_en_attente = (
+                    RemediationSuggestion.query
+                    .filter(
+                        RemediationSuggestion.user_id
+                        == eleve.id,
+
+                        RemediationSuggestion.lecon
+                        == lecon_nom,
+
+                        RemediationSuggestion.statut
+                        == "en_attente"
+                    )
+                    .order_by(
+                        RemediationSuggestion.timestamp.desc()
+                    )
+                    .first()
+                )
+
+                if remediation_deja_en_attente:
+                    remediation_reactivee = (
+                        remediation_deja_en_attente
+                    )
+
+                    print(
+                        "ℹ️ Une nouvelle remédiation est déjà "
+                        "en attente de validation : "
+                        f"id={remediation_deja_en_attente.id}"
+                    )
+
+                else:
+                    remediation_creee = (
+                        generer_nouvelle_remediation(
+                            question_source=(
+                                q_rem
+                                or question
+                            ),
+                            reponse_attendue_source=(
+                                rep_rem
+                                or reponse_attendue
+                            ),
+                            reponse_eleve_source=(
+                                reponse.reponse_eleve
+                            ),
+                            note_source=(
+                                teacher_etoiles
+                            ),
+                            commentaire_source=(
+                                teacher_feedback
+                            ),
+                            theme_nom=(
+                                theme_nom
+                            ),
+                            lecon_nom=(
+                                lecon_nom
+                            ),
+                            origine=(
+                                "teacher_review_remediation"
+                            ),
+                            remediation_precedente=(
+                                ancienne_remediation_texte
+                            )
+                        )
+                    )
+
+                print(
+                    "🔄 Remédiation échouée : "
+                    "une nouvelle remédiation distincte "
+                    "doit être validée par l'enseignant."
+                )
+
+        # ========================================================
+        # CAS B : EXERCICE NORMAL CORRIGÉ < 3/5
+        # ========================================================
+
+        elif teacher_etoiles < 3:
+
+            remediation_deja_en_attente = (
+                RemediationSuggestion.query
+                .filter(
+                    RemediationSuggestion.user_id
+                    == eleve.id,
+
+                    RemediationSuggestion.lecon
+                    == lecon_nom,
+
+                    RemediationSuggestion.statut
+                    == "en_attente"
+                )
+                .order_by(
+                    RemediationSuggestion.timestamp.desc()
+                )
+                .first()
+            )
+
+            if remediation_deja_en_attente:
+                remediation_reactivee = (
+                    remediation_deja_en_attente
+                )
+
+                print(
+                    "ℹ️ Une remédiation est déjà en attente "
+                    "de validation : "
+                    f"id={remediation_deja_en_attente.id}"
+                )
+
+            else:
+                remediation_creee = (
+                    generer_nouvelle_remediation(
+                        question_source=(
+                            question
+                        ),
+                        reponse_attendue_source=(
+                            reponse_attendue
+                        ),
+                        reponse_eleve_source=(
+                            reponse.reponse_eleve
+                        ),
+                        note_source=(
+                            teacher_etoiles
+                        ),
+                        commentaire_source=(
+                            teacher_feedback
+                        ),
+                        theme_nom=(
+                            theme_nom
+                        ),
+                        lecon_nom=(
+                            lecon_nom
+                        ),
+                        origine=(
+                            "teacher_review_exercise"
+                        )
+                    )
+                )
+
+            print(
+                "📝 Note enseignant < 3/5 : "
+                "la remédiation générée reste en_attente "
+                "jusqu'à validation par l'enseignant."
+            )
+
+        remediation_finale = remediation_creee or remediation_reactivee or remediation_terminee or remediation_origine
+
+        # ========================================================
+        # REMEDIATION_POSTCONDITION_GARANTIE
+        # ========================================================
+        #
+        # Pour un EXERCICE NORMAL noté < 3/5 par l'enseignant,
+        # il doit obligatoirement exister une RemediationSuggestion.
+        #
+        # Même si la génération IA a échoué pour une raison
+        # inattendue, on crée une fiche minimale EN ATTENTE.
+        # ========================================================
+
+        if (
+            not est_reponse_remediation
+            and teacher_etoiles < 3
+            and remediation_finale is None
+        ):
+            remediation_creee = RemediationSuggestion(
+                user_id=eleve.id,
+                theme=theme_nom,
+                lecon=lecon_nom,
+                message=(
+                    (
+                        "Difficulté confirmée par l'enseignant "
+                        f"({teacher_etoiles}/5). "
+                        "Remédiation à préparer et valider."
+                    )
+                    if lang != "en"
+                    else
+                    (
+                        "Difficulty confirmed by the teacher "
+                        f"({teacher_etoiles}/5). "
+                        "Remediation must be prepared and validated."
+                    )
+                ),
+                exercice_suggere="",
+                statut="en_attente",
+                timestamp=datetime.utcnow()
+            )
+
+            if hasattr(
+                remediation_creee,
+                "vue_par_eleve"
+            ):
+                remediation_creee.vue_par_eleve = False
+
+            db.session.add(
+                remediation_creee
+            )
+
+            db.session.flush()
+
+            remediation_finale = remediation_creee
+
+            print(
+                "🛡️ REMEDIATION_POSTCONDITION_GARANTIE : "
+                f"id={remediation_creee.id}, "
+                f"statut={remediation_creee.statut}"
+            )
+
+        human_review = feedback_updated["human_review"]
+        human_review["remediation_created"] = bool(remediation_creee)
+        human_review["remediation_reactivated"] = bool(remediation_reactivee)
+        human_review["remediation_completed"] = bool(remediation_terminee)
+        human_review["remediation_id"] = remediation_finale.id if remediation_finale else None
+        human_review["remediation_status"] = (
+            remediation_finale.statut
+            if remediation_finale
+            else None
+        )
+        human_review["remediation_requires_teacher_validation"] = bool(
+            remediation_finale
+            and remediation_finale.statut == "en_attente"
+        )
+        reponse.feedback_ia_structure = feedback_updated
+
+        # Trace d'audit : secondaire, n'empêche jamais la note principale.
+        try:
+            from models import TraceApprentissage
+
+            lecon_trace = exercice.lecon if exercice and getattr(exercice, "lecon", None) else None
+            unite_trace = lecon_trace.unite if lecon_trace and getattr(lecon_trace, "unite", None) else None
+            matiere_trace = unite_trace.matiere if unite_trace and getattr(unite_trace, "matiere", None) else None
+            niveau_trace = getattr(matiere_trace, "niveau", None) if matiere_trace else None
+
+            db.session.add(TraceApprentissage(
+                user_id=eleve.id,
+                niveau_id=niveau_trace.id if niveau_trace else eleve.niveau_id,
+                matiere_id=matiere_trace.id if matiere_trace else None,
+                unite_id=unite_trace.id if unite_trace else None,
+                lecon_id=lecon_trace.id if lecon_trace else None,
+                exercice_id=exercice.id if exercice else None,
+                type_action="teacher_review",
+                source="enseignant",
+                reponse_eleve=reponse.reponse_eleve,
+                analyse_ia=teacher_feedback,
+                score=teacher_score,
+                niveau_risque="élevé" if teacher_etoiles < 3 else "faible",
+                difficulte_estimee=getattr(exercice, "niveau_difficulte", None) if exercice else None,
+                notion_cible=getattr(exercice, "notion_cible", None) if exercice else None,
+                type_erreur=reponse.type_erreur,
+                meta_json={
+                    "student_response_id": reponse.id,
+                    "reviewed_by": enseignant.id,
+                    "automatic_etoiles": automatic_etoiles,
+                    "automatic_score": automatic_score,
+                    "teacher_etoiles": teacher_etoiles,
+                    "teacher_score": teacher_score,
+                    "teacher_feedback": teacher_feedback,
+                    "previous_review_status": ancien_review_status,
+                    "new_review_status": "reviewed",
+                    "is_remediation": est_reponse_remediation,
+                    "remediation_id": remediation_finale.id if remediation_finale else None,
+                    "remediation_created": bool(remediation_creee),
+                    "remediation_reactivated": bool(remediation_reactivee),
+                    "remediation_completed": bool(remediation_terminee),
+                },
+                created_at=datetime.utcnow()
+            ))
+        except Exception as trace_error:
+            print(f"⚠️ Trace teacher_review non créée : {trace_error}")
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Erreur sauvegarde révision enseignant : {e}")
+            flash("La correction n'a pas pu être enregistrée.", "error")
+            return afficher_formulaire()
+
+        if teacher_etoiles < 3 and remediation_finale:
+            flash(
+                (
+                    f"Correction enregistrée : "
+                    f"{teacher_etoiles}/5 ({teacher_score:g} %). "
+                    "Une remédiation est en attente de validation enseignant."
+                ),
+                "success"
+            )
+        else:
+            flash(
+                f"Correction enregistrée : {teacher_etoiles}/5 ({teacher_score:g} %).",
+                "success"
+            )
+
+        return redirect(url_for("corrections_a_revoir"))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erreur route correction enseignant : {e}")
+        flash("Impossible d'ouvrir cette correction pour le moment.", "error")
+        return redirect(url_for("corrections_a_revoir"))
+
 
 @app.route("/enseignant/profil-eleve/<int:eleve_id>")
 def enseignant_profil_eleve(eleve_id):
@@ -25745,7 +27022,9 @@ def dashboard_eleve():
     - évite User.query.get ;
     - évite de charger toutes les réponses inutilement ;
     - réduit le coût du graphique Matplotlib ;
-    - garde les mêmes variables envoyées au template.
+    - garde les mêmes variables envoyées au template ;
+    - utilise la note révisée par l'enseignant lorsqu'elle existe ;
+    - conserve l'évaluation automatique originale pour l'audit.
     """
 
     from datetime import datetime
@@ -25825,16 +27104,18 @@ def dashboard_eleve():
     #
     # RÈGLE MÉTIER :
     #
-    # etoiles = None
+    # note effective = COALESCE(teacher_etoiles, etoiles)
+    #
+    # note effective = None
     #     -> non évalué
     #     -> activité conservée
     #     -> NE compte PAS dans le taux de réussite
     #     -> NE compte PAS dans la moyenne
     #
-    # etoiles = 0, 1 ou 2
+    # note effective = 0, 1 ou 2
     #     -> évalué et non réussi
     #
-    # etoiles >= 3
+    # note effective >= 3
     #     -> évalué et réussi
     # ============================================================
 
@@ -25847,6 +27128,21 @@ def dashboard_eleve():
     taux_reussite = 0.0
 
     try:
+        # ========================================================
+        # NOTE EFFECTIVE
+        # ========================================================
+        #
+        # Une révision humaine devient prioritaire lorsqu'elle
+        # existe. Sinon, on conserve la note automatique.
+        #
+        # Important : teacher_etoiles = 0 reste une vraie note.
+        # ========================================================
+
+        etoiles_effectives = func.coalesce(
+            StudentResponse.teacher_etoiles,
+            StudentResponse.etoiles
+        )
+
         (
             total_activites,
             total_evalues,
@@ -25864,7 +27160,7 @@ def dashboard_eleve():
                 func.sum(
                     case(
                         (
-                            StudentResponse.etoiles.isnot(None),
+                            etoiles_effectives.isnot(None),
                             1
                         ),
                         else_=0
@@ -25878,7 +27174,7 @@ def dashboard_eleve():
                 func.sum(
                     case(
                         (
-                            StudentResponse.etoiles.is_(None),
+                            etoiles_effectives.is_(None),
                             1
                         ),
                         else_=0
@@ -25889,7 +27185,7 @@ def dashboard_eleve():
 
             # AVG ignore naturellement les NULL
             func.coalesce(
-                func.avg(StudentResponse.etoiles),
+                func.avg(etoiles_effectives),
                 0
             ),
 
@@ -25898,7 +27194,7 @@ def dashboard_eleve():
                 func.sum(
                     case(
                         (
-                            StudentResponse.etoiles >= 3,
+                            etoiles_effectives >= 3,
                             1
                         ),
                         else_=0
@@ -25917,7 +27213,7 @@ def dashboard_eleve():
                             )
                             &
                             (
-                                StudentResponse.etoiles < 3
+                                etoiles_effectives < 3
                             ),
                             1
                         ),
@@ -26046,9 +27342,15 @@ def dashboard_eleve():
                     continue
 
                 # Une réponse non évaluée n'est jamais un zéro.
-                # Elle reste dans l'historique d'activité, mais elle est
-                # exclue du graphique de performance.
-                if reponse.etoiles is None:
+                # La note humaine est prioritaire lorsqu'une révision
+                # enseignant existe.
+                etoiles_effectives_reponse = (
+                    reponse.teacher_etoiles
+                    if reponse.teacher_etoiles is not None
+                    else reponse.etoiles
+                )
+
+                if etoiles_effectives_reponse is None:
                     continue
 
                 date_str = reponse.timestamp.strftime("%Y-%m-%d")
@@ -26057,7 +27359,7 @@ def dashboard_eleve():
                     reponses_par_jour[date_str] = []
 
                 reponses_par_jour[date_str].append(
-                    float(reponse.etoiles)
+                    float(etoiles_effectives_reponse)
                 )
 
             dates_ordonnees = sorted(
@@ -26459,6 +27761,7 @@ def dashboard_eleve():
         naima_recommendations=naima_recommendations,
         naima_recommendations_count=naima_recommendations_count
     )
+
 
 import re
 
@@ -34886,6 +36189,12 @@ Correction :
 
         feedback_ia_structure=feedback_json,
 
+        review_status=(
+            "pending_teacher_review"
+            if validation_requires_review
+            else "not_required"
+        ),
+
         timestamp=datetime.now(timezone.utc)
     )
 
@@ -35794,6 +37103,7 @@ Correction :
         exercice_id=exercice.id,
         show_feedback=True
     ))
+
 
 from datetime import datetime, timezone
 

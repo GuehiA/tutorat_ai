@@ -1033,6 +1033,34 @@
       margin-left: 8px;
     }
     
+    .teacher-review-badge {
+      background: #e8f5e9;
+      color: #2e7d32;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: 8px;
+    }
+
+    .teacher-feedback-box {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: #f0fff4;
+      border-left: 4px solid #2ecc71;
+      border-radius: 8px;
+      color: #2c3e50;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .teacher-feedback-box strong {
+      color: #1e8449;
+    }
+    
     /* BOUTONS */
     .btn {
       display: inline-block;
@@ -1785,15 +1813,23 @@
           {% if reponses_eleve and reponses_eleve|length > 0 %}
             {% for reponse in reponses_eleve[-5:] | reverse %}
 
+            {# =====================================================
+               NOTE EFFECTIVE
+               teacher_etoiles prioritaire sur etoiles automatique
+            ====================================================== #}
+            {% set etoiles_effectives = reponse.etoiles_finales %}
+            {% set score_effectif = reponse.score_final %}
+            {% set revue_enseignant = reponse.review_status == "reviewed" %}
+
             <div class="activity-item">
 
               <!-- Icône d'état -->
               <div class="activity-icon">
-                {% if reponse.etoiles is none %}
+                {% if etoiles_effectives is none %}
                   <i class="fas fa-clock" style="color: #95a5a6;"></i>
-                {% elif reponse.etoiles >= 4 %}
+                {% elif etoiles_effectives >= 4 %}
                   <i class="fas fa-check-circle" style="color: #2ecc71;"></i>
-                {% elif reponse.etoiles >= 2 %}
+                {% elif etoiles_effectives >= 2 %}
                   <i class="fas fa-lightbulb" style="color: #f39c12;"></i>
                 {% else %}
                   <i class="fas fa-exclamation-circle" style="color: #e74c3c;"></i>
@@ -1801,6 +1837,7 @@
               </div>
 
               <div class="activity-details">
+
                 <div class="activity-title">
                   {% if lang == 'en' %}
                     Exercise
@@ -1811,7 +1848,7 @@
                   <!-- Note / état de vérification -->
                   <div class="stars-container" style="display: inline-flex; margin-left: 10px;">
 
-                    {% if reponse.etoiles is none %}
+                    {% if etoiles_effectives is none %}
 
                       <span class="score-text" style="color: #7f8c8d;">
                         <i class="fas fa-clock"></i>
@@ -1825,18 +1862,33 @@
                     {% else %}
 
                       {% for i in range(5) %}
-                        <span class="star {% if i < reponse.etoiles %}filled{% endif %}">★</span>
+                        <span class="star {% if i < etoiles_effectives %}filled{% endif %}">★</span>
                       {% endfor %}
 
                       <span class="score-text">
-                        {{ reponse.etoiles }}/5
+                        {{ etoiles_effectives }}/5
+                        {% if score_effectif is not none %}
+                          — {{ score_effectif|round|int }}%
+                        {% endif %}
                       </span>
 
                     {% endif %}
                   </div>
 
-                  <!-- Badge de révision uniquement pour une note numérique faible -->
-                  {% if reponse.etoiles is not none and reponse.etoiles < 3 %}
+                  <!-- Badge correction humaine -->
+                  {% if revue_enseignant %}
+                    <span class="teacher-review-badge">
+                      <i class="fas fa-chalkboard-teacher"></i>
+                      {% if lang == 'en' %}
+                        Teacher reviewed
+                      {% else %}
+                        Révisé par l'enseignant
+                      {% endif %}
+                    </span>
+                  {% endif %}
+
+                  <!-- Badge faible note uniquement sur note effective -->
+                  {% if etoiles_effectives is not none and etoiles_effectives < 3 %}
                     <span class="low-score-badge">
                       <i class="fas fa-exclamation-circle"></i>
                       {% if lang == 'en' %}
@@ -1845,7 +1897,7 @@
                         À revoir
                       {% endif %}
                     </span>
-                  {% elif reponse.etoiles is none %}
+                  {% elif etoiles_effectives is none %}
                     <span class="low-score-badge"
                           style="background: #eef1f4; color: #7f8c8d;">
                       <i class="fas fa-clock"></i>
@@ -1861,6 +1913,24 @@
                 <div class="activity-meta">
                   {{ reponse.timestamp.strftime('%d/%m %H:%M') if reponse.timestamp else 'N/A' }}
                 </div>
+
+                <!-- Commentaire enseignant -->
+                {% if revue_enseignant and reponse.teacher_feedback %}
+                  <div class="teacher-feedback-box">
+                    <strong>
+                      <i class="fas fa-comment-dots"></i>
+                      {% if lang == 'en' %}
+                        Teacher feedback:
+                      {% else %}
+                        Commentaire de l'enseignant :
+                      {% endif %}
+                    </strong>
+                    <div style="margin-top: 4px;">
+                      {{ reponse.teacher_feedback }}
+                    </div>
+                  </div>
+                {% endif %}
+
               </div>
             </div>
 
@@ -1903,6 +1973,7 @@
             </div>
           {% endif %}
         </div>
+      </div>
       </div>
     </div>
 

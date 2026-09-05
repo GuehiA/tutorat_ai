@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'fr' }}">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% if lang == "en" %}
+            Reviews to complete - TutoratAI
+        {% else %}
+            Corrections à revoir - TutoratAI
+        {% endif %}
+    </title>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+
+            --success: #15803d;
+            --success-light: #dcfce7;
+
+            --warning: #b45309;
+            --warning-light: #fff7ed;
+
+            --danger: #b91c1c;
+            --danger-light: #fee2e2;
+
+            --info: #0369a1;
+            --info-light: #e0f2fe;
+
+            --purple: #7c3aed;
+            --purple-light: #ede9fe;
+
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+
+            --white: #ffffff;
+
+            --radius: 16px;
+            --shadow:
+                0 10px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+
+            font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background: var(--gray-50);
+            color: var(--gray-900);
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        /* ======================================================
+           PAGE
+        ====================================================== */
+
+        .review-page {
+            width: min(1400px, 100%);
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        /* ======================================================
+           HEADER
+        ====================================================== */
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+
+            margin-bottom: 24px;
+        }
+
+        .page-title-block h1 {
+            margin: 0 0 8px;
+
+            font-size: 30px;
+            line-height: 1.2;
+
+            color: var(--gray-900);
+        }
+
+        .page-title-block p {
+            margin: 0;
+
+            color: var(--gray-600);
+            line-height: 1.6;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* ======================================================
+           BOUTONS
+        ====================================================== */
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+
+            min-height: 42px;
+
+            padding: 10px 16px;
+
+            border-radius: 10px;
+            border: none;
+
+            font-weight: 700;
+            font-size: 14px;
+
+            cursor: pointer;
+
+            transition:
+                transform 0.15s ease,
+                box-shadow 0.15s ease,
+                background 0.15s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--gray-700);
+
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-100);
+        }
+
+        /* ======================================================
+           RÉSUMÉ
+        ====================================================== */
+
+        .summary-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+
+            padding: 20px 22px;
+
+            margin-bottom: 24px;
+
+            background: var(--white);
+
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+
+            box-shadow: var(--shadow);
+        }
+
+        .summary-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .summary-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            width: 48px;
+            height: 48px;
+
+            border-radius: 14px;
+
+            background: var(--warning-light);
+
+            font-size: 24px;
+        }
+
+        .summary-text strong {
+            display: block;
+
+            margin-bottom: 3px;
+
+            font-size: 18px;
+        }
+
+        .summary-text span {
+            color: var(--gray-500);
+            font-size: 14px;
+        }
+
+        .summary-count {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            min-width: 52px;
+            height: 42px;
+
+            padding: 0 15px;
+
+            border-radius: 999px;
+
+            background: var(--warning-light);
+            color: var(--warning);
+
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        /* ======================================================
+           FLASH
+        ====================================================== */
+
+        .flash-container {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 13px 16px;
+
+            margin-bottom: 10px;
+
+            border-radius: 10px;
+
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        .flash-success {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .flash-error,
+        .flash-danger {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        .flash-warning {
+            background: var(--warning-light);
+            color: var(--warning);
+        }
+
+        .flash-info {
+            background: var(--info-light);
+            color: var(--info);
+        }
+
+        /* ======================================================
+           LISTE DES CORRECTIONS
+        ====================================================== */
+
+        .reviews-list {
+            display: grid;
+            gap: 20px;
+        }
+
+        .review-card {
+            overflow: hidden;
+
+            background: var(--white);
+
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+
+            box-shadow: var(--shadow);
+        }
+
+        /* ======================================================
+           CARTE : EN-TÊTE
+        ====================================================== */
+
+        .review-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+
+            padding: 18px 20px;
+
+            border-bottom: 1px solid var(--gray-200);
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #ffffff 0%,
+                    #f8fafc 100%
+                );
+        }
+
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .student-avatar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            width: 44px;
+            height: 44px;
+
+            flex-shrink: 0;
+
+            border-radius: 50%;
+
+            background: var(--primary);
+            color: var(--white);
+
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .student-name {
+            margin-bottom: 3px;
+
+            color: var(--gray-900);
+
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .student-meta {
+            color: var(--gray-500);
+
+            font-size: 13px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+
+            padding: 7px 11px;
+
+            border-radius: 999px;
+
+            background: var(--warning-light);
+            color: var(--warning);
+
+            font-size: 12px;
+            font-weight: 800;
+
+            white-space: nowrap;
+        }
+
+        /* ======================================================
+           CARTE : CONTENU
+        ====================================================== */
+
+        .review-card-body {
+            padding: 20px;
+        }
+
+        .context-grid {
+            display: grid;
+            grid-template-columns:
+                minmax(0, 1fr)
+                minmax(0, 1fr);
+
+            gap: 16px;
+
+            margin-bottom: 18px;
+        }
+
+        .info-box {
+            padding: 15px;
+
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+
+            background: var(--gray-50);
+        }
+
+        .info-box.full {
+            grid-column: 1 / -1;
+        }
+
+        .info-label {
+            display: block;
+
+            margin-bottom: 8px;
+
+            color: var(--gray-500);
+
+            font-size: 11px;
+            font-weight: 800;
+
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .info-content {
+            color: var(--gray-800);
+
+            font-size: 14px;
+            line-height: 1.65;
+
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .student-answer-box {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .expected-answer-box {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .reason-box {
+            background: var(--warning-light);
+            border-color: #fed7aa;
+        }
+
+        /* ======================================================
+           MÉTADONNÉES
+        ====================================================== */
+
+        .metadata-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+
+            margin-top: 14px;
+        }
+
+        .meta-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+
+            padding: 6px 9px;
+
+            border-radius: 999px;
+
+            background: var(--gray-100);
+            color: var(--gray-600);
+
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .meta-pill.ai {
+            background: var(--purple-light);
+            color: var(--purple);
+        }
+
+        /* ======================================================
+           NOTE AUTOMATIQUE
+        ====================================================== */
+
+        .automatic-score {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+
+            margin-top: 16px;
+
+            padding: 12px 14px;
+
+            border-radius: 10px;
+
+            background: var(--gray-100);
+        }
+
+        .automatic-score-label {
+            color: var(--gray-600);
+
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .automatic-score-value {
+            color: var(--gray-900);
+
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .pending-value {
+            color: var(--warning);
+        }
+
+        /* ======================================================
+           ACTIONS
+        ====================================================== */
+
+        .review-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+
+            padding: 16px 20px;
+
+            border-top: 1px solid var(--gray-200);
+
+            background: var(--gray-50);
+        }
+
+        .response-id {
+            color: var(--gray-500);
+
+            font-size: 12px;
+        }
+
+        /* ======================================================
+           ÉTAT VIDE
+        ====================================================== */
+
+        .empty-state {
+            padding: 60px 25px;
+
+            text-align: center;
+
+            background: var(--white);
+
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+
+            box-shadow: var(--shadow);
+        }
+
+        .empty-icon {
+            margin-bottom: 14px;
+
+            font-size: 48px;
+        }
+
+        .empty-state h2 {
+            margin: 0 0 10px;
+
+            font-size: 22px;
+        }
+
+        .empty-state p {
+            max-width: 620px;
+
+            margin: 0 auto 22px;
+
+            color: var(--gray-500);
+
+            line-height: 1.6;
+        }
+
+        /* ======================================================
+           RESPONSIVE
+        ====================================================== */
+
+        @media (max-width: 800px) {
+
+            .review-page {
+                padding: 16px;
+            }
+
+            .page-header {
+                flex-direction: column;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .header-actions .btn {
+                flex: 1;
+            }
+
+            .summary-card {
+                align-items: flex-start;
+            }
+
+            .context-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .info-box.full {
+                grid-column: auto;
+            }
+
+            .review-card-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .review-card-footer {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .review-card-footer .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 500px) {
+
+            .page-title-block h1 {
+                font-size: 25px;
+            }
+
+            .summary-card {
+                flex-direction: column;
+            }
+
+            .review-card-body,
+            .review-card-header,
+            .review-card-footer {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<section class="review-page">
+
+    <!-- ======================================================
+         EN-TÊTE
+    ======================================================= -->
+
+    <header class="page-header">
+
+        <div class="page-title-block">
+
+            <h1>
+                {% if lang == "en" %}
+                    📝 Reviews to complete
+                {% else %}
+                    📝 Corrections à revoir
+                {% endif %}
+            </h1>
+
+            <p>
+                {% if lang == "en" %}
+                    Review answers that could not be graded reliably
+                    by the automatic evaluation system.
+                {% else %}
+                    Examine les réponses qui n'ont pas pu être
+                    évaluées avec suffisamment de fiabilité
+                    par le système automatique.
+                {% endif %}
+            </p>
+
+        </div>
+
+        <div class="header-actions">
+
+            <a
+                href="{{ url_for('dashboard_enseignant') }}"
+                class="btn btn-secondary"
+            >
+                ←
+                {% if lang == "en" %}
+                    Dashboard
+                {% else %}
+                    Tableau de bord
+                {% endif %}
+            </a>
+
+        </div>
+
+    </header>
+
+
+    <!-- ======================================================
+         MESSAGES FLASH
+    ======================================================= -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            <div class="flash-container">
+
+                {% for category, message in messages %}
+
+                    <div class="flash flash-{{ category }}">
+                        {{ message }}
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% endif %}
+
+    {% endwith %}
+
+
+    <!-- ======================================================
+         RÉSUMÉ
+    ======================================================= -->
+
+    <section class="summary-card">
+
+        <div class="summary-left">
+
+            <div class="summary-icon">
+                ⏳
+            </div>
+
+            <div class="summary-text">
+
+                <strong>
+                    {% if lang == "en" %}
+                        Human review queue
+                    {% else %}
+                        File de révision humaine
+                    {% endif %}
+                </strong>
+
+                <span>
+                    {% if lang == "en" %}
+                        Only answers from students you supervise are shown.
+                    {% else %}
+                        Seules les réponses de tes élèves suivis sont affichées.
+                    {% endif %}
+                </span>
+
+            </div>
+
+        </div>
+
+        <div class="summary-count">
+            {{ total_corrections or 0 }}
+        </div>
+
+    </section>
+
+
+    <!-- ======================================================
+         CORRECTIONS
+    ======================================================= -->
+
+    {% if corrections %}
+
+        <div class="reviews-list">
+
+            {% for correction in corrections %}
+
+                <article class="review-card">
+
+                    <!-- ========================================
+                         HEADER CARTE
+                    ========================================= -->
+
+                    <div class="review-card-header">
+
+                        <div class="student-info">
+
+                            <div class="student-avatar">
+
+                                {% if correction.eleve
+                                      and correction.eleve.nom_complet %}
+
+                                    {{ correction.eleve.nom_complet[:1]|upper }}
+
+                                {% elif correction.eleve
+                                        and correction.eleve.username %}
+
+                                    {{ correction.eleve.username[:1]|upper }}
+
+                                {% else %}
+
+                                    ?
+
+                                {% endif %}
+
+                            </div>
+
+                            <div>
+
+                                <div class="student-name">
+
+                                    {% if correction.eleve %}
+
+                                        {{ correction.eleve.nom_complet
+                                           or correction.eleve.username
+                                           or "Élève" }}
+
+                                    {% else %}
+
+                                        {% if lang == "en" %}
+                                            Student unavailable
+                                        {% else %}
+                                            Élève indisponible
+                                        {% endif %}
+
+                                    {% endif %}
+
+                                </div>
+
+                                <div class="student-meta">
+
+                                    {% if correction.timestamp %}
+
+                                        {{ correction.timestamp.strftime(
+                                            "%d/%m/%Y %H:%M"
+                                        ) }}
+
+                                    {% endif %}
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="status-badge">
+
+                            ⏳
+
+                            {% if lang == "en" %}
+                                Pending review
+                            {% else %}
+                                À revoir
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ========================================
+                         CONTENU
+                    ========================================= -->
+
+                    <div class="review-card-body">
+
+                        <div class="context-grid">
+
+                            <!-- QUESTION -->
+
+                            <div class="info-box full">
+
+                                <span class="info-label">
+
+                                    {% if lang == "en" %}
+                                        Exercise
+                                    {% else %}
+                                        Énoncé
+                                    {% endif %}
+
+                                </span>
+
+                                <div class="info-content">
+                                    {{ correction.question
+                                       or "Question non disponible" }}
+                                </div>
+
+                            </div>
+
+
+                            <!-- RÉPONSE ÉLÈVE -->
+
+                            <div class="info-box student-answer-box">
+
+                                <span class="info-label">
+
+                                    {% if lang == "en" %}
+                                        Student answer
+                                    {% else %}
+                                        Réponse de l'élève
+                                    {% endif %}
+
+                                </span>
+
+                                <div class="info-content">
+
+                                    {% if correction.reponse_eleve %}
+
+                                        {{ correction.reponse_eleve }}
+
+                                    {% else %}
+
+                                        {% if lang == "en" %}
+                                            No answer available.
+                                        {% else %}
+                                            Aucune réponse disponible.
+                                        {% endif %}
+
+                                    {% endif %}
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- RÉPONSE ATTENDUE -->
+
+                            <div class="info-box expected-answer-box">
+
+                                <span class="info-label">
+
+                                    {% if lang == "en" %}
+                                        Reference answer
+                                    {% else %}
+                                        Réponse attendue
+                                    {% endif %}
+
+                                </span>
+
+                                <div class="info-content">
+
+                                    {% if correction.reponse_attendue %}
+
+                                        {{ correction.reponse_attendue }}
+
+                                    {% else %}
+
+                                        {% if lang == "en" %}
+                                            No reliable reference answer
+                                            is currently available.
+                                        {% else %}
+                                            Aucune réponse de référence
+                                            fiable n'est actuellement
+                                            disponible.
+                                        {% endif %}
+
+                                    {% endif %}
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- RAISON DE LA REVUE -->
+
+                            <div class="info-box reason-box full">
+
+                                <span class="info-label">
+
+                                    {% if lang == "en" %}
+                                        Why human review is required
+                                    {% else %}
+                                        Pourquoi une vérification humaine est requise
+                                    {% endif %}
+
+                                </span>
+
+                                <div class="info-content">
+                                    {{ correction.raison_revision
+                                       or "Évaluation automatique non concluante." }}
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ====================================
+                             NOTE AUTOMATIQUE
+                        ===================================== -->
+
+                        <div class="automatic-score">
+
+                            <span class="automatic-score-label">
+
+                                {% if lang == "en" %}
+                                    Automatic grade:
+                                {% else %}
+                                    Note automatique :
+                                {% endif %}
+
+                            </span>
+
+
+                            {% if correction.etoiles_automatiques is not none %}
+
+                                <span class="automatic-score-value">
+
+                                    {{ correction.etoiles_automatiques }}/5
+
+                                    {% if correction.score_automatique
+                                          is not none %}
+
+                                        —
+                                        {{ correction.score_automatique|round|int }}%
+
+                                    {% endif %}
+
+                                </span>
+
+                            {% else %}
+
+                                <span
+                                    class="automatic-score-value pending-value"
+                                >
+
+                                    {% if lang == "en" %}
+                                        Not assigned
+                                    {% else %}
+                                        Non attribuée
+                                    {% endif %}
+
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <!-- ====================================
+                             MÉTADONNÉES
+                        ===================================== -->
+
+                        <div class="metadata-row">
+
+                            <span class="meta-pill">
+                                #
+                                {{ correction.response_id }}
+                            </span>
+
+
+                            <span class="meta-pill ai">
+
+                                🤖
+
+                                {% if correction.source == "remediation" %}
+
+                                    {% if lang == "en" %}
+                                        Remediation
+                                    {% else %}
+                                        Remédiation
+                                    {% endif %}
+
+                                {% else %}
+
+                                    {% if lang == "en" %}
+                                        Exercise
+                                    {% else %}
+                                        Exercice
+                                    {% endif %}
+
+                                {% endif %}
+
+                            </span>
+
+
+                            {% if correction.exercice %}
+
+                                <span class="meta-pill">
+                                    Exercice
+                                    #{{ correction.exercice.id }}
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ========================================
+                         FOOTER
+                    ========================================= -->
+
+                    <div class="review-card-footer">
+
+                        <div class="response-id">
+
+                            {% if lang == "en" %}
+                                Response ID:
+                            {% else %}
+                                Réponse no
+                            {% endif %}
+
+                            {{ correction.response_id }}
+
+                        </div>
+
+
+                        <!--
+                            IMPORTANT :
+
+                            La route de correction individuelle sera
+                            créée à l'étape suivante.
+
+                            Nous utilisons ici une URL directe afin que
+                            ce template puisse déjà être rendu même si
+                            l'endpoint Flask n'existe pas encore.
+
+                            Dès que la route sera ajoutée :
+
+                            /enseignant/correction/<response_id>
+
+                            ce bouton deviendra fonctionnel.
+                        -->
+
+                        <a
+                            href="/enseignant/correction/{{ correction.response_id }}"
+                            class="btn btn-primary"
+                        >
+                            ✏️
+
+                            {% if lang == "en" %}
+                                Review / Grade
+                            {% else %}
+                                Examiner / Corriger
+                            {% endif %}
+                        </a>
+
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <!-- ==================================================
+             AUCUNE CORRECTION
+        =================================================== -->
+
+        <section class="empty-state">
+
+            <div class="empty-icon">
+                ✅
+            </div>
+
+            <h2>
+
+                {% if lang == "en" %}
+                    No reviews pending
+                {% else %}
+                    Aucune correction en attente
+                {% endif %}
+
+            </h2>
+
+            <p>
+
+                {% if lang == "en" %}
+
+                    There are currently no student answers requiring
+                    manual review. New uncertain evaluations will
+                    automatically appear here.
+
+                {% else %}
+
+                    Il n'y a actuellement aucune réponse d'élève
+                    nécessitant une vérification manuelle.
+                    Les nouvelles évaluations incertaines apparaîtront
+                    automatiquement ici.
+
+                {% endif %}
+
+            </p>
+
+            <a
+                href="{{ url_for('dashboard_enseignant') }}"
+                class="btn btn-primary"
+            >
+
+                {% if lang == "en" %}
+                    Back to dashboard
+                {% else %}
+                    Retour au tableau de bord
+                {% endif %}
+
+            </a>
+
+        </section>
+
+    {% endif %}
+
+</section>
+
+</body>
+</html>
