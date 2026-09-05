@@ -212,7 +212,7 @@ class NaimaOrchestrator:
         direct_verbal_constraints: Optional[
             List[Dict[str, Any]]
         ] = None,
-        
+
     ) -> NaimaTurnResult:
 
         # ======================================================
@@ -566,9 +566,8 @@ class NaimaOrchestrator:
                 #    déjà contenir des contraintes comme
                 #    product_offset_common_value.
                 #
-                # Le second ne suffit PAS encore à fermer
-                # déterministiquement le problème tant que le
-                # validateur final générique n'est pas branché.
+                # Le second peut désormais être transmis au
+                # validateur final sémantique générique.
                 # ----------------------------------------------
 
                 direct_verbal_memory_available = bool(
@@ -661,8 +660,15 @@ class NaimaOrchestrator:
                 #
                 # - la signification explicite de la variable ;
                 # - la solution algébrique prouvée ;
-                # - les relations verbales extraites
-                #   déterministiquement.
+                # - les relations verbales extraites ;
+                # - l'énoncé original ;
+                # - les contraintes sémantiques structurées.
+                #
+                # IMPORTANT :
+                #
+                # statement et constraints sont transmis afin
+                # que validate_direct_verbal_final_answer()
+                # puisse utiliser le chemin sémantique générique.
                 # ----------------------------------------------
 
                 elif (
@@ -687,6 +693,15 @@ class NaimaOrchestrator:
                             verbal_relations=(
                                 direct_verbal_relations
                             ),
+
+                            statement=(
+                                current_objective
+                                or ""
+                            ),
+
+                            constraints=(
+                                direct_verbal_constraints
+                            ),
                         )
                     )
 
@@ -695,9 +710,11 @@ class NaimaOrchestrator:
                 # ----------------------------------------------
                 #
                 # Une correction peut être absente et la chaîne
-                # de preuve directe encore incomplète.
+                # de preuve historique encore incomplète.
                 #
-                # Dans ce cas on ne fabrique aucun verdict.
+                # Mais si le contexte sémantique générique est
+                # disponible, il peut être transmis au validateur
+                # final sémantique.
                 # ----------------------------------------------
 
                 elif (
@@ -710,12 +727,14 @@ class NaimaOrchestrator:
                     # CONTEXTE DIRECT GÉNÉRIQUE DISPONIBLE
                     # ------------------------------------------
                     #
-                    # Le validateur final actuel sait encore
-                    # prouver surtout les relations historiques
-                    # (ex. multiple_of). Pour les nouvelles
-                    # contraintes sémantiques, il retournera
-                    # prudemment "uncertain" jusqu'au branchement
-                    # du validateur final générique.
+                    # Ici aussi nous transmettons :
+                    #
+                    #     statement
+                    #     constraints
+                    #
+                    # afin d'autoriser une validation sémantique
+                    # générale plutôt qu'un fallback immédiat
+                    # vers le validateur historique.
                     # ------------------------------------------
 
                     verbal_validation = (
@@ -735,8 +754,18 @@ class NaimaOrchestrator:
                             verbal_relations=(
                                 direct_verbal_relations
                             ),
+
+                            statement=(
+                                current_objective
+                                or ""
+                            ),
+
+                            constraints=(
+                                direct_verbal_constraints
+                            ),
                         )
                     )
+
         # ======================================================
         # 2B. ARBITRAGE DE VALIDATION
         # ======================================================
@@ -1017,7 +1046,6 @@ class NaimaOrchestrator:
                     ),
                 },
             }
-
 
         # ======================================================
         # 2E. CYCLE DE VIE DU PROBLÈME

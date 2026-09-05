@@ -5654,3 +5654,1053 @@ def test_direct_verbal_final_answer_keeps_legacy_fallback():
         result["details"]["validation_path"]
         == "legacy"
     )
+
+def test_semantic_life_situation_algebraic_solution_requests_contextual_final_answer():
+    """
+    Une solution algébrique correcte obtenue dans une
+    situation de vie courante ne doit pas fermer l'exercice.
+
+    Le système doit :
+
+        1. reconnaître la solution algébrique ;
+        2. conserver le problème verbal ouvert ;
+        3. demander explicitement une réponse contextualisée ;
+        4. ne pas appeler le LLM ;
+        5. ne pas afficher "Nouvel exercice".
+
+    Le test utilise un exemple concret, mais aucune logique
+    de production ne doit dépendre du domaine de cet exemple.
+    """
+
+    from services.naima.orchestrator import (
+        NaimaOrchestrator,
+    )
+
+    orchestrator = (
+        NaimaOrchestrator()
+    )
+
+    result = orchestrator.process_turn(
+        message=(
+            "x=17/5"
+        ),
+
+        current_objective=(
+            "Si j'achète 10 objets, il me manque 5 $, "
+            "et si j'en achète 5, il me reste 12 $. "
+            "Quel est le prix d'un objet ?"
+        ),
+
+        current_equation=(
+            "10*x-5=5*x+12"
+        ),
+
+        initial_equation=(
+            "10*x-5=5*x+12"
+        ),
+
+        last_teacher_question=(
+            "Quelle valeur obtiens-tu pour x ?"
+        ),
+
+        conversation=[],
+
+        previous_recovery_state={},
+
+        diagnostic={},
+
+        first_message=False,
+
+        verbal_problem_active=True,
+
+        verbal_problem_correction=None,
+
+        direct_verbal_variable_meaning={
+            "variable": "x",
+            "meaning": (
+                "le prix d'un objet"
+            ),
+            "entity": "objet",
+        },
+
+        direct_verbal_algebraic_solution=None,
+
+        direct_verbal_relations=[],
+
+        direct_verbal_constraints=[
+            {
+                "relation": (
+                    "product_offset_common_value"
+                ),
+                "quantity": 10,
+                "offset": -5,
+                "item": "objet",
+                "common_role": (
+                    "available_amount"
+                ),
+            },
+            {
+                "relation": (
+                    "product_offset_common_value"
+                ),
+                "quantity": 5,
+                "offset": 12,
+                "item": "objet",
+                "common_role": (
+                    "available_amount"
+                ),
+            },
+        ],
+    )
+
+    # ==========================================================
+    # 1. LA SOLUTION ALGÉBRIQUE EST PROUVÉE
+    # ==========================================================
+
+    assert (
+        result.validation[
+            "verdict"
+        ]
+        == "correct"
+    )
+
+    assert (
+        result.validation[
+            "result_correct"
+        ]
+        is True
+    )
+
+    # ==========================================================
+    # 2. MAIS ELLE EST RECLASSÉE COMME SOUS-OBJECTIF VERBAL
+    # ==========================================================
+
+    assert (
+        result.validation[
+            "method"
+        ]
+        == "verbal_problem_intermediate_solution"
+    )
+
+    assert (
+        result.validation[
+            "details"
+        ][
+            "algebraic_subgoal_completed"
+        ]
+        is True
+    )
+
+    assert (
+        result.validation[
+            "details"
+        ][
+            "original_validation_method"
+        ]
+        == "equation_solution"
+    )
+
+    # ==========================================================
+    # 3. LE PROBLÈME RESTE OUVERT
+    # ==========================================================
+
+    assert (
+        result.objective_reached
+        is False
+    )
+
+    assert (
+        result.response[
+            "objective_reached"
+        ]
+        is False
+    )
+
+    assert (
+        result.response[
+            "keep_exercise_open"
+        ]
+        is True
+    )
+
+    assert (
+        result.response[
+            "exercise_closed"
+        ]
+        is False
+    )
+
+    assert (
+        result.response[
+            "next_action"
+        ]
+        is None
+    )
+
+    # ==========================================================
+    # 4. RÉPONSE LOCALE, PAS DE LLM
+    # ==========================================================
+
+    assert (
+        result.response[
+            "response_type"
+        ]
+        == "verbal_problem_intermediate_solution"
+    )
+
+    assert (
+        result.response[
+            "use_local_response"
+        ]
+        is True
+    )
+
+    assert (
+        result.response[
+            "use_llm"
+        ]
+        is False
+    )
+
+    assert (
+        result.requires_llm
+        is False
+    )
+
+    # ==========================================================
+    # 5. NAIMA DEMANDE EXPLICITEMENT
+    #    LA RÉPONSE CONTEXTUALISÉE
+    # ==========================================================
+
+    response_text = str(
+        result.response.get(
+            "text"
+        )
+        or ""
+    ).lower()
+
+    assert (
+        "reviens maintenant à l’énoncé"
+        in response_text
+        or "reviens maintenant à l'énoncé"
+        in response_text
+    )
+
+    assert (
+        "que représente x"
+        in response_text
+    )
+
+    assert (
+        "réponse finale"
+        in response_text
+    )
+
+def test_independent_equation_does_not_contaminate_active_verbal_problem_memory():
+    """
+    Une équation indépendante ne doit jamais devenir
+    une solution algébrique du problème verbal actif.
+
+    Cette règle est entièrement générique :
+    aucune dépendance au domaine ou au vocabulaire.
+    """
+
+    from services.naima.semantic_compiler_service import (
+        equations_have_same_solution_set,
+    )
+
+    # Modèle du problème verbal actif.
+    verbal_model = (
+        "10*x-5=5*x+12"
+    )
+
+    # Équation indépendante.
+    unrelated_equation = (
+        "2*x-6=7"
+    )
+
+    related = (
+        equations_have_same_solution_set(
+            verbal_model,
+            unrelated_equation,
+        )
+    )
+
+    assert (
+        related
+        is False
+    )
+
+def test_equation_lineage_accepts_equivalent_step():
+    from services.naima.semantic_compiler_service import (
+        equations_have_same_solution_set,
+    )
+
+    assert (
+        equations_have_same_solution_set(
+            "10*x-5=5*x+12",
+            "5*x=17",
+        )
+        is True
+    )
+
+
+def test_equation_lineage_accepts_final_solution():
+    from services.naima.semantic_compiler_service import (
+        equations_have_same_solution_set,
+    )
+
+    assert (
+        equations_have_same_solution_set(
+            "10*x-5=5*x+12",
+            "x=17/5",
+        )
+        is True
+    )
+
+
+def test_equation_lineage_rejects_independent_equation():
+    from services.naima.semantic_compiler_service import (
+        equations_have_same_solution_set,
+    )
+
+    assert (
+        equations_have_same_solution_set(
+            "10*x-5=5*x+12",
+            "2*x-6=7",
+        )
+        is False
+    )
+
+def test_semantic_contextual_final_answer_closes_problem_and_requests_new_exercise(
+    monkeypatch,
+):
+    """
+    Une réponse finale contextualisée correcte doit fermer
+    une situation verbale lorsque :
+
+        1. le modèle sémantique de la situation est connu ;
+        2. la solution algébrique a déjà été prouvée ;
+        3. la valeur donnée par l'élève correspond
+           déterministement à la cible demandée.
+
+    Ce test ne teste PAS l'interprétation du langage naturel
+    par le LLM.
+
+    Cette responsabilité est déjà couverte par les tests
+    de semantic_interpreter_service.
+
+    Ici, on teste uniquement la chaîne :
+
+        situation sémantique connue
+            ↓
+        réponse finale contextualisée
+            ↓
+        preuve déterministe
+            ↓
+        fermeture pédagogique
+            ↓
+        next_action = new_exercise
+
+    Aucune logique de production n'est spécifique
+    au prix, aux objets ou à un domaine particulier.
+    """
+
+    from services.naima.orchestrator import (
+        NaimaOrchestrator,
+    )
+
+    from services.naima import (
+        verbal_problem_service,
+    )
+
+    from services.naima.semantic_schema import (
+        SemanticConstraint,
+        SemanticEntity,
+        SemanticSituation,
+    )
+
+    # ==========================================================
+    # 1. SITUATION SÉMANTIQUE DÉJÀ INTERPRÉTÉE
+    # ==========================================================
+    #
+    # On court-circuite volontairement l'étape LLM.
+    #
+    # L'objectif de CE test est la fermeture de l'exercice,
+    # pas la qualité de l'interprétation linguistique.
+    #
+    # Les rôles restent totalement génériques :
+    #
+    #     unit_value
+    #     available_amount
+    #
+    # ==========================================================
+
+    semantic_situation = SemanticSituation(
+        status="interpreted",
+
+        statement=(
+            "Situation quantitative générique."
+        ),
+
+        entities=[
+            SemanticEntity(
+                role="unit_value",
+                label="valeur unitaire",
+                entity_type="quantity",
+            ),
+
+            SemanticEntity(
+                role="available_amount",
+                label="quantité commune disponible",
+                entity_type="quantity",
+            ),
+        ],
+
+        constraints=[
+            SemanticConstraint(
+                relation=(
+                    "product_offset_common_value"
+                ),
+                data={
+                    "quantity": 10,
+                    "offset": -5,
+
+                    "unit_role": (
+                        "unit_value"
+                    ),
+
+                    "common_role": (
+                        "available_amount"
+                    ),
+                },
+            ),
+
+            SemanticConstraint(
+                relation=(
+                    "product_offset_common_value"
+                ),
+                data={
+                    "quantity": 5,
+                    "offset": 12,
+
+                    "unit_role": (
+                        "unit_value"
+                    ),
+
+                    "common_role": (
+                        "available_amount"
+                    ),
+                },
+            ),
+        ],
+
+        target_role="unit_value",
+
+        parameterizations=[],
+
+        ambiguities=[],
+
+        confidence=1.0,
+
+        source="test_semantic_fixture",
+    )
+
+    # ==========================================================
+    # 2. REMPLACER UNIQUEMENT L'INTERPRÉTATION
+    # ==========================================================
+    #
+    # IMPORTANT :
+    #
+    # On patch directement la référence utilisée par
+    # verbal_problem_service.
+    #
+    # Ainsi ce test ne dépend :
+    #
+    #     ni d'OpenAI ;
+    #     ni du réseau ;
+    #     ni du parsing du prompt ;
+    #     ni du fallback sémantique.
+    #
+    # ==========================================================
+
+    def fake_interpret_math_situation(
+        *,
+        statement,
+        deterministic_constraints=None,
+        llm_interpreter=None,
+        use_llm_fallback=True,
+    ):
+        return semantic_situation
+
+    monkeypatch.setattr(
+        verbal_problem_service,
+        "interpret_math_situation",
+        fake_interpret_math_situation,
+    )
+
+    # ==========================================================
+    # 3. ORCHESTRATEUR
+    # ==========================================================
+
+    orchestrator = (
+        NaimaOrchestrator()
+    )
+
+    result = orchestrator.process_turn(
+        message=(
+            "La valeur unitaire est de 3,40 $."
+        ),
+
+        current_objective=(
+            "Si j'achète 10 objets, il me manque 5 $, "
+            "et si j'en achète 5, il me reste 12 $. "
+            "Quelle est la valeur unitaire ?"
+        ),
+
+        current_equation=(
+            "10*x-5=5*x+12"
+        ),
+
+        initial_equation=(
+            "10*x-5=5*x+12"
+        ),
+
+        last_teacher_question=(
+            "Que représente x dans la situation, "
+            "et quelle est ta réponse finale ?"
+        ),
+
+        conversation=[],
+
+        previous_recovery_state={},
+
+        diagnostic={},
+
+        first_message=False,
+
+        verbal_problem_active=True,
+
+        verbal_problem_correction=None,
+
+        # ======================================================
+        # VARIABLE ALGÉBRIQUE
+        # ======================================================
+
+        direct_verbal_variable_meaning={
+            "variable": "x",
+
+            "meaning": (
+                "la valeur unitaire"
+            ),
+
+            "entity": "objet",
+        },
+
+        # ======================================================
+        # SOLUTION ALGÉBRIQUE DÉJÀ PROUVÉE
+        # ======================================================
+
+        direct_verbal_algebraic_solution={
+            "variable": "x",
+
+            "value": "17/5",
+
+            "proved": True,
+
+            "validation_method": (
+                "verbal_problem_intermediate_solution"
+            ),
+        },
+
+        direct_verbal_relations=[],
+
+        # ======================================================
+        # CONTRAINTES STRUCTURELLES
+        # ======================================================
+
+        direct_verbal_constraints=[
+            {
+                "relation": (
+                    "product_offset_common_value"
+                ),
+
+                "quantity": 10,
+
+                "offset": -5,
+
+                "unit_role": (
+                    "unit_value"
+                ),
+
+                "common_role": (
+                    "available_amount"
+                ),
+            },
+
+            {
+                "relation": (
+                    "product_offset_common_value"
+                ),
+
+                "quantity": 5,
+
+                "offset": 12,
+
+                "unit_role": (
+                    "unit_value"
+                ),
+
+                "common_role": (
+                    "available_amount"
+                ),
+            },
+        ],
+    )
+
+    # ==========================================================
+    # 4. TRACE DIAGNOSTIQUE
+    # ==========================================================
+    #
+    # On la garde pour le moment.
+    #
+    # Si le test échoue encore, nous verrons immédiatement
+    # le chemin réellement utilisé.
+    # ==========================================================
+
+    print(
+        "\nVALIDATION:",
+        result.validation,
+    )
+
+    print(
+        "\nRESPONSE:",
+        result.response,
+    )
+
+    # ==========================================================
+    # 5. LA VALIDATION FINALE DOIT ÊTRE PROUVÉE
+    # ==========================================================
+
+    assert (
+        result.validation[
+            "verdict"
+        ]
+        == "correct"
+    )
+
+    assert (
+        result.validation[
+            "method"
+        ]
+        == "direct_verbal_final_answer"
+    )
+
+    assert (
+        result.validation[
+            "result_correct"
+        ]
+        is True
+    )
+
+    # ==========================================================
+    # 6. LA PREUVE DOIT VENIR DU CHEMIN SÉMANTIQUE
+    # ==========================================================
+
+    assert (
+        result.validation[
+            "details"
+        ][
+            "validation_path"
+        ]
+        == "semantic"
+    )
+
+    # ==========================================================
+    # 7. OBJECTIF PÉDAGOGIQUE ATTEINT
+    # ==========================================================
+
+    assert (
+        result.objective_reached
+        is True
+    )
+
+    assert (
+        result.response[
+            "objective_reached"
+        ]
+        is True
+    )
+
+    assert (
+        result.response[
+            "keep_exercise_open"
+        ]
+        is False
+    )
+
+    # ==========================================================
+    # 8. EXERCICE FERMÉ
+    # ==========================================================
+
+    assert (
+        result.response[
+            "exercise_closed"
+        ]
+        is True
+    )
+
+    assert (
+        result.response[
+            "next_action"
+        ]
+        == "new_exercise"
+    )
+
+    # ==========================================================
+    # 9. RÉPONSE PÉDAGOGIQUE LOCALE
+    # ==========================================================
+
+    assert (
+        result.response[
+            "response_type"
+        ]
+        == "verbal_problem_final_correct"
+    )
+
+    assert (
+        result.response[
+            "use_local_response"
+        ]
+        is True
+    )
+
+    assert (
+        result.response[
+            "use_llm"
+        ]
+        is False
+    )
+
+    assert (
+        result.requires_llm
+        is False
+    )
+
+    assert (
+        result.handled_deterministically
+        is True
+    )
+
+def test_semantic_interpreter_completes_target_when_constraints_are_mathematically_sufficient_but_semantically_incomplete():
+    """
+    Plusieurs contraintes peuvent suffire pour l'algèbre
+    tout en restant insuffisantes pour identifier la cible.
+
+    L'interpréteur doit alors compléter la sémantique,
+    sans décider de la correction mathématique.
+    """
+
+    from services.naima import (
+        semantic_interpreter_service,
+    )
+
+    called = {
+        "value": False,
+    }
+
+    def fake_interpreter(
+        statement,
+    ):
+
+        called["value"] = True
+
+        return {
+            "status": "interpreted",
+            "confidence": 0.99,
+
+            "entities": [
+                {
+                    "role": "unit_value",
+                    "label": "valeur unitaire",
+                    "entity_type": "quantity",
+                },
+                {
+                    "role": "available_amount",
+                    "label": "quantité commune disponible",
+                    "entity_type": "quantity",
+                },
+            ],
+
+            "constraints": [],
+
+            "target_role": "unit_value",
+
+            "ambiguities": [],
+        }
+
+    original = (
+        semantic_interpreter_service
+        .call_openai_semantic_interpreter
+    )
+
+    semantic_interpreter_service.call_openai_semantic_interpreter = (
+        fake_interpreter
+    )
+
+    try:
+
+        result = (
+            semantic_interpreter_service
+            .interpret_math_situation(
+                statement=(
+                    "Situation quantitative générique."
+                ),
+
+                deterministic_constraints=[
+                    {
+                        "relation": (
+                            "product_offset_common_value"
+                        ),
+                        "quantity": 10,
+                        "offset": -5,
+                        "common_role": (
+                            "available_amount"
+                        ),
+                    },
+                    {
+                        "relation": (
+                            "product_offset_common_value"
+                        ),
+                        "quantity": 5,
+                        "offset": 12,
+                        "common_role": (
+                            "available_amount"
+                        ),
+                    },
+                ],
+
+                use_llm_fallback=True,
+            )
+        )
+
+    finally:
+
+        semantic_interpreter_service.call_openai_semantic_interpreter = (
+            original
+        )
+
+    assert (
+        called["value"]
+        is True
+    )
+
+    assert (
+        result.target_role
+        == "unit_value"
+    )
+
+def test_extract_product_offsets_accepts_comma_after_elided_pronoun():
+    from services.naima.verbal_problem_service import (
+        extract_product_offset_constraints,
+    )
+
+    result = (
+        extract_product_offset_constraints(
+            "Si j,achete 10 objets "
+            "il me manquera 15, "
+            "mais si j'achete 5 objets "
+            "il me restera 10."
+        )
+    )
+
+    assert len(
+        result
+    ) == 2
+
+    assert any(
+        constraint.get(
+            "quantity"
+        ) == 10
+        and constraint.get(
+            "offset"
+        ) == -15
+        for constraint in result
+    )
+
+    assert any(
+        constraint.get(
+            "quantity"
+        ) == 5
+        and constraint.get(
+            "offset"
+        ) == 10
+        for constraint in result
+    )
+
+def test_semantic_final_answer_uses_previously_proved_variable_role(
+    monkeypatch,
+):
+    from services.naima.verbal_problem_service import (
+        validate_semantic_verbal_final_answer,
+    )
+
+    from services.naima import (
+        verbal_problem_service,
+    )
+
+    from services.naima.semantic_schema import (
+        SemanticConstraint,
+        SemanticEntity,
+        SemanticSituation,
+    )
+
+    semantic_situation = SemanticSituation(
+        status="interpreted",
+
+        statement=(
+            "Situation quantitative générique."
+        ),
+
+        entities=[
+            SemanticEntity(
+                role="unit_value",
+                label="valeur unitaire",
+                entity_type="quantity",
+            ),
+
+            SemanticEntity(
+                role="available_amount",
+                label="valeur commune",
+                entity_type="quantity",
+            ),
+        ],
+
+        constraints=[
+            SemanticConstraint(
+                relation=(
+                    "product_offset_common_value"
+                ),
+                data={
+                    "quantity": 10,
+                    "offset": -15,
+                    "unit_role": "unit_value",
+                    "common_role": (
+                        "available_amount"
+                    ),
+                },
+            ),
+
+            SemanticConstraint(
+                relation=(
+                    "product_offset_common_value"
+                ),
+                data={
+                    "quantity": 5,
+                    "offset": 10,
+                    "unit_role": "unit_value",
+                    "common_role": (
+                        "available_amount"
+                    ),
+                },
+            ),
+        ],
+
+        target_role="unit_value",
+
+        parameterizations=[],
+
+        ambiguities=[],
+
+        confidence=1.0,
+
+        source="test_semantic_fixture",
+    )
+
+    def fake_interpret_math_situation(
+        *,
+        statement,
+        deterministic_constraints=None,
+        llm_interpreter=None,
+        use_llm_fallback=True,
+    ):
+        return semantic_situation
+
+    monkeypatch.setattr(
+        verbal_problem_service,
+        "interpret_math_situation",
+        fake_interpret_math_situation,
+    )
+
+    result = (
+        validate_semantic_verbal_final_answer(
+            student_answer=(
+                "La valeur est 5."
+            ),
+
+            statement=(
+                "Situation quantitative générique."
+            ),
+
+            variable_meaning={
+                "variable": "x",
+                "meaning": "valeur",
+                "semantic_role": (
+                    "unit_value"
+                ),
+            },
+
+            algebraic_solution={
+                "variable": "x",
+                "value": "5",
+                "proved": True,
+            },
+
+            constraints=[
+                {
+                    "relation": (
+                        "product_offset_common_value"
+                    ),
+                    "quantity": 10,
+                    "offset": -15,
+                    "common_role": (
+                        "available_amount"
+                    ),
+                },
+                {
+                    "relation": (
+                        "product_offset_common_value"
+                    ),
+                    "quantity": 5,
+                    "offset": 10,
+                    "common_role": (
+                        "available_amount"
+                    ),
+                },
+            ],
+        )
+    )
+
+    assert (
+        result["verdict"]
+        == "correct"
+    )
+
+    assert (
+        result["result_correct"]
+        is True
+    )
+
+    assert (
+        result["details"][
+            "solved_role"
+        ]
+        == "unit_value"
+    )
+
+    assert (
+        result["details"][
+            "solved_role_source"
+        ]
+        == "proved_model_parameterization"
+    )

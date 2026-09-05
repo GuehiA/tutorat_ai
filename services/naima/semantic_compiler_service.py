@@ -610,3 +610,158 @@ def equations_have_same_solution_set(
         solutions_a
         == solutions_b
     )
+
+def equations_have_same_solution_set(
+    equation_a: str,
+    equation_b: str,
+) -> Optional[bool]:
+    """
+    Vérifie si deux équations décrivent le même
+    ensemble de solutions.
+
+    Cette fonction est générique et indépendante
+    du domaine du problème.
+
+    Retourne :
+
+        True
+            si les deux équations ont exactement
+            le même ensemble de solutions ;
+
+        False
+            si leurs ensembles de solutions sont
+            différents ;
+
+        None
+            si la comparaison ne peut pas être
+            déterminée de façon fiable.
+    """
+
+    residual_a = (
+        equation_to_residual(
+            equation_a
+        )
+    )
+
+    residual_b = (
+        equation_to_residual(
+            equation_b
+        )
+    )
+
+    if (
+        residual_a is None
+        or residual_b is None
+    ):
+        return None
+
+    symbols = (
+        residual_a.free_symbols
+        | residual_b.free_symbols
+    )
+
+    if not symbols:
+        return None
+
+    try:
+
+        variables = sorted(
+            symbols,
+            key=lambda symbol: str(
+                symbol
+            ),
+        )
+
+        solutions_a = sp.solve(
+            residual_a,
+            variables,
+            dict=True,
+        )
+
+        solutions_b = sp.solve(
+            residual_b,
+            variables,
+            dict=True,
+        )
+
+    except Exception:
+
+        return None
+
+    return (
+        solutions_a
+        == solutions_b
+    )
+
+def equations_have_same_solution_set(
+    equation_a: str,
+    equation_b: str,
+) -> Optional[bool]:
+    """
+    Vérifie si deux équations ont exactement
+    le même ensemble de solutions.
+
+    Cette logique est purement mathématique
+    et indépendante du domaine du problème.
+
+    Retourne :
+        True  -> mêmes solutions
+        False -> solutions différentes
+        None  -> impossible de conclure sûrement
+    """
+
+    residual_a = (
+        equation_to_residual(
+            equation_a
+        )
+    )
+
+    residual_b = (
+        equation_to_residual(
+            equation_b
+        )
+    )
+
+    if (
+        residual_a is None
+        or residual_b is None
+    ):
+        return None
+
+    symbols = (
+        residual_a.free_symbols
+        | residual_b.free_symbols
+    )
+
+    if not symbols:
+        return None
+
+    try:
+
+        variables = sorted(
+            symbols,
+            key=lambda symbol: str(
+                symbol
+            ),
+        )
+
+        solutions_a = sp.solve(
+            residual_a,
+            variables,
+            dict=True,
+        )
+
+        solutions_b = sp.solve(
+            residual_b,
+            variables,
+            dict=True,
+        )
+
+    except Exception:
+
+        return None
+
+    return (
+        solutions_a
+        == solutions_b
+    )

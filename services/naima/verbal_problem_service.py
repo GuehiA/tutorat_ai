@@ -4080,13 +4080,21 @@ def validate_semantic_verbal_final_answer(
             ↓
         comparaison avec la réponse finale de l'élève
 
+    PRIORITÉ POUR LE RÔLE DE LA VARIABLE :
+
+        1. semantic_role déjà prouvé lors de la modélisation ;
+        2. correspondance avec les entités sémantiques ;
+        3. rôle unique non ambigu dans le modèle.
+
     IMPORTANT :
 
     - le LLM peut interpréter les contraintes, les rôles
       et la cible ;
     - il ne décide jamais si la réponse finale est correcte ;
     - la valeur finale doit être établie par le moteur
-      déterministe.
+      déterministe ;
+    - un rôle sémantique mémorisé n'est accepté que s'il
+      existe réellement dans le modèle courant.
     """
 
     import re
@@ -4183,7 +4191,9 @@ def validate_semantic_verbal_final_answer(
 
         semantic_situation = (
             interpret_math_situation(
-                statement=statement,
+                statement=(
+                    statement
+                ),
 
                 deterministic_constraints=(
                     constraints
@@ -4218,51 +4228,14 @@ def validate_semantic_verbal_final_answer(
         }
 
     # ========================================================
-    # 3. RÔLE DE LA VARIABLE RÉSOLUE
+    # 3. RÔLES POSSIBLES DU MODÈLE
     # ========================================================
-
-    solved_role = None
-
-    variable_description = str(
-        variable_meaning.get(
-            "meaning"
-        )
-        or ""
-    ).strip().lower()
-
-    # --------------------------------------------------------
-    # Chercher d'abord dans les entités sémantiques.
-    # --------------------------------------------------------
-
-    if variable_description:
-
-        for entity in (
-            semantic_situation.entities
-        ):
-
-            label = str(
-                entity.label
-                or ""
-            ).strip().lower()
-
-            if not label:
-                continue
-
-            if (
-                label in variable_description
-                or variable_description in label
-            ):
-
-                solved_role = str(
-                    entity.role
-                    or ""
-                ).strip()
-
-                if solved_role:
-                    break
-
-    # ========================================================
-    # 4. RÔLES POSSIBLES DU MODÈLE
+    #
+    # On construit d'abord la liste complète des rôles
+    # présents dans la situation.
+    #
+    # Elle servira notamment à vérifier qu'un semantic_role
+    # mémorisé appartient bien au modèle actuel.
     # ========================================================
 
     candidate_roles = []
@@ -4281,6 +4254,7 @@ def validate_semantic_verbal_final_answer(
             "common_role",
             "subject_role",
             "reference_role",
+            "target_role",
         ):
 
             role = str(
@@ -4301,27 +4275,183 @@ def validate_semantic_verbal_final_answer(
                 )
 
     # --------------------------------------------------------
-    # Si le modèle n'a qu'un seul rôle possible,
-    # on peut l'adopter sans ambiguïté.
+    # Les entités sémantiques peuvent également apporter
+    # des rôles.
     # --------------------------------------------------------
+
+    for entity in (
+        semantic_situation.entities
+    ):
+
+        role = str(
+            entity.role
+            or ""
+        ).strip()
+
+        if (
+            role
+            and role
+            not in candidate_roles
+        ):
+
+            candidate_roles.append(
+                role
+            )
+
+    # --------------------------------------------------------
+    # La cible elle-même est aussi un rôle connu.
+    # --------------------------------------------------------
+
+    semantic_target_role = str(
+        semantic_situation.target_role
+        or ""
+    ).strip()
+
+    if (
+        semantic_target_role
+        and semantic_target_role
+        not in candidate_roles
+    ):
+
+        candidate_roles.append(
+            semantic_target_role
+        )
+
+    # ========================================================
+    # 4. RÔLE DE LA VARIABLE RÉSOLUE
+    # ========================================================
+
+    solved_role = None
+    solved_role_source = None
+
+    # ========================================================
+    # 4A. RÔLE DÉJÀ PROUVÉ LORS DE LA MODÉLISATION
+    # ========================================================
+    #
+    # Exemple :
+    #
+    #     variable_meaning["semantic_role"] = "unit_value"
+    #
+    # Ce rôle a été mémorisé uniquement lorsqu'une
+    # paramétrisation déterministe correspondait réellement
+    # à l'équation proposée.
+    #
+    # On ne le réutilise que s'il existe encore dans le modèle
+    # sémantique courant.
+    # ========================================================
+
+    remembered_semantic_role = str(
+        variable_meaning.get(
+            "semantic_role"
+        )
+        or ""
+    ).strip()
+
+    if (
+        remembered_semantic_role
+        and remembered_semantic_role
+        in candidate_roles
+    ):
+
+        solved_role = (
+            remembered_semantic_role
+        )
+
+        solved_role_source = (
+            "proved_model_parameterization"
+        )
+
+    # ========================================================
+    # 4B. CORRESPONDANCE TEXTUELLE AVEC LES ENTITÉS
+    # ========================================================
+    #
+    # Ce chemin reste un fallback.
+    #
+    # Il ne doit pas écraser un rôle déjà prouvé par
+    # l'équation de modélisation.
+    # ========================================================
+
+    variable_description = str(
+        variable_meaning.get(
+            "meaning"
+        )
+        or ""
+    ).strip().lower()
 
     if (
         not solved_role
-        and len(candidate_roles) == 1
+        and variable_description
+    ):
+
+        for entity in (
+            semantic_situation.entities
+        ):
+
+            label = str(
+                entity.label
+                or ""
+            ).strip().lower()
+
+            if not label:
+                continue
+
+            if (
+                label in variable_description
+                or variable_description in label
+            ):
+
+                candidate_role = str(
+                    entity.role
+                    or ""
+                ).strip()
+
+                if (
+                    candidate_role
+                    and candidate_role
+                    in candidate_roles
+                ):
+
+                    solved_role = (
+                        candidate_role
+                    )
+
+                    solved_role_source = (
+                        "semantic_entity_label"
+                    )
+
+                    break
+
+    # ========================================================
+    # 4C. UN SEUL RÔLE POSSIBLE
+    # ========================================================
+    #
+    # Si le modèle ne contient réellement qu'un seul rôle,
+    # il n'y a aucune ambiguïté.
+    # ========================================================
+
+    if (
+        not solved_role
+        and len(
+            candidate_roles
+        )
+        == 1
     ):
 
         solved_role = (
             candidate_roles[0]
         )
 
+        solved_role_source = (
+            "single_candidate_role"
+        )
+
     # ========================================================
     # 5. CIBLE DEMANDÉE PAR LE PROBLÈME
     # ========================================================
 
-    target_role = str(
-        semantic_situation.target_role
-        or ""
-    ).strip()
+    target_role = (
+        semantic_target_role
+    )
 
     if not target_role:
 
@@ -4353,8 +4483,14 @@ def validate_semantic_verbal_final_answer(
                 "solved_role": (
                     solved_role
                 ),
+                "solved_role_source": (
+                    solved_role_source
+                ),
                 "candidate_roles": (
                     candidate_roles
+                ),
+                "remembered_semantic_role": (
+                    remembered_semantic_role
                 ),
                 "semantic_source": (
                     semantic_situation.source
@@ -4395,6 +4531,9 @@ def validate_semantic_verbal_final_answer(
                 "candidate_roles": (
                     candidate_roles
                 ),
+                "remembered_semantic_role": (
+                    remembered_semantic_role
+                ),
             },
         }
 
@@ -4421,6 +4560,9 @@ def validate_semantic_verbal_final_answer(
             ),
             "solved_role": (
                 solved_role
+            ),
+            "solved_role_source": (
+                solved_role_source
             ),
         }
 
@@ -4481,6 +4623,9 @@ def validate_semantic_verbal_final_answer(
                 "type": (
                     "derived_from_semantic_constraints"
                 ),
+                "solved_role_source": (
+                    solved_role_source
+                ),
                 "derivation": (
                     derived
                 ),
@@ -4508,6 +4653,9 @@ def validate_semantic_verbal_final_answer(
             "details": {
                 "solved_role": (
                     solved_role
+                ),
+                "solved_role_source": (
+                    solved_role_source
                 ),
                 "solved_value": (
                     str(
@@ -4666,7 +4814,9 @@ def validate_semantic_verbal_final_answer(
 
     student_values = []
 
-    for match in matches:
+    for match in (
+        matches
+    ):
 
         parsed = (
             _to_fraction(
@@ -4677,8 +4827,12 @@ def validate_semantic_verbal_final_answer(
         if parsed is not None:
 
             student_values.append({
-                "raw": match,
-                "value": parsed,
+                "raw": (
+                    match
+                ),
+                "value": (
+                    parsed
+                ),
             })
 
     if not student_values:
@@ -4715,7 +4869,9 @@ def validate_semantic_verbal_final_answer(
     ):
 
         if (
-            candidate["value"]
+            candidate[
+                "value"
+            ]
             == expected_fraction
         ):
 
@@ -4736,30 +4892,47 @@ def validate_semantic_verbal_final_answer(
                 ),
                 "details": {
                     "student_value": (
-                        candidate["raw"]
+                        candidate[
+                            "raw"
+                        ]
                     ),
+
                     "expected_value": (
                         str(
                             expected_fraction
                         )
                     ),
+
                     "target_role": (
                         target_role
                     ),
+
                     "solved_role": (
                         solved_role
                     ),
+
+                    "solved_role_source": (
+                        solved_role_source
+                    ),
+
                     "solved_value": (
                         str(
                             solved_value
                         )
                     ),
+
                     "target_proof": (
                         target_proof
                     ),
+
+                    "remembered_semantic_role": (
+                        remembered_semantic_role
+                    ),
+
                     "semantic_source": (
                         semantic_situation.source
                     ),
+
                     "semantic_constraints": [
                         constraint.to_dict()
                         for constraint
@@ -4793,30 +4966,47 @@ def validate_semantic_verbal_final_answer(
         ),
         "details": {
             "student_values": [
-                item["raw"]
-                for item in student_values
+                item[
+                    "raw"
+                ]
+                for item
+                in student_values
             ],
+
             "expected_value": (
                 str(
                     expected_fraction
                 )
             ),
+
             "target_role": (
                 target_role
             ),
+
             "solved_role": (
                 solved_role
             ),
+
+            "solved_role_source": (
+                solved_role_source
+            ),
+
             "solved_value": (
                 str(
                     solved_value
                 )
             ),
+
             "target_proof": (
                 target_proof
             ),
+
+            "remembered_semantic_role": (
+                remembered_semantic_role
+            ),
         },
     }
+
 
 def _validate_direct_verbal_final_answer_legacy(
     *,
@@ -5768,19 +5958,42 @@ def extract_product_offset_constraints(
 
     Exemples :
 
-        Si j'achète 10 CD il me manque 5 $
+        Si j'achète 10 objets il me manque 5
             -> valeur_commune = 10*x - 5
 
-        Si j'achète 5 CD il me reste 12 $
+        Si j'en achète 5 il me reste 12
             -> valeur_commune = 5*x + 12
 
-        10 billets coûtent 5 $ de plus que mon budget
+        10 objets coûtent 5 de plus que mon budget
             -> valeur_commune = 10*x - 5
 
-        5 billets coûtent 12 $ de moins que mon budget
+        5 objets coûtent 12 de moins que mon budget
             -> valeur_commune = 5*x + 12
 
-    Cette fonction ne dépend pas d'un domaine particulier.
+    IMPORTANT :
+
+    Cette fonction est indépendante du domaine.
+
+    Elle ne connaît pas :
+        - CD ;
+        - billets ;
+        - prix ;
+        - âge ;
+        - etc.
+
+    Elle reconnaît uniquement une structure quantitative :
+
+        quantité
+        + décalage
+        + valeur commune.
+
+    La fonction tolère également certaines erreurs de saisie
+    courantes comme :
+
+        j,achete
+        j'achete
+        j’achète
+        j'en achète
     """
 
     value = str(
@@ -5791,32 +6004,45 @@ def extract_product_offset_constraints(
     if not value:
         return []
 
+    # ========================================================
+    # 0. NORMALISATION LINGUISTIQUE LÉGÈRE
+    # ========================================================
+    #
+    # On ne transforme pas le sens de l'énoncé.
+    #
+    # On homogénéise uniquement :
+    #
+    #     apostrophes typographiques
+    #     symbole monétaire
+    #     faute courante : j,achete
+    #
+    # Exemple :
+    #
+    #     j,achete
+    #
+    # devient :
+    #
+    #     j'achete
+    #
+    # Cette normalisation est linguistique et non liée
+    # à un domaine particulier.
+    # ========================================================
+
     normalized = (
         value
-        .replace("’", "'")
-        .replace("€", "$")
+        .replace(
+            "’",
+            "'",
+        )
+        .replace(
+            "€",
+            "$",
+        )
     )
 
-    constraints: List[
-        Dict[str, Any]
-    ] = []
-
-    last_item: Optional[str] = None
-
-    # ========================================================
-    # 1. CLAUSES DE TYPE :
-    #
-    #    si j'achète 10 CD il me manque 5
-    #    mais si j'achète 5 CD il me reste 12
-    #
-    # IMPORTANT :
-    # on récupère chaque clause indépendamment.
-    # ========================================================
-
-    clause_pattern = re.compile(
-        r"(?:"
-            r"\b(?:mais\s+)?si\s+"
-            r"j['’]?"
+    normalized = re.sub(
+        r"\bj\s*,\s*"
+        r"(?="
             r"(?:en\s+)?"
             r"(?:"
                 r"ach[eè]te"
@@ -5828,12 +6054,78 @@ def extract_product_offset_constraints(
                 r"|commande"
                 r"|commanderais"
             r")"
+        r")",
+        "j'",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+
+    constraints: List[
+        Dict[str, Any]
+    ] = []
+
+    # ========================================================
+    # MÉMOIRE DU NOM D'OBJET
+    # ========================================================
+    #
+    # Exemple :
+    #
+    #     si j'achète 10 objets ...
+    #     mais si j'en achète 5 ...
+    #
+    # La seconde clause peut ne pas répéter le nom.
+    #
+    # On peut alors réutiliser uniquement le dernier nom
+    # explicitement rencontré.
+    # ========================================================
+
+    last_item: Optional[
+        str
+    ] = None
+
+    # ========================================================
+    # 1. DÉCOUPAGE DES CLAUSES
+    # ========================================================
+    #
+    # Chaque clause quantitative doit être traitée
+    # indépendamment.
+    #
+    # Exemple :
+    #
+    #     si j'achète 10 objets il me manque 15,
+    #     mais si j'en achète 5 il me reste 10
+    #
+    # devient deux clauses.
+    # ========================================================
+
+    action_verb_pattern = (
+        r"(?:"
+            r"ach[eè]te"
+            r"|achete"
+            r"|ach[eè]terais"
+            r"|acheterais"
+            r"|prends"
+            r"|prendrais"
+            r"|commande"
+            r"|commanderais"
+        r")"
+    )
+
+    clause_pattern = re.compile(
+        r"(?:"
+            r"\b(?:mais\s+)?si\s+"
+            r"j"
+            r"(?:['’,]\s*)?"
+            r"(?:en\s+)?"
+            + action_verb_pattern +
             r"\s+"
             r"\d+(?:[.,]\d+)?"
         r")"
         r".*?"
         r"(?="
-            r"\b(?:mais\s+)?si\s+j['’]?"
+            r"\b(?:mais\s+)?si\s+"
+            r"j"
+            r"(?:['’,]\s*)?"
             r"|$"
         r")",
         flags=(
@@ -5854,8 +6146,13 @@ def extract_product_offset_constraints(
     ]
 
     # --------------------------------------------------------
-    # Si aucun découpage n'a été possible,
-    # on conserve le texte entier comme clause.
+    # FALLBACK
+    # --------------------------------------------------------
+    #
+    # Certains énoncés n'utilisent pas explicitement "si".
+    #
+    # Dans ce cas on conserve tout le texte pour les autres
+    # extracteurs génériques ci-dessous.
     # --------------------------------------------------------
 
     if not clauses:
@@ -5864,22 +6161,18 @@ def extract_product_offset_constraints(
             normalized
         ]
 
+    # ========================================================
+    # 2. EXTRACTION DE L'ACTION QUANTIFIÉE
+    # ========================================================
+
     action_pattern = re.compile(
         r"\b"
         r"(?:mais\s+)?"
         r"(?:si\s+)?"
-        r"j['’]?"
+        r"j"
+        r"(?:['’,]\s*)?"
         r"(?:en\s+)?"
-        r"(?:"
-            r"ach[eè]te"
-            r"|achete"
-            r"|ach[eè]terais"
-            r"|acheterais"
-            r"|prends"
-            r"|prendrais"
-            r"|commande"
-            r"|commanderais"
-        r")"
+        + action_verb_pattern +
         r"\s+"
         r"(\d+(?:[.,]\d+)?)"
         r"(?:"
@@ -5895,8 +6188,10 @@ def extract_product_offset_constraints(
 
     for clause in clauses:
 
-        match = action_pattern.search(
-            clause
+        match = (
+            action_pattern.search(
+                clause
+            )
         )
 
         if not match:
@@ -5904,25 +6199,30 @@ def extract_product_offset_constraints(
 
         quantity = (
             _normalize_numeric_value(
-                match.group(1)
+                match.group(
+                    1
+                )
             )
         )
 
         explicit_item = (
             _clean_semantic_item_name(
-                match.group(2)
+                match.group(
+                    2
+                )
             )
         )
 
         tail = str(
-            match.group(3)
+            match.group(
+                3
+            )
             or ""
         ).strip()
 
-        # ----------------------------------------------------
-        # Évite de considérer des mots fonctionnels
-        # comme noms d'objet.
-        # ----------------------------------------------------
+        # ====================================================
+        # MOTS FONCTIONNELS À NE PAS PRENDRE POUR UN OBJET
+        # ====================================================
 
         if (
             explicit_item
@@ -5939,10 +6239,13 @@ def extract_product_offset_constraints(
                 "alors",
                 "donc",
                 "puis",
+                "en",
             }
         ):
 
-            last_item = explicit_item
+            last_item = (
+                explicit_item
+            )
 
         else:
 
@@ -5954,11 +6257,24 @@ def extract_product_offset_constraints(
         )
 
         # ====================================================
-        # MANQUE / INSUFFISANCE
+        # 3. MANQUE / INSUFFISANCE
+        # ====================================================
         #
-        # coût supérieur à la valeur disponible :
+        # Si :
         #
-        # valeur_commune = coût - manque
+        #     coût = quantité * valeur_unitaire
+        #
+        # et :
+        #
+        #     il manque M
+        #
+        # alors :
+        #
+        #     valeur_commune
+        #     =
+        #     coût - M
+        #
+        # donc offset = -M.
         # ====================================================
 
         shortfall_patterns = [
@@ -5995,19 +6311,25 @@ def extract_product_offset_constraints(
 
         shortfall_amount = None
 
-        for pattern in shortfall_patterns:
+        for pattern in (
+            shortfall_patterns
+        ):
 
-            shortfall_match = re.search(
-                pattern,
-                tail,
-                flags=re.IGNORECASE,
+            shortfall_match = (
+                re.search(
+                    pattern,
+                    tail,
+                    flags=re.IGNORECASE,
+                )
             )
 
             if shortfall_match:
 
                 shortfall_amount = (
                     _normalize_numeric_value(
-                        shortfall_match.group(1)
+                        shortfall_match.group(
+                            1
+                        )
                     )
                 )
 
@@ -6015,18 +6337,27 @@ def extract_product_offset_constraints(
 
         if (
             quantity is not None
-            and shortfall_amount is not None
+            and shortfall_amount
+            is not None
         ):
 
             constraint = {
                 "relation": (
                     "product_offset_common_value"
                 ),
+
                 "common_role": (
                     "available_amount"
                 ),
-                "quantity": quantity,
-                "offset": -shortfall_amount,
+
+                "quantity": (
+                    quantity
+                ),
+
+                "offset": (
+                    -shortfall_amount
+                ),
+
                 "offset_kind": (
                     "shortfall"
                 ),
@@ -6045,11 +6376,20 @@ def extract_product_offset_constraints(
             continue
 
         # ====================================================
-        # RESTE / EXCÉDENT
+        # 4. RESTE / EXCÉDENT
+        # ====================================================
         #
-        # valeur disponible supérieure au coût :
+        # Si :
         #
-        # valeur_commune = coût + reste
+        #     il reste R
+        #
+        # alors :
+        #
+        #     valeur_commune
+        #     =
+        #     coût + R
+        #
+        # donc offset = +R.
         # ====================================================
 
         remainder_patterns = [
@@ -6088,19 +6428,25 @@ def extract_product_offset_constraints(
 
         remainder_amount = None
 
-        for pattern in remainder_patterns:
+        for pattern in (
+            remainder_patterns
+        ):
 
-            remainder_match = re.search(
-                pattern,
-                tail,
-                flags=re.IGNORECASE,
+            remainder_match = (
+                re.search(
+                    pattern,
+                    tail,
+                    flags=re.IGNORECASE,
+                )
             )
 
             if remainder_match:
 
                 remainder_amount = (
                     _normalize_numeric_value(
-                        remainder_match.group(1)
+                        remainder_match.group(
+                            1
+                        )
                     )
                 )
 
@@ -6108,18 +6454,27 @@ def extract_product_offset_constraints(
 
         if (
             quantity is not None
-            and remainder_amount is not None
+            and remainder_amount
+            is not None
         ):
 
             constraint = {
                 "relation": (
                     "product_offset_common_value"
                 ),
+
                 "common_role": (
                     "available_amount"
                 ),
-                "quantity": quantity,
-                "offset": remainder_amount,
+
+                "quantity": (
+                    quantity
+                ),
+
+                "offset": (
+                    remainder_amount
+                ),
+
                 "offset_kind": (
                     "remainder"
                 ),
@@ -6136,10 +6491,15 @@ def extract_product_offset_constraints(
             )
 
     # ========================================================
-    # 2. COMPARAISON DIRECTE AU BUDGET
+    # 5. COMPARAISON DIRECTE À UNE VALEUR COMMUNE
+    # ========================================================
     #
-    #    10 billets coûtent 5 $ de plus que mon budget
-    #    5 billets coûtent 12 $ de moins que mon budget
+    # Exemple générique :
+    #
+    #     10 objets coûtent 5 de plus que mon budget
+    #
+    #     5 objets coûtent 12 de moins que mon budget
+    #
     # ========================================================
 
     comparative_cost_pattern = re.compile(
@@ -6171,24 +6531,32 @@ def extract_product_offset_constraints(
 
         quantity = (
             _normalize_numeric_value(
-                match.group(1)
+                match.group(
+                    1
+                )
             )
         )
 
         item = (
             _clean_semantic_item_name(
-                match.group(2)
+                match.group(
+                    2
+                )
             )
         )
 
         amount = (
             _normalize_numeric_value(
-                match.group(3)
+                match.group(
+                    3
+                )
             )
         )
 
         direction = (
-            match.group(4)
+            match.group(
+                4
+            )
             .lower()
             .strip()
         )
@@ -6201,24 +6569,44 @@ def extract_product_offset_constraints(
 
         if direction == "plus":
 
-            offset = -amount
-            offset_kind = "shortfall"
+            offset = (
+                -amount
+            )
+
+            offset_kind = (
+                "shortfall"
+            )
 
         else:
 
-            offset = amount
-            offset_kind = "remainder"
+            offset = (
+                amount
+            )
+
+            offset_kind = (
+                "remainder"
+            )
 
         constraint = {
             "relation": (
                 "product_offset_common_value"
             ),
+
             "common_role": (
                 "available_amount"
             ),
-            "quantity": quantity,
-            "offset": offset,
-            "offset_kind": offset_kind,
+
+            "quantity": (
+                quantity
+            ),
+
+            "offset": (
+                offset
+            ),
+
+            "offset_kind": (
+                offset_kind
+            ),
         }
 
         if item:
@@ -6232,9 +6620,13 @@ def extract_product_offset_constraints(
         )
 
     # ========================================================
-    # 3. DÉPASSEMENT DU BUDGET
+    # 6. DÉPASSEMENT DE LA VALEUR DISPONIBLE
+    # ========================================================
     #
-    #    avec 10 CD je dépasse mon budget de 5 $
+    # Exemple :
+    #
+    #     avec 10 objets je dépasse mon budget de 5
+    #
     # ========================================================
 
     exceeds_budget_pattern = re.compile(
@@ -6266,19 +6658,25 @@ def extract_product_offset_constraints(
 
         quantity = (
             _normalize_numeric_value(
-                match.group(1)
+                match.group(
+                    1
+                )
             )
         )
 
         item = (
             _clean_semantic_item_name(
-                match.group(2)
+                match.group(
+                    2
+                )
             )
         )
 
         amount = (
             _normalize_numeric_value(
-                match.group(3)
+                match.group(
+                    3
+                )
             )
         )
 
@@ -6292,11 +6690,19 @@ def extract_product_offset_constraints(
             "relation": (
                 "product_offset_common_value"
             ),
+
             "common_role": (
                 "available_amount"
             ),
-            "quantity": quantity,
-            "offset": -amount,
+
+            "quantity": (
+                quantity
+            ),
+
+            "offset": (
+                -amount
+            ),
+
             "offset_kind": (
                 "shortfall"
             ),
@@ -6313,7 +6719,11 @@ def extract_product_offset_constraints(
         )
 
     # ========================================================
-    # 4. DÉDOUBLONNAGE
+    # 7. DÉDOUBLONNAGE
+    # ========================================================
+    #
+    # Deux contraintes ayant la même structure quantitative
+    # ne doivent être mémorisées qu'une fois.
     # ========================================================
 
     unique_constraints: List[
@@ -6328,19 +6738,23 @@ def extract_product_offset_constraints(
             constraint.get(
                 "relation"
             ),
+
             constraint.get(
                 "common_role"
             ),
+
             str(
                 constraint.get(
                     "quantity"
                 )
             ),
+
             str(
                 constraint.get(
                     "offset"
                 )
             ),
+
             str(
                 constraint.get(
                     "item"
