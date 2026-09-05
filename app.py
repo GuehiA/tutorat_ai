@@ -1329,21 +1329,39 @@ def admin_diagnostics_bayesiens():
 @app.route("/reset-chat", methods=["POST"])
 def reset_chat():
     """
-    Réinitialise la conversation de Naima sans perdre l'exercice actif.
+    Démarre une nouvelle conversation Naima complètement vide.
 
-    Trois cas :
+    Cette route est utilisée par le bouton :
 
-    1. Exercice généré par Naima :
-       on conserve session["exercice_en_cours"].
+        "Nouvel exercice"
 
-    2. Problème/exercice saisi directement par l'élève :
-       on conserve session["objectif_initial_naima"].
+    COMPORTEMENT ATTENDU :
 
-    3. Aucun exercice actif :
-       remise à zéro complète.
+    - ne conserve PAS l'ancien exercice ;
+    - ne conserve PAS l'ancien problème verbal ;
+    - ne conserve PAS les anciennes équations ;
+    - ne conserve PAS l'ancienne solution ;
+    - ne conserve PAS l'ancienne validation ;
+    - ne conserve PAS les anciennes questions de Naima ;
+    - ne génère PAS automatiquement un nouvel exercice ;
+    - remet Naima dans un état neutre ;
+    - attend que l'élève saisisse lui-même son nouveau
+      problème ou sa nouvelle question.
 
-    La progression mathématique, les diagnostics et les anciennes
-    réponses sont toujours effacés.
+    Les informations générales de l'utilisateur restent
+    conservées :
+
+    - user_id ;
+    - rôle ;
+    - langue ;
+    - niveau ;
+    - matière ;
+    - authentification ;
+    - préférences générales.
+
+    IMPORTANT :
+    le nouvel exercice doit être indépendant de toute
+    conversation ou résolution précédente.
     """
 
     # ============================================================
@@ -1351,132 +1369,72 @@ def reset_chat():
     # ============================================================
 
     if "user_id" not in session:
+
         return jsonify({
             "error": "Non authentifié"
         }), 401
 
-    # ============================================================
-    # SAUVEGARDE DU CONTEXTE AVANT NETTOYAGE
-    # ============================================================
-
-    exercice_actuel = (
-        session.get("exercice_en_cours")
-        or {}
-    )
-
-    exercice_genere_actif = bool(
-        isinstance(exercice_actuel, dict)
-        and str(
-            exercice_actuel.get("enonce")
-            or ""
-        ).strip()
-    )
-
-    enonce_exercice_genere = ""
-
-    if exercice_genere_actif:
-        enonce_exercice_genere = str(
-            exercice_actuel.get("enonce")
-            or ""
-        ).strip()
-
-    # ------------------------------------------------------------
-    # OBJECTIF SAISI DIRECTEMENT DANS LE CHAT
-    # ------------------------------------------------------------
-
-    objectif_chat_actuel = str(
-        session.get(
-            "objectif_initial_naima"
-        )
-        or ""
-    ).strip()
-
-    mode_chat_actuel = str(
-        session.get(
-            "mode_pedagogique_naima"
-        )
-        or ""
-    ).strip()
-
-    sujet_chat_actuel = str(
-        session.get(
-            "sujet_courant_naima"
-        )
-        or ""
-    ).strip()
-
-    lecon_chat_actuelle = str(
-        session.get(
-            "lecon_courante_naima"
-        )
-        or ""
-    ).strip()
-
-    # Un objectif chat est considéré comme exercice actif si
-    # Naima était réellement en mode résolution.
-    exercice_chat_actif = bool(
-        objectif_chat_actuel
-        and mode_chat_actuel == "resolution"
-        and not exercice_genere_actif
+    print(
+        "🆕 Nouveau contexte Naima demandé."
     )
 
     print(
-        "🧹 Réinitialisation conversation Naima."
+        "🧹 Suppression complète de l'ancien exercice."
     )
-
-    print(
-        "   - Exercice généré actif :",
-        exercice_genere_actif
-    )
-
-    print(
-        "   - Exercice saisi dans le chat actif :",
-        exercice_chat_actif
-    )
-
-    if exercice_genere_actif:
-        print(
-            "   - Énoncé généré conservé :",
-            enonce_exercice_genere
-        )
-
-    elif exercice_chat_actif:
-        print(
-            "   - Objectif chat conservé :",
-            objectif_chat_actuel
-        )
 
     # ============================================================
-    # NETTOYAGE DE LA CONVERSATION
+    # CONVERSATION
     # ============================================================
 
     session.pop(
         "conversation",
-        None
+        None,
     )
 
     session.pop(
-        "derniere_q_ia",
-        None
+        "conversation_naima",
+        None,
     )
 
     # ============================================================
-    # ÉTAT DE FIN
+    # OBJECTIF PÉDAGOGIQUE
     # ============================================================
 
     session.pop(
-        "exercice_termine",
-        None
+        "objectif_initial_naima",
+        None,
     )
 
     session.pop(
         "objectif_atteint_naima",
-        None
+        None,
     )
 
     session.pop(
         "conversation_terminee",
-        None
+        None,
+    )
+
+    # ============================================================
+    # EXERCICE
+    # ============================================================
+    #
+    # IMPORTANT :
+    #
+    # Le bouton "Nouvel exercice" ne doit PAS générer
+    # automatiquement un nouvel exercice.
+    #
+    # On supprime donc complètement l'exercice précédent.
+    # ============================================================
+
+    session.pop(
+        "exercice_en_cours",
+        None,
+    )
+
+    session.pop(
+        "exercice_termine",
+        None,
     )
 
     # ============================================================
@@ -1485,42 +1443,76 @@ def reset_chat():
 
     session.pop(
         "equation_courante_naima",
-        None
+        None,
+    )
+
+    session.pop(
+        "equation_initiale_naima",
+        None,
     )
 
     session.pop(
         "equation_modele_naima",
-        None
+        None,
+    )
+
+    session.pop(
+        "equation_type_naima_v2",
+        None,
     )
 
     session.pop(
         "etapes_validees_naima",
-        None
+        None,
     )
 
     session.pop(
         "derniere_etape_validee_naima",
-        None
+        None,
     )
 
     session.pop(
         "etapes_numeriques_validees_naima",
-        None
+        None,
     )
 
     session.pop(
         "derniere_etape_numerique_validee_naima",
-        None
+        None,
     )
 
     session.pop(
         "solution_variable_naima",
-        None
+        None,
     )
 
     session.pop(
         "solution_finale_naima",
-        None
+        None,
+    )
+
+    # ============================================================
+    # PROBLÈME VERBAL NAIMA V2
+    # ============================================================
+    #
+    # CRITIQUE :
+    #
+    # cette structure peut contenir :
+    #
+    #     statement
+    #     model_equation
+    #     modeling_message
+    #     variable_meaning
+    #     verbal_relations
+    #     verbal_constraints
+    #     algebraic_solution
+    #
+    # Rien de cela ne doit passer au nouvel exercice.
+    # ============================================================
+
+    session.pop(
+        "probleme_verbal_naima_v2",
+        None,
     )
 
     # ============================================================
@@ -1529,69 +1521,162 @@ def reset_chat():
 
     session.pop(
         "validation_unifiee_naima",
-        None
+        None,
+    )
+
+    session.pop(
+        "validation_naima_v2",
+        None,
+    )
+
+    session.pop(
+        "response_decision_naima_v2",
+        None,
     )
 
     session.pop(
         "verification_calcul",
-        None
+        None,
+    )
+
+    # ============================================================
+    # LLM
+    # ============================================================
+
+    session.pop(
+        "llm_response_naima_v2",
+        None,
+    )
+
+    # ============================================================
+    # INTENTION
+    # ============================================================
+
+    session.pop(
+        "intention_pedagogique_naima",
+        None,
+    )
+
+    session.pop(
+        "intention_pedagogique_naima_v2",
+        None,
+    )
+
+    # ============================================================
+    # DERNIÈRE QUESTION DE NAIMA
+    # ============================================================
+
+    session.pop(
+        "derniere_q_ia",
+        None,
+    )
+
+    session.pop(
+        "derniere_question_naima",
+        None,
+    )
+
+    session.pop(
+        "derniere_question_ia_naima",
+        None,
+    )
+
+    # ============================================================
+    # ÉTAT PÉDAGOGIQUE
+    # ============================================================
+
+    session.pop(
+        "mode_pedagogique_naima",
+        None,
+    )
+
+    session.pop(
+        "sujet_courant_naima",
+        None,
+    )
+
+    session.pop(
+        "lecon_courante_naima",
+        None,
+    )
+
+    # ============================================================
+    # ÉTAT COMPORTEMENTAL
+    # ============================================================
+
+    session.pop(
+        "etat_comportemental_naima",
+        None,
+    )
+
+    session.pop(
+        "controle_cognitif_naima",
+        None,
+    )
+
+    session.pop(
+        "politique_pedagogique_naima",
+        None,
+    )
+
+    # ============================================================
+    # RECOVERY / APPRENTISSAGE
+    # ============================================================
+
+    session.pop(
+        "recuperation_apprentissage_naima",
+        None,
+    )
+
+    session.pop(
+        "resume_recuperation_naima",
+        None,
+    )
+
+    # ============================================================
+    # INDICES
+    # ============================================================
+
+    session.pop(
+        "nb_indices_recents_naima",
+        None,
+    )
+
+    session.pop(
+        "naima_nb_indices_recents",
+        None,
     )
 
     # ============================================================
     # DIAGNOSTIC
     # ============================================================
+    #
+    # Ici on supprime uniquement les diagnostics associés
+    # au raisonnement courant.
+    #
+    # Si plus tard tu veux conserver un profil longitudinal
+    # permanent de l'élève, il faudra le stocker séparément.
+    # ============================================================
 
     session.pop(
         "diagnostic_bayesien",
-        None
+        None,
+    )
+
+    session.pop(
+        "diagnostic_naima",
+        None,
     )
 
     session.pop(
         "signaux_bayesiens",
-        None
+        None,
     )
 
     session.pop(
         "naima_processus_connecte",
-        None
+        None,
     )
-
-    session.pop(
-        "intention_pedagogique_naima",
-        None
-    )
-
-    # ============================================================
-    # ÉTAT SPÉCIFIQUE NAIMA V2
-    # ============================================================
-    #
-    # Ces clés peuvent exister même lorsque le feature flag v2
-    # est momentanément désactivé. On les nettoie toujours pour
-    # éviter qu'un ancien tour v2 réapparaisse après un reset.
-    # ============================================================
-
-    for cle_v2 in [
-        "conversation_naima",
-        "equation_initiale_naima",
-        "derniere_question_naima",
-        "derniere_question_ia_naima",
-        "premier_message_naima",
-        "validation_naima_v2",
-        "response_decision_naima_v2",
-        "llm_response_naima_v2",
-        "equation_type_naima_v2",
-        "intention_pedagogique_naima_v2",
-        "nb_indices_recents_naima",
-        "etat_comportemental_naima",
-        "controle_cognitif_naima",
-        "politique_pedagogique_naima",
-        "recuperation_apprentissage_naima",
-        "resume_recuperation_naima",
-    ]:
-        session.pop(
-            cle_v2,
-            None,
-        )
 
     # ============================================================
     # REMÉDIATION
@@ -1599,340 +1684,77 @@ def reset_chat():
 
     session.pop(
         "remediation_access",
-        None
+        None,
     )
 
     session.pop(
         "remediation_access_granted",
-        None
+        None,
     )
 
     session.pop(
         "remediation_exercice_id",
-        None
+        None,
     )
 
     session.pop(
         "remediation_access_count",
-        None
+        None,
     )
 
     # ============================================================
-    # CAS 1 : EXERCICE GÉNÉRÉ PAR NAIMA
-    # ============================================================
-
-    if exercice_genere_actif:
-
-        session[
-            "exercice_en_cours"
-        ] = exercice_actuel
-
-        session[
-            "objectif_initial_naima"
-        ] = enonce_exercice_genere
-
-        session[
-            "mode_pedagogique_naima"
-        ] = "resolution"
-
-        session[
-            "lecon_courante_naima"
-        ] = enonce_exercice_genere
-
-        session[
-            "sujet_courant_naima"
-        ] = (
-            sujet_chat_actuel
-            or session.get(
-                "matiere",
-                "mathématiques"
-            )
-        )
-
-        # Repartir depuis le début pédagogique de l'exercice.
-        if isinstance(
-            session["exercice_en_cours"],
-            dict
-        ):
-            session[
-                "exercice_en_cours"
-            ]["etape"] = 1
-
-        print(
-            "♻️ Exercice généré conservé."
-        )
-
-        print(
-            "🎯 Objectif Naima restauré :",
-            enonce_exercice_genere
-        )
-
-    # ============================================================
-    # CAS 2 : EXERCICE SAISI DIRECTEMENT PAR L'ÉLÈVE
-    # ============================================================
-
-    elif exercice_chat_actif:
-
-        # Pas d'exercice_en_cours artificiel.
-        session.pop(
-            "exercice_en_cours",
-            None
-        )
-
-        session[
-            "objectif_initial_naima"
-        ] = objectif_chat_actuel
-
-        session[
-            "mode_pedagogique_naima"
-        ] = "resolution"
-
-        session[
-            "sujet_courant_naima"
-        ] = (
-            sujet_chat_actuel
-            or session.get(
-                "matiere",
-                "mathématiques"
-            )
-        )
-
-        session[
-            "lecon_courante_naima"
-        ] = (
-            lecon_chat_actuelle
-            or session.get(
-                "matiere",
-                "mathématiques"
-            )
-        )
-
-        print(
-            "♻️ Exercice saisi dans le chat conservé."
-        )
-
-        print(
-            "🎯 Objectif Naima restauré :",
-            objectif_chat_actuel
-        )
-
-    # ============================================================
-    # CAS 3 : AUCUN EXERCICE ACTIF
-    # ============================================================
-
-    else:
-
-        session.pop(
-            "exercice_en_cours",
-            None
-        )
-
-        session.pop(
-            "objectif_initial_naima",
-            None
-        )
-
-        session.pop(
-            "mode_pedagogique_naima",
-            None
-        )
-
-        session.pop(
-            "sujet_courant_naima",
-            None
-        )
-
-        session.pop(
-            "lecon_courante_naima",
-            None
-        )
-
-        print(
-            "🆕 Aucun exercice actif : "
-            "nouvelle conversation complètement vide."
-        )
-
-    # ============================================================
-    # RESTAURATION DU CONTEXTE NAIMA V2
+    # PREMIER MESSAGE
     # ============================================================
     #
-    # Si un exercice reste actif, Naima v2 doit repartir du début
-    # de CET exercice et non d'une ancienne étape intermédiaire.
-    #
-    # On extrait donc, lorsque c'est possible, la relation
-    # mathématique initiale depuis l'énoncé restauré.
-    # ============================================================
-
-    objectif_v2_restaure = (
-        enonce_exercice_genere
-        if exercice_genere_actif
-        else (
-            objectif_chat_actuel
-            if exercice_chat_actif
-            else ""
-        )
-    )
-
-    relation_initiale_v2 = None
-    equation_type_v2 = None
-
-    if objectif_v2_restaure:
-        try:
-            from services.naima.math_parser_service import (
-                extract_math_relation_from_text,
-                classify_equation,
-            )
-
-            relation_initiale_v2 = (
-                extract_math_relation_from_text(
-                    objectif_v2_restaure
-                )
-            )
-
-            if relation_initiale_v2:
-                equation_type_v2 = (
-                    classify_equation(
-                        relation_initiale_v2
-                    )
-                )
-
-        except Exception as exc:
-            print(
-                "⚠️ Reset Naima v2 : "
-                "relation initiale non extraite :",
-                type(exc).__name__,
-                str(exc),
-            )
-
-    if objectif_v2_restaure:
-        session[
-            "objectif_initial_naima"
-        ] = objectif_v2_restaure
-
-        # L'exercice existe déjà : le prochain message de l'élève
-        # est une continuation, pas un premier énoncé.
-        session[
-            "premier_message_naima"
-        ] = False
-
-        if relation_initiale_v2:
-            session[
-                "equation_courante_naima"
-            ] = relation_initiale_v2
-
-            session[
-                "equation_initiale_naima"
-            ] = relation_initiale_v2
-
-            session[
-                "equation_type_naima_v2"
-            ] = equation_type_v2
-
-            print(
-                "🧭 Contexte Naima v2 restauré :",
-                relation_initiale_v2,
-            )
-
-    else:
-        session[
-            "premier_message_naima"
-        ] = True
-
-    # ============================================================
-    # MESSAGE DE REPRISE
-    # ============================================================
-    #
-    # On prépare également un petit message afin que l'interface
-    # ne donne plus l'impression que Naima a oublié l'exercice.
-    # ============================================================
-
-    if exercice_genere_actif:
-
-        if session.get(
-            "lang",
-            "fr"
-        ) == "en":
-            message_reprise = (
-                "👋 The conversation has been reset. "
-                "I still have your current exercise. "
-                "Let's start it again from the beginning."
-            )
-        else:
-            message_reprise = (
-                "👋 La conversation a été réinitialisée. "
-                "Je garde ton exercice actuel en mémoire. "
-                "Nous pouvons le reprendre depuis le début."
-            )
-
-        session[
-            "conversation"
-        ] = [
-            f"🤖 Naima: {message_reprise}"
-        ]
-
-    elif exercice_chat_actif:
-
-        if session.get(
-            "lang",
-            "fr"
-        ) == "en":
-            message_reprise = (
-                "👋 The conversation has been reset. "
-                f"I still have your problem: "
-                f"« {objectif_chat_actuel} ». "
-                "Let's continue with this problem."
-            )
-        else:
-            message_reprise = (
-                "👋 La conversation a été réinitialisée. "
-                f"Je garde ton exercice en mémoire : "
-                f"« {objectif_chat_actuel} ». "
-                "Nous pouvons continuer avec cet exercice."
-            )
-
-        session[
-            "conversation"
-        ] = [
-            f"🤖 Naima: {message_reprise}"
-        ]
-
-    else:
-
-        if session.get(
-            "lang",
-            "fr"
-        ) == "en":
-            message_reprise = (
-                "👋 Hello! I'm Naima, your virtual teacher. "
-                "The conversation has been reset. "
-                "How can I help you?"
-            )
-        else:
-            message_reprise = (
-                "👋 Bonjour ! Je suis Naima, ton enseignante virtuelle. "
-                "La conversation a été réinitialisée. "
-                "Comment puis-je t'aider ?"
-            )
-
-        session[
-            "conversation"
-        ] = [
-            f"🤖 Naima: {message_reprise}"
-        ]
-
-    # ============================================================
-    # SYNCHRONISATION DE LA CONVERSATION V1 / V2
+    # Le prochain message envoyé par l'élève doit être traité
+    # comme le premier message d'un tout nouveau contexte.
     # ============================================================
 
     session[
-        "conversation_naima"
-    ] = list(
+        "premier_message_naima"
+    ] = True
+
+    # ============================================================
+    # CONVERSATION VIDE
+    # ============================================================
+    #
+    # Aucun exercice n'est généré ici.
+    #
+    # On conserve uniquement un message d'accueil visuel.
+    # Ce message ne constitue pas un objectif pédagogique.
+    # ============================================================
+
+    if (
         session.get(
-            "conversation",
-            [],
+            "lang",
+            "fr",
         )
-        or []
-    )
+        == "en"
+    ):
+
+        message_reprise = (
+            "👋 Hello! I'm Naima, your virtual teacher. "
+            "I'm ready for a new exercise or question."
+        )
+
+    else:
+
+        message_reprise = (
+            "👋 Bonjour ! Je suis Naima, ton enseignante virtuelle. "
+            "Je suis prête pour un nouvel exercice ou une nouvelle question."
+        )
+
+    session[
+        "conversation"
+    ] = [
+        f"🤖 Naima: {message_reprise}"
+    ]
+
+    session[
+        "conversation_naima"
+    ] = [
+        f"🤖 Naima: {message_reprise}"
+    ]
 
     # ============================================================
     # SAUVEGARDE
@@ -1941,29 +1763,64 @@ def reset_chat():
     session.modified = True
 
     print(
-        "✅ Réinitialisation Naima terminée."
+        "✅ Ancien exercice supprimé."
     )
+
+    print(
+        "✅ Ancienne conversation supprimée."
+    )
+
+    print(
+        "✅ Ancienne mémoire verbale supprimée."
+    )
+
+    print(
+        "✅ Ancienne mémoire mathématique supprimée."
+    )
+
+    print(
+        "⏳ Naima attend maintenant le message de l'élève."
+    )
+
+    # ============================================================
+    # RÉPONSE HTTP
+    # ============================================================
 
     return jsonify({
         "success": True,
-        "conversation_reset": True,
-        "exercice_genere_conserve": (
-            exercice_genere_actif
-        ),
-        "exercice_chat_conserve": (
-            exercice_chat_actif
-        ),
-        "objectif_restaure": (
-            enonce_exercice_genere
-            if exercice_genere_actif
-            else (
-                objectif_chat_actuel
-                if exercice_chat_actif
-                else None
-            )
-        )
-    })
 
+        "conversation_reset": True,
+
+        "new_exercise": True,
+
+        # --------------------------------------------------------
+        # Aucun exercice généré
+        # --------------------------------------------------------
+
+        "exercise_generated": False,
+
+        "awaiting_student_input": True,
+
+        # --------------------------------------------------------
+        # État attendu
+        # --------------------------------------------------------
+
+        "objective": None,
+
+        "current_equation": None,
+
+        "initial_equation": None,
+
+        "verbal_problem_active": False,
+
+        "objective_reached": False,
+
+        "first_message": True,
+
+        "message": (
+            message_reprise
+        ),
+    })
 
 @app.route("/test-nom-complet")
 def test_nom_complet():
@@ -12144,217 +12001,463 @@ def determiner_mode_exercice_genere(
 
 @app.route("/nouvel-exercice", methods=["POST"])
 def nouvel_exercice():
-    """Nouvel exercice avec Naima - prend en compte toutes les options"""
-    from datetime import datetime
-    import time
-    import json
-    
-    print(f"[DEBUG] Nouvel exercice - Session keys: {list(session.keys())}")
-    
-    if "user_id" not in session:
-        return redirect(url_for("login_eleve"))
+    """
+    Démarre un tout nouveau contexte Naima.
 
-    utilisateur = db.session.get(User, session["user_id"])
-    if not utilisateur or utilisateur.role != "eleve":
-        return redirect(url_for("login_eleve"))
-    
-    eleve = utilisateur
-    lang = session.get('lang', 'fr')
-    
-    # Récupérer TOUTES les options
-    matiere = request.form.get('matiere', 'mathématiques')
-    difficulte = request.form.get('difficulte', 'moyen')
-    type_exercice = request.form.get('type_exercice', 'exercice')
-    mots_cles = request.form.get('mots_cles', '')
-    
-    print(f"[DEBUG] Options: {matiere}, {difficulte}, {type_exercice}, mots-clés: {mots_cles}")
-    
+    IMPORTANT :
+
+    Le bouton "Nouvel exercice" ne génère PAS automatiquement
+    un exercice.
+
+    Il doit uniquement :
+
+    - supprimer l'ancien exercice ;
+    - supprimer l'ancienne conversation ;
+    - supprimer l'ancien objectif ;
+    - supprimer les anciennes équations ;
+    - supprimer l'ancienne solution ;
+    - supprimer la mémoire verbale Naima v2 ;
+    - supprimer les anciennes validations ;
+    - supprimer les états pédagogiques liés à l'exercice ;
+    - remettre Naima dans un état neutre ;
+    - attendre que l'élève saisisse lui-même son nouveau
+      problème ou sa nouvelle question.
+
+    Les données permanentes de l'élève restent conservées :
+
+    - user_id ;
+    - rôle ;
+    - langue ;
+    - niveau ;
+    - matière ;
+    - identité ;
+    - authentification.
+    """
+
+    import time
+
+    print(
+        "[DEBUG] Nouvel exercice - "
+        f"Session keys AVANT nettoyage: "
+        f"{list(session.keys())}"
+    )
+
     # ============================================================
-    # RÉINITIALISATION COMPLÈTE DE L'ÉTAT NAIMA
+    # AUTHENTIFICATION
+    # ============================================================
+
+    if "user_id" not in session:
+
+        return redirect(
+            url_for(
+                "login_eleve"
+            )
+        )
+
+    utilisateur = db.session.get(
+        User,
+        session[
+            "user_id"
+        ],
+    )
+
+    if (
+        not utilisateur
+        or utilisateur.role
+        != "eleve"
+    ):
+
+        return redirect(
+            url_for(
+                "login_eleve"
+            )
+        )
+
+    eleve = (
+        utilisateur
+    )
+
+    # ============================================================
+    # INFORMATIONS GÉNÉRALES À CONSERVER
+    # ============================================================
+
+    lang = (
+        session.get(
+            "lang",
+            "fr",
+        )
+        or "fr"
+    )
+
+    # ------------------------------------------------------------
+    # Matière
+    # ------------------------------------------------------------
+    #
+    # On peut conserver la matière choisie dans l'interface,
+    # mais cela ne crée aucun exercice.
+    # ------------------------------------------------------------
+
+    matiere = (
+        request.form.get(
+            "matiere"
+        )
+        or session.get(
+            "matiere"
+        )
+        or "mathématiques"
+    )
+
+    # ============================================================
+    # JOURNAL DEBUG
+    # ============================================================
+
+    print(
+        "[DEBUG] 🆕 Nouveau contexte Naima demandé."
+    )
+
+    print(
+        "[DEBUG] 🧹 Suppression complète "
+        "de l'ancien exercice."
+    )
+
+    # ============================================================
+    # CLÉS DE SESSION À SUPPRIMER
     # ============================================================
     #
-    # Un nouvel exercice ne doit jamais hériter :
-    # - d'une ancienne équation ;
-    # - d'une ancienne solution ;
-    # - d'une étape déjà validée ;
-    # - d'un ancien diagnostic ;
-    # - de l'état "exercice terminé".
+    # Aucune mémoire de l'ancien exercice ne doit survivre.
     # ============================================================
 
     session_keys_to_remove = [
-        # Conversation
+
+        # --------------------------------------------------------
+        # CONVERSATION
+        # --------------------------------------------------------
+
         "conversation",
+
+        "conversation_naima",
+
+        # --------------------------------------------------------
+        # DERNIÈRES QUESTIONS
+        # --------------------------------------------------------
+
         "derniere_q_ia",
+
+        "derniere_question_naima",
+
+        "derniere_question_ia_naima",
+
+        # --------------------------------------------------------
+        # EXERCICE
+        # --------------------------------------------------------
+
         "exercice_en_cours",
+
         "exercice_termine",
+
+        "conversation_terminee",
+
         "mode_examen",
 
-        # État pédagogique Naima
+        # --------------------------------------------------------
+        # OBJECTIF PÉDAGOGIQUE
+        # --------------------------------------------------------
+
         "objectif_initial_naima",
+
         "objectif_atteint_naima",
-        "conversation_terminee",
+
+        # --------------------------------------------------------
+        # ÉTAT PÉDAGOGIQUE
+        # --------------------------------------------------------
+
         "mode_pedagogique_naima",
+
         "sujet_courant_naima",
+
         "lecon_courante_naima",
 
-        # Identification de la demande
+        # --------------------------------------------------------
+        # INTENTION
+        # --------------------------------------------------------
+
         "intention_pedagogique_naima",
 
-        # Mémoire mathématique Naima
-        "etapes_validees_naima",
-        "derniere_etape_validee_naima",
+        "intention_pedagogique_naima_v2",
+
+        # --------------------------------------------------------
+        # MÉMOIRE MATHÉMATIQUE
+        # --------------------------------------------------------
+
         "equation_courante_naima",
+
+        "equation_initiale_naima",
+
         "equation_modele_naima",
+
+        "equation_type_naima_v2",
+
+        "etapes_validees_naima",
+
+        "derniere_etape_validee_naima",
+
+        "etapes_numeriques_validees_naima",
+
+        "derniere_etape_numerique_validee_naima",
+
         "solution_variable_naima",
+
         "solution_finale_naima",
 
-        # Diagnostic / vérifications
-        "diagnostic_bayesien",
-        "signaux_bayesiens",
+        # --------------------------------------------------------
+        # PROBLÈME VERBAL NAIMA V2
+        # --------------------------------------------------------
+
+        "probleme_verbal_naima_v2",
+
+        # --------------------------------------------------------
+        # VALIDATION
+        # --------------------------------------------------------
+
+        "validation_unifiee_naima",
+
+        "validation_naima_v2",
+
+        "response_decision_naima_v2",
+
         "verification_calcul",
-        "naima_processus_connecte"
+
+        # --------------------------------------------------------
+        # LLM
+        # --------------------------------------------------------
+
+        "llm_response_naima_v2",
+
+        # --------------------------------------------------------
+        # DIAGNOSTIC
+        # --------------------------------------------------------
+
+        "diagnostic_bayesien",
+
+        "diagnostic_naima",
+
+        "signaux_bayesiens",
+
+        "naima_processus_connecte",
+
+        # --------------------------------------------------------
+        # COMPORTEMENT
+        # --------------------------------------------------------
+
+        "etat_comportemental_naima",
+
+        "controle_cognitif_naima",
+
+        "politique_pedagogique_naima",
+
+        # --------------------------------------------------------
+        # RECOVERY
+        # --------------------------------------------------------
+
+        "recuperation_apprentissage_naima",
+
+        "resume_recuperation_naima",
+
+        # --------------------------------------------------------
+        # INDICES
+        # --------------------------------------------------------
+
+        "nb_indices_recents_naima",
+
+        "naima_nb_indices_recents",
+
+        # --------------------------------------------------------
+        # REMÉDIATION
+        # --------------------------------------------------------
+
+        "remediation_access",
+
+        "remediation_access_granted",
+
+        "remediation_exercice_id",
+
+        "remediation_access_count",
     ]
 
-    for key in session_keys_to_remove:
-        session.pop(key, None)
+    # ============================================================
+    # NETTOYAGE
+    # ============================================================
 
-    session.modified = True
+    for key in (
+        session_keys_to_remove
+    ):
 
-    print(
-        "[DEBUG] 🧹 État Naima complètement réinitialisé. "
-        "Aucune mémoire mathématique de l'exercice précédent n'est conservée."
-    )
-    print(
-        f"[DEBUG] Session keys APRÈS nettoyage: {list(session.keys())}"
-    )
-
-    try:
-        # Récupérer le niveau de l'élève
-        niveau_eleve = eleve.niveau.nom if eleve.niveau else ("6th grade" if lang == "en" else "6ème")
-        
-        # ✅ Utiliser la fonction qui prend en compte les options
-        exercice = generer_exercice_specifique(
-            matiere=matiere,
-            niveau=niveau_eleve,
-            difficulte=difficulte,
-            type_exercice=type_exercice,
-            mots_cles=mots_cles,
-            langue=lang
-        )
-        
-        # Formater le message de Naima
-        enseignant_label = "🤖 Naima:" if lang == "en" else "🤖 Naima:"
-        
-        # Message d'accueil + énoncé + première question
-        message_complet = f"{exercice['message_accueil']}\n\n📝 **{exercice['enonce']}**\n\n{exercice['premiere_question']}"
-        
-        session["conversation"] = [f"{enseignant_label} {message_complet}"]
-        session['derniere_q_ia'] = exercice['premiere_question']
-        
-        # Stocker le contexte de l'exercice
-        session['exercice_en_cours'] = {
-            'enonce': exercice['enonce'],
-            'indices': exercice.get('indices', []),
-            'correction': exercice.get('correction', {}),
-            'type': type_exercice,
-            'matiere': matiere,
-            'difficulte': difficulte,
-            'etape': 1,
-            'total_etapes': (
-                len(
-                    exercice.get(
-                        'correction',
-                        {}
-                    ).get(
-                        'etapes',
-                        [3]
-                    )
-                )
-                if isinstance(
-                    exercice.get(
-                        'correction',
-                        {}
-                    ),
-                    dict
-                )
-                else 1
-            )
-        }
-
-        # Le véritable objectif est l'énoncé généré.
-        session["objectif_initial_naima"] = exercice["enonce"]
-        session["mode_pedagogique_naima"] = (
-            determiner_mode_exercice_genere(
-                matiere=matiere,
-                type_exercice=type_exercice,
-                enonce=exercice["enonce"]
-            )
-        )
-        session["sujet_courant_naima"] = matiere
-        session["lecon_courante_naima"] = exercice["enonce"]
-
-        session["objectif_atteint_naima"] = False
-        session["conversation_terminee"] = False
-
-        # --------------------------------------------------------
-        # MÉMOIRE MATHÉMATIQUE DU NOUVEL EXERCICE
-        # --------------------------------------------------------
-        #
-        # Elle commence toujours vide. Elle sera alimentée ensuite
-        # par enseignant_virtuel() lorsqu'une modélisation ou une
-        # étape mathématique aura été validée.
-        # --------------------------------------------------------
-
-        session["etapes_validees_naima"] = []
-        session.pop("derniere_etape_validee_naima", None)
-        session.pop("equation_courante_naima", None)
-        session.pop("equation_modele_naima", None)
-        session.pop("solution_variable_naima", None)
-        session.pop("solution_finale_naima", None)
-        session.pop("intention_pedagogique_naima", None)
-        session.pop("verification_calcul", None)
-
-        session.modified = True
-
-        print(
-            "[DEBUG] 🧠 Mémoire mathématique du nouvel exercice initialisée à vide."
+        session.pop(
+            key,
+            None,
         )
 
-        print(
-            "[DEBUG] 🎯 Objectif Naima fixé depuis l'exercice :",
-            session["objectif_initial_naima"]
-        )
-        print(
-            "[DEBUG] 🧭 Mode Naima :",
-            session["mode_pedagogique_naima"]
+    # ============================================================
+    # PREMIER MESSAGE
+    # ============================================================
+    #
+    # Le prochain message de l'élève doit être traité comme
+    # le premier message d'un nouveau contexte.
+    # ============================================================
+
+    session[
+        "premier_message_naima"
+    ] = True
+
+    # ============================================================
+    # CONVERSATION INITIALE
+    # ============================================================
+    #
+    # Aucun exercice n'est généré.
+    #
+    # On peut conserver un simple message d'accueil neutre.
+    # Il ne devient PAS un objectif pédagogique.
+    # ============================================================
+
+    if lang == "en":
+
+        message_accueil = (
+            "👋 Hello! I'm Naima, your virtual teacher. "
+            "I'm ready for a new exercise or question."
         )
 
-        print(f"[DEBUG] ✅ Exercice {type_exercice} généré avec succès")
-        
-    except Exception as e:
-        print(f"[DEBUG] ❌ Erreur: {e}")
-        import traceback
-        traceback.print_exc()
-        
-        # Fallback simple
-        if lang == "fr":
-            msg = f"🤖 Naima: Voici un {type_exercice} de {matiere} {mots_cles}. Quelle est ta question ?"
-        else:
-            msg = f"🤖 Naima: Here's a {type_exercice} in {matiere} {mots_cles}. What's your question?"
-        session["conversation"] = [msg]
-    
-    session['user_id'] = eleve.id
-    session['lang'] = lang
-    session['matiere'] = matiere
-    session.modified = True
-    
-    if lang == "fr":
-        flash(f"✨ Exercice de {matiere} ({type_exercice}) généré !", "success")
     else:
-        flash(f"✨ {matiere} {type_exercice} generated!", "success")
-    
-    redirect_url = url_for("enseignant_virtuel", matiere=matiere) + f"?t={int(time.time())}"
-    return redirect(redirect_url)
+
+        message_accueil = (
+            "👋 Bonjour ! Je suis Naima, "
+            "ton enseignante virtuelle. "
+            "Je suis prête pour un nouvel exercice "
+            "ou une nouvelle question."
+        )
+
+    conversation_initiale = [
+        (
+            "🤖 Naima: "
+            f"{message_accueil}"
+        )
+    ]
+
+    session[
+        "conversation"
+    ] = list(
+        conversation_initiale
+    )
+
+    session[
+        "conversation_naima"
+    ] = list(
+        conversation_initiale
+    )
+
+    # ============================================================
+    # DONNÉES PERMANENTES À CONSERVER
+    # ============================================================
+
+    session[
+        "user_id"
+    ] = eleve.id
+
+    session[
+        "lang"
+    ] = lang
+
+    session[
+        "matiere"
+    ] = matiere
+
+    # ============================================================
+    # SAUVEGARDE SESSION
+    # ============================================================
+
+    session.modified = True
+
+    # ============================================================
+    # DEBUG APRÈS NETTOYAGE
+    # ============================================================
+
+    print(
+        "[DEBUG] ✅ Ancien exercice supprimé."
+    )
+
+    print(
+        "[DEBUG] ✅ Ancienne conversation supprimée."
+    )
+
+    print(
+        "[DEBUG] ✅ Ancienne mémoire mathématique supprimée."
+    )
+
+    print(
+        "[DEBUG] ✅ Ancienne mémoire verbale supprimée."
+    )
+
+    print(
+        "[DEBUG] ✅ Anciennes validations supprimées."
+    )
+
+    print(
+        "[DEBUG] ⏳ Aucun exercice généré."
+    )
+
+    print(
+        "[DEBUG] ⏳ Naima attend maintenant "
+        "le message de l'élève."
+    )
+
+    print(
+        "[DEBUG] Session keys APRÈS nettoyage: "
+        f"{list(session.keys())}"
+    )
+
+    # ============================================================
+    # MESSAGE FLASH
+    # ============================================================
+    #
+    # On ne dit plus "Exercice généré".
+    # ============================================================
+
+    if lang == "fr":
+
+        flash(
+            "✨ Prêt pour un nouvel exercice.",
+            "success",
+        )
+
+    else:
+
+        flash(
+            "✨ Ready for a new exercise.",
+            "success",
+        )
+
+    # ============================================================
+    # REDIRECTION
+    # ============================================================
+    #
+    # Aucun appel à OpenAI.
+    # Aucun générateur d'exercice.
+    # Aucun objectif prédéfini.
+    #
+    # L'élève arrive dans une conversation propre.
+    # ============================================================
+
+    redirect_url = (
+        url_for(
+            "enseignant_virtuel",
+            matiere=matiere,
+        )
+        + f"?t={int(time.time())}"
+    )
+
+    return redirect(
+        redirect_url
+    )
+
 
 def generer_exercice_specifique(matiere, niveau, difficulte="moyen", type_exercice="exercice", 
                                  mots_cles="", langue="fr"):

@@ -125,6 +125,90 @@ def normalize_math_text(
     return value
 
 
+def _strip_trailing_sentence_punctuation(
+    relation: Optional[str],
+) -> Optional[str]:
+    """
+    Retire uniquement la ponctuation de phrase placée
+    après une relation mathématique extraite.
+
+    Exemples :
+
+        x+2x=30.
+            -> x+2x=30
+
+        3x=15,
+            -> 3x=15
+
+        x=2.5
+            -> x=2.5
+
+    IMPORTANT :
+    on ne retire PAS les opérateurs mathématiques
+    + - * / afin de ne pas modifier silencieusement
+    une expression mathématique.
+    """
+
+    if relation is None:
+        return None
+
+    value = str(
+        relation
+    ).strip()
+
+    if not value:
+        return None
+
+    value = value.rstrip(
+        ".,;:!?"
+    )
+
+    value = value.strip()
+
+    if not value:
+        return None
+
+    return value
+
+
+def _normalize_extracted_relation(
+    relation: Optional[str],
+) -> Optional[str]:
+    """
+    Normalisation finale commune des relations extraites.
+
+    Cette fonction garantit notamment qu'une ponctuation
+    de phrase ne soit jamais conservée dans l'équation
+    mémorisée par Naima.
+    """
+
+    cleaned = (
+        _strip_trailing_sentence_punctuation(
+            relation
+        )
+    )
+
+    if not cleaned:
+        return None
+
+    normalized = (
+        normalize_math_text(
+            cleaned
+        )
+    )
+
+    normalized = (
+        _strip_trailing_sentence_punctuation(
+            normalized
+        )
+    )
+
+    if not normalized:
+        return None
+
+    return normalized
+
+
 def _parse_expression(
     expression: str,
 ) -> sp.Expr:
@@ -197,9 +281,18 @@ def split_math_relation(
     tuple[str, str, str]
 ]:
 
+    cleaned = (
+        _strip_trailing_sentence_punctuation(
+            text
+        )
+    )
+
+    if not cleaned:
+        return None
+
     normalized = (
         normalize_math_text(
-            text
+            cleaned
         )
     )
 
@@ -222,6 +315,17 @@ def split_math_relation(
 
     except ValueError:
         return None
+
+    left = (
+        left.strip()
+    )
+
+    right = (
+        _strip_trailing_sentence_punctuation(
+            right
+        )
+        or ""
+    )
 
     if (
         not left
@@ -246,7 +350,7 @@ def equation_degree(
     """
     Retourne le degré polynomial d'une relation mathématique.
 
-    Fonctionne maintenant pour :
+    Fonctionne notamment pour :
         3x=5
         3x²-5x+2=0
         -2x>6
@@ -389,6 +493,9 @@ def looks_like_solution_statement(
     # x=5/3
     # x<-3
     # x>=4
+    #
+    # Une ponctuation terminale est maintenant tolérée :
+    # x=10.
     # --------------------------------------------------------
 
     if re.fullmatch(
@@ -399,7 +506,8 @@ def looks_like_solution_statement(
         r"\d+(?:\.\d+)?"
         r"|"
         r"\d+/\d+"
-        r")\s*",
+        r")"
+        r"\s*[.,;:!?]?\s*",
         value,
         flags=re.IGNORECASE,
     ):
@@ -455,6 +563,9 @@ def extract_equation_from_text(
 
     Attention, on est ici 3x=5
         -> 3*x=5
+
+    Soit x l'âge de Paul, donc x+2x=30.
+        -> x+2*x=30
 
     x=1 ou x=2/3
         -> None
@@ -563,10 +674,13 @@ def extract_equation_from_text(
         )
 
         normalized = (
-            normalize_math_text(
+            _normalize_extracted_relation(
                 candidate
             )
         )
+
+        if not normalized:
+            continue
 
         operator = (
             detect_relation_operator(
@@ -663,6 +777,15 @@ def extract_equation_from_text(
             .strip()
         )
 
+        right_candidate = (
+            _strip_trailing_sentence_punctuation(
+                right_candidate
+            )
+        )
+
+        if not right_candidate:
+            return None
+
         candidate = (
             f"{left_candidate}"
             f"{operator}"
@@ -670,13 +793,14 @@ def extract_equation_from_text(
         )
 
         normalized = (
-            normalize_math_text(
+            _normalize_extracted_relation(
                 candidate
             )
         )
 
         if (
-            equation_degree(
+            normalized
+            and equation_degree(
                 normalized
             )
             is not None
@@ -716,8 +840,27 @@ def extract_equation_from_text(
         key=candidate_score,
     )
 
-    return normalize_math_text(
-        best_candidate
+    # ========================================================
+    # 4. NORMALISATION FINALE
+    # ========================================================
+    #
+    # Sécurité importante :
+    #
+    #   "x+2x=30."
+    #
+    # ne doit jamais être mémorisé comme :
+    #
+    #   "x+2*x=30."
+    #
+    # mais comme :
+    #
+    #   "x+2*x=30"
+    # ========================================================
+
+    return (
+        _normalize_extracted_relation(
+            best_candidate
+        )
     )
 
 
@@ -726,8 +869,16 @@ def extract_math_relation_from_text(
     text: str,
 ) -> Optional[str]:
 
-    return extract_equation_from_text(
-        text
+    relation = (
+        extract_equation_from_text(
+            text
+        )
+    )
+
+    return (
+        _normalize_extracted_relation(
+            relation
+        )
     )
 
 
@@ -757,10 +908,21 @@ def parse_equation_from_text(
         )
 
     normalized = (
-        normalize_math_text(
+        _normalize_extracted_relation(
             extracted
         )
     )
+
+    if not normalized:
+        return ParsedEquation(
+            raw_text=text,
+            extracted_equation=None,
+            normalized_equation=None,
+            parse_success=False,
+            degree=None,
+            equation_type=None,
+            reason="equation_not_found",
+        )
 
     degree = equation_degree(
         normalized
@@ -775,7 +937,7 @@ def parse_equation_from_text(
     return ParsedEquation(
         raw_text=text,
         extracted_equation=(
-            extracted
+            normalized
         ),
         normalized_equation=(
             normalized
@@ -804,6 +966,18 @@ def choose_safe_equation(
     source_equation = (
         extract_equation_from_text(
             original_text
+        )
+    )
+
+    source_equation = (
+        _normalize_extracted_relation(
+            source_equation
+        )
+    )
+
+    extracted_equation = (
+        _normalize_extracted_relation(
+            extracted_equation
         )
     )
 

@@ -1322,11 +1322,81 @@
       if (container) container.classList.remove('visible');
     }
 
-    function startNewExercise() {
-      if (isSubmitting) return;
-      sessionStorage.removeItem('exercice_termine');
-      hideNewExerciseButton();
-      generateExercise();
+    function setExerciseClosedUI(isClosed) {
+      const closed = Boolean(isClosed);
+
+      if (closed) {
+        sessionStorage.setItem(
+          'exercice_termine',
+          'true'
+        );
+
+        showNewExerciseButton();
+      } else {
+        sessionStorage.removeItem(
+          'exercice_termine'
+        );
+
+        hideNewExerciseButton();
+      }
+
+      /*
+       * La conversation reste visible lorsque l'exercice
+       * est terminé.
+       *
+       * En revanche on empêche l'élève d'envoyer un nouveau
+       * message dans l'ancien contexte. Il doit cliquer sur
+       * "Nouvel exercice" ou sur "Réinitialiser".
+       */
+      if (questionInput) {
+        questionInput.disabled = closed;
+
+        if (closed) {
+          questionInput.value = '';
+          questionInput.style.height = 'auto';
+
+          questionInput.placeholder =
+            document.documentElement.lang === 'fr'
+              ? 'Exercice terminé — clique sur « Nouvel exercice »'
+              : 'Exercise completed — click “New exercise”';
+        } else {
+          questionInput.placeholder =
+            document.documentElement.lang === 'fr'
+              ? 'Écris ta question à Naima...'
+              : 'Write your question to Naima...';
+        }
+      }
+
+      const sendBtn = document.getElementById(
+        'sendBtn'
+      );
+
+      if (sendBtn) {
+        sendBtn.disabled = closed;
+      }
+    }
+
+    async function startNewExercise() {
+      if (isSubmitting || isResettingConversation) return;
+
+      /*
+       * IMPORTANT :
+       *
+       * "Nouvel exercice" ne génère pas automatiquement
+       * un exercice.
+       *
+       * Il effectue d'abord exactement le même reset complet
+       * que le bouton "Réinitialiser" :
+       *
+       * - effacement de la conversation ;
+       * - effacement de l'ancien contexte Naima ;
+       * - suppression de l'ancien exercice ;
+       * - retour à un état vierge.
+       *
+       * L'élève peut ensuite saisir un nouvel énoncé
+       * ou utiliser le générateur à droite.
+       */
+      await resetConversation();
     }
 
     // ============================================================
@@ -1396,11 +1466,7 @@
           messagesDiv.innerHTML = '';
         }
 
-        sessionStorage.removeItem(
-          'exercice_termine'
-        );
-
-        hideNewExerciseButton();
+        setExerciseClosedUI(false);
 
         updateExerciseSidebar(null);
 
@@ -1482,8 +1548,7 @@
       
       document.body.appendChild(form);
       
-      sessionStorage.removeItem('exercice_termine');
-      hideNewExerciseButton();
+      setExerciseClosedUI(false);
 
       const currentExerciseSidebar = document.getElementById('currentExerciseSidebar');
       const noExerciseMessage = document.getElementById('noExerciseMessage');
@@ -1551,7 +1616,25 @@
       }
 
       if (questionInput) {
-        questionInput.disabled = isLoading;
+        const exerciseClosed = (
+          sessionStorage.getItem(
+            'exercice_termine'
+          )
+          === 'true'
+        );
+
+        questionInput.disabled = (
+          isLoading
+          || exerciseClosed
+        );
+      }
+
+      const newExerciseBtn = document.getElementById(
+        'nouvelExerciceBtn'
+      );
+
+      if (newExerciseBtn) {
+        newExerciseBtn.disabled = isLoading;
       }
     }
 
@@ -1818,24 +1901,13 @@
 
       if (!question) return;
 
-      if (sessionStorage.getItem('exercice_termine') === 'true') {
-        addUserMessage(question);
-        questionInput.value = '';
-        questionInput.style.height = 'auto';
-
-        const msgFin = document.documentElement.lang === 'fr'
-          ? '✅ Exercice terminé ! Clique sur "Nouvel exercice" pour continuer.'
-          : '✅ Exercise finished! Click "New exercise" to continue.';
-
-        showNewExerciseButton();
-
-        addNaimaMessage(`
-          <div class="exercise-finished-message" style="background: #e8f5e9; border-left-color: var(--secondary);">
-            <i class="fas fa-check-circle" style="color: var(--secondary);"></i>
-            <span>${msgFin}</span>
-          </div>
-        `);
-
+      if (
+        sessionStorage.getItem(
+          'exercice_termine'
+        )
+        === 'true'
+      ) {
+        setExerciseClosedUI(true);
         return;
       }
 
@@ -1881,13 +1953,18 @@
         const data = await response.json();
         console.log('📥 Réponse du serveur:', data);
 
-        if (data.termine) {
-          sessionStorage.setItem('exercice_termine', 'true');
-          showNewExerciseButton();
-        } else {
-          sessionStorage.removeItem('exercice_termine');
-          hideNewExerciseButton();
-        }
+        const exerciseClosed = Boolean(
+          data.exercise_closed === true
+          || (
+            data.next_action === 'new_exercise'
+            && data.exercise_closed !== false
+          )
+          || data.termine === true
+        );
+
+        setExerciseClosedUI(
+          exerciseClosed
+        );
 
         if (data.success && data.messages && data.messages.length > 0) {
           const lastMessage = data.messages[data.messages.length - 1];
@@ -1958,11 +2035,9 @@
       updateSubjectSidebar(savedMatiere);
 
       {% if session.get('exercice_termine') %}
-        sessionStorage.setItem('exercice_termine', 'true');
-        showNewExerciseButton();
+        setExerciseClosedUI(true);
       {% else %}
-        sessionStorage.removeItem('exercice_termine');
-        hideNewExerciseButton();
+        setExerciseClosedUI(false);
       {% endif %}
 
       {% if session.get('exercice_en_cours') %}

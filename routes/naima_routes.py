@@ -23,6 +23,13 @@ from services.naima.math_parser_service import (
     extract_math_relation_from_text,
 )
 
+from services.naima.verbal_problem_service import (
+    extract_proved_algebraic_solution,
+    extract_simple_verbal_relation,
+    extract_simple_verbal_constraints,
+    extract_variable_meaning,
+    is_probable_verbal_problem_statement,
+)
 
 # ============================================================
 # BLUEPRINT
@@ -117,67 +124,847 @@ def _clean_message(
 
 
 # ============================================================
+# PROBLÈME VERBAL SAISI DIRECTEMENT
+# ============================================================
+
+def _get_direct_verbal_problem() -> Dict[str, Any]:
+    """
+    Retourne le problème verbal éventuellement mémorisé
+    depuis un message direct de l'élève.
+    """
+
+    value = session.get(
+        "probleme_verbal_naima_v2"
+    )
+
+    if not isinstance(
+        value,
+        dict,
+    ):
+        return {}
+
+    if not value.get(
+        "active"
+    ):
+        return {}
+
+    return dict(
+        value
+    )
+
+
+def _store_direct_verbal_problem(
+    statement: str,
+) -> None:
+    """
+    Mémorise un énoncé verbal présenté directement
+    par l'élève.
+
+    IMPORTANT :
+    aucune correction de référence n'est inventée.
+
+    Les relations verbales explicitement détectées dans
+    l'énoncé peuvent être mémorisées comme faits structurés,
+    mais uniquement lorsqu'elles sont reconnues de manière
+    déterministe.
+    """
+
+    statement = str(
+        statement
+        or ""
+    ).strip()
+
+    # --------------------------------------------------------
+    # EXTRACTION D'UNE RELATION VERBALE EXPLICITE
+    # --------------------------------------------------------
+    #
+    # Exemple :
+    #
+    #     Marie a deux fois l'âge de Paul.
+    #
+    # devient :
+    #
+    #     {
+    #         "subject": "Marie",
+    #         "relation": "multiple_of",
+    #         "factor": 2,
+    #         "reference": "Paul",
+    #         "attribute": "âge",
+    #     }
+    #
+    # Si aucune relation explicite n'est reconnue,
+    # aucune relation n'est inventée.
+    # --------------------------------------------------------
+
+    verbal_relation = (
+        extract_simple_verbal_relation(
+            statement
+        )
+    )
+
+    verbal_relations = []
+
+    if verbal_relation:
+
+        verbal_relations.append(
+            verbal_relation
+        )
+
+    # --------------------------------------------------------
+    # CONTRAINTES VERBALES COMPLÈTES
+    # --------------------------------------------------------
+
+    verbal_constraints = (
+        extract_simple_verbal_constraints(
+            statement
+        )
+    )
+
+    session[
+        "probleme_verbal_naima_v2"
+    ] = {
+        "active": True,
+
+        "statement": statement,
+
+        "correction": None,
+
+        "source": (
+            "student_message"
+        ),
+
+        # ----------------------------------------------------
+        # MODÉLISATION
+        # ----------------------------------------------------
+
+        "model_equation": None,
+
+        "modeling_message": None,
+
+        "variable_meaning": None,
+
+        "model_status": None,
+
+        "model_validation_method": None,
+
+        "model_validation_verdict": None,
+
+        "model_proved_correct": False,
+
+        # ----------------------------------------------------
+        # RELATIONS VERBALES EXPLICITES
+        # ----------------------------------------------------
+
+        "verbal_relations": (
+            verbal_relations
+        ),
+
+        "verbal_constraints": (
+            verbal_constraints
+        ),
+
+        # ----------------------------------------------------
+        # RÉSOLUTION ALGÉBRIQUE
+        # ----------------------------------------------------
+
+        "algebraic_solution": None,
+    }
+
+    session.modified = True
+
+
+
+def _update_direct_verbal_problem_variable_meaning(
+    *,
+    message: str,
+) -> None:
+    """
+    Mémorise la signification explicite d'une variable
+    dans un problème verbal direct.
+
+    La recherche se fait d'abord dans le message courant.
+
+    Si le message courant ne contient pas la définition,
+    on examine également les derniers messages de l'élève
+    afin de récupérer une définition récente comme :
+
+        "Soit x l'âge de Paul"
+
+    Cette récupération reste déterministe :
+    aucune signification de variable n'est inventée.
+    """
+
+    message = str(
+        message
+        or ""
+    ).strip()
+
+    problem = (
+        _get_direct_verbal_problem()
+    )
+
+    if not problem:
+        return
+
+    if (
+        problem.get(
+            "source"
+        )
+        != "student_message"
+    ):
+        return
+
+    if problem.get(
+        "correction"
+    ):
+        return
+
+    # --------------------------------------------------------
+    # NE PAS ÉCRASER UNE SIGNIFICATION DÉJÀ MÉMORISÉE
+    # --------------------------------------------------------
+
+    existing_meaning = (
+        problem.get(
+            "variable_meaning"
+        )
+    )
+
+    if isinstance(
+        existing_meaning,
+        dict,
+    ) and existing_meaning.get(
+        "variable"
+    ):
+
+        return
+
+    # --------------------------------------------------------
+    # 1. MESSAGE COURANT
+    # --------------------------------------------------------
+
+    variable_meaning = None
+
+    if message:
+
+        variable_meaning = (
+            extract_variable_meaning(
+                message
+            )
+        )
+
+    # --------------------------------------------------------
+    # 2. HISTORIQUE RÉCENT DE L'ÉLÈVE
+    # --------------------------------------------------------
+    #
+    # Exemple :
+    #
+    # tour précédent :
+    #
+    #   Soit x l'âge de Paul...
+    #
+    # tour courant :
+    #
+    #   x+2x=30
+    #
+    # --------------------------------------------------------
+
+    if not variable_meaning:
+
+        conversation = (
+            _get_conversation()
+        )
+
+        for item in reversed(
+            conversation[-12:]
+        ):
+
+            text = str(
+                item
+                or ""
+            ).strip()
+
+            if not (
+                text.startswith(
+                    "👤 Élève:"
+                )
+                or text.startswith(
+                    "👤 Student:"
+                )
+            ):
+                continue
+
+            student_text = (
+                text
+                .replace(
+                    "👤 Élève:",
+                    "",
+                    1,
+                )
+                .replace(
+                    "👤 Student:",
+                    "",
+                    1,
+                )
+                .strip()
+            )
+
+            if not student_text:
+                continue
+
+            variable_meaning = (
+                extract_variable_meaning(
+                    student_text
+                )
+            )
+
+            if variable_meaning:
+                break
+
+    if not variable_meaning:
+        return
+
+    problem[
+        "variable_meaning"
+    ] = variable_meaning
+
+    session[
+        "probleme_verbal_naima_v2"
+    ] = problem
+
+    session.modified = True
+
+
+def _update_direct_verbal_problem_model(
+    *,
+    equation: Optional[str],
+    modeling_message: str = "",
+    validation: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    Mémorise l'équation proposée par l'élève comme
+    modèle de travail d'un problème verbal direct.
+
+    IMPORTANT :
+    cette fonction ne déclare jamais la modélisation correcte.
+
+    Sans correction de référence :
+
+        model_status = "learner_proposed"
+
+    La validation mathématique de la résolution de cette
+    équation reste ensuite confiée au MathRouter.
+    """
+
+    if not equation:
+        return
+
+    problem = (
+        _get_direct_verbal_problem()
+    )
+
+    if not problem:
+        return
+
+    # Un exercice généré possédant une correction de référence
+    # ne relève pas de cette mémoire "directe".
+    if problem.get(
+        "correction"
+    ):
+        return
+
+    validation = dict(
+        validation
+        or {}
+    )
+
+    # --------------------------------------------------------
+    # MÉTHODE DE VALIDATION COURANTE
+    # --------------------------------------------------------
+
+    validation_method = (
+        validation.get(
+            "method"
+        )
+    )
+
+    # --------------------------------------------------------
+    # NE MODIFIER LE MODÈLE QUE LORS D'UNE VALIDATION
+    # DE MODÉLISATION
+    # --------------------------------------------------------
+    #
+    # Une validation ultérieure comme :
+    #
+    #     equation_solution
+    #     verbal_problem_intermediate_solution
+    #     direct_verbal_final_answer
+    #
+    # ne doit jamais écraser l'état d'un modèle déjà prouvé.
+    # --------------------------------------------------------
+
+    if validation_method not in {
+        "verbal_problem_modeling",
+        "direct_verbal_modeling",
+    }:
+        return
+
+    problem[
+        "model_equation"
+    ] = str(
+        equation
+    ).strip()
+
+    modeling_message = str(
+        modeling_message
+        or ""
+    ).strip()
+
+    # --------------------------------------------------------
+    # MESSAGE DE MODÉLISATION
+    # --------------------------------------------------------
+    #
+    # IMPORTANT :
+    # le dernier message de l'élève ne doit pas remplacer
+    # le message ayant réellement servi à définir le modèle.
+    #
+    # Exemple à conserver :
+    #
+    #     Soit x l'âge de Paul,
+    #     Marie a 2x donc x+2x=30
+    #
+    # Une réponse finale comme :
+    #
+    #     Paul a 10 ans et Marie a 20 ans
+    #
+    # ne doit donc jamais écraser modeling_message.
+    # --------------------------------------------------------
+
+    if (
+        modeling_message
+        and validation_method
+        in {
+            "verbal_problem_modeling",
+            "direct_verbal_modeling",
+        }
+    ):
+
+        problem[
+            "modeling_message"
+        ] = modeling_message
+
+        variable_meaning = (
+            extract_variable_meaning(
+                modeling_message
+            )
+        )
+
+        if variable_meaning:
+
+            problem[
+                "variable_meaning"
+            ] = variable_meaning
+
+    problem[
+        "model_status"
+    ] = (
+        "learner_proposed"
+    )
+
+    problem[
+        "model_validation_method"
+    ] = (
+        validation_method
+    )
+
+    problem[
+        "model_validation_verdict"
+    ] = (
+        validation.get(
+            "verdict"
+        )
+    )
+
+    # --------------------------------------------------------
+    # SÉCURITÉ
+    # --------------------------------------------------------
+    #
+    # Une modélisation sans correction de référence ne doit
+    # jamais être promue implicitement vers "correct".
+    # --------------------------------------------------------
+
+    # --------------------------------------------------------
+    # SÉCURITÉ
+    # --------------------------------------------------------
+    #
+    # Une modélisation directe ne peut être déclarée prouvée
+    # correcte que lorsqu'elle a été validée par le moteur
+    # déterministe direct_verbal_modeling.
+    #
+    # Tous les autres cas restent prudents.
+    # --------------------------------------------------------
+
+    problem[
+        "model_proved_correct"
+    ] = bool(
+        validation_method
+        == "direct_verbal_modeling"
+        and validation.get(
+            "verdict"
+        )
+        == "correct"
+        and validation.get(
+            "result_correct"
+        )
+        is True
+    )
+
+    session[
+        "probleme_verbal_naima_v2"
+    ] = problem
+
+    session.modified = True
+
+
+def _update_direct_verbal_problem_algebraic_solution(
+    *,
+    validation: Any,
+) -> None:
+    """
+    Mémorise une solution algébrique uniquement lorsque
+    le moteur déterministe l'a prouvée.
+
+    Exemple :
+
+        x+2*x=30
+        x=10
+
+    La résolution x=10 peut être prouvée même si la
+    modélisation initiale reste seulement
+    "learner_proposed".
+    """
+
+    problem = (
+        _get_direct_verbal_problem()
+    )
+
+    if not problem:
+        return
+
+    if (
+        problem.get(
+            "source"
+        )
+        != "student_message"
+    ):
+        return
+
+    # Les exercices générés utilisent leur correction
+    # de référence et ne relèvent pas de cette mémoire.
+    if problem.get(
+        "correction"
+    ):
+        return
+
+    algebraic_solution = (
+        extract_proved_algebraic_solution(
+            validation
+        )
+    )
+
+    if not algebraic_solution:
+        return
+
+    problem[
+        "algebraic_solution"
+    ] = (
+        algebraic_solution
+    )
+
+    session[
+        "probleme_verbal_naima_v2"
+    ] = problem
+
+    session.modified = True
+
+# ============================================================
+# PROBLÈME VERBAL GÉNÉRÉ
+# ============================================================
+
+def _get_generated_verbal_problem_context(
+    *,
+    current_message: str = "",
+) -> tuple:
+    """
+    Résout le contexte verbal actif.
+
+    PRIORITÉ :
+
+        1. exercice généré avec correction ;
+        2. problème verbal direct déjà actif ;
+        3. nouvel énoncé verbal du message courant,
+           uniquement lorsqu'aucun problème verbal direct
+           n'est déjà actif.
+
+    Principe fondamental :
+
+    Une fois qu'un problème verbal est actif, les messages
+    ultérieurs de l'élève sont considérés comme appartenant
+    à ce problème :
+
+        - définition / redéfinition d'une variable ;
+        - modélisation ;
+        - transformation algébrique ;
+        - justification ;
+        - réponse intermédiaire ;
+        - réponse finale.
+
+    Ils ne doivent donc jamais remplacer automatiquement
+    l'énoncé canonique du problème.
+
+    Le remplacement d'un problème actif doit être effectué
+    par une véritable transition de contexte :
+
+        - reset ;
+        - exercice explicitement remplacé par l'application ;
+        - futur arbitre générique de transition.
+
+    Retour :
+
+        (
+            verbal_problem_active,
+            statement,
+            correction,
+        )
+    """
+
+    current_message = str(
+        current_message
+        or ""
+    ).strip()
+
+    # ========================================================
+    # 1. EXERCICE GÉNÉRÉ AVEC CORRECTION
+    # ========================================================
+
+    exercise = (
+        session.get(
+            "exercice_en_cours"
+        )
+        or {}
+    )
+
+    if isinstance(
+        exercise,
+        dict,
+    ):
+
+        statement = str(
+            exercise.get(
+                "enonce"
+            )
+            or ""
+        ).strip()
+
+        correction = (
+            exercise.get(
+                "correction"
+            )
+        )
+
+        if (
+            statement
+            and correction
+        ):
+
+            try:
+
+                statement_relation = (
+                    extract_math_relation_from_text(
+                        statement
+                    )
+                )
+
+            except Exception:
+
+                statement_relation = None
+
+            # ------------------------------------------------
+            # Un exercice généré réellement verbal conserve
+            # sa priorité.
+            # ------------------------------------------------
+
+            if not statement_relation:
+
+                return (
+                    True,
+                    statement,
+                    correction,
+                )
+
+    # ========================================================
+    # 2. PROBLÈME VERBAL DIRECT DÉJÀ ACTIF
+    # ========================================================
+    #
+    # IMPORTANT :
+    #
+    # Cette vérification doit précéder toute tentative
+    # de détection d'un "nouvel énoncé" dans le message
+    # courant.
+    #
+    # Sinon :
+    #
+    #     problème actif :
+    #         énoncé initial
+    #
+    #     élève :
+    #         x représente ...
+    #
+    # peut être faussement détecté comme nouvel énoncé,
+    # ce qui détruit :
+    #
+    #     statement
+    #     verbal_constraints
+    #     model_equation
+    #     algebraic_solution
+    #     variable_meaning
+    #
+    # --------------------------------------------------------
+
+    direct_problem = (
+        _get_direct_verbal_problem()
+    )
+
+    if direct_problem:
+
+        statement = str(
+            direct_problem.get(
+                "statement"
+            )
+            or ""
+        ).strip()
+
+        if statement:
+
+            return (
+                True,
+                statement,
+                None,
+            )
+
+    # ========================================================
+    # 3. AUCUN PROBLÈME DIRECT ACTIF :
+    #    LE MESSAGE COURANT PEUT EN CRÉER UN
+    # ========================================================
+
+    if (
+        current_message
+        and is_probable_verbal_problem_statement(
+            current_message
+        )
+    ):
+
+        _store_direct_verbal_problem(
+            current_message
+        )
+
+        direct_problem = (
+            _get_direct_verbal_problem()
+        )
+
+        statement = str(
+            direct_problem.get(
+                "statement"
+            )
+            if direct_problem
+            else current_message
+        ).strip()
+
+        return (
+            True,
+            statement,
+            None,
+        )
+
+    # ========================================================
+    # 4. AUCUN CONTEXTE VERBAL
+    # ========================================================
+
+    return (
+        False,
+        "",
+        None,
+    )
+
+
+# ============================================================
 # CONVERSATION
 # ============================================================
 
-def _get_conversation() -> list:
+def _get_conversation():
     """
-    Compatibilité temporaire entre :
+    Retourne la conversation Naima.
 
-        conversation_naima
-        conversation
-
-    Pendant la migration, les deux formats sont acceptés.
+    conversation_naima est désormais la clé canonique.
+    L'ancienne clé conversation reste uniquement un fallback
+    de migration.
     """
 
     conversation = session.get(
         "conversation_naima"
     )
 
-    if not isinstance(
+    if isinstance(
         conversation,
         list,
     ):
+        return conversation
 
-        conversation = session.get(
-            "conversation",
-            [],
-        )
-
-    if not isinstance(
-        conversation,
-        list,
-    ):
-        conversation = []
-
-    return list(
-        conversation
+    legacy_conversation = session.get(
+        "conversation"
     )
+
+    if isinstance(
+        legacy_conversation,
+        list,
+    ):
+        return legacy_conversation
+
+    return []
 
 
 def _set_conversation(
-    conversation: list,
-) -> None:
+    conversation,
+):
     """
-    Synchronise temporairement les deux clés
-    de conversation pendant la migration.
+    Stocke la conversation Naima dans une seule clé canonique.
+
+    IMPORTANT :
+    Flask stocke actuellement la session dans un cookie signé.
+    Dupliquer toute la conversation dans deux clés peut faire
+    dépasser la limite navigateur d'environ 4 Ko.
     """
 
-    conversation = list(
+    safe_conversation = list(
         conversation
         or []
     )
 
+    # Limiter également l'historique conservé côté session.
+    # Les derniers tours suffisent au contexte immédiat.
+    safe_conversation = (
+        safe_conversation[-8:]
+    )
+
     session[
         "conversation_naima"
-    ] = conversation
+    ] = safe_conversation
 
-    session[
-        "conversation"
-    ] = conversation
+    # Ne plus dupliquer le contenu complet.
+    session.pop(
+        "conversation",
+        None,
+    )
 
     session.modified = True
-
 
 # ============================================================
 # QUESTION PRÉCÉDENTE
@@ -344,6 +1131,20 @@ def _apply_turn_to_session(
         or {}
     )
 
+    validation = (
+        result.get(
+            "validation"
+        )
+        or {}
+    )
+
+    validation_method = (
+        validation.get(
+            "method"
+        )
+        or ""
+    )
+
     # --------------------------------------------------------
     # INTENTION
     # --------------------------------------------------------
@@ -368,11 +1169,136 @@ def _apply_turn_to_session(
         )
     )
 
-    if current_equation:
+    # --------------------------------------------------------
+    # ÉQUATION DE TRAVAIL / MODÉLISATION
+    # --------------------------------------------------------
+    #
+    # Pour certaines variables contextuelles comme P,
+    # le ContextService général peut ne pas encore fournir
+    # current_equation.
+    #
+    # En revanche, le validateur déterministe du problème
+    # verbal direct peut déjà avoir extrait et validé
+    # l'équation dans :
+    #
+    #     validation["details"]["student_equation"]
+    #
+    # On utilise donc cette équation comme fallback fiable
+    # uniquement lorsque la méthode de validation correspond
+    # réellement à une modélisation verbale.
+    # --------------------------------------------------------
+
+    model_equation = (
+        current_equation
+    )
+
+    if (
+        not model_equation
+        and validation_method
+        in {
+            "verbal_problem_modeling",
+            "direct_verbal_modeling",
+        }
+    ):
+
+        validation_details = (
+            validation.get(
+                "details"
+            )
+            or {}
+        )
+
+        if isinstance(
+            validation_details,
+            dict,
+        ):
+
+            model_equation = str(
+                validation_details.get(
+                    "student_equation"
+                )
+                or ""
+            ).strip()
+
+    if model_equation:
 
         session[
             "equation_courante_naima"
-        ] = current_equation
+        ] = model_equation
+
+        # --------------------------------------------------------
+        # PROBLÈME VERBAL DIRECT :
+        # MÉMOIRE DE LA MODÉLISATION
+        # --------------------------------------------------------
+
+        direct_problem = (
+            _get_direct_verbal_problem()
+        )
+
+        if (
+            direct_problem
+            and direct_problem.get(
+                "source"
+            )
+            == "student_message"
+            and not direct_problem.get(
+                "correction"
+            )
+            and validation_method
+            in {
+                "verbal_problem_modeling",
+                "direct_verbal_modeling",
+            }
+        ):
+
+            _update_direct_verbal_problem_model(
+                equation=(
+                    model_equation
+                ),
+                modeling_message=(
+                    message
+                ),
+                validation=(
+                    validation
+                ),
+            )
+
+    # --------------------------------------------------------
+    # SOLUTION ALGÉBRIQUE PROUVÉE
+    # --------------------------------------------------------
+    #
+    # Cette étape est distincte de la modélisation.
+    #
+    # Exemple :
+    #
+    #     modèle proposé :
+    #         x+2*x=30
+    #
+    #     solution algébrique prouvée :
+    #         x=10
+    #
+    # Le modèle peut rester :
+    #
+    #     model_proved_correct = False
+    #
+    # tandis que la résolution de cette équation peut être
+    # déterministiquement prouvée :
+    #
+    #     algebraic_solution.proved = True
+    #
+    # Si aucune preuve positive n'existe, le helper ne fait
+    # simplement rien.
+    # --------------------------------------------------------
+
+    _update_direct_verbal_problem_algebraic_solution(
+        validation=(
+            validation
+        ),
+    )
+
+    # --------------------------------------------------------
+    # ÉQUATION INITIALE
+    # --------------------------------------------------------
 
     if initial_equation:
 
@@ -384,27 +1310,58 @@ def _apply_turn_to_session(
     # OBJECTIF
     # --------------------------------------------------------
     #
-    # IMPORTANT : lorsqu'un nouveau problème est détecté,
-    # l'objectif précédent ne doit jamais gagner sur le
-    # nouveau message. Le contexte de l'orchestrateur peut
-    # encore contenir l'ancien objectif au moment de la
-    # transition entre deux exercices.
+    # IMPORTANT :
     #
-    # Exemple :
-    #   ancien objectif : resoudre 3x=5
-    #   nouveau message : resoudre -2x>6
+    # Dans le cas standard :
     #
-    # Dans ce cas, on persiste le NOUVEAU message comme
-    # objectif pédagogique de référence.
-    # --------------------------------------------------------
+    #     resoudre 3x=5
+    #
+    # un nouveau problème détecté doit remplacer l'ancien
+    # objectif par le nouveau message.
+    #
+    # MAIS :
+    #
+    # dans un problème verbal actif, si l'élève écrit :
+    #
+    #     3x=15
+    #
+    # et que cette équation vient d'être validée comme
+    # modélisation correcte, cette équation ne doit PAS
+    # remplacer l'énoncé verbal comme objectif pédagogique.
+    #
+    # On garde donc :
+    #
+    #     objectif_initial_naima = énoncé verbal
+    #
+    # et :
+    #
+    #     equation_courante_naima = 3x=15
+    #
+    # ========================================================
 
     if context.get(
         "is_new_problem"
     ):
 
-        session[
-            "objectif_initial_naima"
-        ] = message
+        if (
+            validation_method
+            in {
+                "verbal_problem_modeling",
+                "direct_verbal_modeling",
+            }
+        ):
+
+            # Ne pas écraser l'objectif verbal.
+            #
+            # L'équation extraite a déjà été mémorisée
+            # ci-dessus dans equation_courante_naima.
+            pass
+
+        else:
+
+            session[
+                "objectif_initial_naima"
+            ] = message
 
     elif (
         not session.get(
@@ -549,12 +1506,7 @@ def _apply_turn_to_session(
 
     session[
         "validation_naima_v2"
-    ] = (
-        result.get(
-            "validation"
-        )
-        or {}
-    )
+    ] = validation
 
     session[
         "response_decision_naima_v2"
@@ -570,13 +1522,23 @@ def _apply_turn_to_session(
     # OBJECTIF TERMINÉ
     # --------------------------------------------------------
 
-    session[
-        "objectif_atteint_naima"
-    ] = bool(
+    objective_reached = bool(
         result.get(
             "objective_reached"
         )
     )
+
+    session[
+        "objectif_atteint_naima"
+    ] = objective_reached
+
+    # Compatibilité avec le fonctionnement historique
+    # de l'exercice généré.
+    if objective_reached:
+
+        session[
+            "exercice_termine"
+        ] = True
 
     # --------------------------------------------------------
     # PREMIER MESSAGE
@@ -587,7 +1549,6 @@ def _apply_turn_to_session(
     ] = False
 
     session.modified = True
-
 
 # ============================================================
 # AJOUT À LA CONVERSATION
@@ -675,6 +1636,12 @@ def _reset_naima_v2_session() -> None:
         "equation_type_naima_v2",
 
         "intention_pedagogique_naima_v2",
+        "probleme_verbal_naima_v2",
+
+        # Compatibilité avec le statut de fin d'exercice.
+        "exercice_termine",
+
+        "naima_next_action",
     ]
 
     for key in keys:
@@ -690,7 +1657,116 @@ def _reset_naima_v2_session() -> None:
 
     session.modified = True
 
+def _prepare_closed_exercise_for_new_problem() -> None:
+    """
+    Libère immédiatement le contexte de l'exercice terminé
+    SANS supprimer la conversation affichée.
 
+    État obtenu :
+
+        ancien exercice :
+            supprimé
+
+        mémoire mathématique :
+            supprimée
+
+        problème verbal :
+            supprimé
+
+        conversation :
+            conservée
+
+        interface :
+            next_action = "new_exercise"
+
+    Le clic ultérieur sur "Nouvel exercice" effectuera
+    le reset complet et supprimera alors la conversation.
+    """
+
+    # --------------------------------------------------------
+    # CONSERVER LA CONVERSATION VISIBLE
+    # --------------------------------------------------------
+
+    conversation = (
+        _get_conversation()
+    )
+
+    # --------------------------------------------------------
+    # CONSERVER LA DERNIÈRE PREUVE POUR LE DEBUG
+    # --------------------------------------------------------
+
+    final_validation = session.get(
+        "validation_naima_v2"
+    )
+
+    final_response = session.get(
+        "response_decision_naima_v2"
+    )
+
+    # --------------------------------------------------------
+    # LIBÉRER LE CONTEXTE NAIMA
+    # --------------------------------------------------------
+
+    _reset_naima_v2_session()
+
+    # --------------------------------------------------------
+    # UN EXERCICE GÉNÉRÉ TERMINÉ NE DOIT PLUS RESTER ACTIF
+    # --------------------------------------------------------
+
+    session.pop(
+        "exercice_en_cours",
+        None,
+    )
+
+    # --------------------------------------------------------
+    # RESTAURER UNIQUEMENT L'HISTORIQUE VISUEL
+    # --------------------------------------------------------
+
+    _set_conversation(
+        conversation
+    )
+
+    # --------------------------------------------------------
+    # ÉTAT DE TRANSITION
+    # --------------------------------------------------------
+
+    session[
+        "objectif_atteint_naima"
+    ] = True
+
+    session[
+        "exercice_termine"
+    ] = True
+
+    session[
+        "naima_next_action"
+    ] = (
+        "new_exercise"
+    )
+
+    # Le prochain vrai exercice sera traité comme
+    # un premier message.
+    session[
+        "premier_message_naima"
+    ] = True
+
+    # --------------------------------------------------------
+    # CONSERVER LE RÉSULTAT FINAL POUR /state
+    # --------------------------------------------------------
+
+    if final_validation is not None:
+
+        session[
+            "validation_naima_v2"
+        ] = final_validation
+
+    if final_response is not None:
+
+        session[
+            "response_decision_naima_v2"
+        ] = final_response
+
+    session.modified = True
 
 # ============================================================
 # ADAPTATEUR D'AFFICHAGE LEGACY
@@ -970,6 +2046,10 @@ def naima_v2_legacy_ajax_response():
                 "objective_reached",
                 False,
             ),
+            "verbal_problem_active": data.get(
+                "verbal_problem_active",
+                False,
+            ),
             "intent": data.get(
                 "intent"
             ),
@@ -982,6 +2062,24 @@ def naima_v2_legacy_ajax_response():
             "response": data.get(
                 "response"
             ),
+            "exercise_closed": bool(
+            data.get(
+                "response",
+                {},
+            ).get(
+                "exercise_closed",
+                False,
+            )
+        ),
+
+        "next_action": (
+            data.get(
+                "response",
+                {}
+            ).get(
+                "next_action"
+            )
+        ),
         },
     })
 
@@ -1008,7 +2106,7 @@ def naima_v2_turn():
         → Session
         → Intent
         → Context
-        → MathRouter
+        → MathRouter / VerbalProblemService
         → Validation
         → PedagogicalPipeline
         → ResponseService
@@ -1092,20 +2190,153 @@ def naima_v2_turn():
     )
 
     # --------------------------------------------------------
+    # CONTEXTE D'UN PROBLÈME VERBAL GÉNÉRÉ
+    # --------------------------------------------------------
+    #
+    # Si exercice_en_cours contient un véritable problème
+    # verbal généré, son énoncé devient l'objectif pédagogique
+    # prioritaire.
+    #
+    # La correction est envoyée uniquement à l'orchestrateur
+    # déterministe. Elle n'est pas directement affichée à
+    # l'élève.
+    # --------------------------------------------------------
+
+    (
+        verbal_problem_active,
+        verbal_problem_statement,
+        verbal_problem_correction,
+    ) = _get_generated_verbal_problem_context(
+        current_message=(
+            message
+        ),
+    )
+
+    if verbal_problem_active:
+
+        current_objective = (
+            verbal_problem_statement
+        )
+
+        # Si aucun objectif n'a encore été mémorisé ou qu'un
+        # ancien objectif mathématique est toujours présent,
+        # on rattache explicitement Naima à l'énoncé généré.
+        session[
+            "objectif_initial_naima"
+        ] = verbal_problem_statement
+
+        session.modified = True
+
+    # --------------------------------------------------------
+    # SIGNIFICATION DE VARIABLE DU TOUR COURANT
+    # --------------------------------------------------------
+    #
+    # Une définition comme :
+    #
+    #     "Si P est l'âge de Paul..."
+    #
+    # peut être donnée un tour avant l'équation :
+    #
+    #     P+2P=30
+    #
+    # On la mémorise donc avant de construire les arguments
+    # transmis à l'orchestrateur.
+    # --------------------------------------------------------
+
+    if verbal_problem_active:
+
+        current_direct_problem = (
+            _get_direct_verbal_problem()
+        )
+
+        if (
+            current_direct_problem
+            and current_direct_problem.get(
+                "source"
+            )
+            == "student_message"
+            and not current_direct_problem.get(
+                "correction"
+            )
+        ):
+
+            _update_direct_verbal_problem_variable_meaning(
+                message=(
+                    message
+                ),
+            )
+
+    # --------------------------------------------------------
+    # MÉMOIRE DÉTERMINISTE DU PROBLÈME VERBAL DIRECT
+    # --------------------------------------------------------
+
+    direct_verbal_problem = (
+        _get_direct_verbal_problem()
+    )
+
+    direct_verbal_variable_meaning = None
+    direct_verbal_algebraic_solution = None
+    direct_verbal_relations = []
+    direct_verbal_constraints = []
+
+    if (
+        direct_verbal_problem
+        and direct_verbal_problem.get(
+            "source"
+        )
+        == "student_message"
+        and not direct_verbal_problem.get(
+            "correction"
+        )
+    ):
+
+        direct_verbal_variable_meaning = (
+            direct_verbal_problem.get(
+                "variable_meaning"
+            )
+        )
+
+        direct_verbal_algebraic_solution = (
+            direct_verbal_problem.get(
+                "algebraic_solution"
+            )
+        )
+
+        direct_verbal_relations = list(
+            direct_verbal_problem.get(
+                "verbal_relations",
+                [],
+            )
+            or []
+        )
+
+        direct_verbal_constraints = list(
+            direct_verbal_problem.get(
+                "verbal_constraints",
+                [],
+            )
+            or []
+        )
+
+    # --------------------------------------------------------
     # GARDE DE NOUVEL OBJECTIF AVANT ORCHESTRATION
     # --------------------------------------------------------
     #
-    # Le nouvel objectif doit être fourni à l'orchestrateur
-    # AVANT un éventuel fallback LLM. Sinon le prompt du même
-    # tour peut encore recevoir l'objectif de l'exercice
-    # précédent.
+    # Pour les problèmes purement mathématiques :
     #
-    # On ne considère ici comme nouveau problème qu'une
-    # relation mathématique explicitement extraite du message
-    # et différente de l'équation courante. Les réponses
-    # finales du type "x=5/3" ou "x<-3" sont déjà protégées
-    # par extract_math_relation_from_text(), qui ne les traite
-    # pas comme de nouveaux énoncés.
+    #     resoudre 3x=5
+    #
+    # une nouvelle relation différente peut devenir un nouvel
+    # objectif.
+    #
+    # MAIS pour un problème verbal généré :
+    #
+    #     élève : 3x=15
+    #
+    # peut être une équation de MODÉLISATION.
+    #
+    # Dans ce cas elle ne doit surtout pas remplacer l'énoncé
+    # verbal avant que VerbalProblemService ait pu la vérifier.
     # --------------------------------------------------------
 
     try:
@@ -1119,6 +2350,7 @@ def naima_v2_turn():
 
     new_problem_before_orchestration = bool(
         relation_message
+        and not verbal_problem_active
         and (
             not current_equation
             or relation_message
@@ -1127,7 +2359,10 @@ def naima_v2_turn():
     )
 
     if new_problem_before_orchestration:
-        current_objective = message
+
+        current_objective = (
+            message
+        )
 
     previous_recovery_state = (
         _get_recovery_state()
@@ -1227,6 +2462,34 @@ def naima_v2_turn():
 
                 lang=(
                     current_lang
+                ),
+
+                # ==============================================
+                # PROBLÈME VERBAL V2
+                # ==============================================
+
+                verbal_problem_active=(
+                    verbal_problem_active
+                ),
+
+                verbal_problem_correction=(
+                    verbal_problem_correction
+                ),
+
+                direct_verbal_variable_meaning=(
+                    direct_verbal_variable_meaning
+                ),
+
+                direct_verbal_algebraic_solution=(
+                    direct_verbal_algebraic_solution
+                ),
+
+                direct_verbal_relations=(
+                    direct_verbal_relations
+                ),
+
+                direct_verbal_constraints=(
+                    direct_verbal_constraints
                 ),
             )
         )
@@ -1407,6 +2670,36 @@ def naima_v2_turn():
         ),
     )
 
+    # ========================================================
+    # EXERCICE TERMINÉ
+    # ========================================================
+    #
+    # La conversation reste affichée.
+    #
+    # En revanche l'ancien contexte pédagogique/mathématique
+    # est immédiatement libéré.
+    # ========================================================
+
+    response_decision = dict(
+        result.get(
+            "response"
+        )
+        or {}
+    )
+
+    if (
+        response_decision.get(
+            "exercise_closed"
+        )
+        is True
+        and response_decision.get(
+            "next_action"
+        )
+        == "new_exercise"
+    ):
+
+        _prepare_closed_exercise_for_new_problem()
+
     # --------------------------------------------------------
     # DERNIÈRE QUESTION DE NAIMA
     # --------------------------------------------------------
@@ -1420,14 +2713,16 @@ def naima_v2_turn():
             "derniere_question_naima"
         ] = reply_text
 
-        session[
-            "derniere_question_ia_naima"
-        ] = reply_text
+        # Ne plus stocker trois fois le même texte.
+        session.pop(
+            "derniere_question_ia_naima",
+            None,
+        )
 
-        # Compatibilité historique
-        session[
-            "derniere_q_ia"
-        ] = reply_text
+        session.pop(
+            "derniere_q_ia",
+            None,
+        )
 
     elif result.get(
         "objective_reached"
@@ -1498,6 +2793,20 @@ def naima_v2_turn():
             )
         ),
 
+        # ----------------------------------------------------
+        # DEBUG PROBLÈME VERBAL
+        # ----------------------------------------------------
+
+        "verbal_problem_active": (
+            verbal_problem_active
+        ),
+
+        "verbal_problem_statement": (
+            verbal_problem_statement
+            if verbal_problem_active
+            else None
+        ),
+
         "intent": (
             result.get(
                 "intent"
@@ -1543,6 +2852,17 @@ def naima_v2_state():
     Cette route est uniquement destinée
     au debug et aux tests d'intégration
     pendant la migration.
+
+    IMPORTANT :
+
+    Lorsqu'un exercice vient d'être terminé :
+
+        exercise_closed = True
+        next_action = "new_exercise"
+
+    la conversation peut encore être visible,
+    mais l'ancien contexte mathématique ne doit
+    plus être considéré comme actif.
     """
 
     if not _is_authenticated_student():
@@ -1551,6 +2871,53 @@ def naima_v2_state():
             "Non authentifié",
             401,
         )
+
+    # ========================================================
+    # ÉTAT DE FERMETURE
+    # ========================================================
+
+    exercise_closed = bool(
+        session.get(
+            "exercice_termine",
+            False,
+        )
+    )
+
+    next_action = session.get(
+        "naima_next_action"
+    )
+
+    # ========================================================
+    # CONTEXTE VERBAL
+    # ========================================================
+    #
+    # Un exercice fermé ne doit plus redevenir actif
+    # simplement parce qu'un ancien contexte subsiste
+    # quelque part dans la session.
+    # ========================================================
+
+    if exercise_closed:
+
+        verbal_problem_active = False
+        verbal_problem_statement = ""
+
+        direct_verbal_problem = None
+
+    else:
+
+        (
+            verbal_problem_active,
+            verbal_problem_statement,
+            _verbal_problem_correction,
+        ) = _get_generated_verbal_problem_context()
+
+        direct_verbal_problem = (
+            _get_direct_verbal_problem()
+        )
+
+    # ========================================================
+    # RÉPONSE DEBUG
+    # ========================================================
 
     return jsonify({
         "ok": True,
@@ -1568,6 +2935,18 @@ def naima_v2_state():
             False,
         ),
 
+        # ----------------------------------------------------
+        # CYCLE DE VIE DE L'EXERCICE
+        # ----------------------------------------------------
+
+        "exercise_closed": (
+            exercise_closed
+        ),
+
+        "next_action": (
+            next_action
+        ),
+
         "current_equation": session.get(
             "equation_courante_naima"
         ),
@@ -1578,6 +2957,113 @@ def naima_v2_state():
 
         "equation_type": session.get(
             "equation_type_naima_v2"
+        ),
+
+        # ----------------------------------------------------
+        # PROBLÈME VERBAL
+        # ----------------------------------------------------
+
+        "verbal_problem_active": (
+            verbal_problem_active
+        ),
+
+        "verbal_problem_statement": (
+            verbal_problem_statement
+            if verbal_problem_active
+            else None
+        ),
+
+        "verbal_problem_source": (
+            direct_verbal_problem.get(
+                "source"
+            )
+            if direct_verbal_problem
+            else None
+        ),
+
+        "verbal_problem_model_equation": (
+            direct_verbal_problem.get(
+                "model_equation"
+            )
+            if direct_verbal_problem
+            else None
+        ),
+
+        "verbal_problem_modeling_message": (
+            direct_verbal_problem.get(
+                "modeling_message"
+            )
+            if direct_verbal_problem
+            else None
+        ),
+
+        "verbal_problem_variable_meaning": (
+            direct_verbal_problem.get(
+                "variable_meaning"
+            )
+            if direct_verbal_problem
+            else None
+        ),
+
+        # ----------------------------------------------------
+        # RELATIONS VERBALES EXPLICITES
+        # ----------------------------------------------------
+
+        "verbal_problem_relations": (
+            direct_verbal_problem.get(
+                "verbal_relations",
+                [],
+            )
+            if direct_verbal_problem
+            else []
+        ),
+
+        "verbal_problem_constraints": (
+            direct_verbal_problem.get(
+                "verbal_constraints",
+                [],
+            )
+            if direct_verbal_problem
+            else []
+        ),
+
+        "verbal_problem_model_status": (
+            direct_verbal_problem.get(
+                "model_status"
+            )
+            if direct_verbal_problem
+            else None
+        ),
+
+        "verbal_problem_model_proved_correct": (
+            bool(
+                direct_verbal_problem.get(
+                    "model_proved_correct",
+                    False,
+                )
+            )
+            if direct_verbal_problem
+            else False
+        ),
+
+        # ----------------------------------------------------
+        # SOLUTION ALGÉBRIQUE PROUVÉE
+        # ----------------------------------------------------
+        #
+        # Cette valeur indique uniquement que la résolution
+        # de l'équation proposée a été prouvée par le moteur
+        # déterministe.
+        #
+        # Elle ne signifie PAS automatiquement que la
+        # modélisation représente correctement l'énoncé.
+        # ----------------------------------------------------
+
+        "verbal_problem_algebraic_solution": (
+            direct_verbal_problem.get(
+                "algebraic_solution"
+            )
+            if direct_verbal_problem
+            else None
         ),
 
         "first_message": (
@@ -1630,6 +3116,15 @@ def naima_v2_state():
         "intent": session.get(
             "intention_pedagogique_naima_v2"
         ),
+
+        # ----------------------------------------------------
+        # HISTORIQUE VISUEL
+        # ----------------------------------------------------
+        #
+        # Même lorsque exercise_closed=True,
+        # cette conversation reste visible jusqu'au clic
+        # sur "Nouvel exercice".
+        # ----------------------------------------------------
 
         "conversation": (
             _get_conversation()
