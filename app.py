@@ -27714,38 +27714,643 @@ def telecharger_pdf(email):
 
 @app.route("/parent-dashboard")
 def parent_dashboard():
-    # ✅ CORRECTION : Récupérer l'email du parent depuis la session
+    from collections import defaultdict
+    from datetime import datetime, timedelta, timezone
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    # ============================================================
+    # AUTHENTIFICATION PARENT
+    # ============================================================
+
     parent_email = session.get("parent_email")
-    
+
     if not parent_email:
-        flash("Veuillez vous connecter en tant que parent", "error")
+        flash(
+            "Veuillez vous connecter en tant que parent",
+            "error"
+        )
         return redirect(url_for("login_parent"))
-    
-    parent = Parent.query.filter_by(email=parent_email).first()
+
+    parent = Parent.query.filter_by(
+        email=parent_email
+    ).first()
+
     if not parent:
-        flash("Parent non trouvé", "error")
+        flash(
+            "Parent non trouvé",
+            "error"
+        )
         return redirect(url_for("login_parent"))
-    
-    # Récupération UNIQUEMENT des enfants liés à ce parent
-    liens = ParentEleve.query.filter_by(parent_id=parent.id).all()
-    
+
+    lang = session.get("lang", "fr")
+
+    # ============================================================
+    # PARAMÈTRES DU SUIVI
+    # ============================================================
+
+    nombre_jours_historique = 30
+    timezone_par_defaut = "America/Toronto"
+
+    # ============================================================
+    # OUTILS
+    # ============================================================
+
+    def obtenir_timezone_eleve(eleve):
+        """
+        Retourne le fuseau horaire IANA de l'élève.
+
+        Exemples :
+        - America/Toronto
+        - America/Vancouver
+        - America/Edmonton
+        - Europe/Paris
+        - Africa/Abidjan
+
+        Si la valeur stockée est absente ou invalide,
+        on utilise America/Toronto comme fallback sécurisé.
+        """
+
+        timezone_nom = (
+            getattr(eleve, "timezone", None)
+            or timezone_par_defaut
+        )
+
+        try:
+            timezone_obj = ZoneInfo(timezone_nom)
+
+        except (
+            ZoneInfoNotFoundError,
+            ValueError,
+            TypeError
+        ):
+            timezone_nom = timezone_par_defaut
+            timezone_obj = ZoneInfo(
+                timezone_par_defaut
+            )
+
+        return timezone_nom, timezone_obj
+
+    def date_locale_reponse(
+        timestamp,
+        timezone_eleve
+    ):
+        """
+        Convertit le timestamp d'une StudentResponse
+        dans la journée LOCALE de l'élève.
+
+        Les anciens datetime naïfs sont interprétés comme UTC.
+        """
+
+        if timestamp is None:
+            return None
+
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(
+                tzinfo=timezone.utc
+            )
+
+        return timestamp.astimezone(
+            timezone_eleve
+        ).date()
+
+    def etoiles_effectives(reponse):
+        """
+        Priorité à la correction humaine.
+
+        Important :
+        0/5 est une vraie note, donc on utilise
+        'is not None' et non un test booléen.
+        """
+
+        teacher_etoiles = getattr(
+            reponse,
+            "teacher_etoiles",
+            None
+        )
+
+        if teacher_etoiles is not None:
+            return float(
+                teacher_etoiles
+            )
+
+        if reponse.etoiles is not None:
+            return float(
+                reponse.etoiles
+            )
+
+        return None
+
+    # ============================================================
+    # ENFANTS LIÉS AU PARENT
+    # ============================================================
+
+    liens = ParentEleve.query.filter_by(
+        parent_id=parent.id
+    ).all()
+
     enfants = []
+
     for lien in liens:
-        eleve = db.session.get(User, lien.eleve_id)
-        if eleve:
-            # Calcul des données spécifiques à cet enfant
-            reponses = StudentResponse.query.filter_by(user_id=eleve.id).all()
-            notes = [r.etoiles for r in reponses if r.etoiles is not None]
-            moyenne = round(sum(notes) / len(notes), 2) if notes else None
-            
-            enfants.append({
-                "nom": eleve.nom_complet,
-                "niveau": eleve.niveau.nom if eleve.niveau else "Non défini",
-                "username": eleve.username,
-                "moyenne_etoiles": moyenne
+
+        eleve = db.session.get(
+            User,
+            lien.eleve_id
+        )
+
+        if not eleve:
+            continue
+
+        # ========================================================
+        # FUSEAU HORAIRE PROPRE À CET ÉLÈVE
+        # ========================================================
+
+        (
+            timezone_eleve_nom,
+            timezone_eleve
+        ) = obtenir_timezone_eleve(
+            eleve
+        )
+
+        maintenant_eleve = datetime.now(
+            timezone_eleve
+        )
+
+        aujourd_hui_eleve = (
+            maintenant_eleve.date()
+        )
+
+        premiere_date = (
+            aujourd_hui_eleve
+            - timedelta(
+                days=nombre_jours_historique - 1
+            )
+        )
+
+        # ========================================================
+        # RÉPONSES DE CET ÉLÈVE
+        # ========================================================
+
+        reponses = (
+            StudentResponse.query
+            .filter_by(
+                user_id=eleve.id
+            )
+            .order_by(
+                StudentResponse.timestamp.asc()
+            )
+            .all()
+        )
+
+        # ========================================================
+        # MOYENNE GLOBALE EFFECTIVE
+        # ========================================================
+
+        notes_globales = []
+
+        for reponse in reponses:
+
+            note = etoiles_effectives(
+                reponse
+            )
+
+            if note is not None:
+                notes_globales.append(
+                    note
+                )
+
+        moyenne_globale = (
+            round(
+                sum(notes_globales)
+                / len(notes_globales),
+                2
+            )
+            if notes_globales
+            else None
+        )
+
+        # ========================================================
+        # ACTIVITÉ PAR JOUR LOCAL DE L'ÉLÈVE
+        # ========================================================
+
+        activite_par_date = defaultdict(
+            lambda: {
+                "nombre_exercices": 0,
+                "notes": [],
+                "nombre_en_attente": 0
+            }
+        )
+
+        for reponse in reponses:
+
+            date_reponse = (
+                date_locale_reponse(
+                    reponse.timestamp,
+                    timezone_eleve
+                )
+            )
+
+            if date_reponse is None:
+                continue
+
+            if (
+                date_reponse < premiere_date
+                or date_reponse > aujourd_hui_eleve
+            ):
+                continue
+
+            jour = activite_par_date[
+                date_reponse
+            ]
+
+            # Une StudentResponse signifie que l'élève
+            # a réellement travaillé sur un exercice.
+            jour["nombre_exercices"] += 1
+
+            note = etoiles_effectives(
+                reponse
+            )
+
+            if note is not None:
+                jour["notes"].append(
+                    note
+                )
+
+            else:
+                jour[
+                    "nombre_en_attente"
+                ] += 1
+
+        # ========================================================
+        # HISTORIQUE DES 30 DERNIERS JOURS
+        # ========================================================
+
+        activite_journaliere = []
+
+        notes_30_jours = []
+
+        for decalage in range(
+            nombre_jours_historique
+        ):
+
+            date_jour = (
+                aujourd_hui_eleve
+                - timedelta(
+                    days=decalage
+                )
+            )
+
+            donnees = activite_par_date.get(
+                date_jour,
+                {
+                    "nombre_exercices": 0,
+                    "notes": [],
+                    "nombre_en_attente": 0
+                }
+            )
+
+            nombre_exercices = int(
+                donnees[
+                    "nombre_exercices"
+                ]
+            )
+
+            notes_jour = list(
+                donnees[
+                    "notes"
+                ]
+            )
+
+            nombre_evalues = len(
+                notes_jour
+            )
+
+            nombre_en_attente = int(
+                donnees[
+                    "nombre_en_attente"
+                ]
+            )
+
+            moyenne_jour = (
+                round(
+                    sum(notes_jour)
+                    / nombre_evalues,
+                    2
+                )
+                if nombre_evalues > 0
+                else None
+            )
+
+            moyenne_pourcentage = (
+                round(
+                    moyenne_jour * 20,
+                    1
+                )
+                if moyenne_jour is not None
+                else None
+            )
+
+            notes_30_jours.extend(
+                notes_jour
+            )
+
+            activite_journaliere.append({
+                "date":
+                    date_jour,
+
+                "date_affichee":
+                    date_jour.strftime(
+                        "%d/%m/%Y"
+                    ),
+
+                "nombre_exercices":
+                    nombre_exercices,
+
+                "nombre_evalues":
+                    nombre_evalues,
+
+                "nombre_en_attente":
+                    nombre_en_attente,
+
+                "moyenne_etoiles":
+                    moyenne_jour,
+
+                "moyenne_pourcentage":
+                    moyenne_pourcentage,
+
+                "a_travaille":
+                    nombre_exercices > 0,
+
+                "est_aujourdhui":
+                    date_jour
+                    == aujourd_hui_eleve
             })
-    
-    return render_template("parent_dashboard.html", parent=parent, enfants=enfants)
+
+        # ========================================================
+        # RÉSUMÉ AUJOURD'HUI
+        # ========================================================
+
+        aujourd_hui_data = (
+            activite_journaliere[0]
+        )
+
+        # ========================================================
+        # RÉSUMÉ SUR 30 JOURS
+        # ========================================================
+
+        jours_travailles_30 = sum(
+            1
+            for jour
+            in activite_journaliere
+            if jour["a_travaille"]
+        )
+
+        total_exercices_30 = sum(
+            jour["nombre_exercices"]
+            for jour
+            in activite_journaliere
+        )
+
+        moyenne_30 = (
+            round(
+                sum(notes_30_jours)
+                / len(notes_30_jours),
+                2
+            )
+            if notes_30_jours
+            else None
+        )
+
+        # ========================================================
+        # NIVEAU
+        # ========================================================
+
+        niveau_nom = (
+            eleve.niveau.nom
+            if getattr(
+                eleve,
+                "niveau",
+                None
+            )
+            else (
+                "Grade not defined"
+                if lang == "en"
+                else "Niveau non défini"
+            )
+        )
+
+        # ========================================================
+        # PROGRESSION GLOBALE DANS LE NIVEAU DE L'ÉLÈVE
+        # ========================================================
+
+        total_exercices_disponibles = 0
+        total_exercices_effectues = 0
+
+        if getattr(eleve, "niveau_id", None) is not None:
+
+            total_exercices_disponibles = (
+                db.session.query(
+                    db.func.count(
+                        db.func.distinct(Exercice.id)
+                    )
+                )
+                .join(
+                    Lecon,
+                    Exercice.lecon_id == Lecon.id
+                )
+                .join(
+                    Unite,
+                    Lecon.unite_id == Unite.id
+                )
+                .join(
+                    Matiere,
+                    Unite.matiere_id == Matiere.id
+                )
+                .filter(
+                    Matiere.niveau_id == eleve.niveau_id
+                )
+                .scalar()
+                or 0
+            )
+
+            total_exercices_effectues = (
+                db.session.query(
+                    db.func.count(
+                        db.func.distinct(
+                            StudentResponse.exercice_id
+                        )
+                    )
+                )
+                .join(
+                    Exercice,
+                    StudentResponse.exercice_id == Exercice.id
+                )
+                .join(
+                    Lecon,
+                    Exercice.lecon_id == Lecon.id
+                )
+                .join(
+                    Unite,
+                    Lecon.unite_id == Unite.id
+                )
+                .join(
+                    Matiere,
+                    Unite.matiere_id == Matiere.id
+                )
+                .filter(
+                    StudentResponse.user_id == eleve.id,
+                    StudentResponse.exercice_id.isnot(None),
+                    Matiere.niveau_id == eleve.niveau_id
+                )
+                .scalar()
+                or 0
+            )
+
+        total_exercices_restants = max(
+            total_exercices_disponibles
+            - total_exercices_effectues,
+            0
+        )
+
+        progression_globale = (
+            round(
+                (
+                    total_exercices_effectues
+                    / total_exercices_disponibles
+                ) * 100,
+                1
+            )
+            if total_exercices_disponibles > 0
+            else 0.0
+        )
+
+        # ========================================================
+        # DONNÉES DU TEMPLATE
+        # ========================================================
+
+        enfants.append({
+            "id":
+                eleve.id,
+
+            "nom":
+                eleve.nom_complet,
+
+            "username":
+                eleve.username,
+
+            "niveau":
+                niveau_nom,
+
+            "timezone":
+                timezone_eleve_nom,
+
+            "date_locale":
+                aujourd_hui_eleve.strftime(
+                    "%d/%m/%Y"
+                ),
+
+            "heure_locale":
+                maintenant_eleve.strftime(
+                    "%H:%M"
+                ),
+
+            # ---------------------------------------------
+            # MOYENNE GLOBALE
+            # ---------------------------------------------
+
+            "moyenne_etoiles":
+                moyenne_globale,
+
+            # ---------------------------------------------
+            # AUJOURD'HUI
+            # ---------------------------------------------
+
+            "a_travaille_aujourdhui":
+                aujourd_hui_data[
+                    "a_travaille"
+                ],
+
+            "exercices_aujourdhui":
+                aujourd_hui_data[
+                    "nombre_exercices"
+                ],
+
+            "exercices_evalues_aujourdhui":
+                aujourd_hui_data[
+                    "nombre_evalues"
+                ],
+
+            "exercices_en_attente_aujourdhui":
+                aujourd_hui_data[
+                    "nombre_en_attente"
+                ],
+
+            "moyenne_aujourdhui":
+                aujourd_hui_data[
+                    "moyenne_etoiles"
+                ],
+
+            "moyenne_aujourdhui_pourcentage":
+                aujourd_hui_data[
+                    "moyenne_pourcentage"
+                ],
+
+            # ---------------------------------------------
+            # HISTORIQUE JOURNALIER
+            # ---------------------------------------------
+
+            "activite_journaliere":
+                activite_journaliere,
+
+            # ---------------------------------------------
+            # RÉSUMÉ 30 JOURS
+            # ---------------------------------------------
+
+            "jours_travailles_30":
+                jours_travailles_30,
+
+            "total_exercices_30":
+                total_exercices_30,
+
+            "moyenne_30":
+                moyenne_30,
+
+            "moyenne_30_pourcentage":
+                (
+                    round(
+                        moyenne_30 * 20,
+                        1
+                    )
+                    if moyenne_30 is not None
+                    else None
+                )
+,
+
+            "total_exercices_effectues":
+                int(total_exercices_effectues),
+
+            "total_exercices_disponibles":
+                int(total_exercices_disponibles),
+
+            "total_exercices_restants":
+                int(total_exercices_restants),
+
+            "progression_globale":
+                progression_globale
+        })
+
+    # ============================================================
+    # TEMPLATE
+    # ============================================================
+
+    return render_template(
+        "parent_dashboard.html",
+        parent=parent,
+        enfants=enfants,
+        nombre_jours_historique=(
+            nombre_jours_historique
+        ),
+        lang=lang
+    )
 
 # ✅ AJOUTEZ CETTE ROUTE MANQUANTE
 @app.route('/parent-dashboard/pdf')

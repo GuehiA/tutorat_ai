@@ -431,6 +431,261 @@
       box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
     }
 
+
+
+    /* Progression globale */
+    .global-progress-section {
+      margin-top: 20px;
+      background: linear-gradient(135deg, #f8f9fa, #ffffff);
+      border: 1px solid #e9ecef;
+      border-radius: 12px;
+      padding: 22px;
+    }
+
+    .global-progress-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .global-progress-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 15px;
+    }
+
+    .global-progress-card {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+
+    .global-progress-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--secondary);
+      margin: 8px 0;
+    }
+
+    .global-progress-label {
+      font-weight: 700;
+      color: var(--secondary);
+    }
+
+    .global-progress-subtext {
+      color: var(--gray);
+      font-size: 0.85rem;
+    }
+
+    .global-progress-bar {
+      width: 100%;
+      height: 10px;
+      margin-top: 16px;
+      background: #e9ecef;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .global-progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--success), var(--primary));
+      border-radius: 999px;
+      transition: width 1s ease;
+    }
+
+    /* Suivi quotidien de l'élève */
+    .today-activity {
+      margin-top: 20px;
+      border-radius: 12px;
+      padding: 22px;
+      border: 1px solid #e9ecef;
+      background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    }
+
+    .today-activity.worked {
+      border-left: 5px solid var(--success);
+    }
+
+    .today-activity.not-worked {
+      border-left: 5px solid var(--gray);
+    }
+
+    .today-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .today-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .activity-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .activity-status.worked {
+      color: #176b36;
+      background: #e7f7ed;
+    }
+
+    .activity-status.not-worked {
+      color: #5f6670;
+      background: #eef0f2;
+    }
+
+    .student-timezone {
+      margin-bottom: 15px;
+      padding: 10px 12px;
+      background: #eef4ff;
+      border-radius: 8px;
+      color: var(--secondary);
+      font-size: 0.9rem;
+    }
+
+    .today-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .today-stat {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .today-stat strong {
+      display: block;
+      font-size: 1.45rem;
+      color: var(--primary);
+      margin-bottom: 3px;
+    }
+
+    .today-stat span {
+      color: var(--gray);
+      font-size: 0.85rem;
+    }
+
+    .pending-note {
+      color: var(--warning);
+      font-size: 0.82rem;
+      display: block;
+      margin-top: 5px;
+    }
+
+    .daily-history {
+      margin-top: 22px;
+    }
+
+    .daily-history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .daily-history-title {
+      font-weight: 700;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .daily-summary {
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    details.daily-details {
+      margin-top: 14px;
+    }
+
+    details.daily-details summary {
+      cursor: pointer;
+      color: var(--primary);
+      font-weight: 700;
+      list-style: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    details.daily-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .daily-table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      margin-top: 12px;
+    }
+
+    .daily-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+      background: white;
+    }
+
+    .daily-table th,
+    .daily-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #edf0f2;
+      text-align: left;
+      font-size: 0.92rem;
+    }
+
+    .daily-table th {
+      background: #f8f9fa;
+      color: var(--secondary);
+      font-weight: 700;
+    }
+
+    .daily-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .daily-table tr.today-row {
+      background: #f0f8ff;
+    }
+
+    .worked-text {
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    .not-worked-text {
+      color: var(--gray);
+      font-weight: 600;
+    }
+
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -498,6 +753,15 @@
       .actions {
         flex-direction: column;
       }
+
+      .today-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .global-progress-grid {
+        grid-template-columns: 1fr;
+      }
+
 
       .btn {
         width: 100%;
@@ -619,11 +883,7 @@
                 <div class="child-details">
                   <div class="detail-item">
                     <i class="fas fa-user-graduate"></i>
-                    {% if eleve.niveau %}
-                      {{ eleve.niveau.nom_en if lang == 'en' and eleve.niveau.nom_en else eleve.niveau.nom }}
-                    {% else %}
-                      {{ "Grade not defined" if lang == 'en' else "Niveau non défini" }}
-                    {% endif %}
+                    {{ eleve.niveau }}
                   </div>
                   <div class="detail-item">
                     <i class="fas fa-user"></i>
@@ -658,7 +918,7 @@
                 </div>
                 
                 <div class="progress-bar">
-                  <div class="progress-fill" style="width: {{ (eleve.moyenne_etoiles / 3 * 100)|round|int }}%"></div>
+                  <div class="progress-fill" style="width: {{ (eleve.moyenne_etoiles / 5 * 100)|round|int }}%"></div>
                 </div>
                 <div style="margin-top: 10px; font-size: 0.9rem; color: var(--gray); text-align: center;">
                   {% if eleve.moyenne_etoiles >= 4 %}
@@ -687,17 +947,253 @@
               {% endif %}
             </div>
 
-            <!-- Actions (SEULEMENT LES BOUTONS ORIGINAUX) -->
-            <div class="actions">
-              <a href="{{ url_for('historique_eleve', username=eleve.username, lang=lang) }}" class="btn btn-primary">
-                <i class="fas fa-history"></i>
-                {% if lang == 'en' %}View History{% else %}Voir l'historique{% endif %}
-              </a>
-              <a href="{{ url_for('dashboard_eleve') }}?username={{ eleve.username }}&lang={{ lang }}" class="btn btn-success">
-                <i class="fas fa-tachometer-alt"></i>
-                {% if lang == 'en' %}Student Dashboard{% else %}Tableau de bord élève{% endif %}
-              </a>
+            <!-- Progression globale -->
+            <div class="global-progress-section">
+              <div class="global-progress-title">
+                <i class="fas fa-chart-pie"></i>
+                {% if lang == 'en' %}Overall Progress{% else %}Progression globale{% endif %}
+              </div>
+
+              <div class="global-progress-grid">
+                <div class="global-progress-card">
+                  <i class="fas fa-circle-check" style="color: var(--success); font-size: 1.4rem;"></i>
+                  <div class="global-progress-label">
+                    {% if lang == 'en' %}Exercises Completed{% else %}Exercices Effectués{% endif %}
+                  </div>
+                  <div class="global-progress-value">
+                    {{ eleve.total_exercices_effectues }}
+                  </div>
+                  <div class="global-progress-subtext">
+                    {% if lang == 'en' %}Total{% else %}Total{% endif %}<br>
+                    <strong>{{ eleve.progression_globale }}%</strong>
+                    {% if lang == 'en' %}completed{% else %}complété{% endif %}<br>
+                    {{ eleve.total_exercices_effectues }}/{{ eleve.total_exercices_disponibles }}
+                  </div>
+                </div>
+
+                <div class="global-progress-card">
+                  <i class="fas fa-hourglass-half" style="color: var(--warning); font-size: 1.4rem;"></i>
+                  <div class="global-progress-label">
+                    {% if lang == 'en' %}Exercises Remaining{% else %}Exercices Restants{% endif %}
+                  </div>
+                  <div class="global-progress-value">
+                    {{ eleve.total_exercices_restants }}
+                  </div>
+                  <div class="global-progress-subtext">
+                    {% if lang == 'en' %}To do{% else %}À faire{% endif %}<br>
+                    <strong>{{ (100 - eleve.progression_globale)|round(1) }}%</strong>
+                    {% if lang == 'en' %}remaining{% else %}restant{% endif %}<br>
+                    {{ eleve.total_exercices_restants }}/{{ eleve.total_exercices_disponibles }}
+                  </div>
+                </div>
+
+                <div class="global-progress-card">
+                  <i class="fas fa-chart-line" style="color: var(--primary); font-size: 1.4rem;"></i>
+                  <div class="global-progress-label">
+                    {% if lang == 'en' %}Overall Completion{% else %}Progression Globale{% endif %}
+                  </div>
+                  <div class="global-progress-value">
+                    {{ eleve.progression_globale }}%
+                  </div>
+                  <div class="global-progress-subtext">
+                    {% if lang == 'en' %}Completion{% else %}Complétion{% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="global-progress-bar">
+                <div
+                  class="global-progress-bar-fill"
+                  style="width: {{ eleve.progression_globale }}%;"
+                ></div>
+              </div>
             </div>
+
+            <!-- Activité quotidienne selon le fuseau de l'élève -->
+            <div class="today-activity {% if eleve.a_travaille_aujourdhui %}worked{% else %}not-worked{% endif %}">
+
+              <div class="today-header">
+                <div class="today-title">
+                  <i class="fas fa-calendar-day"></i>
+                  {% if lang == 'en' %}Today's activity{% else %}Activité d'aujourd'hui{% endif %}
+                </div>
+
+                {% if eleve.a_travaille_aujourdhui %}
+                  <span class="activity-status worked">
+                    <i class="fas fa-circle-check"></i>
+                    {% if lang == 'en' %}Worked today{% else %}A travaillé aujourd'hui{% endif %}
+                  </span>
+                {% else %}
+                  <span class="activity-status not-worked">
+                    <i class="fas fa-circle-minus"></i>
+                    {% if lang == 'en' %}No activity today{% else %}Aucune activité aujourd'hui{% endif %}
+                  </span>
+                {% endif %}
+              </div>
+
+              <div class="student-timezone">
+                <i class="fas fa-clock"></i>
+                {% if lang == 'en' %}
+                  Student local date: <strong>{{ eleve.date_locale }}</strong>
+                  · Time zone: <strong>{{ eleve.timezone }}</strong>
+                {% else %}
+                  Date locale de l'élève : <strong>{{ eleve.date_locale }}</strong>
+                  · Fuseau horaire : <strong>{{ eleve.timezone }}</strong>
+                {% endif %}
+              </div>
+
+              <div class="today-stats">
+                <div class="today-stat">
+                  <strong>{{ eleve.exercices_aujourdhui }}</strong>
+                  <span>
+                    {% if lang == 'en' %}Exercise(s) completed{% else %}Exercice(s) réalisé(s){% endif %}
+                  </span>
+                </div>
+
+                <div class="today-stat">
+                  <strong>
+                    {% if eleve.moyenne_aujourdhui is not none %}
+                      {{ "%.1f"|format(eleve.moyenne_aujourdhui) }}/5
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                  <span>
+                    {% if lang == 'en' %}Daily average{% else %}Moyenne du jour{% endif %}
+                  </span>
+                </div>
+
+                <div class="today-stat">
+                  <strong>
+                    {% if eleve.moyenne_aujourdhui_pourcentage is not none %}
+                      {{ "%.0f"|format(eleve.moyenne_aujourdhui_pourcentage) }}%
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                  <span>
+                    {% if lang == 'en' %}Daily percentage{% else %}Pourcentage du jour{% endif %}
+                  </span>
+                </div>
+              </div>
+
+              {% if eleve.exercices_en_attente_aujourdhui > 0 %}
+                <div class="pending-note" style="margin-top: 12px;">
+                  <i class="fas fa-clock"></i>
+                  {% if lang == 'en' %}
+                    {{ eleve.exercices_en_attente_aujourdhui }} exercise(s) awaiting review and not yet included in the daily average.
+                  {% else %}
+                    {{ eleve.exercices_en_attente_aujourdhui }} exercice(s) en attente de correction, non inclus pour l'instant dans la moyenne du jour.
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              <div class="daily-history">
+                <div class="daily-history-header">
+                  <div class="daily-history-title">
+                    <i class="fas fa-calendar-days"></i>
+                    {% if lang == 'en' %}Daily history{% else %}Historique quotidien{% endif %}
+                  </div>
+
+                  <div class="daily-summary">
+                    {% if lang == 'en' %}
+                      {{ eleve.jours_travailles_30 }} active day(s) ·
+                      {{ eleve.total_exercices_30 }} exercise(s) over {{ nombre_jours_historique }} days
+                    {% else %}
+                      {{ eleve.jours_travailles_30 }} jour(s) travaillé(s) ·
+                      {{ eleve.total_exercices_30 }} exercice(s) sur {{ nombre_jours_historique }} jours
+                    {% endif %}
+                  </div>
+                </div>
+
+                <details class="daily-details">
+                  <summary>
+                    <i class="fas fa-chevron-down"></i>
+                    {% if lang == 'en' %}View daily details{% else %}Voir le détail par jour{% endif %}
+                  </summary>
+
+                  <div class="daily-table-wrap">
+                    <table class="daily-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>{% if lang == 'en' %}Exercises{% else %}Exercices{% endif %}</th>
+                          <th>{% if lang == 'en' %}Average{% else %}Moyenne{% endif %}</th>
+                          <th>{% if lang == 'en' %}Activity{% else %}Activité{% endif %}</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {% for jour in eleve.activite_journaliere %}
+                          <tr class="{% if jour.est_aujourdhui %}today-row{% endif %}">
+                            <td>
+                              {{ jour.date_affichee }}
+
+                              {% if jour.est_aujourdhui %}
+                                <strong>
+                                  {% if lang == 'en' %}(today){% else %}(aujourd'hui){% endif %}
+                                </strong>
+                              {% endif %}
+                            </td>
+
+                            <td>
+                              {{ jour.nombre_exercices }}
+
+                              {% if jour.nombre_en_attente > 0 %}
+                                <span class="pending-note">
+                                  {% if lang == 'en' %}
+                                    {{ jour.nombre_en_attente }} awaiting review
+                                  {% else %}
+                                    {{ jour.nombre_en_attente }} en attente
+                                  {% endif %}
+                                </span>
+                              {% endif %}
+                            </td>
+
+                            <td>
+                              {% if jour.moyenne_etoiles is not none %}
+                                <strong>
+                                  {{ "%.1f"|format(jour.moyenne_etoiles) }}/5
+                                </strong>
+                                <span style="color: var(--gray);">
+                                  ({{ "%.0f"|format(jour.moyenne_pourcentage) }}%)
+                                </span>
+
+                              {% elif jour.nombre_exercices > 0 %}
+                                {% if lang == 'en' %}
+                                  Pending review
+                                {% else %}
+                                  En attente de correction
+                                {% endif %}
+
+                              {% else %}
+                                —
+                              {% endif %}
+                            </td>
+
+                            <td>
+                              {% if jour.a_travaille %}
+                                <span class="worked-text">
+                                  <i class="fas fa-check-circle"></i>
+                                  {% if lang == 'en' %}Worked{% else %}A travaillé{% endif %}
+                                </span>
+
+                              {% else %}
+                                <span class="not-worked-text">
+                                  <i class="fas fa-minus-circle"></i>
+                                  {% if lang == 'en' %}No activity{% else %}Aucune activité{% endif %}
+                                </span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              </div>
+            </div>
+
           </div>
           {% endfor %}
         </div>
