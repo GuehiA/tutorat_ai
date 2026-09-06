@@ -661,38 +661,173 @@ class ExerciceRemediation(db.Model):
 class RemediationSuggestion(db.Model):
     __tablename__ = "remediation_suggestion"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
-    # 🔗 Relation vers l'élève concerné
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    # ============================================================
+    # ÉLÈVE CONCERNÉ
+    # ============================================================
 
-    # ✅ Relation corrigée - cohérente avec User.remediations
-    user = db.relationship("User", back_populates="remediations")
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "users.id",
+            ondelete="CASCADE"
+        ),
+        nullable=False,
+        index=True
+    )
 
-    # 🎓 Contexte pédagogique
-    theme = db.Column(db.String(100), nullable=False)     # Ex : "Fraction", "Passé composé"
-    lecon = db.Column(db.String(100), nullable=True)      # Titre de la leçon si applicable
+    user = db.relationship(
+        "User",
+        back_populates="remediations"
+    )
 
-    # 🧠 Message et remédiation
-    message = db.Column(db.Text, nullable=True)           # Analyse des erreurs ou difficultés
-    exercice_suggere = db.Column(db.Text, nullable=True)  # Ex : "Complète la phrase suivante..."
+    # ============================================================
+    # RÉPONSE À L'ORIGINE DE LA REMÉDIATION
+    # ============================================================
+    #
+    # Permet de savoir exactement quelle réponse de l'élève
+    # a déclenché cette remédiation.
+    #
+    # Grâce à cette relation, l'enseignant pourra voir :
+    # - l'exercice original ;
+    # - la réponse donnée par l'élève ;
+    # - la réponse attendue ;
+    # - la note automatique ;
+    # - la note enseignant ;
+    # - le commentaire enseignant ;
+    # - l'analyse / type d'erreur disponible.
+    #
+    # nullable=True pour conserver la compatibilité avec les
+    # anciennes remédiations déjà présentes en base.
+    # ============================================================
 
-    # 🕓 Suivi et statut
-    statut = db.Column(db.String(20), default="en_attente")  # "en_attente", "valide", "refuse"
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    vue_par_eleve = db.Column(db.Boolean, default=False)
+    source_response_id = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "student_responses.id",
+            ondelete="SET NULL"
+        ),
+        nullable=True,
+        index=True
+    )
 
-    # 📥 Réponse de l'élève après remédiation
-    reponse_eleve = db.Column(db.Text)
-    date_soumission = db.Column(db.DateTime)
+    source_response = db.relationship(
+        "StudentResponse",
+        foreign_keys=[source_response_id]
+    )
 
-    # 🔗 Relation vers les exercices de remédiation associés
+    # ============================================================
+    # CONTEXTE PÉDAGOGIQUE
+    # ============================================================
+
+    theme = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    lecon = db.Column(
+        db.String(100),
+        nullable=True
+    )
+
+    # ============================================================
+    # MESSAGE / ANALYSE
+    # ============================================================
+
+    message = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    # ============================================================
+    # EXERCICE DE REMÉDIATION
+    # ============================================================
+    #
+    # Peut être :
+    # - généré par l'IA ;
+    # - modifié par l'enseignant ;
+    # - créé entièrement par l'enseignant si la génération IA
+    #   n'a pas abouti.
+    # ============================================================
+
+    exercice_suggere = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    # ============================================================
+    # STATUT
+    # ============================================================
+    #
+    # Valeurs utilisées dans le workflow :
+    #
+    # en_attente
+    #     -> doit être vérifiée par l'enseignant
+    #
+    # valide
+    #     -> approuvée par l'enseignant et accessible à l'élève
+    #
+    # refuse
+    #     -> refusée par l'enseignant
+    #
+    # reussie
+    #     -> remédiation réalisée avec succès
+    #
+    # echouee
+    #     -> remédiation réalisée mais non maîtrisée
+    #
+    # en_revision
+    #     -> tentative de remédiation nécessitant une correction
+    #        humaine
+    # ============================================================
+
+    statut = db.Column(
+        db.String(20),
+        nullable=False,
+        default="en_attente",
+        index=True
+    )
+
+    timestamp = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
+
+    # False tant que l'enseignant n'a pas validé la remédiation.
+    vue_par_eleve = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False
+    )
+
+    # ============================================================
+    # RÉPONSE DE L'ÉLÈVE À LA REMÉDIATION
+    # ============================================================
+
+    reponse_eleve = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    date_soumission = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    # ============================================================
+    # EXERCICES DE REMÉDIATION ASSOCIÉS
+    # ============================================================
+
     exercices = db.relationship(
         "ExerciceRemediation",
         back_populates="suggestion",
         cascade="all, delete-orphan"
     )
-
 
 class Enseignant(db.Model):
     __tablename__ = "enseignants"

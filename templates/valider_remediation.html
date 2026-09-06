@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,22 +11,29 @@
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
   <meta name="msapplication-TileColor" content="#4361ee">
   <meta name="theme-color" content="#4361ee">
-  <title>{% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}</title>
+  <title>Modifier la remédiation</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css">
   <style>
     :root {
-      --primary: #3498db;
-      --primary-dark: #2980b9;
-      --secondary: #2c3e50;
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --primary-light: #eef2ff;
+      --secondary: #7209b7;
+      --accent: #4cc9f0;
       --success: #27ae60;
-      --warning: #f39c12;
-      --danger: #e74c3c;
-      --light: #f8f9fa;
-      --dark: #343a40;
+      --success-dark: #219653;
+      --warning: #f8961e;
+      --danger: #ef476f;
+      --light: #ffffff;
+      --dark: #1a1a2e;
       --gray: #6c757d;
-      --border-radius: 12px;
-      --box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-      --transition: all 0.3s ease;
+      --light-gray: #f8f9fa;
+      --border-radius: 20px;
+      --border-radius-sm: 12px;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 25px 50px rgba(0, 0, 0, 0.12);
+      --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
     * {
@@ -36,330 +43,41 @@
     }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
-      padding: 40px 20px;
+      padding: 20px;
       color: var(--dark);
       line-height: 1.6;
-    }
-
-    .container {
-      background: white;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
-      padding: 40px;
-      max-width: 900px;
-      margin: 0 auto;
       position: relative;
-      overflow: hidden;
+      overflow-x: hidden;
     }
 
-    .container::before {
+    /* Effet de fond */
+    body::before {
       content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
-    }
-
-    h2 {
-      color: var(--secondary);
-      text-align: center;
-      margin-bottom: 25px;
-      font-size: 2.2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 15px;
-    }
-
-    h2 i {
-      color: var(--primary);
-      font-size: 2.5rem;
-    }
-
-    /* Bannière d'information sur le statut */
-    .status-info {
-      text-align: center;
-      margin-bottom: 30px;
-      padding: 15px;
-      border-radius: 10px;
-      animation: pulse 2s infinite;
-    }
-
-    .status-info.validated {
-      background: linear-gradient(135deg, rgba(39, 174, 96, 0.15), rgba(46, 204, 113, 0.1));
-      border: 2px solid rgba(39, 174, 96, 0.3);
-      color: #27ae60;
-    }
-
-    .status-info.pending {
-      background: linear-gradient(135deg, rgba(243, 156, 18, 0.15), rgba(241, 196, 15, 0.1));
-      border: 2px solid rgba(243, 156, 18, 0.3);
-      color: #f39c12;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.9; }
-      100% { opacity: 1; }
-    }
-
-    /* Info élève */
-    .student-info-card {
-      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-      border-radius: 15px;
-      padding: 25px;
-      margin-bottom: 30px;
-      border-left: 5px solid var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    }
-
-    .student-avatar {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 2rem;
-      box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
-    }
-
-    .student-details h3 {
-      color: var(--secondary);
-      margin-bottom: 5px;
-      font-size: 1.4rem;
-    }
-
-    .student-details .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      margin-top: 10px;
-    }
-
-    .meta-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.9rem;
-      color: var(--gray);
-      border: 1px solid #e9ecef;
-    }
-
-    .form-section {
-      margin-bottom: 30px;
-    }
-
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 15px;
-      color: var(--secondary);
-    }
-
-    .section-header i {
-      color: var(--primary);
-      font-size: 1.3rem;
-      width: 24px;
-      text-align: center;
-    }
-
-    .section-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: var(--secondary);
-      font-size: 1rem;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 100px;
-      padding: 15px;
-      font-size: 1rem;
-      border: 2px solid #e9ecef;
-      border-radius: 8px;
-      resize: vertical;
-      transition: var(--transition);
-      font-family: inherit;
-      line-height: 1.5;
-    }
-
-    textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-    }
-
-    math-field {
-      width: 100%;
-      min-height: 60px;
-      border: 2px solid #e9ecef;
-      border-radius: 8px;
-      padding: 15px;
-      font-size: 16px;
-      margin-top: 10px;
-      transition: var(--transition);
-    }
-
-    math-field:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 20px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: 600;
-      transition: var(--transition);
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-
-    .btn-insert {
-      background: linear-gradient(135deg, var(--warning), #e67e22);
-      color: white;
-      margin-top: 10px;
-      width: 100%;
-      justify-content: center;
-    }
-
-    .btn-insert:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(243, 156, 18, 0.3);
-    }
-
-    .btn-submit {
-      background: linear-gradient(135deg, var(--success), #219150);
-      color: white;
-      padding: 15px 30px;
-      font-size: 1.1rem;
-      margin-top: 10px;
-      width: 100%;
-      justify-content: center;
-    }
-
-    .btn-submit:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.3);
-    }
-
-    .btn-delete {
-      background: linear-gradient(135deg, var(--danger), #c0392b);
-      color: white;
-      padding: 15px 30px;
-      font-size: 1.1rem;
-      margin-top: 15px;
-      width: 100%;
-      justify-content: center;
-    }
-
-    .btn-delete:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
-    }
-
-    .btn-back {
-      background: linear-gradient(135deg, var(--secondary), #1a252f);
-      color: white;
-      margin-top: 20px;
-      width: 100%;
-      justify-content: center;
-    }
-
-    .btn-back:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(44, 62, 80, 0.3);
-    }
-
-    .actions-container {
-      margin-top: 40px;
-      border-top: 2px solid #e9ecef;
-      padding-top: 30px;
-    }
-
-    .action-group {
-      margin-bottom: 20px;
-    }
-
-    .confirmation-modal {
-      display: none;
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 20%),
+        radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 20%);
+      pointer-events: none;
+      z-index: -1;
     }
 
-    .modal-content {
-      background: white;
-      border-radius: var(--border-radius);
-      padding: 30px;
-      max-width: 400px;
-      width: 90%;
-      box-shadow: var(--box-shadow);
-      text-align: center;
-    }
-
-    .modal-icon {
-      font-size: 3rem;
-      color: var(--danger);
-      margin-bottom: 15px;
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 15px;
-      margin-top: 25px;
-      justify-content: center;
-    }
-
-    .btn-cancel {
-      background: var(--gray);
-      color: white;
-    }
-
-    .btn-cancel:hover {
-      background: #5a6268;
-      transform: translateY(-2px);
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
     @keyframes slideIn {
       from {
         opacity: 0;
-        transform: translateY(-20px);
+        transform: translateY(30px);
       }
       to {
         opacity: 1;
@@ -367,450 +85,974 @@
       }
     }
 
-    .form-section {
-      animation: slideIn 0.5s ease;
+    /* Header */
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
     }
 
-    .form-section:nth-child(1) { animation-delay: 0.1s; }
-    .form-section:nth-child(2) { animation-delay: 0.2s; }
-    .form-section:nth-child(3) { animation-delay: 0.3s; }
-    .form-section:nth-child(4) { animation-delay: 0.4s; }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
 
-    /* Responsive Design */
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .header-icon {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.8rem;
+      box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
+      flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-size: 2rem;
+      color: var(--dark);
+      margin-bottom: 5px;
+      font-weight: 700;
+    }
+
+    .header-text p {
+      color: var(--gray);
+      font-size: 1.1rem;
+    }
+
+    .student-info {
+      background: var(--primary-light);
+      padding: 15px 20px;
+      border-radius: var(--border-radius-sm);
+      margin-top: 15px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .student-info strong {
+      color: var(--primary);
+    }
+
+    /* Formulaire */
+    .form-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      padding: 40px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 35px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: var(--dark);
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-label i {
+      color: var(--primary);
+      font-size: 1.2rem;
+    }
+
+    .text-editor {
+      width: 100%;
+      min-height: 150px;
+      padding: 20px;
+      border: 2px solid var(--light-gray);
+      border-radius: var(--border-radius-sm);
+      font-size: 1rem;
+      transition: var(--transition);
+      background: white;
+      font-family: inherit;
+      line-height: 1.6;
+      resize: vertical;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .text-editor:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+    }
+
+    /* Éditeur Math */
+    .math-section {
+      margin-top: 20px;
+      background: var(--light-gray);
+      border-radius: var(--border-radius-sm);
+      padding: 20px;
+      border: 2px dashed rgba(67, 97, 238, 0.2);
+    }
+
+    .math-section h4 {
+      color: var(--dark);
+      margin-bottom: 15px;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .math-editor {
+      width: 100%;
+      min-height: 60px;
+      background: white;
+      border-radius: var(--border-radius-sm);
+      border: 2px solid var(--light-gray);
+      font-family: 'Cambria Math', serif;
+      padding: 15px;
+      font-size: 1.2rem;
+      transition: var(--transition);
+      margin-bottom: 15px;
+    }
+
+    .math-editor:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+    }
+
+    .math-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .math-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 4px 15px rgba(67, 97, 238, 0.2);
+    }
+
+    .math-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(67, 97, 238, 0.3);
+    }
+
+    .math-btn.secondary {
+      background: var(--gray);
+    }
+
+    .math-btn.secondary:hover {
+      background: #5a6268;
+    }
+
+    .math-preview {
+      background: white;
+      padding: 15px;
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--light-gray);
+      margin-top: 15px;
+      min-height: 50px;
+      font-family: 'Cambria Math', serif;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Actions */
+    .actions-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 35px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      text-decoration: none;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, var(--success), var(--success-dark));
+      color: white;
+    }
+
+    .save-btn:hover {
+      background: linear-gradient(135deg, var(--success-dark), #1e7e34);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(39, 174, 96, 0.3);
+    }
+
+    .cancel-btn {
+      background: white;
+      color: var(--warning);
+      border: 2px solid var(--warning);
+    }
+
+    .cancel-btn:hover {
+      background: var(--warning);
+      color: white;
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(248, 150, 30, 0.3);
+    }
+
+    /* Quick Insert */
+    .quick-insert {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .insert-btn {
+      background: var(--light-gray);
+      border: 1px solid var(--light-gray);
+      border-radius: var(--border-radius-sm);
+      padding: 10px 15px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 0.9rem;
+      transition: var(--transition);
+    }
+
+    .insert-btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+
+    /* Exercice source ayant déclenché la remédiation */
+    .source-context {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      padding: 30px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .source-context::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(90deg, var(--danger), var(--warning));
+    }
+
+    .source-context h2 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .source-context .intro {
+      color: var(--gray);
+      margin-bottom: 20px;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .source-item {
+      background: var(--light-gray);
+      border-radius: var(--border-radius-sm);
+      padding: 16px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .source-item.full {
+      grid-column: 1 / -1;
+    }
+
+    .source-label {
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .source-value {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 46px;
+    }
+
+    .source-score-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
+    .source-warning {
+      background: #fff3cd;
+      color: #664d03;
+      border: 1px solid #ffe69c;
+      border-radius: var(--border-radius-sm);
+      padding: 15px;
+    }
+
+    .remediation-heading {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .remediation-heading h2 {
+      font-size: 1.4rem;
+      margin-bottom: 5px;
+    }
+
+    .remediation-heading p {
+      color: var(--gray);
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
-      body {
-        padding: 20px 10px;
-      }
-
       .container {
+        padding: 10px;
+      }
+      
+      .header {
         padding: 25px 20px;
       }
-
-      h2 {
-        font-size: 1.8rem;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      .student-info-card {
+      
+      .header-content {
         flex-direction: column;
         text-align: center;
-        gap: 15px;
       }
-
-      .student-details .meta {
+      
+      .form-container {
+        padding: 25px 20px;
+      }
+      
+      .header-text h1 {
+        font-size: 1.6rem;
+      }
+      
+      .actions-container {
+        flex-direction: column;
+      }
+      
+      .action-btn {
+        width: 100%;
         justify-content: center;
       }
-
-      .modal-actions {
+      
+      .math-buttons {
         flex-direction: column;
+      }
+      
+      .math-btn {
+        width: 100%;
+        justify-content: center;
       }
     }
 
     @media (max-width: 480px) {
-      h2 {
+      .header-icon {
+        width: 60px;
+        height: 60px;
         font-size: 1.5rem;
       }
-
-      .section-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+      
+      .form-container {
+        padding: 20px 15px;
+      }
+      
+      .text-editor {
+        min-height: 120px;
+        padding: 15px;
+      }
+      
+      .math-section {
+        padding: 15px;
       }
     }
-
-    /* Style pour le rendu MathJax amélioré */
-    math-field {
-      --caret-color: var(--primary);
-      --selection-background-color: rgba(52, 152, 219, 0.2);
-    }
-
-    .character-count {
-      text-align: right;
-      font-size: 0.8rem;
-      color: var(--gray);
-      margin-top: 5px;
-    }
-
-    .message-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-left: 10px;
-      font-size: 0.9rem;
-      color: var(--gray);
-    }
   </style>
-
-  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css">
-  <script defer src="https://unpkg.com/mathlive"></script>
 </head>
 <body>
 
-<div class="container">
-  <h2>
-    <i class="fas fa-check-circle"></i>
-    {% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}
-  </h2>
-
-  <!-- Indicateur de statut -->
-  <div class="status-info {% if suggestion.statut == 'valide' %}validated{% else %}pending{% endif %}">
-    <i class="fas fa-info-circle"></i>
-    {% if suggestion.statut == 'valide' %}
-      {% if lang == 'en' %}
-        ✅ This remediation has already been validated on {{ suggestion.timestamp.strftime('%d/%m/%Y') }}.
-        You can modify the content below if needed.
-      {% else %}
-        ✅ Cette remédiation a déjà été validée le {{ suggestion.timestamp.strftime('%d/%m/%Y') }}.
-        Vous pouvez modifier le contenu ci-dessous si nécessaire.
-      {% endif %}
-    {% else %}
-      {% if lang == 'en' %}
-        ⏳ This remediation is pending validation. Fill out the form below to validate it.
-      {% else %}
-        ⏳ Cette remédiation est en attente de validation. Remplissez le formulaire ci-dessous pour la valider.
-      {% endif %}
-    {% endif %}
-  </div>
-
-  <!-- Informations sur l'élève -->
-  <div class="student-info-card">
-    <div class="student-avatar">
-      <i class="fas fa-user-graduate"></i>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <div class="header-icon">
+          <i class="fas fa-pen-to-square"></i>
+        </div>
+        <div class="header-text">
+          <h1>Modifier la remédiation</h1>
+          <p>Personnalisez l'analyse et l'exercice de remédiation</p>
+          
+          <div class="student-info">
+            <strong>Élève :</strong> {{ suggestion.user.nom_complet }} 
+            | <strong>Thème :</strong> {{ suggestion.theme }} 
+            | <strong>Leçon :</strong> {{ suggestion.lecon }}
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="student-details">
-      <h3>{{ suggestion.user.nom_complet }}</h3>
-      <p>@{{ suggestion.user.username }}</p>
-      <div class="meta">
-        <span class="meta-tag">
-          <i class="fas fa-graduation-cap"></i>
-          {{ suggestion.user.niveau.nom }}
-        </span>
-        <span class="meta-tag">
-          <i class="fas fa-book"></i>
-          {{ suggestion.theme }}
-        </span>
-        <span class="meta-tag">
-          <i class="fas fa-file-alt"></i>
-          {{ suggestion.lecon }}
-        </span>
-        {% if suggestion.statut == 'valide' %}
-        <span class="meta-tag" style="background: linear-gradient(135deg, #27ae60, #219150); color: white;">
-          <i class="fas fa-check"></i>
-          Déjà validée
-        </span>
+
+    <!-- Exercice à l'origine de la remédiation -->
+    <div class="source-context">
+      <h2>
+        <i class="fas fa-triangle-exclamation"></i>
+        Exercice à l’origine de la difficulté
+      </h2>
+      <p class="intro">
+        Consultez l’exercice échoué avant de modifier ou valider la remédiation proposée.
+      </p>
+
+      {% if contexte_origine and contexte_origine.source_response_id %}
+
+        <div class="source-grid">
+
+          <div class="source-item full">
+            <div class="source-label">
+              <i class="fas fa-circle-question"></i>
+              Question originale
+            </div>
+            <div class="source-value">
+              {{ contexte_origine.question or "Question non disponible" }}
+            </div>
+          </div>
+
+          <div class="source-item">
+            <div class="source-label">
+              <i class="fas fa-user-pen"></i>
+              Réponse de l’élève
+            </div>
+            <div class="source-value">
+              {{ contexte_origine.reponse_eleve or "Aucune réponse enregistrée" }}
+            </div>
+          </div>
+
+          <div class="source-item">
+            <div class="source-label">
+              <i class="fas fa-check"></i>
+              Réponse attendue
+            </div>
+            <div class="source-value">
+              {{ contexte_origine.reponse_attendue or "Non disponible" }}
+            </div>
+          </div>
+
+          {% if contexte_origine.correction_reference %}
+          <div class="source-item full">
+            <div class="source-label">
+              <i class="fas fa-book-open"></i>
+              Correction / explication de référence
+            </div>
+            <div class="source-value">
+              {{ contexte_origine.correction_reference }}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if contexte_origine.teacher_feedback %}
+          <div class="source-item full">
+            <div class="source-label">
+              <i class="fas fa-comment-dots"></i>
+              Commentaire de l’enseignant
+            </div>
+            <div class="source-value">
+              {{ contexte_origine.teacher_feedback }}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if contexte_origine.type_erreur %}
+          <div class="source-item">
+            <div class="source-label">
+              <i class="fas fa-bug"></i>
+              Type d’erreur
+            </div>
+            <div class="source-value">
+              {{ contexte_origine.type_erreur }}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if contexte_origine.raison_evaluation %}
+          <div class="source-item {% if not contexte_origine.type_erreur %}full{% endif %}">
+            <div class="source-label">
+              <i class="fas fa-magnifying-glass-chart"></i>
+              Raison / analyse
+            </div>
+            <div class="source-value">
+              {{ contexte_origine.raison_evaluation }}
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+
+        <div class="source-score-row">
+          {% if contexte_origine.automatic_etoiles is not none %}
+            <span class="source-badge">
+              <i class="fas fa-robot"></i>
+              IA : {{ contexte_origine.automatic_etoiles }}/5
+            </span>
+          {% endif %}
+
+          {% if contexte_origine.teacher_etoiles is not none %}
+            <span class="source-badge">
+              <i class="fas fa-chalkboard-user"></i>
+              Enseignant : {{ contexte_origine.teacher_etoiles }}/5
+            </span>
+          {% endif %}
+
+          {% if contexte_origine.score_effectif is not none %}
+            <span class="source-badge">
+              <i class="fas fa-percent"></i>
+              Score final : {{ contexte_origine.score_effectif|round(0)|int }} %
+            </span>
+          {% endif %}
+        </div>
+
+      {% else %}
+        <div class="source-warning">
+          <i class="fas fa-circle-info"></i>
+          Cette remédiation ne possède pas encore de réponse source liée.
+          C’est normal pour les anciennes remédiations créées avant l’ajout de
+          <code>source_response_id</code>.
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Formulaire -->
+    <div class="form-container">
+
+      <div class="remediation-heading">
+        <h2>
+          <i class="fas fa-lightbulb"></i>
+          Remédiation proposée
+        </h2>
+
+        {% if suggestion.exercice_suggere %}
+          <p>
+            Vérifiez et modifiez la remédiation avant de la rendre disponible à l’élève.
+          </p>
+        {% else %}
+          <p>
+            Aucune remédiation n’a été générée automatiquement.
+            Créez-la ci-dessous avant validation.
+          </p>
         {% endif %}
       </div>
-    </div>
-  </div>
+      <form method="POST" id="remediationForm">
+        <!-- Analyse IA -->
+        <div class="form-group">
+          <label for="message">
+            <i class="fas fa-brain"></i>
+            Analyse IA - Message personnalisé
+          </label>
+          <textarea 
+            name="message" 
+            id="message" 
+            class="text-editor"
+            placeholder="Expliquez à l'élève les difficultés identifiées et proposez des pistes d'amélioration..."
+          >{{ suggestion.message }}</textarea>
+          
+          <div class="math-section">
+            <h4><i class="fas fa-square-root-alt"></i> Insérer une formule mathématique</h4>
+            <math-field id="math_message" virtual-keyboard-mode="onfocus" class="math-editor"></math-field>
+            
+            <div class="math-buttons">
+              <button type="button" class="math-btn" onclick="insertMath('math_message', 'message')">
+                <i class="fas fa-plus"></i> Insérer dans l'analyse
+              </button>
+              <button type="button" class="math-btn secondary" onclick="clearMath('math_message')">
+                <i class="fas fa-eraser"></i> Effacer la formule
+              </button>
+            </div>
+          </div>
+        </div>
 
-  <form method="POST" id="remediationForm">
-    <!-- Message Section -->
-    <div class="form-section">
-      <div class="section-header">
-        <i class="fas fa-comment-dots"></i>
-        <div class="section-title">
-          {% if lang == 'en' %}Message to Student{% else %}Message à l'élève{% endif %}
-          {% if suggestion.statut == 'valide' %}
-            <span class="message-indicator">
-              <i class="fas fa-history"></i>
-              Modifié
-            </span>
-          {% endif %}
-        </div>
-      </div>
-      <div class="form-group">
-        <textarea 
-          name="message" 
-          id="message_text" 
-          placeholder="{% if lang == 'en' %}Write your feedback message...{% else %}Rédigez votre message de feedback...{% endif %}"
-          required
-          oninput="updateCharacterCount('message_text', 'message_count')"
-        >{{ suggestion.message or '' }}</textarea>
-        <div class="character-count">
-          <span id="message_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
-        </div>
-      </div>
-      <math-field 
-        id="math_message" 
-        virtual-keyboard-mode="onfocus" 
-        class="math-editor"
-        placeholder="{% if lang == 'en' %}Type math formula here...{% else %}Tapez la formule mathématique ici...{% endif %}"
-      ></math-field>
-      <button type="button" class="btn btn-insert" onclick="insertMath('math_message', 'message_text')">
-        <i class="fas fa-plus"></i>
-        {% if lang == 'en' %}Insert into Message{% else %}Insérer dans le message{% endif %}
-      </button>
-    </div>
+        <!-- Question de remédiation -->
+        <div class="form-group">
+          <label for="question" class="form-label">
+            <i class="fas fa-circle-question"></i>
+            Question de remédiation
+          </label>
 
-    <!-- Question Section -->
-    <div class="form-section">
-      <div class="section-header">
-        <i class="fas fa-question-circle"></i>
-        <div class="section-title">
-          {% if lang == 'en' %}Remediation Question{% else %}Question de remédiation{% endif %}
-          {% if suggestion.statut == 'valide' %}
-            <span class="message-indicator">
-              <i class="fas fa-history"></i>
-              Modifié
-            </span>
-          {% endif %}
-        </div>
-      </div>
-      <div class="form-group">
-        <textarea 
-          name="question" 
-          id="question_text" 
-          placeholder="{% if lang == 'en' %}Enter the remediation question...{% else %}Saisissez la question de remédiation...{% endif %}"
-          required
-          oninput="updateCharacterCount('question_text', 'question_count')"
-        >{{ question or '' }}</textarea>
-        <div class="character-count">
-          <span id="question_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
-        </div>
-      </div>
-      <math-field 
-        id="math_question" 
-        virtual-keyboard-mode="onfocus" 
-        class="math-editor"
-        placeholder="{% if lang == 'en' %}Type math formula here...{% else %}Tapez la formule mathématique ici...{% endif %}"
-      ></math-field>
-      <button type="button" class="btn btn-insert" onclick="insertMath('math_question', 'question_text')">
-        <i class="fas fa-plus"></i>
-        {% if lang == 'en' %}Insert into Question{% else %}Insérer dans la question{% endif %}
-      </button>
-    </div>
+          <textarea
+            name="question"
+            id="question"
+            class="text-editor"
+            placeholder="Rédigez une nouvelle question ciblant la même compétence..."
+            required
+          >{{ question }}</textarea>
 
-    <!-- Answer Section -->
-    <div class="form-section">
-      <div class="section-header">
-        <i class="fas fa-check-square"></i>
-        <div class="section-title">
-          {% if lang == 'en' %}Expected Answer{% else %}Réponse attendue{% endif %}
-          {% if suggestion.statut == 'valide' %}
-            <span class="message-indicator">
-              <i class="fas fa-history"></i>
-              Modifié
-            </span>
-          {% endif %}
-        </div>
-      </div>
-      <div class="form-group">
-        <textarea 
-          name="reponse" 
-          id="reponse_text" 
-          placeholder="{% if lang == 'en' %}Enter the expected answer...{% else %}Saisissez la réponse attendue...{% endif %}"
-          required
-          oninput="updateCharacterCount('reponse_text', 'reponse_count')"
-        >{{ reponse or '' }}</textarea>
-        <div class="character-count">
-          <span id="reponse_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
-        </div>
-      </div>
-      <math-field 
-        id="math_reponse" 
-        virtual-keyboard-mode="onfocus" 
-        class="math-editor"
-        placeholder="{% if lang == 'en' %}Type math formula here...{% else %}Tapez la formule mathématique ici...{% endif %}"
-      ></math-field>
-      <button type="button" class="btn btn-insert" onclick="insertMath('math_reponse', 'reponse_text')">
-        <i class="fas fa-plus"></i>
-        {% if lang == 'en' %}Insert into Answer{% else %}Insérer dans la réponse{% endif %}
-      </button>
-    </div>
+          <div class="math-section">
+            <h4>
+              <i class="fas fa-calculator"></i>
+              Insérer une formule mathématique
+            </h4>
 
-    <!-- Explanation Section -->
-    <div class="form-section">
-      <div class="section-header">
-        <i class="fas fa-lightbulb"></i>
-        <div class="section-title">
-          {% if lang == 'en' %}Explanation{% else %}Explication{% endif %}
-          {% if suggestion.statut == 'valide' %}
-            <span class="message-indicator">
-              <i class="fas fa-history"></i>
-              Modifié
-            </span>
-          {% endif %}
-        </div>
-      </div>
-      <div class="form-group">
-        <textarea 
-          name="explication" 
-          id="explication_text" 
-          placeholder="{% if lang == 'en' %}Provide detailed explanation...{% else %}Fournissez une explication détaillée...{% endif %}"
-          required
-          oninput="updateCharacterCount('explication_text', 'explication_count')"
-        >{{ explication or '' }}</textarea>
-        <div class="character-count">
-          <span id="explication_count">0</span> {% if lang == 'en' %}characters{% else %}caractères{% endif %}
-        </div>
-      </div>
-      <math-field 
-        id="math_explication" 
-        virtual-keyboard-mode="onfocus" 
-        class="math-editor"
-        placeholder="{% if lang == 'en' %}Type math formula here...{% else %}Tapez la formule mathématique ici...{% endif %}"
-      ></math-field>
-      <button type="button" class="btn btn-insert" onclick="insertMath('math_explication', 'explication_text')">
-        <i class="fas fa-plus"></i>
-        {% if lang == 'en' %}Insert into Explanation{% else %}Insérer dans l'explication{% endif %}
-      </button>
-    </div>
+            <math-field
+              id="math_question"
+              virtual-keyboard-mode="onfocus"
+              class="math-editor"
+            ></math-field>
 
-    <!-- Actions -->
-    <div class="actions-container">
-      <div class="action-group">
-        <button type="submit" class="btn btn-submit">
-          {% if suggestion.statut == 'valide' %}
-            <i class="fas fa-save"></i>
-            {% if lang == 'en' %}Save Changes{% else %}Enregistrer les modifications{% endif %}
-          {% else %}
+            <div class="math-buttons">
+              <button
+                type="button"
+                class="math-btn"
+                onclick="insertMath('math_question', 'question')"
+              >
+                <i class="fas fa-plus"></i>
+                Insérer dans la question
+              </button>
+
+              <button
+                type="button"
+                class="math-btn secondary"
+                onclick="clearMath('math_question')"
+              >
+                <i class="fas fa-eraser"></i>
+                Effacer la formule
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Réponse attendue -->
+        <div class="form-group">
+          <label for="reponse" class="form-label">
             <i class="fas fa-check-circle"></i>
-            {% if lang == 'en' %}Validate Remediation{% else %}Valider la remédiation{% endif %}
-          {% endif %}
-        </button>
-      </div>
+            Réponse attendue
+          </label>
 
-      <div class="action-group">
-        <button type="button" class="btn btn-delete" onclick="showDeleteModal()">
-          <i class="fas fa-trash"></i>
-          {% if lang == 'en' %}Delete Remediation{% else %}Supprimer la remédiation{% endif %}
-        </button>
-      </div>
+          <textarea
+            name="reponse"
+            id="reponse"
+            class="text-editor"
+            placeholder="Indiquez la réponse correcte attendue..."
+            required
+          >{{ reponse }}</textarea>
 
-      <div class="action-group">
-        <a href="{{ url_for('remediations_a_valider', lang=lang) }}" class="btn btn-back">
-          <i class="fas fa-arrow-left"></i>
-          {% if lang == 'en' %}Back to List{% else %}Retour à la liste{% endif %}
-        </a>
-      </div>
-    </div>
-  </form>
-</div>
+          <div class="math-section">
+            <h4>
+              <i class="fas fa-square-root-alt"></i>
+              Insérer une formule mathématique
+            </h4>
 
-<!-- Delete Confirmation Modal -->
-<div class="confirmation-modal" id="deleteModal">
-  <div class="modal-content">
-    <div class="modal-icon">
-      <i class="fas fa-exclamation-triangle"></i>
-    </div>
-    <h3>{% if lang == 'en' %}Confirm Deletion{% else %}Confirmer la suppression{% endif %}</h3>
-    <p>{% if lang == 'en' %}Are you sure you want to delete this remediation? This action cannot be undone.{% else %}Êtes-vous sûr de vouloir supprimer cette remédiation ? Cette action ne peut pas être annulée.{% endif %}</p>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-cancel" onclick="hideDeleteModal()">
-        <i class="fas fa-times"></i>
-        {% if lang == 'en' %}Cancel{% else %}Annuler{% endif %}
-      </button>
-      <form method="POST" action="{{ url_for('supprimer_remediation', id=suggestion.id, lang=lang) }}" style="display: inline;">
-        <button type="submit" class="btn btn-delete">
-          <i class="fas fa-trash"></i>
-          {% if lang == 'en' %}Delete{% else %}Supprimer{% endif %}
-        </button>
+            <math-field
+              id="math_reponse"
+              virtual-keyboard-mode="onfocus"
+              class="math-editor"
+            ></math-field>
+
+            <div class="math-buttons">
+              <button
+                type="button"
+                class="math-btn"
+                onclick="insertMath('math_reponse', 'reponse')"
+              >
+                <i class="fas fa-plus"></i>
+                Insérer dans la réponse
+              </button>
+
+              <button
+                type="button"
+                class="math-btn secondary"
+                onclick="clearMath('math_reponse')"
+              >
+                <i class="fas fa-eraser"></i>
+                Effacer la formule
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Explication -->
+        <div class="form-group">
+          <label for="explication" class="form-label">
+            <i class="fas fa-lightbulb"></i>
+            Explication / correction
+          </label>
+
+          <textarea
+            name="explication"
+            id="explication"
+            class="text-editor"
+            placeholder="Expliquez brièvement la démarche ou la correction..."
+          >{{ explication }}</textarea>
+
+          <div class="math-section">
+            <h4>
+              <i class="fas fa-calculator"></i>
+              Insérer une formule mathématique
+            </h4>
+
+            <math-field
+              id="math_explication"
+              virtual-keyboard-mode="onfocus"
+              class="math-editor"
+            ></math-field>
+
+            <div class="math-buttons">
+              <button
+                type="button"
+                class="math-btn"
+                onclick="insertMath('math_explication', 'explication')"
+              >
+                <i class="fas fa-plus"></i>
+                Insérer dans l’explication
+              </button>
+
+              <button
+                type="button"
+                class="math-btn secondary"
+                onclick="clearMath('math_explication')"
+              >
+                <i class="fas fa-eraser"></i>
+                Effacer la formule
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-container">
+          <button type="submit" class="action-btn save-btn">
+            <i class="fas fa-save"></i>
+            Enregistrer et valider
+          </button>
+          <a href="{{ url_for('remediations_a_valider') }}" class="action-btn cancel-btn">
+            <i class="fas fa-times"></i>
+            Annuler
+          </a>
+        </div>
       </form>
     </div>
   </div>
-</div>
 
-<script>
-  function insertMath(mathId, inputId) {
-    const mathField = document.getElementById(mathId);
-    const input = document.getElementById(inputId);
-    const formula = mathField.value;
-
-    if (!formula || !input) return;
-
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-
-    const before = input.value.substring(0, start);
-    const after = input.value.substring(end);
-
-    input.value = before + formula + after;
-    input.focus();
-    input.selectionStart = input.selectionEnd = start + formula.length;
-
-    mathField.value = '';
-    
-    // Update character count
-    updateCharacterCount(inputId, inputId.replace('_text', '_count'));
-    
-    // Visual feedback
-    mathField.style.borderColor = '#27ae60';
-    setTimeout(() => {
-      mathField.style.borderColor = '#e9ecef';
-    }, 1000);
-  }
-
-  function updateCharacterCount(textareaId, countId) {
-    const textarea = document.getElementById(textareaId);
-    const countElement = document.getElementById(countId);
-    if (textarea && countElement) {
-      countElement.textContent = textarea.value.length;
+  <script defer src="https://unpkg.com/mathlive"></script>
+  <script>
+    // Insérer une formule mathématique dans un textarea
+    function insertMath(mathFieldId, textareaId) {
+      const mathField = document.getElementById(mathFieldId);
+      const textarea = document.getElementById(textareaId);
+      const formula = mathField.value;
+      
+      if (!formula || !textarea) return;
+      
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      
+      // Ajouter les délimiteurs LaTeX si nécessaire
+      const latexFormula = formula.startsWith('$$') ? formula : `$$${formula}$$`;
+      
+      textarea.value = before + latexFormula + after;
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + latexFormula.length;
+      
+      // Animation de confirmation
+      mathField.style.borderColor = 'var(--success)';
+      mathField.style.boxShadow = '0 0 0 3px rgba(39, 174, 96, 0.2)';
+      setTimeout(() => {
+        mathField.style.borderColor = '';
+        mathField.style.boxShadow = '';
+      }, 1000);
     }
-  }
 
-  function showDeleteModal() {
-    document.getElementById('deleteModal').style.display = 'flex';
-  }
+    // Effacer une formule
+    function clearMath(mathFieldId) {
+      const mathField = document.getElementById(mathFieldId);
+      mathField.value = '';
+      mathField.focus();
+    }
 
-  function hideDeleteModal() {
-    document.getElementById('deleteModal').style.display = 'none';
-  }
+    // Insérer un template prédéfini
+    function insertTemplate(textareaId, template) {
+      const textarea = document.getElementById(textareaId);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      
+      textarea.value = before + template + after;
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + template.length;
+      
+      // Animation
+      textarea.style.borderColor = 'var(--primary)';
+      setTimeout(() => {
+        textarea.style.borderColor = '';
+      }, 1000);
+    }
 
-  document.addEventListener("DOMContentLoaded", function() {
-    // Initialize character counts
-    updateCharacterCount('message_text', 'message_count');
-    updateCharacterCount('question_text', 'question_count');
-    updateCharacterCount('reponse_text', 'reponse_count');
-    updateCharacterCount('explication_text', 'explication_count');
+    // Validation du formulaire
+    document.getElementById('remediationForm').addEventListener('submit', function(e) {
+      const message = document.getElementById('message').value.trim();
+      const exercice = document.getElementById('exercice_suggere').value.trim();
+      
+      if (!message && !exercice) {
+        e.preventDefault();
+        alert('Veuillez remplir au moins un des champs (analyse ou exercice).');
+        return false;
+      }
+      
+      // Animation du bouton
+      const submitBtn = this.querySelector('.save-btn');
+      const originalHTML = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+      submitBtn.disabled = true;
+      
+      return true;
+    });
 
-    // Highlight modified fields if remediation is already validated
-    {% if suggestion.statut == 'valide' %}
-      const textareas = document.querySelectorAll('textarea');
-      textareas.forEach(textarea => {
-        if (textarea.value.trim()) {
-          textarea.style.background = 'linear-gradient(135deg, #fff9e6, #fff3cd)';
-          textarea.style.borderColor = '#ffc107';
-        }
+    // Compteur de caractères
+    function setupCharacterCount(textareaId, maxChars = 2000) {
+      const textarea = document.getElementById(textareaId);
+      if (!textarea) return;
+      
+      const counter = document.createElement('div');
+      counter.className = 'char-counter';
+      counter.style.cssText = `
+        text-align: right;
+        font-size: 0.85rem;
+        color: var(--gray);
+        margin-top: 5px;
+      `;
+      
+      textarea.parentNode.insertBefore(counter, textarea.nextSibling);
+      
+      function updateCounter() {
+        const length = textarea.value.length;
+        counter.textContent = `${length} / ${maxChars} caractères`;
+        counter.style.color = length > maxChars * 0.9 ? 'var(--danger)' : 'var(--gray)';
+      }
+      
+      textarea.addEventListener('input', updateCounter);
+      updateCounter();
+    }
+
+    // Initialiser les compteurs
+    setupCharacterCount('message', 2000);
+    setupCharacterCount('question', 1500);
+    setupCharacterCount('reponse', 1500);
+    setupCharacterCount('explication', 2000);
+
+    // Focus automatique sur le premier champ
+    setTimeout(() => {
+      const firstTextarea = document.querySelector('.text-editor');
+      if (firstTextarea) {
+        firstTextarea.focus();
+      }
+    }, 500);
+
+    // Effet de particules
+    function createParticle() {
+      if (Math.random() > 0.9) return;
+      
+      const particle = document.createElement('div');
+      const size = Math.random() * 3 + 1;
+      const colors = ['rgba(67, 97, 238, 0.2)', 'rgba(114, 9, 183, 0.2)', 'rgba(39, 174, 96, 0.2)'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      particle.style.position = 'fixed';
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.background = color;
+      particle.style.borderRadius = '50%';
+      particle.style.pointerEvents = 'none';
+      particle.style.left = Math.random() * 100 + 'vw';
+      particle.style.top = '-10px';
+      particle.style.zIndex = '0';
+      
+      document.body.appendChild(particle);
+      
+      const duration = Math.random() * 4 + 2;
+      particle.animate([
+        { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+        { transform: `translateY(100vh) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+      ], {
+        duration: duration * 1000,
+        easing: 'linear'
       });
-    {% endif %}
+      
+      setTimeout(() => particle.remove(), duration * 1000);
+    }
 
-    // Close modal when clicking outside
-    document.getElementById('deleteModal').addEventListener('click', function(e) {
-      if (e.target === this) {
-        hideDeleteModal();
-      }
-    });
-
-    // Add visual feedback when editing
-    const form = document.getElementById('remediationForm');
-    const submitBtn = form.querySelector('.btn-submit');
-    const originalValues = {
-      message: document.getElementById('message_text').value,
-      question: document.getElementById('question_text').value,
-      reponse: document.getElementById('reponse_text').value,
-      explication: document.getElementById('explication_text').value
-    };
-
-    form.addEventListener('input', function() {
-      const currentValues = {
-        message: document.getElementById('message_text').value,
-        question: document.getElementById('question_text').value,
-        reponse: document.getElementById('reponse_text').value,
-        explication: document.getElementById('explication_text').value
-      };
-
-      const hasChanges = Object.keys(originalValues).some(key => 
-        currentValues[key] !== originalValues[key]
-      );
-
-      if (hasChanges && suggestion.statut == 'valide') {
-        submitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer les modifications';
-        submitBtn.style.background = 'linear-gradient(135deg, #ff9e00, #e67e22)';
-      }
-    });
-  });
-</script>
+    setInterval(createParticle, 500);
+  </script>
 
 </body>
 </html>

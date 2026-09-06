@@ -21207,9 +21207,10 @@ def remediations_en_attente():
 
 @app.route("/enseignant/valider-remediation/<int:remediation_id>", methods=["GET", "POST"])
 def valider_remediation(remediation_id):
+    import re
+
     # ============================================================
     # AUTHENTIFICATION ENSEIGNANT
-    # Système actuel : session["user_id"] + session["role"]
     # ============================================================
 
     if "user_id" not in session:
@@ -21220,101 +21221,407 @@ def valider_remediation(remediation_id):
         flash("Accès réservé aux enseignants", "error")
         return redirect(url_for("login_enseignant"))
 
-    enseignant = User.query.get(session["user_id"])
+    enseignant = db.session.get(User, session["user_id"])
 
     if not enseignant or enseignant.role != "enseignant":
         session.clear()
-        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
+        flash(
+            "Session enseignant invalide. Veuillez vous reconnecter.",
+            "error"
+        )
         return redirect(url_for("login_enseignant"))
 
-    lang = session.get("lang", "fr")
+    lang = session.get(
+        "lang",
+        getattr(enseignant, "langue", None) or "fr"
+    )
 
     # ============================================================
     # RÉCUPÉRER LA REMÉDIATION
     # ============================================================
 
-    suggestion = RemediationSuggestion.query.get_or_404(remediation_id)
+    suggestion = (
+        RemediationSuggestion.query
+        .options(
+            joinedload(RemediationSuggestion.user),
+            joinedload(RemediationSuggestion.source_response)
+        )
+        .filter(RemediationSuggestion.id == remediation_id)
+        .first_or_404()
+    )
 
     # ============================================================
-    # SÉCURITÉ : vérifier que l'élève appartient à cet enseignant
+    # SÉCURITÉ
     # ============================================================
 
     if not suggestion.user:
         flash("Élève introuvable pour cette remédiation.", "error")
         return redirect(url_for("remediations_a_valider"))
 
-    if suggestion.user.enseignant_referent_id != enseignant.id:
+    enseignant_autorise = (
+        suggestion.user.enseignant_referent_id == enseignant.id
+    )
+
+    if (
+        not enseignant_autorise
+        and hasattr(suggestion.user, "enseignant_id")
+    ):
+        enseignant_autorise = (
+            getattr(suggestion.user, "enseignant_id", None)
+            == enseignant.id
+        )
+
+    if not enseignant_autorise:
         flash("Accès non autorisé", "error")
         return redirect(url_for("remediations_a_valider"))
 
     # ============================================================
-    # POST : VALIDATION DE LA REMÉDIATION
+    # CONTEXTE DE L'EXERCICE SOURCE
+    # ============================================================
+
+    source_response = suggestion.source_response
+
+    if (
+        source_response
+        and source_response.user_id != suggestion.user_id
+    ):
+        source_response = None
+
+    exercice_source = None
+    feedback_source = {}
+    metadata_source = {}
+    symbolic_source = {}
+
+    question_source = None
+    reponse_eleve_source = None
+    reponse_attendue_source = None
+    correction_reference_source = None
+    raison_evaluation_source = None
+    type_erreur_source = None
+
+    automatic_etoiles_source = None
+    automatic_score_source = None
+    teacher_etoiles_source = None
+    teacher_score_source = None
+    teacher_feedback_source = None
+    etoiles_effectives_source = None
+    score_effectif_source = None
+
+    if source_response:
+        reponse_eleve_source = source_response.reponse_eleve
+        type_erreur_source = source_response.type_erreur
+
+        automatic_etoiles_source = source_response.etoiles
+        automatic_score_source = source_response.score
+        teacher_etoiles_source = source_response.teacher_etoiles
+        teacher_score_source = source_response.teacher_score
+        teacher_feedback_source = source_response.teacher_feedback
+
+        etoiles_effectives_source = (
+            source_response.teacher_etoiles
+            if source_response.teacher_etoiles is not None
+            else source_response.etoiles
+        )
+
+        score_effectif_source = (
+            source_response.teacher_score
+            if source_response.teacher_score is not None
+            else source_response.score
+        )
+
+        if source_response.exercice_id is not None:
+            exercice_source = db.session.get(
+                Exercice,
+                source_response.exercice_id
+            )
+
+        feedback_source = (
+            source_response.feedback_ia_structure
+            if isinstance(
+                source_response.feedback_ia_structure,
+                dict
+            )
+            else {}
+        )
+
+        metadata_source = (
+            feedback_source.get("metadata", {})
+            if isinstance(
+                feedback_source.get("metadata", {}),
+                dict
+            )
+            else {}
+        )
+
+        symbolic_source = (
+            feedback_source.get("symbolic_verification", {})
+            if isinstance(
+                feedback_source.get("symbolic_verification", {}),
+                dict
+            )
+            else {}
+        )
+
+        # --------------------------------------------------------
+        # Question originale
+        # --------------------------------------------------------
+
+        if exercice_source:
+            question_source = (
+                exercice_source.question_en
+                if (
+                    lang == "en"
+                    and getattr(exercice_source, "question_en", None)
+                )
+                else getattr(exercice_source, "question_fr", None)
+            )
+
+        question_source = (
+            question_source
+            or metadata_source.get(
+                "question_en"
+                if lang == "en"
+                else "question_fr"
+            )
+            or metadata_source.get("question_fr")
+            or feedback_source.get("question")
+        )
+
+        # --------------------------------------------------------
+        # Réponse attendue originale
+        # --------------------------------------------------------
+
+        if exercice_source:
+            reponse_attendue_source = (
+                exercice_source.reponse_en
+                if (
+                    lang == "en"
+                    and getattr(exercice_source, "reponse_en", None)
+                )
+                else getattr(exercice_source, "reponse_fr", None)
+            )
+
+        reponse_attendue_source = (
+            reponse_attendue_source
+            or metadata_source.get(
+                "reponse_attendue_en"
+                if lang == "en"
+                else "reponse_attendue_fr"
+            )
+            or metadata_source.get("reponse_attendue_fr")
+            or feedback_source.get("reponse_attendue")
+        )
+
+        # --------------------------------------------------------
+        # Explication de référence
+        # --------------------------------------------------------
+
+        if exercice_source:
+            correction_reference_source = (
+                exercice_source.explication_en
+                if (
+                    lang == "en"
+                    and getattr(exercice_source, "explication_en", None)
+                )
+                else getattr(exercice_source, "explication_fr", None)
+            )
+
+        # --------------------------------------------------------
+        # Raison / analyse
+        # --------------------------------------------------------
+
+        result_details = symbolic_source.get("result", {})
+
+        raison_symbolique = (
+            result_details.get("reason")
+            if isinstance(result_details, dict)
+            else None
+        )
+
+        raison_evaluation_source = (
+            metadata_source.get("validation_reason")
+            or feedback_source.get("validation_reason")
+            or raison_symbolique
+            or feedback_source.get("reason")
+        )
+
+    contexte_origine = {
+        "source_response": source_response,
+        "source_response_id": (
+            source_response.id
+            if source_response
+            else None
+        ),
+        "exercice": exercice_source,
+        "exercice_id": (
+            exercice_source.id
+            if exercice_source
+            else None
+        ),
+        "question": question_source,
+        "reponse_eleve": reponse_eleve_source,
+        "reponse_attendue": reponse_attendue_source,
+        "correction_reference": correction_reference_source,
+        "raison_evaluation": raison_evaluation_source,
+        "type_erreur": type_erreur_source,
+        "automatic_etoiles": automatic_etoiles_source,
+        "automatic_score": automatic_score_source,
+        "teacher_etoiles": teacher_etoiles_source,
+        "teacher_score": teacher_score_source,
+        "teacher_feedback": teacher_feedback_source,
+        "etoiles_effectives": etoiles_effectives_source,
+        "score_effectif": score_effectif_source,
+    }
+
+    # ============================================================
+    # POST : CRÉER / MODIFIER / VALIDER LA REMÉDIATION
     # ============================================================
 
     if request.method == "POST":
-        message = (request.form.get("message") or "").strip()
-        question = (request.form.get("question") or "").strip()
-        reponse = (request.form.get("reponse") or "").strip()
-        explication = (request.form.get("explication") or "").strip()
+        message = (
+            request.form.get("message") or ""
+        ).strip()
 
-        if not question or not reponse:
-            flash("La question et la réponse attendue sont obligatoires.", "error")
+        question = (
+            request.form.get("question") or ""
+        ).strip()
+
+        reponse_attendue = (
+            request.form.get("reponse") or ""
+        ).strip()
+
+        explication = (
+            request.form.get("explication") or ""
+        ).strip()
+
+        if not question or not reponse_attendue:
+            flash(
+                "La question et la réponse attendue sont obligatoires.",
+                "error"
+            )
+
             return render_template(
                 "valider_remediation.html",
                 suggestion=suggestion,
                 lang=lang,
                 question=question,
-                reponse=reponse,
-                explication=explication
+                reponse=reponse_attendue,
+                explication=explication,
+                enseignant=enseignant,
+                contexte_origine=contexte_origine
             )
 
         if lang == "en":
-            bloc = f"""Remediation:
-- Question: {question}
-- Expected answer: {reponse}
-- Explanation: {explication}"""
+            bloc = (
+                "Remediation:\n"
+                f"- Question: {question}\n"
+                f"- Expected answer: {reponse_attendue}\n"
+                f"- Explanation: {explication}"
+            )
         else:
-            bloc = f"""Remédiation :
-- Question : {question}
-- Réponse attendue : {reponse}
-- Explication : {explication}"""
+            bloc = (
+                "Remédiation :\n"
+                f"- Question : {question}\n"
+                f"- Réponse attendue : {reponse_attendue}\n"
+                f"- Explication : {explication}"
+            )
 
         try:
             suggestion.message = message
             suggestion.exercice_suggere = bloc
             suggestion.statut = "valide"
 
+            if hasattr(
+                suggestion,
+                "vue_par_eleve"
+            ):
+                suggestion.vue_par_eleve = True
+
             db.session.commit()
 
-            flash("✅ Remédiation validée avec succès", "success")
-            return redirect(url_for("remediations_a_valider"))
+            flash(
+                "✅ Remédiation enregistrée et validée avec succès.",
+                "success"
+            )
+
+            return redirect(
+                url_for("remediations_a_valider")
+            )
 
         except Exception as e:
             db.session.rollback()
-            print(f"Erreur validation remédiation : {e}")
-            flash("Une erreur est survenue lors de la validation.", "error")
-            return redirect(url_for("remediations_a_valider"))
+
+            print(
+                "Erreur validation remédiation : "
+                f"{e}"
+            )
+
+            flash(
+                "Une erreur est survenue lors de la validation.",
+                "error"
+            )
+
+            return render_template(
+                "valider_remediation.html",
+                suggestion=suggestion,
+                lang=lang,
+                question=question,
+                reponse=reponse_attendue,
+                explication=explication,
+                enseignant=enseignant,
+                contexte_origine=contexte_origine
+            )
 
     # ============================================================
-    # GET : PRÉREMPLIR LE FORMULAIRE
+    # GET : PRÉREMPLIR LE FORMULAIRE DE REMÉDIATION
     # ============================================================
-
-    import re
 
     exercice_suggere = suggestion.exercice_suggere or ""
 
     if lang == "en":
-        question_match = re.search(r"Question\s*[:：]\s*(.*)", exercice_suggere)
-        reponse_match = re.search(r"Expected answer\s*[:：]\s*(.*)", exercice_suggere)
-        explication_match = re.search(r"Explanation\s*[:：]\s*(.*)", exercice_suggere)
+        question_match = re.search(
+            r"Question\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+        reponse_match = re.search(
+            r"Expected answer\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+        explication_match = re.search(
+            r"Explanation\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
     else:
-        question_match = re.search(r"Question\s*[:：]\s*(.*)", exercice_suggere)
-        reponse_match = re.search(r"Réponse attendue\s*[:：]\s*(.*)", exercice_suggere)
-        explication_match = re.search(r"Explication\s*[:：]\s*(.*)", exercice_suggere)
+        question_match = re.search(
+            r"Question\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+        reponse_match = re.search(
+            r"Réponse attendue\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+        explication_match = re.search(
+            r"Explication\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
 
-    question_text = question_match.group(1).strip() if question_match else ""
-    reponse_text = reponse_match.group(1).strip() if reponse_match else ""
-    explication_text = explication_match.group(1).strip() if explication_match else ""
+    question_text = (
+        question_match.group(1).strip()
+        if question_match
+        else ""
+    )
+
+    reponse_text = (
+        reponse_match.group(1).strip()
+        if reponse_match
+        else ""
+    )
+
+    explication_text = (
+        explication_match.group(1).strip()
+        if explication_match
+        else ""
+    )
 
     return render_template(
         "valider_remediation.html",
@@ -21323,95 +21630,1012 @@ def valider_remediation(remediation_id):
         question=question_text,
         reponse=reponse_text,
         explication=explication_text,
-        enseignant=enseignant
+        enseignant=enseignant,
+        contexte_origine=contexte_origine
     )
 
 
-@app.route("/enseignant/remediations-a-valider", methods=["GET"])
-def remediations_a_valider():
+@app.route("/enseignant/remediation/<int:remediation_id>")
+def view_remediation(remediation_id):
+    import re
+
     # ============================================================
     # AUTHENTIFICATION ENSEIGNANT
-    # Système actuel : session["user_id"] + session["role"]
     # ============================================================
 
-    if "user_id" not in session:
-        flash("Veuillez vous connecter", "error")
-        return redirect(url_for("login_enseignant"))
+    if (
+        "user_id" not in session
+        or session.get("role") != "enseignant"
+    ):
+        return redirect(
+            url_for("login_enseignant")
+        )
 
-    if session.get("role") != "enseignant":
-        flash("Accès réservé aux enseignants", "error")
-        return redirect(url_for("login_enseignant"))
-
-    enseignant = User.query.get(session["user_id"])
+    enseignant = db.session.get(
+        User,
+        session["user_id"]
+    )
 
     if not enseignant or enseignant.role != "enseignant":
         session.clear()
-        flash("Session enseignant invalide. Veuillez vous reconnecter.", "error")
-        return redirect(url_for("login_enseignant"))
+        flash(
+            "Session enseignant invalide. Veuillez vous reconnecter.",
+            "error"
+        )
+        return redirect(
+            url_for("login_enseignant")
+        )
+
+    lang = session.get(
+        "lang",
+        getattr(enseignant, "langue", None) or "fr"
+    )
+
+    suggestion = (
+        RemediationSuggestion.query
+        .options(
+            joinedload(RemediationSuggestion.user),
+            joinedload(RemediationSuggestion.source_response)
+        )
+        .filter(RemediationSuggestion.id == remediation_id)
+        .first_or_404()
+    )
+
+    # ============================================================
+    # SÉCURITÉ
+    # ============================================================
+
+    if not suggestion.user:
+        flash(
+            "Élève introuvable pour cette remédiation.",
+            "error"
+        )
+        return redirect(
+            url_for("remediations_a_valider")
+        )
+
+    enseignant_autorise = (
+        suggestion.user.enseignant_referent_id
+        == enseignant.id
+    )
+
+    if (
+        not enseignant_autorise
+        and hasattr(suggestion.user, "enseignant_id")
+    ):
+        enseignant_autorise = (
+            getattr(
+                suggestion.user,
+                "enseignant_id",
+                None
+            )
+            == enseignant.id
+        )
+
+    if not enseignant_autorise:
+        flash("Accès non autorisé", "error")
+        return redirect(
+            url_for("remediations_a_valider")
+        )
+
+    # ============================================================
+    # CONTEXTE SOURCE
+    # ============================================================
+
+    source_response = suggestion.source_response
+
+    if (
+        source_response
+        and source_response.user_id != suggestion.user_id
+    ):
+        source_response = None
+
+    exercice_source = None
+    feedback_source = {}
+    metadata_source = {}
+    symbolic_source = {}
+
+    question_source = None
+    reponse_attendue_source = None
+    correction_reference_source = None
+    raison_evaluation_source = None
+
+    if source_response:
+        if source_response.exercice_id is not None:
+            exercice_source = db.session.get(
+                Exercice,
+                source_response.exercice_id
+            )
+
+        feedback_source = (
+            source_response.feedback_ia_structure
+            if isinstance(
+                source_response.feedback_ia_structure,
+                dict
+            )
+            else {}
+        )
+
+        metadata_source = (
+            feedback_source.get("metadata", {})
+            if isinstance(
+                feedback_source.get("metadata", {}),
+                dict
+            )
+            else {}
+        )
+
+        symbolic_source = (
+            feedback_source.get("symbolic_verification", {})
+            if isinstance(
+                feedback_source.get("symbolic_verification", {}),
+                dict
+            )
+            else {}
+        )
+
+        if exercice_source:
+            question_source = (
+                exercice_source.question_en
+                if (
+                    lang == "en"
+                    and getattr(exercice_source, "question_en", None)
+                )
+                else getattr(exercice_source, "question_fr", None)
+            )
+
+            reponse_attendue_source = (
+                exercice_source.reponse_en
+                if (
+                    lang == "en"
+                    and getattr(exercice_source, "reponse_en", None)
+                )
+                else getattr(exercice_source, "reponse_fr", None)
+            )
+
+            correction_reference_source = (
+                exercice_source.explication_en
+                if (
+                    lang == "en"
+                    and getattr(exercice_source, "explication_en", None)
+                )
+                else getattr(exercice_source, "explication_fr", None)
+            )
+
+        question_source = (
+            question_source
+            or metadata_source.get(
+                "question_en"
+                if lang == "en"
+                else "question_fr"
+            )
+            or metadata_source.get("question_fr")
+            or feedback_source.get("question")
+        )
+
+        reponse_attendue_source = (
+            reponse_attendue_source
+            or metadata_source.get(
+                "reponse_attendue_en"
+                if lang == "en"
+                else "reponse_attendue_fr"
+            )
+            or metadata_source.get("reponse_attendue_fr")
+            or feedback_source.get("reponse_attendue")
+        )
+
+        result_details = symbolic_source.get(
+            "result",
+            {}
+        )
+
+        raison_symbolique = (
+            result_details.get("reason")
+            if isinstance(result_details, dict)
+            else None
+        )
+
+        raison_evaluation_source = (
+            metadata_source.get("validation_reason")
+            or feedback_source.get("validation_reason")
+            or raison_symbolique
+            or feedback_source.get("reason")
+        )
+
+    contexte_origine = {
+        "source_response": source_response,
+        "source_response_id": (
+            source_response.id
+            if source_response
+            else None
+        ),
+        "exercice": exercice_source,
+        "question": question_source,
+        "reponse_eleve": (
+            source_response.reponse_eleve
+            if source_response
+            else None
+        ),
+        "reponse_attendue": reponse_attendue_source,
+        "correction_reference": correction_reference_source,
+        "automatic_etoiles": (
+            source_response.etoiles
+            if source_response
+            else None
+        ),
+        "automatic_score": (
+            source_response.score
+            if source_response
+            else None
+        ),
+        "teacher_etoiles": (
+            source_response.teacher_etoiles
+            if source_response
+            else None
+        ),
+        "teacher_score": (
+            source_response.teacher_score
+            if source_response
+            else None
+        ),
+        "teacher_feedback": (
+            source_response.teacher_feedback
+            if source_response
+            else None
+        ),
+        "etoiles_effectives": (
+            (
+                source_response.teacher_etoiles
+                if source_response.teacher_etoiles is not None
+                else source_response.etoiles
+            )
+            if source_response
+            else None
+        ),
+        "score_effectif": (
+            (
+                source_response.teacher_score
+                if source_response.teacher_score is not None
+                else source_response.score
+            )
+            if source_response
+            else None
+        ),
+        "type_erreur": (
+            source_response.type_erreur
+            if source_response
+            else None
+        ),
+        "raison_evaluation": raison_evaluation_source,
+    }
+
+    # ============================================================
+    # EXTRAIRE LA REMÉDIATION VALIDÉE
+    # ============================================================
+
+    exercice_suggere = suggestion.exercice_suggere or ""
+
+    if lang == "en":
+        question_match = re.search(
+            r"Question\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+        reponse_match = re.search(
+            r"Expected answer\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+        explication_match = re.search(
+            r"Explanation\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+    else:
+        question_match = re.search(
+            r"Question\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+        reponse_match = re.search(
+            r"Réponse attendue\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+        explication_match = re.search(
+            r"Explication\s*[:：]\s*(.*)",
+            exercice_suggere
+        )
+
+    question_text = (
+        question_match.group(1).strip()
+        if question_match
+        else ""
+    )
+
+    reponse_text = (
+        reponse_match.group(1).strip()
+        if reponse_match
+        else ""
+    )
+
+    explication_text = (
+        explication_match.group(1).strip()
+        if explication_match
+        else ""
+    )
+
+    return render_template(
+        "view_remediation.html",
+        suggestion=suggestion,
+        lang=lang,
+        question=question_text,
+        reponse=reponse_text,
+        explication=explication_text,
+        enseignant=enseignant,
+        contexte_origine=contexte_origine
+    )
+
+@app.route(
+    "/enseignant/remediations-a-valider",
+    methods=["GET"]
+)
+def remediations_a_valider():
+
+    # ============================================================
+    # AUTHENTIFICATION ENSEIGNANT
+    # ============================================================
+
+    if "user_id" not in session:
+        flash(
+            "Veuillez vous connecter",
+            "error"
+        )
+        return redirect(
+            url_for("login_enseignant")
+        )
+
+    if session.get("role") != "enseignant":
+        flash(
+            "Accès réservé aux enseignants",
+            "error"
+        )
+        return redirect(
+            url_for("login_enseignant")
+        )
+
+    enseignant = db.session.get(
+        User,
+        session["user_id"]
+    )
+
+    if (
+        not enseignant
+        or enseignant.role != "enseignant"
+    ):
+        session.clear()
+
+        flash(
+            "Session enseignant invalide. "
+            "Veuillez vous reconnecter.",
+            "error"
+        )
+
+        return redirect(
+            url_for("login_enseignant")
+        )
 
     # ============================================================
     # FILTRES
     # ============================================================
 
-    niveau_filtre = request.args.get("niveau", "").strip()
-    statut_filtre = request.args.get("statut", "en_attente").strip()
-    lang = session.get("lang", "fr")
+    niveau_filtre = (
+        request.args.get(
+            "niveau",
+            ""
+        )
+        .strip()
+    )
 
-    if statut_filtre not in ["en_attente", "valide", "tous"]:
+    statut_filtre = (
+        request.args.get(
+            "statut",
+            "en_attente"
+        )
+        .strip()
+    )
+
+    lang = session.get(
+        "lang",
+        getattr(
+            enseignant,
+            "langue",
+            None
+        )
+        or "fr"
+    )
+
+    if statut_filtre not in [
+        "en_attente",
+        "valide",
+        "tous"
+    ]:
         statut_filtre = "en_attente"
 
     try:
-        # ============================================================
+
+        # ========================================================
         # REQUÊTE PRINCIPALE
-        # L'enseignant voit uniquement les remédiations de ses élèves
-        # ============================================================
+        # ========================================================
+        #
+        # L'enseignant voit uniquement les remédiations
+        # appartenant à ses propres élèves.
+        #
+        # source_response est préchargée pour permettre
+        # d'afficher l'exercice ayant déclenché la remédiation.
+        # ========================================================
 
         query = (
             RemediationSuggestion.query
-            .join(User, RemediationSuggestion.user_id == User.id)
-            .options(
-                joinedload(RemediationSuggestion.user)
-                .joinedload(User.niveau)
+            .join(
+                User,
+                RemediationSuggestion.user_id
+                == User.id
             )
-            .filter(User.enseignant_referent_id == enseignant.id)
+            .options(
+                joinedload(
+                    RemediationSuggestion.user
+                ).joinedload(
+                    User.niveau
+                ),
+
+                joinedload(
+                    RemediationSuggestion.source_response
+                )
+            )
+            .filter(
+                User.enseignant_referent_id
+                == enseignant.id
+            )
         )
 
-        # Filtre niveau
-        if niveau_filtre:
-            query = query.filter(User.niveau.has(nom=niveau_filtre))
+        # ========================================================
+        # FILTRE NIVEAU
+        # ========================================================
 
-        # Filtre statut
+        if niveau_filtre:
+
+            query = query.filter(
+                User.niveau.has(
+                    nom=niveau_filtre
+                )
+            )
+
+        # ========================================================
+        # FILTRE STATUT
+        # ========================================================
+
         if statut_filtre != "tous":
-            query = query.filter(RemediationSuggestion.statut == statut_filtre)
+
+            query = query.filter(
+                RemediationSuggestion.statut
+                == statut_filtre
+            )
+
         else:
-            query = query.filter(RemediationSuggestion.statut != "supprime")
+
+            query = query.filter(
+                RemediationSuggestion.statut
+                != "supprime"
+            )
 
         suggestions = (
             query
-            .order_by(RemediationSuggestion.timestamp.desc())
+            .order_by(
+                RemediationSuggestion.timestamp.desc()
+            )
             .all()
         )
 
-        # ============================================================
-        # NIVEAUX DISPONIBLES POUR LES ÉLÈVES DE CET ENSEIGNANT
-        # ============================================================
+        # ========================================================
+        # RÉCUPÉRATION GROUPÉE DES EXERCICES SOURCES
+        # ========================================================
+        #
+        # On évite de faire une requête SQL par remédiation.
+        #
+        # Chaque RemediationSuggestion récente peut maintenant
+        # pointer vers :
+        #
+        # source_response_id
+        #        ↓
+        # StudentResponse
+        #        ↓
+        # exercice_id
+        #        ↓
+        # Exercice
+        # ========================================================
+
+        exercice_ids = set()
+
+        for suggestion in suggestions:
+
+            source_response = (
+                suggestion.source_response
+            )
+
+            if (
+                source_response
+                and source_response.user_id
+                == suggestion.user_id
+                and source_response.exercice_id
+                is not None
+            ):
+                exercice_ids.add(
+                    source_response.exercice_id
+                )
+
+        exercices_par_id = {}
+
+        if exercice_ids:
+
+            exercices_sources = (
+                Exercice.query
+                .filter(
+                    Exercice.id.in_(
+                        exercice_ids
+                    )
+                )
+                .all()
+            )
+
+            exercices_par_id = {
+                exercice.id: exercice
+                for exercice
+                in exercices_sources
+            }
+
+        # ========================================================
+        # CONTEXTE D'ORIGINE DE CHAQUE REMÉDIATION
+        # ========================================================
+        #
+        # Ce dictionnaire sera utilisé par le template :
+        #
+        # contextes_origine[suggestion.id]
+        #
+        # Il fournit :
+        # - réponse source ;
+        # - exercice original ;
+        # - question originale ;
+        # - réponse attendue ;
+        # - correction de référence ;
+        # - réponse donnée par l'élève ;
+        # - notes automatique et humaine ;
+        # - commentaire enseignant ;
+        # - type d'erreur ;
+        # - raison / analyse disponible.
+        # ========================================================
+
+        contextes_origine = {}
+
+        for suggestion in suggestions:
+
+            source_response = (
+                suggestion.source_response
+            )
+
+            # ----------------------------------------------------
+            # SÉCURITÉ / COHÉRENCE
+            # ----------------------------------------------------
+            #
+            # Une remédiation ne doit pas afficher une réponse
+            # appartenant à un autre élève.
+            # ----------------------------------------------------
+
+            if (
+                source_response
+                and source_response.user_id
+                != suggestion.user_id
+            ):
+                source_response = None
+
+            exercice_source = None
+
+            if (
+                source_response
+                and source_response.exercice_id
+                is not None
+            ):
+                exercice_source = (
+                    exercices_par_id.get(
+                        source_response.exercice_id
+                    )
+                )
+
+            # ----------------------------------------------------
+            # FEEDBACK STRUCTURÉ
+            # ----------------------------------------------------
+
+            feedback = {}
+
+            metadata = {}
+
+            symbolic = {}
+
+            if source_response:
+
+                feedback = (
+                    source_response.feedback_ia_structure
+                    if isinstance(
+                        source_response.feedback_ia_structure,
+                        dict
+                    )
+                    else {}
+                )
+
+                metadata = (
+                    feedback.get(
+                        "metadata",
+                        {}
+                    )
+                    if isinstance(
+                        feedback.get(
+                            "metadata",
+                            {}
+                        ),
+                        dict
+                    )
+                    else {}
+                )
+
+                symbolic = (
+                    feedback.get(
+                        "symbolic_verification",
+                        {}
+                    )
+                    if isinstance(
+                        feedback.get(
+                            "symbolic_verification",
+                            {}
+                        ),
+                        dict
+                    )
+                    else {}
+                )
+
+            # ----------------------------------------------------
+            # QUESTION ORIGINALE
+            # ----------------------------------------------------
+
+            question_source = None
+
+            if exercice_source:
+
+                if (
+                    lang == "en"
+                    and getattr(
+                        exercice_source,
+                        "question_en",
+                        None
+                    )
+                ):
+                    question_source = (
+                        exercice_source.question_en
+                    )
+
+                else:
+                    question_source = getattr(
+                        exercice_source,
+                        "question_fr",
+                        None
+                    )
+
+            if not question_source:
+
+                question_source = (
+                    metadata.get(
+                        "question_en"
+                        if lang == "en"
+                        else "question_fr"
+                    )
+                    or metadata.get(
+                        "question_fr"
+                    )
+                    or feedback.get(
+                        "question"
+                    )
+                )
+
+            # ----------------------------------------------------
+            # RÉPONSE ATTENDUE
+            # ----------------------------------------------------
+
+            reponse_attendue = None
+
+            if exercice_source:
+
+                if (
+                    lang == "en"
+                    and getattr(
+                        exercice_source,
+                        "reponse_en",
+                        None
+                    )
+                ):
+                    reponse_attendue = (
+                        exercice_source.reponse_en
+                    )
+
+                else:
+                    reponse_attendue = getattr(
+                        exercice_source,
+                        "reponse_fr",
+                        None
+                    )
+
+            if not reponse_attendue:
+
+                reponse_attendue = (
+                    metadata.get(
+                        "reponse_attendue_en"
+                        if lang == "en"
+                        else "reponse_attendue_fr"
+                    )
+                    or metadata.get(
+                        "reponse_attendue_fr"
+                    )
+                    or feedback.get(
+                        "reponse_attendue"
+                    )
+                )
+
+            # ----------------------------------------------------
+            # EXPLICATION / CORRECTION DE RÉFÉRENCE
+            # ----------------------------------------------------
+
+            correction_reference = None
+
+            if exercice_source:
+
+                if (
+                    lang == "en"
+                    and getattr(
+                        exercice_source,
+                        "explication_en",
+                        None
+                    )
+                ):
+                    correction_reference = (
+                        exercice_source.explication_en
+                    )
+
+                else:
+                    correction_reference = getattr(
+                        exercice_source,
+                        "explication_fr",
+                        None
+                    )
+
+            # ----------------------------------------------------
+            # RAISON DE L'ÉVALUATION / INCERTITUDE
+            # ----------------------------------------------------
+
+            result_details = (
+                symbolic.get(
+                    "result",
+                    {}
+                )
+            )
+
+            raison_symbolique = (
+                result_details.get(
+                    "reason"
+                )
+                if isinstance(
+                    result_details,
+                    dict
+                )
+                else None
+            )
+
+            raison_evaluation = (
+                metadata.get(
+                    "validation_reason"
+                )
+                or feedback.get(
+                    "validation_reason"
+                )
+                or raison_symbolique
+                or feedback.get(
+                    "reason"
+                )
+            )
+
+            # ----------------------------------------------------
+            # NOTES EFFECTIVES
+            # ----------------------------------------------------
+
+            automatic_etoiles = (
+                source_response.etoiles
+                if source_response
+                else None
+            )
+
+            automatic_score = (
+                source_response.score
+                if source_response
+                else None
+            )
+
+            teacher_etoiles = (
+                source_response.teacher_etoiles
+                if source_response
+                else None
+            )
+
+            teacher_score = (
+                source_response.teacher_score
+                if source_response
+                else None
+            )
+
+            teacher_feedback = (
+                source_response.teacher_feedback
+                if source_response
+                else None
+            )
+
+            etoiles_effectives = None
+            score_effectif = None
+
+            if source_response:
+
+                etoiles_effectives = (
+                    source_response.teacher_etoiles
+                    if source_response.teacher_etoiles
+                    is not None
+                    else source_response.etoiles
+                )
+
+                score_effectif = (
+                    source_response.teacher_score
+                    if source_response.teacher_score
+                    is not None
+                    else source_response.score
+                )
+
+            # ----------------------------------------------------
+            # CONTEXTE FINAL POUR LE TEMPLATE
+            # ----------------------------------------------------
+
+            contextes_origine[
+                suggestion.id
+            ] = {
+
+                "source_response":
+                    source_response,
+
+                "source_response_id":
+                    (
+                        source_response.id
+                        if source_response
+                        else None
+                    ),
+
+                "exercice":
+                    exercice_source,
+
+                "exercice_id":
+                    (
+                        exercice_source.id
+                        if exercice_source
+                        else None
+                    ),
+
+                "question":
+                    question_source,
+
+                "reponse_eleve":
+                    (
+                        source_response.reponse_eleve
+                        if source_response
+                        else None
+                    ),
+
+                "reponse_attendue":
+                    reponse_attendue,
+
+                "correction_reference":
+                    correction_reference,
+
+                "automatic_etoiles":
+                    automatic_etoiles,
+
+                "automatic_score":
+                    automatic_score,
+
+                "teacher_etoiles":
+                    teacher_etoiles,
+
+                "teacher_score":
+                    teacher_score,
+
+                "teacher_feedback":
+                    teacher_feedback,
+
+                "etoiles_effectives":
+                    etoiles_effectives,
+
+                "score_effectif":
+                    score_effectif,
+
+                "type_erreur":
+                    (
+                        source_response.type_erreur
+                        if source_response
+                        else None
+                    ),
+
+                "raison_evaluation":
+                    raison_evaluation,
+
+                "review_status":
+                    (
+                        source_response.review_status
+                        if source_response
+                        else None
+                    ),
+            }
+
+        # ========================================================
+        # NIVEAUX DISPONIBLES
+        # ========================================================
 
         niveaux = (
-            db.session.query(Niveau.nom)
-            .join(User, User.niveau_id == Niveau.id)
-            .filter(User.enseignant_referent_id == enseignant.id)
-            .filter(User.role.in_(["eleve", "élève"]))
+            db.session.query(
+                Niveau.nom
+            )
+            .join(
+                User,
+                User.niveau_id
+                == Niveau.id
+            )
+            .filter(
+                User.enseignant_referent_id
+                == enseignant.id
+            )
+            .filter(
+                User.role.in_(
+                    [
+                        "eleve",
+                        "élève"
+                    ]
+                )
+            )
             .distinct()
-            .order_by(Niveau.nom.asc())
+            .order_by(
+                Niveau.nom.asc()
+            )
             .all()
         )
 
-        statuts = ["en_attente", "valide", "tous"]
+        statuts = [
+            "en_attente",
+            "valide",
+            "tous"
+        ]
+
+        # ========================================================
+        # TEMPLATE
+        # ========================================================
 
         return render_template(
             "enseignant_remediations_validation.html",
+
             suggestions=suggestions,
-            niveaux=[n[0] for n in niveaux],
+
+            # Nouveau :
+            contextes_origine=contextes_origine,
+
+            niveaux=[
+                n[0]
+                for n in niveaux
+            ],
+
             niveau_filtre=niveau_filtre,
             statut_filtre=statut_filtre,
             statuts=statuts,
@@ -21420,50 +22644,25 @@ def remediations_a_valider():
         )
 
     except Exception as e:
+
         db.session.rollback()
-        print(f"Erreur dans remediations_a_valider: {e}")
-        flash("Une erreur est survenue lors du chargement des remédiations.", "error")
-        return redirect(url_for("dashboard_enseignant"))
 
+        print(
+            "Erreur dans remediations_a_valider: "
+            f"{e}"
+        )
 
-@app.route("/enseignant/remediation/<int:remediation_id>")
-def view_remediation(remediation_id):
-    # ✅ CORRECTION : utiliser "user_id"
-    if "user_id" not in session or session.get("role") != "enseignant":
-        return redirect(url_for("login_enseignant"))
+        flash(
+            "Une erreur est survenue lors du "
+            "chargement des remédiations.",
+            "error"
+        )
 
-    lang = session.get("lang", "fr")
-    suggestion = RemediationSuggestion.query.get_or_404(remediation_id)
-    
-    # ✅ Vérifier que cette remédiation appartient bien à un élève de cet enseignant
-    if suggestion.user.enseignant_referent_id != session["user_id"]:
-        flash("Accès non autorisé", "error")
-        return redirect(url_for("remediations_a_valider"))
-    
-    import re
-    exercice_suggere = suggestion.exercice_suggere or ""
-    
-    if lang == "en":
-        question_match = re.search(r"Question\s*[:：]\s*(.*)", exercice_suggere)
-        reponse_match = re.search(r"Expected answer\s*[:：]\s*(.*)", exercice_suggere)
-        explication_match = re.search(r"Explanation\s*[:：]\s*(.*)", exercice_suggere)
-    else:
-        question_match = re.search(r"Question\s*[:：]\s*(.*)", exercice_suggere)
-        reponse_match = re.search(r"Réponse attendue\s*[:：]\s*(.*)", exercice_suggere)
-        explication_match = re.search(r"Explication\s*[:：]\s*(.*)", exercice_suggere)
-
-    question_text = question_match.group(1).strip() if question_match else ""
-    reponse_text = reponse_match.group(1).strip() if reponse_match else ""
-    explication_text = explication_match.group(1).strip() if explication_match else ""
-    
-    return render_template(
-        "view_remediation.html",
-        suggestion=suggestion,
-        lang=lang,
-        question=question_text,
-        reponse=reponse_text,
-        explication=explication_text
-    )
+        return redirect(
+            url_for(
+                "dashboard_enseignant"
+            )
+        )
 
 @app.route("/lecon/<int:lecon_id>")
 def afficher_lecon(lecon_id):
@@ -23251,6 +24450,7 @@ Remédiation :
 
             nouvelle = RemediationSuggestion(
                 user_id=eleve.id,
+                source_response_id=reponse.id,
                 theme=theme_nom,
                 lecon=lecon_nom,
                 message=message_remediation,
@@ -23611,6 +24811,7 @@ Remédiation :
         ):
             remediation_creee = RemediationSuggestion(
                 user_id=eleve.id,
+                source_response_id=reponse.id,
                 theme=theme_nom,
                 lecon=lecon_nom,
                 message=(
@@ -37023,19 +38224,76 @@ Correction :
 
             suggestion = RemediationSuggestion(
                 user_id=eleve.id,
+
+                # ------------------------------------------------
+                # LIEN DIRECT VERS LA RÉPONSE QUI A DÉCLENCHÉ
+                # LA REMÉDIATION
+                # ------------------------------------------------
+                #
+                # Permet ensuite à l'enseignant de voir :
+                # - l'exercice original ;
+                # - la réponse de l'élève ;
+                # - la réponse attendue ;
+                # - la note obtenue ;
+                # - l'analyse / type d'erreur ;
+                # avant de créer, modifier ou valider la remédiation.
+                #
+                source_response_id=reponse.id,
+
                 theme=matiere_affichee or exercice.theme,
                 lecon=lecon_affichee or lecon.titre_fr,
                 message=message,
                 exercice_suggere=None,
+
+                # Toute remédiation automatique doit être
+                # validée par l'enseignant avant accès élève.
                 statut="en_attente",
+
                 timestamp=datetime.now(timezone.utc)
             )
 
+            if hasattr(
+                suggestion,
+                "vue_par_eleve"
+            ):
+                suggestion.vue_par_eleve = False
+
             db.session.add(suggestion)
+
+            # Flush pour obtenir immédiatement l'ID sans fermer
+            # la transaction pédagogique.
+            db.session.flush()
+
+            # Traçabilité dans le feedback de la réponse source.
+            if "metadata" not in feedback_json:
+                feedback_json["metadata"] = {}
+
+            feedback_json["metadata"]["remediation_id"] = (
+                suggestion.id
+            )
+
+            feedback_json["metadata"]["remediation_status"] = (
+                "en_attente"
+            )
+
+            feedback_json["metadata"][
+                "remediation_requires_teacher_validation"
+            ] = True
+
+            reponse.analyse_ia = json.dumps(
+                feedback_json,
+                ensure_ascii=False,
+                indent=2
+            )
+
+            reponse.feedback_ia_structure = feedback_json
 
             print(
                 "📚 Remédiation préparée après "
-                "un verdict incorrect confirmé."
+                "un verdict incorrect confirmé : "
+                f"id={suggestion.id}, "
+                f"source_response_id={reponse.id}, "
+                "statut=en_attente"
             )
 
         except Exception as e:
